@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 
-from app.setup.service_initializer import (
+from backend.app.setup.service_initializer import (
     _init_critical_services,
     _init_rag_components,
     _init_specialized_agents,
@@ -67,14 +67,14 @@ class TestInitCriticalServices:
     """Test _init_critical_services function"""
 
     @pytest.mark.asyncio
-    @patch("services.misc.cultural_insights_service.CulturalInsightsService")
-    @patch("services.routing.query_router_integration.QueryRouterIntegration")
-    @patch("services.routing.conflict_resolver.ConflictResolver")
-    @patch("services.ingestion.collection_manager.CollectionManager")
-    @patch("core.embeddings.create_embeddings_generator")
-    @patch("app.setup.service_initializer.ZantaraAIClient")
-    @patch("app.setup.service_initializer.SearchService")
-    @patch("app.setup.service_initializer.service_registry")
+    @patch("backend.services.misc.cultural_insights_service.CulturalInsightsService")
+    @patch("backend.services.routing.query_router_integration.QueryRouterIntegration")
+    @patch("backend.services.routing.conflict_resolver.ConflictResolver")
+    @patch("backend.services.ingestion.collection_manager.CollectionManager")
+    @patch("backend.core.embeddings.create_embeddings_generator")
+    @patch("backend.app.setup.service_initializer.ZantaraAIClient")
+    @patch("backend.app.setup.service_initializer.SearchService")
+    @patch("backend.app.setup.service_initializer.service_registry")
     async def test_init_critical_services_success(
         self,
         mock_registry,
@@ -103,8 +103,8 @@ class TestInitCriticalServices:
         assert ai_client is not None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.service_registry")
-    @patch("app.setup.service_initializer.SearchService")
+    @patch("backend.app.setup.service_initializer.service_registry")
+    @patch("backend.app.setup.service_initializer.SearchService")
     async def test_init_critical_services_search_failure(self, mock_search_service, mock_registry):
         """Test SearchService initialization failure"""
         app = FastAPI()
@@ -118,9 +118,9 @@ class TestInitCriticalServices:
             await _init_critical_services(app)
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.service_registry")
-    @patch("app.setup.service_initializer.ZantaraAIClient")
-    @patch("app.setup.service_initializer.SearchService")
+    @patch("backend.app.setup.service_initializer.service_registry")
+    @patch("backend.app.setup.service_initializer.ZantaraAIClient")
+    @patch("backend.app.setup.service_initializer.SearchService")
     async def test_init_critical_services_ai_failure(
         self, mock_search_service, mock_ai_client, mock_registry
     ):
@@ -141,9 +141,9 @@ class TestInitToolStack:
     """Test _init_tool_stack function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.initialize_mcp_client")
-    @patch("app.setup.service_initializer.ZantaraTools")
-    @patch("app.setup.service_initializer.ToolExecutor")
+    @patch("backend.app.setup.service_initializer.initialize_mcp_client")
+    @patch("backend.app.setup.service_initializer.ZantaraTools")
+    @patch("backend.app.setup.service_initializer.ToolExecutor")
     async def test_init_tool_stack_success(
         self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
     ):
@@ -164,9 +164,9 @@ class TestInitToolStack:
         mock_tool_executor.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.initialize_mcp_client")
-    @patch("app.setup.service_initializer.ZantaraTools")
-    @patch("app.setup.service_initializer.ToolExecutor")
+    @patch("backend.app.setup.service_initializer.initialize_mcp_client")
+    @patch("backend.app.setup.service_initializer.ZantaraTools")
+    @patch("backend.app.setup.service_initializer.ToolExecutor")
     async def test_init_tool_stack_mcp_failure(
         self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
     ):
@@ -188,8 +188,8 @@ class TestInitRAGComponents:
     """Test _init_rag_components function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.CulturalRAGService")
-    @patch("app.setup.service_initializer.QueryRouter")
+    @patch("backend.app.setup.service_initializer.CulturalRAGService")
+    @patch("backend.app.setup.service_initializer.QueryRouter")
     async def test_init_rag_components_with_cultural_insights(
         self, mock_query_router, mock_cultural_rag
     ):
@@ -207,8 +207,8 @@ class TestInitRAGComponents:
         assert result is not None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.CulturalRAGService")
-    @patch("app.setup.service_initializer.QueryRouter")
+    @patch("backend.app.setup.service_initializer.CulturalRAGService")
+    @patch("backend.app.setup.service_initializer.QueryRouter")
     async def test_init_rag_components_without_cultural_insights(
         self, mock_query_router, mock_cultural_rag
     ):
@@ -230,9 +230,9 @@ class TestInitSpecializedAgents:
     """Test _init_specialized_agents function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.AutonomousResearchService")
-    @patch("app.setup.service_initializer.CrossOracleSynthesisService")
-    @patch("app.setup.service_initializer.ClientJourneyOrchestrator")
+    @patch("backend.app.setup.service_initializer.AutonomousResearchService")
+    @patch("backend.app.setup.service_initializer.CrossOracleSynthesisService")
+    @patch("backend.app.setup.service_initializer.ClientJourneyOrchestrator")
     async def test_init_specialized_agents_success(
         self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
     ):
@@ -254,9 +254,9 @@ class TestInitSpecializedAgents:
         assert all(r is not None for r in result)
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.AutonomousResearchService")
-    @patch("app.setup.service_initializer.CrossOracleSynthesisService")
-    @patch("app.setup.service_initializer.ClientJourneyOrchestrator")
+    @patch("backend.app.setup.service_initializer.AutonomousResearchService")
+    @patch("backend.app.setup.service_initializer.CrossOracleSynthesisService")
+    @patch("backend.app.setup.service_initializer.ClientJourneyOrchestrator")
     async def test_init_specialized_agents_partial_failure(
         self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
     ):
@@ -284,8 +284,8 @@ class TestInitializeDatabaseServices:
     """Test initialize_database_services function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.settings")
-    @patch("app.setup.service_initializer.asyncpg")
+    @patch("backend.app.setup.service_initializer.settings")
+    @patch("backend.app.setup.service_initializer.asyncpg")
     async def test_initialize_database_services_no_url(self, mock_asyncpg, mock_settings):
         """Test database initialization without DATABASE_URL"""
         app = FastAPI()
@@ -298,11 +298,11 @@ class TestInitializeDatabaseServices:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.asyncio.create_task")
-    @patch("services.analytics.daily_checkin_notifier.init_daily_notifier")
-    @patch("services.analytics.team_timesheet_service.init_timesheet_service")
-    @patch("app.setup.service_initializer.settings")
-    @patch("app.setup.service_initializer.asyncpg")
+    @patch("backend.app.setup.service_initializer.asyncio.create_task")
+    @patch("backend.services.analytics.daily_checkin_notifier.init_daily_notifier")
+    @patch("backend.services.analytics.team_timesheet_service.init_timesheet_service")
+    @patch("backend.app.setup.service_initializer.settings")
+    @patch("backend.app.setup.service_initializer.asyncpg")
     async def test_initialize_database_services_success(
         self, mock_asyncpg, mock_settings, mock_timesheet, mock_daily_notifier, mock_create_task
     ):
@@ -337,9 +337,9 @@ class TestInitializeDatabaseServices:
         assert result is not None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.asyncio.sleep")
-    @patch("app.setup.service_initializer.settings")
-    @patch("app.setup.service_initializer.asyncpg")
+    @patch("backend.app.setup.service_initializer.asyncio.sleep")
+    @patch("backend.app.setup.service_initializer.settings")
+    @patch("backend.app.setup.service_initializer.asyncpg")
     async def test_initialize_database_services_connection_error(
         self, mock_asyncpg, mock_settings, mock_sleep
     ):
@@ -360,11 +360,11 @@ class TestInitializeCRMAndMemoryServices:
     """Test initialize_crm_and_memory_services function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.get_auto_crm_service")
-    @patch("app.setup.service_initializer.MemoryServicePostgres")
-    @patch("app.setup.service_initializer.ConversationService")
-    @patch("app.setup.service_initializer.create_collective_memory_workflow")
-    @patch("app.setup.service_initializer.settings")
+    @patch("backend.app.setup.service_initializer.get_auto_crm_service")
+    @patch("backend.app.setup.service_initializer.MemoryServicePostgres")
+    @patch("backend.app.setup.service_initializer.ConversationService")
+    @patch("backend.app.setup.service_initializer.create_collective_memory_workflow")
+    @patch("backend.app.setup.service_initializer.settings")
     async def test_initialize_crm_and_memory_services_success(
         self,
         mock_settings,
@@ -403,8 +403,8 @@ class TestInitializeCRMAndMemoryServices:
         assert app.state.conversation_service is not None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.get_auto_crm_service")
-    @patch("app.setup.service_initializer.settings")
+    @patch("backend.app.setup.service_initializer.get_auto_crm_service")
+    @patch("backend.app.setup.service_initializer.settings")
     async def test_initialize_crm_and_memory_services_no_db_pool(
         self, mock_settings, mock_auto_crm
     ):
@@ -430,8 +430,8 @@ class TestInitializeIntelligentRouter:
     """Test initialize_intelligent_router function"""
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.IntelligentRouter")
-    @patch("app.setup.service_initializer.CollaboratorService")
+    @patch("backend.app.setup.service_initializer.IntelligentRouter")
+    @patch("backend.app.setup.service_initializer.CollaboratorService")
     async def test_initialize_intelligent_router_success(
         self, mock_collaborator, mock_intelligent_router
     ):
@@ -466,8 +466,8 @@ class TestInitializeIntelligentRouter:
         assert app.state.intelligent_router is not None
 
     @pytest.mark.asyncio
-    @patch("app.setup.service_initializer.IntelligentRouter")
-    @patch("app.setup.service_initializer.CollaboratorService")
+    @patch("backend.app.setup.service_initializer.IntelligentRouter")
+    @patch("backend.app.setup.service_initializer.CollaboratorService")
     async def test_initialize_intelligent_router_collaborator_failure(
         self, mock_collaborator, mock_intelligent_router
     ):

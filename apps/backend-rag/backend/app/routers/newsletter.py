@@ -16,8 +16,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.dependencies import get_database_pool
-from app.utils.logging_utils import get_logger
+from backend.app.dependencies import get_database_pool
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

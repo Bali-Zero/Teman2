@@ -40,7 +40,7 @@ async def list_all_handlers():
     This is the master catalog that ZANTARA uses to see all available tools
     """
     # Lazy import to avoid circular dependencies
-    from app.routers import (
+    from backend.app.routers import (
         agents,
         conversations,
         crm_clients,

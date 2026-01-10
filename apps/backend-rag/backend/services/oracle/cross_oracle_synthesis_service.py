@@ -150,7 +150,7 @@ class CrossOracleSynthesisService:
         """
         self.search = search_service
         if zantara_ai_client is None:
-            from llm.zantara_ai_client import ZantaraAIClient
+            from backend.llm.zantara_ai_client import ZantaraAIClient
 
             zantara_ai_client = ZantaraAIClient()
         self.zantara = zantara_ai_client

@@ -30,7 +30,7 @@ from enum import Enum
 from typing import Any
 
 import asyncpg
-from agents.services.kg_repository import KnowledgeGraphRepository
+from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
 from .collective_memory_service import CollectiveMemoryService
 from .episodic_memory_service import EpisodicMemoryService
@@ -186,7 +186,7 @@ class MemoryOrchestrator:
 
             # Import metrics
             try:
-                from app.metrics import memory_orchestrator_unavailable_total
+                from backend.app.metrics import memory_orchestrator_unavailable_total
 
                 memory_orchestrator_unavailable_total.inc()
             except ImportError:
@@ -211,7 +211,7 @@ class MemoryOrchestrator:
 
             # Import metrics
             try:
-                from app.metrics import memory_orchestrator_degraded_total
+                from backend.app.metrics import memory_orchestrator_degraded_total
 
                 memory_orchestrator_degraded_total.inc()
             except ImportError:
@@ -226,7 +226,7 @@ class MemoryOrchestrator:
 
             # Import metrics
             try:
-                from app.metrics import memory_orchestrator_healthy_total
+                from backend.app.metrics import memory_orchestrator_healthy_total
 
                 memory_orchestrator_healthy_total.inc()
             except ImportError:
@@ -305,7 +305,7 @@ class MemoryOrchestrator:
             # In degraded mode, return limited context
             logger.debug(f"Returning degraded context for {user_email}")
             try:
-                from app.metrics import memory_context_degraded_total
+                from backend.app.metrics import memory_context_degraded_total
 
                 memory_context_degraded_total.inc()
             except ImportError:
@@ -326,9 +326,9 @@ class MemoryOrchestrator:
                 if self._collective_memory and self._status != MemoryServiceStatus.DEGRADED:
                     try:
                         if query:
-                            # Query-aware semantic retrieval
-                            collective_facts = await self._collective_memory.get_relevant_context(
-                                query=query,
+                            # NOTE 2026-01-10: get_relevant_context() removed (Qdrant), using get_collective_context() instead
+                            # Query-aware semantic retrieval removed, using confidence-based retrieval
+                            collective_facts = await self._collective_memory.get_collective_context(
                                 limit=10,
                             )
                             logger.debug(
@@ -405,7 +405,7 @@ class MemoryOrchestrator:
         except Exception:
             logger.exception("Failed to get user context", extra={"user_email": user_email})
             try:
-                from app.metrics import memory_context_failed_total
+                from backend.app.metrics import memory_context_failed_total
 
                 memory_context_failed_total.inc()
             except ImportError:

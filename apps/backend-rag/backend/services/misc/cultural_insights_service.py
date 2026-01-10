@@ -9,9 +9,9 @@ import hashlib
 import logging
 from typing import Any
 
-from core.embeddings import EmbeddingsGenerator
+from backend.core.embeddings import EmbeddingsGenerator
 
-# from services.collection_manager import CollectionManager
+# from backend.services.collection_manager import CollectionManager
 
 logger = logging.getLogger(__name__)
 

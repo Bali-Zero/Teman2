@@ -22,7 +22,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.pipeline import (
+from backend.services.rag.agentic.pipeline import (
     CitationStage,
     FormatStage,
     PipelineStage,
@@ -84,7 +84,7 @@ class TestVerificationStageComplete:
         mock_verification.reasoning = "Response is well-supported"
         mock_verification.missing_citations = []
 
-        with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
+        with patch("backend.services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(return_value=mock_verification)
 
             data = {
@@ -104,7 +104,7 @@ class TestVerificationStageComplete:
         """Test verification handling ValueError"""
         stage = VerificationStage(min_response_length=50)
 
-        with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
+        with patch("backend.services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(side_effect=ValueError("Invalid input"))
 
             data = {
@@ -122,7 +122,7 @@ class TestVerificationStageComplete:
         """Test verification handling RuntimeError"""
         stage = VerificationStage(min_response_length=50)
 
-        with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
+        with patch("backend.services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(side_effect=RuntimeError("Service error"))
 
             data = {
@@ -140,7 +140,7 @@ class TestVerificationStageComplete:
         """Test verification handling KeyError"""
         stage = VerificationStage(min_response_length=50)
 
-        with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
+        with patch("backend.services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(side_effect=KeyError("Missing key"))
 
             data = {
@@ -204,7 +204,7 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "services.rag.agentic.pipeline.post_process_response", side_effect=ValueError("Invalid")
+            "backend.services.rag.agentic.pipeline.post_process_response", side_effect=ValueError("Invalid")
         ):
             data = {"response": "Test response", "query": "test"}
             result = await stage.process(data)
@@ -217,7 +217,7 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "services.rag.agentic.pipeline.post_process_response", side_effect=RuntimeError("Error")
+            "backend.services.rag.agentic.pipeline.post_process_response", side_effect=RuntimeError("Error")
         ):
             data = {"response": "Test response", "query": "test"}
             result = await stage.process(data)
@@ -230,7 +230,7 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "services.rag.agentic.pipeline.post_process_response", return_value="Cleaned response"
+            "backend.services.rag.agentic.pipeline.post_process_response", return_value="Cleaned response"
         ):
             data = {"response": "Original response with THOUGHT: ...", "query": "test"}
             result = await stage.process(data)

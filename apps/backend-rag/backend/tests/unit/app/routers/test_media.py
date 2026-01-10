@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.media import router
+from backend.app.routers.media import router
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def client(app):
 class TestMediaRouter:
     """Tests for media router"""
 
-    @patch("app.routers.media.ImageGenerationService")
+    @patch("backend.app.routers.media.ImageGenerationService")
     def test_generate_image_success(self, mock_service_class, client):
         """Test generating image successfully"""
         mock_service = MagicMock()
@@ -54,7 +54,7 @@ class TestMediaRouter:
         assert data["success"] is True
         assert "url" in data
 
-    @patch("app.routers.media.ImageGenerationService")
+    @patch("backend.app.routers.media.ImageGenerationService")
     def test_generate_image_error(self, mock_service_class, client):
         """Test generating image with error"""
         mock_service = MagicMock()
@@ -66,7 +66,7 @@ class TestMediaRouter:
         response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 400
 
-    @patch("app.routers.media.ImageGenerationService")
+    @patch("backend.app.routers.media.ImageGenerationService")
     def test_generate_image_not_configured(self, mock_service_class, client):
         """Test generating image when service not configured"""
         mock_service = MagicMock()
@@ -78,7 +78,7 @@ class TestMediaRouter:
         response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 503
 
-    @patch("app.routers.media.ImageGenerationService")
+    @patch("backend.app.routers.media.ImageGenerationService")
     def test_generate_image_exception(self, mock_service_class, client):
         """Test generating image with exception"""
         mock_service = MagicMock()
@@ -88,9 +88,9 @@ class TestMediaRouter:
         response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 500
 
-    @patch("app.routers.media.Path")
-    @patch("app.routers.media.shutil")
-    @patch("app.routers.media.uuid")
+    @patch("backend.app.routers.media.Path")
+    @patch("backend.app.routers.media.shutil")
+    @patch("backend.app.routers.media.uuid")
     def test_upload_file(self, mock_uuid, mock_shutil, mock_path_class, client):
         """Test uploading a file"""
         mock_uuid.uuid4.return_value.hex = "test-uuid"
@@ -110,7 +110,7 @@ class TestMediaRouter:
         assert data["success"] is True
         assert "url" in data
 
-    @patch("app.routers.media.Path")
+    @patch("backend.app.routers.media.Path")
     def test_upload_file_error(self, mock_path_class, client):
         """Test uploading file with error"""
         mock_path = MagicMock()

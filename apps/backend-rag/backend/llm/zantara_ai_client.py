@@ -18,13 +18,13 @@ import logging
 from typing import Any
 
 # Import helper modules
-from llm.fallback_messages import get_fallback_message
-from llm.genai_client import GENAI_AVAILABLE, GenAIClient
-from llm.prompt_manager import PromptManager
-from llm.retry_handler import RetryHandler
-from llm.token_estimator import TokenEstimator
+from backend.llm.fallback_messages import get_fallback_message
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.prompt_manager import PromptManager
+from backend.llm.retry_handler import RetryHandler
+from backend.llm.token_estimator import TokenEstimator
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

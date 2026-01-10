@@ -154,7 +154,7 @@ async def run_migration():
     # FIX: Use centralized config instead of hardcoded credentials
     # This follows the NO_HARDCODING rule
     try:
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         database_url = settings.database_url
     except ImportError:

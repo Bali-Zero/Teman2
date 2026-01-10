@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_database_pool
+from backend.app.dependencies import get_database_pool
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def test_app(mock_db_pool):
     """Create test app without auth middleware"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_current_user
-    from app.routers import crm_clients
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers import crm_clients
 
     # Create minimal app
     app = FastAPI()

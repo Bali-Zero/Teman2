@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.reranker import ReRanker
+from backend.core.reranker import ReRanker
 
 
 class TestReRanker:
@@ -22,7 +22,7 @@ class TestReRanker:
 
     def test_init_without_api_key(self):
         """Test ReRanker initialization without API key"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = None
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -33,7 +33,7 @@ class TestReRanker:
 
     def test_init_with_api_key(self):
         """Test ReRanker initialization with API key"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = "test-api-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -45,7 +45,7 @@ class TestReRanker:
 
     def test_init_with_custom_model(self):
         """Test ReRanker initialization with custom model"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -56,7 +56,7 @@ class TestReRanker:
     @pytest.mark.asyncio
     async def test_rerank_disabled(self):
         """Test rerank when disabled"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = None
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -71,7 +71,7 @@ class TestReRanker:
     @pytest.mark.asyncio
     async def test_rerank_empty_documents(self):
         """Test rerank with empty documents"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -95,8 +95,8 @@ class TestReRanker:
         mock_response.raise_for_status = MagicMock()
 
         with (
-            patch("core.reranker.settings") as mock_settings,
-            patch("core.reranker.httpx.AsyncClient") as mock_client,
+            patch("backend.core.reranker.settings") as mock_settings,
+            patch("backend.core.reranker.httpx.AsyncClient") as mock_client,
         ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
@@ -125,8 +125,8 @@ class TestReRanker:
         mock_response.raise_for_status = MagicMock()
 
         with (
-            patch("core.reranker.settings") as mock_settings,
-            patch("core.reranker.httpx.AsyncClient") as mock_client,
+            patch("backend.core.reranker.settings") as mock_settings,
+            patch("backend.core.reranker.httpx.AsyncClient") as mock_client,
         ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
@@ -148,7 +148,7 @@ class TestReRanker:
     @pytest.mark.asyncio
     async def test_rerank_no_valid_text(self):
         """Test rerank with documents without text or content"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -172,7 +172,7 @@ class TestReRanker:
         error = httpx.HTTPStatusError("Error", request=MagicMock(), response=mock_response)
 
         with (
-            patch("core.reranker.settings") as mock_settings,
+            patch("backend.core.reranker.settings") as mock_settings,
             patch("httpx.AsyncClient") as mock_client,
         ):
             mock_settings.zerank_api_key = "test-key"
@@ -199,7 +199,7 @@ class TestReRanker:
         timeout_error = httpx.TimeoutException("Request timeout")
 
         with (
-            patch("core.reranker.settings") as mock_settings,
+            patch("backend.core.reranker.settings") as mock_settings,
             patch("httpx.AsyncClient") as mock_client,
         ):
             mock_settings.zerank_api_key = "test-key"

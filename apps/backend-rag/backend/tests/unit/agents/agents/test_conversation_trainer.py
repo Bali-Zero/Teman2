@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from agents.agents.conversation_trainer import ConversationTrainer
+from backend.agents.agents.conversation_trainer import ConversationTrainer
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def mock_db_pool():
 @pytest.fixture
 def conversation_trainer(mock_db_pool):
     """Create conversation trainer instance"""
-    with patch("agents.agents.conversation_trainer.ZantaraAIClient"):
+    with patch("backend.agents.agents.conversation_trainer.ZantaraAIClient"):
         return ConversationTrainer(db_pool=mock_db_pool)
 
 
@@ -35,7 +35,7 @@ class TestConversationTrainer:
 
     def test_init(self, mock_db_pool):
         """Test initialization"""
-        with patch("agents.agents.conversation_trainer.ZantaraAIClient"):
+        with patch("backend.agents.agents.conversation_trainer.ZantaraAIClient"):
             trainer = ConversationTrainer(db_pool=mock_db_pool)
             assert trainer.db_pool == mock_db_pool
 
@@ -71,7 +71,7 @@ class TestConversationTrainer:
 
         # Mock zantara_client properly - it needs to be available
         if conversation_trainer.zantara_client is None:
-            with patch("agents.agents.conversation_trainer.ZantaraAIClient") as mock_client_class:
+            with patch("backend.agents.agents.conversation_trainer.ZantaraAIClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.generate = AsyncMock(return_value="Pattern analysis")
                 mock_client_class.return_value = mock_client

@@ -41,15 +41,15 @@ from typing import Any
 
 import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
-from llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 
-from app.core.circuit_breaker import CircuitBreaker
-from app.core.constants import HttpTimeoutConstants
-from app.core.error_classification import ErrorClassifier, get_error_context
-from app.metrics import metrics_collector
-from app.utils.tracing import set_span_attribute, set_span_status, trace_span
-from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
-from services.llm_clients.pricing import TokenUsage, create_token_usage
+from backend.app.core.circuit_breaker import CircuitBreaker
+from backend.app.core.constants import HttpTimeoutConstants
+from backend.app.core.error_classification import ErrorClassifier, get_error_context
+from backend.app.metrics import metrics_collector
+from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
+from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ class LLMGateway:
                 },
             )
             try:
-                from app.metrics import llm_all_models_failed_total
+                from backend.app.metrics import llm_all_models_failed_total
 
                 llm_all_models_failed_total.inc()
             except ImportError:
@@ -295,7 +295,7 @@ class LLMGateway:
         # Record metrics if circuit opened
         if circuit.is_open():
             try:
-                from app.metrics import llm_circuit_breaker_opened_total
+                from backend.app.metrics import llm_circuit_breaker_opened_total
 
                 llm_circuit_breaker_opened_total.labels(
                     model=model_name, error_type=error_type
@@ -484,7 +484,7 @@ class LLMGateway:
 
             # 🔍 TRACING: Span for LLM call
             with trace_span(
-                "llm.call",
+                "backend.llm.call",
                 {
                     "model": model_name,
                     "with_tools": with_tools,
@@ -555,7 +555,7 @@ class LLMGateway:
             if self._is_circuit_open(model_name):
                 logger.debug(f"Circuit breaker OPEN for {model_name}, skipping")
                 try:
-                    from app.metrics import llm_circuit_breaker_open_total
+                    from backend.app.metrics import llm_circuit_breaker_open_total
 
                     llm_circuit_breaker_open_total.labels(model=model_name).inc()
                 except ImportError:
@@ -569,7 +569,7 @@ class LLMGateway:
                     f"stopping fallback cascade"
                 )
                 try:
-                    from app.metrics import llm_cost_limit_reached_total
+                    from backend.app.metrics import llm_cost_limit_reached_total
 
                     llm_cost_limit_reached_total.inc()
                 except ImportError:
@@ -582,7 +582,7 @@ class LLMGateway:
                     f"Max fallback depth reached ({query_cost_tracker['depth']}), stopping cascade"
                 )
                 try:
-                    from app.metrics import llm_max_depth_reached_total
+                    from backend.app.metrics import llm_max_depth_reached_total
 
                     llm_max_depth_reached_total.inc()
                 except ImportError:
@@ -606,7 +606,7 @@ class LLMGateway:
                 query_cost_tracker["depth"] += 1
 
                 try:
-                    from app.metrics import llm_fallback_depth, llm_query_cost_usd
+                    from backend.app.metrics import llm_fallback_depth, llm_query_cost_usd
 
                     llm_fallback_depth.observe(query_cost_tracker["depth"])
                     llm_query_cost_usd.observe(query_cost_tracker["cost"])
@@ -621,7 +621,7 @@ class LLMGateway:
                 self._record_failure(model_name, e)
                 logger.warning(f"Quota exhausted for {model_name}: {e}")
                 try:
-                    from app.metrics import llm_quota_exhausted_total
+                    from backend.app.metrics import llm_quota_exhausted_total
 
                     llm_quota_exhausted_total.labels(model=model_name).inc()
                 except ImportError:
@@ -634,7 +634,7 @@ class LLMGateway:
                 self._record_failure(model_name, e)
                 logger.warning(f"Service unavailable for {model_name}: {e}")
                 try:
-                    from app.metrics import llm_service_unavailable_total
+                    from backend.app.metrics import llm_service_unavailable_total
 
                     llm_service_unavailable_total.labels(model=model_name).inc()
                 except ImportError:
@@ -648,7 +648,7 @@ class LLMGateway:
                 error_type = type(e).__name__
                 logger.warning(f"Error with {model_name}: {e}")
                 try:
-                    from app.metrics import llm_model_error_total
+                    from backend.app.metrics import llm_model_error_total
 
                     llm_model_error_total.labels(model=model_name, error_type=error_type).inc()
                 except ImportError:

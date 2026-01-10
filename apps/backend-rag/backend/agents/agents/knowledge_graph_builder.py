@@ -20,7 +20,7 @@ from ..services.kg_repository import KnowledgeGraphRepository
 from ..services.kg_schema import KnowledgeGraphSchema
 
 try:
-    from llm.zantara_ai_client import ZantaraAIClient
+    from backend.llm.zantara_ai_client import ZantaraAIClient
 
     ZANTARA_AVAILABLE = True
 except ImportError:
@@ -50,14 +50,14 @@ class KnowledgeGraphBuilder:
         Initialize KnowledgeGraphBuilder with dependencies.
 
         Args:
-            db_pool: AsyncPG connection pool (if None, will try to get from app.state)
+            db_pool: AsyncPG connection pool (if None, will try to get from backend.app.state)
             ai_client: ZantaraAIClient instance (if None, will create new)
         """
         # Get db_pool
         self.db_pool = db_pool
         if not self.db_pool:
             try:
-                from app.main_cloud import app
+                from backend.app.main_cloud import app
 
                 self.db_pool = getattr(app.state, "db_pool", None)
             except Exception:

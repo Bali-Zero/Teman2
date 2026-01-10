@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backe
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agent.persona import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
+from backend.services.rag.agent.persona import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 
 
 class TestIsOutOfDomain:

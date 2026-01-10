@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.ingestion.collection_health_service import (
+from backend.services.ingestion.collection_health_service import (
     CollectionHealthService,
     CollectionMetrics,
     HealthStatus,

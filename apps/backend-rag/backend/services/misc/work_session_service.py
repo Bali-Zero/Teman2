@@ -25,7 +25,7 @@ class WorkSessionService:
     """
 
     def __init__(self):
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         self.db_url = settings.database_url
         self.pool = None

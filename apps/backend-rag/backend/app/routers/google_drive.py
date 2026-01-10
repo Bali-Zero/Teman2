@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user, get_database_pool
-from services.integrations.google_drive_service import GoogleDriveService
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.services.integrations.google_drive_service import GoogleDriveService
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class SystemConnectionStatus(BaseModel):
     root_folder_id: str | None = None
 
 
-from app.utils.crm_utils import is_super_admin
+from backend.app.utils.crm_utils import is_super_admin
 
 
 class FileItem(BaseModel):

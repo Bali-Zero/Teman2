@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.memory_fallback import InMemoryConversationCache, get_memory_cache
+from backend.services.memory.memory_fallback import InMemoryConversationCache, get_memory_cache
 
 
 class TestInMemoryConversationCache:

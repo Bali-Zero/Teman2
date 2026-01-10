@@ -5,8 +5,8 @@ Tests for UnifiedLLMClient
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from llm.base import LLMMessage, LLMResponse
-from llm.client import UnifiedLLMClient, create_default_client
+from backend.llm.base import LLMMessage, LLMResponse
+from backend.llm.client import UnifiedLLMClient, create_default_client
 
 
 class TestUnifiedLLMClient:

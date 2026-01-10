@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.result_formatter import format_search_results
+from backend.services.misc.result_formatter import format_search_results
 
 
 class TestResultFormatter:

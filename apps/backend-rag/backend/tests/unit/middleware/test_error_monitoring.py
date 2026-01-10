@@ -195,7 +195,7 @@ class TestErrorMonitoringMiddleware:
             return mock_response
 
         # Settings is imported inside the function, so patch at the source
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.latency_alert_threshold_ms = 50  # 50ms threshold
 
             result = await middleware.dispatch(mock_request, call_next)
@@ -246,7 +246,7 @@ class TestErrorMonitoringMiddleware:
 
     @pytest.mark.asyncio
     async def test_resolve_alert_service_from_app_state(self, mock_app):
-        """Test resolving alert service from app.state"""
+        """Test resolving alert service from backend.app.state"""
         mock_alert_service = MagicMock()
         mock_app.state.alert_service = mock_alert_service
 

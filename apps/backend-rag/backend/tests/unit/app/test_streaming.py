@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.streaming import ChatStreamRequest, _parse_history, bali_zero_chat_stream
+from backend.app.streaming import ChatStreamRequest, _parse_history, bali_zero_chat_stream
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ class TestStreamingRouter:
         """Test successful streaming"""
         mock_request.app.state.intelligent_router = mock_intelligent_router
 
-        with patch("app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}):
+        with patch("backend.app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}):
             response = await bali_zero_chat_stream(
                 request=mock_request, query="test query", background_tasks=MagicMock()
             )
@@ -93,7 +93,7 @@ class TestStreamingRouter:
         """Test without authentication"""
         mock_request.state.user = None
 
-        with patch("app.streaming.validate_auth_mixed", return_value=None):
+        with patch("backend.app.streaming.validate_auth_mixed", return_value=None):
             with pytest.raises(Exception):  # Should raise HTTPException
                 await bali_zero_chat_stream(
                     request=mock_request, query="test", background_tasks=MagicMock()

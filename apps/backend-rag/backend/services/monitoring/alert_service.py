@@ -26,7 +26,7 @@ class AlertService:
     """Service for sending alerts to various channels"""
 
     def __init__(self):
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         self.slack_webhook = settings.slack_webhook_url
         self.discord_webhook = settings.discord_webhook_url

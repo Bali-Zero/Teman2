@@ -6,7 +6,7 @@ Business logic for RAG, Search, and Vector Database operations
 It is kept only as a fallback for test/local boot scenarios where SearchService may not be initialized.
 
 Migration path:
-- Use SearchService from app.state.search_service (injected in main_cloud.py)
+- Use SearchService from backend.app.state.search_service (injected in main_cloud.py)
 - For /api/search endpoint, use get_search_service(request) helper in router.py
 
 Status: This service will be removed in a future version once all tests and fallback scenarios
@@ -16,12 +16,12 @@ are migrated to SearchService. Do not use this service in new code.
 import logging
 from typing import Any
 
-from core.cache import cached
-from core.qdrant_db import QdrantClient
+from backend.core.cache import cached
+from backend.core.qdrant_db import QdrantClient
 
-from app.core.config import settings
-from app.models import TierLevel
-from services.routing.query_router import QueryRouter
+from backend.app.core.config import settings
+from backend.app.models import TierLevel
+from backend.services.routing.query_router import QueryRouter
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +46,16 @@ class KnowledgeService:
         Initialize Knowledge Service with Qdrant and embeddings.
 
         DEPRECATED: This service creates duplicate Qdrant connections and cache collisions.
-        Use SearchService from app.state.search_service instead.
+        Use SearchService from backend.app.state.search_service instead.
         """
         logger.warning(
-            "⚠️ KnowledgeService is deprecated. Use SearchService from app.state.search_service instead."
+            "⚠️ KnowledgeService is deprecated. Use SearchService from backend.app.state.search_service instead."
         )
         logger.info("🔄 KnowledgeService initialization starting...")
 
         # Initialize embeddings generator using factory function
         logger.info("🔄 Loading EmbeddingsGenerator...")
-        from core.embeddings import create_embeddings_generator
+        from backend.core.embeddings import create_embeddings_generator
 
         self.embedder = create_embeddings_generator()
         logger.info(
@@ -257,7 +257,7 @@ class KnowledgeService:
     def _init_reranker(self):
         """Lazy load the re-ranker"""
         if not hasattr(self, "reranker"):
-            from core.reranker import ReRanker
+            from backend.core.reranker import ReRanker
 
             self.reranker = ReRanker()
 

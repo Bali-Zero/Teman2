@@ -10,7 +10,7 @@ import logging
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger("zantara.backend")
 

@@ -7,8 +7,8 @@ import logging
 import time
 from typing import Any
 
-from llm.adapters.gemini import GeminiAdapter
-from prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
+from backend.llm.adapters.gemini import GeminiAdapter
+from backend.prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
 
 from ..response.validator import ZantaraResponseValidator
 from .oracle_google_services import google_services

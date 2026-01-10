@@ -13,14 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.dependencies import (
+from backend.app.dependencies import (
     get_current_user,
     get_database_pool,
     get_orchestrator,
     get_optional_database_pool,
 )
-from app.utils.tracing import add_span_event, set_span_status, trace_span
-from services.rag.agentic import AgenticRAGOrchestrator
+from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
+from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 

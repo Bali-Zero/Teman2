@@ -18,6 +18,7 @@ class User(SQLModel, table=True):
     """
 
     __tablename__ = "team_members"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key - Node.js uses VARCHAR(36), not UUID type
     # Note: Database uses gen_random_uuid() as default, but we accept string IDs
@@ -91,6 +92,7 @@ class UserSession(SQLModel, table=True):
     """
 
     __tablename__ = "user_sessions"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key - Node.js uses VARCHAR(255) for session ID
     id: str = Field(primary_key=True, max_length=255, description="Session ID (primary key)")

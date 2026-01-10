@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any
 
 # Import BaseTool and helper from definitions to avoid duplication
-from services.tools.definitions import BaseTool, _convert_schema_to_gemini_format
+from backend.services.tools.definitions import BaseTool, _convert_schema_to_gemini_format
 
 
 class ToolType(str, Enum):
@@ -58,7 +58,7 @@ class AgentState:
     skip_rag: bool = False  # Skip RAG evidence requirements for general tasks
 
 
-# BaseTool and _convert_schema_to_gemini_format are imported from services.tools.definitions
+# BaseTool and _convert_schema_to_gemini_format are imported from backend.services.tools.definitions
 # to avoid code duplication. This maintains backward compatibility for existing imports.
 
 __all__ = [

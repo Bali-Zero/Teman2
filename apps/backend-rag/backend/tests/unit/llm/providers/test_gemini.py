@@ -5,14 +5,14 @@ Tests for GeminiProvider
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from llm.base import LLMMessage
-from llm.providers.gemini import GeminiProvider
+from backend.llm.base import LLMMessage
+from backend.llm.providers.gemini import GeminiProvider
 
 
 class TestGeminiProvider:
     """Test suite for GeminiProvider"""
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_init(self, mock_gemini_service):
         """Test provider initialization"""
         mock_service = MagicMock()
@@ -25,7 +25,7 @@ class TestGeminiProvider:
         assert provider._service == mock_service
         assert provider._available is True
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_init_custom_model(self, mock_gemini_service):
         """Test provider initialization with custom model"""
         mock_service = MagicMock()
@@ -36,7 +36,7 @@ class TestGeminiProvider:
 
         assert provider._model_name == "gemini-2.0-flash"
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_init_failure(self, mock_gemini_service):
         """Test provider initialization failure"""
         mock_gemini_service.side_effect = Exception("Init failed")
@@ -46,7 +46,7 @@ class TestGeminiProvider:
         assert provider._available is False
         assert provider._service is None
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_name_property(self, mock_gemini_service):
         """Test name property"""
         mock_service = MagicMock()
@@ -57,7 +57,7 @@ class TestGeminiProvider:
 
         assert provider.name == "gemini"
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_is_available_true(self, mock_gemini_service):
         """Test is_available when service is available"""
         mock_service = MagicMock()
@@ -68,7 +68,7 @@ class TestGeminiProvider:
 
         assert provider.is_available is True
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_is_available_false(self, mock_gemini_service):
         """Test is_available when service is not available"""
         mock_service = MagicMock()
@@ -79,7 +79,7 @@ class TestGeminiProvider:
 
         assert provider.is_available is False
 
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     def test_is_available_no_service(self, mock_gemini_service):
         """Test is_available when service is None"""
         mock_gemini_service.side_effect = Exception("Init failed")
@@ -89,7 +89,7 @@ class TestGeminiProvider:
         assert provider.is_available is False
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_success(self, mock_gemini_service):
         """Test successful generation"""
         mock_service = MagicMock()
@@ -108,7 +108,7 @@ class TestGeminiProvider:
         assert response.finish_reason == "stop"
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_not_available(self, mock_gemini_service):
         """Test generate when provider is not available"""
         mock_gemini_service.side_effect = Exception("Init failed")
@@ -121,7 +121,7 @@ class TestGeminiProvider:
             await provider.generate(messages)
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_with_system_message(self, mock_gemini_service):
         """Test generate with system message"""
         mock_service = MagicMock()
@@ -142,7 +142,7 @@ class TestGeminiProvider:
         assert "System prompt" in call_args.kwargs.get("context", "")
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_with_history(self, mock_gemini_service):
         """Test generate with conversation history"""
         mock_service = MagicMock()
@@ -164,7 +164,7 @@ class TestGeminiProvider:
         assert call_args.kwargs.get("history") is not None
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_with_context_kwarg(self, mock_gemini_service):
         """Test generate with context in kwargs"""
         mock_service = MagicMock()
@@ -181,7 +181,7 @@ class TestGeminiProvider:
         assert "Additional context" in call_args.kwargs.get("context", "")
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_stream_success(self, mock_gemini_service):
         """Test successful streaming"""
         mock_service = MagicMock()
@@ -207,7 +207,7 @@ class TestGeminiProvider:
         assert chunks == ["chunk1", "chunk2", "chunk3"]
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_stream_not_available(self, mock_gemini_service):
         """Test stream when provider is not available"""
         mock_gemini_service.side_effect = Exception("Init failed")
@@ -221,7 +221,7 @@ class TestGeminiProvider:
                 pass
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_stream_with_system_message(self, mock_gemini_service):
         """Test stream with system message"""
         mock_service = MagicMock()
@@ -247,7 +247,7 @@ class TestGeminiProvider:
         assert len(chunks) > 0
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_stream_with_history(self, mock_gemini_service):
         """Test stream with conversation history"""
         mock_service = MagicMock()
@@ -274,7 +274,7 @@ class TestGeminiProvider:
         assert len(chunks) > 0
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_stream_with_context_kwarg(self, mock_gemini_service):
         """Test stream with context in kwargs"""
         mock_service = MagicMock()
@@ -297,7 +297,7 @@ class TestGeminiProvider:
         assert len(chunks) > 0
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_with_temperature(self, mock_gemini_service):
         """Test generate with temperature parameter"""
         mock_service = MagicMock()
@@ -314,7 +314,7 @@ class TestGeminiProvider:
         assert response.content == "Response"
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.gemini_service.GeminiJakselService")
+    @patch("backend.services.llm_clients.gemini_service.GeminiJakselService")
     async def test_generate_with_max_tokens(self, mock_gemini_service):
         """Test generate with max_tokens parameter"""
         mock_service = MagicMock()

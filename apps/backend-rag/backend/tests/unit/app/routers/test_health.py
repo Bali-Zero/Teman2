@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.health import get_qdrant_stats, router
+from backend.app.routers.health import get_qdrant_stats, router
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ class TestHealthRouter:
         mock_search_service.embedder = mock_embedder
         app.state.search_service = mock_search_service
 
-        with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             response = client.get("/health")
@@ -68,7 +68,7 @@ class TestHealthRouter:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_success(self):
         """Test getting Qdrant stats successfully"""
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.json.return_value = {
@@ -98,7 +98,7 @@ class TestHealthRouter:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_error(self):
         """Test getting Qdrant stats with error"""
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get = AsyncMock(side_effect=Exception("Connection error"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)

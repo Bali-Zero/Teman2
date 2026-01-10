@@ -14,7 +14,7 @@ import inspect
 import logging
 from typing import Any
 
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
 logger = logging.getLogger(__name__)
 

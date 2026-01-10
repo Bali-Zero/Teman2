@@ -640,7 +640,7 @@ class MetricsCollector:
     async def measure_redis_latency(self) -> float:
         """Measure Redis latency in milliseconds"""
         try:
-            from core.cache import get_cache_service
+            from backend.core.cache import get_cache_service
 
             cache = get_cache_service()
             start = time.time()

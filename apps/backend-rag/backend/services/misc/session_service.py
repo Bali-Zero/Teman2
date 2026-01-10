@@ -420,7 +420,7 @@ async def main():
     logger = logging.getLogger(__name__)
 
     # Use settings for Redis URL instead of hardcoding
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     redis_url = getattr(settings, "redis_url", "redis://localhost:6379")
     service = SessionService(redis_url)

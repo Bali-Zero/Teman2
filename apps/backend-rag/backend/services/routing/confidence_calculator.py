@@ -5,7 +5,7 @@ Responsibility: Calculate confidence scores for routing decisions
 
 import logging
 
-from app.core.constants import RoutingConstants
+from backend.app.core.constants import RoutingConstants
 
 logger = logging.getLogger(__name__)
 

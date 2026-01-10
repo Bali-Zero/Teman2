@@ -25,12 +25,12 @@ class ProgressTrackerService:
         Returns:
             List of next steps
         """
-        from services.journey.prerequisites_checker import PrerequisitesCheckerService
+        from backend.services.journey.prerequisites_checker import PrerequisitesCheckerService
 
         checker = PrerequisitesCheckerService()
         next_steps = []
 
-        from services.misc.client_journey_orchestrator import StepStatus
+        from backend.services.misc.client_journey_orchestrator import StepStatus
 
         for step in journey.steps:
             if step.status in [StepStatus.COMPLETED, StepStatus.IN_PROGRESS, StepStatus.BLOCKED]:
@@ -53,7 +53,7 @@ class ProgressTrackerService:
         Returns:
             Progress dictionary
         """
-        from services.misc.client_journey_orchestrator import StepStatus
+        from backend.services.misc.client_journey_orchestrator import StepStatus
 
         total_steps = len(journey.steps)
         completed_steps = sum(1 for s in journey.steps if s.status == StepStatus.COMPLETED)

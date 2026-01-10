@@ -24,7 +24,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 
 @pytest.fixture
@@ -124,8 +124,8 @@ def mock_memory_orchestrator():
 @pytest.fixture
 def orchestrator(mock_search_service, mock_db_pool, mock_memory_orchestrator):
     """Create AgenticRAGOrchestrator with mocked dependencies"""
-    with patch("services.rag.agentic.create_agentic_rag") as mock_create:
-        with patch("services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+    with patch("backend.services.rag.agentic.create_agentic_rag") as mock_create:
+        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
             orchestrator = AgenticRAGOrchestrator(
                 retriever=mock_search_service,
                 db_pool=mock_db_pool,
@@ -147,7 +147,7 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock intent classification
-        with patch("services.classification.intent_classifier.IntentClassifier") as mock_intent:
+        with patch("backend.services.classification.intent_classifier.IntentClassifier") as mock_intent:
             mock_classifier = MagicMock()
             mock_classifier.classify_intent = AsyncMock(
                 return_value={
@@ -209,7 +209,7 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock pricing tool
-        with patch("services.rag.agentic.tools.PricingTool") as mock_pricing:
+        with patch("backend.services.rag.agentic.tools.PricingTool") as mock_pricing:
             mock_pricing_instance = MagicMock()
             mock_pricing_instance.execute = AsyncMock(
                 return_value={"service": "E33G", "price": "Rp 17-19 million"}
@@ -217,7 +217,7 @@ class TestE2ERAGFlow:
             mock_pricing.return_value = mock_pricing_instance
 
             # Mock calculator tool
-            with patch("services.rag.agentic.tools.CalculatorTool") as mock_calc:
+            with patch("backend.services.rag.agentic.tools.CalculatorTool") as mock_calc:
                 mock_calc_instance = MagicMock()
                 mock_calc_instance.execute = AsyncMock(return_value={"result": "Rp 20-22 million"})
                 mock_calc.return_value = mock_calc_instance
@@ -268,10 +268,10 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock response pipeline stages
-        with patch("services.rag.agentic.pipeline.VerificationStage") as mock_verify:
-            with patch("services.rag.agentic.pipeline.PostProcessingStage") as mock_post:
-                with patch("services.rag.agentic.pipeline.CitationStage") as mock_cite:
-                    with patch("services.rag.agentic.pipeline.FormatStage") as mock_format:
+        with patch("backend.services.rag.agentic.pipeline.VerificationStage") as mock_verify:
+            with patch("backend.services.rag.agentic.pipeline.PostProcessingStage") as mock_post:
+                with patch("backend.services.rag.agentic.pipeline.CitationStage") as mock_cite:
+                    with patch("backend.services.rag.agentic.pipeline.FormatStage") as mock_format:
                         mock_verify_instance = MagicMock()
                         mock_verify_instance.process = MagicMock(return_value="verified")
                         mock_verify.return_value = mock_verify_instance

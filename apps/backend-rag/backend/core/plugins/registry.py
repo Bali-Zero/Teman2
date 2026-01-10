@@ -284,7 +284,7 @@ class PluginRegistry:
                 if package_prefix:
                     full_module_paths.append(f"{package_prefix}.{module_path}")
                 # Try with 'plugins' prefix (common case)
-                full_module_paths.append(f"plugins.{module_path}")
+                full_module_paths.append(f"backend.plugins.{module_path}")
                 # Try without prefix (for direct execution)
                 full_module_paths.append(module_path)
 

@@ -1,8 +1,8 @@
 import datetime
 from typing import Any
 
-from app.core.config import settings
-from services.communication import (
+from backend.app.core.config import settings
+from backend.services.communication import (
     build_alternatives_instructions,
     build_explanation_instructions,
     detect_explanation_level,

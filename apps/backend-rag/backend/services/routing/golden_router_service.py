@@ -12,7 +12,7 @@ import asyncpg
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

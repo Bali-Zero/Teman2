@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.knowledge_graph.extractor import (
+from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,
     ExtractedRelation,
     ExtractionResult,
@@ -25,7 +25,7 @@ from services.knowledge_graph.extractor import (
 @pytest.fixture
 def kg_extractor():
     """Create KG extractor instance"""
-    with patch("services.knowledge_graph.extractor.anthropic.Anthropic"):
+    with patch("backend.services.knowledge_graph.extractor.anthropic.Anthropic"):
         return KGExtractor(model="claude-sonnet-4", api_key="test-key")
 
 
@@ -34,7 +34,7 @@ class TestKGExtractor:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.knowledge_graph.extractor.anthropic.Anthropic"):
+        with patch("backend.services.knowledge_graph.extractor.anthropic.Anthropic"):
             extractor = KGExtractor(model="claude-sonnet-4", api_key="test-key")
             assert extractor.model == "claude-sonnet-4"
 
@@ -92,7 +92,7 @@ class TestExtractedEntity:
 
     def test_entity_creation(self):
         """Test entity creation"""
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
             id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA", confidence=0.9
@@ -107,7 +107,7 @@ class TestExtractedRelation:
 
     def test_relation_creation(self):
         """Test relation creation"""
-        from services.knowledge_graph.ontology import RelationType
+        from backend.services.knowledge_graph.ontology import RelationType
 
         relation = ExtractedRelation(
             source_id="e1",
@@ -126,7 +126,7 @@ class TestExtractionResult:
 
     def test_result_creation(self):
         """Test result creation"""
-        from services.knowledge_graph.ontology import EntityType, RelationType
+        from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
         entities = [
             ExtractedEntity(id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA")

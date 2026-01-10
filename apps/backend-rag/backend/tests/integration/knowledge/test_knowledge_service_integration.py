@@ -25,8 +25,8 @@ if str(backend_path) not in sys.path:
 
 from fastapi.testclient import TestClient
 
-from app.models import TierLevel
-from app.modules.knowledge.service import KnowledgeService
+from backend.app.models import TierLevel
+from backend.app.modules.knowledge.service import KnowledgeService
 
 
 @pytest.fixture
@@ -64,9 +64,9 @@ def real_qdrant_client():
 def knowledge_service_integration(real_qdrant_client):
     """Create KnowledgeService with integration-friendly mocks"""
     with (
-        patch("app.modules.knowledge.service.QdrantClient") as mock_qdrant_class,
-        patch("core.embeddings.create_embeddings_generator") as mock_embedder,
-        patch("app.modules.knowledge.service.QueryRouter") as mock_router_class,
+        patch("backend.app.modules.knowledge.service.QdrantClient") as mock_qdrant_class,
+        patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+        patch("backend.app.modules.knowledge.service.QueryRouter") as mock_router_class,
     ):
         # Setup embedder
         mock_embedder_instance = MagicMock()
@@ -211,7 +211,7 @@ class TestKnowledgeServiceIntegration:
     @pytest.mark.asyncio
     async def test_reranking_integration(self, knowledge_service_integration):
         """Test integration with reranker"""
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             # Setup reranker
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
@@ -241,7 +241,7 @@ class TestKnowledgeServiceIntegration:
     @pytest.mark.asyncio
     async def test_reranking_disabled_integration(self, knowledge_service_integration):
         """Test reranking when disabled"""
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             # Setup disabled reranker
             mock_reranker = MagicMock()
             mock_reranker.enabled = False
@@ -415,7 +415,7 @@ class TestKnowledgeServiceIntegration:
         """Test integration with HTTP router"""
         from fastapi import FastAPI
 
-        from app.modules.knowledge.router import router
+        from backend.app.modules.knowledge.router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -449,7 +449,7 @@ class TestKnowledgeServiceIntegration:
         """Test HTTP router falls back to KnowledgeService when SearchService not available"""
         from fastapi import FastAPI
 
-        from app.modules.knowledge.router import router
+        from backend.app.modules.knowledge.router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -457,7 +457,7 @@ class TestKnowledgeServiceIntegration:
         # Don't set app.state.search_service (should fallback)
 
         # Mock KnowledgeService
-        with patch("app.modules.knowledge.router.KnowledgeService") as mock_ks_class:
+        with patch("backend.app.modules.knowledge.router.KnowledgeService") as mock_ks_class:
             mock_ks = MagicMock()
             mock_ks.search = AsyncMock(
                 return_value={
@@ -485,7 +485,7 @@ class TestKnowledgeServiceIntegration:
         """Test HTTP router input validation"""
         from fastapi import FastAPI
 
-        from app.modules.knowledge.router import router
+        from backend.app.modules.knowledge.router import router
 
         app = FastAPI()
         app.include_router(router)

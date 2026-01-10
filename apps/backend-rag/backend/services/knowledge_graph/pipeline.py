@@ -450,7 +450,7 @@ class KGPipeline:
         Returns:
             Pipeline statistics
         """
-        from core.qdrant_db import QdrantClient
+        from backend.core.qdrant_db import QdrantClient
 
         self.stats = PipelineStats(start_time=datetime.now())
 

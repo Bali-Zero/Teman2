@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.routing.golden_router_service import GoldenRouterService
+from backend.services.routing.golden_router_service import GoldenRouterService
 
 
 class TestGoldenRouterService:
@@ -46,8 +46,8 @@ class TestGoldenRouterService:
         assert service.search_service == mock_search
 
     @pytest.mark.asyncio
-    @patch("services.routing.golden_router_service.asyncpg.create_pool")
-    @patch("app.core.config.settings")
+    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool")
+    @patch("backend.app.core.config.settings")
     async def test_get_db_pool(self, mock_settings, mock_create_pool):
         """Test getting database pool"""
         mock_settings.database_url = "postgresql://test"
@@ -61,8 +61,8 @@ class TestGoldenRouterService:
         mock_create_pool.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("services.routing.golden_router_service.asyncpg.create_pool")
-    @patch("app.core.config.settings")
+    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool")
+    @patch("backend.app.core.config.settings")
     async def test_get_db_pool_cached(self, mock_settings, mock_create_pool):
         """Test getting database pool uses cache"""
         mock_settings.database_url = "postgresql://test"
@@ -77,8 +77,8 @@ class TestGoldenRouterService:
         mock_create_pool.assert_called_once()  # Only called once
 
     @pytest.mark.asyncio
-    @patch("services.routing.golden_router_service.asyncpg.create_pool")
-    @patch("app.core.config.settings")
+    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool")
+    @patch("backend.app.core.config.settings")
     async def test_get_db_pool_error(self, mock_settings, mock_create_pool):
         """Test getting database pool handles errors"""
         mock_settings.database_url = "postgresql://test"
@@ -108,7 +108,7 @@ class TestGoldenRouterService:
 
     @pytest.mark.asyncio
     @patch.object(GoldenRouterService, "_get_db_pool")
-    @patch("services.routing.golden_router_service.asyncio.create_task")
+    @patch("backend.services.routing.golden_router_service.asyncio.create_task")
     async def test_initialize_with_routes(self, mock_create_task, mock_get_pool):
         """Test initialization with routes in database"""
         mock_pool = AsyncMock()

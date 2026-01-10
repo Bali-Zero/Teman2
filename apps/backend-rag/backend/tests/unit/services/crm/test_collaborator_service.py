@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from services.crm.collaborator_service import CollaboratorProfile, CollaboratorService
+from backend.services.crm.collaborator_service import CollaboratorProfile, CollaboratorService
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def temp_team_file(sample_team_data):
 @pytest.fixture
 def collaborator_service(temp_team_file, sample_team_data):
     """Create CollaboratorService instance with temp data"""
-    with patch("services.crm.collaborator_service.DATA_PATH", temp_team_file):
+    with patch("backend.services.crm.collaborator_service.DATA_PATH", temp_team_file):
         service = CollaboratorService()
         yield service
 
@@ -155,7 +155,7 @@ class TestCollaboratorService:
 
     def test_init_success(self, temp_team_file):
         """Test successful service initialization"""
-        with patch("services.crm.collaborator_service.DATA_PATH", temp_team_file):
+        with patch("backend.services.crm.collaborator_service.DATA_PATH", temp_team_file):
             service = CollaboratorService()
 
             assert len(service.members) == 2
@@ -164,7 +164,7 @@ class TestCollaboratorService:
 
     def test_init_file_not_found(self):
         """Test initialization with missing file"""
-        with patch("services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")):
+        with patch("backend.services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")):
             with pytest.raises(FileNotFoundError):
                 CollaboratorService()
 

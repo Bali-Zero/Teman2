@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Performance metrics (Phase 1 fixes)
 try:
-    from app.metrics import (
+    from backend.app.metrics import (
         metrics_collector,
         rag_early_exit_total,
         rag_embedding_duration,
@@ -41,10 +41,10 @@ except ImportError:
     logger.warning("Performance metrics not available")
     metrics_collector = None
 
-from core.cache import cached
+from backend.core.cache import cached
 
-from app.core.config import settings
-from app.models import TierLevel
+from backend.app.core.config import settings
+from backend.app.models import TierLevel
 
 from ..ingestion.collection_manager import CollectionManager
 from ..ingestion.collection_warmup_service import CollectionWarmupService
@@ -53,7 +53,7 @@ from ..misc.result_formatter import format_search_results
 from ..routing.conflict_resolver import ConflictResolver
 from .search_filters import build_search_filter
 
-# from services.routing.query_router_integration import QueryRouterIntegration
+# from backend.services.routing.query_router_integration import QueryRouterIntegration
 
 
 class SearchService:
@@ -123,7 +123,7 @@ class SearchService:
 
         # Initialize embeddings generator using factory function
         logger.info("🔄 Loading EmbeddingsGenerator...")
-        from core.embeddings import create_embeddings_generator
+        from backend.core.embeddings import create_embeddings_generator
 
         self.embedder = create_embeddings_generator()
         logger.info(
@@ -140,7 +140,7 @@ class SearchService:
         # For async retry, use initialize_bm25() method after instantiation
         if settings.enable_bm25:
             try:
-                from core.bm25_vectorizer import BM25Vectorizer
+                from backend.core.bm25_vectorizer import BM25Vectorizer
 
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
@@ -174,7 +174,7 @@ class SearchService:
         if query_router:
             self.query_router = query_router
         else:
-            from services.routing.query_router_integration import QueryRouterIntegration
+            from backend.services.routing.query_router_integration import QueryRouterIntegration
 
             self.query_router = QueryRouterIntegration()
 
@@ -184,7 +184,7 @@ class SearchService:
         )
 
         # Initialize collection health monitor
-        from services.ingestion.collection_health_service import CollectionHealthService
+        from backend.services.ingestion.collection_health_service import CollectionHealthService
 
         self.health_monitor = CollectionHealthService(search_service=self)
 
@@ -213,7 +213,7 @@ class SearchService:
 
         for attempt in range(self._max_bm25_init_attempts):
             try:
-                from core.bm25_vectorizer import BM25Vectorizer
+                from backend.core.bm25_vectorizer import BM25Vectorizer
 
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
@@ -537,7 +537,7 @@ class SearchService:
     def _init_reranker(self):
         """Lazy load the re-ranker"""
         if not hasattr(self, "_reranker"):
-            from core.reranker import ReRanker
+            from backend.core.reranker import ReRanker
 
             self._reranker = ReRanker()
             logger.info(
@@ -1105,7 +1105,7 @@ class SearchService:
             client = self.collection_manager.get_collection(collection_name)
             if not client:
                 # Create ad-hoc client for new collections like conversation_examples
-                from core.qdrant_db import QdrantClient
+                from backend.core.qdrant_db import QdrantClient
 
                 client = QdrantClient(
                     qdrant_url=settings.qdrant_url, collection_name=collection_name

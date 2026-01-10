@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.pipeline import (
+from backend.services.rag.agentic.pipeline import (
     CitationStage,
     FormatStage,
     PipelineStage,
@@ -90,7 +90,7 @@ class TestVerificationStage:
         mock_verification.reasoning = "Good"
         mock_verification.missing_citations = []
 
-        with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
+        with patch("backend.services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(return_value=mock_verification)
 
             result = await stage.process(data)

@@ -8,10 +8,10 @@ import os
 import time
 from pathlib import Path
 
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 
-from services.ingestion.ingestion_service import IngestionService
+from backend.services.ingestion.ingestion_service import IngestionService
 
 from ..models import (
     BatchIngestionRequest,

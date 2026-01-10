@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from utils.response_sanitizer import (
+from backend.utils.response_sanitizer import (
     add_contact_if_appropriate,
     classify_query_type,
     enforce_santai_mode,

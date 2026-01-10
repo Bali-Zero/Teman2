@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.context_window_manager import ContextWindowManager
+from backend.services.misc.context_window_manager import ContextWindowManager
 
 
 @pytest.fixture
 def context_window_manager():
     """Create ContextWindowManager instance"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_client_class:
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_client_class:
         mock_client_instance = MagicMock()
         mock_client_instance.generate_text = AsyncMock(return_value="Test summary")
         mock_client_class.return_value = mock_client_instance
@@ -31,7 +31,7 @@ def context_window_manager():
 @pytest.fixture
 def context_window_manager_no_ai():
     """Create ContextWindowManager instance without AI"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("Not available")):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("Not available")):
         manager = ContextWindowManager()
         manager.zantara_client = None
         return manager
@@ -42,7 +42,7 @@ class TestContextWindowManager:
 
     def test_init(self):
         """Test initialization"""
-        with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_client_class:
+        with patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_client_class:
             mock_client_instance = MagicMock()
             mock_client_class.return_value = mock_client_instance
             manager = ContextWindowManager(max_messages=10, summary_threshold=15)

@@ -2,7 +2,7 @@
 Tests for LegalMetadataExtractor
 """
 
-from core.legal.metadata_extractor import LegalMetadataExtractor
+from backend.core.legal.metadata_extractor import LegalMetadataExtractor
 
 
 class TestLegalMetadataExtractor:

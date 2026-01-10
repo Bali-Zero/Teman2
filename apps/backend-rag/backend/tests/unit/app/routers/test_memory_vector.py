@@ -15,9 +15,9 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 
-from app.routers.memory_vector import get_memory_vector_db, initialize_memory_vector_db, router
+from backend.app.routers.memory_vector import get_memory_vector_db, initialize_memory_vector_db, router
 
 
 @pytest.fixture
@@ -50,8 +50,8 @@ def client(app):
 class TestMemoryVectorRouter:
     """Tests for memory_vector router"""
 
-    @patch("app.routers.memory_vector.QdrantClient")
-    @patch("app.routers.memory_vector.settings")
+    @patch("backend.app.routers.memory_vector.QdrantClient")
+    @patch("backend.app.routers.memory_vector.settings")
     def test_initialize_memory_vector_db(
         self, mock_settings, mock_qdrant_client_class, mock_qdrant_client
     ):
@@ -65,8 +65,8 @@ class TestMemoryVectorRouter:
         assert result == mock_qdrant_client
 
     @pytest.mark.asyncio
-    @patch("app.routers.memory_vector.memory_vector_db", None)
-    @patch("app.routers.memory_vector.initialize_memory_vector_db")
+    @patch("backend.app.routers.memory_vector.memory_vector_db", None)
+    @patch("backend.app.routers.memory_vector.initialize_memory_vector_db")
     async def test_get_memory_vector_db_not_initialized(self, mock_init, mock_qdrant_client):
         """Test getting memory vector DB when not initialized"""
         mock_init.return_value = mock_qdrant_client
@@ -75,7 +75,7 @@ class TestMemoryVectorRouter:
 
     def test_embed_text(self, client):
         """Test embedding text"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
             mock_embedder.model = "test-model"
 
@@ -88,7 +88,7 @@ class TestMemoryVectorRouter:
     def test_store_memory(self, client, mock_qdrant_client):
         """Test storing memory"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db",
+            "backend.app.routers.memory_vector.get_memory_vector_db",
             new_callable=AsyncMock,
             return_value=mock_qdrant_client,
         ):
@@ -115,7 +115,7 @@ class TestMemoryVectorRouter:
             }
         )
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db",
+            "backend.app.routers.memory_vector.get_memory_vector_db",
             new_callable=AsyncMock,
             return_value=mock_qdrant_client,
         ):
@@ -139,7 +139,7 @@ class TestMemoryVectorRouter:
             }
         )
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db",
+            "backend.app.routers.memory_vector.get_memory_vector_db",
             new_callable=AsyncMock,
             return_value=mock_qdrant_client,
         ):

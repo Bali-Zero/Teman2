@@ -17,7 +17,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 
-from app.routers.debug import router, v1_router, verify_debug_access
+from backend.app.routers.debug import router, v1_router, verify_debug_access
 
 app = FastAPI()
 app.include_router(router)
@@ -28,7 +28,7 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_settings():
-    with patch("app.routers.debug.settings") as mock:
+    with patch("backend.app.routers.debug.settings") as mock:
         mock.environment = "development"
         mock.admin_api_key = "secret_key"
         yield mock
@@ -132,7 +132,7 @@ def test_get_app_state(mock_settings, auth_headers):
 
 
 def test_get_services_status(mock_settings, auth_headers):
-    with patch("app.core.service_health.service_registry.get_status") as mock_status:
+    with patch("backend.app.core.service_health.service_registry.get_status") as mock_status:
         mock_status.return_value = {"overall": "healthy"}
 
         # Mock service with health_check
@@ -157,7 +157,7 @@ def test_get_services_status(mock_settings, auth_headers):
 
 def test_get_services_status_registry_fail(mock_settings, auth_headers):
     with patch(
-        "app.core.service_health.service_registry.get_status", side_effect=Exception("RegFail")
+        "backend.app.core.service_health.service_registry.get_status", side_effect=Exception("RegFail")
     ):
         response = client.get("/api/debug/services", headers=auth_headers)
         assert response.status_code == 200
@@ -187,14 +187,14 @@ def test_rag_pipeline_trace(mock_settings, auth_headers):
 
 
 def test_db_queries_slow(mock_settings, auth_headers):
-    with patch("app.utils.db_debugger.DatabaseQueryDebugger.get_slow_queries") as mock_get:
+    with patch("backend.app.utils.db_debugger.DatabaseQueryDebugger.get_slow_queries") as mock_get:
         mock_get.return_value = []
         response = client.get("/api/debug/db/queries/slow", headers=auth_headers)
         assert response.status_code == 200
 
 
 def test_db_queries_recent(mock_settings, auth_headers):
-    with patch("app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries") as mock_get:
+    with patch("backend.app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries") as mock_get:
         mock_get.return_value = []
         response = client.get("/api/debug/db/queries/recent", headers=auth_headers)
         assert response.status_code == 200
@@ -202,7 +202,7 @@ def test_db_queries_recent(mock_settings, auth_headers):
 
 def test_db_queries_analyze(mock_settings, auth_headers):
     with patch(
-        "app.utils.db_debugger.DatabaseQueryDebugger.analyze_query_patterns"
+        "backend.app.utils.db_debugger.DatabaseQueryDebugger.analyze_query_patterns"
     ) as mock_analyze:
         mock_analyze.return_value = {}
         response = client.get("/api/debug/db/queries/analyze", headers=auth_headers)
@@ -210,7 +210,7 @@ def test_db_queries_analyze(mock_settings, auth_headers):
 
 
 def test_qdrant_collections_health(mock_settings, auth_headers):
-    with patch("app.utils.qdrant_debugger.QdrantDebugger") as MockDebugger:
+    with patch("backend.app.utils.qdrant_debugger.QdrantDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         # Mock HealthStatus object
         HealthStatus = MagicMock()
@@ -229,7 +229,7 @@ def test_qdrant_collections_health(mock_settings, auth_headers):
 
 
 def test_qdrant_collection_stats(mock_settings, auth_headers):
-    with patch("app.utils.qdrant_debugger.QdrantDebugger") as MockDebugger:
+    with patch("backend.app.utils.qdrant_debugger.QdrantDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_collection_stats = AsyncMock(return_value={})
 
@@ -331,7 +331,7 @@ def test_profile_script_not_found(mock_settings, auth_headers):
 
 
 def test_postgres_connection(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_info = MagicMock()
         mock_info.connected = True
@@ -343,7 +343,7 @@ def test_postgres_connection(mock_settings, auth_headers):
 
 
 def test_postgres_query(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.execute_query = AsyncMock(return_value={"columns": [], "rows": []})
 
@@ -355,7 +355,7 @@ def test_postgres_query(mock_settings, auth_headers):
 
 
 def test_postgres_query_validation_error(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.execute_query = AsyncMock(side_effect=ValueError("Unsafe query"))
 
@@ -366,7 +366,7 @@ def test_postgres_query_validation_error(mock_settings, auth_headers):
 
 
 def test_postgres_tables(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_tables = AsyncMock(return_value=[])
         response = client.get("/api/debug/postgres/schema/tables", headers=auth_headers)
@@ -374,7 +374,7 @@ def test_postgres_tables(mock_settings, auth_headers):
 
 
 def test_postgres_table_details(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_info = MagicMock()
         mock_info.schema = "public"
@@ -385,7 +385,7 @@ def test_postgres_table_details(mock_settings, auth_headers):
 
 
 def test_postgres_indexes(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_indexes = AsyncMock(return_value=[])
         response = client.get("/api/debug/postgres/schema/indexes", headers=auth_headers)
@@ -393,7 +393,7 @@ def test_postgres_indexes(mock_settings, auth_headers):
 
 
 def test_postgres_stats_tables(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_table_stats = AsyncMock(return_value=[])
         response = client.get("/api/debug/postgres/stats/tables", headers=auth_headers)
@@ -401,7 +401,7 @@ def test_postgres_stats_tables(mock_settings, auth_headers):
 
 
 def test_postgres_stats_database(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_database_stats = AsyncMock(return_value={})
         response = client.get("/api/debug/postgres/stats/database", headers=auth_headers)
@@ -409,7 +409,7 @@ def test_postgres_stats_database(mock_settings, auth_headers):
 
 
 def test_postgres_slow_queries(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_slow_queries = AsyncMock(return_value=[])
         response = client.get("/api/debug/postgres/performance/slow-queries", headers=auth_headers)
@@ -417,7 +417,7 @@ def test_postgres_slow_queries(mock_settings, auth_headers):
 
 
 def test_postgres_locks(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_active_locks = AsyncMock(return_value=[])
         response = client.get("/api/debug/postgres/performance/locks", headers=auth_headers)
@@ -425,7 +425,7 @@ def test_postgres_locks(mock_settings, auth_headers):
 
 
 def test_postgres_connections(mock_settings, auth_headers):
-    with patch("app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
+    with patch("backend.app.utils.postgres_debugger.PostgreSQLDebugger") as MockDebugger:
         mock_instance = MockDebugger.return_value
         mock_instance.get_connection_stats = AsyncMock(return_value={})
         response = client.get("/api/debug/postgres/performance/connections", headers=auth_headers)
@@ -435,7 +435,7 @@ def test_postgres_connections(mock_settings, auth_headers):
 def test_sentry_test_error(mock_settings):
     # Mock get_current_user dependency
     app.dependency_overrides = {}
-    from app.dependencies import get_current_user
+    from backend.app.dependencies import get_current_user
 
     app.dependency_overrides[get_current_user] = lambda: {"id": "test"}
 

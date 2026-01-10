@@ -6,7 +6,6 @@ Learns from successful conversations and improves prompts automatically
 import asyncio
 import json
 import logging
-import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -14,12 +13,21 @@ from typing import Any
 import asyncpg
 
 try:
-    from llm.zantara_ai_client import ZantaraAIClient
-
+    from backend.llm.zantara_ai_client import ZantaraAIClient
     ZANTARA_AVAILABLE = True
 except ImportError:
     ZantaraAIClient = None
     ZANTARA_AVAILABLE = False
+
+try:
+    from backend.app.utils.secure_subprocess import safe_git_checkout_new, safe_git_checkout, safe_git_add, safe_git_commit
+except ImportError:
+    # Fallback if secure_subprocess not available
+    import subprocess
+    safe_git_checkout_new = lambda branch, cwd=None: subprocess.run(["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True)
+    safe_git_checkout = lambda branch, cwd=None: subprocess.run(["git", "checkout", branch], cwd=cwd, check=False, capture_output=True)
+    safe_git_add = lambda files, cwd=None: subprocess.run(["git", "add"] + files, cwd=cwd, check=True, timeout=10.0)
+    safe_git_commit = lambda message, cwd=None: subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0)
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +53,7 @@ class ConversationTrainer:
         Initialize ConversationTrainer with dependencies.
 
         Args:
-            db_pool: AsyncPG connection pool (if None, will try to get from app.state)
+            db_pool: AsyncPG connection pool (if None, will try to get from backend.app.state)
             zantara_client: ZantaraAIClient instance (if None, will create new)
         """
         self.db_pool = db_pool
@@ -56,9 +64,9 @@ class ConversationTrainer:
         if self.db_pool:
             return self.db_pool
 
-        # Try to get from app.state
+        # Try to get from backend.app.state
         try:
-            from app.main_cloud import app
+            from backend.app.main_cloud import app
 
             pool = getattr(app.state, "db_pool", None)
             if pool:
@@ -249,27 +257,20 @@ Based on analysis of successful conversations:
             # Create reports directory
             reports_dir = Path("reports")
             reports_dir.mkdir(exist_ok=True)
-            report_file = (
-                reports_dir / f"conversation-analysis-{datetime.now().strftime('%Y%m%d')}.md"
-            )
+            report_file = reports_dir / f"conversation_analysis_{timestamp}.md"
+            repo_path = Path(".")
 
             # 1. Create branch (safe subprocess)
             try:
-                subprocess.run(
-                    ["git", "checkout", "-b", branch_name],
-                    check=True,
-                    capture_output=True,
-                    timeout=10.0,
-                )
-            except subprocess.CalledProcessError as e:
+                safe_git_checkout_new(branch_name, cwd=repo_path)
+            except Exception as e:
                 logger.warning(f"Branch {branch_name} may already exist: {e}")
                 # Try to checkout existing branch
-                subprocess.run(
-                    ["git", "checkout", branch_name],
-                    check=False,
-                    capture_output=True,
-                    timeout=10.0,
-                )
+                try:
+                    safe_git_checkout(branch_name, cwd=repo_path)
+                except Exception as checkout_error:
+                    logger.error(f"Failed to checkout branch {branch_name}: {checkout_error}")
+                    raise RuntimeError(f"Failed to checkout branch: {checkout_error}")
 
             # 2. Update prompt file
             prompt_file.write_text(improved_prompt, encoding="utf-8")
@@ -299,17 +300,8 @@ See `{prompt_file}` for updated system prompt.
             # 4. Commit (safe subprocess)
             commit_message = f"feat(prompts): auto-improve based on {datetime.now().strftime('%Y-%m-%d')} conversation analysis"
 
-            subprocess.run(
-                ["git", "add", str(prompt_file), str(report_file)],
-                check=True,
-                timeout=10.0,
-            )
-
-            subprocess.run(
-                ["git", "commit", "-m", commit_message],
-                check=True,
-                timeout=10.0,
-            )
+            safe_git_add([str(prompt_file), str(report_file)], cwd=repo_path)
+            safe_git_commit(commit_message, cwd=repo_path)
 
             # 5. Branch and commit created locally
             # No remote push - deploy manually via flyctl deploy
@@ -333,8 +325,8 @@ See `{prompt_file}` for updated system prompt.
 async def run_conversation_trainer(days_back: int = 7):
     """Weekly conversation analysis and prompt improvement"""
     try:
-        # Get db_pool from app.state
-        from app.main_cloud import app
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
 
         db_pool = getattr(app.state, "db_pool", None)
 
@@ -356,7 +348,7 @@ async def run_conversation_trainer(days_back: int = 7):
         logger.info(f"✅ Created PR on branch: {pr_branch}")
 
         # 4. Notify team
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         if settings.slack_webhook_url:
             try:

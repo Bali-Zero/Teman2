@@ -19,9 +19,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user, get_database_pool
-from app.utils.crm_utils import is_super_admin
-from services.integrations.team_drive_service import TeamDriveService, get_team_drive_service
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_super_admin
+from backend.services.integrations.team_drive_service import TeamDriveService, get_team_drive_service
 
 logger = logging.getLogger(__name__)
 
@@ -783,7 +783,7 @@ async def list_permissions(
 
         # Filter out hidden admins unless the requester is one of them
         if not is_super_admin(current_user):
-            from app.utils.crm_utils import SUPER_ADMIN_EMAILS
+            from backend.app.utils.crm_utils import SUPER_ADMIN_EMAILS
 
             permissions = [p for p in permissions if p.get("email") not in SUPER_ADMIN_EMAILS]
 

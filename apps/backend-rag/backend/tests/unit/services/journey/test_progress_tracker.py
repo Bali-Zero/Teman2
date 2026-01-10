@@ -14,8 +14,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.journey.progress_tracker import ProgressTrackerService
-from services.misc.client_journey_orchestrator import (
+from backend.services.journey.progress_tracker import ProgressTrackerService
+from backend.services.misc.client_journey_orchestrator import (
     ClientJourney,
     JourneyStatus,
     JourneyStep,
@@ -174,7 +174,7 @@ class TestProgressTrackerService:
     async def test_get_next_steps(self, progress_tracker, mock_journey):
         """Test getting next steps"""
         with patch(
-            "services.journey.prerequisites_checker.PrerequisitesCheckerService"
+            "backend.services.journey.prerequisites_checker.PrerequisitesCheckerService"
         ) as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker
@@ -227,7 +227,7 @@ class TestProgressTrackerService:
         )
 
         with patch(
-            "services.journey.prerequisites_checker.PrerequisitesCheckerService"
+            "backend.services.journey.prerequisites_checker.PrerequisitesCheckerService"
         ) as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker

@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.ingestion.collection_manager import CollectionManager
+from backend.services.ingestion.collection_manager import CollectionManager
 
 
 @pytest.fixture
 def collection_manager():
     """Create CollectionManager instance"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.qdrant_url = "http://localhost:6333"
         manager = CollectionManager()
         manager.qdrant_url = "http://localhost:6333"  # Override for testing
@@ -37,7 +37,7 @@ class TestCollectionManager:
 
     def test_init_with_custom_url(self):
         """Test initialization with custom URL"""
-        with patch("app.core.config.settings"):
+        with patch("backend.app.core.config.settings"):
             manager = CollectionManager(qdrant_url="http://custom:6333")
             assert manager.qdrant_url == "http://custom:6333"
 
@@ -50,7 +50,7 @@ class TestCollectionManager:
 
     def test_get_collection_new(self, collection_manager):
         """Test getting new collection (lazy initialization)"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant_class:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant_class:
             mock_client = MagicMock()
             mock_qdrant_class.return_value = mock_client
             result = collection_manager.get_collection("visa_oracle")
@@ -59,7 +59,7 @@ class TestCollectionManager:
 
     def test_get_collection_with_alias(self, collection_manager):
         """Test getting collection via alias"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant_class:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant_class:
             mock_client = MagicMock()
             mock_qdrant_class.return_value = mock_client
             # kbli_eye has alias kbli_unified

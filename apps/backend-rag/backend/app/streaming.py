@@ -15,10 +15,10 @@ from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.auth.validation import validate_auth_mixed
-from app.utils.state_helpers import get_app_state, get_request_state
-from app.utils.tracing import add_span_event, set_span_status, trace_span
-from services.routing.intelligent_router import IntelligentRouter
+from backend.app.auth.validation import validate_auth_mixed
+from backend.app.utils.state_helpers import get_app_state, get_request_state
+from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
+from backend.services.routing.intelligent_router import IntelligentRouter
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any
 
-from db.utils import db_retry
+from backend.db.utils import db_retry
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
@@ -53,7 +53,7 @@ class DatabaseManager:
         """Retrieve user profile with localization preferences."""
         # 1. First, try static team_members data (always available, no DB dependency)
         try:
-            from data.team_members import TEAM_MEMBERS
+            from backend.data.team_members import TEAM_MEMBERS
 
             for member in TEAM_MEMBERS:
                 if member.get("email", "").lower() == user_email.lower():

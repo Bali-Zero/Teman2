@@ -66,10 +66,10 @@ class Migration020:
     async def _setup_qdrant_and_backfill(self, conn: asyncpg.Connection) -> None:
         """Setup Qdrant collection and backfill existing memories"""
         try:
-            from core.embeddings import create_embeddings_generator
-            from core.qdrant_db import QdrantClient
+            from backend.core.embeddings import create_embeddings_generator
+            from backend.core.qdrant_db import QdrantClient
 
-            from app.core.config import settings
+            from backend.app.core.config import settings
         except ImportError as e:
             logger.warning(f"Cannot import required modules for Qdrant setup: {e}")
             return

@@ -20,7 +20,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic import create_agentic_rag
+from backend.services.rag.agentic import create_agentic_rag
 
 
 @pytest.fixture
@@ -100,7 +100,7 @@ class TestRAGMemoryKGIntegration:
         user_id = "marco@example.com"
 
         # Create orchestrator with memory
-        with patch("services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
@@ -123,7 +123,7 @@ class TestRAGMemoryKGIntegration:
         conversation_text = "Marco Verdi ha completato la domanda per E33G KITAS oggi"
 
         # Mock KG Pipeline
-        with patch("services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
+        with patch("backend.services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
             mock_kg_instance = MagicMock()
             mock_kg_instance.process_document = AsyncMock(
                 return_value={
@@ -167,7 +167,7 @@ class TestRAGMemoryKGIntegration:
 
         # Create episodic memory event from RAG result
         with patch(
-            "services.memory.episodic_memory_service.EpisodicMemoryService",
+            "backend.services.memory.episodic_memory_service.EpisodicMemoryService",
             return_value=mock_episodic_memory,
         ):
             event = await mock_episodic_memory.create_event(
@@ -211,7 +211,7 @@ class TestRAGMemoryKGIntegration:
         )
 
         # Create orchestrator
-        with patch("services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
@@ -257,7 +257,7 @@ class TestRAGMemoryKGIntegration:
         user_email = "marco@example.com"
 
         # Mock ConversationService
-        with patch("services.misc.conversation_service.ConversationService") as mock_conv:
+        with patch("backend.services.misc.conversation_service.ConversationService") as mock_conv:
             mock_conv_instance = MagicMock()
             mock_conv_instance.save_conversation = AsyncMock(
                 return_value={"success": True, "conversation_id": 456}
@@ -265,7 +265,7 @@ class TestRAGMemoryKGIntegration:
             mock_conv.return_value = mock_conv_instance
 
             # Mock KG extraction
-            with patch("services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
+            with patch("backend.services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
                 mock_kg_instance = MagicMock()
                 mock_kg_instance.process_document = AsyncMock(
                     return_value={
@@ -315,7 +315,7 @@ class TestRAGMemoryKGIntegration:
         turn2_response = "Ti aiuto con la PT PMA!"
 
         # Mock KG updates
-        with patch("services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
+        with patch("backend.services.knowledge_graph.pipeline.KGPipeline") as mock_kg:
             mock_kg_instance = MagicMock()
             entities_turn1 = [{"name": "Marco Verdi", "type": "PERSON"}]
             entities_turn2 = [

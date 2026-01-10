@@ -161,7 +161,7 @@ class Settings(BaseSettings):
     # ========================================
     # API CONFIGURATION
     # ========================================
-    api_host: str = "0.0.0.0"
+    api_host: str = "::"
     api_port: int = 8080  # Use PORT env var (default 8080 for Fly.io)
     api_reload: bool = True
 

@@ -62,8 +62,8 @@ async def migrate_collection(
     Returns:
         Migration result dict
     """
-    from core.bm25_vectorizer import BM25Vectorizer
-    from core.qdrant_db import QdrantClient
+    from backend.core.bm25_vectorizer import BM25Vectorizer
+    from backend.core.qdrant_db import QdrantClient
 
     qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key = os.getenv("QDRANT_API_KEY")
@@ -349,7 +349,7 @@ async def migrate_all(dry_run: bool = False):
 
 async def verify_collections():
     """Verify all collections have hybrid format."""
-    from core.qdrant_db import QdrantClient
+    from backend.core.qdrant_db import QdrantClient
 
     qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key = os.getenv("QDRANT_API_KEY")

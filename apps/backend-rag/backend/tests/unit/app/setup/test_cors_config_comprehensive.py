@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.setup.cors_config import get_allowed_origins, register_cors_middleware
+from backend.app.setup.cors_config import get_allowed_origins, register_cors_middleware
 
 
 class TestGetAllowedOrigins:
@@ -19,7 +19,7 @@ class TestGetAllowedOrigins:
 
     def test_get_allowed_origins_defaults(self):
         """Test getting default origins"""
-        with patch("app.setup.cors_config.settings") as mock_settings:
+        with patch("backend.app.setup.cors_config.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = None
             mock_settings.dev_origins = None
 
@@ -31,7 +31,7 @@ class TestGetAllowedOrigins:
 
     def test_get_allowed_origins_from_settings(self):
         """Test getting origins from settings"""
-        with patch("app.setup.cors_config.settings") as mock_settings:
+        with patch("backend.app.setup.cors_config.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = "https://example.com,https://test.com"
             mock_settings.dev_origins = None
 
@@ -43,7 +43,7 @@ class TestGetAllowedOrigins:
 
     def test_get_allowed_origins_with_dev_origins(self):
         """Test getting origins including dev origins"""
-        with patch("app.setup.cors_config.settings") as mock_settings:
+        with patch("backend.app.setup.cors_config.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = None
             mock_settings.dev_origins = "http://localhost:8080,http://localhost:8081"
 
@@ -54,7 +54,7 @@ class TestGetAllowedOrigins:
 
     def test_get_allowed_origins_strips_whitespace(self):
         """Test that whitespace is stripped from origins"""
-        with patch("app.setup.cors_config.settings") as mock_settings:
+        with patch("backend.app.setup.cors_config.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = " https://example.com , https://test.com "
             mock_settings.dev_origins = None
 
@@ -67,7 +67,7 @@ class TestGetAllowedOrigins:
 
     def test_get_allowed_origins_filters_empty(self):
         """Test that empty origins are filtered out"""
-        with patch("app.setup.cors_config.settings") as mock_settings:
+        with patch("backend.app.setup.cors_config.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = "https://example.com,,https://test.com"
             mock_settings.dev_origins = None
 
@@ -93,7 +93,7 @@ class TestRegisterCorsMiddleware:
         """Test CORS middleware configuration"""
         mock_app = MagicMock()
 
-        with patch("app.setup.cors_config.get_allowed_origins") as mock_get_origins:
+        with patch("backend.app.setup.cors_config.get_allowed_origins") as mock_get_origins:
             mock_get_origins.return_value = ["https://example.com"]
 
             register_cors_middleware(mock_app)

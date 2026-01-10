@@ -9,8 +9,8 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.dependencies import get_database_pool
-from app.schemas.feedback import (
+from backend.app.dependencies import get_database_pool
+from backend.app.schemas.feedback import (
     ConversationRatingResponse,
     FeedbackResponse,
     RateConversationRequest,

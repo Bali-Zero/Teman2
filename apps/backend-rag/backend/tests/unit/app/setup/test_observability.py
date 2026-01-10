@@ -11,20 +11,20 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.setup.observability import setup_observability
+from backend.app.setup.observability import setup_observability
 
 
 class TestObservabilitySetup:
     """Tests for observability setup"""
 
-    @patch("app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.Instrumentator")
     def test_setup_observability_basic(self, mock_instrumentator):
         """Test basic observability setup (Prometheus only)"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.otel_enabled = False
 
             setup_observability(mock_app)
@@ -33,12 +33,12 @@ class TestObservabilitySetup:
             mock_instrumentator_instance.instrument.assert_called_once_with(mock_app)
             mock_instrumentator_instance.expose.assert_called_once_with(mock_app)
 
-    @patch("app.setup.observability.Instrumentator")
-    @patch("app.setup.observability.trace")
-    @patch("app.setup.observability.Resource")
-    @patch("app.setup.observability.TracerProvider")
-    @patch("app.setup.observability.BatchSpanProcessor")
-    @patch("app.setup.observability.OTLPGrpcSpanExporter")
+    @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.trace")
+    @patch("backend.app.setup.observability.Resource")
+    @patch("backend.app.setup.observability.TracerProvider")
+    @patch("backend.app.setup.observability.BatchSpanProcessor")
+    @patch("backend.app.setup.observability.OTLPGrpcSpanExporter")
     def test_setup_observability_with_otel_grpc(
         self,
         mock_grpc_exporter,
@@ -53,8 +53,8 @@ class TestObservabilitySetup:
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.otel_enabled = True
                 mock_settings.otel_service_name = "test-service"
                 mock_settings.environment = "test"
@@ -79,12 +79,12 @@ class TestObservabilitySetup:
                 mock_batch_processor.assert_called_once()
                 mock_trace.get_tracer_provider.return_value.add_span_processor.assert_called_once()
 
-    @patch("app.setup.observability.Instrumentator")
-    @patch("app.setup.observability.trace")
-    @patch("app.setup.observability.Resource")
-    @patch("app.setup.observability.TracerProvider")
-    @patch("app.setup.observability.BatchSpanProcessor")
-    @patch("app.setup.observability.OTLPHttpSpanExporter")
+    @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.trace")
+    @patch("backend.app.setup.observability.Resource")
+    @patch("backend.app.setup.observability.TracerProvider")
+    @patch("backend.app.setup.observability.BatchSpanProcessor")
+    @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_with_otel_http(
         self,
         mock_http_exporter,
@@ -99,9 +99,9 @@ class TestObservabilitySetup:
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("app.setup.observability.OTEL_HTTP_AVAILABLE", True):
-                with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
+            with patch("backend.app.setup.observability.OTEL_HTTP_AVAILABLE", True):
+                with patch("backend.app.core.config.settings") as mock_settings:
                     mock_settings.otel_enabled = True
                     mock_settings.otel_service_name = "test-service"
                     mock_settings.environment = "test"
@@ -129,8 +129,8 @@ class TestObservabilitySetup:
                     mock_batch_processor.assert_called_once()
                     mock_trace.get_tracer_provider.return_value.add_span_processor.assert_called_once()
 
-    @patch("app.setup.observability.Instrumentator")
-    @patch("app.setup.observability.OTLPHttpSpanExporter")
+    @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_http_exporter_not_available(
         self, mock_http_exporter, mock_instrumentator
     ):
@@ -139,9 +139,9 @@ class TestObservabilitySetup:
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("app.setup.observability.OTEL_HTTP_AVAILABLE", False):
-                with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
+            with patch("backend.app.setup.observability.OTEL_HTTP_AVAILABLE", False):
+                with patch("backend.app.core.config.settings") as mock_settings:
                     mock_settings.otel_enabled = True
                     mock_settings.otel_exporter_headers = "Authorization=Basic token123"
 
@@ -150,15 +150,15 @@ class TestObservabilitySetup:
                     # Should not call HTTP exporter if not available
                     mock_http_exporter.assert_not_called()
 
-    @patch("app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.Instrumentator")
     def test_setup_observability_otel_enabled_but_not_available(self, mock_instrumentator):
         """Test observability setup when OTEL is enabled but packages not installed"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", False):
-            with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", False):
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.otel_enabled = True
 
                 setup_observability(mock_app)
@@ -166,12 +166,12 @@ class TestObservabilitySetup:
                 # Should only setup Prometheus
                 mock_instrumentator.assert_called_once()
 
-    @patch("app.setup.observability.Instrumentator")
-    @patch("app.setup.observability.trace")
-    @patch("app.setup.observability.Resource")
-    @patch("app.setup.observability.TracerProvider")
-    @patch("app.setup.observability.BatchSpanProcessor")
-    @patch("app.setup.observability.OTLPGrpcSpanExporter")
+    @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.trace")
+    @patch("backend.app.setup.observability.Resource")
+    @patch("backend.app.setup.observability.TracerProvider")
+    @patch("backend.app.setup.observability.BatchSpanProcessor")
+    @patch("backend.app.setup.observability.OTLPGrpcSpanExporter")
     def test_setup_observability_otel_exception(
         self,
         mock_grpc_exporter,
@@ -186,8 +186,8 @@ class TestObservabilitySetup:
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.otel_enabled = True
                 mock_settings.otel_service_name = "test-service"
                 mock_settings.environment = "test"
@@ -202,8 +202,8 @@ class TestObservabilitySetup:
                 # Prometheus should still be set up
                 mock_instrumentator.assert_called_once()
 
-    @patch("app.setup.observability.Instrumentator")
-    @patch("app.setup.observability.OTLPHttpSpanExporter")
+    @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_http_headers_parsing(
         self, mock_http_exporter, mock_instrumentator
     ):
@@ -212,9 +212,9 @@ class TestObservabilitySetup:
         mock_instrumentator_instance = MagicMock()
         mock_instrumentator.return_value = mock_instrumentator_instance
 
-        with patch("app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("app.setup.observability.OTEL_HTTP_AVAILABLE", True):
-                with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
+            with patch("backend.app.setup.observability.OTEL_HTTP_AVAILABLE", True):
+                with patch("backend.app.core.config.settings") as mock_settings:
                     mock_settings.otel_enabled = True
                     mock_settings.otel_service_name = "test-service"
                     mock_settings.environment = "test"

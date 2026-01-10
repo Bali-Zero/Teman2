@@ -14,10 +14,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import logging
 
-from db.migration_base import MigrationError
-from db.migration_manager import MigrationManager
+from backend.db.migration_base import MigrationError
+from backend.db.migration_manager import MigrationManager
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

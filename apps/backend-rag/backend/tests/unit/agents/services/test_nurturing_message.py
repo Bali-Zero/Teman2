@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from agents.services.nurturing_message import NurturingMessageService
+from backend.agents.services.nurturing_message import NurturingMessageService
 
 
 @pytest.fixture
 def nurturing_message_service():
     """Create NurturingMessageService instance"""
-    with patch("agents.services.nurturing_message.ZANTARA_AVAILABLE", True):
+    with patch("backend.agents.services.nurturing_message.ZANTARA_AVAILABLE", True):
         return NurturingMessageService()
 
 
@@ -36,7 +36,7 @@ class TestNurturingMessageService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("agents.services.nurturing_message.ZANTARA_AVAILABLE", True):
+        with patch("backend.agents.services.nurturing_message.ZANTARA_AVAILABLE", True):
             service = NurturingMessageService()
             assert service is not None
 
@@ -47,7 +47,7 @@ class TestNurturingMessageService:
 
     def test_init_no_zantara(self):
         """Test initialization without Zantara"""
-        with patch("agents.services.nurturing_message.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.nurturing_message.ZANTARA_AVAILABLE", False):
             service = NurturingMessageService()
             assert service.ai_client is None
 
@@ -68,9 +68,9 @@ class TestNurturingMessageService:
         }
 
         with (
-            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
             ),
         ):
             message = await service.generate_message(client_data)
@@ -80,7 +80,7 @@ class TestNurturingMessageService:
     @pytest.mark.asyncio
     async def test_generate_message_no_ai_client(self):
         """Test generating message without AI client"""
-        with patch("agents.services.nurturing_message.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.nurturing_message.ZANTARA_AVAILABLE", False):
             service = NurturingMessageService()
 
             client_data = {"name": "Test Client", "segment": "VIP"}
@@ -101,9 +101,9 @@ class TestNurturingMessageService:
         client_data = {"name": "Test Client", "segment": "VIP"}
 
         with (
-            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
             ),
         ):
             message = await service.generate_message(client_data, timeout=0.1)
@@ -120,9 +120,9 @@ class TestNurturingMessageService:
         client_data = {"name": "Test Client", "segment": "VIP"}
 
         with (
-            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
             ),
         ):
             message = await service.generate_message(client_data)
@@ -146,9 +146,9 @@ class TestNurturingMessageService:
         }
 
         with (
-            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
             ),
         ):
             prompt = service._build_prompt(client_data)

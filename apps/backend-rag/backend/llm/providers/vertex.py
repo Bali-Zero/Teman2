@@ -9,7 +9,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 
-from llm.base import LLMMessage, LLMProvider, LLMResponse
+from backend.llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class VertexProvider(LLMProvider):
     def _init_service(self):
         """Lazy initialize the underlying service."""
         try:
-            from services.llm_clients.vertex_ai_service import VertexAIService
+            from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
             self._service = VertexAIService(project_id=self._project_id, location=self._location)
             # Vertex AI availability depends on credentials

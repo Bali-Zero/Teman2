@@ -13,12 +13,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.orchestrator import (
+from backend.services.rag.agentic.orchestrator import (
     AgenticRAGOrchestrator,
     _is_conversation_recall_query,
     _wrap_query_with_language_instruction,
 )
-from services.tools.definitions import BaseTool
+from backend.services.tools.definitions import BaseTool
 
 
 class MockTool(BaseTool):
@@ -50,14 +50,14 @@ def mock_db_pool():
 def orchestrator(mock_db_pool):
     """Create AgenticRAGOrchestrator instance"""
     with (
-        patch("services.rag.agentic.orchestrator.IntentClassifier"),
-        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-        patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-        patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-        patch("services.rag.agentic.orchestrator.LLMGateway"),
-        patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-        patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-        patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+        patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+        patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+        patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+        patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
     ):
         tools = [MockTool()]
         return AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
@@ -69,14 +69,14 @@ class TestAgenticRAGOrchestrator:
     def test_init(self, mock_db_pool):
         """Test initialization"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             tools = [MockTool()]
             orchestrator = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
@@ -213,7 +213,7 @@ class TestStreamEvent:
 
     def test_stream_event_creation(self):
         """Test creating StreamEvent"""
-        from services.rag.agentic.orchestrator import StreamEvent
+        from backend.services.rag.agentic.orchestrator import StreamEvent
 
         event = StreamEvent(
             type="token", data="Hello", timestamp=12345.67, correlation_id="test-id"
@@ -225,7 +225,7 @@ class TestStreamEvent:
 
     def test_stream_event_defaults(self):
         """Test StreamEvent default values"""
-        from services.rag.agentic.orchestrator import StreamEvent
+        from backend.services.rag.agentic.orchestrator import StreamEvent
 
         event = StreamEvent(type="test", data={})
         assert event.timestamp is None
@@ -233,7 +233,7 @@ class TestStreamEvent:
 
     def test_stream_event_complex_data(self):
         """Test StreamEvent with complex data types"""
-        from services.rag.agentic.orchestrator import StreamEvent
+        from backend.services.rag.agentic.orchestrator import StreamEvent
 
         event = StreamEvent(type="metadata", data={"key": "value", "nested": {"items": [1, 2, 3]}})
         assert event.data["key"] == "value"
@@ -259,15 +259,15 @@ class TestOrchestratorMethods:
     async def test_get_memory_orchestrator_lazy_load(self, mock_db_pool):
         """Test lazy loading of memory orchestrator - covers lines 324-346"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
         ):
             mock_mem_instance = AsyncMock()
             mock_memory.return_value = mock_mem_instance
@@ -284,15 +284,15 @@ class TestOrchestratorMethods:
     async def test_get_memory_orchestrator_exception(self, mock_db_pool):
         """Test memory orchestrator initialization failure - covers line 343-345"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
         ):
             mock_memory.side_effect = ValueError("DB not configured")
 
@@ -323,15 +323,15 @@ class TestOrchestratorMethods:
     async def test_save_conversation_memory_success(self, mock_db_pool):
         """Test save memory with successful extraction - covers lines 384-394"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
         ):
             # Mock successful memory result
             mock_result = AsyncMock()
@@ -357,15 +357,15 @@ class TestOrchestratorMethods:
     async def test_save_conversation_memory_no_orchestrator(self, mock_db_pool):
         """Test save memory when orchestrator fails to initialize - covers line 381-382"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
         ):
             mock_memory.side_effect = RuntimeError("Init failed")
 
@@ -405,19 +405,19 @@ class TestProcessQueryBranches:
     async def test_process_query_prompt_injection_blocked(self, mock_db_pool):
         """Test prompt injection is blocked - covers lines 486-501"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -445,19 +445,19 @@ class TestProcessQueryBranches:
     async def test_process_query_greeting_response(self, mock_db_pool):
         """Test greeting response - covers lines 503-519"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -482,19 +482,19 @@ class TestProcessQueryBranches:
     async def test_process_query_casual_response(self, mock_db_pool):
         """Test casual response - covers lines 521-536"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -519,19 +519,19 @@ class TestProcessQueryBranches:
     async def test_process_query_identity_response(self, mock_db_pool):
         """Test identity response - covers lines 570-585"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -558,21 +558,21 @@ class TestProcessQueryBranches:
     async def test_process_query_out_of_domain(self, mock_db_pool):
         """Test out-of-domain response - covers lines 591-599"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -599,21 +599,21 @@ class TestProcessQueryBranches:
     async def test_process_query_clarification_needed(self, mock_db_pool):
         """Test clarification gate - covers lines 538-568"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.ClarificationService") as mock_cs,
+            patch("backend.services.rag.agentic.orchestrator.ClarificationService") as mock_cs,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -657,19 +657,19 @@ class TestProcessQueryBranches:
     async def test_process_query_context_window_summarization(self, mock_db_pool):
         """Test context window summarization - covers lines 460-480"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             # Configure context window manager for summarization
@@ -712,19 +712,19 @@ class TestProcessQueryBranches:
     async def test_process_query_context_load_failure(self, mock_db_pool):
         """Test context load failure - covers lines 451-454"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -754,21 +754,21 @@ class TestProcessQueryAdvanced:
     async def test_process_query_cache_hit(self, mock_db_pool):
         """Test cache hit path - covers lines 618-651"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -810,26 +810,26 @@ class TestProcessQueryAdvanced:
     @pytest.mark.asyncio
     async def test_process_query_cache_miss_react_loop(self, mock_db_pool):
         """Test cache miss followed by ReAct loop - covers lines 657-805"""
-        from services.llm_clients.pricing import TokenUsage
-        from services.tools.definitions import AgentState, AgentStep, ToolCall
+        from backend.services.llm_clients.pricing import TokenUsage
+        from backend.services.tools.definitions import AgentState, AgentStep, ToolCall
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -905,26 +905,26 @@ class TestProcessQueryAdvanced:
     @pytest.mark.asyncio
     async def test_process_query_kg_enhanced_retrieval(self, mock_db_pool):
         """Test KG enhanced retrieval - covers lines 666-675"""
-        from services.llm_clients.pricing import TokenUsage
-        from services.tools.definitions import AgentState
+        from backend.services.llm_clients.pricing import TokenUsage
+        from backend.services.tools.definitions import AgentState
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -980,21 +980,21 @@ class TestProcessQueryAdvanced:
     async def test_process_query_react_loop_failure(self, mock_db_pool):
         """Test ReAct loop failure handling - covers lines 739-742"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1029,26 +1029,26 @@ class TestProcessQueryAdvanced:
     @pytest.mark.asyncio
     async def test_process_query_cache_lookup_failure(self, mock_db_pool):
         """Test cache lookup failure handling - covers lines 649-651"""
-        from services.llm_clients.pricing import TokenUsage
-        from services.tools.definitions import AgentState
+        from backend.services.llm_clients.pricing import TokenUsage
+        from backend.services.tools.definitions import AgentState
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1099,19 +1099,19 @@ class TestStreamQuery:
     async def test_stream_query_prompt_injection_blocked(self, mock_db_pool):
         """Test prompt injection is blocked in stream - covers lines 921-930"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1145,19 +1145,19 @@ class TestStreamQuery:
     async def test_stream_query_greeting_response(self, mock_db_pool):
         """Test greeting response in stream - covers lines 932-942"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1189,19 +1189,19 @@ class TestStreamQuery:
     async def test_stream_query_casual_response(self, mock_db_pool):
         """Test casual response in stream - covers lines 944-953"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1228,19 +1228,19 @@ class TestStreamQuery:
     async def test_stream_query_identity_response(self, mock_db_pool):
         """Test identity response in stream - covers lines 955-964"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1267,22 +1267,22 @@ class TestStreamQuery:
     @pytest.mark.asyncio
     async def test_stream_query_clarification_needed(self, mock_db_pool):
         """Test clarification gate in stream - covers lines 966-999"""
-        from services.misc.clarification_service import ClarificationService
+        from backend.services.misc.clarification_service import ClarificationService
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1324,21 +1324,21 @@ class TestStreamQuery:
     async def test_stream_query_out_of_domain(self, mock_db_pool):
         """Test out-of-domain in stream - covers lines 1091-1101"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1367,21 +1367,21 @@ class TestStreamQuery:
     async def test_stream_query_cache_hit(self, mock_db_pool):
         """Test cache hit in stream - covers lines 1119-1139"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1430,22 +1430,22 @@ class TestStreamQuery:
     async def test_stream_query_react_loop_success(self, mock_db_pool):
         """Test successful ReAct loop stream - covers lines 1213-1296"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1510,22 +1510,22 @@ class TestStreamQuery:
     async def test_stream_query_none_event_handling(self, mock_db_pool):
         """Test handling of None events from ReAct stream - covers lines 1227-1246"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1578,22 +1578,22 @@ class TestStreamQuery:
     async def test_stream_query_invalid_event_type(self, mock_db_pool):
         """Test handling of invalid event types - covers lines 1248-1260"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1645,22 +1645,22 @@ class TestStreamQuery:
     async def test_stream_query_fatal_error(self, mock_db_pool):
         """Test fatal error handling in stream - covers lines 1370-1393"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1711,19 +1711,19 @@ class TestStreamQuery:
     async def test_stream_query_conversation_recall(self, mock_db_pool):
         """Test conversation recall gate - covers lines 1044-1085"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1772,19 +1772,19 @@ class TestStreamQuery:
     async def test_stream_query_context_window_summarization(self, mock_db_pool):
         """Test context window summarization - covers lines 897-917"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
         ):
             # Long history that needs summarization
@@ -1823,17 +1823,17 @@ class TestStreamQuery:
     async def test_stream_query_invalid_user_id(self, mock_db_pool):
         """Test invalid user_id validation - covers lines 855-858"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         ):
             tools = [MockTool()]
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
@@ -1873,14 +1873,14 @@ class TestOrchestratorKGToolInjection:
         mock_kg_tool.kg_builder.llm_gateway = None  # Initially None
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             mock_llm_instance = mock_llm.return_value
 
@@ -1904,14 +1904,14 @@ class TestOrchestratorKGToolInjection:
         del mock_kg_tool.kg_builder
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             # Should not raise - hasattr check handles missing kg_builder
             orch = AgenticRAGOrchestrator(tools=[mock_kg_tool], db_pool=mock_db_pool)
@@ -1930,14 +1930,14 @@ class TestOrchestratorKGToolInjection:
         mock_kg_tool.kg_builder = None  # Explicitly None
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             # Should not raise - condition checks for truthy kg_builder
             orch = AgenticRAGOrchestrator(tools=[mock_kg_tool], db_pool=mock_db_pool)
@@ -1952,16 +1952,16 @@ class TestMemoryLockTimeout:
         """Test memory save lock timeout - covers lines 407-412"""
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             mock_mem_instance = AsyncMock()
             mock_mem_instance.process_conversation = AsyncMock()
@@ -1991,16 +1991,16 @@ class TestMemoryLockTimeout:
     async def test_save_memory_lock_contention_metric(self, mock_db_pool):
         """Test memory lock contention metric is recorded - covers lines 396-402"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             mock_result = AsyncMock()
             mock_result.success = True
@@ -2036,23 +2036,23 @@ class TestTeamQueryHandling:
         mock_team_tool.to_gemini_function_declaration.return_value = {"name": "team_knowledge"}
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
+            patch("backend.services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
             patch(
-                "services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
             ) as mock_exec,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2113,26 +2113,26 @@ class TestTeamQueryHandling:
         mock_team_tool.to_gemini_function_declaration.return_value = {"name": "team_knowledge"}
 
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
             patch(
-                "services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
             ) as mock_exec,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2191,22 +2191,22 @@ class TestEventValidationErrors:
     async def test_stream_query_validation_error(self, mock_db_pool):
         """Test ValidationError handling - covers lines 1267-1286"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2262,22 +2262,22 @@ class TestEventValidationErrors:
     async def test_stream_query_max_errors_abort(self, mock_db_pool):
         """Test stream aborts after max errors - covers lines 1316-1322"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2337,22 +2337,22 @@ class TestFollowupGeneration:
     async def test_stream_query_followup_generation_success(self, mock_db_pool):
         """Test follow-up questions are generated - covers lines 1336-1350"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2412,22 +2412,22 @@ class TestFollowupGeneration:
     async def test_stream_query_followup_generation_failure(self, mock_db_pool):
         """Test follow-up generation failure is handled - covers lines 1351-1352"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2484,22 +2484,22 @@ class TestFollowupGeneration:
     async def test_stream_query_short_answer_no_followup(self, mock_db_pool):
         """Test short answers don't trigger followup - covers line 1336 condition"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
-            patch("services.rag.agentic.orchestrator.FollowupService") as mock_fs,
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_pb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval") as mock_kg,
+            patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("services.rag.agentic.orchestrator.metrics_collector"),
+            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -2569,15 +2569,15 @@ class TestSaveConversationMemoryEdgeCases:
     async def test_save_memory_lock_timeout(self, mock_db_pool):
         """Test that lock timeout is handled gracefully"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
         ):
             tools = [MockTool()]
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
@@ -2601,15 +2601,15 @@ class TestSaveConversationMemoryEdgeCases:
     async def test_save_memory_postgres_error(self, mock_db_pool):
         """Test that PostgreSQL errors are handled gracefully"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_mem,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_mem,
         ):
             import asyncpg
 
@@ -2630,17 +2630,17 @@ class TestSaveConversationMemoryEdgeCases:
     async def test_save_memory_lock_contention_metric(self, mock_db_pool):
         """Test that lock contention is recorded when wait time > 10ms"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_mem,
-            patch("services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
-            patch("services.rag.agentic.orchestrator.time") as mock_time,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_mem,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.time") as mock_time,
         ):
             # Simulate lock contention by making time.time() return different values
             call_times = [0.0, 0.02]  # 20ms wait time
@@ -2671,17 +2671,17 @@ class TestStreamQueryEdgeCases:
     async def test_stream_query_recall_gate_failure_fallback(self, mock_db_pool):
         """Test that recall gate failure falls back to RAG"""
         with (
-            patch("services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService") as mock_es,
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_spb,
-            patch("services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipe,
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
-            patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
-            patch("services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
-            patch("services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
-            patch("services.rag.agentic.orchestrator.get_user_context") as mock_guc,
-            patch("services.rag.agentic.orchestrator._is_conversation_recall_query") as mock_recall,
-            patch("services.rag.agentic.orchestrator.MemoryOrchestrator"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService") as mock_es,
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_spb,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipe,
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
+            patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_guc,
+            patch("backend.services.rag.agentic.orchestrator._is_conversation_recall_query") as mock_recall,
+            patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator"),
         ):
             mock_recall.return_value = True
             mock_guc.return_value = {

@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.websocket import ConnectionManager, get_current_user_ws
+from backend.app.routers.websocket import ConnectionManager, get_current_user_ws
 
 
 class TestConnectionManager:
@@ -120,8 +120,8 @@ class TestWebSocketAuth:
     """Tests for WebSocket authentication"""
 
     @pytest.mark.asyncio
-    @patch("app.routers.websocket.settings")
-    @patch("app.routers.websocket.jwt")
+    @patch("backend.app.routers.websocket.settings")
+    @patch("backend.app.routers.websocket.jwt")
     async def test_get_current_user_ws_valid(self, mock_jwt, mock_settings):
         """Test getting current user with valid token"""
         mock_settings.jwt_secret_key = "secret"
@@ -132,8 +132,8 @@ class TestWebSocketAuth:
         assert user_id == "user123"
 
     @pytest.mark.asyncio
-    @patch("app.routers.websocket.settings")
-    @patch("app.routers.websocket.jwt")
+    @patch("backend.app.routers.websocket.settings")
+    @patch("backend.app.routers.websocket.jwt")
     async def test_get_current_user_ws_userid(self, mock_jwt, mock_settings):
         """Test getting current user with userId in payload"""
         mock_settings.jwt_secret_key = "secret"
@@ -144,8 +144,8 @@ class TestWebSocketAuth:
         assert user_id == "user456"
 
     @pytest.mark.asyncio
-    @patch("app.routers.websocket.settings")
-    @patch("app.routers.websocket.jwt")
+    @patch("backend.app.routers.websocket.settings")
+    @patch("backend.app.routers.websocket.jwt")
     async def test_get_current_user_ws_invalid(self, mock_jwt, mock_settings):
         """Test getting current user with invalid token"""
         from jose import JWTError
@@ -158,8 +158,8 @@ class TestWebSocketAuth:
         assert user_id is None
 
     @pytest.mark.asyncio
-    @patch("app.routers.websocket.settings")
-    @patch("app.routers.websocket.jwt")
+    @patch("backend.app.routers.websocket.settings")
+    @patch("backend.app.routers.websocket.jwt")
     async def test_get_current_user_ws_no_user_id(self, mock_jwt, mock_settings):
         """Test getting current user with no user ID in payload"""
         mock_settings.jwt_secret_key = "secret"

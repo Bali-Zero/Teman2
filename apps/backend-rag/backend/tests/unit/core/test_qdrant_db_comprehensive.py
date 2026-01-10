@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.qdrant_db import (  # noqa: E402
+from backend.core.qdrant_db import (  # noqa: E402
     QdrantClient,
     QdrantErrorClassifier,
     QdrantErrorType,
@@ -565,7 +565,7 @@ class TestQdrantMetrics:
     def test_get_qdrant_metrics_empty(self):
         """Test getting metrics when no operations"""
         # Reset metrics to ensure clean state
-        from core.qdrant_db import _qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics
 
         original_metrics = _qdrant_metrics.copy()
         _qdrant_metrics.update(
@@ -593,7 +593,7 @@ class TestQdrantMetrics:
 
     def test_get_qdrant_metrics_with_data(self):
         """Test getting metrics with operation data"""
-        from core.qdrant_db import _qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics
 
         original_metrics = _qdrant_metrics.copy()
         _qdrant_metrics.update(
@@ -623,7 +623,7 @@ class TestQdrantMetrics:
 
     def test_get_qdrant_metrics_search_only(self):
         """Test getting metrics with only search operations"""
-        from core.qdrant_db import _qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics
 
         original_metrics = _qdrant_metrics.copy()
         _qdrant_metrics.update(
@@ -648,7 +648,7 @@ class TestQdrantMetrics:
 
     def test_get_qdrant_metrics_upsert_only(self):
         """Test getting metrics with only upsert operations"""
-        from core.qdrant_db import _qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics
 
         original_metrics = _qdrant_metrics.copy()
         _qdrant_metrics.update(

@@ -7,8 +7,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.dependencies import get_database_pool
-from services.analytics.team_analytics_service import TeamAnalyticsService
+from backend.app.dependencies import get_database_pool
+from backend.services.analytics.team_analytics_service import TeamAnalyticsService
 
 logger = logging.getLogger(__name__)
 

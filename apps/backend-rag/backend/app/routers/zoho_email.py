@@ -18,11 +18,11 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Respon
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 
-from app.core.config import settings
-from app.dependencies import get_current_user, get_database_pool
-from app.utils.logging_utils import get_logger
-from services.integrations.zoho_email_service import ZohoEmailService
-from services.integrations.zoho_oauth_service import ZohoOAuthService
+from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.logging_utils import get_logger
+from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = get_logger(__name__)
 

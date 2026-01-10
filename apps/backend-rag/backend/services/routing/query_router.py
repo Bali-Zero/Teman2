@@ -19,7 +19,7 @@ REFACTORED: Uses sub-services following Single Responsibility Principle
 import logging
 from typing import Any, Literal
 
-from app.core.constants import RoutingConstants
+from backend.app.core.constants import RoutingConstants
 
 # Import directly from modules to avoid circular imports with __init__.py
 from .confidence_calculator import ConfidenceCalculatorService
@@ -568,16 +568,18 @@ class QueryRouter:
 
         # Intelligent sub-routing based on primary domain + modifiers
         if primary_score == 0:
-            # No matches - default to legal_unified (Cloud Reality)
-            collection = "legal_unified"
+            # No matches - default to legal_unified_hybrid (Cloud Reality)
+            # FIXED 2026-01-10: legal_unified doesn't exist, using legal_unified_hybrid
+            collection = "legal_unified_hybrid"
             logger.info(f"🧭 Route: {collection} (default - no keyword matches)")
         elif primary_domain == "tax":
             # Tax domain: route to tax_genius (Unified in Cloud)
             collection = "tax_genius"
             logger.info(f"🧭 Route: {collection} (tax unified: tax={domain_scores['tax']})")
         elif primary_domain == "legal":
-            # Legal domain: route to legal_unified
-            collection = "legal_unified"
+            # Legal domain: route to legal_unified_hybrid
+            # FIXED 2026-01-10: legal_unified doesn't exist, using legal_unified_hybrid
+            collection = "legal_unified_hybrid"
             logger.info(f"🧭 Route: {collection} (legal unified: legal={domain_scores['legal']})")
         elif primary_domain == "property":
             # Property domain: route to property_unified
@@ -592,8 +594,12 @@ class QueryRouter:
             collection = "kbli_unified"
             logger.info(f"🧭 Route: {collection} (kbli: score={domain_scores['kbli']})")
         elif primary_domain == "team":
-            collection = "bali_zero_team"
-            logger.info(f"🧭 Route: {collection} (team: score={domain_scores['team']})")
+            # FIXED 2026-01-10: bali_zero_team doesn't exist, fallback to bali_zero_pricing
+            # TODO: Recreate bali_zero_team collection or use alternative
+            collection = "bali_zero_pricing"  # Temporary fallback
+            logger.warning(
+                f"⚠️ Route: {collection} (team query - bali_zero_team not found, using fallback)"
+            )
         else:  # books
             # Fallback for books if collection missing
             collection = "visa_oracle"

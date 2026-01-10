@@ -11,8 +11,8 @@ from typing import Any
 
 from jose import JWTError, jwt
 
-from app.core.config import settings
-from app.services.api_key_auth import APIKeyAuth
+from backend.app.core.config import settings
+from backend.app.services.api_key_auth import APIKeyAuth
 
 logger = logging.getLogger(__name__)
 

@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.personality_service import PersonalityService
+from backend.services.misc.personality_service import PersonalityService
 
 
 @pytest.fixture
 def personality_service():
     """Create PersonalityService instance"""
-    with patch("services.misc.personality_service.TEAM_MEMBERS", []):
+    with patch("backend.services.misc.personality_service.TEAM_MEMBERS", []):
         return PersonalityService()
 
 
@@ -28,14 +28,14 @@ class TestPersonalityService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.misc.personality_service.TEAM_MEMBERS", []):
+        with patch("backend.services.misc.personality_service.TEAM_MEMBERS", []):
             service = PersonalityService()
             assert service.personality_profiles is not None
 
     def test_get_user_personality(self, personality_service):
         """Test getting user personality"""
         with patch(
-            "services.misc.personality_service.TEAM_MEMBERS",
+            "backend.services.misc.personality_service.TEAM_MEMBERS",
             [{"id": "test1", "email": "test@example.com", "name": "Test", "traits": []}],
         ):
             service = PersonalityService()

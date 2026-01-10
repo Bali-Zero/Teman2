@@ -15,7 +15,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Mock settings before importing rate_limiter
-with patch("app.core.config.settings") as mock_settings:
+with patch("backend.app.core.config.settings") as mock_settings:
     mock_settings.redis_url = None
     from middleware.rate_limiter import RateLimiter, RateLimitMiddleware, get_rate_limit_stats
 

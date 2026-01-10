@@ -41,8 +41,8 @@ VECTOR_SIZE = 1536
 
 async def run_migration():
     """Execute the BM25 sparse vector migration."""
-    from core.bm25_vectorizer import BM25Vectorizer
-    from core.qdrant_db import QdrantClient
+    from backend.core.bm25_vectorizer import BM25Vectorizer
+    from backend.core.qdrant_db import QdrantClient
 
     logger.info("=" * 70)
     logger.info("MIGRATION 021: Add BM25 Sparse Vectors for Hybrid Search")
@@ -236,9 +236,9 @@ async def run_migration():
 
 async def test_hybrid_search():
     """Test hybrid search on the migrated collection."""
-    from core.bm25_vectorizer import BM25Vectorizer
-    from core.embeddings import create_embeddings_generator
-    from core.qdrant_db import QdrantClient
+    from backend.core.bm25_vectorizer import BM25Vectorizer
+    from backend.core.embeddings import create_embeddings_generator
+    from backend.core.qdrant_db import QdrantClient
 
     logger.info("\n🧪 Testing hybrid search...")
 

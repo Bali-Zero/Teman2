@@ -10,14 +10,14 @@ from decimal import Decimal
 from typing import Any
 
 import asyncpg
-from core.cache import cached
+from backend.core.cache import cached
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
-from app.dependencies import get_current_user, get_database_pool
-from app.utils.crm_utils import is_crm_admin
-from app.utils.error_handlers import handle_database_error
-from app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 
 logger = get_logger(__name__)
 

@@ -7,7 +7,7 @@ Wraps the existing DeepSeekClient to implement the LLMProvider interface.
 import logging
 from collections.abc import AsyncIterator
 
-from llm.base import LLMMessage, LLMProvider, LLMResponse
+from backend.llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class DeepSeekProvider(LLMProvider):
     def _init_client(self):
         """Lazy initialize the underlying client."""
         try:
-            from services.llm_clients.deepseek_client import DeepSeekClient
+            from backend.services.llm_clients.deepseek_client import DeepSeekClient
 
             self._client = DeepSeekClient()
             self._available = self._client.is_available

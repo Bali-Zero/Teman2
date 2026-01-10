@@ -17,12 +17,12 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from app.setup.app_factory import create_app
-from app.setup.cors_config import get_allowed_origins
-from app.setup.plugin_initializer import initialize_plugins
-from app.setup.sentry_config import init_sentry
-from app.setup.service_initializer import initialize_services
-from services.monitoring.alert_service import AlertService
+from backend.app.setup.app_factory import create_app
+from backend.app.setup.cors_config import get_allowed_origins
+from backend.app.setup.plugin_initializer import initialize_plugins
+from backend.app.setup.sentry_config import init_sentry
+from backend.app.setup.service_initializer import initialize_services
+from backend.services.monitoring.alert_service import AlertService
 
 logger = logging.getLogger("zantara.backend")
 
@@ -77,8 +77,8 @@ async def on_shutdown() -> None:
     import inspect
     from contextlib import suppress
 
-    from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-    from services.monitoring.health_monitor import HealthMonitor
+    from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from backend.services.monitoring.health_monitor import HealthMonitor
 
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)

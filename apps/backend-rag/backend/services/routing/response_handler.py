@@ -9,8 +9,8 @@ from pathlib import Path
 
 # Add utils to path for response_sanitizer import
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from utils.response_sanitizer import classify_query_type as classify_query_for_rag
-from utils.response_sanitizer import process_zantara_response
+from backend.utils.response_sanitizer import classify_query_type as classify_query_for_rag
+from backend.utils.response_sanitizer import process_zantara_response
 
 logger = logging.getLogger(__name__)
 

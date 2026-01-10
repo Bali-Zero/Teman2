@@ -18,9 +18,9 @@ _mock_settings.jwt_algorithm = "HS256"
 
 # Patch the config module before it's imported
 # This prevents Settings() from being called during import
-if "app.core.config" not in sys.modules:
+if "backend.app.core.config" not in sys.modules:
     # Create a fake config module
-    fake_config = type(sys)("app.core.config")
+    fake_config = type(sys)("backend.app.core.config")
     fake_config.settings = _mock_settings
 
     # Create a fake Settings class that returns our mock
@@ -32,10 +32,10 @@ if "app.core.config" not in sys.modules:
             return _mock_settings
 
     fake_config.Settings = FakeSettings
-    sys.modules["app.core.config"] = fake_config
+    sys.modules["backend.app.core.config"] = fake_config
 else:
     # If already imported, patch it
     from unittest.mock import patch
 
-    with patch("app.core.config.settings", _mock_settings):
+    with patch("backend.app.core.config.settings", _mock_settings):
         pass

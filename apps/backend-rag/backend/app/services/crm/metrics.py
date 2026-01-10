@@ -9,10 +9,11 @@ import time
 from datetime import datetime
 from typing import Any
 
+import asyncpg
 from prometheus_client import Counter, Gauge, Histogram, Info
 
-from app.dependencies import get_database_pool
-from app.utils.logging_utils import get_logger
+from backend.app.dependencies import get_database_pool
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -102,10 +103,15 @@ class CRMMetricsCollector:
     def __init__(self):
         self.pool = None
 
+    def initialize(self, pool: asyncpg.Pool):
+        """Initialize with a database pool"""
+        self.pool = pool
+        logger.info("✅ CRMMetricsCollector initialized with database pool")
+
     async def _get_pool(self):
         """Get database pool connection"""
         if not self.pool:
-            self.pool = await get_database_pool()
+            raise RuntimeError("CRMMetricsCollector not initialized with pool. Call .initialize(pool) first.")
         return self.pool
 
     async def update_all_metrics(self) -> dict[str, Any]:

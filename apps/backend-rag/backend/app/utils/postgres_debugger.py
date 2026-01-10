@@ -10,7 +10,7 @@ from typing import Any
 
 import asyncpg
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +234,7 @@ class PostgreSQLDebugger:
         Test database connection and get connection info.
 
         Args:
-            pool: Optional connection pool to check (from app.state)
+            pool: Optional connection pool to check (from backend.app.state)
 
         Returns:
             ConnectionInfo with connection status and details

@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.knowledge_graph.pipeline import KGPipeline, PipelineConfig, PipelineStats
+from backend.services.knowledge_graph.pipeline import KGPipeline, PipelineConfig, PipelineStats
 
 
 @pytest.fixture
@@ -39,9 +39,9 @@ def kg_pipeline(pipeline_config):
     """Create KG pipeline instance"""
     # Patch both extractor types and coreference resolver
     with (
-        patch("services.knowledge_graph.pipeline.KGExtractor"),
-        patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
-        patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+        patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
+        patch("backend.services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
+        patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
     ):
         return KGPipeline(config=pipeline_config)
 
@@ -52,9 +52,9 @@ class TestKGPipeline:
     def test_init(self, pipeline_config):
         """Test initialization"""
         with (
-            patch("services.knowledge_graph.pipeline.KGExtractor"),
-            patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
-            patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+            patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
+            patch("backend.services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
+            patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
         ):
             pipeline = KGPipeline(config=pipeline_config)
             assert pipeline.config == pipeline_config
@@ -62,8 +62,8 @@ class TestKGPipeline:
     def test_init_default_config(self):
         """Test initialization with default config"""
         with (
-            patch("services.knowledge_graph.pipeline.KGExtractor"),
-            patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+            patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
+            patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
         ):
             pipeline = KGPipeline()
             assert pipeline.config is not None
@@ -98,8 +98,8 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_extract_entities_from_chunk(self, kg_pipeline):
         """Test entity extraction from chunk"""
-        from services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
+        from backend.services.knowledge_graph.ontology import EntityType
 
         chunk_text = "PT PMA requires minimum investment"
         chunk_id = "chunk1"
@@ -119,12 +119,12 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_extract_relationships(self, kg_pipeline):
         """Test relationship extraction"""
-        from services.knowledge_graph.extractor import (
+        from backend.services.knowledge_graph.extractor import (
             ExtractedEntity,
             ExtractedRelation,
             ExtractionResult,
         )
-        from services.knowledge_graph.ontology import EntityType, RelationType
+        from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
         chunk_text = "PT PMA requires investment"
         chunk_id = "chunk1"
@@ -153,8 +153,8 @@ class TestKGPipeline:
         """Test persisting to database"""
         from contextlib import asynccontextmanager
 
-        from services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
+        from backend.services.knowledge_graph.ontology import EntityType
 
         mock_conn = AsyncMock()
 
@@ -178,7 +178,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_build_graph_from_chunks(self, kg_pipeline):
         """Test building graph from chunks"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunks = [
             {"text": "PT PMA requires investment", "id": "chunk1"},
@@ -206,7 +206,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_incremental_extraction(self, kg_pipeline):
         """Test incremental extraction"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunk_text = "New content"
         chunk_id = "new_chunk"
@@ -222,7 +222,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_batch_processing(self, kg_pipeline):
         """Test batch processing"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunks = [{"text": f"Chunk {i}", "id": f"chunk{i}"} for i in range(5)]
 
@@ -256,7 +256,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_process_batch(self, kg_pipeline):
         """Test batch processing with concurrency"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunks = [("chunk1", "PT PMA requires investment"), ("chunk2", "Investment minimum is 10B")]
 
@@ -272,7 +272,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_run_pipeline(self, kg_pipeline):
         """Test full pipeline run"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunks = [("chunk1", "PT PMA requires investment")]
 
@@ -291,7 +291,7 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_run_pipeline_no_persist(self, kg_pipeline):
         """Test pipeline run without persistence"""
-        from services.knowledge_graph.extractor import ExtractionResult
+        from backend.services.knowledge_graph.extractor import ExtractionResult
 
         chunks = [("chunk1", "PT PMA requires investment")]
 
@@ -310,8 +310,8 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_get_canonical_id_by_local(self, kg_pipeline):
         """Test mapping local ID to canonical ID"""
-        from services.knowledge_graph.extractor import ExtractedEntity
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.extractor import ExtractedEntity
+        from backend.services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
             id="local_1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
@@ -343,8 +343,8 @@ class TestKGPipeline:
         """Test persisting results with duplicate entities"""
         from contextlib import asynccontextmanager
 
-        from services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
+        from backend.services.knowledge_graph.ontology import EntityType
 
         mock_conn = AsyncMock()
 
@@ -371,8 +371,8 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_process_chunk_with_coreference(self, kg_pipeline):
         """Test processing chunk with coreference resolution"""
-        from services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
-        from services.knowledge_graph.ontology import EntityType
+        from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractionResult
+        from backend.services.knowledge_graph.ontology import EntityType
 
         chunk_text = "PT PMA requires investment. It needs capital."
         chunk_id = "chunk1"
@@ -401,12 +401,12 @@ class TestKGPipeline:
     @pytest.mark.asyncio
     async def test_process_chunk_filters_low_confidence(self, kg_pipeline):
         """Test filtering entities/relations by confidence"""
-        from services.knowledge_graph.extractor import (
+        from backend.services.knowledge_graph.extractor import (
             ExtractedEntity,
             ExtractedRelation,
             ExtractionResult,
         )
-        from services.knowledge_graph.ontology import EntityType, RelationType
+        from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
         chunk_text = "PT PMA requires investment"
         chunk_id = "chunk1"

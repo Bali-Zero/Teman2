@@ -21,8 +21,8 @@ import asyncpg
 import httpx
 from fastapi import HTTPException
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
-from llm.adapters.gemini import GeminiAdapter
-from prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
+from backend.llm.adapters.gemini import GeminiAdapter
+from backend.prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
 from qdrant_client.http import exceptions as qdrant_exceptions
 
 from ..classification.intent_classifier import IntentClassifier

@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.llm_gateway import TIER_FLASH, LLMGateway
+from backend.services.rag.agentic.llm_gateway import TIER_FLASH, LLMGateway
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def mock_genai_client():
 @pytest.fixture
 def llm_gateway():
     """Create LLM gateway instance"""
-    with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+    with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         return LLMGateway(gemini_tools=[])
@@ -40,7 +40,7 @@ class TestLLMGateway:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.rag.agentic.llm_gateway.get_genai_client"):
+        with patch("backend.services.rag.agentic.llm_gateway.get_genai_client"):
             gateway = LLMGateway(gemini_tools=[])
             assert gateway is not None
 
@@ -53,7 +53,7 @@ class TestLLMGateway:
     @pytest.mark.asyncio
     async def test_send_message_flash_tier(self, llm_gateway):
         """Test sending message with Flash tier"""
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
@@ -78,7 +78,7 @@ class TestLLMGateway:
     @pytest.mark.asyncio
     async def test_send_message_fallback(self, llm_gateway):
         """Test fallback on error"""
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
@@ -104,7 +104,7 @@ class TestLLMGateway:
     @pytest.mark.asyncio
     async def test_send_message_service_unavailable(self, llm_gateway):
         """Test handling service unavailable"""
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
@@ -121,7 +121,7 @@ class TestLLMGateway:
     @pytest.mark.asyncio
     async def test_send_message_with_tools(self, llm_gateway):
         """Test sending message with tools"""
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         chat = MagicMock()
         tools = [{"name": "test_tool"}]
@@ -139,7 +139,7 @@ class TestLLMGateway:
     @pytest.mark.asyncio
     async def test_health_check(self, llm_gateway):
         """Test health check"""
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         mock_token_usage = create_token_usage(
             prompt_tokens=10, completion_tokens=20, model="gemini-3-flash-preview"
@@ -155,7 +155,7 @@ class TestLLMGateway:
     async def test_call_gemini_success(self, llm_gateway):
         """Test successful Gemini call"""
         # _call_gemini doesn't exist anymore, test _send_with_fallback instead
-        from services.llm_clients.pricing import create_token_usage
+        from backend.services.llm_clients.pricing import create_token_usage
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(

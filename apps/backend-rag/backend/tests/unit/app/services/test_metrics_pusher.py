@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.services.metrics_pusher import MetricsPusher
+from backend.app.services.metrics_pusher import MetricsPusher
 
 
 @pytest.fixture
@@ -76,7 +76,7 @@ class TestMetricsPusher:
 
     def test_start(self, metrics_pusher):
         """Test starting metrics pusher"""
-        with patch("app.services.metrics_pusher.asyncio.create_task") as mock_task:
+        with patch("backend.app.services.metrics_pusher.asyncio.create_task") as mock_task:
             mock_task_instance = MagicMock()
             mock_task.return_value = mock_task_instance
             metrics_pusher.start()
@@ -105,7 +105,7 @@ class TestMetricsPusher:
             patch.object(
                 metrics_pusher, "_collect_metrics", return_value="test_metric 123.45"
             ) as mock_collect,
-            patch("app.services.metrics_pusher.httpx.AsyncClient") as mock_client,
+            patch("backend.app.services.metrics_pusher.httpx.AsyncClient") as mock_client,
         ):
             mock_response = MagicMock()
             mock_response.status_code = 200

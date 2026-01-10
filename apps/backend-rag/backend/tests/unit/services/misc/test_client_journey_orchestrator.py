@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+from backend.services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
 
 
 @pytest.fixture
@@ -75,11 +75,11 @@ def mock_db_pool():
 def client_journey_orchestrator():
     """Create ClientJourneyOrchestrator instance"""
     with (
-        patch("services.misc.client_journey_orchestrator.JourneyTemplatesService"),
-        patch("services.misc.client_journey_orchestrator.JourneyBuilderService"),
-        patch("services.misc.client_journey_orchestrator.PrerequisitesCheckerService"),
-        patch("services.misc.client_journey_orchestrator.StepManagerService"),
-        patch("services.misc.client_journey_orchestrator.ProgressTrackerService"),
+        patch("backend.services.misc.client_journey_orchestrator.JourneyTemplatesService"),
+        patch("backend.services.misc.client_journey_orchestrator.JourneyBuilderService"),
+        patch("backend.services.misc.client_journey_orchestrator.PrerequisitesCheckerService"),
+        patch("backend.services.misc.client_journey_orchestrator.StepManagerService"),
+        patch("backend.services.misc.client_journey_orchestrator.ProgressTrackerService"),
     ):
         return ClientJourneyOrchestrator()
 

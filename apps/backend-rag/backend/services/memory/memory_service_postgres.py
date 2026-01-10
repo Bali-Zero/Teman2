@@ -13,7 +13,7 @@ from typing import Any
 
 import asyncpg
 
-from app.core.constants import MemoryConstants
+from backend.app.core.constants import MemoryConstants
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class MemoryServicePostgres:
         Args:
             database_url: PostgreSQL connection string (from Fly.io DATABASE_URL)
         """
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         self.database_url = database_url or settings.database_url
         self.pool: asyncpg.Pool | None = None

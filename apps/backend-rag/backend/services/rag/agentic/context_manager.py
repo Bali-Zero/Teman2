@@ -21,7 +21,7 @@ from typing import Any
 
 import asyncpg
 
-from services.memory import MemoryOrchestrator, get_memory_cache
+from backend.services.memory import MemoryOrchestrator, get_memory_cache
 
 logger = logging.getLogger(__name__)
 

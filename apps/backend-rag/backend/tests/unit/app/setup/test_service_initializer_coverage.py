@@ -11,14 +11,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 
-from app.core.service_health import ServiceStatus
+from backend.app.core.service_health import ServiceStatus
 
 # Add backend to path
 backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.setup.service_initializer import (
+from backend.app.setup.service_initializer import (
     _database_health_check_loop,
     _init_critical_services,
     _init_rag_components,
@@ -58,14 +58,14 @@ def test_is_transient_error():
 @pytest.mark.asyncio
 async def test_init_critical_services_success(mock_app):
     with (
-        patch("app.setup.service_initializer.SearchService") as MockSearch,
-        patch("app.setup.service_initializer.ZantaraAIClient") as MockAI,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
-        patch("services.ingestion.collection_manager.CollectionManager"),
-        patch("services.routing.conflict_resolver.ConflictResolver"),
-        patch("services.routing.query_router_integration.QueryRouterIntegration"),
-        patch("core.embeddings.create_embeddings_generator"),
-        patch("services.misc.cultural_insights_service.CulturalInsightsService"),
+        patch("backend.app.setup.service_initializer.SearchService") as MockSearch,
+        patch("backend.app.setup.service_initializer.ZantaraAIClient") as MockAI,
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.services.ingestion.collection_manager.CollectionManager"),
+        patch("backend.services.routing.conflict_resolver.ConflictResolver"),
+        patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
+        patch("backend.core.embeddings.create_embeddings_generator"),
+        patch("backend.services.misc.cultural_insights_service.CulturalInsightsService"),
     ):
         mock_registry.has_critical_failures.return_value = False
         search, ai = await _init_critical_services(mock_app)
@@ -79,11 +79,11 @@ async def test_init_critical_services_success(mock_app):
 async def test_init_critical_services_search_failure_generic(mock_app):
     with (
         patch(
-            "app.setup.service_initializer.SearchService", side_effect=RuntimeError("Unexpected")
+            "backend.app.setup.service_initializer.SearchService", side_effect=RuntimeError("Unexpected")
         ) as MockSearch,
-        patch("app.setup.service_initializer.ZantaraAIClient") as MockAI,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
-        patch("services.ingestion.collection_manager.CollectionManager"),
+        patch("backend.app.setup.service_initializer.ZantaraAIClient") as MockAI,
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.services.ingestion.collection_manager.CollectionManager"),
     ):
         mock_registry.has_critical_failures.return_value = True
         mock_registry.format_failures_message.return_value = "Critical Error"
@@ -99,17 +99,17 @@ async def test_init_critical_services_search_failure_generic(mock_app):
 @pytest.mark.asyncio
 async def test_init_critical_services_ai_failure_generic(mock_app):
     with (
-        patch("app.setup.service_initializer.SearchService"),
+        patch("backend.app.setup.service_initializer.SearchService"),
         patch(
-            "app.setup.service_initializer.ZantaraAIClient",
+            "backend.app.setup.service_initializer.ZantaraAIClient",
             side_effect=RuntimeError("UnexpectedAI"),
         ) as MockAI,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
-        patch("services.ingestion.collection_manager.CollectionManager"),
-        patch("services.routing.conflict_resolver.ConflictResolver"),
-        patch("services.routing.query_router_integration.QueryRouterIntegration"),
-        patch("core.embeddings.create_embeddings_generator"),
-        patch("services.misc.cultural_insights_service.CulturalInsightsService"),
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.services.ingestion.collection_manager.CollectionManager"),
+        patch("backend.services.routing.conflict_resolver.ConflictResolver"),
+        patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
+        patch("backend.core.embeddings.create_embeddings_generator"),
+        patch("backend.services.misc.cultural_insights_service.CulturalInsightsService"),
     ):
         mock_registry.has_critical_failures.return_value = True
 
@@ -127,12 +127,12 @@ async def test_init_critical_services_ai_failure_generic(mock_app):
 @pytest.mark.asyncio
 async def test_init_tool_stack_mcp_success(mock_app):
     with (
-        patch("app.setup.service_initializer.ZantaraTools"),
+        patch("backend.app.setup.service_initializer.ZantaraTools"),
         patch(
-            "app.setup.service_initializer.initialize_mcp_client", new_callable=AsyncMock
+            "backend.app.setup.service_initializer.initialize_mcp_client", new_callable=AsyncMock
         ) as mock_mcp_init,
-        patch("app.setup.service_initializer.ToolExecutor") as MockExecutor,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.app.setup.service_initializer.ToolExecutor") as MockExecutor,
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         mock_mcp_client = MagicMock()
         mock_mcp_client.available_tools = ["tool1"]
@@ -153,8 +153,8 @@ async def test_init_rag_components_fallback(mock_app):
         delattr(mock_app.state, "cultural_insights")
 
     with (
-        patch("app.setup.service_initializer.CulturalRAGService") as MockRAG,
-        patch("app.setup.service_initializer.QueryRouter"),
+        patch("backend.app.setup.service_initializer.CulturalRAGService") as MockRAG,
+        patch("backend.app.setup.service_initializer.QueryRouter"),
     ):
         mock_search = MagicMock()
         await _init_rag_components(mock_app, mock_search)
@@ -170,15 +170,15 @@ async def test_init_rag_components_fallback(mock_app):
 async def test_init_specialized_agents_all_fail(mock_app):
     with (
         patch(
-            "app.setup.service_initializer.AutonomousResearchService",
+            "backend.app.setup.service_initializer.AutonomousResearchService",
             side_effect=Exception("Fail1"),
         ),
         patch(
-            "app.setup.service_initializer.CrossOracleSynthesisService",
+            "backend.app.setup.service_initializer.CrossOracleSynthesisService",
             side_effect=Exception("Fail2"),
         ),
         patch(
-            "app.setup.service_initializer.ClientJourneyOrchestrator",
+            "backend.app.setup.service_initializer.ClientJourneyOrchestrator",
             side_effect=Exception("Fail3"),
         ),
     ):
@@ -194,8 +194,8 @@ async def test_init_specialized_agents_all_fail(mock_app):
 @pytest.mark.asyncio
 async def test_initialize_database_services_no_url(mock_app):
     with (
-        patch("app.setup.service_initializer.settings") as mock_settings,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.app.setup.service_initializer.settings") as mock_settings,
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         mock_settings.database_url = None
 
@@ -212,15 +212,15 @@ async def test_initialize_database_services_no_url(mock_app):
 @pytest.mark.asyncio
 async def test_initialize_database_services_retry_then_success(mock_app):
     with (
-        patch("app.setup.service_initializer.settings") as mock_settings,
+        patch("backend.app.setup.service_initializer.settings") as mock_settings,
         patch(
-            "app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create_pool,
-        patch("app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        patch("services.analytics.daily_checkin_notifier.init_daily_notifier"),
-        patch("services.analytics.team_timesheet_service.init_timesheet_service"),
-        patch("services.analytics.weekly_email_reporter.init_weekly_reporter"),
-        patch("app.setup.service_initializer.asyncio.create_task"),
+        patch("backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("backend.services.analytics.daily_checkin_notifier.init_daily_notifier"),
+        patch("backend.services.analytics.team_timesheet_service.init_timesheet_service"),
+        patch("backend.services.analytics.weekly_email_reporter.init_weekly_reporter"),
+        patch("backend.app.setup.service_initializer.asyncio.create_task"),
     ):
         mock_settings.database_url = "postgres://..."
 
@@ -263,8 +263,8 @@ async def test_database_health_check_loop_exception_recovery():
     mock_pool = MagicMock()
 
     with (
-        patch("app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
-        patch("app.setup.service_initializer.service_registry") as mock_registry,
+        patch("backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         # Success CM
         mock_conn = MagicMock()
@@ -300,7 +300,7 @@ async def test_database_health_check_loop_exception_recovery():
 @pytest.mark.asyncio
 async def test_initialize_services_already_init(mock_app):
     mock_app.state.services_initialized = True
-    with patch("app.setup.service_initializer.logger") as mock_logger:
+    with patch("backend.app.setup.service_initializer.logger") as mock_logger:
         await initialize_services(mock_app)
         # Should return early
         mock_logger.info.assert_not_called()

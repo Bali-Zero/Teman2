@@ -20,16 +20,16 @@ from datetime import datetime
 from typing import Any
 
 # Import caching utilities
-from core.cache import cached
+from backend.core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
-from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+from backend.services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
+from backend.services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
 # Import all agent services
-from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.misc.proactive_compliance_monitor import (
+from backend.services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+from backend.services.misc.proactive_compliance_monitor import (
     AlertSeverity,
     ProactiveComplianceMonitor,
 )
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agents", tags=["agentic-functions"])
 
 # Security - JWT Authentication (using centralized dependency)
-from app.dependencies import get_current_user
+from backend.app.dependencies import get_current_user
 
 # Initialize agents that don't require dependencies
 journey_orchestrator = ClientJourneyOrchestrator()
@@ -231,7 +231,7 @@ async def add_compliance_tracking(
     """
     try:
         # Convert string to enum
-        from services.misc.proactive_compliance_monitor import ComplianceType
+        from backend.services.misc.proactive_compliance_monitor import ComplianceType
 
         compliance_type_enum = ComplianceType(request.compliance_type)
 
@@ -533,14 +533,14 @@ async def cross_oracle_synthesis(
     → Queries: kbli_eye, legal_architect, tax_genius, visa_oracle, property_knowledge
     → Synthesizes: Integrated plan with KBLI code, legal structure, tax obligations, etc.
     """
-    # Get the service from app.state (initialized in app.setup.service_initializer)
+    # Get the service from backend.app.state (initialized in app.setup.service_initializer)
     cross_oracle_service = getattr(request.app.state, "intelligent_router", None)
     if cross_oracle_service and hasattr(cross_oracle_service, "cross_oracle_synthesis"):
         cross_oracle_service = cross_oracle_service.cross_oracle_synthesis
 
     if not cross_oracle_service:
-        # Try to get it directly from app.state
-        from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+        # Try to get it directly from backend.app.state
+        from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
 
         search_service = getattr(request.app.state, "search_service", None)
         ai_client = getattr(request.app.state, "ai_client", None)
@@ -630,7 +630,7 @@ async def run_autonomous_research(
         depth: standard (3 iterations), deep (5 iterations)
         sources: Optional list of specific collections to search
     """
-    # Get services from app.state
+    # Get services from backend.app.state
     search_service = getattr(request.app.state, "search_service", None)
     ai_client = getattr(request.app.state, "ai_client", None)
     query_router = getattr(request.app.state, "query_router", None)
@@ -644,7 +644,7 @@ async def run_autonomous_research(
         }
 
     try:
-        from services.misc.autonomous_research_service import AutonomousResearchService
+        from backend.services.misc.autonomous_research_service import AutonomousResearchService
 
         # Create service instance with dependencies
         research_service = AutonomousResearchService(

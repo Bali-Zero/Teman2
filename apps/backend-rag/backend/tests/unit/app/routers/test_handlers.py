@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.handlers import extract_handlers_from_router, router
+from backend.app.routers.handlers import extract_handlers_from_router, router
 
 
 @pytest.fixture

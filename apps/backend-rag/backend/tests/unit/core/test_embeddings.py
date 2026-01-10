@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.embeddings import (
+from backend.core.embeddings import (
     EmbeddingsGenerator,
     create_embeddings_generator,
     generate_embeddings,
@@ -45,7 +45,7 @@ class TestEmbeddingsGenerator:
         assert generator.model == "text-embedding-3-small"
         assert generator.dimensions == 1536
 
-    @patch("core.embeddings._default_settings", None)
+    @patch("backend.core.embeddings._default_settings", None)
     def test_init_openai_no_key(self):
         """Test initialization with OpenAI without API key"""
         with patch("openai.OpenAI"), pytest.raises(ValueError, match="API key"):
@@ -63,7 +63,7 @@ class TestEmbeddingsGenerator:
         assert generator.provider in ["sentence-transformers", "openai"]
 
     @patch("sentence_transformers.SentenceTransformer", side_effect=ImportError("Not available"))
-    @patch("core.embeddings._default_settings", None)
+    @patch("backend.core.embeddings._default_settings", None)
     def test_init_sentence_transformers_fallback_to_openai(self, mock_st):
         """Test fallback to OpenAI when Sentence Transformers unavailable"""
         # Will try to fallback to OpenAI but fail without API key

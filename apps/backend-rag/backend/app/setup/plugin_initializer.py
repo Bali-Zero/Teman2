@@ -27,7 +27,7 @@ async def initialize_plugins(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     try:
-        from core.plugins import registry
+        from backend.core.plugins import registry
 
         # Get plugins directory relative to backend root
         backend_root = Path(__file__).parent.parent.parent

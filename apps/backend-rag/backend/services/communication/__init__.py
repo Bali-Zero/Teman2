@@ -12,7 +12,7 @@ This module maintains backward compatibility with the original communication_uti
 by re-exporting all functions from the focused sub-modules.
 
 Example usage:
-    from services.communication import detect_language, has_emotional_content
+    from backend.services.communication import detect_language, has_emotional_content
 
     language = detect_language(query)
     if has_emotional_content(query):

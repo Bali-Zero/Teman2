@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.integrations.google_drive_service import GoogleDriveService
+from backend.services.integrations.google_drive_service import GoogleDriveService
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def mock_db_pool():
 @pytest.fixture
 def google_drive_service(mock_db_pool):
     """Create GoogleDriveService instance"""
-    with patch("services.integrations.google_drive_service.settings") as mock_settings:
+    with patch("backend.services.integrations.google_drive_service.settings") as mock_settings:
         mock_settings.google_drive_client_id = "test_client_id"
         mock_settings.google_drive_client_secret = "test_secret"
         mock_settings.google_drive_redirect_uri = "http://localhost/callback"
@@ -54,7 +54,7 @@ class TestGoogleDriveService:
 
     def test_is_configured_false(self, mock_db_pool):
         """Test is_configured when credentials are missing"""
-        with patch("services.integrations.google_drive_service.settings") as mock_settings:
+        with patch("backend.services.integrations.google_drive_service.settings") as mock_settings:
             mock_settings.google_drive_client_id = None
             mock_settings.google_drive_client_secret = None
             mock_settings.google_drive_redirect_uri = None
@@ -71,7 +71,7 @@ class TestGoogleDriveService:
 
     def test_get_authorization_url_not_configured(self, mock_db_pool):
         """Test getting authorization URL when not configured"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = None
             service = GoogleDriveService(db_pool=mock_db_pool)
             with pytest.raises(ValueError):

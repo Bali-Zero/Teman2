@@ -306,7 +306,7 @@ async def test_service():
     """Test golden answer service"""
     import logging
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     logger = logging.getLogger(__name__)
 

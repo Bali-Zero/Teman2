@@ -10,9 +10,9 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

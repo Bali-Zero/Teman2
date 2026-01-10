@@ -119,7 +119,7 @@ async def run_migration():
         sys.path.insert(0, str(backend_path))
 
     try:
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         database_url = settings.database_url
     except ImportError:

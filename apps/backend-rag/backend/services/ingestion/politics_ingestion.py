@@ -5,8 +5,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from core.embeddings import create_embeddings_generator
-from core.qdrant_db import QdrantClient
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
 

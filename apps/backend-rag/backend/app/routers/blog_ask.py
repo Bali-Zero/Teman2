@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
+from backend.services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
 

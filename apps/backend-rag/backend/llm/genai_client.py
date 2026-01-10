@@ -12,7 +12,7 @@ This module provides:
 - Backward-compatible interface for migration
 
 Usage:
-    from llm.genai_client import get_genai_client, GenAIClient
+    from backend.llm.genai_client import get_genai_client, GenAIClient
 
     client = get_genai_client()
     response = await client.generate_content("Hello!")
@@ -32,7 +32,7 @@ import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

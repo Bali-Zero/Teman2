@@ -64,8 +64,8 @@ def test_get_correlation_id():
 
 def test_allowed_origins():
     with (
-        patch("app.core.config.settings.zantara_allowed_origins", "https://custom.com"),
-        patch("app.core.config.settings.dev_origins", "http://dev.com"),
+        patch("backend.app.core.config.settings.zantara_allowed_origins", "https://custom.com"),
+        patch("backend.app.core.config.settings.dev_origins", "http://dev.com"),
     ):
         origins = _allowed_origins()
         assert "https://custom.com" in origins

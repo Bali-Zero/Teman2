@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.migration_runner import MigrationRunner
+from backend.services.misc.migration_runner import MigrationRunner
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ class TestMigrationRunner:
 
     def test_init_without_dir(self):
         """Test initialization without migrations directory"""
-        with patch("services.misc.migration_runner.Path") as mock_path:
+        with patch("backend.services.misc.migration_runner.Path") as mock_path:
             mock_backend_path = MagicMock()
             mock_backend_path.__truediv__ = MagicMock(
                 return_value=MagicMock(exists=MagicMock(return_value=True))
@@ -66,7 +66,7 @@ class TestMigrationRunner:
     async def test_initialize(self, mock_migrations_dir, mock_migration_manager):
         """Test initialization of migration manager"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             await runner.initialize()
@@ -85,7 +85,7 @@ class TestMigrationRunner:
     async def test_context_manager(self, mock_migrations_dir, mock_migration_manager):
         """Test async context manager"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             async with MigrationRunner(migrations_dir=mock_migrations_dir) as runner:
                 assert runner.migration_manager == mock_migration_manager
@@ -103,7 +103,7 @@ class TestMigrationRunner:
         # Create a mock migration file
         migration_file = mock_migrations_dir / "migration_001.py"
         migration_file.write_text("""
-from db.migration_base import BaseMigration
+from backend.db.migration_base import BaseMigration
 
 class Migration001(BaseMigration):
     migration_number = 1
@@ -129,7 +129,7 @@ class Migration001(BaseMigration):
     async def test_get_applied_migrations(self, mock_migrations_dir, mock_migration_manager):
         """Test getting applied migrations"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             mock_migration_manager.get_applied_migrations = AsyncMock(
                 return_value=[{"migration_number": 1}, {"migration_number": 2}]
@@ -144,7 +144,7 @@ class Migration001(BaseMigration):
     ):
         """Test get_applied_migrations auto-initializes"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             mock_migration_manager.get_applied_migrations = AsyncMock(return_value=[])
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
@@ -249,7 +249,7 @@ class Migration001(BaseMigration):
     async def test_get_pending_migrations_empty(self, mock_migrations_dir, mock_migration_manager):
         """Test get_pending_migrations with no pending migrations"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner._migration_classes = {}
@@ -284,7 +284,7 @@ class Migration001(BaseMigration):
     async def test_apply_all_no_pending(self, mock_migrations_dir, mock_migration_manager):
         """Test apply_all with no pending migrations"""
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner._migration_classes = {}
@@ -301,7 +301,7 @@ class Migration001(BaseMigration):
         from unittest.mock import MagicMock
 
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner.migration_manager = mock_migration_manager
@@ -324,7 +324,7 @@ class Migration001(BaseMigration):
         from unittest.mock import AsyncMock, MagicMock
 
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner.migration_manager = mock_migration_manager
@@ -348,7 +348,7 @@ class Migration001(BaseMigration):
         from unittest.mock import AsyncMock, MagicMock
 
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner.migration_manager = mock_migration_manager
@@ -372,7 +372,7 @@ class Migration001(BaseMigration):
         from unittest.mock import AsyncMock, MagicMock
 
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner.migration_manager = mock_migration_manager
@@ -396,7 +396,7 @@ class Migration001(BaseMigration):
         from unittest.mock import MagicMock
 
         with patch(
-            "services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
+            "backend.services.misc.migration_runner.MigrationManager", return_value=mock_migration_manager
         ):
             runner = MigrationRunner(migrations_dir=mock_migrations_dir)
             runner.migration_manager = mock_migration_manager

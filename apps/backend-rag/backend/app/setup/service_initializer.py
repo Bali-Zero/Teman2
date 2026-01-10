@@ -18,30 +18,30 @@ import random
 
 import asyncpg
 from fastapi import FastAPI
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
-from app.core.config import settings
-from app.core.service_health import ServiceStatus, service_registry
-from app.routers.websocket import redis_listener
-from services.crm.auto_crm_service import get_auto_crm_service
-from services.crm.collaborator_service import CollaboratorService
-from services.memory import MemoryServicePostgres
-from services.memory.collective_memory_workflow import create_collective_memory_workflow
-from services.misc.autonomous_research_service import AutonomousResearchService
-from services.misc.autonomous_scheduler import create_and_start_scheduler
-from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.misc.conversation_service import ConversationService
-from services.misc.cultural_rag_service import CulturalRAGService
-from services.misc.mcp_client_service import initialize_mcp_client
-from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-from services.misc.tool_executor import ToolExecutor
-from services.misc.zantara_tools import ZantaraTools
-from services.monitoring.alert_service import AlertService
-from services.monitoring.health_monitor import HealthMonitor
-from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
-from services.routing.intelligent_router import IntelligentRouter
-from services.routing.query_router import QueryRouter
-from services.search.search_service import SearchService
+from backend.app.core.config import settings
+from backend.app.core.service_health import ServiceStatus, service_registry
+from backend.app.routers.websocket import redis_listener
+from backend.services.crm.auto_crm_service import get_auto_crm_service
+from backend.services.crm.collaborator_service import CollaboratorService
+from backend.services.memory import MemoryServicePostgres
+from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
+from backend.services.misc.autonomous_research_service import AutonomousResearchService
+from backend.services.misc.autonomous_scheduler import create_and_start_scheduler
+from backend.services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+from backend.services.misc.conversation_service import ConversationService
+from backend.services.misc.cultural_rag_service import CulturalRAGService
+from backend.services.misc.mcp_client_service import initialize_mcp_client
+from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+from backend.services.misc.tool_executor import ToolExecutor
+from backend.services.misc.zantara_tools import ZantaraTools
+from backend.services.monitoring.alert_service import AlertService
+from backend.services.monitoring.health_monitor import HealthMonitor
+from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+from backend.services.routing.intelligent_router import IntelligentRouter
+from backend.services.routing.query_router import QueryRouter
+from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger("zantara.backend")
 
@@ -70,10 +70,10 @@ async def _init_critical_services(
     search_service = None
     try:
         # Initialize SearchService with dependency injection
-        from services.ingestion.collection_manager import CollectionManager
-        from services.misc.cultural_insights_service import CulturalInsightsService
-        from services.routing.conflict_resolver import ConflictResolver
-        from services.routing.query_router_integration import QueryRouterIntegration
+        from backend.services.ingestion.collection_manager import CollectionManager
+        from backend.services.misc.cultural_insights_service import CulturalInsightsService
+        from backend.services.routing.conflict_resolver import ConflictResolver
+        from backend.services.routing.query_router_integration import QueryRouterIntegration
 
         # Create shared services
         collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
@@ -81,7 +81,7 @@ async def _init_critical_services(
         query_router = QueryRouterIntegration()
 
         # Create cultural insights service (requires embedder)
-        from core.embeddings import create_embeddings_generator
+        from backend.core.embeddings import create_embeddings_generator
 
         embedder = create_embeddings_generator()
         cultural_insights = CulturalInsightsService(
@@ -328,9 +328,9 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 if result != 1:
                     raise ValueError("Pool validation failed")
 
-            from services.analytics.daily_checkin_notifier import init_daily_notifier
-            from services.analytics.team_timesheet_service import init_timesheet_service
-            from services.analytics.weekly_email_reporter import init_weekly_reporter
+            from backend.services.analytics.daily_checkin_notifier import init_daily_notifier
+            from backend.services.analytics.team_timesheet_service import init_timesheet_service
+            from backend.services.analytics.weekly_email_reporter import init_weekly_reporter
 
             ts_service = init_timesheet_service(db_pool)
             app.state.ts_service = ts_service
@@ -357,7 +357,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
             logger.info("✅ Database services initialized successfully")
             try:
-                from app.metrics import database_init_success_total
+                from backend.app.metrics import database_init_success_total
 
                 database_init_success_total.inc()
             except ImportError:
@@ -379,7 +379,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             )
 
             try:
-                from app.metrics import database_init_failed_total
+                from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
                     error_type=error_type, is_transient=str(is_transient)
@@ -402,7 +402,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 )
                 logger.error(f"❌ Database initialization failed permanently: {e}")
                 try:
-                    from app.metrics import database_init_permanent_failure_total
+                    from backend.app.metrics import database_init_permanent_failure_total
 
                     database_init_permanent_failure_total.inc()
                 except ImportError:
@@ -426,7 +426,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             )
 
             try:
-                from app.metrics import database_init_failed_total
+                from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
                     error_type=error_type, is_transient=str(is_transient)
@@ -470,7 +470,7 @@ def _is_transient_error(error: Exception) -> bool:
 async def _database_health_check_loop(db_pool: asyncpg.Pool):
     """Periodic health check for database pool."""
     check_interval = 30  # seconds
-    from app.core.service_health import ServiceStatus, service_registry
+    from backend.app.core.service_health import ServiceStatus, service_registry
 
     while True:
         try:
@@ -484,7 +484,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                 # Pool is healthy
                 service_registry.register("database", ServiceStatus.HEALTHY)
                 try:
-                    from app.metrics import database_health_check_success_total
+                    from backend.app.metrics import database_health_check_success_total
 
                     database_health_check_success_total.inc()
                 except ImportError:
@@ -498,7 +498,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                     error=str(e),
                 )
                 try:
-                    from app.metrics import database_health_check_failed_total
+                    from backend.app.metrics import database_health_check_failed_total
 
                     database_health_check_failed_total.inc()
                 except ImportError:
@@ -544,7 +544,7 @@ async def initialize_crm_and_memory_services(
 
         # Initialize Memory Service (Postgres)
         # MemoryServicePostgres expects database_url string, not Pool object
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         app.state.memory_service = MemoryServicePostgres(settings.database_url)
         await app.state.memory_service.connect()
@@ -553,8 +553,16 @@ async def initialize_crm_and_memory_services(
         app.state.conversation_service = ConversationService(db_pool)
         logger.info("✅ Conversation Service initialized")
 
+        # Initialize Audit Logger and Metrics
+        if db_pool:
+            from backend.app.services.crm.audit_logger import audit_logger
+            from backend.app.services.crm.metrics import metrics_collector
+
+            audit_logger.initialize(db_pool)
+            metrics_collector.initialize(db_pool)
+
         # Initialize Activity Logger
-        from services.monitoring.activity_logger import activity_logger
+        from backend.services.monitoring.activity_logger import activity_logger
 
         await activity_logger.initialize(db_pool)
         app.state.activity_logger = activity_logger

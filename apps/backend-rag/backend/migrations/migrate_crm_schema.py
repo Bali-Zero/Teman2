@@ -14,7 +14,7 @@ def apply_crm_migration():
     """Apply CRM schema migration to PostgreSQL"""
 
     # Get DATABASE_URL
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     database_url = settings.database_url
     if not database_url:

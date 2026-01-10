@@ -27,22 +27,22 @@ from typing import Any
 import asyncpg
 from pydantic import BaseModel, ValidationError
 
-from app.core.config import settings
-from app.core.constants import HttpTimeoutConstants
-from app.metrics import metrics_collector
-from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
-from services.classification.intent_classifier import IntentClassifier
-from services.llm_clients.pricing import TokenUsage
-from services.misc.clarification_service import ClarificationService
-from services.misc.context_window_manager import ContextWindowManager
-from services.misc.emotional_attunement import EmotionalAttunementService
-from services.misc.followup_service import FollowupService
-from services.misc.golden_answer_service import GoldenAnswerService
-from services.rag.agentic.entity_extractor import EntityExtractionService
-from services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-from services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
-from services.search.semantic_cache import SemanticCache
-from services.tools.definitions import AgentState, BaseTool
+from backend.app.core.config import settings
+from backend.app.core.constants import HttpTimeoutConstants
+from backend.app.metrics import metrics_collector
+from backend.app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
+from backend.services.classification.intent_classifier import IntentClassifier
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.misc.clarification_service import ClarificationService
+from backend.services.misc.context_window_manager import ContextWindowManager
+from backend.services.misc.emotional_attunement import EmotionalAttunementService
+from backend.services.misc.followup_service import FollowupService
+from backend.services.misc.golden_answer_service import GoldenAnswerService
+from backend.services.rag.agentic.entity_extractor import EntityExtractionService
+from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
+from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
+from backend.services.search.semantic_cache import SemanticCache
+from backend.services.tools.definitions import AgentState, BaseTool
 
 from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
@@ -1202,7 +1202,7 @@ Respond in the SAME language the user is using."""
                 except Exception as e:
                     event_error_count += 1
                     # Use error classification for better error handling
-                    from app.core.error_classification import ErrorClassifier, get_error_context
+                    from backend.app.core.error_classification import ErrorClassifier, get_error_context
 
                     error_category, error_severity = ErrorClassifier.classify_error(e)
                     error_context = get_error_context(
@@ -1267,7 +1267,7 @@ Respond in the SAME language the user is using."""
             }
         except Exception as e:
             # Use error classification for better error handling
-            from app.core.error_classification import ErrorClassifier, get_error_context
+            from backend.app.core.error_classification import ErrorClassifier, get_error_context
 
             error_category, error_severity = ErrorClassifier.classify_error(e)
             error_context = get_error_context(

@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.tools import (
+from backend.services.rag.agentic.tools import (
     CalculatorTool,
     ImageGenerationTool,
     PricingTool,
@@ -82,20 +82,20 @@ class TestVisionTool:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.rag.agentic.tools.VisionRAGService"):
+        with patch("backend.services.rag.agentic.tools.VisionRAGService"):
             tool = VisionTool()
             assert tool is not None
 
     def test_name(self):
         """Test tool name"""
-        with patch("services.rag.agentic.tools.VisionRAGService"):
+        with patch("backend.services.rag.agentic.tools.VisionRAGService"):
             tool = VisionTool()
             assert tool.name == "vision_analysis"
 
     @pytest.mark.asyncio
     async def test_execute(self):
         """Test executing vision analysis"""
-        with patch("services.rag.agentic.tools.VisionRAGService") as mock_vision:
+        with patch("backend.services.rag.agentic.tools.VisionRAGService") as mock_vision:
             mock_service = MagicMock()
             mock_service.process_pdf = AsyncMock(return_value={"text": "Test"})
             mock_service.query_with_vision = AsyncMock(return_value={"answer": "Result"})
@@ -108,7 +108,7 @@ class TestVisionTool:
     @pytest.mark.asyncio
     async def test_execute_error(self):
         """Test executing with error"""
-        with patch("services.rag.agentic.tools.VisionRAGService") as mock_vision:
+        with patch("backend.services.rag.agentic.tools.VisionRAGService") as mock_vision:
             mock_service = MagicMock()
             mock_service.process_pdf = AsyncMock(side_effect=Exception("Error"))
             mock_vision.return_value = mock_service
@@ -123,20 +123,20 @@ class TestPricingTool:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.rag.agentic.tools.get_pricing_service"):
+        with patch("backend.services.rag.agentic.tools.get_pricing_service"):
             tool = PricingTool()
             assert tool is not None
 
     def test_name(self):
         """Test tool name"""
-        with patch("services.rag.agentic.tools.get_pricing_service"):
+        with patch("backend.services.rag.agentic.tools.get_pricing_service"):
             tool = PricingTool()
             assert tool.name == "get_pricing"
 
     @pytest.mark.asyncio
     async def test_execute_with_query(self):
         """Test executing with query"""
-        with patch("services.rag.agentic.tools.get_pricing_service") as mock_pricing:
+        with patch("backend.services.rag.agentic.tools.get_pricing_service") as mock_pricing:
             mock_service = MagicMock()
             mock_service.search_service = MagicMock(return_value={"visa": 100})
             mock_pricing.return_value = mock_service
@@ -148,7 +148,7 @@ class TestPricingTool:
     @pytest.mark.asyncio
     async def test_execute_without_query(self):
         """Test executing without query"""
-        with patch("services.rag.agentic.tools.get_pricing_service") as mock_pricing:
+        with patch("backend.services.rag.agentic.tools.get_pricing_service") as mock_pricing:
             mock_service = MagicMock()
             mock_service.get_pricing = MagicMock(return_value={"visa": 100})
             mock_pricing.return_value = mock_service
@@ -160,7 +160,7 @@ class TestPricingTool:
     @pytest.mark.asyncio
     async def test_execute_error(self):
         """Test executing with error"""
-        with patch("services.rag.agentic.tools.get_pricing_service") as mock_pricing:
+        with patch("backend.services.rag.agentic.tools.get_pricing_service") as mock_pricing:
             mock_service = MagicMock()
             mock_service.get_pricing = MagicMock(side_effect=Exception("Error"))
             mock_pricing.return_value = mock_service
@@ -214,7 +214,7 @@ class TestImageGenerationTool:
     @pytest.mark.asyncio
     async def test_execute_no_api_key(self):
         """Test executing without API key"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_imagen_api_key = None
             mock_settings.google_ai_studio_key = None
             mock_settings.google_api_key = None

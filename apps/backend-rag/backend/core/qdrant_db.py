@@ -16,12 +16,12 @@ from typing import Any
 import httpx
 
 try:
-    from app.core.config import settings
+    from backend.app.core.config import settings
 except ImportError:
     settings = None
 
 try:
-    from core.exceptions import (
+    from backend.core.exceptions import (
         QdrantConnectionError,
         QdrantServerError,
         QdrantTimeoutError,
@@ -41,7 +41,7 @@ except ImportError:
         pass
 
 try:
-    from app.utils.tracing import set_span_attribute, set_span_status, trace_span
+    from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     # Fallback if tracing not available
     from contextlib import contextmanager
@@ -448,7 +448,7 @@ class QdrantClient:
                     },
                 )
                 try:
-                    from app.metrics import qdrant_timeout_total
+                    from backend.app.metrics import qdrant_timeout_total
 
                     qdrant_timeout_total.labels(error_type=error_type.value).inc()
                 except ImportError:
@@ -469,7 +469,7 @@ class QdrantClient:
                 )
 
                 try:
-                    from app.metrics import qdrant_http_error_total
+                    from backend.app.metrics import qdrant_http_error_total
 
                     qdrant_http_error_total.labels(
                         status_code=e.response.status_code, error_type=error_type.value

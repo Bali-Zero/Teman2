@@ -19,7 +19,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.response_processor import (
+from backend.services.rag.agentic.response_processor import (
     _add_emotional_acknowledgment,
     _format_as_numbered_list,
     _has_emotional_acknowledgment,
@@ -291,10 +291,10 @@ class TestAddEmotionalAcknowledgment:
 class TestPostProcessResponse:
     """Complete tests for post_process_response()"""
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
     def test_post_process_response_basic(
         self,
         mock_has_emotional,
@@ -312,12 +312,12 @@ class TestPostProcessResponse:
         assert result == "Cleaned response"
         mock_clean_response.assert_called_once_with("Raw response")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
-    @patch("services.rag.agentic.response_processor._has_numbered_list")
-    @patch("services.rag.agentic.response_processor._format_as_numbered_list")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor._has_numbered_list")
+    @patch("backend.services.rag.agentic.response_processor._format_as_numbered_list")
     def test_post_process_response_procedural_formatting(
         self,
         mock_format_list,
@@ -339,11 +339,11 @@ class TestPostProcessResponse:
         assert "1. " in result
         mock_format_list.assert_called_once_with("Prepare documents. Find office.", "en")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
-    @patch("services.rag.agentic.response_processor._has_numbered_list")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor._has_numbered_list")
     def test_post_process_response_procedural_already_formatted(
         self,
         mock_has_list,
@@ -363,12 +363,12 @@ class TestPostProcessResponse:
         assert "1. " in result
         # Should not call _format_as_numbered_list
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
-    @patch("services.rag.agentic.response_processor._has_emotional_acknowledgment")
-    @patch("services.rag.agentic.response_processor._add_emotional_acknowledgment")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor._has_emotional_acknowledgment")
+    @patch("backend.services.rag.agentic.response_processor._add_emotional_acknowledgment")
     def test_post_process_response_emotional_acknowledgment(
         self,
         mock_add_emotional,
@@ -390,11 +390,11 @@ class TestPostProcessResponse:
         assert "I understand the frustration" in result
         mock_add_emotional.assert_called_once_with("Here is the solution.", "en")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
-    @patch("services.rag.agentic.response_processor._has_emotional_acknowledgment")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor._has_emotional_acknowledgment")
     def test_post_process_response_emotional_already_present(
         self,
         mock_has_emotional_ack,
@@ -414,14 +414,14 @@ class TestPostProcessResponse:
         assert result == "I understand your frustration. Here is the solution."
         # Should not call _add_emotional_acknowledgment
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
-    @patch("services.rag.agentic.response_processor._has_numbered_list")
-    @patch("services.rag.agentic.response_processor._format_as_numbered_list")
-    @patch("services.rag.agentic.response_processor._has_emotional_acknowledgment")
-    @patch("services.rag.agentic.response_processor._add_emotional_acknowledgment")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor._has_numbered_list")
+    @patch("backend.services.rag.agentic.response_processor._format_as_numbered_list")
+    @patch("backend.services.rag.agentic.response_processor._has_emotional_acknowledgment")
+    @patch("backend.services.rag.agentic.response_processor._add_emotional_acknowledgment")
     def test_post_process_response_both_procedural_and_emotional(
         self,
         mock_add_emotional,
@@ -447,10 +447,10 @@ class TestPostProcessResponse:
         assert "1. " in result
         assert "I understand" in result
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
     def test_post_process_response_strips_whitespace(
         self,
         mock_has_emotional,
@@ -469,10 +469,10 @@ class TestPostProcessResponse:
         assert not result.startswith(" ")
         assert not result.endswith(" ")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
     def test_post_process_response_italian_language(
         self,
         mock_has_emotional,
@@ -490,10 +490,10 @@ class TestPostProcessResponse:
         assert result == "Risposta pulita"
         mock_detect_language.assert_called_once_with("domanda test")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
     def test_post_process_response_indonesian_language(
         self,
         mock_has_emotional,
@@ -511,10 +511,10 @@ class TestPostProcessResponse:
         assert result == "Jawaban bersih"
         mock_detect_language.assert_called_once_with("pertanyaan test")
 
-    @patch("services.rag.agentic.response_processor.clean_response")
-    @patch("services.rag.agentic.response_processor.detect_language")
-    @patch("services.rag.agentic.response_processor.is_procedural_question")
-    @patch("services.rag.agentic.response_processor.has_emotional_content")
+    @patch("backend.services.rag.agentic.response_processor.clean_response")
+    @patch("backend.services.rag.agentic.response_processor.detect_language")
+    @patch("backend.services.rag.agentic.response_processor.is_procedural_question")
+    @patch("backend.services.rag.agentic.response_processor.has_emotional_content")
     def test_post_process_response_empty_response(
         self,
         mock_has_emotional,

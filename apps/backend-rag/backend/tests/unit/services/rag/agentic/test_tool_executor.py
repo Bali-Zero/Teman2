@@ -7,13 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.rag.agentic.tool_executor import (
+from backend.services.rag.agentic.tool_executor import (
     execute_tool,
     parse_native_function_call,
     parse_tool_call,
     parse_tool_call_regex,
 )
-from services.tools.definitions import BaseTool
+from backend.services.tools.definitions import BaseTool
 
 
 class MockTool(BaseTool):
@@ -398,7 +398,7 @@ class TestExecuteTool:
         assert result == "success"
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.tool_executor.metrics_collector")
+    @patch("backend.services.rag.agentic.tool_executor.metrics_collector")
     async def test_metrics_recorded_on_success(self, mock_metrics):
         """Test metrics are recorded on successful execution"""
         tool_map = {"test_tool": MockTool("test_tool")}
@@ -406,7 +406,7 @@ class TestExecuteTool:
         mock_metrics.record_tool_call.assert_called_with("test_tool", "success")
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.tool_executor.metrics_collector")
+    @patch("backend.services.rag.agentic.tool_executor.metrics_collector")
     async def test_metrics_recorded_on_error(self, mock_metrics):
         """Test metrics are recorded on error"""
         tool = MockTool("test_tool")
@@ -418,7 +418,7 @@ class TestExecuteTool:
         mock_metrics.record_tool_call.assert_called_with("test_tool", "error")
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.tool_executor.metrics_collector")
+    @patch("backend.services.rag.agentic.tool_executor.metrics_collector")
     async def test_metrics_recorded_on_unknown_tool(self, mock_metrics):
         """Test metrics are recorded for unknown tool"""
         tool_map = {}
@@ -426,7 +426,7 @@ class TestExecuteTool:
         mock_metrics.record_tool_call.assert_called_with("unknown_tool", "unknown")
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.tool_executor.metrics_collector")
+    @patch("backend.services.rag.agentic.tool_executor.metrics_collector")
     async def test_metrics_recorded_on_rate_limit(self, mock_metrics):
         """Test metrics are recorded on rate limit"""
         tool_map = {"test_tool": MockTool("test_tool")}

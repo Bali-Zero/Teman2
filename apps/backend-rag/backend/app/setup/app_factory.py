@@ -10,22 +10,22 @@ import logging
 from fastapi import FastAPI, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.config import settings
-from app.lifecycle.shutdown import register_shutdown_handlers
-from app.lifecycle.startup import register_startup_handlers
-from app.routers.audio import router as audio_router
-from app.routers.root_endpoints import router as root_router
-from app.routers.system_observability import router as system_observability_router  # [NEW]
-from app.setup.exception_handlers import (
+from backend.app.core.config import settings
+from backend.app.lifecycle.shutdown import register_shutdown_handlers
+from backend.app.lifecycle.startup import register_startup_handlers
+from backend.app.routers.audio import router as audio_router
+from backend.app.routers.root_endpoints import router as root_router
+from backend.app.routers.system_observability import router as system_observability_router  # [NEW]
+from backend.app.setup.exception_handlers import (
     general_exception_handler,
     http_exception_handler,
     starlette_http_exception_handler,
 )
-from app.setup.logging_config import configure_logging
-from app.setup.middleware_config import register_middleware
-from app.setup.observability import setup_observability
-from app.setup.router_registration import include_routers
-from app.streaming import router as streaming_router
+from backend.app.setup.logging_config import configure_logging
+from backend.app.setup.middleware_config import register_middleware
+from backend.app.setup.observability import setup_observability
+from backend.app.setup.router_registration import include_routers
+from backend.app.streaming import router as streaming_router
 
 # Configure structured logging FIRST (before any logger is used)
 configure_logging()

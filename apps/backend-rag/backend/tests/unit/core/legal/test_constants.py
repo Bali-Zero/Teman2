@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.legal.constants import (
+from backend.core.legal.constants import (
     AYAT_PATTERN,
     BAB_PATTERN,
     BAGIAN_PATTERN,

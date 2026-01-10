@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.analytics import verify_founder_access
+from backend.app.routers.analytics import verify_founder_access
 
 
 @pytest.fixture
@@ -55,10 +55,10 @@ class TestAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_get_overview(self, mock_request, mock_founder_user):
         """Test getting overview stats"""
-        from app.routers.analytics import get_overview
+        from backend.app.routers.analytics import get_overview
 
         with patch(
-            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+            "backend.services.analytics.analytics_aggregator.AnalyticsAggregator"
         ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_overview_stats = AsyncMock(return_value=MagicMock())
@@ -70,10 +70,10 @@ class TestAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_get_rag_stats(self, mock_request, mock_founder_user):
         """Test getting RAG stats"""
-        from app.routers.analytics import get_rag_stats
+        from backend.app.routers.analytics import get_rag_stats
 
         with patch(
-            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+            "backend.services.analytics.analytics_aggregator.AnalyticsAggregator"
         ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_rag_stats = AsyncMock(return_value=MagicMock())
@@ -85,10 +85,10 @@ class TestAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_get_crm_stats(self, mock_request, mock_founder_user):
         """Test getting CRM stats"""
-        from app.routers.analytics import get_crm_stats
+        from backend.app.routers.analytics import get_crm_stats
 
         with patch(
-            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+            "backend.services.analytics.analytics_aggregator.AnalyticsAggregator"
         ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_crm_stats = AsyncMock(return_value=MagicMock())

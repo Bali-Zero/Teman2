@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.tools import (
+from backend.services.rag.agentic.tools import (
     CalculatorTool,
     PricingTool,
     TeamKnowledgeTool,
@@ -222,7 +222,7 @@ class TestPricingTool:
     async def test_execute_with_category(self, mock_pricing_service):
         """Test execute with category"""
         with patch(
-            "services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
+            "backend.services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
         ):
             tool = PricingTool()
             # get_pricing is not async, it's a regular method
@@ -237,7 +237,7 @@ class TestPricingTool:
     async def test_execute_without_category(self, mock_pricing_service):
         """Test execute without category"""
         with patch(
-            "services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
+            "backend.services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
         ):
             tool = PricingTool()
             mock_pricing_service.get_pricing.return_value = {"items": []}

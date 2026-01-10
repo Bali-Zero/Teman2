@@ -18,9 +18,9 @@ load_dotenv(override=True)
 # Add project root to sys.path
 sys.path.append(os.getcwd())
 
-from llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
-from services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -50,7 +50,7 @@ async def test_soul_persona():
     # Query designed to trigger the "Pivot" (Straight answer -> Strategy risk)
     user_query = "Cara, gue mau setup PT PMA tapi modal 10M itu kegedean. Bisa pake nominee gak?"
 
-    from prompts.jaksel_persona import SYSTEM_INSTRUCTION
+    from backend.prompts.jaksel_persona import SYSTEM_INSTRUCTION
 
     logger.info("\n--- SYSTEM PROMPT (Snippet) ---")
     logger.info("%s...", SYSTEM_INSTRUCTION[:300])

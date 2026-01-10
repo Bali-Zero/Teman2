@@ -106,7 +106,7 @@ class ConflictResolver:
         Returns:
             Tuple of (resolved_results, conflict_reports)
         """
-        from app.core.constants import SearchConstants
+        from backend.app.core.constants import SearchConstants
 
         resolved_results = []
         conflict_reports = []

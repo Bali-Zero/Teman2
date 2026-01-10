@@ -14,9 +14,9 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from agents.agents.client_value_predictor import ClientValuePredictor
-from agents.agents.conversation_trainer import ConversationTrainer
-from agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
+from backend.agents.agents.client_value_predictor import ClientValuePredictor
+from backend.agents.agents.conversation_trainer import ConversationTrainer
+from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
@@ -51,8 +51,8 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int):
 
         agent_executions[execution_id]["status"] = "running"
 
-        # Get db_pool from app.state
-        from app.main_cloud import app
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
 
         db_pool = getattr(app.state, "db_pool", None)
 
@@ -147,8 +147,8 @@ async def _run_client_value_predictor_task(execution_id: str):
 
         agent_executions[execution_id]["status"] = "running"
 
-        # Get db_pool from app.state
-        from app.main_cloud import app
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
 
         db_pool = getattr(app.state, "db_pool", None)
 
@@ -223,8 +223,8 @@ async def _run_knowledge_graph_builder_task(execution_id: str, days_back: int, i
 
         agent_executions[execution_id]["status"] = "running"
 
-        # Get db_pool from app.state
-        from app.main_cloud import app
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
 
         db_pool = getattr(app.state, "db_pool", None)
 
@@ -326,7 +326,7 @@ async def extract_kg_sample(
     """
     import re
 
-    from app.main_cloud import app
+    from backend.app.main_cloud import app
 
     retriever = getattr(app.state, "retriever", None)
     if not retriever or not retriever.client:
@@ -460,8 +460,8 @@ async def persist_kg_sample(
     """
     import re
 
-    from app.main_cloud import app
-    from services.autonomous_agents.knowledge_graph_builder import (
+    from backend.app.main_cloud import app
+    from backend.services.autonomous_agents.knowledge_graph_builder import (
         Entity,
         KnowledgeGraphBuilder,
     )
@@ -707,7 +707,7 @@ async def get_scheduler_status():
         - tasks: Details of each task (intervals, run counts, errors)
     """
     try:
-        from services.misc.autonomous_scheduler import get_autonomous_scheduler
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         status = scheduler.get_status()
@@ -735,7 +735,7 @@ async def enable_scheduler_task(task_name: str):
         task_name: Name of the task to enable
     """
     try:
-        from services.misc.autonomous_scheduler import get_autonomous_scheduler
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         success = scheduler.enable_task(task_name)
@@ -764,7 +764,7 @@ async def disable_scheduler_task(task_name: str):
         task_name: Name of the task to disable
     """
     try:
-        from services.misc.autonomous_scheduler import get_autonomous_scheduler
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         success = scheduler.disable_task(task_name)

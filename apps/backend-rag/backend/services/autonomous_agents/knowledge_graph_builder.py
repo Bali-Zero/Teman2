@@ -28,7 +28,7 @@ from typing import Any
 
 import asyncpg
 
-from app.metrics import metrics_collector
+from backend.app.metrics import metrics_collector
 
 logger = logging.getLogger(__name__)
 

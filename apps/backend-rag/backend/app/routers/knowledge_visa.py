@@ -13,7 +13,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool as get_db_pool
+from backend.app.dependencies import get_database_pool as get_db_pool
 
 router = APIRouter(prefix="/api/knowledge/visa", tags=["knowledge-visa"])
 

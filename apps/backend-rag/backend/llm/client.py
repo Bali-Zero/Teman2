@@ -7,7 +7,7 @@ Provides a single interface to multiple LLM providers with automatic fallback.
 import logging
 from collections.abc import AsyncIterator
 
-from llm.base import LLMMessage, LLMProvider, LLMResponse
+from backend.llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class UnifiedLLMClient:
 
     Usage:
         from llm import UnifiedLLMClient
-        from llm.providers import GeminiProvider, OpenRouterProvider
+        from backend.llm.providers import GeminiProvider, OpenRouterProvider
 
         client = UnifiedLLMClient([
             GeminiProvider(),      # Primary
@@ -153,7 +153,7 @@ def create_default_client() -> UnifiedLLMClient:
     Returns:
         Configured UnifiedLLMClient
     """
-    from llm.providers import DeepSeekProvider, GeminiProvider, OpenRouterProvider
+    from backend.llm.providers import DeepSeekProvider, GeminiProvider, OpenRouterProvider
 
     return UnifiedLLMClient(
         [

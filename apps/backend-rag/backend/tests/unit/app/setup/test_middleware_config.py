@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.setup.middleware_config import register_middleware
+from backend.app.setup.middleware_config import register_middleware
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ class TestMiddlewareConfig:
 
     def test_register_middleware(self, mock_app):
         """Test registering middleware"""
-        with patch("app.setup.middleware_config.register_cors_middleware") as mock_cors:
+        with patch("backend.app.setup.middleware_config.register_cors_middleware") as mock_cors:
             register_middleware(mock_app)
 
             # Verify CORS middleware was registered

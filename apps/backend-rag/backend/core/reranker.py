@@ -9,11 +9,11 @@ from typing import Any
 
 import httpx
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 # Tracing utilities (with fallback for standalone usage)
 try:
-    from app.utils.tracing import set_span_attribute, set_span_status, trace_span
+    from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     from contextlib import contextmanager
 

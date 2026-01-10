@@ -10,8 +10,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
 
-from app.dependencies import get_current_user
-from app.utils.crm_utils import is_crm_admin
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ async def clock_in(request: ClockInRequest):
     Team members use this to start their work day.
     One clock-in per day allowed.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -163,7 +163,7 @@ async def clock_out(request: ClockOutRequest):
     Team members use this to end their work day.
     Must be clocked in first.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -189,7 +189,7 @@ async def get_my_status(user_id: str = Query(..., description="User ID")):
     - Today's hours worked
     - This week's summary
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -215,7 +215,7 @@ async def get_team_status(_admin: dict = Depends(get_admin_user)):
 
     Shows who is currently clocked in and who is offline.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -239,7 +239,7 @@ async def get_daily_hours(
 
     Returns all team members' work hours for the specified date.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -269,7 +269,7 @@ async def get_weekly_summary(
 
     Returns total hours, days worked, and averages for each team member.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -299,7 +299,7 @@ async def get_monthly_summary(
 
     Returns total hours, days worked, and averages for each team member.
     """
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -333,7 +333,7 @@ async def export_timesheet(
     """
     from fastapi.responses import Response
 
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -370,7 +370,7 @@ async def export_timesheet(
 @router.get("/health")
 async def health_check():
     """Health check for team activity service"""
-    from services.analytics.team_timesheet_service import get_timesheet_service
+    from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
 

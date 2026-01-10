@@ -10,16 +10,16 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from core.cache import cached
+from backend.core.cache import cached
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.dependencies import get_current_user, get_database_pool
-from app.services.crm.audit_logger import audit_change, audit_logger
-from app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
-from app.utils.crm_utils import is_crm_admin
-from app.utils.error_handlers import handle_database_error
-from app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.crm.audit_logger import audit_change, audit_logger
+from backend.app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
+from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 
 logger = get_logger(__name__)
 
@@ -222,9 +222,6 @@ class ClientResponse(BaseModel):
 @audit_change(entity_type="client", change_type="create")
 async def create_client(
     client: ClientCreate,
-    user_email: str = Query(
-        ..., description="Team member email creating this client", alias="created_by"
-    ),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -243,6 +240,7 @@ async def create_client(
     """
     start_time = time.time()
     try:
+        user_email = current_user.get("email", "").lower()
         # Add timeout for connection acquisition to prevent hanging
         import asyncio
         try:
@@ -557,8 +555,8 @@ async def update_client(
     """
     start_time = time.time()
     try:
-        user_email = current_user.get("email", "").lower()
         user_is_admin = is_crm_admin(current_user)
+        user_email = current_user.get("email", "").lower()
 
         async with db_pool.acquire() as conn:
             # RBAC: First check if user has access to this client
@@ -682,7 +680,6 @@ async def update_client(
 @audit_change(entity_type="client", change_type="delete")
 async def delete_client(
     client_id: int = Path(..., gt=0, description="Client ID"),
-    user_email: str = Query(..., description="Team member deleting the client", alias="deleted_by"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):

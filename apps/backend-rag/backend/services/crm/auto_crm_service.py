@@ -4,7 +4,7 @@ Automatically creates/updates clients and practices from chat conversations
 
 REFACTORED 2025-12-07:
 - Migrated from psycopg2 to asyncpg with connection pooling
-- Uses centralized database pool from app.state (dependency injection)
+- Uses centralized database pool from backend.app.state (dependency injection)
 - Batched queries to reduce N+1 problem
 - Improved error handling
 
@@ -19,7 +19,7 @@ from datetime import datetime
 
 import asyncpg
 
-from app.core.constants import CRMConstants
+from backend.app.core.constants import CRMConstants
 
 from .ai_crm_extractor import get_extractor
 

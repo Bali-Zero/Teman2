@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from cli.ingestion_cli import IngestionCLI
+from backend.cli.ingestion_cli import IngestionCLI
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ class TestIngestionCLI:
     async def test_ingest_team_members(self, ingestion_cli):
         """Test ingesting team members"""
         with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", create=True),
         ):
@@ -62,8 +62,8 @@ class TestIngestionCLI:
     async def test_ingest_conversations(self, ingestion_cli):
         """Test ingesting conversations"""
         with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", create=True),
         ):
@@ -111,8 +111,8 @@ class TestIngestionCLI:
     async def test_ingest_team_members_with_source(self, ingestion_cli):
         """Test ingesting team members with custom source"""
         with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", create=True),
         ):
@@ -153,8 +153,8 @@ class TestIngestionCLI:
     async def test_ingest_conversations_directory(self, ingestion_cli):
         """Test ingesting conversations from directory"""
         with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.is_file", return_value=False),
             patch("pathlib.Path.glob", return_value=[MagicMock()]),
@@ -176,8 +176,8 @@ class TestIngestionCLI:
     async def test_ingest_conversations_with_question_answer(self, ingestion_cli):
         """Test ingesting conversations with question/answer format"""
         with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.is_file", return_value=True),
             patch("builtins.open", create=True),

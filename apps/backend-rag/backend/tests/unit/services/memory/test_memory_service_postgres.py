@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.memory.memory_service_postgres import MemoryServicePostgres, UserMemory
+from backend.services.memory.memory_service_postgres import MemoryServicePostgres, UserMemory
 
 
 class TestUserMemory:
@@ -58,7 +58,7 @@ class TestMemoryServicePostgres:
         assert service.use_postgres is True
         assert service.pool is None
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_init_without_database_url(self, mock_settings):
         """Test initialization without database URL"""
         mock_settings.database_url = None
@@ -68,7 +68,7 @@ class TestMemoryServicePostgres:
         assert service.use_postgres is False
 
     @pytest.mark.asyncio
-    @patch("services.memory.memory_service_postgres.asyncpg")
+    @patch("backend.services.memory.memory_service_postgres.asyncpg")
     async def test_connect_success(self, mock_asyncpg):
         """Test successful connection"""
         mock_pool = AsyncMock()
@@ -81,7 +81,7 @@ class TestMemoryServicePostgres:
         assert service.use_postgres is True
 
     @pytest.mark.asyncio
-    @patch("services.memory.memory_service_postgres.asyncpg")
+    @patch("backend.services.memory.memory_service_postgres.asyncpg")
     async def test_connect_failure(self, mock_asyncpg):
         """Test connection failure"""
         # Use ConnectionError which is a valid exception

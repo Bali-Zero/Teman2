@@ -3,7 +3,7 @@ ZANTARA Feature Flags
 Control experimental and optional features via environment variables
 """
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 # Skill Detection Layer (Experimental)
 SKILL_DETECTION_ENABLED = settings.enable_skill_detection

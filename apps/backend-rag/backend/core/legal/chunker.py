@@ -7,7 +7,7 @@ import logging
 import math
 from typing import Any
 
-from core.embeddings import create_embeddings_generator
+from backend.core.embeddings import create_embeddings_generator
 
 from .constants import MAX_PASAL_TOKENS, PASAL_PATTERN
 

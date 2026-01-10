@@ -19,9 +19,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from app.core.config import settings
-from app.services.api_key_auth import APIKeyAuth
-from app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
+from backend.app.core.config import settings
+from backend.app.services.api_key_auth import APIKeyAuth
+from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
 
 logger = logging.getLogger(__name__)
 

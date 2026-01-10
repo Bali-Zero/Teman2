@@ -11,17 +11,17 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 from fastapi import APIRouter, Depends
 
-from app.core.config import settings
-from app.dependencies import get_current_user, get_database_pool
-from app.routers.crm_interactions import get_interactions_stats, list_interactions
-from app.routers.crm_practices import get_practices_stats, list_practices
-from app.utils.logging_utils import get_logger
-from services.integrations.zoho_email_service import ZohoEmailService
-from services.integrations.zoho_oauth_service import ZohoOAuthService
-from services.memory.collective_memory_service import CollectiveMemoryService
+from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.routers.crm_interactions import get_interactions_stats, list_interactions
+from backend.app.routers.crm_practices import get_practices_stats, list_practices
+from backend.app.utils.logging_utils import get_logger
+from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
+from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
 logger = get_logger(__name__)
 

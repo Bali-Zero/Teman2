@@ -6,7 +6,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 router = APIRouter(prefix="/api/v1/image", tags=["image"])
 

@@ -18,8 +18,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from services.misc.clarification_service import ClarificationService
-from services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
+from backend.services.misc.clarification_service import ClarificationService
+from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 
 from .prompt_builder import SystemPromptBuilder
 from .schema import CoreResult

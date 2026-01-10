@@ -16,8 +16,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.dependencies import get_database_pool
-from app.routers.crm_auto import router
+from backend.app.dependencies import get_database_pool
+from backend.app.routers.crm_auto import router
 
 
 @pytest.fixture
@@ -138,7 +138,7 @@ def mock_db_pool():
 @pytest.fixture
 def app(mock_db_pool):
     """Create FastAPI app with router and dependency override"""
-    from app.dependencies import get_current_user
+    from backend.app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(router)

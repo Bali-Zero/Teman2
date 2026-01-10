@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.dependencies import (
+from backend.app.dependencies import (
     get_ai_client,
     get_cache,
     get_current_user,
@@ -156,7 +156,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid_token"
 
-        with patch("app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",
@@ -181,7 +181,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid_token"
 
-        with patch("app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
             from jose import JWTError
 
             mock_decode.side_effect = JWTError("Invalid token")
@@ -197,7 +197,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "token"
 
-        with patch("app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
             mock_decode.return_value = {}  # No email, no sub
 
             with pytest.raises(HTTPException) as exc_info:
@@ -205,7 +205,7 @@ class TestDependencies:
             assert exc_info.value.status_code == 401
 
     def test_get_cache_from_state(self, mock_request):
-        """Test getting cache from app.state"""
+        """Test getting cache from backend.app.state"""
         mock_cache = MagicMock()
         mock_request.app.state.cache_service = mock_cache
 
@@ -216,7 +216,7 @@ class TestDependencies:
         """Test getting cache with fallback to singleton"""
         mock_request.app.state.cache_service = None
 
-        with patch("app.dependencies.get_cache_service") as mock_get_cache:
+        with patch("backend.app.dependencies.get_cache_service") as mock_get_cache:
             mock_get_cache.return_value = MagicMock()
 
             cache = get_cache(mock_request)

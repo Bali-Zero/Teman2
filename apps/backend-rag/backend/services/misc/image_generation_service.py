@@ -20,7 +20,7 @@ class ImageGenerationService:
     """
 
     def __init__(self, api_key: str | None = None):
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         # Use dedicated Imagen API key if available, otherwise fallback to google_api_key
         # If api_key is explicitly None, don't try to get from settings

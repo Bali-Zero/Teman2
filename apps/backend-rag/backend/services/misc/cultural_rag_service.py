@@ -183,7 +183,7 @@ class CulturalRAGService:
 # Test function
 async def test_cultural_rag():  # pragma: no cover
     """Test CulturalRAGService"""
-    from services.search import SearchService
+    from backend.services.search import SearchService
 
     # Initialize
     search_service = SearchService()

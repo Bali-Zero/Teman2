@@ -10,8 +10,8 @@ import asyncpg
 import bcrypt
 from jose import jwt
 
-from app.core.config import settings
-from app.modules.identity.models import User
+from backend.app.core.config import settings
+from backend.app.modules.identity.models import User
 
 logger = logging.getLogger(__name__)
 

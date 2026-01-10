@@ -15,11 +15,11 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.core.config import settings
-from app.dependencies import get_current_user, get_database_pool
-from app.utils.logging_utils import get_logger
-from services.integrations.zoho_email_service import ZohoEmailService
-from services.portal import InviteService
+from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.logging_utils import get_logger
+from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.portal import InviteService
 
 logger = get_logger(__name__)
 

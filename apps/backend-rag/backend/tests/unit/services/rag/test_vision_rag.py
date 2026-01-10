@@ -13,16 +13,16 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
+from backend.services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
 
 
 @pytest.fixture
 def vision_rag_service():
     """Create VisionRAGService instance"""
     with (
-        patch("services.rag.vision_rag.GENAI_AVAILABLE", True),
-        patch("services.rag.vision_rag.GenAIClient") as mock_client_class,
-        patch("app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", True),
+        patch("backend.services.rag.vision_rag.GenAIClient") as mock_client_class,
+        patch("backend.app.core.config.settings") as mock_settings,
     ):
         mock_settings.google_api_key = "test_key"
         mock_client = MagicMock()
@@ -35,8 +35,8 @@ def vision_rag_service():
 def vision_rag_service_no_genai():
     """Create VisionRAGService instance without GenAI"""
     with (
-        patch("services.rag.vision_rag.GENAI_AVAILABLE", False),
-        patch("app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", False),
+        patch("backend.app.core.config.settings") as mock_settings,
     ):
         mock_settings.google_api_key = None
         return VisionRAGService()
@@ -164,7 +164,7 @@ class TestVisionRAGService:
 
     def test_is_relevant(self, vision_rag_service):
         """Test checking if visual element is relevant"""
-        from services.rag.vision_rag import VisualElement
+        from backend.services.rag.vision_rag import VisualElement
 
         element = VisualElement(
             element_type="table",
@@ -180,7 +180,7 @@ class TestVisionRAGService:
 
     def test_is_relevant_not_relevant(self, vision_rag_service):
         """Test checking if visual element is not relevant"""
-        from services.rag.vision_rag import VisualElement
+        from backend.services.rag.vision_rag import VisualElement
 
         element = VisualElement(
             element_type="table",

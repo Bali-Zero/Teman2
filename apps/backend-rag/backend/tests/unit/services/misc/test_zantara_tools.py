@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.zantara_tools import ZantaraTools
+from backend.services.misc.zantara_tools import ZantaraTools
 
 
 @pytest.fixture
@@ -40,9 +40,9 @@ def mock_collaborator_service():
 def zantara_tools(mock_pricing_service, mock_collaborator_service):
     """Create ZantaraTools instance"""
     with (
-        patch("services.misc.zantara_tools.get_pricing_service", return_value=mock_pricing_service),
+        patch("backend.services.misc.zantara_tools.get_pricing_service", return_value=mock_pricing_service),
         patch(
-            "services.misc.zantara_tools.CollaboratorService",
+            "backend.services.misc.zantara_tools.CollaboratorService",
             return_value=mock_collaborator_service,
         ),
     ):

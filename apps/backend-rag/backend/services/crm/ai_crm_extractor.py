@@ -6,9 +6,9 @@ Uses ZANTARA AI to extract structured data from conversations for CRM auto-popul
 import json
 import logging
 
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

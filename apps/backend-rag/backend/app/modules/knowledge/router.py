@@ -12,9 +12,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.dependencies import get_current_user
-from app.models import ChunkMetadata, SearchQuery, SearchResponse, SearchResult, TierLevel
-from app.modules.knowledge.service import KnowledgeService
+from backend.app.dependencies import get_current_user
+from backend.app.models import ChunkMetadata, SearchQuery, SearchResponse, SearchResult, TierLevel
+from backend.app.modules.knowledge.service import KnowledgeService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/search", tags=["knowledge"])
@@ -25,13 +25,13 @@ _knowledge_service_fallback: KnowledgeService | None = None
 
 def get_search_service(request: Request):
     """
-    Get SearchService from app.state (canonical retriever).
+    Get SearchService from backend.app.state (canonical retriever).
     Falls back to KnowledgeService singleton only if SearchService not initialized (test/local boot).
     """
-    # Try to get SearchService from app.state (preferred - canonical retriever)
+    # Try to get SearchService from backend.app.state (preferred - canonical retriever)
     search_service = getattr(request.app.state, "search_service", None)
     if search_service:
-        logger.debug("Using SearchService from app.state (canonical retriever)")
+        logger.debug("Using SearchService from backend.app.state (canonical retriever)")
         return search_service
 
     # Fallback to KnowledgeService singleton (for test/local boot scenarios)
@@ -190,7 +190,7 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
     """DEBUG endpoint: Get parent documents (BAB) from PostgreSQL for a document"""
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url)
@@ -248,7 +248,7 @@ async def get_bab_public(
     """
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url, timeout=30)

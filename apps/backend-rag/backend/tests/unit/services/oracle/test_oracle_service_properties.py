@@ -13,17 +13,17 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.oracle.oracle_service import OracleService
+from backend.services.oracle.oracle_service import OracleService
 
 
 @pytest.fixture
 def oracle_service():
     """Create OracleService instance"""
     with (
-        patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
-        patch("services.oracle.oracle_service.GeminiAdapter"),
-        patch("services.oracle.oracle_service.IntentClassifier"),
-        patch("services.oracle.oracle_service.Path.exists", return_value=False),
+        patch("backend.services.oracle.oracle_service.ZantaraPromptBuilder"),
+        patch("backend.services.oracle.oracle_service.GeminiAdapter"),
+        patch("backend.services.oracle.oracle_service.IntentClassifier"),
+        patch("backend.services.oracle.oracle_service.Path.exists", return_value=False),
         patch("builtins.open", create=True),
         patch("yaml.safe_load"),
     ):
@@ -60,7 +60,7 @@ class TestOracleServiceProperties:
 
     def test_golden_answer_service(self, oracle_service):
         """Test golden_answer_service property"""
-        with patch("services.oracle.oracle_service.config") as mock_config:
+        with patch("backend.services.oracle.oracle_service.config") as mock_config:
             mock_config.database_url = None
             service = oracle_service.golden_answer_service
             # May be None if database_url not available
@@ -68,7 +68,7 @@ class TestOracleServiceProperties:
 
     def test_memory_service(self, oracle_service):
         """Test memory_service property"""
-        with patch("services.oracle.oracle_service.config") as mock_config:
+        with patch("backend.services.oracle.oracle_service.config") as mock_config:
             mock_config.database_url = None
             service = oracle_service.memory_service
             # May be None if database_url not available
@@ -76,7 +76,7 @@ class TestOracleServiceProperties:
 
     def test_memory_orchestrator(self, oracle_service):
         """Test memory_orchestrator property"""
-        with patch("services.oracle.oracle_service.config") as mock_config:
+        with patch("backend.services.oracle.oracle_service.config") as mock_config:
             mock_config.database_url = None
             orchestrator = oracle_service.memory_orchestrator
             assert orchestrator is not None

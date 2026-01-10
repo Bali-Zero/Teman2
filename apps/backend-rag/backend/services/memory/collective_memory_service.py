@@ -9,7 +9,7 @@ Key features:
 - Automatic promotion to collective when threshold reached
 - Confidence scoring based on confirmations vs refutations
 - Category-based organization (process, location, provider, etc.)
-- Query-aware semantic retrieval via Qdrant (v1.5+)
+- PostgreSQL-based storage and retrieval (Qdrant removed 2026-01-10)
 """
 
 import hashlib
@@ -20,10 +20,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 import asyncpg
-
-if TYPE_CHECKING:
-    from core.embeddings import EmbeddingsGenerator
-    from core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
 
@@ -72,53 +68,17 @@ class CollectiveMemoryService:
 
     PROMOTION_THRESHOLD = 3  # Min sources to become collective
     MAX_COLLECTIVE_CONTEXT = 10  # Max facts to include in context
-    QDRANT_COLLECTION = "collective_memories"  # Qdrant collection name
 
     def __init__(
         self,
         pool: asyncpg.Pool | None = None,
-        embedder: "EmbeddingsGenerator | None" = None,
-        qdrant_client: "QdrantClient | None" = None,
     ):
         self.pool = pool
-        self._embedder = embedder
-        self._qdrant = qdrant_client
-        self._qdrant_initialized = False
-        logger.info("CollectiveMemoryService initialized")
+        logger.info("CollectiveMemoryService initialized (PostgreSQL only)")
 
     async def set_pool(self, pool: asyncpg.Pool):
         """Set connection pool (for lazy initialization)"""
         self.pool = pool
-
-    def _get_embedder(self) -> "EmbeddingsGenerator":
-        """Get or create embeddings generator (lazy initialization)"""
-        if self._embedder is None:
-            from core.embeddings import create_embeddings_generator
-
-            self._embedder = create_embeddings_generator()
-        return self._embedder
-
-    async def _get_qdrant(self) -> "QdrantClient":
-        """Get or create Qdrant client (lazy initialization)"""
-        if self._qdrant is None:
-            from core.qdrant_db import QdrantClient
-
-            from app.core.config import settings
-
-            self._qdrant = QdrantClient(
-                qdrant_url=settings.qdrant_url,
-                collection_name=self.QDRANT_COLLECTION,
-            )
-        # Ensure collection exists on first use
-        if not self._qdrant_initialized:
-            try:
-                await self._qdrant.create_collection(vector_size=1536, distance="Cosine")
-                self._qdrant_initialized = True
-            except Exception as e:
-                # Collection may already exist
-                logger.debug(f"Qdrant collection setup: {e}")
-                self._qdrant_initialized = True
-        return self._qdrant
 
     @staticmethod
     def _hash_content(content: str) -> str:
@@ -293,8 +253,9 @@ class CollectiveMemoryService:
                             conversation_id,
                         )
 
-                        # Sync to Qdrant for semantic search
-                        await self._sync_to_qdrant(memory_id, content, category, metadata)
+                        # NOTE 2026-01-10: Qdrant sync removed - using PostgreSQL only
+                        # Collective memories are stored in PostgreSQL and retrieved via SQL queries
+                        # Qdrant collection was empty and not needed for current use case
 
                         logger.info(
                             f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
@@ -430,131 +391,6 @@ class CollectiveMemoryService:
             except Exception as e:
                 logger.error(f"Failed to get collective context: {e}")
                 return []
-
-    async def _sync_to_qdrant(
-        self,
-        memory_id: int,
-        content: str,
-        category: str,
-        metadata: dict | None = None,
-    ) -> bool:
-        """
-        Sync a memory to Qdrant for semantic search.
-
-        Args:
-            memory_id: Database ID of the memory
-            content: The fact content
-            category: Category of the fact
-            metadata: Additional metadata
-
-        Returns:
-            True if successful
-        """
-        try:
-            # Generate embedding
-            embedder = self._get_embedder()
-            embedding = embedder.generate_single_embedding(content)
-
-            # Upsert to Qdrant
-            qdrant = await self._get_qdrant()
-            result = await qdrant.upsert_documents(
-                chunks=[content],
-                embeddings=[embedding],
-                metadatas=[
-                    {
-                        "id": memory_id,
-                        "category": category,
-                        "is_promoted": False,  # New facts start unpromoted
-                        "confidence": 0.5,
-                        "source_count": 1,
-                        **(metadata or {}),
-                    }
-                ],
-                ids=[f"cm_{memory_id}"],
-            )
-
-            # Mark as synced in PostgreSQL
-            if result.get("success") and self.pool:
-                async with self.pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE collective_memories SET embedding_synced = TRUE WHERE id = $1",
-                        memory_id,
-                    )
-
-            logger.debug(f"Synced memory #{memory_id} to Qdrant")
-            return result.get("success", False)
-
-        except Exception as e:
-            logger.warning(f"Failed to sync memory #{memory_id} to Qdrant: {e}")
-            return False
-
-    async def get_relevant_context(
-        self,
-        query: str,
-        category: str | None = None,
-        limit: int = 10,
-        min_confidence: float = 0.5,
-    ) -> list[str]:
-        """
-        Get collective facts relevant to the query using semantic search.
-
-        This is the query-aware alternative to get_collective_context().
-        Uses Qdrant vector search to find semantically similar facts.
-
-        Args:
-            query: User query to find relevant facts for
-            category: Optional filter by category
-            limit: Max facts to return
-            min_confidence: Minimum confidence threshold
-
-        Returns:
-            List of fact strings ordered by relevance
-        """
-        try:
-            # Generate query embedding
-            embedder = self._get_embedder()
-            query_embedding = embedder.generate_query_embedding(query)
-
-            # Build filter
-            qdrant_filter = {"is_promoted": True}
-            if category:
-                qdrant_filter["category"] = category
-
-            # Search Qdrant
-            qdrant = await self._get_qdrant()
-            results = await qdrant.search(
-                query_embedding=query_embedding,
-                filter=qdrant_filter,
-                limit=limit * 2,  # Get extra for filtering
-            )
-
-            # Extract and filter results
-            facts = []
-            for i, doc in enumerate(results.get("documents", [])):
-                if not doc:
-                    continue
-                # Get metadata
-                metadata = (
-                    results.get("metadatas", [{}])[i]
-                    if i < len(results.get("metadatas", []))
-                    else {}
-                )
-                confidence = metadata.get("confidence", 0.5)
-
-                # Filter by confidence
-                if confidence >= min_confidence:
-                    facts.append(doc)
-
-                if len(facts) >= limit:
-                    break
-
-            logger.debug(f"Found {len(facts)} relevant collective facts for query: {query[:50]}...")
-            return facts
-
-        except Exception as e:
-            logger.warning(f"Semantic search failed, falling back to confidence-based: {e}")
-            # Fallback to confidence-based retrieval
-            return await self.get_collective_context(category=category, limit=limit)
 
     async def get_all_memories(
         self,

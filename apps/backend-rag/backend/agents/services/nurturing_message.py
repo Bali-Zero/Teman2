@@ -10,12 +10,12 @@ import asyncio
 import logging
 from typing import Any
 
-from services.communication import detect_language, get_language_instruction
+from backend.services.communication import detect_language, get_language_instruction
 
 logger = logging.getLogger(__name__)
 
 try:
-    from llm.zantara_ai_client import ZantaraAIClient
+    from backend.llm.zantara_ai_client import ZantaraAIClient
 
     ZANTARA_AVAILABLE = True
 except ImportError:

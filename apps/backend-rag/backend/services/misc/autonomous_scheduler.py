@@ -545,11 +545,14 @@ async def create_and_start_scheduler(
             logger.error(f"❌ Failed to register Renewal Alerts: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 7. KNOWLEDGE GRAPH BUILDER AGENT (every 4 hours)
+    # 7. KNOWLEDGE GRAPH BUILDER AGENT (every 24 hours - incremental)
     # ═══════════════════════════════════════════════════════════════════════════
     if knowledge_graph_enabled and db_pool:
         try:
             from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
+            from backend.services.knowledge_graph.incremental_builder import (
+                run_knowledge_graph_incremental_build,
+            )
 
             graph_builder = KnowledgeGraphBuilder(
                 db_pool=db_pool,
@@ -557,19 +560,44 @@ async def create_and_start_scheduler(
             )
 
             async def run_knowledge_graph_builder():
-                # Initialize schema if needed
-                await graph_builder.init_graph_schema()
-                logger.info("🕸️ Knowledge Graph schema verified")
-                # Full implementation would process new documents
-                # and extract entities/relationships
+                """Run incremental KG build from Qdrant collections"""
+                try:
+                    # 1. Initialize schema if needed
+                    await graph_builder.init_graph_schema()
+                    logger.info("🕸️ Knowledge Graph schema verified")
+
+                    # 2. Process conversations (always)
+                    try:
+                        await graph_builder.build_graph_from_all_conversations(days_back=7)
+                        logger.info("✅ Processed conversations for KG")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to process conversations: {e}")
+                        # Continue with Qdrant extraction
+
+                    # 3. Incremental extraction from Qdrant collections
+                    try:
+                        stats = await run_knowledge_graph_incremental_build(db_pool)
+                        logger.info(
+                            f"✅ KG Incremental Build Complete: "
+                            f"{stats.get('collections_processed', 0)} collections, "
+                            f"{stats.get('total_chunks', 0):,} chunks, "
+                            f"{stats.get('total_entities', 0):,} entities"
+                        )
+                    except Exception as e:
+                        logger.error(f"❌ KG Incremental Build failed: {e}", exc_info=True)
+                        # Don't raise - allow scheduler to continue
+
+                except Exception as e:
+                    logger.error(f"❌ Knowledge Graph Builder error: {e}", exc_info=True)
+                    # Don't raise - allow scheduler to continue
 
             scheduler.register_task(
                 name="knowledge_graph_builder",
                 task_func=run_knowledge_graph_builder,
-                interval_seconds=14400,  # 4 hours
+                interval_seconds=86400,  # 24 hours
                 enabled=True,
             )
-            logger.info("✅ Knowledge Graph Builder Agent registered (4h interval)")
+            logger.info("✅ Knowledge Graph Builder Agent registered (24h interval - incremental)")
         except Exception as e:
             logger.error(f"❌ Failed to register Knowledge Graph Builder: {e}")
 

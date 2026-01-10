@@ -4,7 +4,7 @@ Defines structured markdown formats for key business domains (Visa, Tax, etc.)
 to ensure consistency and readability.
 """
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 def get_visa_template(language: str = "en") -> str:

@@ -123,7 +123,7 @@ class CacheService:
 
     Usage with DI:
         from fastapi import Depends
-        from core.cache import get_cache_service
+        from backend.core.cache import get_cache_service
 
         async def endpoint(cache: CacheService = Depends(get_cache_service)):
             value = cache.get("key")
@@ -139,7 +139,7 @@ class CacheService:
         self._memory_cache = LRUCache()
 
         # Try to connect to Redis (Fly.io provides REDIS_URL)
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         redis_url = settings.redis_url
         if redis_url:
@@ -324,7 +324,7 @@ def get_cache_service() -> CacheService:
 
     For FastAPI endpoints, use dependency injection:
         from fastapi import Depends
-        from app.dependencies import get_cache
+        from backend.app.dependencies import get_cache
 
         async def endpoint(cache: CacheService = Depends(get_cache)):
             value = cache.get("key")

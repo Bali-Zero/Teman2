@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.llm_clients.vertex_ai_service import VertexAIService
+from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
 
 class TestVertexAIService:
@@ -45,13 +45,13 @@ class TestVertexAIService:
 
     def test_ensure_initialized_no_vertexai(self):
         """Test initialization when vertexai not available"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai", None):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", None):
             service = VertexAIService(project_id="test-project")
             with pytest.raises(ImportError):
                 service._ensure_initialized()
 
-    @patch("services.llm_clients.vertex_ai_service.vertexai")
-    @patch("services.llm_clients.vertex_ai_service.GenerativeModel")
+    @patch("backend.services.llm_clients.vertex_ai_service.vertexai")
+    @patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel")
     def test_ensure_initialized_success(self, mock_model_class, mock_vertexai):
         """Test successful initialization"""
         mock_model = MagicMock()
@@ -64,7 +64,7 @@ class TestVertexAIService:
         assert service.model == mock_model
         mock_vertexai.init.assert_called_once_with(project="test-project", location="us-central1")
 
-    @patch("services.llm_clients.vertex_ai_service.vertexai")
+    @patch("backend.services.llm_clients.vertex_ai_service.vertexai")
     def test_ensure_initialized_no_project_id(self, mock_vertexai):
         """Test initialization without project_id"""
         with patch.dict("os.environ", {}, clear=True):
@@ -76,8 +76,8 @@ class TestVertexAIService:
                 pass  # May raise or not depending on vertexai behavior
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.vertex_ai_service.vertexai")
-    @patch("services.llm_clients.vertex_ai_service.GenerativeModel")
+    @patch("backend.services.llm_clients.vertex_ai_service.vertexai")
+    @patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel")
     async def test_extract_metadata(self, mock_model_class, mock_vertexai):
         """Test extracting metadata"""
         mock_model = MagicMock()
@@ -94,8 +94,8 @@ class TestVertexAIService:
         assert "type" in result or isinstance(result, dict)
 
     @pytest.mark.asyncio
-    @patch("services.llm_clients.vertex_ai_service.vertexai")
-    @patch("services.llm_clients.vertex_ai_service.GenerativeModel")
+    @patch("backend.services.llm_clients.vertex_ai_service.vertexai")
+    @patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel")
     async def test_extract_metadata_error(self, mock_model_class, mock_vertexai):
         """Test extracting metadata with error"""
         mock_model = MagicMock()
