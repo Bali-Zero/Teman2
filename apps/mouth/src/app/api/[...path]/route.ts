@@ -151,9 +151,30 @@ async function proxy(req: NextRequest): Promise<Response> {
       );
     }
 
-    // Log errors in development
-    if (process.env.NODE_ENV !== 'production' && upstream.status >= 400) {
-      console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`);
+    // Log errors in development and production (for auth errors)
+    if (upstream.status >= 400) {
+      const isAuthError = upstream.status === 401 || upstream.status === 403;
+      
+      // Always log auth errors (critical for debugging)
+      if (isAuthError) {
+        console.error(`[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`, {
+          cookies: {
+            authCookie: !!authCookie,
+            csrfCookie: !!csrfCookie,
+            authCookieValue: authCookie ? `${authCookie.value.substring(0, 20)}...` : 'missing',
+            csrfCookieValue: csrfCookie ? `${csrfCookie.value.substring(0, 20)}...` : 'missing',
+          },
+          targetUrl,
+          correlationId,
+          userAgent: req.headers.get('user-agent')?.substring(0, 50),
+        });
+      } else if (process.env.NODE_ENV !== 'production') {
+        // Log other errors only in development
+        console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`, {
+          targetUrl,
+          correlationId,
+        });
+      }
     }
 
     // Forward headers from upstream

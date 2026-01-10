@@ -174,6 +174,16 @@ export default function CaseDetailPage() {
       const fieldsUpdated = Object.keys(updates);
       const updateType = updates.status ? 'status' : updates.payment_status ? 'payment' : 'details';
 
+      // Log pre-request details
+      console.log('[Cases] Attempting to update case:', {
+        caseId,
+        updates,
+        userEmail: user.email,
+        fieldsUpdated,
+        updateType,
+        timestamp: new Date().toISOString(),
+      });
+
       await api.crm.updatePractice(caseId, updates, user.email);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', true, apiDuration, caseId, user.email);
@@ -196,8 +206,45 @@ export default function CaseDetailPage() {
       casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', false, apiDuration, caseId, userEmail.current || undefined);
       casesMetrics.trackError('Update Failed', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
 
-      console.error('Failed to update case:', err);
-      toast.error('Error', 'Failed to update case details.');
+      // Detailed error logging
+      const errorDetails = {
+        caseId,
+        updates: editForm,
+        userEmail: userEmail.current,
+        error: err instanceof Error ? {
+          message: err.message,
+          name: err.name,
+          stack: err.stack,
+        } : err,
+        apiDuration,
+        timestamp: new Date().toISOString(),
+        endpoint: `/api/crm/practices/${caseId}`,
+      };
+
+      console.error('[Cases] Failed to update case details:', errorDetails);
+
+      // Check for specific error types and provide user-friendly messages
+      let errorMessage = 'Failed to update case details.';
+      if (err instanceof Error) {
+        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+          errorMessage = 'Authentication failed. Please login again.';
+          console.error('[Cases] Authentication error - user may need to re-authenticate');
+        } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
+          errorMessage = 'You do not have permission to update this case.';
+          console.error('[Cases] Authorization error - user may not have permission');
+        } else if (err.message.includes('404') || err.message.includes('Not Found')) {
+          errorMessage = 'Case not found. It may have been deleted.';
+          console.error('[Cases] Case not found - may have been deleted');
+        } else if (err.message.includes('Network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+          console.error('[Cases] Network error - backend may be unreachable');
+        } else if (err.message.includes('CORS')) {
+          errorMessage = 'CORS error. Please contact support.';
+          console.error('[Cases] CORS error - backend CORS configuration may be incorrect');
+        }
+      }
+
+      toast.error('Error', errorMessage);
     } finally {
       setIsSaving(false);
     }
