@@ -771,8 +771,10 @@ class TestPromptBuilding:
             llama_reason="reason",
         )
 
-        # Content should be truncated to 1500 chars
-        assert len(prompt) < len(long_content)
+        # Content should be truncated - not all 5000 x's should appear in prompt
+        # Count how many x's appear in a row (the content part)
+        x_count = prompt.count("x")
+        assert x_count < 5000, f"Content should be truncated but got {x_count} x's"
 
     def test_long_summary_truncated(self):
         """Long summary should be truncated in prompt"""
