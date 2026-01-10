@@ -44,11 +44,12 @@ async def main():
         logger.info("   Su Fly.io sono già configurate come secrets.")
         return False
     
-    # Step 2: Inizializza collezione
+    # Step 2: Inizializza collezione (usa versione httpx)
     logger.info("\n📋 STEP 2: Inizializzazione Collezione Qdrant...")
     try:
-        from init_news_collection import init_collection
-        await init_collection()
+        # Usa versione httpx che funziona correttamente
+        from init_news_collection_httpx import init_collection
+        init_collection()  # Non è async
         logger.success("✅ Collezione pronta")
     except Exception as e:
         logger.error(f"❌ Errore collezione: {e}")
@@ -56,10 +57,11 @@ async def main():
         traceback.print_exc()
         return False
     
-    # Step 3: Test Deduplicator
+    # Step 3: Test Deduplicator (usa versione httpx)
     logger.info("\n📋 STEP 3: Test Semantic Deduplicator...")
     try:
-        from semantic_deduplicator import SemanticDeduplicator
+        # Usa versione httpx che funziona correttamente
+        from semantic_deduplicator_httpx import SemanticDeduplicator
         
         dedup = SemanticDeduplicator()
         

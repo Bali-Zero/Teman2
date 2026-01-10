@@ -20,11 +20,10 @@ anthropic==0.42.0
 google-generativeai==0.3.2
 openai==1.57.4
 
-# Semantic Deduplication (DISABLED - causes >8GB image)
-# qdrant-client>=1.7.0        # Vector database
-# sentence-transformers>=2.2.0 # Local embeddings (all-MiniLM-L6-v2)
-# NOTE: sentence-transformers pulls PyTorch + CUDA libs (~5GB+)
-# If needed, run deduplication locally, not on Fly.io
+# Semantic Deduplication (ENABLED - uses OpenAI embeddings, not local)
+qdrant-client>=1.12.0        # Vector database (for semantic deduplication)
+# NOTE: We use OpenAI embeddings (text-embedding-3-small) instead of local
+# sentence-transformers to avoid PyTorch + CUDA libs (~5GB+)
 
 # Async HTTP (for Telegram approval)
 aiohttp>=3.9.0

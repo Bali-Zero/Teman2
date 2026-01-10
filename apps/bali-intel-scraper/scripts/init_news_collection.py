@@ -30,8 +30,13 @@ async def init_collection():
     logger.info("=" * 60)
 
     try:
-        # 1. Connessione a Qdrant
-        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        # 1. Connessione a Qdrant (con timeout aumentato)
+        client = QdrantClient(
+            url=QDRANT_URL, 
+            api_key=QDRANT_API_KEY,
+            timeout=30,
+            prefer_grpc=False  # Usa HTTP invece di gRPC per evitare problemi di connessione
+        )
         
         # 2. Check esistenza
         collections = client.get_collections().collections

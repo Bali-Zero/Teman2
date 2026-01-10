@@ -31,7 +31,27 @@ class SemanticDeduplicator:
         # Setup Qdrant
         self.qdrant_url = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev")
         self.qdrant_key = os.getenv("QDRANT_API_KEY")
-        self.qdrant = QdrantClient(url=self.qdrant_url, api_key=self.qdrant_key)
+        # Workaround: qdrant-client ha problemi TLS, usiamo prefer_grpc=False e timeout aumentato
+        # Se continua a fallire, possiamo usare httpx direttamente come fallback
+        try:
+            self.qdrant = QdrantClient(
+                url=self.qdrant_url, 
+                api_key=self.qdrant_key,
+                timeout=30,
+                prefer_grpc=False
+            )
+            # Test connessione immediata
+            _ = self.qdrant.get_collections()
+        except Exception as e:
+            logger.error(f"Errore inizializzazione QdrantClient: {e}")
+            logger.warning("QdrantClient fallito, le operazioni potrebbero non funzionare")
+            # Manteniamo il client anche se fallisce, per permettere retry nelle operazioni
+            self.qdrant = QdrantClient(
+                url=self.qdrant_url, 
+                api_key=self.qdrant_key,
+                timeout=30,
+                prefer_grpc=False
+            )
         
         # Setup OpenAI (per embedding)
         self.openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
