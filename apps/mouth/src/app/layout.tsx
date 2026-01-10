@@ -52,9 +52,9 @@ export const metadata: Metadata = {
   publisher: 'Bali Zero',
   category: 'Business Services',
   icons: {
-    icon: '/images/balizero-logo-clean.png',
-    apple: '/images/balizero-logo-clean.png',
-    shortcut: '/images/balizero-logo-clean.png',
+    icon: '/static/balizero-logo-clean.png',
+    apple: '/static/balizero-logo-clean.png',
+    shortcut: '/static/balizero-logo-clean.png',
   },
   openGraph: {
     type: 'website',
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     siteName: 'Bali Zero',
     images: [
       {
-        url: '/images/og-image.jpg',
+        url: '/static/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Bali Zero - Visa & Business Experts in Bali',
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Bali Zero | Visa & Business Experts in Bali',
     description: 'Expert visa, immigration, company setup services in Bali. Trusted by 1000+ expats.',
-    images: ['/images/og-image.jpg'],
+    images: ['/static/og-image.jpg'],
     creator: '@balizero',
     site: '@balizero',
   },

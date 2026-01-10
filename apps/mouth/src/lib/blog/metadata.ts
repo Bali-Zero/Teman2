@@ -49,7 +49,7 @@ export function generateArticleMetadata(article: Article): Metadata {
   const articleUrl = `${baseUrl}/${article.category}/${article.slug}`;
   const imageUrl = article.coverImage?.startsWith('http')
     ? article.coverImage
-    : `${baseUrl}${article.coverImage || '/images/og-image.jpg'}`;
+    : `${baseUrl}${article.coverImage || '/static/og-image.jpg'}`;
 
   // Build keywords from tags and category
   const keywords = [
@@ -135,7 +135,7 @@ export function generateCategoryMetadata(category: string): Metadata {
       siteName: 'Bali Zero',
       images: [
         {
-          url: `${baseUrl}/images/og-image.jpg`,
+          url: `${baseUrl}/static/og-image.jpg`,
           width: 1200,
           height: 630,
           alt: meta.title,
@@ -179,7 +179,7 @@ export function generateInsightsMetadata(): Metadata {
       siteName: 'Bali Zero',
       images: [
         {
-          url: `${baseUrl}/images/og-image.jpg`,
+          url: `${baseUrl}/static/og-image.jpg`,
           width: 1200,
           height: 630,
           alt: 'Bali Zero - Visa & Business Experts',

@@ -419,7 +419,7 @@ export const CATEGORY_METADATA: Record<ArticleCategory, {
 export const ZANTARA_AI_AUTHOR: Author = {
   id: 'zantara-ai',
   name: 'Zantara AI',
-  avatar: '/images/zantara-avatar.png',
+  avatar: '/static/zantara-avatar.png',
   role: 'AI Research Assistant',
   bio: 'Zantara AI is the intelligent assistant powering Bali Zero Insights, providing accurate and up-to-date information about business and immigration in Indonesia.',
   isAI: true,

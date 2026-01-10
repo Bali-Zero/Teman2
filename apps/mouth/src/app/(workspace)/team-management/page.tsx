@@ -21,12 +21,12 @@ interface TeamMember {
 
 // Team photos mapping (email prefix -> photo path)
 const TEAM_PHOTOS: Record<string, string> = {
-  adit: '/images/team/adit.png',
-  krisna: '/images/team/krisna.png',
-  ari: '/images/team/ari.png',
-  'ari.firda': '/images/team/ari.png',
-  dea: '/images/team/dea.png',
-  sahira: '/images/team/sahira.png',
+  adit: '/static/team/adit.png',
+  krisna: '/static/team/krisna.png',
+  ari: '/static/team/ari.png',
+  'ari.firda': '/static/team/ari.png',
+  dea: '/static/team/dea.png',
+  sahira: '/static/team/sahira.png',
 };
 
 // Get photo URL from email
