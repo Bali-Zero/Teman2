@@ -35,6 +35,7 @@ def get_allowed_origins() -> list[str]:
         "https://zantara.balizero.com",
         "https://www.zantara.balizero.com",
         "https://nuzantara-mouth.fly.dev",  # Frontend Fly.io deployment (mouth)
+        "https://teman2-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",  # Local development
     ]
 
