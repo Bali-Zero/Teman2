@@ -125,7 +125,7 @@ KITAS, KITAP, NPWP, PPh, PT PMA, NIB, OSS, HGB, SHM, BKPM, Imigrasi, Kemenkeu, D
     def __init__(
         self,
         api_url: str = "https://nuzantara-rag.fly.dev",
-        generate_images: bool = True,
+        generate_images: bool = True,  # Always True - images are mandatory
     ):
         self.api_url = api_url
         self.generate_images = generate_images

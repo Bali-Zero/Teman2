@@ -207,7 +207,7 @@ class IntelPipeline:
         self,
         min_llama_score: int = 40,
         auto_approve_threshold: int = 75,
-        generate_images: bool = True,
+        generate_images: bool = True,  # Always True - images are mandatory
         require_approval: bool = True,
         dry_run: bool = False,
     ):
@@ -221,17 +221,16 @@ class IntelPipeline:
         self.deduplicator = SemanticDeduplicator()
         self.ollama_scorer = OllamaScorer()
         self.claude_validator = ClaudeValidator()
-        self.enricher = ArticleDeepEnricher(generate_images=generate_images)
-        # Initialize image generator if enabled
-        if generate_images:
-            try:
-                self.image_generator = GeminiImageGenerator()
-                logger.info("✅ Gemini Image Generator initialized")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to initialize Gemini Image Generator: {e}")
-                self.image_generator = None
-        else:
-            self.image_generator = None
+        # Images are mandatory - always enable generation
+        self.generate_images = True
+        self.enricher = ArticleDeepEnricher(generate_images=True)
+        # Initialize image generator (mandatory)
+        try:
+            self.image_generator = GeminiImageGenerator()
+            logger.info("✅ Gemini Image Generator initialized (mandatory)")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Gemini Image Generator (mandatory): {e}")
+            raise RuntimeError(f"Image generator is mandatory but failed to initialize: {e}")
         self.seo_optimizer = SEOAEOOptimizer()
         self.approval_system = TelegramApproval() if require_approval else None
 
@@ -311,10 +310,13 @@ class IntelPipeline:
             "tier": "T2",  # Default tier for pipeline articles
         }
         
-        # Add cover image if available
-        if enriched and enriched.cover_image:
+        # Cover image is mandatory for enriched articles
+        if enriched:
+            if not enriched.cover_image:
+                logger.error(f"   ❌ Cover image missing (mandatory) for article: {title[:50]}")
+                raise ValueError("Cover image is mandatory but missing")
             payload["cover_image"] = enriched.cover_image
-            logger.info(f"   📷 Including cover image: {enriched.cover_image}")
+            logger.info(f"   📷 Cover image included: {enriched.cover_image}")
 
         try:
             # Add API key if available
@@ -552,9 +554,16 @@ class IntelPipeline:
             self.stats.errors += 1
 
         # ═══════════════════════════════════════════════════════════════
-        # STEP 4: IMAGE REASONING (handled by Claude Code)
+        # STEP 4: IMAGE GENERATION (mandatory)
         # ═══════════════════════════════════════════════════════════════
-        if article.enriched and self.generate_images and self.image_generator:
+        if article.enriched:
+            # Image generation is mandatory for enriched articles
+            if not self.image_generator:
+                logger.error("   ❌ Image generator not available (mandatory)")
+                self.stats.errors += 1
+            elif not article.enriched_article.cover_image:
+                logger.warning("   ⚠️ Cover image not generated during enrichment (mandatory)")
+                self.stats.errors += 1
             logger.info("\n🎨 Step 4: Image Reasoning Prepared...")
             logger.info("   Image context saved for Claude to reason about")
             logger.info("   Claude will create unique prompt based on article content")
