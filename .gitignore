@@ -165,10 +165,25 @@ docs/*.log
 docs/*.json
 docs/generated/
 
-# Image files (except public assets for frontend)
+# Image files - ignore globally to avoid AI context pollution
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.JPG
+*.JPEG
+*.PNG
+*.GIF
+*.WEBP
 *.HEIC
-# Allow images in apps/mouth/public/ for frontend assets
-# *.JPG and *.PNG removed - we need these for website images
+
+# BUT allow images in frontend public folder (needed for website)
+!apps/mouth/public/**/*.jpg
+!apps/mouth/public/**/*.jpeg
+!apps/mouth/public/**/*.png
+!apps/mouth/public/**/*.gif
+!apps/mouth/public/**/*.webp
 
 coverage.json
 # Auto-generated Playwright extensions
