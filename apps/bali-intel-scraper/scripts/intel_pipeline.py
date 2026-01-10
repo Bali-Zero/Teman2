@@ -281,7 +281,19 @@ class IntelPipeline:
         enriched = article.enriched_article
         # EnrichedArticle doesn't have executive_brief, use ai_summary or facts
         if enriched:
-            content = enriched.ai_summary or (enriched.facts + "\n\n" + enriched.bali_zero_take if enriched.facts else article.summary)
+            # Build full enriched content
+            content_parts = []
+            if enriched.ai_summary:
+                content_parts.append(f"## Summary\n{enriched.ai_summary}")
+            if enriched.facts:
+                content_parts.append(f"## Facts\n{enriched.facts}")
+            if enriched.bali_zero_take:
+                content_parts.append(f"## Bali Zero Take\n{enriched.bali_zero_take}")
+            if enriched.next_steps:
+                next_steps_str = "\n".join([f"- {k}: {v}" for k, v in enriched.next_steps.items()])
+                content_parts.append(f"## Next Steps\n{next_steps_str}")
+            
+            content = "\n\n".join(content_parts) if content_parts else article.summary
             title = enriched.headline or article.title
         else:
             content = article.summary
@@ -298,6 +310,11 @@ class IntelPipeline:
             "extraction_method": "intel_pipeline",
             "tier": "T2",  # Default tier for pipeline articles
         }
+        
+        # Add cover image if available
+        if enriched and enriched.cover_image:
+            payload["cover_image"] = enriched.cover_image
+            logger.info(f"   📷 Including cover image: {enriched.cover_image}")
 
         try:
             # Add API key if available
