@@ -778,7 +778,7 @@ npm run test:email:coverage
 **Fix:**
 ```bash
 # Re-authorize Zoho if needed
-# Visit: https://nuzantara-mouth.fly.dev/settings/integrations
+# Visit: https://www.balizero.com/settings/integrations
 # Click "Connect Zoho Mail"
 # Follow OAuth flow
 
@@ -883,7 +883,7 @@ fly apps restart nuzantara-rag
 3. **Verify Route Exists**
    ```bash
    # Should return client page
-   curl -I https://nuzantara-mouth.fly.dev/clients/67
+   curl -I https://www.balizero.com/clients/67
    # Expected: 200 OK
    ```
 
@@ -944,7 +944,7 @@ fly apps restart nuzantara-rag
 NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
 
 # Frontend URL
-NEXT_PUBLIC_FRONTEND_URL=https://nuzantara-mouth.fly.dev
+NEXT_PUBLIC_FRONTEND_URL=https://www.balizero.com
 ```
 
 ### Backend (Fly.io Secrets)

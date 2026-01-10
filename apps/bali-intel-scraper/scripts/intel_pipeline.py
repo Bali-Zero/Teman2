@@ -6,6 +6,12 @@ The FULL pipeline from RSS to published article with image.
 
 Flow:
 ┌─────────────────────────────────────────────────────────────────┐
+│  0. SEMANTIC DEDUPLICATION (Qdrant)                             │
+│     - Check vector similarity > 88% with recent news            │
+│     - Skip immediately if duplicate (Save $$$)                  │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │  1. RSS FETCHER                                                 │
 │     Raw article: {title, summary, url}                          │
 └─────────────────────────────────────────────────────────────────┘
@@ -55,23 +61,14 @@ Flow:
 │         (Frontend deployed on Vercel, custom domain)            │
 │     6b. Telegram → voting via bot (2/3 majority)                │
 └─────────────────────────────────────────────────────────────────┘
-                              ↓ (only approved)
+                              ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  7. PUBLISH TO API (⏳ TO BE IMPLEMENTED)                       │
-│     - Article + cover image + SEO metadata → BaliZero API       │
-│                                                                 │
-│     TODO: After successful publish, register article:           │
-│     from claude_validator import ClaudeValidator                │
-│     ClaudeValidator.add_published_article(                      │
-│         title=article.title,                                    │
-│         url=published_url,                                      │
-│         category=article.final_category,                        │
-│         published_at=datetime.now().isoformat()                 │
-│     )                                                           │
-│     See: ANTI_DUPLICATE_INTEGRATION.md for details              │
+│  7. AUTO-MEMORY (Qdrant)                                        │
+│     - Save article vector for future deduplication              │
 └─────────────────────────────────────────────────────────────────┘
 
 Cost breakdown:
+- Qdrant check: $0 (included in infrastructure)
 - LLAMA scoring: $0 (local Ollama)
 - Claude validation: ~$0.01 per article (quick validation)
 - Claude Max enrichment: ~$0.05 per article (full article)
@@ -85,7 +82,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from loguru import logger
 import httpx
 
@@ -97,6 +94,7 @@ from article_deep_enricher import ArticleDeepEnricher, EnrichedArticle
 from gemini_image_generator import GeminiImageGenerator
 from seo_aeo_optimizer import SEOAEOOptimizer, optimize_article as seo_optimize
 from telegram_approval import TelegramApproval
+from semantic_deduplicator import SemanticDeduplicator
 
 # Configure logging
 Path("logs").mkdir(exist_ok=True)
@@ -114,6 +112,11 @@ class PipelineArticle:
     source: str
     content: str = ""
     published_at: Optional[str] = None
+
+    # Deduplication
+    is_duplicate: bool = False
+    duplicate_of: str = ""
+    similarity_score: float = 0.0
 
     # LLAMA scoring results
     llama_score: int = 0
@@ -168,6 +171,7 @@ class PipelineStats:
     """Pipeline execution statistics"""
 
     total_input: int = 0
+    dedup_filtered: int = 0
     llama_scored: int = 0
     llama_filtered: int = 0
     claude_validated: int = 0
@@ -187,6 +191,7 @@ class IntelPipeline:
     Complete intelligence pipeline orchestrator.
 
     Coordinates all components:
+    - Qdrant for semantic deduplication
     - LLAMA for fast scoring
     - Claude for validation
     - Claude Max for enrichment
@@ -208,6 +213,7 @@ class IntelPipeline:
         self.dry_run = dry_run
 
         # Initialize components
+        self.deduplicator = SemanticDeduplicator()
         self.ollama_scorer = OllamaScorer()
         self.claude_validator = ClaudeValidator()
         self.enricher = ArticleDeepEnricher(generate_images=generate_images)
@@ -219,7 +225,7 @@ class IntelPipeline:
         self.stats = PipelineStats()
 
         logger.info("=" * 70)
-        logger.info("🚀 BALIZERO INTEL PIPELINE INITIALIZED")
+        logger.info("🚀 BALIZERO INTEL PIPELINE INITIALIZED (v6.5 - Semantic Ready)")
         logger.info(f"   Min LLAMA score: {min_llama_score}")
         logger.info(f"   Auto-approve threshold: {auto_approve_threshold}")
         logger.info(f"   Generate images: {generate_images}")
@@ -284,6 +290,7 @@ class IntelPipeline:
         Process a single article through the entire pipeline.
 
         Steps:
+        0. Semantic Deduplication (Qdrant)
         1. LLAMA scoring (fast)
         2. Claude validation (for medium scores)
         3. Claude Max enrichment (if approved)
@@ -293,6 +300,32 @@ class IntelPipeline:
         logger.info(f"\n{'=' * 60}")
         logger.info(f"📰 Processing: {article.title[:50]}...")
         logger.info(f"{'=' * 60}")
+
+        # ═══════════════════════════════════════════════════════════════
+        # STEP 0: SEMANTIC DEDUPLICATION (The Gatekeeper)
+        # ═══════════════════════════════════════════════════════════════
+        logger.info("🧠 Step 0: Semantic Deduplication Check...")
+        
+        try:
+            is_dup, original_title, score = await self.deduplicator.is_duplicate(
+                article.title, 
+                article.summary, 
+                article.url
+            )
+            
+            if is_dup:
+                logger.warning(f"   🛑 DUPLICATE DETECTED (Score: {score:.2f})")
+                logger.warning(f"      Original: {original_title}")
+                article.is_duplicate = True
+                article.duplicate_of = original_title
+                article.similarity_score = score
+                self.stats.dedup_filtered += 1
+                return article
+            
+            logger.info("   ✅ New unique content")
+            
+        except Exception as e:
+            logger.error(f"   Dedup check failed (continuing safely): {e}")
 
         # ═══════════════════════════════════════════════════════════════
         # STEP 1: LLAMA SCORING
@@ -564,6 +597,30 @@ class IntelPipeline:
                 except Exception as e:
                     logger.error(f"   ❌ Approval submission failed: {e}")
                     self.stats.errors += 1
+        
+        # ═══════════════════════════════════════════════════════════════
+        # STEP 7: AUTO-MEMORY (Save to Qdrant)
+        # ═══════════════════════════════════════════════════════════════
+        if article.pending_approval and not self.dry_run:
+            logger.info("\n💾 Step 7: Saving to Semantic Memory...")
+            try:
+                # Usa il titolo/contenuto arricchito per l'embedding (più preciso)
+                enriched = article.enriched_article
+                
+                await self.deduplicator.save_article({
+                    "title": enriched.headline,
+                    "summary": enriched.ai_summary, # Short AI summary
+                    "content": enriched.facts,      # Full facts for deeper context
+                    "url": article.url,
+                    "source": article.source,
+                    "category": article.final_category,
+                    "publishedAt": article.published_at,
+                    "tier": "T2"
+                })
+                logger.success("   ✅ Saved to Qdrant (Future deduplication enabled)")
+                
+            except Exception as e:
+                logger.error(f"   Memory save failed: {e}")
 
         return article
 
@@ -634,6 +691,7 @@ class IntelPipeline:
                     },
                     f,
                     indent=2,
+                    default=str, # Fix for serialization issues
                 )
             logger.info(f"📁 Run audit saved to {audit_file}")
         except Exception as e:
@@ -647,6 +705,7 @@ class IntelPipeline:
         logger.info("📊 PIPELINE SUMMARY")
         logger.info("=" * 70)
         logger.info(f"   Total input:      {self.stats.total_input}")
+        logger.info(f"   Dedup filtered:   {self.stats.dedup_filtered}")
         logger.info(f"   LLAMA scored:     {self.stats.llama_scored}")
         logger.info(f"   LLAMA filtered:   {self.stats.llama_filtered}")
         logger.info(f"   Claude validated: {self.stats.claude_validated}")
@@ -701,6 +760,11 @@ async def test_pipeline():
     print("=" * 70)
 
     for article in results:
+        if article.is_duplicate:
+            print(f"\n🔄 DUPLICATE: {article.title[:50]}...")
+            print(f"   Of: {article.duplicate_of}")
+            continue
+            
         emoji = "✅" if article.validation_approved else "❌"
         print(f"\n{emoji} {article.title[:50]}...")
         print(f"   LLAMA: {article.llama_score} ({article.llama_category})")

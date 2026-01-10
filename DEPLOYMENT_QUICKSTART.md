@@ -42,12 +42,11 @@ docker-compose down
 # Validate before deploy
 ./scripts/deployment/validate-deployment.sh
 
-# Deploy via Git (automatic)
-git push origin main
-
-# Or deploy manually
+# Backend (Fly.io)
 cd apps/backend-rag && flyctl deploy
-cd apps/mouth && flyctl deploy
+
+# Frontend (Vercel)
+cd apps/mouth && vercel deploy --prod
 ```
 
 ### Health Checks
@@ -58,35 +57,38 @@ cd apps/mouth && flyctl deploy
 
 # Quick checks
 curl https://nuzantara-rag.fly.dev/health | jq .
-curl -I https://nuzantara-mouth.fly.dev
+curl -I https://www.balizero.com
 ```
 
 ### Rollback
 
 ```bash
-# Interactive rollback
+# Interactive rollback (backend only)
 ./scripts/deployment/rollback.sh
 
-# Direct rollback
+# Backend rollback (Fly.io)
 flyctl releases rollback --app nuzantara-rag -y
-flyctl releases rollback --app nuzantara-mouth -y
+
+# Frontend rollback (Vercel) - use Vercel dashboard
 ```
 
 ## 📊 Monitoring
 
 ```bash
-# View logs
+# View backend logs (Fly.io)
 flyctl logs --app nuzantara-rag
-flyctl logs --app nuzantara-mouth -n 100
 
-# SSH into container
+# SSH into backend container
 flyctl ssh console --app nuzantara-rag
 
-# View metrics
+# View backend metrics
 flyctl metrics --app nuzantara-rag
 
-# Check status
+# Check backend status
 flyctl status --app nuzantara-rag
+
+# Frontend monitoring - use Vercel dashboard
+# https://vercel.com/dashboard
 ```
 
 ## 🔧 Common Fixes
@@ -121,15 +123,14 @@ flyctl config show --app nuzantara-rag
 nuzantara/
 ├── .github/workflows/
 │   ├── ci.yml              # Continuous Integration
-│   ├── deploy.yml          # Continuous Deployment
 │   └── monitoring.yml      # Health monitoring
 ├── apps/
 │   ├── backend-rag/
 │   │   ├── Dockerfile
-│   │   └── fly.toml
+│   │   └── fly.toml        # Backend Fly.io config
 │   └── mouth/
 │       ├── Dockerfile
-│       └── fly.toml
+│       └── vercel.json     # Frontend Vercel config
 ├── scripts/deployment/
 │   ├── validate-deployment.sh
 │   ├── health-check.sh

@@ -52,14 +52,14 @@
 | AI SDK | Vercel AI SDK | 6.x |
 | MDX | next-mdx-remote | 5.x |
 | Testing | Vitest + Playwright | Latest |
-| Deployment | Fly.io | Docker |
+| Deployment | Vercel | Edge |
 
 ### Connessioni Esterne
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         MOUTH (Frontend)                         │
-│                    https://nuzantara-mouth.fly.dev               │
+│                      https://www.balizero.com                    │
 └─────────────────────────────────────────────────────────────────┘
                                    │
                                    │ HTTP/WebSocket
@@ -267,8 +267,8 @@ apps/mouth/
 │       └── ...
 │
 ├── e2e/                              # E2E Tests
-├── Dockerfile                        # Docker build
-├── fly.toml                          # Fly.io config
+├── Dockerfile                        # Docker build (for local testing)
+├── vercel.json                       # Vercel config (if needed)
 ├── next.config.ts                    # Next.js config
 ├── tailwind.config.ts                # Tailwind config
 ├── vitest.config.ts                  # Test config
@@ -322,43 +322,22 @@ const nextConfig: NextConfig = {
 };
 ```
 
-### fly.toml (Deployment)
+### Vercel Deployment
 
-```toml
-app = 'nuzantara-mouth'
-primary_region = 'sin'  # Singapore
+The frontend is deployed on **Vercel** (not Fly.io).
 
-[build]
-
-[env]
-NODE_ENV = 'production'
-NEXT_TELEMETRY_DISABLED = '1'
-
-[http_service]
-internal_port = 3000
-force_https = true
-auto_stop_machines = 'stop'
-auto_start_machines = true
-min_machines_running = 1
-processes = ['app']
-
-[[http_service.checks]]
-grace_period = "30s"
-interval = "30s"
-method = "GET"
-timeout = "10s"
-path = "/"
-
-[http_service.concurrency]
-type = "requests"
-soft_limit = 150
-hard_limit = 200
-
-[[vm]]
-memory = '1024mb'
-cpu_kind = 'shared'
-cpus = 2
+```bash
+# Deploy to Vercel
+cd apps/mouth
+vercel deploy --prod
 ```
+
+Or use Vercel dashboard/GitHub integration for automatic deployments.
+
+**Environment Variables (Vercel Dashboard):**
+- `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
+- `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
+- `SENTRY_DSN` - Error tracking
 
 ### Dockerfile
 
@@ -1199,23 +1178,18 @@ npm run build
 └── cache/            # Build cache
 ```
 
-### Deploy to Fly.io
+### Deploy to Vercel
 
 ```bash
-# Deploy
-fly deploy
+# Deploy to production
+cd apps/mouth
+vercel deploy --prod
 
-# Deploy con rebuild
-fly deploy --remote-only
+# Preview deploy
+vercel deploy
 
-# Logs
-fly logs
-
-# Scale
-fly scale count 2
-
-# Secrets
-fly secrets set KEY=value
+# View logs
+# Use Vercel dashboard: https://vercel.com/dashboard
 ```
 
 ### CI/CD (Manual)
@@ -1227,22 +1201,20 @@ npm run build
 # 2. Test
 npm run test
 
-# 3. Deploy
-fly deploy --remote-only
+# 3. Deploy to Vercel
+vercel deploy --prod
 
 # 4. Verify
-curl https://nuzantara-mouth.fly.dev/api/blog/articles
+curl https://www.balizero.com/api/blog/articles
 ```
 
 ### Rollback
 
-```bash
-# List releases
-fly releases
-
-# Rollback to previous
-fly deploy --image registry.fly.io/nuzantara-mouth:previous-tag
-```
+Use Vercel dashboard to rollback to previous deployments:
+1. Go to Vercel dashboard
+2. Select project (nuzantara-mouth)
+3. Go to Deployments tab
+4. Click on previous deployment → Promote to Production
 
 ---
 
@@ -1299,27 +1271,24 @@ performance.measure('chat-duration', 'chat-start', 'chat-end');
 ### Debug Commands
 
 ```bash
-# Check Fly.io logs
-fly logs -a nuzantara-mouth
-
-# SSH into machine
-fly ssh console -a nuzantara-mouth
-
-# Check machine status
-fly status -a nuzantara-mouth
+# Check Vercel logs
+# Use Vercel dashboard: https://vercel.com/dashboard → Logs
 
 # Local dev with verbose
 DEBUG=* npm run dev
+
+# Check backend logs (Fly.io)
+fly logs -a nuzantara-rag
 ```
 
 ### Health Checks
 
 ```bash
 # API health
-curl https://nuzantara-mouth.fly.dev/api/blog/articles | jq '.total'
+curl https://www.balizero.com/api/blog/articles | jq '.total'
 
 # Image health
-curl -I https://nuzantara-mouth.fly.dev/images/zantara-avatar.png
+curl -I https://www.balizero.com/images/zantara-avatar.png
 
 # WebSocket (manual test)
 wscat -c wss://nuzantara-rag.fly.dev/ws
@@ -1339,9 +1308,8 @@ npm run lint                   # Lint code
 npm run test                   # Run tests
 
 # Deployment
-fly deploy --remote-only       # Deploy to Fly.io
-fly logs                       # View logs
-fly status                     # Check status
+vercel deploy --prod           # Deploy to Vercel
+# Use Vercel dashboard for logs and status
 
 # Blog
 # Add article: create file in src/content/articles/{category}/{slug}.mdx

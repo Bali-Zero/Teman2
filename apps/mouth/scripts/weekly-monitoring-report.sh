@@ -9,7 +9,7 @@ echo "📊 Weekly Monitoring Report Generator"
 echo "======================================"
 echo ""
 
-APP_URL="${PLAYWRIGHT_BASE_URL:-https://nuzantara-mouth.fly.dev}"
+APP_URL="${PLAYWRIGHT_BASE_URL:-https://www.balizero.com}"
 REPORT_DIR="./monitoring-reports"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 REPORT_FILE="$REPORT_DIR/weekly-report-$TIMESTAMP.json"

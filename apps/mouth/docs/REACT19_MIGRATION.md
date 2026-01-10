@@ -253,7 +253,7 @@ async function ChatLayout({ children }) {
 
 ### Phase 5: Production Deployment (✅ COMPLETED - 2025-12-28)
 - [x] Build verification passed
-- [x] Deployed to https://nuzantara-mouth.fly.dev/
+- [x] Deployed to https://www.balizero.com/ (now on Vercel)
 - [x] 2/2 machines healthy
 - [x] Login flow verified working
 

@@ -1,85 +1,49 @@
-# 🚀 Status Deploy - Knowledge Base Download Fix
+# Deployment Status
 
-## ✅ Modifiche Completate
+## Current Architecture
 
-### 1. Fix Blueprints Page
-- ✅ Rimosso fallback a Google Drive (`window.open` rimosso)
-- ✅ Aggiunto logging per download
-- ✅ Aggiunto alert user-friendly quando PDF non disponibile
-- ✅ File: `apps/mouth/src/app/(workspace)/knowledge/blueprints/page.tsx`
+| Service | Platform | URL | Status |
+|---------|----------|-----|--------|
+| **Backend RAG** | Fly.io | https://nuzantara-rag.fly.dev | Active |
+| **Frontend** | Vercel | https://www.balizero.com | Active |
+| **Frontend (alt)** | Vercel | https://nuzantara-mouth.vercel.app | Active |
 
-### 2. Test E2E
-- ✅ Creati 5 test E2E per verificare download senza Google Drive
-- ✅ File: `apps/mouth/e2e/knowledge/downloads.spec.ts`
-- ✅ Tutti i 35 test passano (30 originali + 5 nuovi)
+## Deployment Commands
 
-## 🔄 Status Deploy
+### Backend (Fly.io)
 
-### Problema Attuale
-- ❌ **Connettività HTTPS con Fly.io interrotta**
-- Errore: `connection reset by peer`
-- Ping funziona, ma HTTPS viene resetato
-- Probabile causa: firewall/proxy o problema temporaneo Fly.io
-
-### Soluzioni Preparate
-
-#### 1. Script Auto-Deploy (IN ESECUZIONE)
 ```bash
-# Script che riprova automaticamente quando connettività ripristinata
-./scripts/auto-deploy-when-ready.sh
-```
-**Status**: ✅ Avviato in background, riprova ogni 30 secondi
-
-#### 2. Script Deploy Manuale
-```bash
-# Quando connettività ripristinata, esegui:
-./scripts/deploy-mouth-knowledge-fix.sh
+cd apps/backend-rag
+flyctl deploy
 ```
 
-#### 3. Deploy Diretto
+### Frontend (Vercel)
+
 ```bash
 cd apps/mouth
-flyctl deploy --remote-only --app nuzantara-mouth
+vercel deploy --prod
 ```
 
-## 📋 Verifica Post-Deploy
+Or use Vercel dashboard for automatic deployments on push.
 
-Quando il deploy è completato:
+## Health Checks
 
-1. **Test Manuale**:
-   - Vai a: https://nuzantara-mouth.fly.dev/knowledge/blueprints
-   - Clicca su un bottone download
-   - ✅ Verifica che NON ci sia redirect a Google Drive
-   - ✅ Verifica che il download funzioni direttamente
+```bash
+# Backend
+curl https://nuzantara-rag.fly.dev/health | jq .
 
-2. **Verifica Logs**:
-   ```bash
-   flyctl logs --app nuzantara-mouth | grep -i "knowledge\|blueprint\|download"
-   ```
+# Frontend
+curl -I https://www.balizero.com
+```
 
-3. **Verifica Test E2E**:
-   ```bash
-   cd apps/mouth
-   npm run test:e2e -- knowledge/downloads
-   ```
+## Monitoring
 
-## 📝 File Modificati
+- **Backend logs**: `flyctl logs --app nuzantara-rag`
+- **Frontend**: Use Vercel dashboard (https://vercel.com/dashboard)
 
-- `apps/mouth/src/app/(workspace)/knowledge/blueprints/page.tsx` (modificato)
-- `apps/mouth/e2e/knowledge/downloads.spec.ts` (nuovo)
-- `scripts/deploy-mouth-knowledge-fix.sh` (nuovo)
-- `scripts/auto-deploy-when-ready.sh` (nuovo)
-- `DEPLOY_NOTE.md` (documentazione)
+## Migration Notes (2026-01-10)
 
-## 🎯 Prossimi Passi
-
-1. **Attendi** che lo script auto-deploy completi (in background)
-2. **Oppure** quando la connettività è ripristinata, esegui manualmente:
-   ```bash
-   ./scripts/deploy-mouth-knowledge-fix.sh
-   ```
-3. **Verifica** che il deploy sia completato con successo
-4. **Testa** manualmente la funzionalità
-
----
-**Ultimo aggiornamento**: $(date)
+Frontend successfully migrated from Fly.io to Vercel:
+- DNS migrated on Cloudflare
+- Fly.io app `nuzantara-mouth` stopped
+- See `docs/FRONTEND_VERCEL_MIGRATION.md` for full details

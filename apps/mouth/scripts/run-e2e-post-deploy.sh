@@ -9,7 +9,7 @@ echo "🚀 Running E2E tests after deployment..."
 echo "=========================================="
 
 # Verifica che l'app sia deployata e raggiungibile
-APP_URL="${PLAYWRIGHT_BASE_URL:-https://nuzantara-mouth.fly.dev}"
+APP_URL="${PLAYWRIGHT_BASE_URL:-https://www.balizero.com}"
 echo "📡 Testing app at: $APP_URL"
 
 # Attendi che l'app sia pronta

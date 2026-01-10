@@ -35,7 +35,8 @@ echo -e "\n${RED}━━━ ROLLBACK IN PROGRESS ━━━${NC}\n" | tee "$ROLLBA
 # Step 1: Restart Fly.io machines
 echo -e "${YELLOW}[1/4] Restarting Fly.io machines...${NC}" | tee -a "$ROLLBACK_LOG"
 
-FLY_APPS=("nuzantara-rag" "nuzantara-mouth" "bali-intel-scraper")
+# Note: Frontend (nuzantara-mouth) is now on Vercel, not Fly.io
+FLY_APPS=("nuzantara-rag" "bali-intel-scraper")
 
 for app in "${FLY_APPS[@]}"; do
     echo -e "  ${YELLOW}Starting machines for: $app${NC}" | tee -a "$ROLLBACK_LOG"
@@ -78,8 +79,8 @@ echo -e "Go to your DNS provider and revert these records:\n" | tee -a "$ROLLBAC
 echo -e "${BLUE}Backend:${NC}" | tee -a "$ROLLBACK_LOG"
 echo -e "  CNAME: api.nuzantara.com → ${RED}nuzantara-rag.fly.dev${NC}" | tee -a "$ROLLBACK_LOG"
 
-echo -e "\n${BLUE}Frontend:${NC}" | tee -a "$ROLLBACK_LOG"
-echo -e "  CNAME: app.nuzantara.com → ${RED}nuzantara-mouth.fly.dev${NC}" | tee -a "$ROLLBACK_LOG"
+echo -e "\n${BLUE}Frontend (now on Vercel):${NC}" | tee -a "$ROLLBACK_LOG"
+echo -e "  CNAME: www.balizero.com → ${GREEN}cname.vercel-dns.com${NC}" | tee -a "$ROLLBACK_LOG"
 
 echo -e "\n${YELLOW}Press Enter when DNS has been reverted...${NC}"
 read
@@ -106,7 +107,7 @@ echo -e "${YELLOW}⚠ Verify DNS propagation (5-10 minutes)${NC}\n"
 
 echo -e "${BLUE}Verification URLs:${NC}"
 echo -e "  Backend:  $FLY_BACKEND_URL/health"
-echo -e "  Frontend: https://nuzantara-mouth.fly.dev\n"
+echo -e "  Frontend: https://www.balizero.com (Vercel)\n"
 
 echo -e "${YELLOW}Rollback log saved to: $ROLLBACK_LOG${NC}\n"
 

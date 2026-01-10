@@ -5,7 +5,7 @@
 
 set -e
 
-APP_URL="${PLAYWRIGHT_BASE_URL:-https://nuzantara-mouth.fly.dev}"
+APP_URL="${PLAYWRIGHT_BASE_URL:-https://www.balizero.com}"
 
 echo "📊 Monitoring Check Script"
 echo "=========================="

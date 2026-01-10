@@ -249,7 +249,7 @@ async def create_client(
                             nationality, passport_number, passport_expiry, date_of_birth,
                             status, client_type, assigned_to, avatar_url, address, notes,
                             tags, lead_source, service_interest, custom_fields,
-                            first_contact_date, user_email
+                            first_contact_date, created_by
                         ) VALUES (
                             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                             $16, $17, $18, $19, $20, $21

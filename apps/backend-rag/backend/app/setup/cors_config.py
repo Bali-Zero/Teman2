@@ -32,10 +32,11 @@ def get_allowed_origins() -> list[str]:
 
     # Default production origins
     default_origins = [
+        "https://balizero.com",  # Primary production domain
+        "https://www.balizero.com",  # Primary production domain (www)
         "https://zantara.balizero.com",
         "https://www.zantara.balizero.com",
-        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment (primary)
-        "https://nuzantara-mouth.fly.dev",  # Legacy Fly.io deployment (deprecated, kept for backward compatibility)
+        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",  # Local development
     ]
 
