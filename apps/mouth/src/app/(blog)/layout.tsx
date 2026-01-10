@@ -112,7 +112,7 @@ export default function BlogLayout({
             {/* Logo - clean version without white border */}
             <Link href="/" className="flex items-center">
               <Image
-                src="/static/balizero-logo-clean.png"
+                src="/assets/balizero-logo-clean.png"
                 alt="Bali Zero"
                 width={52}
                 height={52}
@@ -252,7 +252,7 @@ export default function BlogLayout({
                 className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
               >
                 <Image
-                  src="/static/zantara-lotus.png"
+                  src="/assets/zantara-lotus.png"
                   alt=""
                   width={24}
                   height={24}
@@ -362,7 +362,7 @@ export default function BlogLayout({
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <Image
-                    src="/static/zantara-lotus.png"
+                    src="/assets/zantara-lotus.png"
                     alt=""
                     width={24}
                     height={24}
@@ -390,7 +390,7 @@ export default function BlogLayout({
             <div className="lg:col-span-2">
               <Link href="/" className="flex items-center mb-6">
                 <Image
-                  src="/static/balizero-logo-clean.png"
+                  src="/assets/balizero-logo-clean.png"
                   alt="Bali Zero"
                   width={52}
                   height={52}
@@ -512,7 +512,7 @@ export default function BlogLayout({
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
                 >
                   <Image
-                    src="/static/zantara-lotus.png"
+                    src="/assets/zantara-lotus.png"
                     alt=""
                     width={24}
                     height={24}

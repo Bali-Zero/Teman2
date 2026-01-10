@@ -50,7 +50,7 @@ export default function NewsPage() {
                   {/* Indonesian Flag Drape - Actual Image */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <Image
-                      src="/static/indonesian-flag-drape.jpg"
+                      src="/assets/indonesian-flag-drape.jpg"
                       alt=""
                       fill
                       className="object-cover opacity-30"
@@ -288,7 +288,7 @@ export default function NewsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group relative rounded-xl overflow-hidden">
                 <div className="aspect-video relative">
-                  <Image src="/static/blog/golden-visa.jpg" alt="Video thumbnail" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <Image src="/assets/blog/golden-visa.jpg" alt="Video thumbnail" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center group-hover:scale-110 transition-transform">

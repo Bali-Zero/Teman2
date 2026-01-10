@@ -139,7 +139,7 @@ export default function ServiceDetailPage() {
                 {/* BALI ZERO Logo */}
                 <div className="flex justify-center mb-4">
                   <Image
-                    src="/static/balizero-logo.png"
+                    src="/assets/balizero-logo.png"
                     alt="Bali Zero"
                     width={52}
                     height={52}
@@ -162,7 +162,7 @@ export default function ServiceDetailPage() {
                   href="/chat"
                   className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border border-white/40 text-white font-medium hover:bg-white/10 transition-colors"
                 >
-                  <Image src="/static/zantara-lotus.png" alt="" width={60} height={60} />
+                  <Image src="/assets/zantara-lotus.png" alt="" width={60} height={60} />
                   Ask Zantara AI
                 </Link>
               </div>
@@ -420,7 +420,7 @@ export default function ServiceDetailPage() {
                 href="/chat"
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <Image src="/static/zantara-lotus.png" alt="" width={60} height={60} />
+                <Image src="/assets/zantara-lotus.png" alt="" width={60} height={60} />
                 Ask Zantara AI
               </Link>
             </div>

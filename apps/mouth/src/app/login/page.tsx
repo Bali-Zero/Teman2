@@ -174,7 +174,7 @@ export default function LoginPage() {
             className="relative w-32 md:w-40"
           >
             <img
-              src="/static/balizero-logo-clean.png"
+              src="/assets/balizero-logo-clean.png"
               alt="Bali Zero Logo"
               className="w-full h-auto rounded-full drop-shadow-[0_15px_35px_rgba(255,255,255,0.15)] shadow-[0_8px_25px_rgba(255,255,255,0.1)]"
               loading="eager"
