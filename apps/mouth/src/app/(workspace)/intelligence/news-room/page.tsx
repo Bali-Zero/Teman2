@@ -519,14 +519,15 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  {/* View Full Article Button - Always Visible */}
+                  {/* View Full Article Button - Always Visible - FORCE RENDER */}
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handlePreview(item)}
                     disabled={previewLoading}
                     title="View Full Article"
-                    className="flex items-center justify-center min-w-[80px]"
+                    className="flex items-center justify-center min-w-[80px] border-2 border-blue-500"
+                    style={{ display: 'flex' }}
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
