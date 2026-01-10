@@ -56,7 +56,7 @@ class TestReasoningEdgeCases:
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=5)
+        state = AgentState(query="What is KITAS", max_steps=5)
         state.context_gathered = []
         state.sources = []
 
@@ -92,7 +92,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -221,7 +221,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=2)
+        state = AgentState(query="What is KITAS", max_steps=2)
         state.context_gathered = []
         state.sources = []
 
@@ -245,7 +245,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -263,7 +263,7 @@ class TestReasoningEdgeCases:
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=3)
+        state = AgentState(query="What is KITAS", max_steps=3)
         state.context_gathered = []
         state.sources = []
 
@@ -307,7 +307,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -323,7 +323,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=1)
+        state = AgentState(query="What is KITAS", max_steps=1)
         # Context that should score exactly 0.3
         state.context_gathered = ["KITAS information"]
         state.sources = []  # No sources
@@ -351,7 +351,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -366,7 +366,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=1)
+        state = AgentState(query="What is KITAS", max_steps=1)
         # Context that should score exactly 0.6
         state.context_gathered = ["KITAS visa requirements " * 20]
         state.sources = [{"id": 1, "score": 0.85}]  # High quality source
@@ -391,7 +391,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -406,7 +406,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=1)
+        state = AgentState(query="What is KITAS", max_steps=1)
         state.context_gathered = ["KITAS is a temporary residence permit " * 10]
         state.sources = [{"id": 1, "score": 0.9}]
         state.final_answer = "KITAS is a temporary residence permit for Indonesia"
@@ -432,7 +432,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -449,7 +449,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=1)
+        state = AgentState(query="What is KITAS", max_steps=1)
         state.context_gathered = ["KITAS info " * 20]
         state.sources = [{"id": "doc1", "score": 0.9, "title": "KITAS Guide"}]
         state.final_answer = "KITAS is a permit"
@@ -475,7 +475,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -492,7 +492,7 @@ class TestReasoningEdgeCases:
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=1)
+        state = AgentState(query="What is KITAS", max_steps=1)
         state.context_gathered = ["KITAS info " * 20]
         state.sources = []
         state.final_answer = "no further action needed"
@@ -518,7 +518,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
@@ -540,7 +540,7 @@ class TestReasoningEdgeCases:
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="What is KITAS?", max_steps=5)
+        state = AgentState(query="What is KITAS", max_steps=5)
         state.context_gathered = []
         state.sources = []
 
@@ -577,7 +577,7 @@ class TestReasoningEdgeCases:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter=tool_execution_counter,
