@@ -20,8 +20,9 @@ import asyncio
 import httpx
 import re
 import json
+import os
 from typing import Optional, Dict
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from loguru import logger
 
 # Optional imports
@@ -52,8 +53,9 @@ class SmartExtractor:
         ollama_model: str = "llama3.2:3b",
         ollama_url: str = "http://localhost:11434",
     ):
-        self.ollama_model = ollama_model
-        self.ollama_url = ollama_url
+        # Allow override via env vars
+        self.ollama_model = os.getenv("OLLAMA_MODEL", ollama_model)
+        self.ollama_url = os.getenv("OLLAMA_URL", ollama_url)
         self.ollama_available = None  # Lazy check
 
         # Stats
@@ -75,16 +77,51 @@ class SmartExtractor:
                 response = await client.get(f"{self.ollama_url}/api/tags")
                 if response.status_code == 200:
                     models = response.json().get("models", [])
-                    self.ollama_available = any(
+                    # Check if requested model exists, or any model exists
+                    has_model = any(
                         self.ollama_model.split(":")[0] in m.get("name", "")
                         for m in models
                     )
-                    return self.ollama_available
+                    if has_model:
+                        self.ollama_available = True
+                        return True
+                    
+                    # Fallback to any available model if specific one missing
+                    if models:
+                        first_model = models[0].get("name")
+                        logger.warning(f"Requested model {self.ollama_model} not found, falling back to {first_model}")
+                        self.ollama_model = first_model
+                        self.ollama_available = True
+                        return True
+                        
         except Exception:
             pass
 
         self.ollama_available = False
         return False
+
+    def _clean_html_for_llm(self, html: str) -> str:
+        """ Aggressively clean HTML to save tokens and reduce noise for LLM """
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+            
+            # Remove distracting elements
+            for element in soup(["script", "style", "nav", "footer", "iframe", "svg", "noscript"]):
+                element.decompose()
+                
+            # Remove comments
+            for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
+                comment.extract()
+                
+            # Get text with minimal structure
+            text = soup.get_text(separator="\n", strip=True)
+            
+            # Collapse whitespace
+            text = re.sub(r"\n\s*\n", "\n\n", text)
+            
+            return text[:20000] # Limit context window safely
+        except Exception:
+            return html[:15000]
 
     async def extract_with_llama(
         self, raw_text: str, url: str, hint: str = ""
@@ -102,26 +139,30 @@ class SmartExtractor:
             logger.warning("Ollama not available for LLM extraction fallback")
             return None
 
-        # Clean raw text for LLM (remove excessive whitespace, limit size)
-        clean_text = re.sub(r"\s+", " ", raw_text)
-        clean_text = clean_text[:15000]  # Limit to ~15k chars for context window
+        # Intelligent cleaning
+        clean_text = self._clean_html_for_llm(raw_text)
 
-        prompt = f"""You are extracting the main article content from a webpage.
+        prompt = f"""You are an expert news extractor. Your goal is to extract the main article content from the messy text below.
 
-URL: {url}
-{f"HINT: {hint}" if hint else ""}
+METADATA:
+- URL: {url}
+{f"- HINT: {hint}" if hint else ""}
 
-RAW WEBPAGE CONTENT:
+INSTRUCTIONS:
+1. Extract ONLY the main article body and title.
+2. DISCARD navigation menus, ads, "read more" links, footer text, and comments.
+3. Format the content as clean paragraphs separated by double newlines.
+4. If you cannot find a clear article, return null for fields.
+
+INPUT TEXT:
 {clean_text}
 
-TASK: Extract ONLY the main article. Ignore navigation, ads, sidebars, comments.
-
-Reply with ONLY this JSON (no markdown, no explanation):
+OUTPUT FORMAT (JSON ONLY):
 {{
-  "title": "<article title>",
-  "content": "<main article body text, paragraphs separated by \\n\\n>",
-  "author": "<author name if found, else null>",
-  "date": "<publication date if found, else null>"
+  "title": "Exact article headline",
+  "content": "Full article body text...",
+  "author": "Author name or null",
+  "date": "Publication date or null"
 }}"""
 
         try:
@@ -132,9 +173,10 @@ Reply with ONLY this JSON (no markdown, no explanation):
                         "model": self.ollama_model,
                         "prompt": prompt,
                         "stream": False,
+                        "format": "json", # Force JSON mode if supported by model
                         "options": {
-                            "temperature": 0.1,
-                            "num_predict": 2000,
+                            "temperature": 0.1, # Low temp for factual extraction
+                            "num_ctx": 4096,    # Ensure enough context
                         },
                     },
                 )
@@ -143,23 +185,27 @@ Reply with ONLY this JSON (no markdown, no explanation):
                     data = response.json()
                     result_text = data.get("response", "").strip()
 
-                    # Extract JSON
-                    if "{" in result_text:
-                        json_start = result_text.find("{")
-                        json_end = result_text.rfind("}") + 1
-                        json_str = result_text[json_start:json_end]
+                    # Extract JSON robustly
+                    try:
+                        # Try parsing directly first
+                        result = json.loads(result_text)
+                    except json.JSONDecodeError:
+                        # Fallback: find first { and last }
+                        if "{" in result_text:
+                            json_start = result_text.find("{")
+                            json_end = result_text.rfind("}") + 1
+                            json_str = result_text[json_start:json_end]
+                            result = json.loads(json_str)
+                        else:
+                            raise ValueError("No JSON found in response")
 
-                        result = json.loads(json_str)
+                    if result.get("content") and len(result["content"]) > 100:
+                        logger.success(
+                            f"🦙 Llama extracted {len(result['content'])} chars"
+                        )
+                        self.stats["llama_success"] += 1
+                        return result
 
-                        if result.get("content") and len(result["content"]) > 100:
-                            logger.success(
-                                f"🦙 Llama extracted {len(result['content'])} chars"
-                            )
-                            self.stats["llama_success"] += 1
-                            return result
-
-        except json.JSONDecodeError as e:
-            logger.warning(f"Llama JSON parse error: {e}")
         except Exception as e:
             logger.error(f"Llama extraction error: {e}")
 
@@ -174,11 +220,23 @@ Reply with ONLY this JSON (no markdown, no explanation):
                 elements = soup.select(selector)
 
                 for elem in elements:
-                    # Extract title
-                    title_elem = elem.find(["h1", "h2", "h3"])
-                    title = title_elem.get_text(strip=True) if title_elem else ""
+                    # Extract title - look for h1 inside or near the container
+                    title = ""
+                    # 1. Try finding h1 inside the element
+                    title_elem = elem.find(["h1", "h2"])
+                    if title_elem:
+                        title = title_elem.get_text(strip=True)
+                    else:
+                        # 2. Try finding h1 in the whole document
+                        page_title = soup.find("h1")
+                        if page_title:
+                            title = page_title.get_text(strip=True)
 
                     # Extract content
+                    # Remove unwanted tags inside the article body
+                    for bad_tag in elem.select("script, style, .ad, .advertisement, .related, .share"):
+                        bad_tag.decompose()
+                        
                     content = elem.get_text(separator="\n\n", strip=True)
 
                     if len(content) > 200:
@@ -197,7 +255,11 @@ Reply with ONLY this JSON (no markdown, no explanation):
 
         try:
             content = trafilatura_extract(
-                html, include_comments=False, include_tables=True, output_format="txt"
+                html, 
+                include_comments=False, 
+                include_tables=True, 
+                output_format="txt",
+                deduplicate=True
             )
 
             if content and len(content) > 200:
@@ -298,55 +360,11 @@ Reply with ONLY this JSON (no markdown, no explanation):
             return result
 
         # Layer 4: LLM Fallback (Llama)
-        logger.info("⚠️ Structured extraction failed, trying Llama LLM...")
+        logger.info("⚠️ Falling back to Llama cognitive extraction...")
         result = await self.extract_with_llama(html, url, hint)
         if result:
             result["method"] = "llama"
             return result
 
-        # All methods failed
         self.stats["failed"] += 1
-        logger.error(f"❌ All extraction methods failed for: {url}")
         return None
-
-    def get_stats(self) -> Dict:
-        """Get extraction statistics"""
-        total = sum(self.stats.values())
-        return {
-            **self.stats,
-            "total": total,
-            "success_rate": f"{(total - self.stats['failed']) / total * 100:.1f}%"
-            if total > 0
-            else "N/A",
-        }
-
-
-async def test_extractor():
-    """Test the smart extractor"""
-    extractor = SmartExtractor()
-
-    test_urls = [
-        "https://www.thejakartapost.com/indonesia/2024/12/15/indonesia-digital-nomad-visa.html",
-        "https://coconuts.co/jakarta/news/test",
-    ]
-
-    for url in test_urls:
-        print(f"\n{'=' * 60}")
-        print(f"Testing: {url}")
-        print("=" * 60)
-
-        result = await extractor.extract(url)
-
-        if result:
-            print(f"✅ Method: {result.get('method')}")
-            print(f"📰 Title: {result.get('title', 'N/A')[:80]}")
-            print(f"📝 Content: {len(result.get('content', ''))} chars")
-            print(f"Preview: {result.get('content', '')[:200]}...")
-        else:
-            print("❌ Extraction failed")
-
-    print(f"\n📊 Stats: {extractor.get_stats()}")
-
-
-if __name__ == "__main__":
-    asyncio.run(test_extractor())
