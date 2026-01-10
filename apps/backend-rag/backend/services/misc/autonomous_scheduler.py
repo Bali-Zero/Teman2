@@ -7,7 +7,9 @@ Managed Services:
 2. Backend Self-Healing Agent - Health monitoring and auto-fix (every 5min)
 3. Conversation Trainer Agent - Learn from successful conversations (every 6h)
 4. Client Value Predictor Agent - Nurture high-value clients (every 12h)
-5. Knowledge Graph Builder Agent - Build knowledge graphs (every 4h)
+5. Golden Routes Seeder - Seed common query patterns (one-time at startup)
+6. Renewal Alerts Checker - Visa/permit expiry alerts 90/60/30 days (every 12h)
+7. Knowledge Graph Builder Agent - Build knowledge graphs (every 4h)
 """
 
 import asyncio
@@ -240,7 +242,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if auto_ingestion_enabled:
         try:
-            from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+            from backend.services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
             orchestrator = AutoIngestionOrchestrator(
                 search_service=search_service,
@@ -295,7 +297,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if conversation_trainer_enabled and db_pool:
         try:
-            from agents.agents.conversation_trainer import ConversationTrainer
+            from backend.agents.agents.conversation_trainer import ConversationTrainer
 
             trainer = ConversationTrainer(
                 db_pool=db_pool,
@@ -347,7 +349,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if client_value_predictor_enabled and db_pool:
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             predictor = ClientValuePredictor(
                 db_pool=db_pool,
@@ -374,11 +376,180 @@ async def create_and_start_scheduler(
             logger.error(f"❌ Failed to register Client Value Predictor: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 5. KNOWLEDGE GRAPH BUILDER AGENT (every 4 hours)
+    # 5. GOLDEN ROUTES SEEDER (one-time at startup)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if db_pool:
+        try:
+            async def seed_golden_routes_once():
+                """Seed golden_routes with common query patterns (one-time)."""
+                logger.info("🌟 Checking Golden Routes...")
+
+                async with db_pool.acquire() as conn:
+                    # Check if already seeded
+                    count = await conn.fetchval("SELECT COUNT(*) FROM golden_routes")
+                    if count > 0:
+                        logger.info(f"🌟 Golden Routes already seeded ({count} routes)")
+                        return
+
+                    # Common query patterns for Indonesian business/immigration
+                    common_routes = [
+                        {
+                            "canonical_query": "What are the requirements for PT PMA company setup?",
+                            "collections": ["legal_unified", "visa_kb"],
+                            "hints": {"topic": "pt_pma", "intent": "requirements"},
+                        },
+                        {
+                            "canonical_query": "How much does a KITAS work permit cost?",
+                            "collections": ["visa_kb", "legal_unified"],
+                            "hints": {"topic": "kitas", "intent": "pricing"},
+                        },
+                        {
+                            "canonical_query": "What is the minimum capital for foreign investment?",
+                            "collections": ["legal_unified"],
+                            "hints": {"topic": "pt_pma", "intent": "capital"},
+                        },
+                        {
+                            "canonical_query": "How long does KITAS processing take?",
+                            "collections": ["visa_kb"],
+                            "hints": {"topic": "kitas", "intent": "timeline"},
+                        },
+                        {
+                            "canonical_query": "What documents are needed for company registration?",
+                            "collections": ["legal_unified", "visa_kb"],
+                            "hints": {"topic": "company", "intent": "documents"},
+                        },
+                        {
+                            "canonical_query": "What are the tax obligations for foreign companies?",
+                            "collections": ["tax_genius_hybrid", "legal_unified"],
+                            "hints": {"topic": "tax", "intent": "obligations"},
+                        },
+                        {
+                            "canonical_query": "How to extend KITAS work permit?",
+                            "collections": ["visa_kb"],
+                            "hints": {"topic": "kitas", "intent": "extension"},
+                        },
+                        {
+                            "canonical_query": "What is the retirement visa age requirement?",
+                            "collections": ["visa_kb"],
+                            "hints": {"topic": "retirement", "intent": "eligibility"},
+                        },
+                    ]
+
+                    import json
+                    import uuid
+
+                    for route in common_routes:
+                        route_id = f"route_{uuid.uuid4().hex[:8]}"
+                        await conn.execute(
+                            """
+                            INSERT INTO golden_routes (
+                                route_id, canonical_query, document_ids, chapter_ids,
+                                collections, routing_hints, usage_count
+                            ) VALUES ($1, $2, $3, $4, $5, $6, 0)
+                            """,
+                            route_id,
+                            route["canonical_query"],
+                            [],  # document_ids - to be populated by search
+                            [],  # chapter_ids
+                            route["collections"],
+                            json.dumps(route["hints"]),
+                        )
+
+                    logger.info(f"🌟 Seeded {len(common_routes)} Golden Routes!")
+
+            scheduler.register_task(
+                name="golden_routes_seeder",
+                task_func=seed_golden_routes_once,
+                interval_seconds=86400 * 365,  # Effectively one-time (1 year)
+                enabled=True,
+            )
+            logger.info("✅ Golden Routes Seeder registered (one-time)")
+        except Exception as e:
+            logger.error(f"❌ Failed to register Golden Routes Seeder: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 6. RENEWAL ALERTS CHECKER (every 12 hours)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if db_pool:
+        try:
+            async def run_renewal_alerts_checker():
+                """Check for upcoming practice expirations and create alerts."""
+                from datetime import datetime, timedelta
+
+                logger.info("📅 Running Renewal Alerts Checker...")
+
+                async with db_pool.acquire() as conn:
+                    today = datetime.now().date()
+                    alert_days = [90, 60, 30]  # Days before expiry to alert
+
+                    for days in alert_days:
+                        target_date = today + timedelta(days=days)
+
+                        # Find practices expiring in exactly X days that don't have alerts yet
+                        practices = await conn.fetch(
+                            """
+                            SELECT p.id, p.client_id, p.title, p.expiry_date, p.assigned_to,
+                                   c.company_name, c.full_name
+                            FROM practices p
+                            JOIN clients c ON c.id = p.client_id
+                            WHERE p.expiry_date = $1
+                              AND p.status IN ('completed', 'active')
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM renewal_alerts ra
+                                  WHERE ra.practice_id = p.id
+                                    AND ra.alert_type = $2
+                              )
+                            """,
+                            target_date,
+                            f"renewal_{days}d",
+                        )
+
+                        for p in practices:
+                            client_name = p["company_name"] or p["full_name"] or "Cliente"
+                            description = (
+                                f"🔔 Pratica '{p['title']}' per {client_name} "
+                                f"scade tra {days} giorni ({target_date})"
+                            )
+
+                            await conn.execute(
+                                """
+                                INSERT INTO renewal_alerts (
+                                    practice_id, client_id, alert_type, description,
+                                    target_date, alert_date, notify_team_member, status
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+                                """,
+                                p["id"],
+                                p["client_id"],
+                                f"renewal_{days}d",
+                                description,
+                                p["expiry_date"],
+                                today,
+                                p["assigned_to"],
+                            )
+                            logger.info(f"   📌 Created {days}d alert for practice {p['id'][:8]}...")
+
+                    # Count pending alerts
+                    pending = await conn.fetchval(
+                        "SELECT COUNT(*) FROM renewal_alerts WHERE status = 'pending'"
+                    )
+                    logger.info(f"✅ Renewal Alerts Checker done. {pending} alerts pending.")
+
+            scheduler.register_task(
+                name="renewal_alerts",
+                task_func=run_renewal_alerts_checker,
+                interval_seconds=43200,  # 12 hours
+                enabled=True,
+            )
+            logger.info("✅ Renewal Alerts Checker registered (12h interval)")
+        except Exception as e:
+            logger.error(f"❌ Failed to register Renewal Alerts: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 7. KNOWLEDGE GRAPH BUILDER AGENT (every 4 hours)
     # ═══════════════════════════════════════════════════════════════════════════
     if knowledge_graph_enabled and db_pool:
         try:
-            from agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
+            from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
 
             graph_builder = KnowledgeGraphBuilder(
                 db_pool=db_pool,
