@@ -12,6 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -29,6 +36,7 @@ import {
   Square,
   Check,
   X,
+  Eye,
 } from "lucide-react";
 
 type FilterType = "all" | "NEW" | "UPDATED" | "critical";
@@ -42,6 +50,8 @@ export default function NewsRoomPage() {
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [sortType, setSortType] = useState<SortType>("date-desc");
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewItem, setPreviewItem] = useState<StagingItem | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const toast = useToast();
 
   // Filtered and sorted items
@@ -192,6 +202,23 @@ export default function NewsRoomPage() {
     });
 
     loadNews();
+  };
+
+  const handlePreview = async (item: StagingItem) => {
+    setPreviewLoading(true);
+    try {
+      const fullItem = await intelligenceApi.getPreview(item.type, item.id);
+      setPreviewItem(fullItem);
+    } catch (error) {
+      logger.error('Failed to load preview', {
+        component: 'NewsRoomPage',
+        action: 'preview_error',
+        itemId: item.id,
+      }, error as Error);
+      toast.error("Error", "Failed to load article preview");
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const handlePublish = async (item: StagingItem) => {
@@ -451,8 +478,18 @@ export default function NewsRoomPage() {
                   </h3>
                 </div>
                 {item.content ? (
-                  <div className="text-sm text-[var(--foreground-muted)] line-clamp-4 prose prose-sm max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br />') }} />
+                  <div className="text-sm text-[var(--foreground-muted)] prose prose-sm max-w-none">
+                    <div 
+                      className="line-clamp-4"
+                      dangerouslySetInnerHTML={{ 
+                        __html: item.content
+                          .replace(/\n/g, '<br />')
+                          .replace(/## Summary/g, '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Summary</strong>')
+                          .replace(/## Facts/g, '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Facts</strong>')
+                          .replace(/## Bali Zero Take/g, '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Bali Zero Take</strong>')
+                          .replace(/## Next Steps/g, '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Next Steps</strong>')
+                      }} 
+                    />
                   </div>
                 ) : (
                   <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
@@ -482,6 +519,19 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePreview(item)}
+                    disabled={previewLoading}
+                    title="View Full Article"
+                  >
+                    {previewLoading && previewItem?.id === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
                   {item.source && item.source.startsWith('http') && (
                     <Button
                       size="sm"
@@ -500,6 +550,82 @@ export default function NewsRoomPage() {
           ))}
         </div>
       )}
+
+      {/* Preview Dialog */}
+      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{previewItem?.title}</DialogTitle>
+            <DialogDescription>
+              {previewItem && (
+                <div className="flex items-center gap-4 text-sm text-[var(--foreground-muted)] mt-2">
+                  <span>{new Date(previewItem.detected_at).toLocaleDateString()}</span>
+                  <span>•</span>
+                  <span>{previewItem.source_name || previewItem.source}</span>
+                  <span>•</span>
+                  <span className="text-[var(--accent)]">{previewItem.detection_type}</span>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {previewItem?.cover_image && (
+            <div className="w-full h-64 rounded-lg overflow-hidden mb-4">
+              <img
+                src={previewItem.cover_image}
+                alt={previewItem.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          {previewItem?.content && (
+            <div className="prose prose-sm max-w-none text-[var(--foreground)] mt-4">
+              <div 
+                className="whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ 
+                  __html: previewItem.content
+                    .replace(/\n\n/g, '<br /><br />')
+                    .replace(/## Summary/g, '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Summary</h3>')
+                    .replace(/## Facts/g, '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Facts</h3>')
+                    .replace(/## Bali Zero Take/g, '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Bali Zero Take</h3>')
+                    .replace(/## Next Steps/g, '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Next Steps</h3>')
+                    .replace(/^- /g, '<li>')
+                    .replace(/\n<li>/g, '</li><li>')
+                }} 
+              />
+            </div>
+          )}
+          <div className="flex gap-2 mt-6">
+            <Button
+              className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+              onClick={() => previewItem && handlePublish(previewItem)}
+              disabled={previewItem ? publishingIds.has(previewItem.id) : false}
+            >
+              {previewItem && publishingIds.has(previewItem.id) ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Publish Article
+                </>
+              )}
+            </Button>
+            {previewItem?.source && previewItem.source.startsWith('http') && (
+              <Button
+                variant="outline"
+                asChild
+              >
+                <a href={previewItem.source} target="_blank" rel="noreferrer" className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  View Source
+                </a>
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

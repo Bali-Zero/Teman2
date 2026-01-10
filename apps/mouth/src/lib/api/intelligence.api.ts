@@ -12,6 +12,7 @@ export interface StagingItem {
   content?: string;
   is_critical?: boolean;
   cover_image: string;  // Mandatory
+  source_name?: string;
 }
 
 export interface StagingResponse {
