@@ -81,10 +81,13 @@ function getVisibleClients(clients: Client[], currentUserEmail: string): Client[
   });
 }
 
+const PAGE_SIZE = 200; // Max allowed by backend
+
 export default function ClientiPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [listParent] = useAutoAnimate();
   const [showFilters, setShowFilters] = useState(false);
@@ -98,6 +101,9 @@ export default function ClientiPage() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
   // Load current user profile for access control
   useEffect(() => {
@@ -117,20 +123,61 @@ export default function ClientiPage() {
     };
   }, []);
 
-  const loadClients = async () => {
-    setIsLoading(true);
+  // Initial load
+  const loadClients = async (reset = true) => {
+    if (reset) {
+      setIsLoading(true);
+      setOffset(0);
+      setHasMore(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     try {
-      const data = await api.crm.getClients({ search: searchQuery || undefined });
-      setClients(data);
+      const currentOffset = reset ? 0 : offset;
+      const data = await api.crm.getClients({
+        search: searchQuery || undefined,
+        limit: PAGE_SIZE,
+        offset: currentOffset
+      });
+
+      if (reset) {
+        setClients(data);
+      } else {
+        setClients(prev => [...prev, ...data]);
+      }
+
+      // If we got fewer than PAGE_SIZE, there's no more data
+      setHasMore(data.length === PAGE_SIZE);
+      setOffset(currentOffset + data.length);
     } catch (error) {
       console.error('Failed to load clients:', error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
+  // Infinite scroll: load more when user scrolls to bottom
   useEffect(() => {
-    const debounceTimer = setTimeout(loadClients, searchQuery ? 300 : 0);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          loadClients(false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isLoadingMore, offset, searchQuery]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => loadClients(true), searchQuery ? 300 : 0);
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
 
@@ -213,8 +260,9 @@ export default function ClientiPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Clients</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
-            {activeFiltersCount > 0 && ` (filtered from ${visibleClients.length})`}
+            {filteredClients.length.toLocaleString()} client{filteredClients.length !== 1 ? 's' : ''}
+            {hasMore && ' (scroll for more)'}
+            {activeFiltersCount > 0 && ` • filtered from ${visibleClients.length.toLocaleString()}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -371,13 +419,29 @@ export default function ClientiPage() {
           </div>
         </div>
       ) : filteredClients.length > 0 ? (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           {viewMode === 'list' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-              {filteredClients.map((client) => (
-                <ClientCard key={client.id} client={client} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                {filteredClients.map((client) => (
+                  <ClientCard key={client.id} client={client} />
+                ))}
+              </div>
+              {/* Infinite scroll trigger */}
+              <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+                {isLoadingMore && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+                    <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    Loading more clients...
+                  </div>
+                )}
+                {!hasMore && clients.length > PAGE_SIZE && (
+                  <span className="text-sm text-[var(--foreground-muted)]">
+                    All {clients.length.toLocaleString()} clients loaded
+                  </span>
+                )}
+              </div>
+            </>
           ) : (
             <ClientKanban clients={filteredClients} onStatusChange={handleStatusChange} />
           )}
