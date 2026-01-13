@@ -730,7 +730,6 @@ function OverviewTab({
 
         {/* Actual Visa Card */}
         <ActualVisaCard
-          client={client}
           documents={documents}
           formatDate={formatDate}
         />
@@ -960,11 +959,9 @@ function PassportCard({
 // ACTUAL VISA CARD COMPONENT
 // ============================================
 function ActualVisaCard({
-  client,
   documents,
   formatDate,
 }: {
-  client: ClientProfile['client'];
   documents: ClientDocument[];
   formatDate: (d: string) => string;
 }) {
@@ -988,24 +985,6 @@ function ActualVisaCard({
 
   const latestVisa = sortedVisaDocs[0];
 
-  // Parse visa info from notes if no document found
-  // Format: [2026-01-13] c1_visa - 26,000,000 IDR
-  const visaFromNotes = !latestVisa && client.notes ? (() => {
-    const visaMatch = client.notes.match(/\[[\d-]+\]\s*(c\d+_visa|visa|kitas|kitap|evisa|e-visa)\s*[-–]\s*([\d,]+)\s*IDR/i);
-    if (visaMatch) {
-      return {
-        type: visaMatch[1].replace('_', ' ').toUpperCase(),
-        price: visaMatch[2],
-      };
-    }
-    return null;
-  })() : null;
-
-  // Build Drive folder embed URL for preview (if no specific visa doc)
-  const driveFolderEmbedUrl = client.google_drive_folder_id
-    ? `https://drive.google.com/embeddedfolderview?id=${client.google_drive_folder_id}#grid`
-    : null;
-
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
@@ -1020,11 +999,6 @@ function ActualVisaCard({
             {latestVisa.alert_color === 'expired' ? 'EXPIRED' :
              latestVisa.alert_color === 'red' ? 'Expiring Soon' :
              latestVisa.alert_color === 'yellow' ? 'Check Soon' : 'Valid'}
-          </span>
-        )}
-        {!latestVisa && visaFromNotes && (
-          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
-            In Process
           </span>
         )}
       </div>
@@ -1091,47 +1065,6 @@ function ActualVisaCard({
                   </span>
                 </div>
               )}
-            </div>
-          </>
-        ) : visaFromNotes ? (
-          /* Show visa info parsed from notes */
-          <>
-            {driveFolderEmbedUrl && (
-              <div className="mb-4">
-                <a
-                  href={`https://drive.google.com/drive/folders/${client.google_drive_folder_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block relative group"
-                >
-                  <div className="aspect-[3/2] rounded-lg overflow-hidden border border-blue-500/30">
-                    <iframe
-                      src={driveFolderEmbedUrl}
-                      className="w-full h-full pointer-events-none"
-                      style={{ border: 'none' }}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                      <div className="bg-black/60 rounded-lg px-3 py-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <FolderOpen className="w-4 h-4 text-white" />
-                        <span className="text-sm text-white">View Documents</span>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-            )}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--foreground-muted)]">Type</span>
-                <span className="font-medium text-[var(--foreground)]">{visaFromNotes.type}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--foreground-muted)]">Price</span>
-                <span className="font-medium text-[var(--foreground)]">{visaFromNotes.price} IDR</span>
-              </div>
-              <p className="text-xs text-blue-400 mt-2">
-                Visa process started - upload document when ready
-              </p>
             </div>
           </>
         ) : (
