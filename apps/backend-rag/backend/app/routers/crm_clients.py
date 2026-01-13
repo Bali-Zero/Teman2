@@ -1018,3 +1018,178 @@ async def refresh_crm_metrics(
         raise
     except Exception as e:
         raise handle_database_error(e)
+
+
+# ================================================
+# PASSPORT OCR EXTRACTION
+# ================================================
+
+
+class PassportExtractRequest(BaseModel):
+    """Request model for passport data extraction"""
+    client_id: int
+    image_url: str
+
+
+class PassportExtractResponse(BaseModel):
+    """Response model for extracted passport data"""
+    success: bool
+    passport_number: str | None = None
+    passport_expiry: str | None = None
+    message: str | None = None
+
+
+@router.post("/extract-passport", response_model=PassportExtractResponse)
+async def extract_passport_data(
+    request: PassportExtractRequest,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """
+    Extract passport number and expiry date from passport image using Gemini Vision.
+    Updates the client record with extracted data.
+    """
+    import base64
+    import httpx
+
+    try:
+        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+
+        if not GENAI_AVAILABLE:
+            return PassportExtractResponse(
+                success=False,
+                message="Vision service not available"
+            )
+
+        # Initialize Gemini client
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return PassportExtractResponse(
+                success=False,
+                message="Gemini Vision not configured"
+            )
+
+        # Download image from Google Drive
+        image_url = request.image_url
+        if "/view" in image_url:
+            # Convert view URL to direct download URL
+            import re
+            match = re.search(r'/d/([^/]+)', image_url)
+            if match:
+                file_id = match.group(1)
+                image_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+        logger.info(f"Downloading passport image from: {image_url[:50]}...")
+
+        async with httpx.AsyncClient(follow_redirects=True) as http_client:
+            response = await http_client.get(image_url, timeout=30.0)
+            if response.status_code != 200:
+                return PassportExtractResponse(
+                    success=False,
+                    message=f"Failed to download image: HTTP {response.status_code}"
+                )
+            image_data = response.content
+
+        # Convert to base64
+        image_base64 = base64.b64encode(image_data).decode()
+
+        # Determine MIME type
+        mime_type = "image/jpeg"
+        if image_data[:4] == b'\x89PNG':
+            mime_type = "image/png"
+        elif image_data[:4] == b'%PDF':
+            mime_type = "application/pdf"
+
+        # Build multimodal content for Gemini Vision
+        ocr_prompt = """Analyze this passport image and extract the following information.
+Return ONLY a JSON object with these fields:
+{
+  "passport_number": "the passport number or null if not found",
+  "expiry_date": "expiry date in YYYY-MM-DD format or null if not found"
+}
+
+Look for:
+- The passport number (usually alphanumeric, 8-9 characters)
+- The expiry date or date of expiration field
+
+IMPORTANT: Return ONLY the JSON object, no additional text."""
+
+        contents = [
+            {"text": ocr_prompt},
+            {"inline_data": {"mime_type": mime_type, "data": image_base64}},
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents,
+            model="gemini-3-flash-preview",
+            max_output_tokens=500,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"Gemini OCR response: {response_text[:200]}...")
+
+        # Parse JSON response
+        import json
+        import re as regex
+
+        # Extract JSON from response (handle markdown code blocks)
+        json_match = regex.search(r'\{[^}]+\}', response_text, regex.DOTALL)
+        if not json_match:
+            return PassportExtractResponse(
+                success=False,
+                message="Could not parse OCR response"
+            )
+
+        extracted_data = json.loads(json_match.group())
+        passport_number = extracted_data.get("passport_number")
+        expiry_date = extracted_data.get("expiry_date")
+
+        if not passport_number and not expiry_date:
+            return PassportExtractResponse(
+                success=False,
+                message="No passport data found in image"
+            )
+
+        # Update client record
+        async with db_pool.acquire() as conn:
+            update_fields = []
+            update_values = []
+            param_num = 1
+
+            if passport_number:
+                update_fields.append(f"passport_number = ${param_num}")
+                update_values.append(passport_number)
+                param_num += 1
+
+            if expiry_date:
+                update_fields.append(f"passport_expiry = ${param_num}")
+                update_values.append(expiry_date)
+                param_num += 1
+
+            if update_fields:
+                update_values.append(request.client_id)
+                await conn.execute(
+                    f"UPDATE clients SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = ${param_num}",
+                    *update_values
+                )
+                logger.info(f"Updated client {request.client_id} with extracted passport data")
+
+        return PassportExtractResponse(
+            success=True,
+            passport_number=passport_number,
+            passport_expiry=expiry_date,
+            message="Passport data extracted successfully"
+        )
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse OCR JSON: {e}")
+        return PassportExtractResponse(
+            success=False,
+            message="Failed to parse extracted data"
+        )
+    except Exception as e:
+        logger.error(f"Passport OCR extraction failed: {e}")
+        return PassportExtractResponse(
+            success=False,
+            message=str(e)
+        )
