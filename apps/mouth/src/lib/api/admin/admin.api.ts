@@ -155,5 +155,201 @@ export class AdminApi {
       headers: this.client.getAdminHeaders(),
     });
   }
+
+  // ============================================================================
+  // Team Activity Dashboard
+  // ============================================================================
+
+  async getTeamActivityOverview(): Promise<TeamActivityOverview> {
+    return this.client.request<TeamActivityOverview>('/api/admin/team-activity/overview', {
+      headers: this.client.getAdminHeaders(),
+    });
+  }
+
+  async getTeamActivityMessages(params: {
+    user_id?: string;
+    role?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<MessagesResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.user_id) searchParams.append('user_id', params.user_id);
+    if (params.role) searchParams.append('role', params.role);
+    if (params.search) searchParams.append('search', params.search);
+    if (params.date_from) searchParams.append('date_from', params.date_from);
+    if (params.date_to) searchParams.append('date_to', params.date_to);
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.offset) searchParams.append('offset', params.offset.toString());
+
+    return this.client.request<MessagesResponse>(
+      `/api/admin/team-activity/messages?${searchParams.toString()}`,
+      { headers: this.client.getAdminHeaders() }
+    );
+  }
+
+  async getTeamStats(days = 30): Promise<TeamStatsResponse> {
+    return this.client.request<TeamStatsResponse>(
+      `/api/admin/team-activity/team-stats?days=${days}`,
+      { headers: this.client.getAdminHeaders() }
+    );
+  }
+
+  async getTeamTimesheet(params: {
+    email?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TimesheetResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.email) searchParams.append('email', params.email);
+    if (params.date_from) searchParams.append('date_from', params.date_from);
+    if (params.date_to) searchParams.append('date_to', params.date_to);
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.offset) searchParams.append('offset', params.offset.toString());
+
+    return this.client.request<TimesheetResponse>(
+      `/api/admin/team-activity/timesheet?${searchParams.toString()}`,
+      { headers: this.client.getAdminHeaders() }
+    );
+  }
+
+  async getCrmActions(params: {
+    email?: string;
+    action?: string;
+    entity_type?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<CrmActionsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.email) searchParams.append('email', params.email);
+    if (params.action) searchParams.append('action', params.action);
+    if (params.entity_type) searchParams.append('entity_type', params.entity_type);
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.offset) searchParams.append('offset', params.offset.toString());
+
+    return this.client.request<CrmActionsResponse>(
+      `/api/admin/team-activity/crm-actions?${searchParams.toString()}`,
+      { headers: this.client.getAdminHeaders() }
+    );
+  }
+
+  async exportMessages(params: {
+    user_id?: string;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<Blob> {
+    const searchParams = new URLSearchParams();
+    if (params.user_id) searchParams.append('user_id', params.user_id);
+    if (params.date_from) searchParams.append('date_from', params.date_from);
+    if (params.date_to) searchParams.append('date_to', params.date_to);
+
+    const headers = this.client.getAdminHeaders();
+    const baseUrl = this.client.getBaseUrl();
+    const token = this.client.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${baseUrl}/api/admin/team-activity/export/messages?${searchParams.toString()}`,
+      { headers, credentials: 'include' }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to export messages');
+    }
+
+    return response.blob();
+  }
+}
+
+// ============================================================================
+// Types for Team Activity
+// ============================================================================
+
+interface TeamActivityOverview {
+  success: boolean;
+  stats: {
+    total_conversations: number;
+    total_messages: number;
+    total_team_members: number;
+    active_today: number;
+    messages_today: number;
+  };
+  top_users: Array<{ user_id: string; msg_count: number }>;
+}
+
+interface MessageItem {
+  conversation_id: number;
+  user_id: string | null;
+  role: string | null;
+  content: string | null;
+  message_timestamp: string | null;
+  content_length: number | null;
+  conversation_started: string;
+}
+
+interface MessagesResponse {
+  success: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  messages: MessageItem[];
+}
+
+interface TeamMemberStat {
+  email: string;
+  name: string | null;
+  role: string | null;
+  department: string | null;
+  conversations: number;
+  messages: number;
+  days_worked: number;
+  crm_actions: number;
+  last_activity: string | null;
+}
+
+interface TeamStatsResponse {
+  success: boolean;
+  period_days: number;
+  team_stats: TeamMemberStat[];
+}
+
+interface TimesheetRecord {
+  id: number;
+  email: string;
+  action_type: string;
+  timestamp: string;
+  notes: string | null;
+}
+
+interface TimesheetResponse {
+  success: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  records: TimesheetRecord[];
+}
+
+interface CrmAction {
+  id: number;
+  performed_by: string;
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  description: string | null;
+  performed_at: string;
+}
+
+interface CrmActionsResponse {
+  success: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  actions: CrmAction[];
 }
 
