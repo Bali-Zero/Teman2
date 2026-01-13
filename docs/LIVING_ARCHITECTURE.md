@@ -3024,6 +3024,8 @@ Update a visa type by ID
 
 ### legal-ingestion
 
+> **📚 Documentazione Completa:** Vedi [LEGAL_INGESTION_PIPELINE.md](./LEGAL_INGESTION_PIPELINE.md) per dettagli completi sulla pipeline, configurazione, costi OCR e troubleshooting.
+
 #### `GET /api/legal/collections/stats`
 
 Get statistics for legal document collection.
@@ -3074,11 +3076,16 @@ Returns:
 Ingest a single legal document through the specialized pipeline.
 
 Pipeline stages:
-1. Clean: Remove headers/footers/noise
-2. Extract Metadata: Type, number, year, topic
-3. Parse Structure: BAB, Pasal, Ayat hierarchy
-4. Chunk: Pasal-aware chunking with context injection
-5. Embed & Store: Generate embeddings and store in Qdrant
+1. Parse: Extract text (con OCR avanzato Gemini Vision per PDF scannerizzati)
+2. Upload Google Drive: Archiviazione permanente (non-blocking)
+3. Clean: Remove headers/footers/noise
+4. Extract Metadata: Type, number, year, topic
+5. Parse Structure: BAB, Pasal, Ayat hierarchy
+6. Chunk: Pasal-aware chunking with context injection
+7. Embed & Store: Generate embeddings and store in Qdrant + PostgreSQL
+8. KG Extraction: Estrazione Knowledge Graph automatica (non-blocking)
+
+> **📚 Vedi [LEGAL_INGESTION_PIPELINE.md](../LEGAL_INGESTION_PIPELINE.md) per documentazione completa.**
 
 Args:
     request: Legal ingestion request with file path and options
@@ -9350,7 +9357,25 @@ Responsibility: Detect language from query text with Italian focus for Bali Zero
 **Module:** `services.ingestion.legal_ingestion_service`
 
 Specialized ingestion service for Indonesian legal documents.
-Implements 4-stage pipeline: Clean → Extract Metadata → Parse Structure → Chunk
+
+**Pipeline Stages:**
+1. Parse (con OCR avanzato Gemini Vision per PDF scannerizzati)
+2. Upload Google Drive (permanente, non-blocking)
+3. Clean Text
+4. Extract Metadata
+5. Parse Structure (BAB/Pasal/Ayat)
+6. Hierarchical Chunking
+7. Embed & Store (Qdrant + PostgreSQL)
+8. KG Extraction (permanente, non-blocking)
+
+**Features:**
+- ✅ OCR avanzato con Google Gemini Vision per PDF scannerizzati
+- ✅ Upload permanente su Google Drive
+- ✅ Knowledge Graph extraction automatica
+- ✅ Gestione errori robusta (tutto non-blocking)
+- ✅ Supporto named vectors in Qdrant
+
+> **📚 Vedi [LEGAL_INGESTION_PIPELINE.md](./LEGAL_INGESTION_PIPELINE.md) per documentazione completa, costi OCR e troubleshooting.**
 
 ### `MCPClientService`
 
