@@ -26,7 +26,7 @@ export default function NewPracticePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', // Maps to notes
-    practice_type_code: 'kitas_application',
+    practice_type_code: 'visa',
     client_id: searchParams.get('client_id') ? Number(searchParams.get('client_id')) : undefined,
   });
 
@@ -113,7 +113,7 @@ export default function NewPracticePage() {
     e.preventDefault();
 
     if (!formData.client_id) {
-      toast.error('Missing Client', 'Please select a client to create this case for.');
+      toast.error('Missing Client', 'Please select a client to create this process for.');
       casesMetrics.trackError('Validation Error', 'Missing client_id', 'CasesNewPage', undefined, userEmail.current || undefined);
       return;
     }
@@ -142,7 +142,7 @@ export default function NewPracticePage() {
       casesMetrics.trackCaseCreation(caseId, formData.practice_type_code, formData.client_id, user.email);
       casesMetrics.endPerformanceMark('case_creation', caseId, user.email);
 
-      toast.success('Case Created', 'Successfully created new practice.');
+      toast.success('Process Created', 'Successfully created new process.');
       router.push('/cases');
     } catch (error) {
       const apiDuration = performance.now() - apiStart;
@@ -169,8 +169,8 @@ export default function NewPracticePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">New Case</h1>
-          <p className="text-sm text-[var(--foreground-muted)]">Start a new practice or case</p>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">New Process</h1>
+          <p className="text-sm text-[var(--foreground-muted)]">Start a new process</p>
         </div>
       </div>
 
@@ -263,9 +263,9 @@ export default function NewPracticePage() {
             )}
           </div>
 
-          {/* Case Type */}
+          {/* Process Type */}
           <div className="space-y-2">
-            <label className={labelClass}>Case Type</label>
+            <label className={labelClass}>Process Type</label>
             <div className="relative">
               <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
               <select
@@ -273,11 +273,14 @@ export default function NewPracticePage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, practice_type_code: e.target.value }))}
                 className={`${inputClass} appearance-none cursor-pointer`}
               >
-                <option value="kitas_application">KITAS Work Permit</option>
-                <option value="kitap_application">KITAP Permanent Permit</option>
-                <option value="pt_pma_setup">PT PMA Company Setup</option>
-                <option value="property_purchase">Property Purchase</option>
-                <option value="tax_consulting">Tax Consulting</option>
+                <option value="visa">VISA</option>
+                <option value="extension_visa">EXTENSION VISA</option>
+                <option value="kitas">KITAS</option>
+                <option value="extension_kitas">EXTENSION KITAS</option>
+                <option value="tax">TAX</option>
+                <option value="new_pt">NEW PT</option>
+                <option value="revision_pt">REVISION PT</option>
+                <option value="accessories">ACCESSORIES</option>
               </select>
             </div>
           </div>
@@ -313,7 +316,7 @@ export default function NewPracticePage() {
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  Create Case
+                  Create Process
                 </>
               )}
             </Button>

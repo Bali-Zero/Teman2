@@ -120,6 +120,26 @@ const getCountryFlag = (nationality: string | undefined): string | null => {
   return NATIONALITY_FLAGS[nationality] || null;
 };
 
+// Calculate passport validity color based on months until expiry
+// Green: >14 months, Orange: 9-13 months, Red: <9 months
+const getPassportValidityColor = (expiryDate: string | undefined): { color: string; label: string; bgClass: string; textClass: string } => {
+  if (!expiryDate) return { color: 'gray', label: 'No expiry', bgClass: 'bg-gray-500/20', textClass: 'text-gray-400' };
+
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const monthsUntilExpiry = (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+  if (monthsUntilExpiry <= 0) {
+    return { color: 'red', label: 'EXPIRED', bgClass: 'bg-red-600/30', textClass: 'text-red-300' };
+  } else if (monthsUntilExpiry < 9) {
+    return { color: 'red', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-red-500/20', textClass: 'text-red-400' };
+  } else if (monthsUntilExpiry < 14) {
+    return { color: 'orange', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-orange-500/20', textClass: 'text-orange-400' };
+  } else {
+    return { color: 'green', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-green-500/20', textClass: 'text-green-400' };
+  }
+};
+
 const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   chat: <MessageCircle className="w-4 h-4" />,
   email: <Mail className="w-4 h-4" />,
@@ -129,7 +149,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType = 'overview' | 'family' | 'documents' | 'cases' | 'timeline';
+type TabType = 'overview' | 'family' | 'documents' | 'process' | 'timeline';
 type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document';
 
 export default function ClientDetailPage() {
@@ -186,7 +206,7 @@ export default function ClientDetailPage() {
   // Read tab from URL params and set active tab
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['overview', 'family', 'documents', 'cases', 'timeline'].includes(tabParam)) {
+    if (tabParam && ['overview', 'family', 'documents', 'process', 'timeline'].includes(tabParam)) {
       setActiveTab(tabParam as TabType);
     }
   }, [searchParams]);
@@ -356,11 +376,11 @@ export default function ClientDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-[var(--border)] pb-2 overflow-x-auto">
-        {[ 
+        {[
           { key: 'overview', label: 'Overview', icon: User },
           { key: 'family', label: `Family (${stats.family_count})`, icon: Users },
           { key: 'documents', label: `Documents (${stats.documents_count})`, icon: FileText },
-          { key: 'cases', label: `Cases (${stats.practices_count})`, icon: FolderOpen },
+          { key: 'process', label: `Process (${stats.practices_count})`, icon: FolderOpen },
           { key: 'timeline', label: 'Timeline', icon: Clock },
         ].map(({ key, label, icon: Icon }) => (
           <Button
@@ -381,7 +401,7 @@ export default function ClientDetailPage() {
         <OverviewTab
           client={client}
           stats={stats}
-          expiry_alerts={expiry_alerts}
+          documents={documents}
           activePractices={activePractices}
           completedPractices={completedPractices}
           recentInteractions={interactions}
@@ -425,8 +445,8 @@ export default function ClientDetailPage() {
         />
       )}
 
-      {activeTab === 'cases' && (
-        <CasesTab
+      {activeTab === 'process' && (
+        <ProcessTab
           clientId={clientId}
           practices={practices}
           formatDate={formatDate}
@@ -473,13 +493,13 @@ export default function ClientDetailPage() {
   );
 }
 
-// ============================================ 
+// ============================================
 // OVERVIEW TAB
-// ============================================ 
+// ============================================
 function OverviewTab({
   client,
   stats,
-  expiry_alerts,
+  documents,
   activePractices,
   completedPractices,
   recentInteractions,
@@ -492,7 +512,7 @@ function OverviewTab({
 }: {
   client: ClientProfile['client'];
   stats: ClientProfile['stats'];
-  expiry_alerts: ExpiryAlert[];
+  documents: ClientDocument[];
   activePractices: ClientProfile['practices'];
   completedPractices: ClientProfile['practices'];
   recentInteractions: Interaction[];
@@ -543,7 +563,7 @@ function OverviewTab({
                 size="sm"
                 className="gap-1 text-[var(--foreground-muted)] hover:text-red-500"
                 onClick={async () => {
-                  if (confirm(`⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All cases and documents remain in the system.\n\nContinue?`)) {
+                  if (confirm(`⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All process and documents remain in the system.\n\nContinue?`)) {
                     try {
                       const user = await api.getProfile();
                       await api.crm.deleteClient(client.id, user.email);
@@ -599,19 +619,22 @@ function OverviewTab({
                 <span className="text-[var(--foreground)]">{client.nationality}</span>
               </div>
             )}
-            {client.passport_number && (
-              <div className="flex items-center gap-3 text-sm">
-                <CreditCard className="w-4 h-4 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">
-                  {client.passport_number}
-                  {client.passport_expiry && (
-                    <span className="text-[var(--foreground-muted)] ml-2">
-                      (exp: {formatDate(client.passport_expiry)})
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
+            {client.passport_number && (() => {
+              const passportValidity = getPassportValidityColor(client.passport_expiry);
+              return (
+                <div className="flex items-center gap-3 text-sm">
+                  <CreditCard className="w-4 h-4 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)] flex items-center gap-2">
+                    {client.passport_number}
+                    {client.passport_expiry && (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${passportValidity.bgClass} ${passportValidity.textClass}`}>
+                        {formatDate(client.passport_expiry)} • {passportValidity.label}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })()}
             {client.address && (
               <div className="flex items-center gap-3 text-sm">
                 <MapPin className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -653,7 +676,7 @@ function OverviewTab({
           <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-4 h-4 text-purple-500" />
-              <span className="text-xs text-[var(--foreground-muted)]">Active Cases</span>
+              <span className="text-xs text-[var(--foreground-muted)]">Active Process</span>
             </div>
             <p className="text-2xl font-bold text-[var(--foreground)]">{activePractices.length}</p>
           </div>
@@ -702,99 +725,26 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Middle Column - Expiry Alerts */}
+      {/* Middle Column - Passport & Actual Visa */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
-          <Bell className="w-5 h-5" />
-          Expiry Alerts
-        </h3>
-        {expiry_alerts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
-            <CheckCircle2 className="w-8 h-8 mx-auto text-green-500 mb-2" />
-            <p className="text-sm text-[var(--foreground-muted)]">No expiring documents</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {expiry_alerts.map((alert, idx) => (
-              <div
-                key={`${alert.entity_type}-${alert.entity_id}-${idx}`}
-                className={`rounded-lg border p-3 ${ALERT_COLORS[alert.alert_color] || 'bg-gray-500/20'}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">{alert.entity_name}</span>
-                  <span className="text-xs">
-                    {alert.alert_color === 'expired'
-                      ? 'EXPIRED'
-                      : `${alert.days_until_expiry}d left`}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs opacity-80">
-                  <span>{alert.document_type}</span>
-                  <span>{formatDate(alert.expiry_date)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Passport Card */}
+        <PassportCard
+          client={client}
+          documents={documents}
+          formatDate={formatDate}
+        />
 
-        {/* Recent Activity */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2 mb-4">
-            <Clock className="w-5 h-5" />
-            Recent Activity
-          </h3>
-          {recentInteractions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6 text-center">
-              <MessageCircle className="w-6 h-6 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
-              <p className="text-sm text-[var(--foreground-muted)]">No recent activity</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {recentInteractions.slice(0, 5).map((interaction) => (
-                <div
-                  key={interaction.id}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`w-6 h-6 rounded-full flex items-center justify-center ${ 
-                        interaction.interaction_type === 'whatsapp'
-                          ? 'bg-green-500/20 text-green-500'
-                          : interaction.interaction_type === 'email'
-                          ? 'bg-blue-500/20 text-blue-500'
-                          : interaction.interaction_type === 'call'
-                          ? 'bg-purple-500/20 text-purple-500'
-                          : interaction.interaction_type === 'note'
-                          ? 'bg-yellow-500/20 text-yellow-500'
-                          : 'bg-[var(--accent)]/20 text-[var(--accent)]'
-                      }`}
-                    >
-                      {INTERACTION_ICONS[interaction.interaction_type] || <MessageCircle className="w-3 h-3" />}
-                    </span>
-                    <span className="text-xs font-medium text-[var(--foreground)] flex-1">
-                      {interaction.interaction_type.charAt(0).toUpperCase() +
-                        interaction.interaction_type.slice(1)}
-                    </span>
-                    <span className="text-[10px] text-[var(--foreground-muted)]">
-                      {formatDate(interaction.interaction_date)}
-                    </span>
-                  </div>
-                  {interaction.summary && (
-                    <p className="text-xs text-[var(--foreground-muted)] line-clamp-2 ml-8">
-                      {interaction.summary}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Actual Visa Card */}
+        <ActualVisaCard
+          documents={documents}
+          formatDate={formatDate}
+        />
       </div>
 
-      {/* Right Column - Active Cases */}
+      {/* Right Column - Active Process */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Active Cases</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Active Process</h3>
           <Button
             size="sm"
             className="gap-2"
@@ -807,7 +757,7 @@ function OverviewTab({
         {activePractices.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
             <FolderOpen className="w-8 h-8 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">No active cases</p>
+            <p className="text-sm text-[var(--foreground-muted)]">No active process</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -841,11 +791,11 @@ function OverviewTab({
                       </button>
                       <button
                         onClick={async () => {
-                          if (confirm(`Delete case "${practice.practice_type_name}"?\n\nThis will mark the case as cancelled.`)) {
+                          if (confirm(`Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`)) {
                             try {
                               const user = await api.getProfile();
                               await api.crm.deletePractice(practice.id, user.email);
-                              toast.success('Case deleted');
+                              toast.success('Process deleted');
                               window.location.reload();
                             } catch (err) {
                               toast.error('Error', (err as Error).message);
@@ -874,9 +824,250 @@ function OverviewTab({
   );
 }
 
-// ============================================ 
+// ============================================
+// PASSPORT CARD COMPONENT
+// ============================================
+function PassportCard({
+  client,
+  documents,
+  formatDate,
+}: {
+  client: ClientProfile['client'];
+  documents: ClientDocument[];
+  formatDate: (d: string) => string;
+}) {
+  // Find passport document from documents (look for personal category with passport type)
+  const passportDoc = documents.find(
+    (doc) =>
+      doc.document_type?.toLowerCase().includes('passport') ||
+      doc.document_category === 'personal' && doc.document_type?.toLowerCase() === 'passport'
+  );
+
+  // Get passport validity color
+  const passportValidity = getPassportValidityColor(client.passport_expiry);
+  const passportImageUrl = passportDoc?.google_drive_file_url;
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+        <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
+          Passport
+        </h3>
+        {client.passport_expiry && (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${passportValidity.bgClass} ${passportValidity.textClass}`}>
+            {passportValidity.label}
+          </span>
+        )}
+      </div>
+
+      <div className="p-4">
+        {/* Passport Image */}
+        {passportImageUrl ? (
+          <div className="mb-4">
+            <a
+              href={passportImageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block relative group"
+            >
+              <div className={`aspect-[3/2] rounded-lg overflow-hidden border-2 ${
+                passportValidity.color === 'green' ? 'border-green-500/50' :
+                passportValidity.color === 'orange' ? 'border-orange-500/50' :
+                passportValidity.color === 'red' ? 'border-red-500/50' :
+                'border-[var(--border)]'
+              }`}>
+                <iframe
+                  src={`${passportImageUrl.replace('/view', '/preview')}`}
+                  className="w-full h-full"
+                  allow="autoplay"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <ExternalLink className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            </a>
+          </div>
+        ) : client.google_drive_folder_id ? (
+          <div className="mb-4">
+            <a
+              href={`https://drive.google.com/drive/folders/${client.google_drive_folder_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`aspect-[3/2] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 hover:bg-[var(--background)] transition-colors ${
+                passportValidity.color === 'green' ? 'border-green-500/30' :
+                passportValidity.color === 'orange' ? 'border-orange-500/30' :
+                passportValidity.color === 'red' ? 'border-red-500/30' :
+                'border-[var(--border)]'
+              }`}
+            >
+              <FolderOpen className="w-8 h-8 text-[var(--foreground-muted)]" />
+              <span className="text-xs text-[var(--foreground-muted)]">View in Drive</span>
+            </a>
+          </div>
+        ) : (
+          <div className="mb-4 aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+            <CreditCard className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-xs text-[var(--foreground-muted)]">No passport image</span>
+          </div>
+        )}
+
+        {/* Passport Info */}
+        <div className="space-y-2">
+          {client.passport_number && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[var(--foreground-muted)]">Number</span>
+              <span className="font-mono font-medium text-[var(--foreground)]">{client.passport_number}</span>
+            </div>
+          )}
+          {client.passport_expiry && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[var(--foreground-muted)]">Expires</span>
+              <span className={`font-medium ${passportValidity.textClass}`}>
+                {formatDate(client.passport_expiry)}
+              </span>
+            </div>
+          )}
+          {!client.passport_number && !client.passport_expiry && (
+            <p className="text-sm text-[var(--foreground-muted)] text-center py-2">
+              No passport info recorded
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// ACTUAL VISA CARD COMPONENT
+// ============================================
+function ActualVisaCard({
+  documents,
+  formatDate,
+}: {
+  documents: ClientDocument[];
+  formatDate: (d: string) => string;
+}) {
+  // Find latest visa/KITAS document (immigration category with visa-related types)
+  const visaDocs = documents.filter(
+    (doc) =>
+      doc.document_category === 'immigration' &&
+      (doc.document_type?.toLowerCase().includes('visa') ||
+       doc.document_type?.toLowerCase().includes('kitas') ||
+       doc.document_type?.toLowerCase().includes('kitap') ||
+       doc.document_type?.toLowerCase().includes('e-visa') ||
+       doc.document_type?.toLowerCase().includes('evisa'))
+  );
+
+  // Sort by expiry date descending to get the most recent/valid visa
+  const sortedVisaDocs = visaDocs.sort((a, b) => {
+    if (!a.expiry_date) return 1;
+    if (!b.expiry_date) return -1;
+    return new Date(b.expiry_date).getTime() - new Date(a.expiry_date).getTime();
+  });
+
+  const latestVisa = sortedVisaDocs[0];
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+        <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          Actual Visa
+        </h3>
+        {latestVisa?.expiry_date && (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            ALERT_COLORS[latestVisa.alert_color || 'green']
+          }`}>
+            {latestVisa.alert_color === 'expired' ? 'EXPIRED' :
+             latestVisa.alert_color === 'red' ? 'Expiring Soon' :
+             latestVisa.alert_color === 'yellow' ? 'Check Soon' : 'Valid'}
+          </span>
+        )}
+      </div>
+
+      <div className="p-4">
+        {latestVisa ? (
+          <>
+            {/* Visa Image */}
+            {latestVisa.google_drive_file_url ? (
+              <div className="mb-4">
+                <a
+                  href={latestVisa.google_drive_file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block relative group"
+                >
+                  <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
+                    ALERT_COLORS[latestVisa.alert_color || 'green']?.split(' ')[0] || 'border-[var(--border)]'
+                  }`}>
+                    <iframe
+                      src={`${latestVisa.google_drive_file_url.replace('/view', '/preview')}`}
+                      className="w-full h-full"
+                      allow="autoplay"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <ExternalLink className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                </a>
+              </div>
+            ) : (
+              <div className="mb-4 aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+                <FileText className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+                <span className="text-xs text-[var(--foreground-muted)]">No visa image</span>
+              </div>
+            )}
+
+            {/* Visa Info */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--foreground-muted)]">Type</span>
+                <span className="font-medium text-[var(--foreground)]">
+                  {latestVisa.document_type?.replace(/_/g, ' ').toUpperCase() || 'Unknown'}
+                </span>
+              </div>
+              {latestVisa.expiry_date && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--foreground-muted)]">Expires</span>
+                  <span className={`font-medium ${
+                    latestVisa.alert_color === 'expired' ? 'text-red-400' :
+                    latestVisa.alert_color === 'red' ? 'text-red-400' :
+                    latestVisa.alert_color === 'yellow' ? 'text-yellow-400' :
+                    'text-green-400'
+                  }`}>
+                    {formatDate(latestVisa.expiry_date)}
+                  </span>
+                </div>
+              )}
+              {latestVisa.file_name && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--foreground-muted)]">File</span>
+                  <span className="text-[var(--foreground)] truncate max-w-[150px]" title={latestVisa.file_name}>
+                    {latestVisa.file_name}
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-6">
+            <FileText className="w-10 h-10 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
+            <p className="text-sm text-[var(--foreground-muted)]">No visa documents</p>
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              Upload visa/KITAS in Documents tab
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // FAMILY TAB
-// ============================================ 
+// ============================================
 function FamilyTab({
   clientId,
   familyMembers,
@@ -1136,10 +1327,10 @@ function DocumentsTab({
   );
 }
 
-// ============================================ 
-// CASES TAB
-// ============================================ 
-function CasesTab({
+// ============================================
+// PROCESS TAB
+// ============================================
+function ProcessTab({
   clientId,
   practices,
   formatDate,
@@ -1156,17 +1347,17 @@ function CasesTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">All Cases</h3>
+        <h3 className="text-lg font-semibold text-[var(--foreground)]">All Process</h3>
         <Button size="sm" className="gap-2" onClick={() => router.push(`/cases/new?client_id=${clientId}`)}>
           <Plus className="w-4 h-4" />
-          New Case
+          New Process
         </Button>
       </div>
 
       {practices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
           <FolderOpen className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">No cases yet</p>
+          <p className="text-[var(--foreground-muted)]">No process yet</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -1203,18 +1394,18 @@ function CasesTab({
                         router.push(`/cases/${practice.id}/edit`);
                       }}
                       className="p-1 rounded hover:bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                      title="Edit case"
+                      title="Edit process"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm(`Delete case "${practice.practice_type_name}"?\n\nThis will mark the case as cancelled.`)) {
+                        if (confirm(`Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`)) {
                           try {
                             const user = await api.getProfile();
                             await api.crm.deletePractice(practice.id, user.email);
-                            toast.success('Case deleted');
+                            toast.success('Process deleted');
                             window.location.reload();
                           } catch (err) {
                             toast.error('Error', (err as Error).message);
@@ -1222,7 +1413,7 @@ function CasesTab({
                         }
                       }}
                       className="p-1 rounded hover:bg-red-500/20 text-[var(--foreground-muted)] hover:text-red-500"
-                      title="Delete case"
+                      title="Delete process"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

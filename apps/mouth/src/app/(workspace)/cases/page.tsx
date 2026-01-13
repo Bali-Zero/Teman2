@@ -85,7 +85,7 @@ export default function PratichePage() {
         setPractices(data);
       } catch (error) {
         console.error('Failed to load practices:', error);
-        toast.error('Error', 'Failed to load cases');
+        toast.error('Error', 'Failed to load process');
       } finally {
         setIsLoading(false);
       }
@@ -162,13 +162,13 @@ export default function PratichePage() {
       // Track status change
       trackCaseStatusChanged(practiceId, oldStatus, newStatus);
 
-      toast.success('Status Updated', `Case moved to ${newStatus.replace(/_/g, ' ')}`);
+      toast.success('Status Updated', `Process moved to ${newStatus.replace(/_/g, ' ')}`);
 
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
       console.error('Failed to update status:', error);
-      toast.error('Error', 'Failed to update case status');
+      toast.error('Error', 'Failed to update process status');
     } finally {
       setUpdatingId(null);
     }
@@ -318,7 +318,7 @@ export default function PratichePage() {
         </div>
         <Button className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white" onClick={handleNewCase}>
           <Plus className="w-4 h-4" />
-          New Case
+          New Process
         </Button>
       </div>
 
@@ -329,7 +329,7 @@ export default function PratichePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
             <input
               type="text"
-              placeholder="Search cases by ID, client, type..."
+              placeholder="Search process by ID, client, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
@@ -414,7 +414,7 @@ export default function PratichePage() {
               {/* Type Filter */}
               <div>
                 <label htmlFor="type-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
-                  Case Type
+                  Process Type
                 </label>
                 <select
                   id="type-filter"
@@ -497,7 +497,7 @@ export default function PratichePage() {
                   ) : columnPractices.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
                       <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
-                      <p className="text-xs text-[var(--foreground-muted)]">No cases</p>
+                      <p className="text-xs text-[var(--foreground-muted)]">No process</p>
                     </div>
                   ) : (
                     columnPractices.map((practice) => (
@@ -521,7 +521,7 @@ export default function PratichePage() {
                         {/* Card Header */}
                         <div className="flex items-start justify-between mb-1">
                           <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
-                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Case'}
+                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'}
                           </p>
 
                           {/* 3-Dot Menu Trigger */}
@@ -560,7 +560,7 @@ export default function PratichePage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const phone = practice.client_phone?.replace(/\D/g, '');
-                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
+                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                               title="WhatsApp"
@@ -614,9 +614,9 @@ export default function PratichePage() {
           ) : filteredPractices.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12">
               <FolderKanban className="w-16 h-16 text-[var(--foreground-muted)] opacity-50 mb-4" />
-              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No cases found</h3>
+              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No process found</h3>
               <p className="text-sm text-[var(--foreground-muted)] max-w-md">
-                Try adjusting your search or filters to find cases.
+                Try adjusting your search or filters to find process.
               </p>
             </div>
           ) : (
@@ -641,7 +641,7 @@ export default function PratichePage() {
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        Case Type
+                        Process Type
                         {sortField === 'practice_type_code' && (
                           sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                         )}
@@ -735,7 +735,7 @@ export default function PratichePage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const phone = practice.client_phone?.replace(/\D/g, '');
-                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
+                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                               title="WhatsApp"
@@ -773,7 +773,7 @@ export default function PratichePage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--background-elevated)]">
                   <div className="text-sm text-[var(--foreground-muted)]">
-                    Showing {((listPageNumber - 1) * itemsPerPage) + 1} to {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of {filteredPractices.length} cases
+                    Showing {((listPageNumber - 1) * itemsPerPage) + 1} to {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of {filteredPractices.length} process
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -820,7 +820,7 @@ export default function PratichePage() {
       {/* Info Footer */}
       <div className="text-center py-8">
         <p className="text-xs text-[var(--foreground-muted)]">
-          Pro Tip: Right-click or use the menu on cards to quickly change case status.
+          Pro Tip: Right-click or use the menu on cards to quickly change process status.
         </p>
       </div>
 
@@ -839,7 +839,7 @@ export default function PratichePage() {
               Update Status
             </p>
             <p className="text-[10px] text-[var(--foreground-muted)]">
-              Case #{selectedPractice.id}
+              Process #{selectedPractice.id}
             </p>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1 space-y-0.5">
