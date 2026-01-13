@@ -806,19 +806,23 @@ function OverviewTab({
       </div>
 
       {/* Column 3: Visa */}
-      <ActualVisaCard
-        documents={documents}
-        activePractices={activePractices}
-        formatDate={formatDate}
-        formatCurrency={formatCurrency}
-      />
+      <div className="self-start">
+        <ActualVisaCard
+          documents={documents}
+          activePractices={activePractices}
+          formatDate={formatDate}
+          formatCurrency={formatCurrency}
+        />
+      </div>
 
       {/* Column 4: Process */}
-      <ActiveProcessCard
-        activePractices={activePractices}
-        formatDate={formatDate}
-        router={router}
-      />
+      <div className="self-start">
+        <ActiveProcessCard
+          activePractices={activePractices}
+          formatDate={formatDate}
+          router={router}
+        />
+      </div>
     </div>
   );
 }
