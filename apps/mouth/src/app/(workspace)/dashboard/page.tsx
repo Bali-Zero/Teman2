@@ -12,6 +12,7 @@ import {
   AiPulseWidget,
   FinancialRealityWidget,
   AutoCRMWidget,
+  FeaturedArticlesWidget,
 } from '@/components/dashboard';
 import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -232,6 +233,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Featured Articles from Bali Zero */}
+        <FeaturedArticlesWidget />
 
       {/* Admin-only widgets */}
       {isZero && (
