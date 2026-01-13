@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Shield, Newspaper, Activity, BarChart3 } from "lucide-react";
+import { Shield, Newspaper, Activity, BarChart3, PenTool } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const tabs = [
@@ -18,6 +18,12 @@ const tabs = [
     href: "/intelligence/news-room",
     icon: Newspaper,
     description: "Curate immigration news articles"
+  },
+  {
+    name: "Article Composer",
+    href: "/intelligence/article-composer",
+    icon: PenTool,
+    description: "Create articles with Bali Zero style"
   },
   {
     name: "Analytics",
