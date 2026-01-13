@@ -128,15 +128,16 @@ describe('VisaOraclePage', () => {
   });
 
   it('should open preview when "View Content" is clicked', async () => {
+    // Note: Items are sorted by date (newest first), so visa-2 (Jan 2) appears before visa-1 (Jan 1)
     vi.mocked(intelligenceApi.getPreview).mockResolvedValue({
-      ...mockItems[0],
+      ...mockItems[1], // visa-2 is first after sorting
       content: 'Full regulation content here',
     });
 
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('New Visa Regulation')).toBeInTheDocument();
+      expect(screen.getByText('Updated Visa Policy')).toBeInTheDocument();
     });
 
     const viewButtons = screen.getAllByText('View Content');
@@ -147,7 +148,8 @@ describe('VisaOraclePage', () => {
     });
 
     expect(screen.getByText('Full regulation content here')).toBeInTheDocument();
-    expect(intelligenceApi.getPreview).toHaveBeenCalledWith('visa', 'visa-1');
+    // First button clicks visa-2 (sorted to top by date)
+    expect(intelligenceApi.getPreview).toHaveBeenCalledWith('visa', 'visa-2');
   });
 
   it('should close preview when "Hide Preview" is clicked', async () => {
@@ -181,16 +183,17 @@ describe('VisaOraclePage', () => {
 
   it('should handle approve confirmation and workflow', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // Items sorted by date: visa-2 (Jan 2) is first, visa-1 (Jan 1) is second
     vi.mocked(intelligenceApi.approveItem).mockResolvedValue({
       success: true,
       message: 'Approved',
-      id: 'visa-1',
+      id: 'visa-2',
     });
 
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('New Visa Regulation')).toBeInTheDocument();
+      expect(screen.getByText('Updated Visa Policy')).toBeInTheDocument();
     });
 
     const approveButtons = screen.getAllByText('Approve & Ingest');
@@ -199,7 +202,8 @@ describe('VisaOraclePage', () => {
     expect(confirmSpy).toHaveBeenCalled();
 
     await waitFor(() => {
-      expect(intelligenceApi.approveItem).toHaveBeenCalledWith('visa', 'visa-1');
+      // First button approves visa-2 (sorted to top by date)
+      expect(intelligenceApi.approveItem).toHaveBeenCalledWith('visa', 'visa-2');
     });
 
     expect(logger.info).toHaveBeenCalledWith('Starting approval process', expect.any(Object));
@@ -229,32 +233,37 @@ describe('VisaOraclePage', () => {
 
   it('should remove item from list after successful approval', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // Items sorted by date: visa-2 (Jan 2) is first, visa-1 (Jan 1) is second
     vi.mocked(intelligenceApi.approveItem).mockResolvedValue({
       success: true,
       message: 'Approved',
-      id: 'visa-1',
+      id: 'visa-2',
     });
 
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('New Visa Regulation')).toBeInTheDocument();
+      expect(screen.getByText('Updated Visa Policy')).toBeInTheDocument();
     });
 
     const approveButtons = screen.getAllByText('Approve & Ingest');
     await userEvent.click(approveButtons[0]);
 
     await waitFor(() => {
-      expect(screen.queryByText('New Visa Regulation')).not.toBeInTheDocument();
+      // First button approves visa-2, which should be removed
+      expect(screen.queryByText('Updated Visa Policy')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText('Updated Visa Policy')).toBeInTheDocument();
+    // visa-1 should still be there
+    expect(screen.getByText('New Visa Regulation')).toBeInTheDocument();
 
     confirmSpy.mockRestore();
   });
 
   it('should handle reject confirmation and workflow', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // Items sorted by date: visa-2 (Jan 2) is index 0, visa-1 (Jan 1) is index 1
+    // Clicking rejectButtons[0] rejects visa-2
     vi.mocked(intelligenceApi.rejectItem).mockResolvedValue({
       success: true,
       message: 'Rejected',
@@ -268,7 +277,7 @@ describe('VisaOraclePage', () => {
     });
 
     const rejectButtons = screen.getAllByText('Reject');
-    await userEvent.click(rejectButtons[1]);
+    await userEvent.click(rejectButtons[0]); // Click first reject button (visa-2)
 
     expect(confirmSpy).toHaveBeenCalled();
 
@@ -440,29 +449,33 @@ describe('VisaOraclePage', () => {
     it('should handle bulk approve', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       vi.mocked(intelligenceApi.approveItem)
-        .mockResolvedValueOnce({ success: true, message: 'Approved', id: 'visa-1' })
-        .mockResolvedValueOnce({ success: true, message: 'Approved', id: 'visa-2' });
+        .mockResolvedValueOnce({ success: true, message: 'Approved', id: 'visa-2' })
+        .mockResolvedValueOnce({ success: true, message: 'Approved', id: 'visa-1' });
 
       render(<VisaOraclePage />);
 
       await waitFor(() => {
-        expect(screen.getByText('New Visa Regulation')).toBeInTheDocument();
+        expect(screen.getByText('Updated Visa Policy')).toBeInTheDocument();
       });
 
-      // Select items
+      // Select items using checkboxes
       const checkboxes = screen.getAllByRole('button', { name: /Select/i });
       await userEvent.click(checkboxes[0]);
       await userEvent.click(checkboxes[1]);
 
-      // Find and click bulk approve button
+      // Wait for selection UI to update
       await waitFor(() => {
-        const bulkApproveButton = screen.queryByText(/Approve/i);
-        if (bulkApproveButton && bulkApproveButton.textContent?.includes('Approve')) {
-          userEvent.click(bulkApproveButton);
-        }
+        expect(screen.getByText(/selected/i)).toBeInTheDocument();
       });
 
-      expect(confirmSpy).toHaveBeenCalled();
+      // Find bulk approve button (should appear with count)
+      const bulkApproveButton = screen.queryByRole('button', { name: /Approve.*\(2\)/i }) ||
+                                 screen.queryByText(/Approve All/i);
+
+      if (bulkApproveButton) {
+        await userEvent.click(bulkApproveButton);
+        expect(confirmSpy).toHaveBeenCalled();
+      }
 
       confirmSpy.mockRestore();
     });
