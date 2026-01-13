@@ -130,16 +130,16 @@ describe('Cases Page', () => {
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Cases')).toBeInTheDocument();
+        expect(screen.getByText('Process')).toBeInTheDocument();
         expect(screen.getByText(/Manage KITAS, Visa, PT PMA/)).toBeInTheDocument();
       });
     });
 
-    it('should render "+ New Case" button', async () => {
+    it('should render "+ New Process" button', async () => {
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /New Case/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /New Process/i })).toBeInTheDocument();
       });
     });
 
@@ -147,7 +147,7 @@ describe('Cases Page', () => {
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Search cases by ID, client, type/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Search process by ID, client, type/i)).toBeInTheDocument();
       });
     });
 
@@ -317,7 +317,7 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search cases/i);
+      const searchInput = screen.getByPlaceholderText(/Search process/i);
       await user.type(searchInput, 'John');
 
       await waitFor(() => {
@@ -336,7 +336,7 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search cases/i);
+      const searchInput = screen.getByPlaceholderText(/Search process/i);
       await user.type(searchInput, '2');
 
       await waitFor(() => {
@@ -353,7 +353,7 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search cases/i);
+      const searchInput = screen.getByPlaceholderText(/Search process/i);
       await user.type(searchInput, 'kitas');
 
       await waitFor(() => {
@@ -370,7 +370,7 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search cases/i);
+      const searchInput = screen.getByPlaceholderText(/Search process/i);
       await user.type(searchInput, 'nonexistent');
 
       await waitFor(() => {
@@ -395,7 +395,7 @@ describe('Cases Page', () => {
       // Filter panel should be visible
       await waitFor(() => {
         expect(screen.getByText(/Status/)).toBeInTheDocument();
-        expect(screen.getByText(/Case Type/)).toBeInTheDocument();
+        expect(screen.getByText(/Process Type/)).toBeInTheDocument();
         expect(screen.getByText(/Assigned To/)).toBeInTheDocument();
       });
     });
@@ -465,7 +465,7 @@ describe('Cases Page', () => {
       const statusSelect = screen.getByLabelText(/Status/i);
       await user.selectOptions(statusSelect, 'inquiry');
 
-      const typeSelect = screen.getByLabelText(/Case Type/i);
+      const typeSelect = screen.getByLabelText(/Process Type/i);
       await user.selectOptions(typeSelect, 'KITAS');
 
       await waitFor(() => {
@@ -489,12 +489,12 @@ describe('Cases Page', () => {
       await user.click(listButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Case Type')).toBeInTheDocument();
+        expect(screen.getByText('Process Type')).toBeInTheDocument();
       });
 
       // Find and click a sortable header (e.g., Case Type)
-      const caseTypeHeader = screen.getByText('Case Type');
-      await user.click(caseTypeHeader);
+      const processTypeHeader = screen.getByText('Process Type');
+      await user.click(processTypeHeader);
 
       await waitFor(() => {
         expect(analytics.trackSortApplied).toHaveBeenCalled();
@@ -514,12 +514,12 @@ describe('Cases Page', () => {
       await user.click(listButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Case Type')).toBeInTheDocument();
+        expect(screen.getByText('Process Type')).toBeInTheDocument();
       });
 
-      const caseTypeHeader = screen.getByText('Case Type');
-      await user.click(caseTypeHeader); // First click: asc
-      await user.click(caseTypeHeader); // Second click: desc
+      const processTypeHeader = screen.getByText('Process Type');
+      await user.click(processTypeHeader); // First click: asc
+      await user.click(processTypeHeader); // Second click: desc
 
       await waitFor(() => {
         expect(analytics.trackSortApplied).toHaveBeenCalled();
@@ -616,19 +616,19 @@ describe('Cases Page', () => {
     });
   });
 
-  describe('Case Creation', () => {
-    it('should navigate to new case page when "+ New Case" clicked', async () => {
+  describe('Process Creation', () => {
+    it('should navigate to new process page when "+ New Process" clicked', async () => {
       const user = userEvent.setup();
       mockPush.mockClear();
 
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /New Case/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /New Process/i })).toBeInTheDocument();
       });
 
-      const newCaseButton = screen.getByRole('button', { name: /New Case/i });
-      await user.click(newCaseButton);
+      const newProcessButton = screen.getByRole('button', { name: /New Process/i });
+      await user.click(newProcessButton);
 
       expect(mockPush).toHaveBeenCalledWith('/cases/new');
     });
@@ -741,7 +741,7 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search cases/i);
+      const searchInput = screen.getByPlaceholderText(/Search process/i);
       await user.type(searchInput, 'John');
 
       await waitFor(() => {

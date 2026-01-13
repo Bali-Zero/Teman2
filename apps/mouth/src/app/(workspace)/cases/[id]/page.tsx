@@ -71,7 +71,7 @@ export default function CaseDetailPage() {
   useEffect(() => {
     const loadPractice = async () => {
       if (!caseId) {
-        setError('Invalid case ID');
+        setError('Invalid process ID');
         setIsLoading(false);
         casesMetrics.trackError('Invalid Case ID', 'No case ID provided', 'CasesDetailPage', undefined, userEmail.current || undefined);
         return;
@@ -91,8 +91,8 @@ export default function CaseDetailPage() {
         const foundPractice = allPractices.find(p => p.id === caseId);
 
         if (!foundPractice) {
-          setError('Case not found');
-          toast.error('Error', `Case #${caseId} not found`);
+          setError('Process not found');
+          toast.error('Error', `Process #${caseId} not found`);
           casesMetrics.trackError('Case Not Found', `Case #${caseId} not found`, 'CasesDetailPage', caseId, userEmail.current || undefined);
         } else {
           setPractice(foundPractice);
@@ -102,9 +102,9 @@ export default function CaseDetailPage() {
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall('/api/crm/practices', 'GET', false, apiDuration, caseId, userEmail.current || undefined);
 
-        console.error('Failed to load case:', err);
-        setError('Failed to load case details');
-        toast.error('Error', 'Failed to load case details');
+        console.error('Failed to load process:', err);
+        setError('Failed to load process details');
+        toast.error('Error', 'Failed to load process details');
         casesMetrics.trackError('API Error', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
       } finally {
         setIsLoading(false);
@@ -199,7 +199,7 @@ export default function CaseDetailPage() {
       casesMetrics.trackCaseUpdate(caseId, fieldsUpdated, updateType, user.email);
       casesMetrics.trackModal('edit', 'submit', caseId, user.email);
 
-      toast.success('Case Updated', 'Successfully updated case details.');
+      toast.success('Process Updated', 'Successfully updated process details.');
       setIsEditModalOpen(false);
     } catch (err) {
       const apiDuration = performance.now() - apiStart;
@@ -224,16 +224,16 @@ export default function CaseDetailPage() {
       console.error('[Cases] Failed to update case details:', errorDetails);
 
       // Check for specific error types and provide user-friendly messages
-      let errorMessage = 'Failed to update case details.';
+      let errorMessage = 'Failed to update process details.';
       if (err instanceof Error) {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
           errorMessage = 'Authentication failed. Please login again.';
           console.error('[Cases] Authentication error - user may need to re-authenticate');
         } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
-          errorMessage = 'You do not have permission to update this case.';
+          errorMessage = 'You do not have permission to update this process.';
           console.error('[Cases] Authorization error - user may not have permission');
         } else if (err.message.includes('404') || err.message.includes('Not Found')) {
-          errorMessage = 'Case not found. It may have been deleted.';
+          errorMessage = 'Process not found. It may have been deleted.';
           console.error('[Cases] Case not found - may have been deleted');
         } else if (err.message.includes('Network') || err.message.includes('fetch')) {
           errorMessage = 'Network error. Please check your connection and try again.';
@@ -255,7 +255,7 @@ export default function CaseDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)] mx-auto mb-4" />
-          <p className="text-[var(--foreground-muted)]">Loading case details...</p>
+          <p className="text-[var(--foreground-muted)]">Loading process details...</p>
         </div>
       </div>
     );
@@ -267,14 +267,14 @@ export default function CaseDetailPage() {
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[var(--foreground)] mb-2">
-            {error || 'Case Not Found'}
+            {error || 'Process Not Found'}
           </h2>
           <p className="text-[var(--foreground-muted)] mb-6">
-            The case you're looking for doesn't exist or you don't have permission to view it.
+            The process you're looking for doesn't exist or you don't have permission to view it.
           </p>
           <Button onClick={() => router.push('/cases')} variant="default">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Cases
+            Back to Process
           </Button>
         </div>
       </div>
@@ -299,14 +299,14 @@ export default function CaseDetailPage() {
           className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Cases</span>
+          <span>Back to Process</span>
         </button>
 
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-[var(--foreground)]">
-                {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Case'} #{practice.id}
+                {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #{practice.id}
               </h1>
               <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}>
                 {statusInfo.icon}
@@ -314,7 +314,7 @@ export default function CaseDetailPage() {
               </div>
             </div>
             <p className="text-[var(--foreground-muted)]">
-              {practice.practice_type_name || 'Case Details'}
+              {practice.practice_type_name || 'Process Details'}
             </p>
           </div>
 
@@ -405,11 +405,11 @@ export default function CaseDetailPage() {
             </div>
           </div>
 
-          {/* Case Details */}
+          {/* Process Details */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
             <h2 className="text-xl font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Case Details
+              Process Details
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -486,7 +486,7 @@ export default function CaseDetailPage() {
                   onClick={() => {
                     casesMetrics.trackQuickAction('whatsapp', caseId || 0, 'CasesDetailPage', userEmail.current || undefined);
                     const phone = practice.client_phone?.replace(/\D/g, '');
-                    window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
+                    window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
                   }}
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
@@ -540,7 +540,7 @@ export default function CaseDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--background-secondary)] z-10">
-              <h2 className="text-xl font-bold text-[var(--foreground)]">Edit Case #{practice.id}</h2>
+              <h2 className="text-xl font-bold text-[var(--foreground)]">Edit Process #{practice.id}</h2>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
