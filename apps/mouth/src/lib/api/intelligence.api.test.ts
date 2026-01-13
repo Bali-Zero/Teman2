@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { intelligenceApi, StagingResponse, StagingItem, ApproveResponse, SystemMetrics, PublishResponse } from './intelligence.api';
+import { intelligenceApi, StagingResponse, StagingItem, ApproveResponse, SystemMetrics, PublishResponse, IntelligenceAnalytics } from './intelligence.api';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -427,7 +427,7 @@ describe('intelligence.api', () => {
       const result = await intelligenceApi.getAnalytics(30);
 
       expect(api.request).toHaveBeenCalledWith('/api/intel/analytics?days=30');
-      expect(logger.apiCall).toHaveBeenCalledWith('/api/intel/analytics?days=30', 'GET', { action: 'get_analytics', days: 30 });
+      expect(logger.apiCall).toHaveBeenCalledWith('/api/intel/analytics?days=30', 'GET', { action: 'get_analytics', metadata: { days: 30 } });
       expect(logger.apiSuccess).toHaveBeenCalledWith(
         '/api/intel/analytics?days=30',
         0,
@@ -480,7 +480,7 @@ describe('intelligence.api', () => {
       expect(logger.apiError).toHaveBeenCalledWith(
         '/api/intel/analytics?days=30',
         mockError,
-        { action: 'get_analytics', days: 30 }
+        { action: 'get_analytics', metadata: { days: 30 } }
       );
     });
   });
