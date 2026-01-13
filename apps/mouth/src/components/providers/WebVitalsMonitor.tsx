@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { initWebVitals } from '@/lib/web-vitals';
-import { Metric } from 'web-vitals';
+import type { Metric } from 'web-vitals';
 
 /**
  * Web Vitals Monitor Component
