@@ -649,12 +649,6 @@ function OverviewTab({
             )}
           </div>
 
-          {client.notes && (
-            <div className="mt-4 pt-4 border-t border-[var(--border)]">
-              <p className="text-xs text-[var(--foreground-muted)] mb-1">Notes</p>
-              <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap">{client.notes}</p>
-            </div>
-          )}
         </div>
 
         {/* Stats Cards */}
@@ -736,6 +730,7 @@ function OverviewTab({
 
         {/* Actual Visa Card */}
         <ActualVisaCard
+          client={client}
           documents={documents}
           formatDate={formatDate}
         />
@@ -847,8 +842,18 @@ function PassportCard({
   const passportValidity = getPassportValidityColor(client.passport_expiry);
   const passportImageUrl = passportDoc?.google_drive_file_url;
 
+  // Build Drive folder embed URL for preview
+  const driveFolderEmbedUrl = client.google_drive_folder_id
+    ? `https://drive.google.com/embeddedfolderview?id=${client.google_drive_folder_id}#grid`
+    : null;
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+    <div className={`rounded-xl border-2 bg-[var(--background-secondary)] overflow-hidden ${
+      passportValidity.color === 'green' ? 'border-green-500/40' :
+      passportValidity.color === 'orange' ? 'border-orange-500/40' :
+      passportValidity.color === 'red' ? 'border-red-500/40' :
+      'border-[var(--border)]'
+    }`}>
       <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
         <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
           <CreditCard className="w-5 h-5" />
@@ -862,7 +867,7 @@ function PassportCard({
       </div>
 
       <div className="p-4">
-        {/* Passport Image */}
+        {/* Passport Image from Document */}
         {passportImageUrl ? (
           <div className="mb-4">
             <a
@@ -871,7 +876,7 @@ function PassportCard({
               rel="noopener noreferrer"
               className="block relative group"
             >
-              <div className={`aspect-[3/2] rounded-lg overflow-hidden border-2 ${
+              <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
                 passportValidity.color === 'green' ? 'border-green-500/50' :
                 passportValidity.color === 'orange' ? 'border-orange-500/50' :
                 passportValidity.color === 'red' ? 'border-red-500/50' :
@@ -888,21 +893,33 @@ function PassportCard({
               </div>
             </a>
           </div>
-        ) : client.google_drive_folder_id ? (
+        ) : driveFolderEmbedUrl ? (
+          /* Show Drive folder preview if no passport document but has Drive folder */
           <div className="mb-4">
             <a
               href={`https://drive.google.com/drive/folders/${client.google_drive_folder_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className={`aspect-[3/2] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 hover:bg-[var(--background)] transition-colors ${
+              className="block relative group"
+            >
+              <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
                 passportValidity.color === 'green' ? 'border-green-500/30' :
                 passportValidity.color === 'orange' ? 'border-orange-500/30' :
                 passportValidity.color === 'red' ? 'border-red-500/30' :
                 'border-[var(--border)]'
-              }`}
-            >
-              <FolderOpen className="w-8 h-8 text-[var(--foreground-muted)]" />
-              <span className="text-xs text-[var(--foreground-muted)]">View in Drive</span>
+              }`}>
+                <iframe
+                  src={driveFolderEmbedUrl}
+                  className="w-full h-full pointer-events-none"
+                  style={{ border: 'none' }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <div className="bg-black/60 rounded-lg px-3 py-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <FolderOpen className="w-4 h-4 text-white" />
+                    <span className="text-sm text-white">Open in Drive</span>
+                  </div>
+                </div>
+              </div>
             </a>
           </div>
         ) : (
@@ -943,9 +960,11 @@ function PassportCard({
 // ACTUAL VISA CARD COMPONENT
 // ============================================
 function ActualVisaCard({
+  client,
   documents,
   formatDate,
 }: {
+  client: ClientProfile['client'];
   documents: ClientDocument[];
   formatDate: (d: string) => string;
 }) {
@@ -969,6 +988,24 @@ function ActualVisaCard({
 
   const latestVisa = sortedVisaDocs[0];
 
+  // Parse visa info from notes if no document found
+  // Format: [2026-01-13] c1_visa - 26,000,000 IDR
+  const visaFromNotes = !latestVisa && client.notes ? (() => {
+    const visaMatch = client.notes.match(/\[[\d-]+\]\s*(c\d+_visa|visa|kitas|kitap|evisa|e-visa)\s*[-–]\s*([\d,]+)\s*IDR/i);
+    if (visaMatch) {
+      return {
+        type: visaMatch[1].replace('_', ' ').toUpperCase(),
+        price: visaMatch[2],
+      };
+    }
+    return null;
+  })() : null;
+
+  // Build Drive folder embed URL for preview (if no specific visa doc)
+  const driveFolderEmbedUrl = client.google_drive_folder_id
+    ? `https://drive.google.com/embeddedfolderview?id=${client.google_drive_folder_id}#grid`
+    : null;
+
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
@@ -983,6 +1020,11 @@ function ActualVisaCard({
             {latestVisa.alert_color === 'expired' ? 'EXPIRED' :
              latestVisa.alert_color === 'red' ? 'Expiring Soon' :
              latestVisa.alert_color === 'yellow' ? 'Check Soon' : 'Valid'}
+          </span>
+        )}
+        {!latestVisa && visaFromNotes && (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+            In Process
           </span>
         )}
       </div>
@@ -1049,6 +1091,47 @@ function ActualVisaCard({
                   </span>
                 </div>
               )}
+            </div>
+          </>
+        ) : visaFromNotes ? (
+          /* Show visa info parsed from notes */
+          <>
+            {driveFolderEmbedUrl && (
+              <div className="mb-4">
+                <a
+                  href={`https://drive.google.com/drive/folders/${client.google_drive_folder_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block relative group"
+                >
+                  <div className="aspect-[3/2] rounded-lg overflow-hidden border border-blue-500/30">
+                    <iframe
+                      src={driveFolderEmbedUrl}
+                      className="w-full h-full pointer-events-none"
+                      style={{ border: 'none' }}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <div className="bg-black/60 rounded-lg px-3 py-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <FolderOpen className="w-4 h-4 text-white" />
+                        <span className="text-sm text-white">View Documents</span>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--foreground-muted)]">Type</span>
+                <span className="font-medium text-[var(--foreground)]">{visaFromNotes.type}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--foreground-muted)]">Price</span>
+                <span className="font-medium text-[var(--foreground)]">{visaFromNotes.price} IDR</span>
+              </div>
+              <p className="text-xs text-blue-400 mt-2">
+                Visa process started - upload document when ready
+              </p>
             </div>
           </>
         ) : (
@@ -1742,6 +1825,14 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
             <option value="">Select...</option>
             {COMMON_NATIONALITIES.map(nat => <option key={nat} value={nat}>{nat}</option>)}
           </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Passport Number</label>
+          <input type="text" value={formData.passport_number} onChange={e => setFormData({...formData, passport_number: e.target.value.toUpperCase()})} className={inputClass} placeholder="e.g. YA123456" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Passport Expiry</label>
+          <input type="date" value={formData.passport_expiry} onChange={e => setFormData({...formData, passport_expiry: e.target.value})} className={inputClass} />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Assigned To</label>
