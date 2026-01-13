@@ -96,7 +96,10 @@ export default function KnowledgePage() {
   // Track page load and performance
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
-    
+
+    // Track KB page view
+    api.kbActivity.logView('knowledge_hub', undefined, 'Knowledge Base', 'main');
+
     logger.componentMount('KnowledgePage', {
       component: 'KnowledgePage',
       action: 'mount',
