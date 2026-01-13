@@ -9,6 +9,7 @@ from backend.app.modules.identity.router import router as identity_router
 from backend.app.modules.knowledge.router import router as knowledge_router
 from backend.app.routers import (
     admin_logs,
+    admin_team_activity,
     agentic_rag,
     agents,
     analytics,
@@ -168,6 +169,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)
+
+    # Admin Team Activity router (Complete team activity dashboard)
+    api.include_router(admin_team_activity.router)
 
     # Dashboard aggregation router
     api.include_router(dashboard_summary.router)
