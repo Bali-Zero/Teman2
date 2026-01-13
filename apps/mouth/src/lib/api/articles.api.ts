@@ -3,7 +3,11 @@
  * Handles manual article creation with Bali Zero style enrichment
  */
 
-import { apiClient } from "./client";
+import { ApiClientBase } from "./client";
+
+// Use the base API URL from environment or default
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const apiClient = new ApiClientBase(API_BASE_URL);
 
 // --- Types ---
 
@@ -75,9 +79,12 @@ export const articlesApi = {
    * Compose/enrich an article with Bali Zero style
    */
   async compose(request: ComposeRequest): Promise<ComposeResponse> {
-    const response = await apiClient.post<ComposeResponse>(
-      "/api/articles/compose",
-      request
+    const response = await apiClient.request<ComposeResponse>(
+      "/articles/compose",
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      }
     );
     return response;
   },
@@ -86,8 +93,9 @@ export const articlesApi = {
    * Check if article composer is configured
    */
   async getStatus(): Promise<ComposerStatus> {
-    const response = await apiClient.get<ComposerStatus>(
-      "/api/articles/compose/status"
+    const response = await apiClient.request<ComposerStatus>(
+      "/articles/compose/status",
+      { method: "GET" }
     );
     return response;
   },
