@@ -175,17 +175,17 @@ describe('NewsRoomPage', () => {
     });
   });
 
-  it('should display external source links', async () => {
+  it('should display source names for each item', async () => {
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      const externalLinks = screen.getAllByRole('link');
-      // Filter for actual external links (not just text that says "Jakarta Post")
-      const sourceLinks = externalLinks.filter(link =>
-        link.getAttribute('target') === '_blank'
-      );
-      expect(sourceLinks.length).toBe(3);
+      expect(screen.getByText('Breaking: New Immigration Policy Announced')).toBeInTheDocument();
     });
+
+    // Check that source names are displayed (mockNewsItems have source as text, not URLs)
+    expect(screen.getByText(/Jakarta Post/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tempo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kompas/i)).toBeInTheDocument();
   });
 
   it('should refresh items when "Sync Sources" button is clicked', async () => {
@@ -325,16 +325,16 @@ describe('NewsRoomPage', () => {
         .mockResolvedValueOnce({
           success: true,
           message: 'Published',
-          id: 'news-1',
-          title: 'Breaking: New Immigration Policy Announced',
-          published_url: 'https://example.com/news-1',
-          published_at: '2025-01-01T10:00:00Z',
+          id: 'news-3', // Sorted by date: news-3 (Jan 3) is first
+          title: 'Indonesia Opens New Immigration Office in Bali',
+          published_url: 'https://example.com/news-3',
+          published_at: '2025-01-03T12:00:00Z',
           collection: 'news_collection',
         })
         .mockResolvedValueOnce({
           success: true,
           message: 'Published',
-          id: 'news-2',
+          id: 'news-2', // news-2 (Jan 2) is second
           title: 'Visa Requirements Updated',
           published_url: 'https://example.com/news-2',
           published_at: '2025-01-02T11:00:00Z',
@@ -344,22 +344,25 @@ describe('NewsRoomPage', () => {
       render(<NewsRoomPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Breaking: New Immigration Policy Announced')).toBeInTheDocument();
+        expect(screen.getByText('Indonesia Opens New Immigration Office in Bali')).toBeInTheDocument();
       });
 
-      // Select items
+      // Select items using checkboxes
       const checkboxes = screen.getAllByRole('button', { name: /Select/i });
-      if (checkboxes.length >= 2) {
-        await userEvent.click(checkboxes[0]);
-        await userEvent.click(checkboxes[1]);
+      await userEvent.click(checkboxes[0]);
+      await userEvent.click(checkboxes[1]);
 
-        // Find and click bulk publish button
-        await waitFor(() => {
-          const bulkPublishButton = screen.queryByText(/Publish/i);
-          if (bulkPublishButton && bulkPublishButton.textContent?.includes('Publish')) {
-            userEvent.click(bulkPublishButton);
-          }
-        });
+      // Wait for selection UI to update
+      await waitFor(() => {
+        expect(screen.getByText(/selected/i)).toBeInTheDocument();
+      });
+
+      // Find bulk publish button (should appear with count)
+      const bulkPublishButton = screen.queryByRole('button', { name: /Publish.*\(2\)/i }) ||
+                                screen.queryByText(/Publish All/i);
+
+      if (bulkPublishButton) {
+        await userEvent.click(bulkPublishButton);
       }
     });
 
