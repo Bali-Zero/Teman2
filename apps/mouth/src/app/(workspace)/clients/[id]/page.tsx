@@ -1396,58 +1396,87 @@ function DocumentsTab({
                 {docs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3 group"
+                    className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-[var(--foreground)]">
-                        {doc.document_type.replace(/_/g, ' ')}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {doc.google_drive_file_url && (
+                    {/* Document Preview - 3:2 aspect ratio like passport */}
+                    {doc.google_drive_file_url && (
+                      <a
+                        href={doc.google_drive_file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block relative"
+                      >
+                        <div className={`aspect-[3/2] overflow-hidden border-b ${
+                          doc.alert_color === 'expired' || doc.alert_color === 'red'
+                            ? 'border-red-500/50'
+                            : doc.alert_color === 'yellow'
+                            ? 'border-yellow-500/50'
+                            : 'border-[var(--border)]'
+                        }`}>
+                          <iframe
+                            src={`${doc.google_drive_file_url.replace('/view', '/preview')}`}
+                            className="w-full h-full pointer-events-none"
+                            allow="autoplay"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                            <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      </a>
+                    )}
+
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-[var(--foreground)]">
+                          {doc.document_type.replace(/_/g, ' ')}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {doc.google_drive_file_url && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => window.open(doc.google_drive_file_url!, '_blank')}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
-                            onClick={() => window.open(doc.google_drive_file_url!, '_blank')}
+                            className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDelete(doc.id, doc.file_name || doc.document_type)}
                           >
-                            <ExternalLink className="w-3 h-3" />
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDelete(doc.id, doc.file_name || doc.document_type)}
+                        </div>
+                      </div>
+
+                      {doc.file_name && (
+                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-1" title={doc.file_name}>
+                          {doc.file_name}
+                        </p>
+                      )}
+
+                      {doc.expiry_date && (
+                        <div
+                          className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+                            ALERT_COLORS[doc.alert_color || 'green']
+                          }`}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                          <Calendar className="w-3 h-3" />
+                          {doc.alert_color === 'expired'
+                            ? 'Expired'
+                            : `Expires: ${formatDate(doc.expiry_date)}`}
+                        </div>
+                      )}
+
+                      {doc.family_member_name && (
+                        <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                          → {doc.family_member_name}
+                        </p>
+                      )}
                     </div>
-
-                    {doc.file_name && (
-                      <p className="text-xs text-[var(--foreground-muted)] truncate mb-1" title={doc.file_name}>
-                        {doc.file_name}
-                      </p>
-                    )}
-
-                    {doc.expiry_date && (
-                      <div
-                        className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ 
-                          ALERT_COLORS[doc.alert_color || 'green']
-                        }`}
-                      >
-                        <Calendar className="w-3 h-3" />
-                        {doc.alert_color === 'expired'
-                          ? 'Expired'
-                          : `Expires: ${formatDate(doc.expiry_date)}`}
-                      </div>
-                    )}
-
-                    {doc.family_member_name && (
-                      <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                        → {doc.family_member_name}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
