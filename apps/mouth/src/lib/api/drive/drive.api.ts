@@ -221,18 +221,19 @@ export class DriveApi {
       const response = await fetch(`/api/drive/files/${fileId}/download`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          // Add CSRF token if present
-          ...(typeof document !== 'undefined' && (() => {
+        headers: (() => {
+          // Add CSRF token if present (client-side only)
+          const headers: Record<string, string> = {};
+          if (typeof document !== 'undefined') {
             const csrfCookie = document.cookie
               .split('; ')
               .find(row => row.startsWith('nz_csrf_token='));
             if (csrfCookie) {
-              return { 'X-CSRF-Token': csrfCookie.split('=')[1] };
+              headers['X-CSRF-Token'] = csrfCookie.split('=')[1];
             }
-            return {};
-          })()),
-        },
+          }
+          return headers;
+        })(),
       });
 
       if (!response.ok) {
