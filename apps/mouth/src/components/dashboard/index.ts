@@ -9,3 +9,4 @@ export { FinancialRealityWidget } from './FinancialRealityWidget';
 export { NusantaraHealthWidget } from './NusantaraHealthWidget';
 export { EmailPreview } from './EmailPreview';
 export { GrafanaWidget } from './GrafanaWidget';
+export { FeaturedArticlesWidget } from './FeaturedArticlesWidget';

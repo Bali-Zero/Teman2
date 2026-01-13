@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Users,
@@ -14,6 +14,7 @@ import {
   SortDesc,
 } from 'lucide-react';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import type { Client } from '@/lib/api/crm/crm.types';
@@ -81,7 +82,144 @@ function getVisibleClients(clients: Client[], currentUserEmail: string): Client[
   });
 }
 
+/**
+ * Virtualized client grid for better performance with large lists
+ */
+function VirtualizedClientGrid({
+  clients,
+  loadMoreRef,
+  isLoadingMore,
+  hasMore,
+  totalClients,
+}: {
+  clients: Client[];
+  loadMoreRef: React.RefObject<HTMLDivElement | null>;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  totalClients: number;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const shouldVirtualize = clients.length > VIRTUALIZATION_THRESHOLD;
+
+  // Calculate grid columns based on viewport
+  const [columns, setColumns] = useState(3);
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = window.innerWidth;
+      if (width >= 1024) setColumns(3); // lg: 3 columns
+      else if (width >= 768) setColumns(2); // md: 2 columns
+      else setColumns(1); // sm: 1 column
+    };
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
+
+  // Calculate rows needed
+  const rows = Math.ceil(clients.length / columns);
+  const rowHeight = ESTIMATED_CARD_HEIGHT + 16; // card height + gap
+
+  const virtualizer = useVirtualizer({
+    count: rows,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 2,
+  });
+
+  if (!shouldVirtualize) {
+    // For small lists, render normally
+    return (
+      <>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+          {clients.map((client) => (
+            <ClientCard key={client.id} client={client} />
+          ))}
+        </div>
+        <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+          {isLoadingMore && (
+            <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+              <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+              Loading more clients...
+            </div>
+          )}
+          {!hasMore && totalClients > PAGE_SIZE && (
+            <span className="text-sm text-[var(--foreground-muted)]">
+              All {totalClients.toLocaleString()} clients loaded
+            </span>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Virtualized grid rendering
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={parentRef}
+      className="flex-1 overflow-auto pb-4"
+      style={{ contain: 'strict' }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualRows.map((virtualRow) => {
+          const startIndex = virtualRow.index * columns;
+          const endIndex = Math.min(startIndex + columns, clients.length);
+          const rowClients = clients.slice(startIndex, endIndex);
+
+          return (
+            <div
+              key={virtualRow.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-1">
+                {rowClients.map((client) => (
+                  <ClientCard key={client.id} client={client} />
+                ))}
+                {/* Fill empty slots in last row */}
+                {rowClients.length < columns &&
+                  Array.from({ length: columns - rowClients.length }).map((_, i) => (
+                    <div key={`empty-${i}`} />
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Infinite scroll trigger */}
+      <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+        {isLoadingMore && (
+          <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+            <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            Loading more clients...
+          </div>
+        )}
+        {!hasMore && totalClients > PAGE_SIZE && (
+          <span className="text-sm text-[var(--foreground-muted)]">
+            All {totalClients.toLocaleString()} clients loaded
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const PAGE_SIZE = 200; // Max allowed by backend
+const ESTIMATED_CARD_HEIGHT = 200; // Estimated height for ClientCard in grid
+const VIRTUALIZATION_THRESHOLD = 30; // Virtualize grid if more than 30 items
 
 export default function ClientiPage() {
   const router = useRouter();
@@ -421,27 +559,13 @@ export default function ClientiPage() {
       ) : filteredClients.length > 0 ? (
         <div className="flex-1 overflow-auto">
           {viewMode === 'list' ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-                {filteredClients.map((client) => (
-                  <ClientCard key={client.id} client={client} />
-                ))}
-              </div>
-              {/* Infinite scroll trigger */}
-              <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
-                {isLoadingMore && (
-                  <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
-                    <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                    Loading more clients...
-                  </div>
-                )}
-                {!hasMore && clients.length > PAGE_SIZE && (
-                  <span className="text-sm text-[var(--foreground-muted)]">
-                    All {clients.length.toLocaleString()} clients loaded
-                  </span>
-                )}
-              </div>
-            </>
+            <VirtualizedClientGrid
+              clients={filteredClients}
+              loadMoreRef={loadMoreRef}
+              isLoadingMore={isLoadingMore}
+              hasMore={hasMore}
+              totalClients={clients.length}
+            />
           ) : (
             <ClientKanban clients={filteredClients} onStatusChange={handleStatusChange} />
           )}
