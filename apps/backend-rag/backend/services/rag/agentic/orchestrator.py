@@ -508,9 +508,9 @@ class AgenticRAGOrchestrator:
             conversation_history=history_to_use,  # Pass history for greeting check
         )
 
-        # Create chat session
+        # Create chat session with system prompt (includes user memory/context)
         chat = self.llm_gateway.create_chat_with_history(
-            history_to_use=history_to_use, model_tier=model_tier
+            history_to_use=history_to_use, model_tier=model_tier, system_instruction=system_prompt
         )
         # --- QUALITY ROUTING: REACT LOOP (Full Agentic Architecture) ---
         logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
@@ -1088,9 +1088,9 @@ Respond in the SAME language the user is using."""
             conversation_history=history_to_use,  # Pass history for greeting check
         )
 
-        # Create chat session
+        # Create chat session with system prompt (includes user memory/context)
         chat = self.llm_gateway.create_chat_with_history(
-            history_to_use=history_to_use, model_tier=model_tier
+            history_to_use=history_to_use, model_tier=model_tier, system_instruction=system_prompt
         )
 
         # Stream response using New Streaming ReAct Logic
