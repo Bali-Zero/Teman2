@@ -542,7 +542,7 @@ function OverviewTab({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.8fr_1.2fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
       {/* Left Column - Client Info */}
       <div className="space-y-6">
         {/* Client Info Card */}
@@ -720,8 +720,8 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Middle Column - Passport & Actual Visa */}
-      <div className="space-y-4">
+      {/* Right Column - 3 Equal Boxes (Passport, Visa, Process) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Passport Card */}
         <PassportCard
           client={client}
@@ -736,126 +736,20 @@ function OverviewTab({
           formatDate={formatDate}
           formatCurrency={formatCurrency}
         />
+
+        {/* Active Process Card */}
+        <ActiveProcessCard
+          activePractices={activePractices}
+          formatDate={formatDate}
+          router={router}
+        />
       </div>
-
-      {/* Right Column - Active Process (50% bigger) */}
-      <div className="space-y-4 lg:col-span-1">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Active Process</h3>
-          <Button
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push(`/cases/new?client_id=${client.id}`)}
-          >
-            <Plus className="w-4 h-4" />
-            New
-          </Button>
-        </div>
-        {activePractices.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-            <FolderOpen className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">No active process</p>
-            <p className="text-xs text-[var(--foreground-muted)] mt-1">Click "New" to start a process</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {activePractices.map((practice) => {
-              // Calculate estimated issue date (+7 days from created_at or start_date)
-              const startDate = practice.start_date || practice.created_at;
-              const estimatedDate = startDate
-                ? new Date(new Date(startDate).getTime() + 7 * 24 * 60 * 60 * 1000)
-                : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-              return (
-                <div
-                  key={practice.id}
-                  className="rounded-xl border-2 border-blue-500/40 bg-gradient-to-br from-blue-500/10 to-purple-500/10 p-5 group relative overflow-hidden animate-pulse-subtle"
-                  style={{
-                    animation: 'pulse-glow 2s ease-in-out infinite',
-                  }}
-                >
-                  {/* Pulsing glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 animate-pulse" />
-
-                  <div className="relative">
-                    <div className="flex items-start justify-between mb-3">
-                      <div
-                        className="cursor-pointer flex-1"
-                        onClick={() => router.push(`/cases/${practice.id}`)}
-                      >
-                        <h4 className="text-base font-semibold text-[var(--foreground)] hover:text-blue-400 transition-colors">
-                          {practice.practice_type_name || practice.practice_type_code?.toUpperCase()} on process
-                        </h4>
-                        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                          Date issue: around <span className="font-medium text-blue-400">{formatDate(estimatedDate.toISOString())}</span>
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400 font-medium">
-                          {practice.status.replace(/_/g, ' ')}
-                        </span>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => router.push(`/cases/${practice.id}/edit`)}
-                            className="p-1.5 rounded-lg hover:bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`)) {
-                                try {
-                                  const user = await api.getProfile();
-                                  await api.crm.deletePractice(practice.id, user.email);
-                                  toast.success('Process deleted');
-                                  window.location.reload();
-                                } catch (err) {
-                                  toast.error('Error', (err as Error).message);
-                                }
-                              }
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-[var(--foreground-muted)] hover:text-red-500"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress indicator */}
-                    <div className="flex items-center gap-2 mt-3">
-                      <div className="flex-1 h-1.5 bg-[var(--background)] rounded-full overflow-hidden">
-                        <div className="h-full w-1/3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse" />
-                      </div>
-                      <span className="text-[10px] text-[var(--foreground-muted)]">In progress</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Pulsing animation keyframes */}
-      <style jsx>{`
-        @keyframes pulse-glow {
-          0%, 100% {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
-          }
-          50% {
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
-          }
-        }
-      `}</style>
     </div>
   );
 }
 
 // ============================================
-// PASSPORT CARD COMPONENT (Compact - 50% smaller)
+// PASSPORT CARD COMPONENT (Compact rectangular - passport shape)
 // ============================================
 function PassportCard({
   client,
@@ -866,7 +760,10 @@ function PassportCard({
   documents: ClientDocument[];
   formatDate: (d: string) => string;
 }) {
-  // Find passport document from documents (look for personal category with passport type)
+  const [isExtracting, setIsExtracting] = useState(false);
+  const toast = useToast();
+
+  // Find passport document from documents
   const passportDoc = documents.find(
     (doc) =>
       doc.document_type?.toLowerCase().includes('passport') ||
@@ -879,7 +776,6 @@ function PassportCard({
 
   // Convert Drive view URL to direct download URL
   const getDownloadUrl = (url: string) => {
-    // Extract file ID from various Drive URL formats
     const match = url.match(/\/d\/([^/]+)/);
     if (match) {
       return `https://drive.google.com/uc?export=download&id=${match[1]}`;
@@ -900,8 +796,30 @@ function PassportCard({
     }
   };
 
+  // OCR extraction
+  const handleExtractData = async () => {
+    if (!passportImageUrl || isExtracting) return;
+    setIsExtracting(true);
+    try {
+      const response = await api.post('/api/crm/clients/extract-passport', {
+        client_id: client.id,
+        image_url: passportImageUrl,
+      }) as { passport_number?: string; passport_expiry?: string };
+      if (response.passport_number || response.passport_expiry) {
+        toast.success('Passport data extracted!');
+        window.location.reload();
+      } else {
+        toast.warning('Could not extract passport data');
+      }
+    } catch (err) {
+      toast.error('Extraction failed', (err as Error).message);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   return (
-    <div className={`rounded-xl border-2 bg-[var(--background-secondary)] overflow-hidden ${
+    <div className={`rounded-xl border-2 bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col ${
       passportValidity.color === 'green' ? 'border-green-500/40' :
       passportValidity.color === 'orange' ? 'border-orange-500/40' :
       passportValidity.color === 'red' ? 'border-red-500/40' :
@@ -919,15 +837,15 @@ function PassportCard({
         )}
       </div>
 
-      <div className="p-2">
-        {/* Passport Image - Click to Download */}
+      <div className="p-3 flex-1 flex flex-col">
+        {/* Passport Image - Rectangular (3:2 passport ratio) */}
         {passportImageUrl ? (
           <button
             onClick={handleDownload}
-            className="w-full block relative group cursor-pointer"
+            className="w-full block relative group cursor-pointer flex-1"
             title="Click to download passport"
           >
-            <div className={`aspect-[4/3] rounded-lg overflow-hidden border ${
+            <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
               passportValidity.color === 'green' ? 'border-green-500/50' :
               passportValidity.color === 'orange' ? 'border-orange-500/50' :
               passportValidity.color === 'red' ? 'border-red-500/50' :
@@ -947,14 +865,14 @@ function PassportCard({
             </div>
           </button>
         ) : (
-          <div className="aspect-[4/3] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50">
-            <CreditCard className="w-6 h-6 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-[10px] text-[var(--foreground-muted)]">No passport image</span>
+          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50 flex-1">
+            <CreditCard className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-xs text-[var(--foreground-muted)]">No passport</span>
           </div>
         )}
 
-        {/* Passport Info - Compact */}
-        <div className="mt-2 space-y-1">
+        {/* Passport Info */}
+        <div className="mt-3 space-y-1">
           {client.passport_number ? (
             <div className="flex items-center justify-between text-xs">
               <span className="text-[var(--foreground-muted)]">No.</span>
@@ -969,9 +887,28 @@ function PassportCard({
               </span>
             </div>
           ) : null}
-          {!client.passport_number && !client.passport_expiry && (
-            <p className="text-[10px] text-[var(--foreground-muted)] text-center py-1">
-              No passport info
+          {!client.passport_number && !client.passport_expiry && passportImageUrl && (
+            <button
+              onClick={handleExtractData}
+              disabled={isExtracting}
+              className="w-full text-xs py-1.5 px-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-1.5"
+            >
+              {isExtracting ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Extracting...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-3 h-3" />
+                  Extract passport data
+                </>
+              )}
+            </button>
+          )}
+          {!client.passport_number && !client.passport_expiry && !passportImageUrl && (
+            <p className="text-[10px] text-[var(--foreground-muted)] text-center">
+              Upload passport in Documents
             </p>
           )}
         </div>
@@ -981,7 +918,7 @@ function PassportCard({
 }
 
 // ============================================
-// ACTUAL VISA CARD COMPONENT (Compact - 50% smaller)
+// ACTUAL VISA CARD COMPONENT (Same size as Passport)
 // ============================================
 // Visa pricing listino (from visa_types table)
 const VISA_PRICES: Record<string, { name: string; price: number }> = {
@@ -1003,11 +940,11 @@ function ActualVisaCard({
   formatCurrency,
 }: {
   documents: ClientDocument[];
-  activePractices: Practice[];
+  activePractices: ClientProfile['practices'];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
 }) {
-  // Find latest visa/KITAS document (immigration category with visa-related types)
+  // Find latest visa/KITAS document
   const visaDocs = documents.filter(
     (doc) =>
       doc.document_category === 'immigration' &&
@@ -1018,7 +955,6 @@ function ActualVisaCard({
        doc.document_type?.toLowerCase().includes('evisa'))
   );
 
-  // Sort by expiry date descending to get the most recent/valid visa
   const sortedVisaDocs = visaDocs.sort((a, b) => {
     if (!a.expiry_date) return 1;
     if (!b.expiry_date) return -1;
@@ -1036,9 +972,8 @@ function ActualVisaCard({
     p.practice_type_name?.toLowerCase().includes('kitas')
   );
 
-  // Get price from listino or practice
+  // Get price from listino
   const getVisaPrice = () => {
-    if (visaProcess?.quoted_price) return visaProcess.quoted_price;
     const code = visaProcess?.practice_type_code?.toLowerCase() || '';
     return VISA_PRICES[code]?.price || null;
   };
@@ -1046,7 +981,7 @@ function ActualVisaCard({
   const visaPrice = getVisaPrice();
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col">
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
         <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
           <FileText className="w-4 h-4" />
@@ -1067,34 +1002,38 @@ function ActualVisaCard({
         ) : null}
       </div>
 
-      <div className="p-2">
+      <div className="p-3 flex-1 flex flex-col">
         {visaProcess ? (
           /* Visa in Process */
-          <div className="text-center py-3">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/20 mb-2">
-              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="aspect-[3/2] w-full rounded-lg bg-blue-500/10 border border-blue-500/30 flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 text-blue-400 animate-spin mb-2" />
+              <p className="text-sm font-medium text-blue-400">Visa on process</p>
             </div>
-            <p className="text-sm font-medium text-blue-400">Visa on process</p>
-            <p className="text-xs text-[var(--foreground-muted)] mt-1">
-              Type: <span className="font-medium text-[var(--foreground)]">{visaProcess.practice_type_name || visaProcess.practice_type_code?.toUpperCase()}</span>
-            </p>
-            {visaPrice && (
-              <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                Price: <span className="font-medium text-[var(--foreground)]">{formatCurrency(visaPrice)}</span>
-              </p>
-            )}
+            <div className="mt-3 space-y-1 w-full">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--foreground-muted)]">Type</span>
+                <span className="font-medium text-[var(--foreground)]">{visaProcess.practice_type_name || visaProcess.practice_type_code?.toUpperCase()}</span>
+              </div>
+              {visaPrice && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">Price</span>
+                  <span className="font-medium text-[var(--foreground)]">{formatCurrency(visaPrice)}</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : latestVisa ? (
           <>
-            {/* Visa Image - Compact */}
+            {/* Visa Image - Same aspect ratio as passport */}
             {latestVisa.google_drive_file_url ? (
               <a
                 href={latestVisa.google_drive_file_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block relative group mb-2"
+                className="block relative group flex-1"
               >
-                <div className={`aspect-[4/3] rounded-lg overflow-hidden border ${
+                <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
                   latestVisa.alert_color === 'expired' || latestVisa.alert_color === 'red'
                     ? 'border-red-500/50'
                     : latestVisa.alert_color === 'yellow'
@@ -1111,10 +1050,15 @@ function ActualVisaCard({
                   </div>
                 </div>
               </a>
-            ) : null}
+            ) : (
+              <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50 flex-1">
+                <FileText className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+                <span className="text-xs text-[var(--foreground-muted)]">No visa image</span>
+              </div>
+            )}
 
-            {/* Visa Info - Compact */}
-            <div className="space-y-1">
+            {/* Visa Info */}
+            <div className="mt-3 space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[var(--foreground-muted)]">Type</span>
                 <span className="font-medium text-[var(--foreground)]">
@@ -1138,12 +1082,117 @@ function ActualVisaCard({
             </div>
           </>
         ) : (
-          <div className="text-center py-3">
-            <FileText className="w-6 h-6 mx-auto text-[var(--foreground-muted)] mb-1 opacity-50" />
-            <p className="text-[10px] text-[var(--foreground-muted)]">No visa documents</p>
+          <div className="flex-1 flex flex-col">
+            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50">
+              <FileText className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+              <span className="text-xs text-[var(--foreground-muted)]">No visa</span>
+            </div>
+            <p className="text-[10px] text-[var(--foreground-muted)] text-center mt-3">
+              Upload visa in Documents
+            </p>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ============================================
+// ACTIVE PROCESS CARD COMPONENT (Same size as others)
+// ============================================
+function ActiveProcessCard({
+  activePractices,
+  formatDate,
+  router,
+}: {
+  activePractices: ClientProfile['practices'];
+  formatDate: (d: string) => string;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const toast = useToast();
+  const mainProcess = activePractices[0];
+
+  // Calculate estimated issue date (+7 days from now as fallback)
+  const getEstimatedDate = () => {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  };
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
+          <FolderOpen className="w-4 h-4" />
+          Process
+        </h3>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-xs"
+          onClick={() => router.push('/cases/new')}
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          New
+        </Button>
+      </div>
+
+      <div className="p-3 flex-1 flex flex-col">
+        {mainProcess ? (
+          <div
+            className="aspect-[3/2] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-blue-500/40 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group"
+            onClick={() => router.push(`/cases/${mainProcess.id}`)}
+            style={{
+              animation: 'pulse-glow 2s ease-in-out infinite',
+            }}
+          >
+            {/* Pulsing overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 animate-pulse" />
+
+            <div className="relative text-center z-10">
+              <p className="text-sm font-semibold text-blue-400">
+                {mainProcess.practice_type_name || mainProcess.practice_type_code?.toUpperCase()}
+              </p>
+              <p className="text-[10px] text-blue-300 mt-0.5">on process</p>
+            </div>
+          </div>
+        ) : (
+          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50">
+            <FolderOpen className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-xs text-[var(--foreground-muted)]">No process</span>
+          </div>
+        )}
+
+        {/* Process Info */}
+        <div className="mt-3 space-y-1">
+          {mainProcess ? (
+            <>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--foreground-muted)]">Status</span>
+                <span className="font-medium text-blue-400">{mainProcess.status.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[var(--foreground-muted)]">Est. Issue</span>
+                <span className="font-medium text-[var(--foreground)]">{formatDate(getEstimatedDate().toISOString())}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-[10px] text-[var(--foreground-muted)] text-center">
+              Click "New" to start
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Pulsing animation keyframes */}
+      <style jsx>{`
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+          }
+          50% {
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+          }
+        }
+      `}</style>
     </div>
   );
 }
