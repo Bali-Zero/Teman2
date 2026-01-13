@@ -339,6 +339,48 @@ npm run dev
 
 ---
 
+---
+
+## BONUS: PERFECT STORM SERIES (5 articoli)
+
+> Serie speciale sulle sfide convergenti per Bali nel 2026. Non parte del piano originale 100, ma articoli di attualità ad alto impatto.
+
+| # | Titolo | Category | Slug | Status | Data |
+|---|--------|----------|------|--------|------|
+| B1 | **The Perfect Storm: Bali 2026** | lifestyle | `perfect-storm-bali-2026` | ✅ DONE | 2026-01-13 |
+| B2 | **Property Green Zone Crackdown** | property | `property-green-zone-alert` | ✅ DONE | 2026-01-13 |
+| B3 | **Pajak Hiburan 40-75% Tax Shock** | tax-legal | `pajak-hiburan-tax-shock` | ✅ DONE | 2026-01-13 |
+| B4 | **Maritime Chaos Komodo** | lifestyle | `maritime-chaos-komodo` | ✅ DONE | 2026-01-13 |
+| B5 | **Coretax NPWP Problems** | tax | `coretax-npwp-problems-2026` | ✅ DONE | 2026-01-13 |
+
+### Temi Trattati
+
+1. **Perfect Storm (Main)**: Overview 5 forze convergenti
+2. **Property**: Green zone freeze, demolizioni, due diligence
+3. **Tax**: Pajak Hiburan 40-75% su beach clubs e nightlife
+4. **Travel**: Blocchi portuali, infrastrutture vulnerabili
+5. **Tax Tech**: Rollout Coretax problematico, NPWP issues
+
+### Note
+- Tutti hanno AI-generated images (Grok/X.ai)
+- Tutti hanno `tableOfContents: true`
+- Tutti linkati a `perfect-storm-bali-2026` come relatedArticle
+- Formato: InfoCard + AskZantara components
+
+---
+
+## PROGRESS TRACKER
+
+| Data | Articoli Completati | Note |
+|------|---------------------|------|
+| 2026-01-13 | +5 (Perfect Storm series) | Serie bonus su Bali 2026 |
+| 2026-01-XX | ... | ... |
+
+**Totale Articoli Pubblicati**: 90+ (base) + 5 (Perfect Storm) = 95+
+
+---
+
 *Piano creato: 2026-01-02*
-*Articoli totali: 100*
+*Ultimo aggiornamento: 2026-01-13*
+*Articoli totali pianificati: 100 + bonus series*
 *Stima completamento: 8 settimane*
