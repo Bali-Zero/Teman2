@@ -5,7 +5,8 @@
 
 'use client';
 
-import { onCLS, onINP, onLCP, onTTFB, Metric } from 'web-vitals';
+import { onCLS, onINP, onLCP, onTTFB } from 'web-vitals';
+import type { Metric } from 'web-vitals';
 
 interface WebVitalsOptions {
   enabled?: boolean;
