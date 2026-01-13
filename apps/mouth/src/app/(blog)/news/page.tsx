@@ -17,12 +17,12 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'https://zantara.balize
 export default function NewsPage() {
   const [articles] = React.useState<ArticleListItem[]>(MOCK_ARTICLES);
 
-  // Get specific articles for the asymmetric collage
-  const mainNews1 = articles.find(a => a.slug === 'global-citizenship-indonesia'); // RIGHT - large
-  const mainNews2 = articles.find(a => a.slug === 'bali-tourist-savings-check-2026'); // LEFT top - NO MONEY NO BALI
-  const mainNews3 = articles.find(a => a.slug === 'indonesia-zero-tax-foreign-income-2026'); // MIDDLE top - 0% Tax Foreign Income
-  const mainNews4 = articles.find(a => a.slug === 'gemini-3-native-intelligence'); // MIDDLE bottom - Gemini 3
-  const mainNews5 = articles.find(a => a.slug === 'coretax-npwp-problems-2026'); // LEFT bottom - Coretax
+  // Get specific articles for the asymmetric collage - PERFECT STORM SERIES
+  const mainNews1 = articles.find(a => a.slug === 'perfect-storm-bali-2026'); // RIGHT - large - MAIN FEATURE
+  const mainNews2 = articles.find(a => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
+  const mainNews3 = articles.find(a => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
+  const mainNews4 = articles.find(a => a.slug === 'pajak-hiburan-tax-shock'); // MIDDLE bottom - Tax Shock
+  const mainNews5 = articles.find(a => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
 
   // Get IDs of main news articles to exclude them from other sections
   const mainNewsIds = new Set([
@@ -454,6 +454,98 @@ const SERVICES = [
 ];
 
 const MOCK_ARTICLES: ArticleListItem[] = [
+  // === PERFECT STORM SERIES (Jan 2026) ===
+  {
+    id: '100',
+    slug: 'perfect-storm-bali-2026',
+    title: "Bali's Perfect Storm: Why 2026 Demands a New Playbook",
+    excerpt: "Waste crisis, dengue surge, maritime blockade, tax shock, property crackdown — all hitting at once. Here's how to navigate.",
+    coverImage: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&h=800&fit=crop',
+    category: 'lifestyle',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 5,
+    viewCount: 8420,
+    featured: true,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '101',
+    slug: 'suwung-landfill-crisis',
+    title: "Suwung Landfill Closure: The Waste Crisis Hitting Bali's Tourist Zones",
+    excerpt: "Bali's main landfill is closing. No clear Plan B. If you're in hospitality or events, this affects you.",
+    coverImage: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=1200&h=800&fit=crop',
+    category: 'lifestyle',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 4,
+    viewCount: 5230,
+    featured: false,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '102',
+    slug: 'dengue-alert-2026',
+    title: "Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know",
+    excerpt: "Dengue cases are up 636 in Bali this year. Know the symptoms, get insurance, and protect your family.",
+    coverImage: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?w=1200&h=800&fit=crop',
+    category: 'lifestyle',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 4,
+    viewCount: 7150,
+    featured: false,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '103',
+    slug: 'maritime-chaos-komodo',
+    title: "Maritime Chaos: Komodo Blockade Strands Thousands — Plan Your Buffer",
+    excerpt: "Fishermen blocked Labuan Bajo port for 3 days. If you're planning East Indonesia travel, build in buffer days.",
+    coverImage: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1200&h=800&fit=crop',
+    category: 'lifestyle',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 3,
+    viewCount: 4320,
+    featured: false,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '104',
+    slug: 'pajak-hiburan-tax-shock',
+    title: "The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife",
+    excerpt: "Indonesia's new entertainment tax hits 40-75%. Beach clubs, bars, and karaoke venues are scrambling.",
+    coverImage: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1200&h=800&fit=crop',
+    category: 'tax-legal',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 5,
+    viewCount: 6890,
+    featured: false,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '105',
+    slug: 'property-green-zone-alert',
+    title: "Property Alert: Green Zone Crackdown and the End of Easy Villa Permits",
+    excerpt: "Building permits frozen in green zones. If you're eyeing land in Canggu or Ubud outskirts, read this first.",
+    coverImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=800&fit=crop',
+    category: 'property',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-13'),
+    readingTime: 5,
+    viewCount: 9120,
+    featured: false,
+    trending: true,
+    aiGenerated: false,
+  },
+  // === END PERFECT STORM SERIES ===
   {
     id: '19',
     slug: 'indonesia-zero-tax-foreign-income-2026',
