@@ -298,6 +298,7 @@ const LEADERSHIP: TeamMember[] = [
     initials: 'RS',
     role: 'Board Member',
     gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]',
+    photo: '/images/team/ruslana.jpg',
   },
 ];
 
@@ -357,9 +358,23 @@ const SETUP_TEAM: TeamMember[] = [
   {
     name: 'Marta',
     initials: 'MA',
-    role: 'External Advisory',
+    role: 'Setup Consultant',
     gradient: 'bg-gradient-to-br from-fuchsia-500 to-pink-600',
-    external: true,
+    photo: '/images/team/marta.jpg',
+  },
+  {
+    name: 'Olena',
+    initials: 'OL',
+    role: 'Setup Consultant',
+    gradient: 'bg-gradient-to-br from-cyan-500 to-teal-600',
+    photo: '/images/team/olena.jpg',
+  },
+  {
+    name: 'Anna',
+    initials: 'AN',
+    role: 'Setup Consultant',
+    gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
+    photo: '/images/team/anna.jpg',
   },
 ];
 
@@ -393,13 +408,6 @@ const TAX_TEAM: TeamMember[] = [
     initials: 'FA',
     role: 'Tax Care',
     gradient: 'bg-gradient-to-br from-amber-500 to-yellow-600',
-  },
-  {
-    name: 'Olena',
-    initials: 'OL',
-    role: 'External Advisory',
-    gradient: 'bg-gradient-to-br from-cyan-500 to-teal-600',
-    external: true,
   },
 ];
 
