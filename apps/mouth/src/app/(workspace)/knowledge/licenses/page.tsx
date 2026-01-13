@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -22,6 +22,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 
 // =============================================================================
 // License Data
@@ -293,6 +294,11 @@ export default function LicensesPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Track KB page view
+  useEffect(() => {
+    api.kbActivity.logView('licenses', undefined, 'Business Licenses', 'licenses');
+  }, []);
 
   const categories = ['Food & Beverage', 'Certification'];
 

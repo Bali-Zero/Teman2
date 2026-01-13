@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -43,6 +43,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
 import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
+import { api } from '@/lib/api';
 
 // =============================================================================
 // Blueprint Data
@@ -1568,13 +1569,16 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
     }
 
     if (pdfUrl) {
+      // Track KB download
+      api.kbActivity.logDownload('blueprint', blueprint.kbli_code, blueprint.title, blueprint.category);
+
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = pdfFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Log download action (solo per logging interno)
       logger.userAction('blueprint_download', undefined, blueprint.id, {
         component: 'BlueprintsPage',
@@ -1742,6 +1746,11 @@ export default function BlueprintsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Track KB page view
+  useEffect(() => {
+    api.kbActivity.logView('blueprints', undefined, 'Company & Classifications', 'blueprints');
+  }, []);
 
   const categories = ['Hospitality', 'Real Estate', 'Services', 'Technology', 'Construction', 'Leasing', 'Trade'];
 
