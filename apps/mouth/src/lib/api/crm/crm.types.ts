@@ -78,6 +78,9 @@ export interface Client {
   nationality?: string;
   passport_number?: string;
   passport_expiry?: string;
+  date_of_birth?: string;
+  gender?: 'M' | 'F';
+  birthplace?: string;
   address?: string;
   notes?: string;
   google_drive_folder_id?: string;
@@ -270,6 +273,8 @@ export interface CreateClientParams {
   passport_number?: string;
   passport_expiry?: string;
   date_of_birth?: string;
+  gender?: 'M' | 'F';
+  birthplace?: string;
   notes?: string;
   status?: 'lead' | 'active' | 'completed' | 'lost' | 'inactive';
   client_type?: 'individual' | 'company';
