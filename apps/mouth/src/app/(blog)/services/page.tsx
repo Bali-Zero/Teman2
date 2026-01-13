@@ -514,7 +514,10 @@ const CONTACT_INFO = [
 
 const TEAM_MEMBERS = [
   { name: 'Zero', initials: 'ZE', role: 'CEO', gradient: 'bg-gradient-to-br from-[#2251ff] to-[#1a41cc]', image: '/static/team/zero.jpg' },
-  { name: 'Ruslana', initials: 'RS', role: 'Board', gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]' },
+  { name: 'Ruslana', initials: 'RS', role: 'Board', gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]', image: '/static/team/ruslana.jpg' },
+  { name: 'Anna', initials: 'AN', role: 'Advisor', gradient: 'bg-gradient-to-br from-sky-500 to-blue-600', image: '/static/team/anna.jpeg' },
+  { name: 'Marta', initials: 'MA', role: 'Advisor', gradient: 'bg-gradient-to-br from-fuchsia-500 to-pink-600', image: '/static/team/marta.jpeg' },
+  { name: 'Olena', initials: 'OL', role: 'Advisor', gradient: 'bg-gradient-to-br from-cyan-500 to-teal-600', image: '/static/team/olena.jpeg' },
   { name: 'Anton', initials: 'AN', role: 'Consultant', gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600' },
   { name: 'Vino', initials: 'VI', role: 'Consultant', gradient: 'bg-gradient-to-br from-violet-500 to-purple-600' },
   { name: 'Krisna', initials: 'KR', role: 'Consultant', gradient: 'bg-gradient-to-br from-orange-500 to-amber-600' },
