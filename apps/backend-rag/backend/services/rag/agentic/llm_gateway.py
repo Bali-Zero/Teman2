@@ -478,6 +478,43 @@ class LLMGateway:
             if not self._genai_client or not self._genai_client.is_available:
                 raise RuntimeError("GenAI client not available")
 
+            # CRITICAL: Use chat session if available to maintain conversation context
+            # This ensures Gemini 3 maintains full conversation history across ReAct loop steps
+            if chat and hasattr(chat, "_format_contents"):
+                # Use ChatSession's history-aware content formatting
+                # This preserves conversation context while maintaining compatibility with function calling
+                logger.debug(f"💬 Using ChatSession with {len(chat.history)} history messages")
+                # Format contents with full conversation history
+                contents = chat._format_contents(message)
+                # Update chat history after we get response (ChatSession will do this)
+                # But we need to call generate_content directly to get full response object for function calls
+                response = await self._genai_client._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=_build_config(with_tools),
+                )
+                # Update chat history manually since we bypassed send_message
+                text_content = response.text if hasattr(response, "text") else ""
+                if text_content is None:
+                    text_content = ""
+                chat._history.append({"role": "user", "content": message})
+                chat._history.append({"role": "assistant", "content": text_content})
+                # Extract token usage
+                prompt_tokens = 0
+                completion_tokens = 0
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                    completion_tokens = (
+                        getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                    )
+                token_usage = create_token_usage(
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model=model_name,
+                )
+                return text_content, response, token_usage
+
+            # Fallback: Build content directly (for backward compatibility or when chat is None)
             # Build content (plain text or multimodal with images)
             content = _build_multimodal_content(message, images)
             has_images = images is not None and len(images) > 0
@@ -703,7 +740,7 @@ class LLMGateway:
         return result.content
 
     def create_chat_with_history(
-        self, history_to_use: list[dict] | None = None, model_tier: int = TIER_FLASH
+        self, history_to_use: list[dict] | None = None, model_tier: int = TIER_FLASH, system_instruction: str | None = None
     ) -> Any:
         """Create a chat session with conversation history.
 
@@ -756,9 +793,11 @@ class LLMGateway:
         # Create and return chat session using GenAIClient wrapper
         logger.debug(
             f"LLMGateway: Created chat session with {len(gemini_history)} history messages"
+            f"{' and system instruction' if system_instruction else ''}"
         )
         return self._genai_client.create_chat_session(
             model=selected_model_name,
+            system_instruction=system_instruction,
             history=gemini_history,
         )
 

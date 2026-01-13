@@ -914,13 +914,15 @@ Do not invent information. If the context is insufficient, admit it.
         while state.current_step < state.max_steps:
             state.current_step += 1
 
-            # Get model response
-            try:
-                if state.current_step == 1:
-                    message = initial_prompt
-                else:
-                    last_observation = state.steps[-1].observation if state.steps else ""
-                    message = f"Observation: {last_observation}\n\nContinue with your next thought or provide final answer."
+                # Get model response
+                try:
+                    if state.current_step == 1:
+                        message = initial_prompt
+                    else:
+                        # CRITICAL: Include original query context to maintain conversation continuity
+                        last_observation = state.steps[-1].observation if state.steps else ""
+                        # Include original query to help Gemini maintain context
+                        message = f"Original user query: {query}\n\nObservation: {last_observation}\n\nContinue with your next thought or provide final answer. Remember the conversation context from earlier messages."
 
                 # Yield thinking event
                 yield {"type": "thinking", "data": f"Step {state.current_step}: Processing..."}
