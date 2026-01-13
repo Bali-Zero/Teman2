@@ -12,6 +12,7 @@ from backend.app.routers import (
     agentic_rag,
     agents,
     analytics,
+    article_composer,
     auth,
     autonomous_agents,
     blog_ask,
@@ -134,6 +135,7 @@ def include_routers(api: FastAPI) -> None:
     # Blog routers
     api.include_router(newsletter.router)
     api.include_router(blog_ask.router)  # AskZantara widget on public blog articles
+    api.include_router(article_composer.router)  # Manual article creation with enrichment
 
     # News/Intel Feed routers
     api.include_router(news.router)
