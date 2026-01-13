@@ -212,6 +212,61 @@ export class DriveApi {
     return `/api/drive/files/${fileId}/download`;
   }
 
+  /**
+   * Download a file using fetch with proper credentials
+   * This ensures cookies are sent correctly (unlike window.open)
+   */
+  async downloadFile(fileId: string, fileName?: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/drive/files/${fileId}/download`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          // Add CSRF token if present
+          ...(typeof document !== 'undefined' && (() => {
+            const csrfCookie = document.cookie
+              .split('; ')
+              .find(row => row.startsWith('nz_csrf_token='));
+            if (csrfCookie) {
+              return { 'X-CSRF-Token': csrfCookie.split('=')[1] };
+            }
+            return {};
+          })()),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Get filename from Content-Disposition header or use provided name
+      let downloadName = fileName || 'download';
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (filenameMatch) {
+          downloadName = filenameMatch[1];
+        }
+      }
+
+      // Create blob and trigger download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('[DriveApi] Download error:', error);
+      throw error;
+    }
+  }
+
   // ============== CRUD Operations ==============
 
   /**

@@ -228,8 +228,14 @@ export default function DocumentsPage() {
                 setShowMoveDialog(true);
             }}
             onCopy={() => { /* TODO: Copy */ }}
-            onDownload={(file) => {
-                window.open(api.drive.getDownloadUrl(file.id), '_blank');
+            onDownload={async (file) => {
+                try {
+                    await api.drive.downloadFile(file.id, file.name);
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    // Fallback to window.open if fetch fails
+                    window.open(api.drive.getDownloadUrl(file.id), '_blank');
+                }
             }}
         />
       )}
