@@ -139,6 +139,33 @@ const extractCountryCode = (phone: string): { countryCode: string; localNumber: 
   return { countryCode: '+62', localNumber: phone };
 };
 
+// ============================================
+// GOOGLE DRIVE URL HELPERS
+// ============================================
+
+// Extract file ID from Google Drive URL
+const extractDriveFileId = (url: string): string | null => {
+  if (!url) return null;
+  // Format: /file/d/{FILE_ID}/
+  const match1 = url.match(/\/d\/([^/]+)/);
+  if (match1) return match1[1];
+  // Format: ?id={FILE_ID}
+  const match2 = url.match(/[?&]id=([^&]+)/);
+  if (match2) return match2[1];
+  return null;
+};
+
+// Get proxy thumbnail URL for displaying document without Google branding
+const getDriveProxyUrl = (url: string, type: 'thumbnail' | 'full' = 'thumbnail'): string | null => {
+  const fileId = extractDriveFileId(url);
+  if (fileId) {
+    return type === 'thumbnail'
+      ? `/api/documents/thumbnail/${fileId}`
+      : `/api/documents/proxy/${fileId}`;
+  }
+  return null;
+};
+
 // Map nationalities to flag emojis
 const NATIONALITY_FLAGS: Record<string, string> = {
   'Italian': '🇮🇹', 'Italy': '🇮🇹',
@@ -260,7 +287,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 type TabType = 'overview' | 'family' | 'documents' | 'process' | 'timeline';
-type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document';
+type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document' | 'edit_document';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -276,6 +303,7 @@ export default function ClientDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeModal, setActiveModal] = useState<ModalType>('none');
+  const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -551,6 +579,10 @@ export default function ClientDetailPage() {
           documentsByCategory={documentsByCategory}
           formatDate={formatDate}
           onAddClick={() => setActiveModal('add_document')}
+          onEditClick={(doc) => {
+            setEditingDocument(doc);
+            setActiveModal('edit_document');
+          }}
           onRefresh={refreshProfile}
         />
       )}
@@ -596,6 +628,20 @@ export default function ClientDetailPage() {
           categories={docCategories}
           familyMembers={family_members}
           onClose={() => setActiveModal('none')}
+          onSave={refreshProfile}
+        />
+      )}
+
+      {activeModal === 'edit_document' && editingDocument && (
+        <EditDocumentModal
+          clientId={clientId}
+          document={editingDocument}
+          categories={docCategories}
+          familyMembers={family_members}
+          onClose={() => {
+            setActiveModal('none');
+            setEditingDocument(null);
+          }}
           onSave={refreshProfile}
         />
       )}
@@ -855,9 +901,9 @@ function PassportCard({
 
   // Convert Drive view URL to direct download URL
   const getDownloadUrl = (url: string) => {
-    const match = url.match(/\/d\/([^/]+)/);
-    if (match) {
-      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    const fileId = extractDriveFileId(url);
+    if (fileId) {
+      return `https://drive.google.com/uc?export=download&id=${fileId}`;
     }
     return url;
   };
@@ -875,20 +921,42 @@ function PassportCard({
     }
   };
 
-  // OCR extraction
+  // Enhanced OCR extraction with Gemini Vision
   const handleExtractData = async () => {
     if (!passportImageUrl || isExtracting) return;
+    const fileId = extractDriveFileId(passportImageUrl);
+    if (!fileId) {
+      toast.error('Invalid document URL');
+      return;
+    }
     setIsExtracting(true);
     try {
-      const response = await api.post('/api/crm/clients/extract-passport', {
+      const response = await api.post('/api/crm/clients/extract-passport-enhanced', {
         client_id: client.id,
-        image_url: passportImageUrl,
-      }) as { passport_number?: string; passport_expiry?: string };
-      if (response.passport_number || response.passport_expiry) {
-        toast.success('Passport data extracted!');
+        file_id: fileId,
+      }) as {
+        success: boolean;
+        passport_number?: string;
+        expiry_date?: string;
+        full_name?: string;
+        gender?: string;
+        birthplace?: string;
+        name_match?: boolean;
+        message?: string;
+      };
+      if (response.success) {
+        const details = [];
+        if (response.passport_number) details.push(`Passport: ${response.passport_number}`);
+        if (response.expiry_date) details.push(`Expiry: ${response.expiry_date}`);
+        if (response.gender) details.push(`Gender: ${response.gender}`);
+        if (response.birthplace) details.push(`Birthplace: ${response.birthplace}`);
+        if (response.name_match === false) {
+          toast.warning('Name mismatch', 'Passport name differs from client record');
+        }
+        toast.success('Passport data extracted!', details.join(' | '));
         window.location.reload();
       } else {
-        toast.warning('Could not extract passport data');
+        toast.warning('OCR failed', response.message || 'Could not extract passport data');
       }
     } catch (err) {
       toast.error('Extraction failed', (err as Error).message);
@@ -910,25 +978,47 @@ function PassportCard({
       {/* Content */}
       <div className="p-4">
         {passportImageUrl ? (
-          <button
-            onClick={handleDownload}
-            className="w-full block relative group cursor-pointer"
-            title="Click to download passport"
-          >
-            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)]">
-              <iframe
-                src={`${passportImageUrl.replace('/view', '/preview')}`}
-                className="w-full h-full pointer-events-none"
-                allow="autoplay"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Download className="w-4 h-4 text-gray-700" />
-                  <span className="text-sm font-medium text-gray-700">Download</span>
+          <div className="space-y-3">
+            <button
+              onClick={handleDownload}
+              className="w-full block relative group cursor-pointer"
+              title="Click to download passport"
+            >
+              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getDriveProxyUrl(passportImageUrl) || passportImageUrl}
+                  alt="Passport"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    // Fallback to Google preview if proxy fails
+                    (e.target as HTMLImageElement).src = passportImageUrl.replace('/view', '/preview');
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Download className="w-4 h-4 text-gray-700" />
+                    <span className="text-sm font-medium text-gray-700">Download</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </button>
+            </button>
+            {/* Extract OCR Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleExtractData}
+              disabled={isExtracting}
+            >
+              {isExtracting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 mr-2" />
+              )}
+              {isExtracting ? 'Extracting...' : 'Extract Data (OCR)'}
+            </Button>
+          </div>
         ) : (
           <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
             <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
@@ -1033,11 +1123,17 @@ function ActualVisaCard({
             rel="noopener noreferrer"
             className="block relative group"
           >
-            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)]">
-              <iframe
-                src={`${latestVisa.google_drive_file_url.replace('/view', '/preview')}`}
-                className="w-full h-full pointer-events-none"
-                allow="autoplay"
+            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getDriveProxyUrl(latestVisa.google_drive_file_url) || latestVisa.google_drive_file_url}
+                alt="Visa"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  if (latestVisa.google_drive_file_url) {
+                    (e.target as HTMLImageElement).src = latestVisa.google_drive_file_url.replace('/view', '/preview');
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                 <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1279,12 +1375,14 @@ function DocumentsTab({
   documentsByCategory,
   formatDate,
   onAddClick,
+  onEditClick,
   onRefresh,
 }: {
   clientId: number;
   documentsByCategory: Record<string, ClientDocument[]>;
   formatDate: (d: string) => string;
   onAddClick: () => void;
+  onEditClick: (doc: ClientDocument) => void;
   onRefresh: () => void;
 }) {
   const toast = useToast();
@@ -1356,17 +1454,23 @@ function DocumentsTab({
                         rel="noopener noreferrer"
                         className="block relative"
                       >
-                        <div className={`aspect-[3/2] overflow-hidden border-b ${
+                        <div className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
                           doc.alert_color === 'expired' || doc.alert_color === 'red'
                             ? 'border-red-500/50'
                             : doc.alert_color === 'yellow'
                             ? 'border-yellow-500/50'
                             : 'border-[var(--border)]'
                         }`}>
-                          <iframe
-                            src={`${doc.google_drive_file_url.replace('/view', '/preview')}`}
-                            className="w-full h-full pointer-events-none"
-                            allow="autoplay"
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={getDriveProxyUrl(doc.google_drive_file_url) || doc.google_drive_file_url}
+                            alt={doc.document_type}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              if (doc.google_drive_file_url) {
+                                (e.target as HTMLImageElement).src = doc.google_drive_file_url.replace('/view', '/preview');
+                              }
+                            }}
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                             <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1391,6 +1495,14 @@ function DocumentsTab({
                               <ExternalLink className="w-3 h-3" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => onEditClick(doc)}
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -2034,6 +2146,101 @@ function AddDocumentModal({ clientId, categories, familyMembers, onClose, onSave
         <div>
           <label className="block text-sm font-medium mb-1.5">Category</label>
           <select value={formData.document_category} onChange={e => setFormData({...formData, document_category: e.target.value})} className={inputClass}>
+            <option value="immigration">Immigration</option>
+            <option value="pma">Company (PMA)</option>
+            <option value="tax">Tax</option>
+            <option value="personal">Personal</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Type</label>
+          <input type="text" value={formData.document_type} onChange={e => setFormData({...formData, document_type: e.target.value})} className={inputClass} placeholder="passport, kitas, etc" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Expiry Date</label>
+          <input type="date" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Belongs To</label>
+          <select value={formData.family_member_id} onChange={e => setFormData({...formData, family_member_id: e.target.value})} className={inputClass}>
+            <option value="">Main Client</option>
+            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Google Drive Link</label>
+          <input type="url" value={formData.google_drive_file_url} onChange={e => setFormData({...formData, google_drive_file_url: e.target.value})} className={inputClass} placeholder="https://drive.google.com/..." />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================
+// EDIT DOCUMENT MODAL
+// ============================================
+function EditDocumentModal({
+  clientId,
+  document,
+  categories,
+  familyMembers,
+  onClose,
+  onSave,
+}: {
+  clientId: number;
+  document: ClientDocument;
+  categories: DocumentCategory[];
+  familyMembers: FamilyMember[];
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    file_name: document.file_name || '',
+    document_type: document.document_type || '',
+    document_category: document.document_category || 'other',
+    expiry_date: document.expiry_date?.split('T')[0] || '',
+    google_drive_file_url: document.google_drive_file_url || '',
+    family_member_id: document.family_member_id?.toString() || '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.file_name) return;
+    setIsSaving(true);
+    try {
+      await api.crm.updateDocument(clientId, document.id, {
+        file_name: formData.file_name,
+        document_type: formData.document_type,
+        document_category: formData.document_category,
+        expiry_date: formData.expiry_date || undefined,
+        google_drive_file_url: formData.google_drive_file_url || undefined,
+        family_member_id: formData.family_member_id ? Number(formData.family_member_id) : undefined,
+      });
+      toast.success('Document updated');
+      onSave();
+      onClose();
+    } catch (err) {
+      toast.error('Failed to update', (err as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+
+  return (
+    <Modal title="Edit Document" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Document Name *</label>
+          <input type="text" value={formData.file_name} onChange={e => setFormData({...formData, file_name: e.target.value})} className={inputClass} placeholder="e.g. Passport Scan" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Category</label>
+          <select value={formData.document_category} onChange={e => setFormData({...formData, document_category: e.target.value as 'immigration' | 'pma' | 'tax' | 'personal' | 'other'})} className={inputClass}>
             <option value="immigration">Immigration</option>
             <option value="pma">Company (PMA)</option>
             <option value="tax">Tax</option>
