@@ -372,7 +372,7 @@ const SETUP_TEAM: TeamMember[] = [
   {
     name: 'Anna',
     initials: 'AN',
-    role: 'Setup Consultant',
+    role: 'Specialist Advisor',
     gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
     photo: '/images/team/anna.jpg',
   },
