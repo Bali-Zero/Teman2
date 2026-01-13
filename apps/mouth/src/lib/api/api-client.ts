@@ -36,7 +36,7 @@ export class ApiClient extends ApiClientBase {
   private knowledgeApi: KnowledgeApi;
   private conversationsApi: ConversationsApi;
   private teamApi: TeamApi;
-  private adminApi: AdminApi;
+  public adminApi: AdminApi;
   private uploadApi: UploadApi;
   private audioApi: AudioApi;
   private imageApi: ImageApi;
