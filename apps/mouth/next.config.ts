@@ -26,6 +26,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'image.pollinations.ai',
       },
+      {
+        protocol: 'https',
+        hostname: 'balizero.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.datocms-assets.com',
+      },
     ],
   },
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts
