@@ -697,12 +697,12 @@ function OverviewTab({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Column 1: Contact Info + Stats */}
-      <div className="space-y-4">
-        {/* Contact Info Card */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-          <div className="flex items-center justify-between mb-3">
+    <div className="space-y-4">
+      {/* Row 1: Contact Info (2 cols) + Passport + Visa/Process */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Contact Info Card - DOUBLE WIDTH with all OCR data */}
+        <div className="lg:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-[var(--foreground)]">Contact Info</h3>
             <div className="flex items-center gap-1">
               <Button
@@ -735,139 +735,182 @@ function OverviewTab({
               </Button>
             </div>
           </div>
-          <div className="space-y-2 text-xs">
-            {client.assigned_to && (
-              <div className="flex items-center gap-2">
-                {getTeamMemberAvatar(client.assigned_to) ? (
-                  <img
-                    src={getTeamMemberAvatar(client.assigned_to)}
-                    alt={client.assigned_to.split('@')[0]}
-                    className="w-6 h-6 rounded-full object-cover ring-1 ring-[var(--accent)]/30"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                    <User className="w-3 h-3 text-[var(--accent)]" />
-                  </div>
-                )}
-                <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
-              </div>
-            )}
-            {client.email && (
-              <div className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline truncate">{client.email}</a>
-              </div>
-            )}
-            {client.phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{formatPhoneNumber(client.phone)}</span>
-              </div>
-            )}
-            {client.nationality && (
-              <div className="flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{client.nationality}</span>
-              </div>
-            )}
-            {client.company_name && (
-              <div className="flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{client.company_name}</span>
-              </div>
-            )}
+
+          {/* Two-column grid for contact + passport info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left column: Contact details */}
+            <div className="space-y-2.5 text-xs">
+              {client.assigned_to && (
+                <div className="flex items-center gap-2">
+                  {getTeamMemberAvatar(client.assigned_to) ? (
+                    <img
+                      src={getTeamMemberAvatar(client.assigned_to)}
+                      alt={client.assigned_to.split('@')[0]}
+                      className="w-6 h-6 rounded-full object-cover ring-1 ring-[var(--accent)]/30"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                      <User className="w-3 h-3 text-[var(--accent)]" />
+                    </div>
+                  )}
+                  <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
+                </div>
+              )}
+              {client.email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline truncate">{client.email}</a>
+                </div>
+              )}
+              {client.phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">{formatPhoneNumber(client.phone)}</span>
+                </div>
+              )}
+              {client.nationality && (
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">{client.nationality}</span>
+                </div>
+              )}
+              {client.company_name && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">{client.company_name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right column: Passport/OCR extracted data */}
+            <div className="space-y-2.5 text-xs border-l border-[var(--border)] pl-4">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-2">Passport Data</p>
+              {client.passport_number && (
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)] font-mono">{client.passport_number}</span>
+                </div>
+              )}
+              {client.passport_expiry && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">Exp: {formatDate(client.passport_expiry)}</span>
+                </div>
+              )}
+              {client.date_of_birth && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">DOB: {formatDate(client.date_of_birth)}</span>
+                </div>
+              )}
+              {client.gender && (
+                <div className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">{client.gender === 'M' ? 'Male' : 'Female'}</span>
+                </div>
+              )}
+              {client.birthplace && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)]">{client.birthplace}</span>
+                </div>
+              )}
+              {!client.passport_number && !client.passport_expiry && !client.date_of_birth && !client.gender && !client.birthplace && (
+                <p className="text-[var(--foreground-muted)] italic">No passport data yet. Use OCR to extract.</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards - 2x2 grid */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Users className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-[10px] text-[var(--foreground-muted)]">Family</span>
-            </div>
-            <p className="text-xl font-bold text-[var(--foreground)]">{stats.family_count}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <FileText className="w-3.5 h-3.5 text-purple-500" />
-              <span className="text-[10px] text-[var(--foreground-muted)]">Docs</span>
-            </div>
-            <p className="text-xl font-bold text-[var(--foreground)]">{stats.documents_count}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Clock className="w-3.5 h-3.5 text-orange-500" />
-              <span className="text-[10px] text-[var(--foreground-muted)]">Active</span>
-            </div>
-            <p className="text-xl font-bold text-[var(--foreground)]">{activePractices.length}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-              <span className="text-[10px] text-[var(--foreground-muted)]">Done</span>
-            </div>
-            <p className="text-xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Column 2: Passport + Quick Note */}
-      <div className="space-y-4">
-        <PassportCard
-          client={client}
-          documents={documents}
-          formatDate={formatDate}
-        />
-
-        {/* Quick Note */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-          <h3 className="text-xs font-semibold text-[var(--foreground)] mb-2 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" />
-            Quick Note
-          </h3>
-          <textarea
-            value={quickNote}
-            onChange={(e) => setQuickNote(e.target.value)}
-            placeholder="Add note..."
-            rows={2}
-            className="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-xs"
+        {/* Column 3: Passport Card + Quick Note */}
+        <div className="space-y-4">
+          <PassportCard
+            client={client}
+            documents={documents}
+            formatDate={formatDate}
           />
-          <Button
-            size="sm"
-            onClick={handleAddNote}
-            disabled={!quickNote.trim() || isAddingNote}
-            className="w-full mt-2 h-7 text-xs"
-          >
-            {isAddingNote ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <>
-                <Plus className="w-3 h-3 mr-1" />
-                Add
-              </>
-            )}
-          </Button>
+
+          {/* Quick Note */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <h3 className="text-xs font-semibold text-[var(--foreground)] mb-2 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" />
+              Quick Note
+            </h3>
+            <textarea
+              value={quickNote}
+              onChange={(e) => setQuickNote(e.target.value)}
+              placeholder="Add note..."
+              rows={2}
+              className="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-xs"
+            />
+            <Button
+              size="sm"
+              onClick={handleAddNote}
+              disabled={!quickNote.trim() || isAddingNote}
+              className="w-full mt-2 h-7 text-xs"
+            >
+              {isAddingNote ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Column 4: Visa */}
+        <div className="self-start">
+          <ActualVisaCard
+            documents={documents}
+            activePractices={activePractices}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+          />
+        </div>
+
+        {/* Column 5: Process */}
+        <div className="self-start">
+          <ActiveProcessCard
+            activePractices={activePractices}
+            formatDate={formatDate}
+            router={router}
+          />
         </div>
       </div>
 
-      {/* Column 3: Visa */}
-      <div className="self-start">
-        <ActualVisaCard
-          documents={documents}
-          activePractices={activePractices}
-          formatDate={formatDate}
-          formatCurrency={formatCurrency}
-        />
-      </div>
-
-      {/* Column 4: Process */}
-      <div className="self-start">
-        <ActiveProcessCard
-          activePractices={activePractices}
-          formatDate={formatDate}
-          router={router}
-        />
+      {/* Row 2: Stats Cards - 4 columns */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Users className="w-3.5 h-3.5 text-blue-500" />
+            <span className="text-[10px] text-[var(--foreground-muted)]">Family</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--foreground)]">{stats.family_count}</p>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <FileText className="w-3.5 h-3.5 text-purple-500" />
+            <span className="text-[10px] text-[var(--foreground-muted)]">Docs</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--foreground)]">{stats.documents_count}</p>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Clock className="w-3.5 h-3.5 text-orange-500" />
+            <span className="text-[10px] text-[var(--foreground-muted)]">Active</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--foreground)]">{activePractices.length}</p>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            <span className="text-[10px] text-[var(--foreground-muted)]">Done</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
+        </div>
       </div>
     </div>
   );
