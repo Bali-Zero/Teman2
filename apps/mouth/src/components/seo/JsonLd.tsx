@@ -17,7 +17,7 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: `${baseUrl}/static/balizero-logo-clean.png`,
     sameAs: [
-      'https://instagram.com/balizero',
+      'https://instagram.com/balizero0',
       'https://linkedin.com/company/balizero',
       'https://wa.me/6281234567890',
     ],

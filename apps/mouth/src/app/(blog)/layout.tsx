@@ -405,7 +405,7 @@ export default function BlogLayout({
               {/* Social Links */}
               <div className="flex items-center gap-4">
                 <a
-                  href="https://instagram.com/balizero"
+                  href="https://instagram.com/balizero0"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"

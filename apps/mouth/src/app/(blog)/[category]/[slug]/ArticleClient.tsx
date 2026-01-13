@@ -272,28 +272,29 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
             {/* Main content - wider now */}
             <article className="lg:col-span-8">
-              <div className="prose prose-invert prose-lg max-w-none">
+              {/* Article content with 30% larger text (prose-xl = 1.25rem vs prose-lg = 1.125rem) */}
+              <div className="prose prose-invert prose-xl max-w-none" style={{ fontSize: '1.3rem', lineHeight: '1.8' }}>
                 {article.mdxSource ? (
                   <MDXContent source={article.mdxSource} />
                 ) : (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      h1: ({children}) => <h1 className="font-serif text-3xl md:text-4xl font-bold text-white mt-12 mb-6 first:mt-0">{children}</h1>,
-                      h2: ({children}) => <h2 className="font-serif text-2xl md:text-3xl font-bold text-white mt-10 mb-4 scroll-mt-24">{children}</h2>,
-                      h3: ({children}) => <h3 className="font-serif text-xl md:text-2xl font-semibold text-white mt-8 mb-3 scroll-mt-24">{children}</h3>,
-                      p: ({children}) => <p className="text-white/80 leading-relaxed mb-4">{children}</p>,
-                      ul: ({children}) => <ul className="list-disc list-outside ml-6 mb-4 space-y-2 text-white/80">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal list-outside ml-6 mb-4 space-y-2 text-white/80">{children}</ol>,
-                      li: ({children}) => <li className="leading-relaxed pl-2">{children}</li>,
+                      h1: ({children}) => <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0">{children}</h1>,
+                      h2: ({children}) => <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">{children}</h2>,
+                      h3: ({children}) => <h3 className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">{children}</h3>,
+                      p: ({children}) => <p className="text-white/80 leading-relaxed mb-5 text-xl">{children}</p>,
+                      ul: ({children}) => <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">{children}</ul>,
+                      ol: ({children}) => <ol className="list-decimal list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">{children}</ol>,
+                      li: ({children}) => <li className="leading-relaxed pl-2 text-xl">{children}</li>,
                       a: ({href, children}) => <a href={href} className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors">{children}</a>,
-                      blockquote: ({children}) => <blockquote className="border-l-4 border-[#2251ff] pl-6 py-2 my-6 italic text-white/70 bg-white/5 rounded-r-lg">{children}</blockquote>,
-                      code: ({children, className}) => className ? <code className="font-mono text-sm">{children}</code> : <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-sm">{children}</code>,
-                      pre: ({children}) => <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-sm">{children}</pre>,
+                      blockquote: ({children}) => <blockquote className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl">{children}</blockquote>,
+                      code: ({children, className}) => className ? <code className="font-mono text-base">{children}</code> : <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base">{children}</code>,
+                      pre: ({children}) => <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base">{children}</pre>,
                       table: ({children}) => <div className="overflow-x-auto my-6 rounded-xl border border-white/10"><table className="w-full text-left">{children}</table></div>,
                       thead: ({children}) => <thead className="bg-white/5 border-b border-white/10">{children}</thead>,
-                      th: ({children}) => <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white/60">{children}</th>,
-                      td: ({children}) => <td className="px-4 py-3 text-white/80">{children}</td>,
+                      th: ({children}) => <th className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60">{children}</th>,
+                      td: ({children}) => <td className="px-4 py-3 text-white/80 text-lg">{children}</td>,
                       strong: ({children}) => <strong className="font-semibold text-white">{children}</strong>,
                       hr: () => <hr className="my-8 border-white/10" />,
                     }}
