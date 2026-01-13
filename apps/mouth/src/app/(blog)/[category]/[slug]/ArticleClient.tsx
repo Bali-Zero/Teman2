@@ -270,47 +270,8 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
       <section className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-            {/* Sidebar - TOC */}
-            <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-24 space-y-8">
-                <TableOfContents content={article.content} />
-
-                {/* Share buttons */}
-                <div className="space-y-3">
-                  <p className="text-xs font-medium uppercase tracking-wider text-white/60">
-                    Share
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={shareOnTwitter}
-                      className="p-2 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                      <Twitter className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={shareOnLinkedIn}
-                      className="p-2 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                      <Linkedin className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={copyLink}
-                      className={cn(
-                        'p-2 rounded-lg transition-colors',
-                        copied
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-                      )}
-                    >
-                      <Link2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            {/* Main content */}
-            <article className="lg:col-span-6">
+            {/* Main content - wider now */}
+            <article className="lg:col-span-8">
               <div className="prose prose-invert prose-lg max-w-none">
                 {article.mdxSource ? (
                   <MDXContent source={article.mdxSource} />
@@ -401,9 +362,14 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
             </article>
 
             {/* Right sidebar */}
-            <aside className="lg:col-span-3">
-              <div className="sticky top-24 space-y-8">
-                {/* Newsletter */}
+            <aside className="hidden lg:block lg:col-span-4">
+              {/* TOC - sticky, stays fixed during scroll */}
+              <div className="sticky top-24">
+                <TableOfContents content={article.content} />
+              </div>
+
+              {/* Newsletter - normal position, scrolls with page */}
+              <div className="mt-8">
                 <NewsletterSidebar defaultCategories={[article.category]} />
               </div>
             </aside>
