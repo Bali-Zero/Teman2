@@ -306,8 +306,11 @@ class PricingTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "Get official service pricing. Use this for any price/cost questions. "
-            "Returns current prices from the pricing database."
+            "🚨 MANDATORY for ALL Bali Zero service price questions. "
+            "Get OFFICIAL pricing from Bali Zero database (NO AI generation, NO memory). "
+            "USE THIS when user asks: 'quanto costa', 'price', 'prezzo', 'costo', 'harga', 'berapa', 'cost', 'pricing', 'PT PMA', 'KITAS', 'visa'. "
+            "Returns EXACT current prices from official pricing database. "
+            "NEVER guess prices - ALWAYS call this tool first for price questions."
         )
 
     @property
