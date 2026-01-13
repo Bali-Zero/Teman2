@@ -121,7 +121,7 @@ export default function TeamActivityPage() {
       setTopUsers(overviewRes.top_users);
       setTeamStats(statsRes.team_stats);
     } catch (err) {
-      logger.error('Failed to load overview:', err);
+      console.error('Failed to load overview:', err);
       throw err;
     }
   }, []);
@@ -138,7 +138,7 @@ export default function TeamActivityPage() {
       setMessages(res.messages);
       setMessagesTotal(res.total);
     } catch (err) {
-      logger.error('Failed to load messages:', err);
+      console.error('Failed to load messages:', err);
     }
   }, [messageFilters, messagesPage]);
 
@@ -152,7 +152,7 @@ export default function TeamActivityPage() {
       setTimesheet(res.records);
       setTimesheetTotal(res.total);
     } catch (err) {
-      logger.error('Failed to load timesheet:', err);
+      console.error('Failed to load timesheet:', err);
     }
   }, [timesheetFilter, timesheetPage]);
 
@@ -166,7 +166,7 @@ export default function TeamActivityPage() {
       setCrmActions(res.actions);
       setCrmTotal(res.total);
     } catch (err) {
-      logger.error('Failed to load CRM actions:', err);
+      console.error('Failed to load CRM actions:', err);
     }
   }, [crmFilter, crmPage]);
 
@@ -220,7 +220,7 @@ export default function TeamActivityPage() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      logger.error('Export failed:', err);
+      console.error('Export failed:', err);
       setError('Failed to export messages');
     }
   };
