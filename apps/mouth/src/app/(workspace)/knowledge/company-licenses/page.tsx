@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api';
 import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 
 export default function CompanyLicensesPage() {
@@ -14,7 +15,10 @@ export default function CompanyLicensesPage() {
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
-    
+
+    // Track KB page view
+    api.kbActivity.logView('company_licenses', undefined, 'Company & Licenses', 'company-licenses');
+
     logger.componentMount('CompanyLicensesPage', {
       component: 'CompanyLicensesPage',
       action: 'mount',

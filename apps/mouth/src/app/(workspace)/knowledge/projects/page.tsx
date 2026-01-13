@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, FolderKanban, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api';
 import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 
 export default function ProjectsPage() {
@@ -14,7 +15,10 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
-    
+
+    // Track KB page view
+    api.kbActivity.logView('projects', undefined, 'Projects', 'projects');
+
     logger.componentMount('ProjectsPage', {
       component: 'ProjectsPage',
       action: 'mount',

@@ -322,6 +322,8 @@ export default function KitasVisaPage() {
 
   useEffect(() => {
     loadVisas();
+    // Track KB page view
+    api.kbActivity.logView('visa_list', undefined, 'KITAS & Visa Guide', 'kitas');
   }, []);
 
   const loadVisas = async () => {

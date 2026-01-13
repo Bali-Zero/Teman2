@@ -14,6 +14,7 @@ import { EmailApi } from './email/email.api';
 import { PortalApi } from './portal/portal.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
+import { KnowledgeActivityApi } from './knowledge-activity.api';
 import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
 import type { LoginResponse } from './auth/auth.types';
 import type { KnowledgeSearchResponse, KnowledgeSearchResult, TierLevel } from './knowledge/knowledge.types';
@@ -46,6 +47,7 @@ export class ApiClient extends ApiClientBase {
   private portalApi: PortalApi;
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
+  private kbActivityApi: KnowledgeActivityApi;
 
   constructor(baseUrl: string) {
     super(baseUrl);
@@ -64,6 +66,7 @@ export class ApiClient extends ApiClientBase {
     this.portalApi = new PortalApi(this);
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
+    this.kbActivityApi = new KnowledgeActivityApi(this);
   }
 
   // ============================================================================
@@ -133,6 +136,14 @@ export class ApiClient extends ApiClientBase {
 
   public get knowledge(): KnowledgeApi {
     return this.knowledgeApi;
+  }
+
+  // ============================================================================
+  // Knowledge Activity Tracking
+  // ============================================================================
+
+  public get kbActivity(): KnowledgeActivityApi {
+    return this.kbActivityApi;
   }
 
   public get conversations(): ConversationsApi {

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, FolderKanban, Briefcase } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api';
 import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 
 export default function OurJourneyPage() {
@@ -13,7 +14,10 @@ export default function OurJourneyPage() {
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
-    
+
+    // Track KB page view
+    api.kbActivity.logView('our_journey', undefined, 'Our Journey', 'our-journey');
+
     logger.componentMount('OurJourneyPage', {
       component: 'OurJourneyPage',
       action: 'mount',

@@ -191,6 +191,8 @@ export default function VisaDetailPage() {
       const response = await api.get<VisaType>(`/api/knowledge/visa/${visaId}`);
       setVisa(response);
       setError(null);
+      // Track KB view
+      api.kbActivity.logView('visa', visaId, response.name, response.category);
     } catch (err) {
       console.error('Failed to load visa:', err);
       setError('Visa not found or failed to load.');
@@ -362,6 +364,8 @@ export default function VisaDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  // Track KB download
+                  api.kbActivity.logDownload('visa', visaId, visa.name, visa.category);
                   const link = document.createElement('a');
                   link.href = visa.metadata?.pdf_url || '';
                   link.download = `${visa.code}_${visa.name.replace(/\s+/g, '_')}.pdf`;
