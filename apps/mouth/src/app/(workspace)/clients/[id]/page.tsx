@@ -81,6 +81,64 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: 'bg-gray-500/20 text-gray-400',
 };
 
+// Country codes with flags for phone input
+const COUNTRY_CODES = [
+  { code: '+62', country: 'Indonesia', flag: '🇮🇩' },
+  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
+  { code: '+39', country: 'Italy', flag: '🇮🇹' },
+  { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
+  { code: '+44', country: 'UK', flag: '🇬🇧' },
+  { code: '+61', country: 'Australia', flag: '🇦🇺' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+  { code: '+33', country: 'France', flag: '🇫🇷' },
+  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
+  { code: '+34', country: 'Spain', flag: '🇪🇸' },
+  { code: '+7', country: 'Russia', flag: '🇷🇺' },
+  { code: '+380', country: 'Ukraine', flag: '🇺🇦' },
+  { code: '+81', country: 'Japan', flag: '🇯🇵' },
+  { code: '+86', country: 'China', flag: '🇨🇳' },
+  { code: '+91', country: 'India', flag: '🇮🇳' },
+  { code: '+55', country: 'Brazil', flag: '🇧🇷' },
+  { code: '+52', country: 'Mexico', flag: '🇲🇽' },
+  { code: '+54', country: 'Argentina', flag: '🇦🇷' },
+  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
+  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
+  { code: '+353', country: 'Ireland', flag: '🇮🇪' },
+  { code: '+351', country: 'Portugal', flag: '🇵🇹' },
+  { code: '+48', country: 'Poland', flag: '🇵🇱' },
+  { code: '+90', country: 'Turkey', flag: '🇹🇷' },
+  { code: '+66', country: 'Thailand', flag: '🇹🇭' },
+  { code: '+84', country: 'Vietnam', flag: '🇻🇳' },
+  { code: '+63', country: 'Philippines', flag: '🇵🇭' },
+  { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
+  { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+];
+
+// Extract country code from phone number
+const extractCountryCode = (phone: string): { countryCode: string; localNumber: string } => {
+  if (!phone) return { countryCode: '+62', localNumber: '' };
+
+  // If starts with +, try to match
+  if (phone.startsWith('+')) {
+    for (const { code } of COUNTRY_CODES.sort((a, b) => b.code.length - a.code.length)) {
+      if (phone.startsWith(code)) {
+        return { countryCode: code, localNumber: phone.slice(code.length).trim() };
+      }
+    }
+  }
+
+  // Try to detect from raw digits
+  const digits = phone.replace(/\D/g, '');
+  for (const { code } of COUNTRY_CODES.sort((a, b) => b.code.length - a.code.length)) {
+    const codeDigits = code.replace('+', '');
+    if (digits.startsWith(codeDigits) && digits.length >= codeDigits.length + 6) {
+      return { countryCode: code, localNumber: digits.slice(codeDigits.length) };
+    }
+  }
+
+  return { countryCode: '+62', localNumber: phone };
+};
+
 // Map nationalities to flag emojis
 const NATIONALITY_FLAGS: Record<string, string> = {
   'Italian': '🇮🇹', 'Italy': '🇮🇹',
@@ -119,6 +177,57 @@ const NATIONALITY_FLAGS: Record<string, string> = {
 const getCountryFlag = (nationality: string | undefined): string | null => {
   if (!nationality) return null;
   return NATIONALITY_FLAGS[nationality] || null;
+};
+
+// Format phone number with country code detection
+const formatPhoneNumber = (phone: string): string => {
+  if (!phone) return '';
+
+  // Remove all non-digit characters except leading +
+  const hasPlus = phone.startsWith('+');
+  const digits = phone.replace(/\D/g, '');
+
+  // If already has +, just return formatted
+  if (hasPlus) {
+    return phone;
+  }
+
+  // Country codes sorted by length (longest first to match correctly)
+  const countryCodes: { code: string; length: number }[] = [
+    { code: '380', length: 3 },  // Ukraine
+    { code: '62', length: 2 },   // Indonesia
+    { code: '82', length: 2 },   // South Korea
+    { code: '81', length: 2 },   // Japan
+    { code: '86', length: 2 },   // China
+    { code: '91', length: 2 },   // India
+    { code: '44', length: 2 },   // UK
+    { code: '49', length: 2 },   // Germany
+    { code: '33', length: 2 },   // France
+    { code: '39', length: 2 },   // Italy
+    { code: '34', length: 2 },   // Spain
+    { code: '31', length: 2 },   // Netherlands
+    { code: '61', length: 2 },   // Australia
+    { code: '55', length: 2 },   // Brazil
+    { code: '52', length: 2 },   // Mexico
+    { code: '65', length: 2 },   // Singapore
+    { code: '66', length: 2 },   // Thailand
+    { code: '63', length: 2 },   // Philippines
+    { code: '60', length: 2 },   // Malaysia
+    { code: '84', length: 2 },   // Vietnam
+    { code: '7', length: 1 },    // Russia
+    { code: '1', length: 1 },    // USA/Canada
+  ];
+
+  // Try to match country code
+  for (const { code, length } of countryCodes) {
+    if (digits.startsWith(code) && digits.length >= length + 8) {
+      const rest = digits.slice(length);
+      return `+${code} ${rest}`;
+    }
+  }
+
+  // If no country code detected, return as-is
+  return phone;
 };
 
 // Calculate passport validity color based on months until expiry
@@ -542,27 +651,26 @@ function OverviewTab({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
-      {/* Left Column - Client Info */}
-      <div className="space-y-6">
-        {/* Client Info Card */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">Contact Info</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Column 1: Contact Info + Stats */}
+      <div className="space-y-4">
+        {/* Contact Info Card */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">Contact Info</h3>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                className="h-7 w-7 p-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 onClick={onEditClick}
               >
-                <Edit2 className="w-4 h-4" />
-                Edit
+                <Edit2 className="w-3.5 h-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1 text-[var(--foreground-muted)] hover:text-red-500"
+                className="h-7 w-7 p-0 text-[var(--foreground-muted)] hover:text-red-500"
                 onClick={async () => {
                   if (confirm(`⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All process and documents remain in the system.\n\nContinue?`)) {
                     try {
@@ -570,180 +678,147 @@ function OverviewTab({
                       await api.crm.deleteClient(client.id, user.email);
                       toast.success('Client deleted', 'Marked as inactive');
                       router.push('/clients');
-                      router.refresh(); // Force data refetch
+                      router.refresh();
                     } catch (err) {
                       toast.error('Error deleting client', (err as Error).message);
                     }
                   }
                 }}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
-          <div className="space-y-3">
-            {/* Lead - Changed label to Consultant/Advisor */}
+          <div className="space-y-2 text-xs">
             {client.assigned_to && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-2">
                 {getTeamMemberAvatar(client.assigned_to) ? (
                   <img
                     src={getTeamMemberAvatar(client.assigned_to)}
                     alt={client.assigned_to.split('@')[0]}
-                    className="w-8 h-8 rounded-full object-cover ring-2 ring-[var(--accent)]/30"
+                    className="w-6 h-6 rounded-full object-cover ring-1 ring-[var(--accent)]/30"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-[var(--accent)]" />
+                  <div className="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                    <User className="w-3 h-3 text-[var(--accent)]" />
                   </div>
                 )}
-                <span className="text-[var(--foreground)]">
-                  <span className="text-[var(--foreground-muted)]">Consultant:</span>{' '}
-                  <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
-                </span>
+                <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
               </div>
             )}
             {client.email && (
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="w-4 h-4 text-[var(--foreground-muted)]" />
-                <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline">{client.email}</a>
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline truncate">{client.email}</a>
               </div>
             )}
             {client.phone && (
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="w-4 h-4 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{client.phone}</span>
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
+                <span className="text-[var(--foreground)]">{formatPhoneNumber(client.phone)}</span>
               </div>
             )}
             {client.nationality && (
-              <div className="flex items-center gap-3 text-sm">
-                <Globe className="w-4 h-4 text-[var(--foreground-muted)]" />
+              <div className="flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
                 <span className="text-[var(--foreground)]">{client.nationality}</span>
               </div>
             )}
-            {client.passport_number && (() => {
-              const passportValidity = getPassportValidityColor(client.passport_expiry);
-              return (
-                <div className="flex items-center gap-3 text-sm">
-                  <CreditCard className="w-4 h-4 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)] flex items-center gap-2">
-                    {client.passport_number}
-                    {client.passport_expiry && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${passportValidity.bgClass} ${passportValidity.textClass}`}>
-                        {formatDate(client.passport_expiry)} • {passportValidity.label}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              );
-            })()}
-            {client.address && (
-              <div className="flex items-center gap-3 text-sm">
-                <MapPin className="w-4 h-4 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{client.address}</span>
-              </div>
-            )}
             {client.company_name && (
-              <div className="flex items-center gap-3 text-sm">
-                <Building2 className="w-4 h-4 text-[var(--foreground-muted)]" />
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
                 <span className="text-[var(--foreground)]">{client.company_name}</span>
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-4 h-4 text-blue-500" />
-              <span className="text-xs text-[var(--foreground-muted)]">Family</span>
+        {/* Stats Cards - 2x2 grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Users className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-[10px] text-[var(--foreground-muted)]">Family</span>
             </div>
-            <p className="text-2xl font-bold text-[var(--foreground)]">{stats.family_count}</p>
+            <p className="text-xl font-bold text-[var(--foreground)]">{stats.family_count}</p>
           </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-purple-500" />
-              <span className="text-xs text-[var(--foreground-muted)]">Documents</span>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <FileText className="w-3.5 h-3.5 text-purple-500" />
+              <span className="text-[10px] text-[var(--foreground-muted)]">Docs</span>
             </div>
-            <p className="text-2xl font-bold text-[var(--foreground)]">{stats.documents_count}</p>
+            <p className="text-xl font-bold text-[var(--foreground)]">{stats.documents_count}</p>
           </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-purple-500" />
-              <span className="text-xs text-[var(--foreground-muted)]">Active Process</span>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Clock className="w-3.5 h-3.5 text-orange-500" />
+              <span className="text-[10px] text-[var(--foreground-muted)]">Active</span>
             </div>
-            <p className="text-2xl font-bold text-[var(--foreground)]">{activePractices.length}</p>
+            <p className="text-xl font-bold text-[var(--foreground)]">{activePractices.length}</p>
           </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span className="text-xs text-[var(--foreground-muted)]">Completed</span>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+              <span className="text-[10px] text-[var(--foreground-muted)]">Done</span>
             </div>
-            <p className="text-2xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
-          </div>
-        </div>
-
-        {/* Quick Add Note */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4">
-          <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Quick Note
-          </h3>
-          <div className="space-y-2">
-            <textarea
-              value={quickNote}
-              onChange={(e) => setQuickNote(e.target.value)}
-              placeholder="Add a quick note about this client..."
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-sm"
-            />
-            <Button
-              size="sm"
-              onClick={handleAddNote}
-              disabled={!quickNote.trim() || isAddingNote}
-              className="w-full gap-2"
-            >
-              {isAddingNote ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-3 h-3" />
-                  Add Note
-                </>
-              )}
-            </Button>
+            <p className="text-xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
           </div>
         </div>
       </div>
 
-      {/* Right Column - 3 Equal Boxes (Passport, Visa, Process) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Passport Card */}
+      {/* Column 2: Passport + Quick Note */}
+      <div className="space-y-4">
         <PassportCard
           client={client}
           documents={documents}
           formatDate={formatDate}
         />
 
-        {/* Actual Visa Card */}
-        <ActualVisaCard
-          documents={documents}
-          activePractices={activePractices}
-          formatDate={formatDate}
-          formatCurrency={formatCurrency}
-        />
-
-        {/* Active Process Card */}
-        <ActiveProcessCard
-          activePractices={activePractices}
-          formatDate={formatDate}
-          router={router}
-        />
+        {/* Quick Note */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+          <h3 className="text-xs font-semibold text-[var(--foreground)] mb-2 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" />
+            Quick Note
+          </h3>
+          <textarea
+            value={quickNote}
+            onChange={(e) => setQuickNote(e.target.value)}
+            placeholder="Add note..."
+            rows={2}
+            className="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-xs"
+          />
+          <Button
+            size="sm"
+            onClick={handleAddNote}
+            disabled={!quickNote.trim() || isAddingNote}
+            className="w-full mt-2 h-7 text-xs"
+          >
+            {isAddingNote ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <>
+                <Plus className="w-3 h-3 mr-1" />
+                Add
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Column 3: Visa */}
+      <ActualVisaCard
+        documents={documents}
+        activePractices={activePractices}
+        formatDate={formatDate}
+        formatCurrency={formatCurrency}
+      />
+
+      {/* Column 4: Process */}
+      <ActiveProcessCard
+        activePractices={activePractices}
+        formatDate={formatDate}
+        router={router}
+      />
     </div>
   );
 }
@@ -819,38 +894,24 @@ function PassportCard({
   };
 
   return (
-    <div className={`rounded-xl border-2 bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col ${
-      passportValidity.color === 'green' ? 'border-green-500/40' :
-      passportValidity.color === 'orange' ? 'border-orange-500/40' :
-      passportValidity.color === 'red' ? 'border-red-500/40' :
-      'border-[var(--border)]'
-    }`}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-          <CreditCard className="w-4 h-4" />
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
           Passport
         </h3>
-        {client.passport_expiry && (
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${passportValidity.bgClass} ${passportValidity.textClass}`}>
-            {passportValidity.label}
-          </span>
-        )}
       </div>
 
-      <div className="p-3 flex-1 flex flex-col">
-        {/* Passport Image - Rectangular (3:2 passport ratio) */}
+      {/* Content */}
+      <div className="p-4">
         {passportImageUrl ? (
           <button
             onClick={handleDownload}
-            className="w-full block relative group cursor-pointer flex-1"
+            className="w-full block relative group cursor-pointer"
             title="Click to download passport"
           >
-            <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
-              passportValidity.color === 'green' ? 'border-green-500/50' :
-              passportValidity.color === 'orange' ? 'border-orange-500/50' :
-              passportValidity.color === 'red' ? 'border-red-500/50' :
-              'border-[var(--border)]'
-            }`}>
+            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)]">
               <iframe
                 src={`${passportImageUrl.replace('/view', '/preview')}`}
                 className="w-full h-full pointer-events-none"
@@ -865,53 +926,16 @@ function PassportCard({
             </div>
           </button>
         ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50 flex-1">
-            <CreditCard className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-xs text-[var(--foreground-muted)]">No passport</span>
+          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+            <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-sm text-[var(--foreground-muted)]">No passport</span>
           </div>
         )}
 
-        {/* Passport Info */}
-        <div className="mt-3 space-y-1">
-          {client.passport_number ? (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[var(--foreground-muted)]">No.</span>
-              <span className="font-mono font-medium text-[var(--foreground)]">{client.passport_number}</span>
-            </div>
-          ) : null}
-          {client.passport_expiry ? (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[var(--foreground-muted)]">Exp.</span>
-              <span className={`font-medium ${passportValidity.textClass}`}>
-                {formatDate(client.passport_expiry)}
-              </span>
-            </div>
-          ) : null}
-          {!client.passport_number && !client.passport_expiry && passportImageUrl && (
-            <button
-              onClick={handleExtractData}
-              disabled={isExtracting}
-              className="w-full text-xs py-1.5 px-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-1.5"
-            >
-              {isExtracting ? (
-                <>
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-3 h-3" />
-                  Extract passport data
-                </>
-              )}
-            </button>
-          )}
-          {!client.passport_number && !client.passport_expiry && !passportImageUrl && (
-            <p className="text-[10px] text-[var(--foreground-muted)] text-center">
-              Upload passport in Documents
-            </p>
-          )}
-        </div>
+        {/* Caption */}
+        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
+          Upload passport in Documents
+        </p>
       </div>
     </div>
   );
@@ -981,117 +1005,52 @@ function ActualVisaCard({
   const visaPrice = getVisaPrice();
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-          <FileText className="w-4 h-4" />
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <FileText className="w-5 h-5" />
           Actual Visa
         </h3>
-        {visaProcess ? (
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/20 text-blue-400">
-            In Process
-          </span>
-        ) : latestVisa?.expiry_date ? (
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-            ALERT_COLORS[latestVisa.alert_color || 'green']
-          }`}>
-            {latestVisa.alert_color === 'expired' ? 'EXPIRED' :
-             latestVisa.alert_color === 'red' ? 'Expiring' :
-             latestVisa.alert_color === 'yellow' ? 'Check' : 'Valid'}
-          </span>
-        ) : null}
       </div>
 
-      <div className="p-3 flex-1 flex flex-col">
+      {/* Content */}
+      <div className="p-4">
         {visaProcess ? (
           /* Visa in Process */
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="aspect-[3/2] w-full rounded-lg bg-blue-500/10 border border-blue-500/30 flex flex-col items-center justify-center">
-              <Loader2 className="w-8 h-8 text-blue-400 animate-spin mb-2" />
-              <p className="text-sm font-medium text-blue-400">Visa on process</p>
-            </div>
-            <div className="mt-3 space-y-1 w-full">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--foreground-muted)]">Type</span>
-                <span className="font-medium text-[var(--foreground)]">{visaProcess.practice_type_name || visaProcess.practice_type_code?.toUpperCase()}</span>
-              </div>
-              {visaPrice && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">Price</span>
-                  <span className="font-medium text-[var(--foreground)]">{formatCurrency(visaPrice)}</span>
-                </div>
-              )}
-            </div>
+          <div className="aspect-[3/2] rounded-lg bg-blue-500/10 border-2 border-dashed border-blue-500/30 flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+            <p className="text-sm font-medium text-blue-400">Visa on process</p>
           </div>
-        ) : latestVisa ? (
-          <>
-            {/* Visa Image - Same aspect ratio as passport */}
-            {latestVisa.google_drive_file_url ? (
-              <a
-                href={latestVisa.google_drive_file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block relative group flex-1"
-              >
-                <div className={`aspect-[3/2] rounded-lg overflow-hidden border ${
-                  latestVisa.alert_color === 'expired' || latestVisa.alert_color === 'red'
-                    ? 'border-red-500/50'
-                    : latestVisa.alert_color === 'yellow'
-                    ? 'border-yellow-500/50'
-                    : 'border-green-500/50'
-                }`}>
-                  <iframe
-                    src={`${latestVisa.google_drive_file_url.replace('/view', '/preview')}`}
-                    className="w-full h-full pointer-events-none"
-                    allow="autoplay"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                    <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </a>
-            ) : (
-              <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50 flex-1">
-                <FileText className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
-                <span className="text-xs text-[var(--foreground-muted)]">No visa image</span>
+        ) : latestVisa?.google_drive_file_url ? (
+          <a
+            href={latestVisa.google_drive_file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block relative group"
+          >
+            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)]">
+              <iframe
+                src={`${latestVisa.google_drive_file_url.replace('/view', '/preview')}`}
+                className="w-full h-full pointer-events-none"
+                allow="autoplay"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            )}
-
-            {/* Visa Info */}
-            <div className="mt-3 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--foreground-muted)]">Type</span>
-                <span className="font-medium text-[var(--foreground)]">
-                  {latestVisa.document_type?.replace(/_/g, ' ').toUpperCase() || 'Unknown'}
-                </span>
-              </div>
-              {latestVisa.expiry_date && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">Exp.</span>
-                  <span className={`font-medium ${
-                    latestVisa.alert_color === 'expired' || latestVisa.alert_color === 'red'
-                      ? 'text-red-400'
-                      : latestVisa.alert_color === 'yellow'
-                      ? 'text-yellow-400'
-                      : 'text-green-400'
-                  }`}>
-                    {formatDate(latestVisa.expiry_date)}
-                  </span>
-                </div>
-              )}
             </div>
-          </>
+          </a>
         ) : (
-          <div className="flex-1 flex flex-col">
-            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50">
-              <FileText className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
-              <span className="text-xs text-[var(--foreground-muted)]">No visa</span>
-            </div>
-            <p className="text-[10px] text-[var(--foreground-muted)] text-center mt-3">
-              Upload visa in Documents
-            </p>
+          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+            <FileText className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-sm text-[var(--foreground-muted)]">No visa</span>
           </div>
         )}
+
+        {/* Caption */}
+        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
+          Upload visa in Documents
+        </p>
       </div>
     </div>
   );
@@ -1118,16 +1077,17 @@ function ActiveProcessCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden h-full flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-          <FolderOpen className="w-4 h-4" />
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <FolderOpen className="w-5 h-5" />
           Process
         </h3>
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 px-2 text-xs"
+          className="h-7 px-2 text-xs"
           onClick={() => router.push('/cases/new')}
         >
           <Plus className="w-3 h-3 mr-1" />
@@ -1135,10 +1095,11 @@ function ActiveProcessCard({
         </Button>
       </div>
 
-      <div className="p-3 flex-1 flex flex-col">
+      {/* Content */}
+      <div className="p-4">
         {mainProcess ? (
           <div
-            className="aspect-[3/2] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-blue-500/40 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group"
+            className="aspect-[3/2] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-500/40 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group"
             onClick={() => router.push(`/cases/${mainProcess.id}`)}
             style={{
               animation: 'pulse-glow 2s ease-in-out infinite',
@@ -1151,35 +1112,20 @@ function ActiveProcessCard({
               <p className="text-sm font-semibold text-blue-400">
                 {mainProcess.practice_type_name || mainProcess.practice_type_code?.toUpperCase()}
               </p>
-              <p className="text-[10px] text-blue-300 mt-0.5">on process</p>
+              <p className="text-xs text-blue-300 mt-1">on process</p>
             </div>
           </div>
         ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 bg-[var(--background)]/50">
-            <FolderOpen className="w-8 h-8 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-xs text-[var(--foreground-muted)]">No process</span>
+          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+            <FolderOpen className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
+            <span className="text-sm text-[var(--foreground-muted)]">No process</span>
           </div>
         )}
 
-        {/* Process Info */}
-        <div className="mt-3 space-y-1">
-          {mainProcess ? (
-            <>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--foreground-muted)]">Status</span>
-                <span className="font-medium text-blue-400">{mainProcess.status.replace(/_/g, ' ')}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--foreground-muted)]">Est. Issue</span>
-                <span className="font-medium text-[var(--foreground)]">{formatDate(getEstimatedDate().toISOString())}</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-[10px] text-[var(--foreground-muted)] text-center">
-              Click "New" to start
-            </p>
-          )}
-        </div>
+        {/* Caption */}
+        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
+          Click "New" to start
+        </p>
       </div>
 
       {/* Pulsing animation keyframes */}
@@ -1895,7 +1841,31 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Phone</label>
-          <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputClass} />
+          <div className="flex gap-1">
+            <select
+              value={extractCountryCode(formData.phone).countryCode}
+              onChange={e => {
+                const { localNumber } = extractCountryCode(formData.phone);
+                setFormData({...formData, phone: e.target.value + localNumber});
+              }}
+              className={`${inputClass} w-[100px] flex-shrink-0`}
+            >
+              {COUNTRY_CODES.map(({ code, country, flag }) => (
+                <option key={code} value={code}>{flag} {code}</option>
+              ))}
+            </select>
+            <input
+              type="tel"
+              value={extractCountryCode(formData.phone).localNumber}
+              onChange={e => {
+                const { countryCode } = extractCountryCode(formData.phone);
+                const digits = e.target.value.replace(/[^\d]/g, '');
+                setFormData({...formData, phone: countryCode + digits});
+              }}
+              className={`${inputClass} flex-1`}
+              placeholder="Phone number"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Nationality</label>
