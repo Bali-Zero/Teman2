@@ -298,7 +298,7 @@ const LEADERSHIP: TeamMember[] = [
     initials: 'RS',
     role: 'Board Member',
     gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]',
-    photo: '/images/team/ruslana.jpg',
+    photo: '/static/team/ruslana.jpg',
   },
 ];
 
@@ -360,21 +360,21 @@ const SETUP_TEAM: TeamMember[] = [
     initials: 'MA',
     role: 'Setup Consultant',
     gradient: 'bg-gradient-to-br from-fuchsia-500 to-pink-600',
-    photo: '/images/team/marta.jpg',
+    photo: '/static/team/marta.jpeg',
   },
   {
     name: 'Olena',
     initials: 'OL',
     role: 'Setup Consultant',
     gradient: 'bg-gradient-to-br from-cyan-500 to-teal-600',
-    photo: '/images/team/olena.jpg',
+    photo: '/static/team/olena.jpeg',
   },
   {
     name: 'Anna',
     initials: 'AN',
     role: 'Specialist Advisor',
     gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
-    photo: '/images/team/anna.jpg',
+    photo: '/static/team/anna.jpeg',
   },
 ];
 
