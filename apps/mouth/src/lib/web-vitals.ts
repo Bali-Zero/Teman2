@@ -6,7 +6,16 @@
 'use client';
 
 import { onCLS, onINP, onLCP, onTTFB } from 'web-vitals';
-import type { Metric } from 'web-vitals';
+
+// Define Metric type locally to avoid export issues with web-vitals v5
+interface Metric {
+  name: 'CLS' | 'INP' | 'LCP' | 'TTFB' | 'FCP' | 'FID';
+  value: number;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  delta: number;
+  id: string;
+  navigationType: string;
+}
 
 interface WebVitalsOptions {
   enabled?: boolean;
