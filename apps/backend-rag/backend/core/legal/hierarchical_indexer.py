@@ -58,15 +58,18 @@ class HierarchicalIndexer:
         self.db_pool = None
 
     async def _get_db_pool(self):
-        """Get or create DB pool"""
+        """Get or create DB pool. Returns None if database is not available (non-blocking)."""
         if not self.db_pool:
+            if not settings.database_url:
+                logger.warning("⚠️ DATABASE_URL not configured - parent documents will not be saved")
+                return None
             try:
                 self.db_pool = await asyncpg.create_pool(
                     settings.database_url, min_size=1, max_size=5
                 )
             except Exception as e:
-                logger.error(f"Failed to create DB pool: {e}")
-                raise
+                logger.warning(f"⚠️ Failed to create DB pool (non-blocking): {e}")
+                return None
         return self.db_pool
 
     async def index_legal_document(
@@ -323,63 +326,37 @@ class HierarchicalIndexer:
     async def _upsert_parent_documents(self, parent_docs: list[dict]):
         """
         Salva documenti parent (BAB completi) in PostgreSQL.
+        Non-blocking: se fallisce, logga warning ma non solleva eccezione.
         """
         pool = await self._get_db_pool()
+        if not pool:
+            logger.warning(f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents")
+            return
 
-        async with pool.acquire() as conn:
-            # Prepare batch insert
-            # We use ON CONFLICT DO UPDATE to handle re-ingestion
-            for doc in parent_docs:
-                # Try with new quality columns first
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO parent_documents (
-                            id, document_id, type, title, full_text,
-                            char_count, pasal_count, metadata,
-                            text_fingerprint, is_incomplete, ocr_quality_score, needs_reextract
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                        ON CONFLICT (id) DO UPDATE SET
-                            title = EXCLUDED.title,
-                            full_text = EXCLUDED.full_text,
-                            char_count = EXCLUDED.char_count,
-                            pasal_count = EXCLUDED.pasal_count,
-                            metadata = EXCLUDED.metadata,
-                            text_fingerprint = EXCLUDED.text_fingerprint,
-                            is_incomplete = EXCLUDED.is_incomplete,
-                            ocr_quality_score = EXCLUDED.ocr_quality_score,
-                            needs_reextract = EXCLUDED.needs_reextract,
-                            created_at = NOW()
-                    """,
-                        doc["id"],
-                        doc["document_id"],
-                        doc["type"],
-                        doc["title"],
-                        doc["full_text"],
-                        doc["char_count"],
-                        doc["pasal_count"],
-                        json.dumps(doc["metadata"]),
-                        doc.get("text_fingerprint"),
-                        doc.get("is_incomplete", False),
-                        doc.get("ocr_quality_score", 1.0),
-                        doc.get("needs_reextract", False),
-                    )
-                except Exception as e:
-                    # Fall back to basic INSERT without quality columns
-                    if "does not exist" in str(e):
-                        logger.warning(f"Quality columns not yet migrated, using basic INSERT: {e}")
+        try:
+            async with pool.acquire() as conn:
+                # Prepare batch insert
+                # We use ON CONFLICT DO UPDATE to handle re-ingestion
+                for doc in parent_docs:
+                    # Try with new quality columns first
+                    try:
                         await conn.execute(
                             """
                             INSERT INTO parent_documents (
                                 id, document_id, type, title, full_text,
-                                char_count, pasal_count, metadata
-                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                char_count, pasal_count, metadata,
+                                text_fingerprint, is_incomplete, ocr_quality_score, needs_reextract
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                             ON CONFLICT (id) DO UPDATE SET
                                 title = EXCLUDED.title,
                                 full_text = EXCLUDED.full_text,
                                 char_count = EXCLUDED.char_count,
                                 pasal_count = EXCLUDED.pasal_count,
                                 metadata = EXCLUDED.metadata,
+                                text_fingerprint = EXCLUDED.text_fingerprint,
+                                is_incomplete = EXCLUDED.is_incomplete,
+                                ocr_quality_score = EXCLUDED.ocr_quality_score,
+                                needs_reextract = EXCLUDED.needs_reextract,
                                 created_at = NOW()
                         """,
                             doc["id"],
@@ -390,11 +367,45 @@ class HierarchicalIndexer:
                             doc["char_count"],
                             doc["pasal_count"],
                             json.dumps(doc["metadata"]),
+                            doc.get("text_fingerprint"),
+                            doc.get("is_incomplete", False),
+                            doc.get("ocr_quality_score", 1.0),
+                            doc.get("needs_reextract", False),
                         )
-                    else:
-                        raise
-
-        logger.info(f"✅ Upserted {len(parent_docs)} parent documents to PostgreSQL")
+                    except Exception as e:
+                        # Fall back to basic INSERT without quality columns
+                        if "does not exist" in str(e):
+                            logger.warning(f"Quality columns not yet migrated, using basic INSERT: {e}")
+                            await conn.execute(
+                                """
+                                INSERT INTO parent_documents (
+                                    id, document_id, type, title, full_text,
+                                    char_count, pasal_count, metadata
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                ON CONFLICT (id) DO UPDATE SET
+                                    title = EXCLUDED.title,
+                                    full_text = EXCLUDED.full_text,
+                                    char_count = EXCLUDED.char_count,
+                                    pasal_count = EXCLUDED.pasal_count,
+                                    metadata = EXCLUDED.metadata,
+                                    created_at = NOW()
+                            """,
+                                doc["id"],
+                                doc["document_id"],
+                                doc["type"],
+                                doc["title"],
+                                doc["full_text"],
+                                doc["char_count"],
+                                doc["pasal_count"],
+                                json.dumps(doc["metadata"]),
+                            )
+                        else:
+                            raise
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to save parent documents to PostgreSQL (non-blocking): {e}")
+            # Non rilanciare l'eccezione - l'ingestione deve continuare
+        else:
+            logger.info(f"✅ Upserted {len(parent_docs)} parent documents to PostgreSQL")
 
     async def close(self):
         if self.db_pool:

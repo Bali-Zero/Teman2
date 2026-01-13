@@ -16,7 +16,7 @@ from backend.core.legal import (
     LegalMetadataExtractor,
     LegalStructureParser,
 )
-from backend.core.parsers import auto_detect_and_parse
+from backend.core.parsers import auto_detect_and_parse, DocumentParseError
 from backend.core.qdrant_db import QdrantClient
 from backend.utils.tier_classifier import TierClassifier
 
@@ -56,6 +56,10 @@ class LegalIngestionService:
             embeddings=self.embedder,
             chunker=self.chunker,
         )
+
+        # Initialize KG Extractor (lazy init per evitare costi se non usato)
+        self.kg_extractor = None
+        self.kg_enabled = True  # Always enabled per documenti legali
 
         logger.info(f"LegalIngestionService initialized (collection: {collection_name})")
 
@@ -125,8 +129,65 @@ class LegalIngestionService:
 
             # STAGE 1: Parse document
             parsing_start = time.time()
-            raw_text = auto_detect_and_parse(file_path)
+            ocr_used = False
+            # Try normal extraction first, fallback to OCR if needed
+            try:
+                raw_text = auto_detect_and_parse(file_path, use_ocr=False)
+            except DocumentParseError as e:
+                if "No text extracted" in str(e):
+                    # Try OCR for scanned PDFs (async version)
+                    logger.info(
+                        f"[STAGE 1] No text found in PDF, attempting OCR extraction...",
+                        extra={
+                            "document_id": document_id,
+                            "stage": "parsing",
+                            "ocr_fallback": True,
+                        }
+                    )
+                    from backend.core.parsers import extract_text_from_pdf_async
+                    import asyncio
+                    try:
+                        # Check if we're in async context
+                        loop = asyncio.get_running_loop()
+                        # We're in async context, use async version
+                        raw_text = await extract_text_from_pdf_async(file_path, use_ocr=True)
+                        ocr_used = True
+                        logger.info(
+                            f"[STAGE 1] OCR extraction successful: {len(raw_text)} characters",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "parsing",
+                                "ocr_used": True,
+                                "text_length": len(raw_text),
+                            }
+                        )
+                    except RuntimeError:
+                        # No running loop, use sync version
+                        raw_text = auto_detect_and_parse(file_path, use_ocr=True)
+                        ocr_used = True
+                        logger.info(
+                            f"[STAGE 1] OCR extraction successful (sync): {len(raw_text)} characters",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "parsing",
+                                "ocr_used": True,
+                                "text_length": len(raw_text),
+                            }
+                        )
+                else:
+                    raise
             parsing_duration = time.time() - parsing_start
+            
+            logger.info(
+                f"[STAGE 1] Parsing completed: {len(raw_text)} chars in {parsing_duration:.2f}s",
+                extra={
+                    "document_id": document_id,
+                    "stage": "parsing",
+                    "duration_seconds": parsing_duration,
+                    "text_length": len(raw_text),
+                    "ocr_used": ocr_used,
+                }
+            )
 
             ingestion_logger.parsing_success(
                 document_id=document_id,
@@ -141,20 +202,86 @@ class LegalIngestionService:
                 file_type=file_type, source=source, duration_seconds=parsing_duration
             )
 
-            logger.info(f"Extracted {len(raw_text)} characters from document")
+            # Logging already done above with structured data
+
+            # STAGE 1.5: Upload to Google Drive (Permanent)
+            drive_file_id = None
+            drive_web_link = None
+            drive_folder_path = "BALI ZERO/PERATURAN"
+            try:
+                from backend.services.integrations.team_drive_service import TeamDriveService
+                from backend.app.core.config import settings
+
+                drive_service = TeamDriveService()
+
+                # Trova/crea cartella
+                folder_id = await self._ensure_drive_folder_exists(
+                    drive_service=drive_service,
+                    folder_path=drive_folder_path,
+                )
+
+                # Leggi file PDF
+                with open(file_path, "rb") as f:
+                    pdf_content = f.read()
+
+                # Upload PDF
+                drive_file = await drive_service.upload_file(
+                    file_content=pdf_content,
+                    filename=Path(file_path).name,
+                    mime_type="application/pdf",
+                    parent_folder_id=folder_id,
+                )
+
+                drive_file_id = drive_file["id"]
+                drive_web_link = drive_file.get("webViewLink")
+
+                logger.info(
+                    f"[STAGE 1.5] Uploaded to Drive: {drive_file_id}",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "drive_upload",
+                        "drive_file_id": drive_file_id,
+                        "drive_web_link": drive_web_link,
+                        "success": True,
+                    }
+                )
+
+            except Exception as e:
+                # Non bloccare ingestione se Drive fallisce
+                logger.warning(
+                    f"[STAGE 1.5] Google Drive upload failed (non-blocking): {e}",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "drive_upload",
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "non_blocking": True,
+                    }
+                )
 
             # STAGE 2: Clean (The Washer)
+            cleaning_start = time.time()
             cleaned_text = self.cleaner.clean(raw_text)
+            cleaning_duration = time.time() - cleaning_start
 
             # OPTIONAL: Skip Pricing (Golden Data Enforcement)
+            pricing_removed = 0
             if skip_pricing:
-                logger.info("💰 skip_pricing=True: Removing pricing information from text...")
+                logger.info(
+                    "[STAGE 2] Removing pricing information from text...",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "cleaning",
+                        "skip_pricing": True,
+                    }
+                )
                 # Split by newlines first
                 lines = cleaned_text.splitlines()
                 if len(lines) < 5 and len(cleaned_text) > 1000:
                     # If few lines but lots of text, it might be one huge block. Try splitting by periods.
-                    logger.info(
-                        "Text appears to be a single block. Splitting by sentences for pricing removal."
+                    logger.debug(
+                        "[STAGE 2] Text appears to be a single block. Splitting by sentences.",
+                        extra={"document_id": document_id, "stage": "cleaning"}
                     )
                     lines = cleaned_text.split(". ")
                     separator = ". "
@@ -166,12 +293,27 @@ class LegalIngestionService:
                     for line in lines
                     if not any(x in line.upper() for x in ["IDR", "RP ", "RP.", "RUPIAH"])
                 ]
+                pricing_removed = len(lines) - len(filtered_lines)
                 cleaned_text = separator.join(filtered_lines)
                 logger.info(
-                    f"Removed {len(lines) - len(filtered_lines)} segments containing pricing info"
+                    f"[STAGE 2] Removed {pricing_removed} segments containing pricing info",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "cleaning",
+                        "pricing_segments_removed": pricing_removed,
+                    }
                 )
 
-            logger.info(f"Cleaned text: {len(cleaned_text)} characters")
+            logger.info(
+                f"[STAGE 2] Cleaning completed: {len(cleaned_text)} chars in {cleaning_duration:.2f}s",
+                extra={
+                    "document_id": document_id,
+                    "stage": "cleaning",
+                    "duration_seconds": cleaning_duration,
+                    "text_length": len(cleaned_text),
+                    "pricing_removed": pricing_removed,
+                }
+            )
 
             # STAGE 3: Extract Metadata (The Librarian)
             metadata_start = time.time()
@@ -192,7 +334,12 @@ class LegalIngestionService:
             # HYBRID EXTRACTION: Fallback to Vertex AI if Pattern Extraction fails
             if not metadata or metadata.get("type") == "UNKNOWN":
                 logger.info(
-                    "Pattern extraction failed/incomplete. Attempting Vertex AI fallback..."
+                    "[STAGE 3] Pattern extraction failed/incomplete. Attempting Vertex AI fallback...",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "metadata_extraction",
+                        "fallback_method": "vertex_ai",
+                    }
                 )
                 try:
                     from backend.services.llm_clients.vertex_ai_service import VertexAIService
@@ -202,7 +349,14 @@ class LegalIngestionService:
 
                     if ai_metadata:
                         logger.info(
-                            f"Vertex AI extraction successful: {ai_metadata.get('type_abbrev')} {ai_metadata.get('number')}"
+                            f"[STAGE 3] Vertex AI extraction successful: {ai_metadata.get('type_abbrev')} {ai_metadata.get('number')}",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "metadata_extraction",
+                                "metadata_type": ai_metadata.get("type_abbrev"),
+                                "metadata_number": ai_metadata.get("number"),
+                                "fallback_success": True,
+                            }
                         )
                         # Merge AI metadata, preferring AI results for missing fields
                         if not metadata:
@@ -210,11 +364,25 @@ class LegalIngestionService:
                         else:
                             metadata.update({k: v for k, v in ai_metadata.items() if v})
                 except Exception as e:
-                    logger.warning(f"Vertex AI fallback failed: {e}")
+                    logger.warning(
+                        f"[STAGE 3] Vertex AI fallback failed: {e}",
+                        extra={
+                            "document_id": document_id,
+                            "stage": "metadata_extraction",
+                            "fallback_error": str(e),
+                            "error_type": type(e).__name__,
+                        }
+                    )
 
             if not metadata or metadata.get("type_abbrev") == "UNKNOWN":
                 logger.warning(
-                    "Could not extract metadata (Pattern + AI failed), using category fallback"
+                    "[STAGE 3] Could not extract metadata (Pattern + AI failed), using category fallback",
+                    extra={
+                        "document_id": document_id,
+                        "stage": "metadata_extraction",
+                        "fallback_reason": "pattern_and_ai_failed",
+                        "category": category,
+                    }
                 )
 
                 # Use category as fallback for type_abbrev if possible
@@ -290,6 +458,12 @@ class LegalIngestionService:
                 "topic": metadata.get("topic"),
             }
 
+            # Add Drive file info if available
+            if drive_file_id:
+                base_metadata["drive_file_id"] = drive_file_id
+            if drive_web_link:
+                base_metadata["drive_web_link"] = drive_web_link
+
             # Use HierarchicalIndexer
             indexing_start = time.time()
             indexing_result = await self.indexer.index_legal_document(
@@ -319,9 +493,94 @@ class LegalIngestionService:
                 source=source, collection=target_collection, duration_seconds=total_duration
             )
 
-            logger.info(f"✅ Successfully ingested legal document: {document_title}")
-            logger.info(f"   - Chunks: {indexing_result['chunks_indexed']}")
-            logger.info(f"   - Parent Docs: {indexing_result['parent_documents']}")
+            logger.info(
+                f"[STAGE 6] Successfully ingested legal document: {document_title}",
+                extra={
+                    "document_id": document_id,
+                    "stage": "completion",
+                    "chunks_created": indexing_result["chunks_indexed"],
+                    "parent_documents": indexing_result["parent_documents"],
+                    "total_bab": indexing_result.get("total_bab", 0),
+                    "total_pasal": indexing_result.get("total_pasal", 0),
+                }
+            )
+
+            # STAGE 7: Knowledge Graph Extraction (Permanent)
+            kg_extraction_result = {}
+            if self.kg_enabled and indexing_result["chunks_indexed"] > 0:
+                kg_start = time.time()
+                try:
+                    kg_extractor = await self._get_kg_extractor()
+                    
+                    if kg_extractor is None:
+                        logger.info(
+                            "[STAGE 7] KG extractor not available - skipping KG extraction",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "kg_extraction",
+                                "skipped": True,
+                                "skip_reason": "extractor_not_available",
+                            }
+                        )
+                        kg_extraction_result = {"skipped": "extractor_not_available"}
+                    else:
+                        # Extract KG from newly created chunks
+                        # Usa collection_name corrente (potrebbe essere override)
+                        logger.info(
+                            "[STAGE 7] Starting KG extraction...",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "kg_extraction",
+                                "collection_name": target_collection,
+                            }
+                        )
+                        kg_result = await kg_extractor.extract_from_collection(
+                            collection_name=target_collection,
+                            document_id=doc_id,  # Filtra solo chunks di questo documento
+                            limit=None,  # Processa tutti i chunks del documento
+                            dry_run=False,
+                        )
+
+                        kg_duration = time.time() - kg_start
+
+                        logger.info(
+                            f"[STAGE 7] KG extraction completed: {kg_result.get('entities_extracted', 0)} entities, "
+                            f"{kg_result.get('relationships_extracted', 0)} relationships",
+                            extra={
+                                "document_id": document_id,
+                                "stage": "kg_extraction",
+                                "entities_extracted": kg_result.get("entities_extracted", 0),
+                                "relationships_extracted": kg_result.get("relationships_extracted", 0),
+                                "chunks_processed": kg_result.get("chunks_processed", 0),
+                                "duration_seconds": kg_duration,
+                                "success": True,
+                            }
+                        )
+
+                        # Aggiungi KG stats al risultato
+                        kg_extraction_result = {
+                            "entities": kg_result.get("entities_extracted", 0),
+                            "relationships": kg_result.get("relationships_extracted", 0),
+                            "duration_seconds": kg_duration,
+                        }
+
+                except Exception as e:
+                    # Non bloccare ingestione se KG fallisce - logga ma continua
+                    error_msg = str(e)
+                    kg_duration = time.time() - kg_start
+                    logger.warning(
+                        f"[STAGE 7] KG extraction failed (non-blocking): {error_msg}",
+                        extra={
+                            "document_id": document_id,
+                            "stage": "kg_extraction",
+                            "error": error_msg,
+                            "error_type": type(e).__name__,
+                            "duration_seconds": kg_duration,
+                            "non_blocking": True,
+                        }
+                    )
+                    kg_extraction_result = {"error": error_msg}
+                    # Non rilanciare l'eccezione - l'ingestione deve continuare
 
             # Log completion
             ingestion_logger.ingestion_completed(
@@ -336,7 +595,7 @@ class LegalIngestionService:
                 user_id=user_id,
             )
 
-            return {
+            result = {
                 "success": True,
                 "book_title": document_title,
                 "book_author": "Pemerintah Indonesia",
@@ -352,6 +611,12 @@ class LegalIngestionService:
                 "document_id": document_id,
                 "processing_time_seconds": total_duration,
             }
+
+            # Add KG extraction results if available
+            if kg_extraction_result:
+                result["kg_extraction"] = kg_extraction_result
+
+            return result
 
         except Exception as e:
             total_duration = time.time() - start_time
@@ -395,6 +660,157 @@ class LegalIngestionService:
                 "document_id": document_id,
                 "processing_time_seconds": total_duration,
             }
+
+    async def _ensure_drive_folder_exists(
+        self,
+        drive_service,
+        folder_path: str,
+    ) -> str:
+        """
+        Trova o crea cartella su Google Drive.
+
+        Args:
+            drive_service: TeamDriveService instance
+            folder_path: Path relativo da root (es: "BALI ZERO/PERATURAN")
+
+        Returns:
+            Folder ID della cartella finale
+        """
+        from backend.app.core.config import settings
+
+        # Split path in componenti
+        parts = [p.strip() for p in folder_path.split("/") if p.strip()]
+
+        # Inizia dalla root folder (da settings)
+        current_parent_id = settings.google_drive_root_folder_id or "root"
+
+        # Naviga/crea ogni livello
+        for folder_name in parts:
+            # Cerca cartella esistente usando list_files (più preciso per parent)
+            try:
+                parent_files_result = await drive_service.list_files(folder_id=current_parent_id)
+                parent_files = parent_files_result.get("files", [])
+
+                # Cerca cartella con nome esatto
+                matching_folder = None
+                for pf in parent_files:
+                    if (
+                        pf.get("name") == folder_name
+                        and pf.get("type") == "folder"
+                    ):
+                        matching_folder = pf
+                        break
+
+                if matching_folder:
+                    current_parent_id = matching_folder["id"]
+                    logger.debug(f"Found existing Drive folder: {folder_name}")
+                else:
+                    # Crea cartella
+                    folder = await drive_service.create_folder(
+                        name=folder_name,
+                        parent_folder_id=current_parent_id,
+                    )
+                    current_parent_id = folder["id"]
+                    logger.info(f"Created Drive folder: {folder_name} ({current_parent_id})")
+            except Exception as e:
+                # Se list_files fallisce, prova a creare direttamente
+                logger.warning(f"Error listing files in {current_parent_id}: {e}. Attempting to create folder...")
+                try:
+                    folder = await drive_service.create_folder(
+                        name=folder_name,
+                        parent_folder_id=current_parent_id,
+                    )
+                    current_parent_id = folder["id"]
+                    logger.info(f"Created Drive folder: {folder_name} ({current_parent_id})")
+                except Exception as create_error:
+                    logger.error(f"Failed to create folder {folder_name}: {create_error}")
+                    raise
+
+        return current_parent_id
+
+    async def _get_kg_extractor(self):
+        """Lazy initialization of KG extractor."""
+        if self.kg_extractor is None:
+            from backend.app.core.config import settings
+            import asyncpg
+            import sys
+            import os
+
+            try:
+                # Import KGIncrementalExtractor from scripts
+                # File is at: apps/backend-rag/scripts/kg_incremental_extraction.py
+                # Current file: apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py
+                # Navigate: backend/services/ingestion -> backend/services -> backend -> apps/backend-rag
+                backend_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                # backend_path is now apps/backend-rag/backend
+                backend_rag_path = os.path.dirname(backend_path)  # apps/backend-rag
+                scripts_path = os.path.join(backend_rag_path, "scripts")
+                kg_extractor_path = os.path.join(scripts_path, "kg_incremental_extraction.py")
+                
+                if not os.path.exists(kg_extractor_path):
+                    raise ImportError(f"kg_incremental_extraction.py not found at {kg_extractor_path}")
+                
+                if scripts_path not in sys.path:
+                    sys.path.insert(0, scripts_path)
+
+                # Import with proper module path
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("kg_incremental_extraction", kg_extractor_path)
+                kg_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(kg_module)
+                KGIncrementalExtractor = kg_module.KGIncrementalExtractor
+
+                # Initialize Gemini client
+                gemini = None
+                try:
+                    import tempfile
+                    from google import genai
+
+                    creds_json = settings.google_credentials_json
+                    project_id = os.environ.get("GOOGLE_PROJECT_ID", "gen-lang-client-0498009027")
+                    location = os.environ.get("GOOGLE_LOCATION", "us-central1")
+
+                    if creds_json:
+                        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+                            f.write(creds_json)
+                            creds_path = f.name
+                        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
+                    client = genai.Client(vertexai=True, project=project_id, location=location)
+                    gemini = client
+                    logger.info("Gemini client initialized for KG extraction")
+                except Exception as e:
+                    logger.warning(f"Could not initialize Gemini for KG extraction: {e}")
+
+                # Create DB pool (with error handling)
+                db_pool = None
+                if settings.database_url:
+                    try:
+                        db_pool = await asyncpg.create_pool(
+                            settings.database_url, min_size=1, max_size=5
+                        )
+                    except Exception as db_error:
+                        logger.warning(f"Could not create database pool for KG extraction: {db_error}")
+                        # Return None to skip KG extraction
+                        return None
+
+                if not db_pool:
+                    logger.warning("Database pool not available - skipping KG extraction")
+                    return None
+
+                # Initialize extractor
+                self.kg_extractor = KGIncrementalExtractor(
+                    db_pool=db_pool,
+                    qdrant_url=settings.qdrant_url,
+                    qdrant_api_key=settings.qdrant_api_key or "",
+                    gemini_client=gemini,
+                )
+                logger.info("KG extractor initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize KG extractor: {e}")
+                return None
+
+        return self.kg_extractor
 
     def detect_legal_document(self, text: str) -> bool:
         """

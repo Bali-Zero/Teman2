@@ -708,8 +708,12 @@ class QdrantClient:
                 batch_ids = ids[i : i + batch_size]
 
                 # Build points array for this batch
+                # Try to detect if collection uses named vectors
                 points = []
+                use_named_vectors = False
+                
                 for j in range(len(batch_chunks)):
+                    # Default: simple vector format
                     point = {
                         "id": batch_ids[j],
                         "vector": batch_embeddings[j],
@@ -729,11 +733,41 @@ class QdrantClient:
                         f"to Qdrant collection '{self.collection_name}'"
                     )
                 except httpx.HTTPStatusError as e:
-                    error_msg = f"HTTP {e.response.status_code}"
-                    if hasattr(e.response, "text"):
-                        error_msg += f": {e.response.text}"
-                    errors.append(error_msg)
-                    logger.error(f"Qdrant upsert batch failed: {error_msg}")
+                    # Check if error is about named vectors
+                    error_text = e.response.text if hasattr(e.response, "text") else ""
+                    if "Not existing vector name" in error_text or "vector name" in error_text.lower():
+                        # Retry with named vector format
+                        logger.info(f"Collection uses named vectors, retrying with 'dense' vector name")
+                        points = []
+                        for j in range(len(batch_chunks)):
+                            point = {
+                                "id": batch_ids[j],
+                                "vector": {"dense": batch_embeddings[j]},
+                                "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                            }
+                            points.append(point)
+                        
+                        payload = {"points": points}
+                        try:
+                            response = await client.put(url, json=payload, params={"wait": "true"})
+                            response.raise_for_status()
+                            total_added += len(batch_chunks)
+                            logger.info(
+                                f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
+                                f"to Qdrant collection '{self.collection_name}' (with named vectors)"
+                            )
+                        except Exception as retry_err:
+                            error_msg = f"HTTP {e.response.status_code}"
+                            if hasattr(e.response, "text"):
+                                error_msg += f": {e.response.text}"
+                            errors.append(error_msg)
+                            logger.error(f"Qdrant upsert batch failed even with named vectors: {error_msg}")
+                    else:
+                        error_msg = f"HTTP {e.response.status_code}"
+                        if hasattr(e.response, "text"):
+                            error_msg += f": {e.response.text}"
+                        errors.append(error_msg)
+                        logger.error(f"Qdrant upsert batch failed: {error_msg}")
                 except Exception as e:
                     error_msg = f"Request error: {e}"
                     errors.append(error_msg)
