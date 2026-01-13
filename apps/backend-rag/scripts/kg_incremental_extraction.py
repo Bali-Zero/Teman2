@@ -230,6 +230,155 @@ class KGIncrementalExtractor:
 
         return chunks[:limit] if limit else chunks
 
+    async def _fetch_chunks_from_collection(
+        self,
+        collection_name: str,
+        document_id: str = None,
+        limit: int = None
+    ) -> list[dict]:
+        """
+        Fetch chunks from Qdrant collection, optionally filtered by document_id.
+        
+        Args:
+            collection_name: Qdrant collection name
+            document_id: Optional document_id filter (from metadata.document_id)
+            limit: Max chunks to process
+        
+        Returns:
+            List of chunk dicts with id, text, collection, metadata
+        """
+        chunks = []
+        batch_size = 100
+        next_offset = None
+
+        while True:
+            scroll_data = {"limit": batch_size, "with_payload": True, "with_vector": False}
+            if next_offset is not None:
+                scroll_data["offset"] = next_offset
+
+            result = self._qdrant_request(
+                "POST", f"/collections/{collection_name}/points/scroll", scroll_data
+            )
+
+            points = result.get("result", {}).get("points", [])
+            next_offset = result.get("result", {}).get("next_page_offset")
+
+            if not points:
+                break
+
+            for point in points:
+                chunk_id = str(point.get("id", ""))
+                payload = point.get("payload", {})
+                
+                # Filter by document_id if provided
+                if document_id:
+                    chunk_doc_id = payload.get("document_id")
+                    if chunk_doc_id != document_id:
+                        continue
+                
+                text = payload.get("text", "") or payload.get("content", "")
+                if text:
+                    chunks.append(
+                        {
+                            "id": chunk_id,
+                            "text": text,
+                            "collection": collection_name,
+                            "metadata": payload,
+                        }
+                    )
+
+                if limit and len(chunks) >= limit:
+                    return chunks[:limit]
+
+            if next_offset is None:
+                break
+
+        return chunks[:limit] if limit else chunks
+
+    async def extract_from_collection(
+        self,
+        collection_name: str,
+        document_id: str = None,
+        limit: int = None,
+        dry_run: bool = False
+    ) -> dict:
+        """
+        Extract KG from chunks in a collection, optionally filtered by document_id.
+        
+        Args:
+            collection_name: Qdrant collection name
+            document_id: Optional document_id filter (from metadata)
+            limit: Max chunks to process
+            dry_run: If True, don't save to DB
+        
+        Returns:
+            Dict with extraction stats
+        """
+        # Reset stats for this extraction
+        initial_entities = self.stats["entities_extracted"]
+        initial_relationships = self.stats["relationships_extracted"]
+        initial_chunks = self.stats["chunks_processed"]
+        
+        # Fetch chunks from collection
+        chunks = await self._fetch_chunks_from_collection(
+            collection_name=collection_name,
+            document_id=document_id,
+            limit=limit
+        )
+        
+        logger.info(f"Found {len(chunks)} chunks to process (document_id={document_id})")
+        
+        if dry_run:
+            return {
+                "chunks_processed": len(chunks),
+                "entities_extracted": 0,
+                "relationships_extracted": 0
+            }
+        
+        if not self.gemini:
+            logger.warning("Gemini client not available - skipping extraction")
+            return {
+                "chunks_processed": 0,
+                "entities_extracted": 0,
+                "relationships_extracted": 0
+            }
+        
+        # Process each chunk
+        for chunk in chunks:
+            try:
+                # Extract entities/relationships
+                result = await self.extract_with_gemini(chunk["text"])
+                
+                # Save entities
+                for entity in result.get("entities", []):
+                    await self.save_entity(
+                        entity=entity,
+                        chunk_id=chunk["id"],
+                        collection=collection_name
+                    )
+                
+                # Save relationships
+                for rel in result.get("relationships", []):
+                    await self.save_relationship(
+                        rel=rel,
+                        chunk_id=chunk["id"],
+                        collection=collection_name
+                    )
+            except Exception as e:
+                logger.warning(f"Error processing chunk {chunk['id']}: {e}")
+                self.stats["errors"] += 1
+        
+        # Calculate stats for this extraction
+        entities_extracted = self.stats["entities_extracted"] - initial_entities
+        relationships_extracted = self.stats["relationships_extracted"] - initial_relationships
+        chunks_processed = self.stats["chunks_processed"] - initial_chunks
+        
+        return {
+            "chunks_processed": chunks_processed,
+            "entities_extracted": entities_extracted,
+            "relationships_extracted": relationships_extracted
+        }
+
     async def extract_with_gemini(self, text: str) -> dict:
         """Extract entities using Gemini."""
         if not self.gemini:

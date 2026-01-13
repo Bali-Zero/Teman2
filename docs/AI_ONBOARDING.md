@@ -536,11 +536,63 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 
 ---
 
+## 9.1 📝 MANDATORY DOCUMENTATION UPDATES
+
+> **REGOLA:** Dopo ogni sessione di sviluppo significativa, la documentazione DEVE essere aggiornata.
+
+**Quando Aggiornare:**
+- Nuovi endpoint API creati
+- Nuove feature frontend implementate
+- Modifiche architetturali
+- Fix critici applicati
+- Integrazioni con servizi esterni
+
+**Cosa Aggiornare:**
+1. **Session Logs** - `docs/sessions/SESSION_YYYY-MM-DD_TOPIC.md`
+2. **Feature Docs** - Documentazione specifica (es: `docs/CRM_SYSTEM.md`)
+3. **AI_ONBOARDING.md** - Se nuovi pattern o regole emergono
+4. **CLAUDE.md locale** - Memory per sessioni future
+
+**Template Session Log:**
+```markdown
+# Session Log - YYYY-MM-DD
+
+## Summary
+[1-2 frasi su cosa è stato fatto]
+
+## Changes Made
+| File | Type | Description |
+|------|------|-------------|
+| path/to/file | NEW/MODIFIED | What changed |
+
+## New Features
+- Feature 1: Description
+- Feature 2: Description
+
+## API Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/... | What it does |
+
+## Deployment
+- Backend: vXXXX
+- Frontend: Vercel (if applicable)
+
+## Next Steps
+- [ ] Task 1
+- [ ] Task 2
+```
+
+**NON saltare questo step.** La documentazione è memoria del progetto.
+
+---
+
 ## 10. 📚 DOCUMENTATION INDEX
 
 | Doc | Path | Quando Leggerlo |
 |-----|------|-----------------|
 | AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
+| **CRM System** | `docs/CRM_SYSTEM.md` | Prima di toccare CRM client/practices |
 | System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
 | **Codebase Analysis** | `docs/CODEBASE_ANALYSIS.md` | Per identificare aree da refactorare |
 | **Cleanup Summary** | `docs/CLEANUP_SUMMARY.md` | Per vedere cleanup completati |
