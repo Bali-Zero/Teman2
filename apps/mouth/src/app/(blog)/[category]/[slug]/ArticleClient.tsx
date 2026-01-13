@@ -363,13 +363,8 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
 
             {/* Right sidebar */}
             <aside className="hidden lg:block lg:col-span-4">
-              {/* TOC - sticky, stays fixed during scroll */}
-              <div className="sticky top-24">
+              <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto space-y-8 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                 <TableOfContents content={article.content} />
-              </div>
-
-              {/* Newsletter - normal position, scrolls with page */}
-              <div className="mt-8">
                 <NewsletterSidebar defaultCategories={[article.category]} />
               </div>
             </aside>
