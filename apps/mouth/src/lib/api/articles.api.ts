@@ -80,7 +80,7 @@ export const articlesApi = {
    */
   async compose(request: ComposeRequest): Promise<ComposeResponse> {
     const response = await apiClient.request<ComposeResponse>(
-      "/articles/compose",
+      "/api/v1/compose/article",
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -94,7 +94,7 @@ export const articlesApi = {
    */
   async getStatus(): Promise<ComposerStatus> {
     const response = await apiClient.request<ComposerStatus>(
-      "/articles/compose/status",
+      "/api/v1/compose/status",
       { method: "GET" }
     );
     return response;
