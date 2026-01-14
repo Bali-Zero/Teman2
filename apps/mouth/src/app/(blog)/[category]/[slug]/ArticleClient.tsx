@@ -258,7 +258,7 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
               src={article.coverImage}
               alt={article.coverImageAlt}
               fill
-              className="object-cover"
+              className="object-cover object-top"
               priority
               sizes="(max-width: 1280px) 100vw, 1200px"
             />
