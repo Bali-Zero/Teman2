@@ -20,7 +20,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Suwung Landfill Closure: The Waste Crisis Hitting Bali\'s Tourist Zones',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://balizero.com/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F155584%2F1736428006-dump_burn_bali_suwung.jpg&w=1920&q=75',
+    imageUrl: 'https://www.datocms-assets.com/155584/1736428006-dump_burn_bali_suwung.jpg',
     href: 'https://balizero.com/lifestyle/suwung-landfill-closure-waste-crisis-bali',
   },
   {
@@ -28,7 +28,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Property Alert: Green Zone Crackdown and the End of Easy Villa Permits',
     category: 'PROPERTY',
     categoryColor: 'text-amber-400',
-    imageUrl: 'https://balizero.com/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F155584%2F1736337413-green-zone-crackdown-bali-villas.jpg&w=1920&q=75',
+    imageUrl: 'https://www.datocms-assets.com/155584/1736337413-green-zone-crackdown-bali-villas.jpg',
     href: 'https://balizero.com/property/green-zone-crackdown-end-easy-villa-permits',
   },
   {
@@ -36,7 +36,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://balizero.com/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F155584%2F1736424131-dengue-mosquito-bali.jpg&w=1920&q=75',
+    imageUrl: 'https://www.datocms-assets.com/155584/1736424131-dengue-mosquito-bali.jpg',
     href: 'https://balizero.com/lifestyle/dengue-alert-2026-636-cases-rising-expats',
   },
   {
@@ -44,7 +44,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife',
     category: 'TAX & LEGAL',
     categoryColor: 'text-cyan-400',
-    imageUrl: 'https://balizero.com/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F155584%2F1736336893-pajak-hiburan-beach-clubs-bali.jpg&w=1920&q=75',
+    imageUrl: 'https://www.datocms-assets.com/155584/1736336893-pajak-hiburan-beach-clubs-bali.jpg',
     href: 'https://balizero.com/tax-legal/pajak-hiburan-40-75-tax-beach-clubs-nightlife',
   },
   {
@@ -52,7 +52,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Bali\'s Perfect Storm: Why 2026 Demands a New Playbook',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://balizero.com/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F155584%2F1736335520-bali-storm-rice-fields.jpg&w=1920&q=75',
+    imageUrl: 'https://www.datocms-assets.com/155584/1736335520-bali-storm-rice-fields.jpg',
     href: 'https://balizero.com/lifestyle/bali-perfect-storm-2026-new-playbook',
     isFeatured: true,
   },
