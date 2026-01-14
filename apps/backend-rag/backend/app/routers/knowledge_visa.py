@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_database_pool as get_db_pool
+from backend.app.utils.json_utils import to_jsonb
 
 router = APIRouter(prefix="/api/knowledge/visa", tags=["knowledge-visa"])
 
@@ -275,10 +276,20 @@ async def update_visa_type(visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_
         values = []
         param_idx = 1
 
+        # Fields that are JSONB and need serialization
+        jsonb_fields = {
+            "cost_details", "requirements", "restrictions",
+            "allowed_activities", "benefits", "process_steps", "tips", "metadata"
+        }
+
         for field, value in visa.model_dump(exclude_unset=True).items():
             if value is not None:
                 updates.append(f"{field} = ${param_idx}")
-                values.append(value)
+                # Use to_jsonb for JSONB fields to handle Decimal/datetime
+                if field in jsonb_fields:
+                    values.append(to_jsonb(value))
+                else:
+                    values.append(value)
                 param_idx += 1
 
         if not updates:
@@ -365,15 +376,16 @@ async def create_visa_type(visa: VisaTypeCreate, pool=Depends(get_db_pool)):
             visa.processing_timeline,
             visa.cost_visa,
             visa.cost_extension,
-            visa.cost_details,
-            visa.requirements,
-            visa.restrictions,
-            visa.allowed_activities,
-            visa.benefits,
-            visa.process_steps,
-            visa.tips,
+            # Use to_jsonb for asyncpg JSONB compatibility
+            to_jsonb(visa.cost_details),
+            to_jsonb(visa.requirements),
+            to_jsonb(visa.restrictions),
+            to_jsonb(visa.allowed_activities),
+            to_jsonb(visa.benefits),
+            to_jsonb(visa.process_steps),
+            to_jsonb(visa.tips),
             visa.foreign_eligible,
-            visa.metadata,
+            to_jsonb(visa.metadata),
         )
 
         return VisaTypeResponse(

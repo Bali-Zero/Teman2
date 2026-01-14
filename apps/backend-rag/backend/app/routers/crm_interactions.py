@@ -16,6 +16,7 @@ from pydantic import BaseModel, field_validator
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 
 logger = get_logger(__name__)
@@ -195,8 +196,9 @@ async def create_interaction(
                 interaction.team_member,
                 interaction.direction,
                 interaction.duration_minutes,
-                interaction.extracted_entities,
-                interaction.action_items,
+                # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+                to_jsonb(interaction.extracted_entities),
+                to_jsonb(interaction.action_items),
                 datetime.now(),
             )
 

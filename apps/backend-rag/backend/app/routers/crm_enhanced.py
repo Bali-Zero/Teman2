@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin
+from backend.app.utils.json_utils import to_jsonb
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,8 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
         # Update client record
         async with db_pool.acquire() as conn:
             update_parts = ["passport_ocr_data = $1"]
-            params = [json.dumps(ocr_data)]
+            # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+            params = [to_jsonb(ocr_data)]
             param_idx = 2
 
             if extracted.get("passport_number"):

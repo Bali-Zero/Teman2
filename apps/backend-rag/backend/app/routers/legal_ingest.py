@@ -12,6 +12,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
 from backend.app.models import TierLevel
+from backend.app.utils.json_utils import to_jsonb
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 logger = logging.getLogger(__name__)
@@ -300,8 +301,6 @@ async def register_parent_document(request: RegisterParentDocRequest) -> dict[st
     Returns:
         Registration result
     """
-    import json
-
     import asyncpg
 
     from backend.app.core.config import settings
@@ -330,7 +329,8 @@ async def register_parent_document(request: RegisterParentDocRequest) -> dict[st
             request.full_text[:50000],  # Limit to 50KB
             request.char_count,
             request.chunk_count,  # Using pasal_count column for chunk_count
-            json.dumps(request.metadata),
+            # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+            to_jsonb(request.metadata),
         )
 
         await conn.close()
