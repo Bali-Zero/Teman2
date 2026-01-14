@@ -106,7 +106,7 @@ function ArticleCard({ article, className = '', size = 'normal' }: {
 
 export function FeaturedArticlesWidget() {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[#0a1628] p-6 overflow-hidden">
+    <div className="rounded-xl border border-orange-500/30 bg-[#1a0d05] p-6 overflow-hidden">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-white">
