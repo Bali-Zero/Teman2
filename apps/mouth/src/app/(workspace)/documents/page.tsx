@@ -6,10 +6,12 @@ import { DriveToolbar } from './components/DriveToolbar';
 import { DriveBreadcrumb } from './components/DriveBreadcrumb';
 import { FileGrid } from './components/FileGrid';
 import { FileList } from './components/FileList';
+import { DepartmentHome } from './components/DepartmentHome';
 import { FileModal, CreateMenu, ContextMenu, MoveDialog } from '@/components/documents';
-import { Loader2, CloudOff, Cloud } from 'lucide-react';
+import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { motion } from 'framer-motion';
 import type { FileItem, BreadcrumbItem, DocType } from '@/lib/api/drive/drive.types';
 
 export default function DocumentsPage() {
@@ -20,18 +22,18 @@ export default function DocumentsPage() {
 
   // React Query Hooks
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
-  const { 
-    data, 
-    isLoading: filesLoading, 
-    error 
+  const {
+    data,
+    isLoading: filesLoading,
+    error
   } = useDriveFiles(currentFolderId, searchQuery);
-  
-  const { 
-    createFolder, 
-    createDoc, 
-    renameFile, 
-    deleteFile, 
-    moveFiles 
+
+  const {
+    createFolder,
+    createDoc,
+    renameFile,
+    deleteFile,
+    moveFiles
   } = useDriveMutations();
 
   // Derived Data
@@ -39,6 +41,7 @@ export default function DocumentsPage() {
   const breadcrumb = data?.breadcrumb || [];
   const isConnected = driveStatus?.connected ?? false;
   const isConfigured = driveStatus?.configured ?? false;
+  const isAtRoot = currentFolderId === null && searchQuery === '';
 
   // Selection State
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
@@ -59,7 +62,7 @@ export default function DocumentsPage() {
     } else {
       setCurrentFolderId(breadcrumb[index].id);
     }
-    setSearchQuery(''); 
+    setSearchQuery('');
   };
 
   const handleFileClick = (file: FileItem, index: number, e: React.MouseEvent) => {
@@ -87,6 +90,12 @@ export default function DocumentsPage() {
     }
   };
 
+  const handleFolderClick = (folder: FileItem) => {
+    setCurrentFolderId(folder.id);
+    setSearchQuery('');
+    setSelectedFiles(new Set());
+  };
+
   const handleContextMenu = (file: FileItem, e: React.MouseEvent) => {
     e.preventDefault();
     if (!selectedFiles.has(file.id)) {
@@ -111,151 +120,228 @@ export default function DocumentsPage() {
   }, []);
 
   if (statusLoading) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[var(--background)]">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader2 className="h-10 w-10 text-emerald-500" />
+        </motion.div>
+        <p className="text-[var(--foreground-muted)]">Caricamento documenti...</p>
+      </div>
+    );
   }
 
   if (!isConnected) {
-     return (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-500/10">
-                <CloudOff className="h-10 w-10 text-blue-500" />
-            </div>
-            <h2 className="text-2xl font-bold">Connetti Google Drive</h2>
-            {isConfigured && (
-                <Button onClick={handleConnect} className="bg-blue-600 hover:bg-blue-700">
-                    <Cloud className="mr-2 h-4 w-4" /> Connetti
-                </Button>
-            )}
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-8 bg-gradient-to-b from-[var(--background)] to-[var(--background-subtle)] px-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 animate-pulse rounded-full bg-emerald-500/20 blur-2xl" />
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-xl">
+            <CloudOff className="h-12 w-12 text-white" />
+          </div>
+        </motion.div>
+
+        <div className="text-center">
+          <h2 className="mb-2 text-3xl font-bold text-[var(--foreground)]">
+            Connetti Google Drive
+          </h2>
+          <p className="max-w-md text-[var(--foreground-muted)]">
+            Accedi ai tuoi documenti aziendali collegando il tuo account Google Drive.
+            Tutti i file saranno organizzati per dipartimento.
+          </p>
         </div>
-     );
+
+        {isConfigured && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Button
+              onClick={handleConnect}
+              size="lg"
+              className="bg-gradient-to-r from-emerald-600 to-teal-500 px-8 py-6 text-lg text-white shadow-xl shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-600"
+            >
+              <Cloud className="mr-3 h-5 w-5" />
+              Connetti Google Drive
+              <Sparkles className="ml-3 h-5 w-5" />
+            </Button>
+          </motion.div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 grid max-w-2xl grid-cols-3 gap-6 text-center"
+        >
+          {[
+            { label: '30TB', desc: 'Storage disponibile' },
+            { label: '6', desc: 'Dipartimenti' },
+            { label: '100%', desc: 'Sicuro' },
+          ].map((stat, i) => (
+            <div key={i} className="rounded-xl bg-[var(--background)] p-4 shadow-lg">
+              <div className="text-2xl font-bold text-emerald-500">{stat.label}</div>
+              <div className="text-sm text-[var(--foreground-muted)]">{stat.desc}</div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col h-full bg-[var(--background)]">
-      <DriveToolbar 
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onUploadClick={() => {/* TODO: Implement upload */}}
-        onCreateClick={(e) => {
-             e.stopPropagation();
-             setCreateMenuPos({ x: e.clientX, y: e.clientY + 20 });
-        }}
-        isConnected={isConnected}
-      />
-      
-      {/* Breadcrumb Area */}
-      <div className="border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
-         <DriveBreadcrumb items={breadcrumb} onNavigate={handleNavigate} />
-      </div>
+      {/* Only show toolbar when not at root OR when searching */}
+      {(!isAtRoot || searchQuery) && (
+        <>
+          <DriveToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onUploadClick={() => {/* TODO: Implement upload */}}
+            onCreateClick={(e) => {
+              e.stopPropagation();
+              setCreateMenuPos({ x: e.clientX, y: e.clientY + 20 });
+            }}
+            isConnected={isConnected}
+          />
+
+          {/* Breadcrumb Area */}
+          <div className="border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
+            <DriveBreadcrumb items={breadcrumb} onNavigate={handleNavigate} />
+          </div>
+        </>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto" onClick={() => setSelectedFiles(new Set())}>
         {filesLoading ? (
-             <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-             </div>
+          <div className="flex h-full items-center justify-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            >
+              <Loader2 className="h-10 w-10 text-emerald-500" />
+            </motion.div>
+          </div>
+        ) : isAtRoot ? (
+          // Show Department Home at root level
+          <DepartmentHome
+            files={files}
+            onFolderClick={handleFolderClick}
+            storageUsed={0} // TODO: Get from API
+            storageTotal={30 * 1024 * 1024 * 1024 * 1024} // 30TB
+          />
         ) : (
-            viewMode === 'grid' ? (
-                <FileGrid 
-                    files={files} 
-                    selectedFiles={selectedFiles} 
-                    onFileClick={handleFileClick} 
-                    onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-                    onContextMenu={handleContextMenu}
-                />
-            ) : (
-                <FileList 
-                    files={files} 
-                    selectedFiles={selectedFiles}
-                    onFileClick={handleFileClick} 
-                    onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-                    onContextMenu={handleContextMenu}
-                />
-            )
+          // Show normal file view in subfolders
+          viewMode === 'grid' ? (
+            <FileGrid
+              files={files}
+              selectedFiles={selectedFiles}
+              onFileClick={handleFileClick}
+              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+              onContextMenu={handleContextMenu}
+            />
+          ) : (
+            <FileList
+              files={files}
+              selectedFiles={selectedFiles}
+              onFileClick={handleFileClick}
+              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+              onContextMenu={handleContextMenu}
+            />
+          )
         )}
       </div>
 
       {/* Modals & Menus */}
-      <CreateMenu 
+      <CreateMenu
         isOpen={!!createMenuPos}
         onClose={() => setCreateMenuPos(null)}
         position={createMenuPos || {x: 0, y: 0}}
         onSelect={(mode) => setModalMode(mode)}
       />
 
-      <FileModal 
+      <FileModal
         mode={modalMode as any}
-        isOpen={!!modalMode} 
+        isOpen={!!modalMode}
         onClose={() => { setModalMode(null); setRenameTarget(null); }}
         initialName={renameTarget?.name || ''}
         loading={createFolder.isPending || createDoc.isPending || renameFile.isPending}
         onSubmit={(name, docType) => {
-            if (modalMode === 'rename' && renameTarget) {
-                renameFile.mutate({ fileId: renameTarget.id, newName: name }, { onSuccess: () => setModalMode(null) });
-            } else if (modalMode === 'folder') {
-                createFolder.mutate({ name, parentId: currentFolderId }, { onSuccess: () => setModalMode(null) });
-            } else if (docType) {
-                createDoc.mutate({ name, parentId: currentFolderId, docType }, { onSuccess: () => setModalMode(null) });
-            }
+          if (modalMode === 'rename' && renameTarget) {
+            renameFile.mutate({ fileId: renameTarget.id, newName: name }, { onSuccess: () => setModalMode(null) });
+          } else if (modalMode === 'folder') {
+            createFolder.mutate({ name, parentId: currentFolderId }, { onSuccess: () => setModalMode(null) });
+          } else if (docType) {
+            createDoc.mutate({ name, parentId: currentFolderId, docType }, { onSuccess: () => setModalMode(null) });
+          }
         }}
       />
-      
+
       {contextMenu && (
-        <ContextMenu 
-            position={{ x: contextMenu.x, y: contextMenu.y }} 
-            file={contextMenu.file}
-            onClose={() => setContextMenu(null)}
-            onOpen={(file) => {
-                if (file.is_folder) {
-                    setCurrentFolderId(file.id);
-                } else {
-                    window.open(file.web_view_link, '_blank');
-                }
-            }}
-            onRename={(file) => {
-                setRenameTarget(file);
-                setModalMode('rename');
-            }}
-            onDelete={(file) => {
-                if (confirm(`Eliminare ${file.name}?`)) {
-                    deleteFile.mutate(file.id);
-                }
-            }}
-            onMove={(file) => {
-                setFilesToMove([file]);
-                setShowMoveDialog(true);
-            }}
-            onCopy={() => { /* TODO: Copy */ }}
-            onDownload={async (file) => {
-                try {
-                    await api.drive.downloadFile(file.id, file.name);
-                } catch (error) {
-                    console.error('Download failed:', error);
-                    // Fallback to window.open if fetch fails
-                    window.open(api.drive.getDownloadUrl(file.id), '_blank');
-                }
-            }}
+        <ContextMenu
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          file={contextMenu.file}
+          onClose={() => setContextMenu(null)}
+          onOpen={(file) => {
+            if (file.is_folder) {
+              setCurrentFolderId(file.id);
+            } else {
+              window.open(file.web_view_link, '_blank');
+            }
+          }}
+          onRename={(file) => {
+            setRenameTarget(file);
+            setModalMode('rename');
+          }}
+          onDelete={(file) => {
+            if (confirm(`Eliminare ${file.name}?`)) {
+              deleteFile.mutate(file.id);
+            }
+          }}
+          onMove={(file) => {
+            setFilesToMove([file]);
+            setShowMoveDialog(true);
+          }}
+          onCopy={() => { /* TODO: Copy */ }}
+          onDownload={async (file) => {
+            try {
+              await api.drive.downloadFile(file.id, file.name);
+            } catch (error) {
+              console.error('Download failed:', error);
+              // Fallback to window.open if fetch fails
+              window.open(api.drive.getDownloadUrl(file.id), '_blank');
+            }
+          }}
         />
       )}
 
       {showMoveDialog && (
-         <MoveDialog 
-            isOpen={true}
-            onClose={() => setShowMoveDialog(false)}
-            onMove={(targetId) => {
-                const ids = filesToMove.map(f => f.id);
-                moveFiles.mutate({ fileIds: ids, targetFolderId: targetId });
-                setShowMoveDialog(false);
-            }}
-            files={filesToMove}
-            currentFolderId={currentFolderId}
-            onLoadFolder={async (parentId) => {
-                const results = await api.drive.listFiles({ folder_id: parentId || undefined });
-                return results.files;
-            }}
-         />
+        <MoveDialog
+          isOpen={true}
+          onClose={() => setShowMoveDialog(false)}
+          onMove={(targetId) => {
+            const ids = filesToMove.map(f => f.id);
+            moveFiles.mutate({ fileIds: ids, targetFolderId: targetId });
+            setShowMoveDialog(false);
+          }}
+          files={filesToMove}
+          currentFolderId={currentFolderId}
+          onLoadFolder={async (parentId) => {
+            const results = await api.drive.listFiles({ folder_id: parentId || undefined });
+            return results.files;
+          }}
+        />
       )}
     </div>
   );
