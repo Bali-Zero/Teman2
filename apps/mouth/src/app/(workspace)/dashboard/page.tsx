@@ -186,6 +186,9 @@ export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
       <div className="space-y-8">
+        {/* Featured Articles from Bali Zero - FIRST */}
+        <FeaturedArticlesWidget />
+
         {/* Real-time Collaboration Status */}
         {realtime.isConnected && (
           <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 flex items-center gap-3">
@@ -233,9 +236,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-
-        {/* Featured Articles from Bali Zero */}
-        <FeaturedArticlesWidget />
 
       {/* Admin-only widgets */}
       {isZero && (
