@@ -852,6 +852,136 @@ async def create_document(
         return {"id": doc_id, "success": True, "ocr_triggered": "passport" in (data.document_type or "").lower()}
 
 
+@router.post("/clients/{client_id}/documents/bulk")
+async def create_documents_bulk(
+    client_id: int,
+    documents: list[DocumentCreate],
+    background_tasks: BackgroundTasks,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Bulk insert documents for a client - optimized for migration.
+
+    This endpoint allows inserting multiple documents in a single transaction,
+    significantly improving performance during large data migrations.
+
+    Args:
+        client_id: Client database ID
+        documents: Array of documents to insert (max 100 per request)
+        background_tasks: FastAPI background tasks for OCR
+        pool: Database connection pool
+        current_user: Authenticated user
+
+    Returns:
+        {
+            "success": true,
+            "inserted": 50,
+            "document_ids": [123, 124, ...],
+            "ocr_triggered": 2,
+            "failed": 0
+        }
+
+    Raises:
+        HTTPException: If max limit exceeded or access denied
+    """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    # Enforce maximum batch size
+    MAX_BATCH_SIZE = 100
+    if len(documents) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum {MAX_BATCH_SIZE} documents per request. You provided {len(documents)}.",
+        )
+
+    if len(documents) == 0:
+        raise HTTPException(status_code=400, detail="No documents provided")
+
+    async with pool.acquire() as conn:
+        # Check client exists and user has access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have access to this client",
+            )
+
+        inserted_ids = []
+        ocr_count = 0
+        failed_count = 0
+
+        # Use transaction for atomic bulk insert
+        async with conn.transaction():
+            for doc in documents:
+                try:
+                    # Sanitize expiry_date: convert string to date object
+                    expiry_date = None
+                    if doc.expiry_date:
+                        try:
+                            expiry_date = datetime.strptime(doc.expiry_date, "%Y-%m-%d").date()
+                        except ValueError:
+                            logger.warning(
+                                f"Invalid expiry_date format for {doc.file_name}: {doc.expiry_date}"
+                            )
+                            expiry_date = None
+
+                    # Insert document
+                    doc_id = await conn.fetchval(
+                        """
+                        INSERT INTO documents (
+                            client_id, document_type, document_category,
+                            file_name, file_id, file_url, google_drive_file_url,
+                            expiry_date, notes, family_member_id, practice_id,
+                            status, storage_type, uploaded_by
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', 'google_drive', $12)
+                        RETURNING id
+                        """,
+                        client_id,
+                        doc.document_type,
+                        doc.document_category,
+                        doc.file_name,
+                        doc.file_id,
+                        doc.file_url,
+                        doc.google_drive_file_url,
+                        expiry_date,
+                        doc.notes,
+                        doc.family_member_id,
+                        doc.practice_id,
+                        user_email,  # Track who uploaded
+                    )
+
+                    inserted_ids.append(doc_id)
+
+                    # Queue OCR for passport documents
+                    if doc.file_id and doc.document_type and "passport" in doc.document_type.lower():
+                        background_tasks.add_task(_auto_ocr_passport, client_id, doc.file_id)
+                        ocr_count += 1
+
+                except Exception as e:
+                    logger.error(f"Failed to insert document {doc.file_name}: {e}")
+                    failed_count += 1
+                    # Continue with other documents
+
+        logger.info(
+            f"Bulk inserted {len(inserted_ids)} documents for client {client_id}. "
+            f"OCR queued: {ocr_count}, Failed: {failed_count}"
+        )
+
+        return {
+            "success": True,
+            "inserted": len(inserted_ids),
+            "document_ids": inserted_ids,
+            "ocr_triggered": ocr_count,
+            "failed": failed_count,
+            "client_id": client_id,
+        }
+
+
 @router.patch("/clients/{client_id}/documents/{doc_id}")
 async def update_document(
     client_id: int,

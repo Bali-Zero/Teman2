@@ -21,8 +21,10 @@ from backend.app.routers import (
     conversations,
     crm_auto,
     crm_clients,
+    crm_drive_folders,
     crm_enhanced,
     crm_interactions,
+    crm_migration,
     crm_portal_integration,
     crm_practices,
     crm_shared_memory,
@@ -101,8 +103,10 @@ def include_routers(api: FastAPI) -> None:
 
     # CRM routers
     api.include_router(crm_clients.router)
+    api.include_router(crm_drive_folders.router)  # Google Drive folder creation for clients
     api.include_router(crm_enhanced.router)  # Family members, Documents, Expiry Alerts
     api.include_router(crm_interactions.router)
+    api.include_router(crm_migration.router)  # Migration status tracking and statistics
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_auto.router)
