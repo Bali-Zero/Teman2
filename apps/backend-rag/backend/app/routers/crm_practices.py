@@ -21,6 +21,21 @@ from backend.app.utils.logging_utils import get_logger, log_database_operation, 
 
 logger = get_logger(__name__)
 
+
+# ================================================
+# HELPER: Resolve Query() defaults for direct calls
+# ================================================
+def resolve_query_param(value, default=None):
+    """
+    Resolve FastAPI Query() defaults to their actual values.
+    When endpoint functions are called directly (not via HTTP),
+    Query(None) remains an object instead of becoming None.
+    """
+    if hasattr(value, 'default'):
+        return value.default
+    return value if value is not None else default
+
+
 router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
@@ -296,6 +311,16 @@ async def list_practices(
     # Use provided pool if called directly
     if pool:
         db_pool = pool
+
+    # FIX: Resolve Query() objects when called directly (not via HTTP)
+    # FastAPI doesn't resolve Query() defaults for direct function calls
+    client_id = resolve_query_param(client_id)
+    status = resolve_query_param(status)
+    assigned_to = resolve_query_param(assigned_to)
+    practice_type = resolve_query_param(practice_type)
+    priority = resolve_query_param(priority)
+    limit = resolve_query_param(limit, DEFAULT_LIMIT)
+    offset = resolve_query_param(offset, 0)
 
     try:
         # If called directly, we might not have current_user, but we have user_id

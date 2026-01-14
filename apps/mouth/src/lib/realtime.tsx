@@ -54,13 +54,34 @@ class RealtimeService {
       return;
     }
 
-    // Get auth token from localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    // Get auth token from localStorage with fallback
+    let token: string | null = null;
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('auth_token');
+      // Fallback: try sessionStorage
+      if (!token) {
+        token = sessionStorage.getItem('auth_token');
+      }
+    }
+
     if (!token) {
       logger.warn('Cannot connect WebSocket: No auth token available', {
         component: 'RealtimeService',
         action: 'connect_no_token',
       });
+      // IMPROVED: Prevent infinite reconnect loop when no token
+      this.reconnectAttempts = this.maxReconnectAttempts;
+      return;
+    }
+
+    // IMPROVED: Validate token format (JWT has 3 parts separated by dots)
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3 || token.length < 50) {
+      logger.warn('Invalid token format detected', {
+        component: 'RealtimeService',
+        action: 'invalid_token_format',
+      });
+      this.reconnectAttempts = this.maxReconnectAttempts;
       return;
     }
 
