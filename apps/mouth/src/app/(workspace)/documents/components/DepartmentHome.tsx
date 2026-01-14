@@ -238,20 +238,29 @@ interface DepartmentCardProps {
 function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
   const Icon = deptInfo.icon;
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick();
+  };
+
   return (
-    <motion.button
+    <motion.div
       variants={itemVariants}
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="group relative flex items-start gap-5 overflow-hidden rounded-2xl bg-[var(--background)] p-6 text-left shadow-lg transition-all hover:shadow-xl"
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      className="group relative flex cursor-pointer items-start gap-5 overflow-hidden rounded-2xl bg-[var(--background)] p-6 text-left shadow-lg transition-all hover:shadow-xl"
       style={{
         boxShadow: `0 4px 20px -4px ${deptInfo.primary}20`,
       }}
     >
       {/* Gradient background on hover */}
       <div
-        className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background: `linear-gradient(135deg, ${deptInfo.primary}10 0%, transparent 60%)`,
         }}
@@ -259,13 +268,13 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
 
       {/* Accent line */}
       <div
-        className="absolute left-0 top-0 h-full w-1 transition-all duration-300 group-hover:w-1.5"
+        className="pointer-events-none absolute left-0 top-0 h-full w-1 transition-all duration-300 group-hover:w-1.5"
         style={{ backgroundColor: deptInfo.primary }}
       />
 
       {/* Icon */}
       <div
-        className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
+        className="pointer-events-none relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
         style={{ backgroundColor: `${deptInfo.primary}15` }}
       >
         <Icon
@@ -275,7 +284,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
       </div>
 
       {/* Content */}
-      <div className="relative flex-1">
+      <div className="pointer-events-none relative flex-1">
         <h3 className="mb-1 text-lg font-bold text-[var(--foreground)]">{folder.name}</h3>
         <p className="text-sm text-[var(--foreground-muted)]">
           Accedi ai documenti del {deptInfo.label.toLowerCase()}
@@ -289,7 +298,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
       </div>
 
       {/* Decorative dots */}
-      <div className="absolute -bottom-4 -right-4 opacity-10">
+      <div className="pointer-events-none absolute -bottom-4 -right-4 opacity-10">
         <svg width="80" height="80" viewBox="0 0 80 80">
           {[...Array(16)].map((_, i) => (
             <circle
@@ -302,7 +311,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
           ))}
         </svg>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
