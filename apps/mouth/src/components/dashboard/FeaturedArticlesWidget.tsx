@@ -15,6 +15,7 @@ interface FeaturedArticle {
 }
 
 // Featured articles from balizero.com - using local static images
+// NOTE: This should match the layout in /apps/mouth/src/app/(blog)/news/page.tsx
 const featuredArticles: FeaturedArticle[] = [
   {
     id: '1',
@@ -22,7 +23,7 @@ const featuredArticles: FeaturedArticle[] = [
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
     imageUrl: '/static/news/suwung-landfill.jpg',
-    href: 'https://balizero.com/lifestyle/suwung-landfill-closure-waste-crisis-bali',
+    href: 'https://balizero.com/lifestyle/suwung-landfill-crisis',
   },
   {
     id: '2',
@@ -30,7 +31,7 @@ const featuredArticles: FeaturedArticle[] = [
     category: 'PROPERTY',
     categoryColor: 'text-amber-400',
     imageUrl: '/static/news/property-green-zone.jpg',
-    href: 'https://balizero.com/property/green-zone-crackdown-end-easy-villa-permits',
+    href: 'https://balizero.com/property/property-green-zone-alert',
   },
   {
     id: '3',
@@ -38,7 +39,7 @@ const featuredArticles: FeaturedArticle[] = [
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
     imageUrl: '/static/news/dengue-alert.jpg',
-    href: 'https://balizero.com/lifestyle/dengue-alert-2026-636-cases-rising-expats',
+    href: 'https://balizero.com/lifestyle/dengue-alert-2026',
   },
   {
     id: '4',
@@ -46,15 +47,15 @@ const featuredArticles: FeaturedArticle[] = [
     category: 'TAX & LEGAL',
     categoryColor: 'text-cyan-400',
     imageUrl: '/static/news/pajak-hiburan.jpg',
-    href: 'https://balizero.com/tax-legal/pajak-hiburan-40-75-tax-beach-clubs-nightlife',
+    href: 'https://balizero.com/tax-legal/pajak-hiburan-tax-shock',
   },
   {
     id: '5',
-    title: 'Bali\'s Perfect Storm: Why 2026 Demands a New Playbook',
-    category: 'LIFESTYLE',
-    categoryColor: 'text-red-400',
-    imageUrl: '/static/news/perfect-storm-bali.jpg',
-    href: 'https://balizero.com/lifestyle/bali-perfect-storm-2026-new-playbook',
+    title: 'The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?',
+    category: 'IMMIGRATION',
+    categoryColor: 'text-blue-400',
+    imageUrl: '/static/news/constitutional-clash-koster.jpg',
+    href: 'https://balizero.com/immigration/constitutional-clash-bank-statements',
     isFeatured: true,
   },
 ];
