@@ -14,15 +14,14 @@ interface FeaturedArticle {
   isFeatured?: boolean;
 }
 
-// Using Pollinations AI for dynamic Bali-themed images
-// DatoCMS bandwidth exceeded - using AI-generated placeholders
+// Featured articles from balizero.com - using local static images
 const featuredArticles: FeaturedArticle[] = [
   {
     id: '1',
     title: 'Suwung Landfill Closure: The Waste Crisis Hitting Bali\'s Tourist Zones',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: '/images/articles/suwung-landfill.webp',
+    imageUrl: '/static/news/suwung-landfill.jpg',
     href: 'https://balizero.com/lifestyle/suwung-landfill-closure-waste-crisis-bali',
   },
   {
@@ -30,7 +29,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Property Alert: Green Zone Crackdown and the End of Easy Villa Permits',
     category: 'PROPERTY',
     categoryColor: 'text-amber-400',
-    imageUrl: '/images/articles/villa_tax.jpg',
+    imageUrl: '/static/news/property-green-zone.jpg',
     href: 'https://balizero.com/property/green-zone-crackdown-end-easy-villa-permits',
   },
   {
@@ -38,7 +37,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://image.pollinations.ai/prompt/tropical%20mosquito%20dengue%20prevention%20Bali%20health%20alert?width=800&height=600&nologo=true',
+    imageUrl: '/static/news/dengue-alert.jpg',
     href: 'https://balizero.com/lifestyle/dengue-alert-2026-636-cases-rising-expats',
   },
   {
@@ -46,7 +45,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife',
     category: 'TAX & LEGAL',
     categoryColor: 'text-cyan-400',
-    imageUrl: '/images/articles/tax_club.jpg',
+    imageUrl: '/static/news/pajak-hiburan.jpg',
     href: 'https://balizero.com/tax-legal/pajak-hiburan-40-75-tax-beach-clubs-nightlife',
   },
   {
@@ -54,7 +53,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Bali\'s Perfect Storm: Why 2026 Demands a New Playbook',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://image.pollinations.ai/prompt/dramatic%20storm%20over%20Bali%20rice%20terraces%20lightning%20cinematic?width=800&height=800&nologo=true',
+    imageUrl: '/static/news/perfect-storm-bali.jpg',
     href: 'https://balizero.com/lifestyle/bali-perfect-storm-2026-new-playbook',
     isFeatured: true,
   },
@@ -106,7 +105,7 @@ function ArticleCard({ article, className = '', size = 'normal' }: {
 
 export function FeaturedArticlesWidget() {
   return (
-    <div className="rounded-xl border border-orange-500/30 bg-[#1a0d05] p-6 overflow-hidden">
+    <div className="rounded-xl border border-orange-400/50 bg-orange-500/20 p-6 overflow-hidden">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-white">
