@@ -30,7 +30,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Property Alert: Green Zone Crackdown and the End of Easy Villa Permits',
     category: 'PROPERTY',
     categoryColor: 'text-amber-400',
-    imageUrl: 'https://image.pollinations.ai/prompt/Bali%20villa%20rice%20field%20green%20zone%20luxury%20property%20aerial?width=800&height=600&nologo=true',
+    imageUrl: '/images/articles/villa_tax.jpg',
     href: 'https://balizero.com/property/green-zone-crackdown-end-easy-villa-permits',
   },
   {
@@ -46,7 +46,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife',
     category: 'TAX & LEGAL',
     categoryColor: 'text-cyan-400',
-    imageUrl: 'https://image.pollinations.ai/prompt/Bali%20beach%20club%20sunset%20nightlife%20party%20luxury?width=800&height=600&nologo=true',
+    imageUrl: '/images/articles/tax_club.jpg',
     href: 'https://balizero.com/tax-legal/pajak-hiburan-40-75-tax-beach-clubs-nightlife',
   },
   {
