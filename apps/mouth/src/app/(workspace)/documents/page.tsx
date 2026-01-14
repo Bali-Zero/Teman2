@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDriveFiles, useDriveMutations, useDriveStatus } from '@/hooks/useDrive';
 import { DriveToolbar } from './components/DriveToolbar';
 import { DriveBreadcrumb } from './components/DriveBreadcrumb';
 import { FileGrid } from './components/FileGrid';
 import { FileList } from './components/FileList';
 import { DepartmentHome } from './components/DepartmentHome';
-import { FileModal, CreateMenu, ContextMenu, MoveDialog } from '@/components/documents';
+import { FileModal, CreateMenu, ContextMenu, MoveDialog, DropZone, UploadProgress, UploadDialog, FileViewer } from '@/components/documents';
 import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { motion } from 'framer-motion';
 import type { FileItem, BreadcrumbItem, DocType } from '@/lib/api/drive/drive.types';
 
@@ -21,6 +23,7 @@ export default function DocumentsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // React Query Hooks
+  const queryClient = useQueryClient();
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
   const {
     data,
@@ -54,6 +57,18 @@ export default function DocumentsPage() {
   const [createMenuPos, setCreateMenuPos] = useState<{x: number, y: number} | null>(null);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+
+  // Upload State
+  const [uploads, setUploads] = useState<Array<{
+    id: string;
+    name: string;
+    progress: number;
+    status: 'uploading' | 'completed' | 'error';
+    error?: string;
+    abortController?: AbortController;
+  }>>([]);
 
   // Handlers
   const handleNavigate = (index: number) => {
@@ -84,8 +99,9 @@ export default function DocumentsPage() {
         setCurrentFolderId(file.id);
         setSearchQuery('');
         setSelectedFiles(new Set());
-      } else if (file.web_view_link) {
-        window.open(file.web_view_link, '_blank');
+      } else {
+        // Open file preview instead of Google Drive
+        setPreviewFile(file);
       }
     }
   };
@@ -107,6 +123,72 @@ export default function DocumentsPage() {
   const handleConnect = async () => {
     const { auth_url } = await api.drive.getAuthUrl();
     window.location.href = auth_url;
+  };
+
+  // Upload handler
+  const handleUpload = async (filesToUpload: File[]) => {
+    setShowUploadDialog(false);
+
+    for (const file of filesToUpload) {
+      const uploadId = `${Date.now()}-${file.name}`;
+      const abortController = new AbortController();
+
+      // Add to upload list
+      setUploads(prev => [...prev, {
+        id: uploadId,
+        name: file.name,
+        progress: 0,
+        status: 'uploading',
+        abortController,
+      }]);
+
+      try {
+        await api.drive.uploadFile(file, currentFolderId || 'root', (progress) => {
+          setUploads(prev => prev.map(u =>
+            u.id === uploadId ? { ...u, progress: progress.percentage } : u
+          ));
+        });
+
+        // Mark as completed
+        setUploads(prev => prev.map(u =>
+          u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u
+        ));
+
+        // Refresh file list
+        queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+          setUploads(prev => prev.filter(u => u.id !== uploadId));
+        }, 3000);
+
+      } catch (error) {
+        setUploads(prev => prev.map(u =>
+          u.id === uploadId ? {
+            ...u,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Errore di upload'
+          } : u
+        ));
+      }
+    }
+  };
+
+  const handleCancelUpload = (uploadId: string) => {
+    const upload = uploads.find(u => u.id === uploadId);
+    if (upload?.abortController) {
+      upload.abortController.abort();
+    }
+    setUploads(prev => prev.filter(u => u.id !== uploadId));
+  };
+
+  const handleDismissUpload = (uploadId: string) => {
+    setUploads(prev => prev.filter(u => u.id !== uploadId));
+  };
+
+  // Handle files dropped via DropZone
+  const handleFilesDropped = (droppedFiles: File[]) => {
+    handleUpload(droppedFiles);
   };
 
   // Close context menu on click elsewhere
@@ -207,7 +289,7 @@ export default function DocumentsPage() {
             onSearchChange={setSearchQuery}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            onUploadClick={() => {/* TODO: Implement upload */}}
+            onUploadClick={() => setShowUploadDialog(true)}
             onCreateClick={(e) => {
               e.stopPropagation();
               setCreateMenuPos({ x: e.clientX, y: e.clientY + 20 });
@@ -222,46 +304,48 @@ export default function DocumentsPage() {
         </>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto" onClick={() => setSelectedFiles(new Set())}>
-        {filesLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            >
-              <Loader2 className="h-10 w-10 text-emerald-500" />
-            </motion.div>
-          </div>
-        ) : isAtRoot ? (
-          // Show Department Home at root level
-          <DepartmentHome
-            files={files}
-            onFolderClick={handleFolderClick}
-            storageUsed={0} // TODO: Get from API
-            storageTotal={30 * 1024 * 1024 * 1024 * 1024} // 30TB
-          />
-        ) : (
-          // Show normal file view in subfolders
-          viewMode === 'grid' ? (
-            <FileGrid
+      {/* Main Content - Wrapped with DropZone for drag & drop uploads */}
+      <DropZone onFilesDropped={handleFilesDropped} disabled={!isConnected || isAtRoot}>
+        <div className="flex-1 overflow-auto" onClick={() => setSelectedFiles(new Set())}>
+          {filesLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 className="h-10 w-10 text-emerald-500" />
+              </motion.div>
+            </div>
+          ) : isAtRoot ? (
+            // Show Department Home at root level
+            <DepartmentHome
               files={files}
-              selectedFiles={selectedFiles}
-              onFileClick={handleFileClick}
-              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-              onContextMenu={handleContextMenu}
+              onFolderClick={handleFolderClick}
+              storageUsed={0} // TODO: Get from API
+              storageTotal={30 * 1024 * 1024 * 1024 * 1024} // 30TB
             />
           ) : (
-            <FileList
-              files={files}
-              selectedFiles={selectedFiles}
-              onFileClick={handleFileClick}
-              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-              onContextMenu={handleContextMenu}
-            />
-          )
-        )}
-      </div>
+            // Show normal file view in subfolders
+            viewMode === 'grid' ? (
+              <FileGrid
+                files={files}
+                selectedFiles={selectedFiles}
+                onFileClick={handleFileClick}
+                onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+                onContextMenu={handleContextMenu}
+              />
+            ) : (
+              <FileList
+                files={files}
+                selectedFiles={selectedFiles}
+                onFileClick={handleFileClick}
+                onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+                onContextMenu={handleContextMenu}
+              />
+            )
+          )}
+        </div>
+      </DropZone>
 
       {/* Modals & Menus */}
       <CreateMenu
@@ -293,6 +377,7 @@ export default function DocumentsPage() {
           position={{ x: contextMenu.x, y: contextMenu.y }}
           file={contextMenu.file}
           onClose={() => setContextMenu(null)}
+          onPreview={(file) => setPreviewFile(file)}
           onOpen={(file) => {
             if (file.is_folder) {
               setCurrentFolderId(file.id);
@@ -318,7 +403,7 @@ export default function DocumentsPage() {
             try {
               await api.drive.downloadFile(file.id, file.name);
             } catch (error) {
-              console.error('Download failed:', error);
+              logger.error('Download failed:', error);
               // Fallback to window.open if fetch fails
               window.open(api.drive.getDownloadUrl(file.id), '_blank');
             }
@@ -343,6 +428,36 @@ export default function DocumentsPage() {
           }}
         />
       )}
+
+      {/* Upload Dialog */}
+      <UploadDialog
+        isOpen={showUploadDialog}
+        onClose={() => setShowUploadDialog(false)}
+        onUpload={handleUpload}
+        uploading={uploads.some(u => u.status === 'uploading')}
+      />
+
+      {/* Upload Progress Indicator */}
+      <UploadProgress
+        uploads={uploads}
+        onCancel={handleCancelUpload}
+        onDismiss={handleDismissUpload}
+      />
+
+      {/* File Preview Viewer */}
+      <FileViewer
+        file={previewFile}
+        isOpen={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        onDownload={async (file) => {
+          try {
+            await api.drive.downloadFile(file.id, file.name);
+          } catch (error) {
+            logger.error('Download failed:', error);
+            window.open(api.drive.getDownloadUrl(file.id), '_blank');
+          }
+        }}
+      />
     </div>
   );
 }

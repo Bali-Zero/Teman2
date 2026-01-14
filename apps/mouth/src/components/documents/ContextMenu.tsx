@@ -10,6 +10,7 @@ import {
   FolderInput,
   FileText,
   Users,
+  Eye,
 } from 'lucide-react';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 
@@ -18,6 +19,7 @@ interface ContextMenuProps {
   position: { x: number; y: number };
   onClose: () => void;
   onOpen: (file: FileItem) => void;
+  onPreview?: (file: FileItem) => void;
   onRename: (file: FileItem) => void;
   onDelete: (file: FileItem) => void;
   onMove: (file: FileItem) => void;
@@ -32,6 +34,7 @@ export function ContextMenu({
   position,
   onClose,
   onOpen,
+  onPreview,
   onRename,
   onDelete,
   onMove,
@@ -91,9 +94,20 @@ export function ContextMenu({
   }, [position]);
 
   const menuItems = [
+    // Preview option for files (not folders)
+    ...(!file.is_folder && onPreview
+      ? [
+          {
+            icon: Eye,
+            label: 'Visualizza anteprima',
+            action: () => onPreview(file),
+            divider: false,
+          },
+        ]
+      : []),
     {
       icon: ExternalLink,
-      label: file.is_folder ? 'Apri' : 'Apri in Drive',
+      label: file.is_folder ? 'Apri cartella' : 'Apri in Drive',
       action: () => onOpen(file),
       divider: false,
     },
