@@ -160,8 +160,11 @@ export class AdminApi {
   // Team Activity Dashboard
   // ============================================================================
 
-  async getTeamActivityOverview(): Promise<TeamActivityOverview> {
-    return this.client.request<TeamActivityOverview>('/api/admin/team-activity/overview', {
+  async getTeamActivityOverview(startDate?: string): Promise<TeamActivityOverview> {
+    const url = startDate
+      ? `/api/admin/team-activity/overview?start_date=${startDate}`
+      : '/api/admin/team-activity/overview';
+    return this.client.request<TeamActivityOverview>(url, {
       headers: this.client.getAdminHeaders(),
     });
   }
@@ -190,11 +193,13 @@ export class AdminApi {
     );
   }
 
-  async getTeamStats(days = 30): Promise<TeamStatsResponse> {
-    return this.client.request<TeamStatsResponse>(
-      `/api/admin/team-activity/team-stats?days=${days}`,
-      { headers: this.client.getAdminHeaders() }
-    );
+  async getTeamStats(days = 30, startDate?: string): Promise<TeamStatsResponse> {
+    const url = startDate
+      ? `/api/admin/team-activity/team-stats?start_date=${startDate}`
+      : `/api/admin/team-activity/team-stats?days=${days}`;
+    return this.client.request<TeamStatsResponse>(url, {
+      headers: this.client.getAdminHeaders(),
+    });
   }
 
   async getTeamTimesheet(params: {
@@ -310,6 +315,10 @@ interface TeamMemberStat {
   messages: number;
   days_worked: number;
   crm_actions: number;
+  emails_sent: number;
+  emails_received: number;
+  kb_views: number;
+  kb_downloads: number;
   last_activity: string | null;
 }
 

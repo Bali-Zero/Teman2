@@ -75,7 +75,7 @@ const getCountryFlag = (nationality: string | undefined): string | null => {
   return NATIONALITY_FLAGS[nationality] || null;
 };
 
-export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
+export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) => {
   const router = useRouter();
 
   // Determine sentiment aura
@@ -89,7 +89,8 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
   return (
     <div className="relative group perspective-1000">
       <motion.div
-        layoutId={`client-${client.id}`}
+        // Removed layoutId to improve performance with large lists
+        // layoutId causes expensive layout calculations with many items
         className={`
           relative bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] 
           p-4 cursor-pointer hover:shadow-lg transition-all duration-300
@@ -202,4 +203,14 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // Only re-render if client data or dragging state changes
+  return (
+    prevProps.client.id === nextProps.client.id &&
+    prevProps.client.last_sentiment === nextProps.client.last_sentiment &&
+    prevProps.client.last_interaction_date === nextProps.client.last_interaction_date &&
+    prevProps.client.last_interaction_summary === nextProps.client.last_interaction_summary &&
+    prevProps.isDragging === nextProps.isDragging
+  );
+});

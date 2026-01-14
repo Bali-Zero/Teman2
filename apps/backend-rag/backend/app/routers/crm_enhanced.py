@@ -5,18 +5,217 @@ Provides endpoints for:
 - Client family members (spouse, children)
 - Document management with categories
 - Expiry alerts with color indicators
+- Auto OCR for passport documents
 """
 
+import asyncio
+import base64
+import json
 import logging
+import re as regex
 from datetime import datetime
+from difflib import SequenceMatcher
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================
+# AUTO OCR HELPER
+# ============================================
+
+
+async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
+    """
+    Automatically run OCR on passport image and update client record.
+    Runs in background after document upload.
+    Creates its own db connection to avoid pool lifecycle issues.
+    """
+    import asyncpg
+    import os
+    import httpx
+
+    db_pool = None
+    try:
+        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+
+        if not GENAI_AVAILABLE:
+            logger.warning("Auto OCR: GenAI not available")
+            return {"success": False, "error": "GenAI not available"}
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            logger.warning("Auto OCR: Gemini not configured")
+            return {"success": False, "error": "Gemini not configured"}
+
+        # Create own pool for background task
+        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
+
+        # Get client name for verification
+        async with db_pool.acquire() as conn:
+            client = await conn.fetchrow(
+                "SELECT full_name FROM clients WHERE id = $1", client_id
+            )
+            if not client:
+                return {"success": False, "error": "Client not found"}
+            existing_name = client["full_name"]
+
+        # Get Drive access token
+        drive_service = GoogleDriveService(db_pool)
+        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        if not access_token:
+            logger.warning("Auto OCR: Google Drive not connected")
+            return {"success": False, "error": "Drive not connected"}
+
+        # Download passport image
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            meta_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if meta_response.status_code != 200:
+                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType", "image/jpeg")
+
+            download_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if download_response.status_code != 200:
+                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+
+            image_data = download_response.content
+
+        # OCR prompt - keep short to avoid truncation with large PDFs
+        ocr_prompt = """Extract from this passport: passport_number, expiry_date (YYYY-MM-DD), full_name, gender (M/F), date_of_birth (YYYY-MM-DD), birthplace, nationality, confidence (0-1). Return JSON only, null for missing fields."""
+
+        # Call Gemini Vision
+        contents = [
+            ocr_prompt,
+            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents,
+            model="gemini-3-flash-preview",
+            max_output_tokens=1000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"Auto OCR response for client {client_id}: {response_text[:200]}...")
+
+        # Parse JSON (handles code fences and chain-of-thought)
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"Auto OCR JSON parsing failed for client {client_id}. Raw: {response_text[:300]}")
+            return {"success": False, "error": "Could not parse OCR response"}
+
+        # Normalize date formats (DD-MM-YYYY → YYYY-MM-DD)
+        for date_field in ["expiry_date", "date_of_birth"]:
+            if extracted.get(date_field):
+                date_str = extracted[date_field]
+                if regex.match(r'\d{2}-\d{2}-\d{4}', date_str):
+                    parts = date_str.split('-')
+                    extracted[date_field] = f"{parts[2]}-{parts[1]}-{parts[0]}"
+
+        # Normalize gender (MALE/FEMALE → M/F)
+        if extracted.get("gender"):
+            g = extracted["gender"].upper()
+            if g in ["MALE", "M"]:
+                extracted["gender"] = "M"
+            elif g in ["FEMALE", "F"]:
+                extracted["gender"] = "F"
+
+        # Name match verification
+        name_match_ratio = None
+        if extracted.get("full_name") and existing_name:
+            ratio = SequenceMatcher(
+                None,
+                existing_name.upper().replace(",", " ").split(),
+                extracted["full_name"].upper().replace(",", " ").split()
+            ).ratio()
+            name_match_ratio = ratio
+
+        # Prepare OCR data
+        ocr_data = {
+            "extracted_at": datetime.utcnow().isoformat(),
+            "auto_triggered": True,
+            "raw_response": extracted,
+            "file_id": file_id,
+            "confidence": extracted.get("confidence", 0.0),
+            "name_match_ratio": name_match_ratio,
+        }
+
+        # Update client record
+        async with db_pool.acquire() as conn:
+            update_parts = ["passport_ocr_data = $1"]
+            params = [json.dumps(ocr_data)]
+            param_idx = 2
+
+            if extracted.get("passport_number"):
+                update_parts.append(f"passport_number = ${param_idx}")
+                params.append(extracted["passport_number"])
+                param_idx += 1
+
+            if extracted.get("expiry_date"):
+                try:
+                    expiry = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
+                    update_parts.append(f"passport_expiry = ${param_idx}")
+                    params.append(expiry)
+                    param_idx += 1
+                except ValueError:
+                    pass
+
+            if extracted.get("gender"):
+                update_parts.append(f"gender = ${param_idx}")
+                params.append(extracted["gender"][0].upper())
+                param_idx += 1
+
+            if extracted.get("date_of_birth"):
+                try:
+                    dob = datetime.strptime(extracted["date_of_birth"], "%Y-%m-%d").date()
+                    update_parts.append(f"date_of_birth = ${param_idx}")
+                    params.append(dob)
+                    param_idx += 1
+                except ValueError:
+                    pass
+
+            if extracted.get("birthplace"):
+                update_parts.append(f"birthplace = ${param_idx}")
+                params.append(extracted["birthplace"])
+                param_idx += 1
+
+            if extracted.get("nationality"):
+                update_parts.append(f"nationality = ${param_idx}")
+                params.append(extracted["nationality"])
+                param_idx += 1
+
+            params.append(client_id)
+            update_sql = f"""
+                UPDATE clients SET {', '.join(update_parts)}, updated_at = NOW()
+                WHERE id = ${param_idx}
+            """
+            await conn.execute(update_sql, *params)
+
+        logger.info(f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}")
+        return {"success": True, "extracted": extracted}
+
+    except Exception as e:
+        logger.error(f"Auto OCR failed for client {client_id}: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        if db_pool:
+            await db_pool.close()
 
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced"])
 
@@ -595,10 +794,11 @@ async def get_client_documents(
 async def create_document(
     client_id: int,
     data: DocumentCreate,
+    background_tasks: BackgroundTasks,
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Add a document to a client."""
+    """Add a document to a client. Auto-triggers OCR for passport documents."""
     user_email = current_user.get("email", "").lower()
     user_is_admin = is_crm_admin(current_user)
 
@@ -642,7 +842,12 @@ async def create_document(
             data.practice_id,
         )
 
-        return {"id": doc_id, "success": True}
+        # Auto-trigger OCR for passport documents
+        if data.file_id and data.document_type and "passport" in data.document_type.lower():
+            logger.info(f"Auto-triggering OCR for passport upload: client={client_id}, file={data.file_id}")
+            background_tasks.add_task(_auto_ocr_passport, client_id, data.file_id)
+
+        return {"id": doc_id, "success": True, "ocr_triggered": "passport" in (data.document_type or "").lower()}
 
 
 @router.patch("/clients/{client_id}/documents/{doc_id}")

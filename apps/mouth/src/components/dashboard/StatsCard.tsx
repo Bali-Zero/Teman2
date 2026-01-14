@@ -48,7 +48,7 @@ const accentStyles: Record<string, { border: string; icon: string }> = {
   cyan: { border: 'border-l-[3px] border-l-[#22D3EE]', icon: 'text-[#22D3EE]' },
 };
 
-export function StatsCard({
+export const StatsCard = React.memo(function StatsCard({
   title,
   value,
   subtitle,
@@ -107,4 +107,4 @@ export function StatsCard({
   }
 
   return content;
-}
+});

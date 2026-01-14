@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Client } from '@/lib/api/crm/crm.types';
 import { ClientCard } from './ClientCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface ClientKanbanProps {
   clients: Client[];
@@ -17,6 +18,116 @@ const COLUMNS = [
   { id: 'inactive', title: 'Inactive', color: 'bg-gray-500' },
   { id: 'completed', title: 'Completed', color: 'bg-indigo-500' }
 ];
+
+// Estimated height for ClientCard (for virtualization)
+const ESTIMATED_CARD_HEIGHT = 180;
+const VIRTUALIZATION_THRESHOLD = 20; // Virtualize if more than 20 items
+
+/**
+ * Virtualized column body for better performance with large lists
+ */
+function ColumnBody({
+  clients,
+  draggedClient,
+  onDragStart,
+  onDragEnd,
+}: {
+  clients: Client[];
+  draggedClient: Client | null;
+  onDragStart: (e: React.DragEvent, client: Client) => void;
+  onDragEnd: () => void;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const shouldVirtualize = clients.length > VIRTUALIZATION_THRESHOLD;
+
+  const virtualizer = useVirtualizer({
+    count: clients.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ESTIMATED_CARD_HEIGHT,
+    overscan: 3,
+  });
+
+  if (clients.length === 0) {
+    return (
+      <div className="p-3 flex-1 flex items-center justify-center">
+        <div className="h-24 border-2 border-dashed border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--foreground-muted)] text-xs opacity-50 w-full">
+          Drop here
+        </div>
+      </div>
+    );
+  }
+
+  if (!shouldVirtualize) {
+    // For small lists, render normally (better for drag & drop)
+    return (
+      <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+        <AnimatePresence>
+          {clients.map(client => (
+            <div
+              key={client.id}
+              draggable
+              onDragStart={(e) => onDragStart(e, client)}
+              onDragEnd={onDragEnd}
+            >
+              <ClientCard 
+                client={client} 
+                isDragging={draggedClient?.id === client.id}
+              />
+            </div>
+          ))}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // Virtualized rendering for large lists
+  const virtualItems = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={parentRef}
+      className="p-3 flex-1 overflow-y-auto custom-scrollbar"
+      style={{ contain: 'strict' }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualItems.map((virtualItem) => {
+          const client = clients[virtualItem.index];
+          return (
+            <div
+              key={client.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <div
+                draggable
+                onDragStart={(e) => onDragStart(e, client)}
+                onDragEnd={onDragEnd}
+                className="mb-3"
+              >
+                <ClientCard 
+                  client={client} 
+                  isDragging={draggedClient?.id === client.id}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => {
   const [draggedClient, setDraggedClient] = useState<Client | null>(null);
@@ -73,29 +184,12 @@ export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => 
           </div>
 
           {/* Column Body */}
-          <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-            <AnimatePresence>
-              {getClientsByStatus(column.id).map(client => (
-                <div
-                  key={client.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, client)}
-                  onDragEnd={() => setDraggedClient(null)}
-                >
-                  <ClientCard 
-                    client={client} 
-                    isDragging={draggedClient?.id === client.id}
-                  />
-                </div>
-              ))}
-            </AnimatePresence>
-            
-            {getClientsByStatus(column.id).length === 0 && (
-              <div className="h-24 border-2 border-dashed border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--foreground-muted)] text-xs opacity-50">
-                Drop here
-              </div>
-            )}
-          </div>
+          <ColumnBody
+            clients={getClientsByStatus(column.id)}
+            draggedClient={draggedClient}
+            onDragStart={handleDragStart}
+            onDragEnd={() => setDraggedClient(null)}
+          />
         </div>
       ))}
     </div>

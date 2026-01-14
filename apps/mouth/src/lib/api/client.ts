@@ -96,7 +96,22 @@ export class ApiClientBase implements IApiClient {
     return match ? match[1] : null;
   }
 
-  getUserProfile() {
+  getUserProfile(): UserProfile | null {
+    // Always read from storage to ensure we have the latest profile
+    // This is critical for cases where login happens after ApiClient instantiation
+    if (typeof window !== 'undefined') {
+      const storedProfile = safeStorage.getItem('user_profile');
+      if (storedProfile) {
+        try {
+          const parsed = JSON.parse(storedProfile);
+          if (JSON.stringify(parsed) !== JSON.stringify(this.userProfile)) {
+            this.userProfile = parsed;
+          }
+        } catch {
+          // Keep existing profile if parsing fails
+        }
+      }
+    }
     return this.userProfile;
   }
 
@@ -107,7 +122,8 @@ export class ApiClientBase implements IApiClient {
   }
 
   isAdmin(): boolean {
-    return this.userProfile?.role === 'admin';
+    const role = this.userProfile?.role?.toLowerCase();
+    return role === 'admin' || role === 'founder' || role === 'owner' || role === 'board';
   }
 
   /**
@@ -119,7 +135,7 @@ export class ApiClientBase implements IApiClient {
   }
 
   getAdminHeaders(): Record<string, string> {
-    if (!this.userProfile || this.userProfile.role !== 'admin') {
+    if (!this.userProfile || !this.isAdmin()) {
       throw new Error('Admin access required');
     }
     return { 'X-User-Email': this.userProfile.email };

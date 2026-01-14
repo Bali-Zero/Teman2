@@ -19,6 +19,12 @@ interface ParticlesBackgroundProps {
  * <ParticlesBackground variant="connections" />
  *
  * Place it as the first child of a relative-positioned container
+ *
+ * PERFORMANCE NOTE: If used in production, consider lazy-loading:
+ * const ParticlesBackground = dynamic(
+ *   () => import('@/components/ui/particles-background'),
+ *   { ssr: false, loading: () => null }
+ * );
  */
 export function ParticlesBackground({
   className = '',

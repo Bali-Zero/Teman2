@@ -3,6 +3,7 @@
  * Replaces 7 separate API calls with 1 optimized call using React Query
  */
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, type DashboardData } from '@/lib/api/dashboard/dashboard.api';
 
@@ -65,22 +66,59 @@ export function useDashboardData() {
     });
   }
 
-  // Extract data with fallbacks
-  const user = data?.user || { email: '', role: '', is_admin: false };
-  const stats = data?.stats || {
-    activeCases: 0,
-    criticalDeadlines: 0,
-    whatsappUnread: 0,
-    emailUnread: 0,
-    hoursWorked: '0h 0m',
-  };
-  const practices = data?.data?.practices || [];
-  const interactions = data?.data?.interactions || [];
-  const emailStats = data?.data?.email || { connected: false, unread_count: 0 };
-  const systemStatus = data?.system_status || 'degraded';
+  // Extract data with fallbacks (memoized to prevent unnecessary recalculations)
+  const user = useMemo(
+    () => data?.user || { email: '', role: '', is_admin: false },
+    [data?.user]
+  );
+  
+  const stats = useMemo(
+    () => data?.stats || {
+      activeCases: 0,
+      criticalDeadlines: 0,
+      whatsappUnread: 0,
+      emailUnread: 0,
+      hoursWorked: '0h 0m',
+    },
+    [data?.stats]
+  );
+  
+  const practices = useMemo(
+    () => data?.data?.practices || [],
+    [data?.data?.practices]
+  );
+  
+  const interactions = useMemo(
+    () => data?.data?.interactions || [],
+    [data?.data?.interactions]
+  );
+  
+  const emailStats = useMemo(
+    () => data?.data?.email || { connected: false, unread_count: 0 },
+    [data?.data?.email]
+  );
+  
+  const systemStatus = useMemo(
+    () => data?.system_status || 'degraded',
+    [data?.system_status]
+  );
 
-  // Check if user is zero@balizero.com
-  const isZero = user.email === 'zero@balizero.com';
+  // Check if user is zero@balizero.com (memoized)
+  const isZero = useMemo(
+    () => user.email === 'zero@balizero.com',
+    [user.email]
+  );
+
+  // Computed values (memoized to prevent recalculation on every render)
+  const totalUnread = useMemo(
+    () => stats.whatsappUnread + stats.emailUnread,
+    [stats.whatsappUnread, stats.emailUnread]
+  );
+  
+  const isHealthy = useMemo(
+    () => systemStatus === 'healthy',
+    [systemStatus]
+  );
 
   return {
     // Data
@@ -100,9 +138,9 @@ export function useDashboardData() {
     // Actions
     refetch,
     
-    // Computed
-    totalUnread: stats.whatsappUnread + stats.emailUnread,
-    isHealthy: systemStatus === 'healthy',
+    // Computed (now memoized)
+    totalUnread,
+    isHealthy,
   };
 }
 

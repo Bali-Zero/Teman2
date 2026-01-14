@@ -1,5 +1,170 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-14 03:00-04:30 UTC)
+
+### Visa Oracle Expansion + Knowledge Graph Integration - COMPLETED
+
+**Obiettivo:** Ingestire 33 visa mancanti dal dump ufficiale imigrasi.go.id e creare relazioni KG (visa → KBLI → tax).
+
+---
+
+### 1. Analisi Gap
+
+**Fonte:** File ufficiale `tutti_visti_indonesia_2026-01-13.txt` (110 visa types)
+
+**Gap identificato:**
+- Esistenti in Qdrant: 82 codici (94 chunks)
+- Nel file ufficiale: 110 codici
+- **Mancanti: 33 visa**
+
+---
+
+### 2. Script Ingestion Creato
+
+**File:** `scripts/ingestion/ingest_visa_kg.py` (734 righe)
+
+**Funzionalità:**
+- Parsing dump Imigrasi (gestisce `\n` letterali)
+- Confronto con Qdrant esistente
+- Embedding OpenAI (text-embedding-3-small)
+- Named vectors (`dense`) per Qdrant
+- Estrazione entità KG (visa_kunjungan, visa_tinggal, etc.)
+- Creazione relazioni KG (LINKED_KBLI, REQUIRES_TAX)
+
+---
+
+### 3. Visa Ingestiti (33 nuovi)
+
+| Categoria | Codici |
+|-----------|--------|
+| Work Visas | E23, E23A, E23U, E23V, E23X, **E23Y (Digital Expert)** |
+| Executive | E25A-F (Commissioner, Director, Manager, Supervisor) |
+| Investor | E28, E28E (KEK) |
+| Education | E30, E30E, E30F (Student Exchange) |
+| Family | E31 |
+| Global Citizen | E32, E32E-H |
+| Second Home | E33D (Tokoh Dunia) |
+| Medical | E34 |
+| Working Holiday | E35A (Australia) |
+| Content Creator | **C5A** |
+| Sports | C8, D4, D8 |
+
+---
+
+### 4. Knowledge Graph Relationships
+
+**Entità create:** 33 (visa nodes)
+**Relazioni create:** 106
+
+| Tipo Relazione | Esempio |
+|----------------|---------|
+| `LINKED_KBLI` | E23 → KBLI 62, 63, 70, 71, 72 |
+| `REQUIRES_TAX` | All E-series → NPWP registration |
+
+---
+
+### 5. Risultati Finali
+
+| Metrica | Prima | Dopo |
+|---------|-------|------|
+| visa_oracle (Qdrant) | 94 docs | **127 docs** |
+| KG Nodes (totale) | ~24,917 | **34,322** |
+| KG Edges (totale) | ~23,234 | **30,342** |
+| Visa KG Nodes | 170 | **203** |
+| Visa KG Edges | 282 | **388** |
+
+---
+
+### 6. Test su Zantara
+
+| Query | Risultato |
+|-------|-----------|
+| "What is E23Y Digital Expert visa?" | ✅ Risposta con KBLI codes + `[KNOWLEDGE GRAPH]` tag |
+| "Tell me about C5A Content Creator" | ✅ 4 sources, dettagli USD 2,000, 60-90 days |
+
+---
+
+### Commit
+
+`2033579e` - feat(ingestion): add visa KG ingestion script for official Imigrasi data
+
+---
+
+### Uso Script
+
+```bash
+# Dry-run
+python scripts/ingestion/ingest_visa_kg.py --file "visa_dump.txt" --dry-run
+
+# Produzione
+QDRANT_API_KEY=xxx OPENAI_API_KEY=xxx DATABASE_URL=xxx \
+python scripts/ingestion/ingest_visa_kg.py --file "visa_dump.txt"
+```
+
+---
+
+## Session Update (2026-01-13 21:30-22:00 UTC)
+
+### Agentic RAG Improvements + Pricing Fix - COMPLETED
+
+**Obiettivo:** Deploy miglioramenti Gemini 3 chat session e fix prezzi inventati.
+
+---
+
+### 1. Gemini 3 Chat Session History
+
+**Problema:** Context si perdeva tra i passi del ReAct loop.
+
+**Soluzione:** Aggiunto supporto ChatSession history per Gemini 3.
+
+**Files Modified:**
+- `llm_gateway.py` - `create_chat_with_history()` con `system_instruction`
+- `orchestrator.py` - Passaggio system_instruction alla chat session
+- `reasoning.py` - Original query context nelle continuazioni ReAct
+
+---
+
+### 2. Pricing Tool Enforcement
+
+**Problema:** AI inventava prezzi (es. "Akta Perubahan costa 5-10M").
+
+**Soluzione:** Regole più rigide nel prompt:
+
+```
+RULE 1: ONLY USE PRICES FROM get_pricing TOOL
+RULE 2: IF PRICE NOT IN TOOL, SAY "DA VERIFICARE"
+RULE 3: ONLY STATE FACTS YOU CAN VERIFY
+```
+
+**File Modified:** `prompt_builder.py` - Sezione `<tool_usage_policy>`
+
+---
+
+### 3. Test Results (Chrome Browser)
+
+| Test | Risultato |
+|------|-----------|
+| Pricing Tool | ✅ Usa `get_pricing` per "Quanto costa PT PMA?" |
+| Context Preservation | ✅ "Come mai?" capisce riferimento a 20M |
+| No Prezzi Inventati | ✅ Solo prezzi con citazioni [1][2][3] |
+
+---
+
+### Commits
+
+- `b3ec8535` - feat(agentic): improve Gemini 3 chat session and pricing enforcement
+- `3ececc8d` - feat(admin): add Team Activity Dashboard
+
+---
+
+### Deploy
+
+- **Release:** v1555
+- **Health:** https://nuzantara-rag.fly.dev/health ✅
+- **Machines:** 2/2 healthy
+
+---
+
 ## Session Update (2026-01-10 11:00-12:00 UTC)
 
 ### Database Activation + Scheduler Tasks - COMPLETED

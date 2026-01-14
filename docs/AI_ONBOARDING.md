@@ -118,20 +118,281 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 -   **Logs:** Check logs (`fly logs` or local output) to verify behavior.
 
 ### 3.4 Deployment Operations
--   **Backend (Fly.io):**
-    -   **NEVER run `flyctl` from root.** It will fail due to missing context.
-    -   **ALWAYS use the helper script:**
-        -   `./scripts/fly-backend.sh <command>` (status, logs, deploy)
--   **Frontend (Vercel):**
-    -   Frontend is deployed on **Vercel** (not Fly.io)
-    -   Use Vercel CLI: `vercel deploy --prod` (from `apps/mouth/`)
-    -   Or deploy via Vercel dashboard/GitHub integration
 
-### 3.5 🚨 SEMI-AUTOMATED CI/CD
--   **DIVIETO ASSOLUTO:** Non usare MAI CI/CD automatizzati per il deploy in produzione.
--   **PIPELINE:** La CI (GitHub Actions) esegue **verifiche obbligatorie** (Lint, Test, Security).
--   **DEPLOY:** Il deploy è **SOLO MANUALE** e **DA LOCALE** tramite `flyctl deploy`.
--   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio.
+#### 3.4.1 Backend (Fly.io) - **SAFE DEPLOY** ⭐ RECOMMENDED
+
+**Primary Method - Safe Deploy Script:**
+```bash
+./scripts/safe-deploy.sh
+```
+
+**Features:**
+- ✅ Automatic pre-deployment testing
+- ✅ Database backup before deploy
+- ✅ Post-deployment health verification
+- ✅ Automatic rollback on failure
+- ✅ Comprehensive logging
+
+**See:** `docs/SAFE_DEPLOY_GUIDE.md` for complete documentation.
+
+**Alternative Methods:**
+-   **Helper script:** `./scripts/fly-backend.sh <command>` (status, logs, deploy)
+-   **Direct deploy:** `cd apps/backend-rag && flyctl deploy -a nuzantara-rag`
+    -   ⚠️ **WARNING:** No safety checks, use with caution
+
+#### 3.4.2 Frontend (Vercel)
+-   Frontend is deployed on **Vercel** (not Fly.io)
+-   Use Vercel CLI: `vercel deploy --prod` (from `apps/mouth/`)
+-   Or deploy via Vercel dashboard/GitHub integration
+
+### 3.5 🚨 DEPLOYMENT PHILOSOPHY
+-   **MANUAL CONTROL:** Deploy è manuale e controllato dal developer (no auto-deploy)
+-   **SAFETY FIRST:** Usa `safe-deploy.sh` per protezioni automatiche senza perdere controllo
+-   **CI FOR QUALITY:** GitHub Actions può essere usata per quality checks (lint, test) ma NON per auto-deploy
+-   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio, con safety nets automatici
+
+### 3.6 🤖 **MANDATORY RULES FOR AI AGENTS**
+
+> **CRITICAL:** AI agents operate under stricter rules than human developers due to lack of intuition and real-time monitoring capability.
+
+#### 3.6.1 Testing Before Deploy (MANDATORY)
+
+**RULE:** AI agents MUST run tests before EVERY deployment, no exceptions.
+
+```bash
+# ✅ CORRECT - AI must always do this
+cd apps/backend-rag
+PYTHONPATH=backend pytest tests/unit/ -q --tb=short
+
+# Then deploy
+cd ../..
+./scripts/safe-deploy.sh
+```
+
+**Why:**
+- ✅ AI-introduced bugs are caught before production
+- ✅ Regression testing prevents breaking existing features
+- ✅ Evidence of code quality before deploy
+
+**Forbidden:**
+```bash
+# ❌ FORBIDDEN - AI must NEVER skip tests
+./scripts/safe-deploy.sh --skip-tests
+```
+
+#### 3.6.2 Deployment Method (MANDATORY)
+
+**RULE:** AI agents MUST ALWAYS use `safe-deploy.sh`. Direct `flyctl deploy` is FORBIDDEN.
+
+```bash
+# ✅ CORRECT - AI agents must use this
+./scripts/safe-deploy.sh
+
+# ❌ FORBIDDEN - AI agents must NOT use this
+cd apps/backend-rag && flyctl deploy -a nuzantara-rag
+```
+
+**Rationale:**
+- AI lacks intuition to assess deploy risk
+- Automated health checks verify AI changes work in production
+- Auto-rollback recovers from AI mistakes without human intervention
+- Database backups protect against schema errors
+
+**If tests fail:**
+1. ❌ **NEVER** use `--skip-tests` to bypass
+2. ✅ Read test output: `cat /tmp/test-output.txt`
+3. ✅ Fix the failing tests
+4. ✅ Retry safe deploy
+5. ✅ Ask human if stuck after 2 failed attempts
+
+#### 3.6.3 Coverage Testing (RECOMMENDED)
+
+**WHEN:** Run coverage tests in these scenarios:
+
+**Scenario A - New Feature Implementation:**
+```bash
+# After implementing new feature, before deploy
+cd apps/backend-rag
+PYTHONPATH=backend pytest --cov=backend.services.rag.agentic \
+  --cov=backend.app.routers \
+  --cov-report=html \
+  --cov-report=term \
+  --cov-fail-under=90
+
+# Review coverage report
+open htmlcov/index.html  # macOS
+xdg-open htmlcov/index.html  # Linux
+```
+
+**Target:** Maintain **≥90% coverage** (current: 95.01%)
+
+**Scenario B - Critical Path Changes:**
+- Modified `reasoning.py`, `orchestrator.py`, `llm_gateway.py`
+- Changed core routers (auth, RAG, CRM)
+- Updated database models or migrations
+
+**Scenario C - Weekly Quality Check:**
+```bash
+# Full test suite with coverage (Friday afternoon or before major release)
+cd apps/backend-rag
+PYTHONPATH=backend pytest --cov=backend --cov-report=html --cov-fail-under=90
+```
+
+**NOT required for:**
+- Minor documentation changes
+- UI-only changes (frontend)
+- Configuration tweaks (no code changes)
+
+#### 3.6.4 Logging & Metrics (BEST PRACTICES)
+
+**WHEN to add logging:**
+
+**A) New Service/Router:**
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+class NewService:
+    async def critical_operation(self, data: dict) -> Result:
+        logger.info(f"Starting critical_operation with {len(data)} items")
+        try:
+            result = await self._process(data)
+            logger.info(f"✅ Operation completed: {result.summary}")
+            return result
+        except Exception as e:
+            logger.error(f"❌ Operation failed: {e}", exc_info=True)
+            raise
+```
+
+**B) External API Calls:**
+```python
+logger.debug(f"Calling external API: {endpoint}")
+response = await client.post(endpoint, data=payload)
+logger.info(f"API response: status={response.status_code}, time={response.elapsed}ms")
+```
+
+**C) Decision Points (AI Reasoning):**
+```python
+logger.info(f"🤔 Evidence score: {evidence_score:.2f} (threshold: {threshold})")
+if evidence_score < threshold:
+    logger.warning("🛡️ ABSTAIN triggered - insufficient evidence")
+```
+
+**WHEN to add metrics:**
+
+**A) Performance-Critical Paths:**
+```python
+from backend.app.metrics import metrics_collector
+
+@trace_span("service.operation")
+async def expensive_operation():
+    start = time.time()
+    result = await do_work()
+    duration = time.time() - start
+    
+    # Record metric
+    metrics_collector.record_operation_duration("operation_name", duration)
+    return result
+```
+
+**B) Business KPIs:**
+```python
+# Tool usage tracking
+metrics_collector.increment_counter("tool_calls", {"tool": tool_name})
+
+# Cache performance
+metrics_collector.record_cache_hit("semantic_cache", hit=True)
+
+# LLM costs
+metrics_collector.record_llm_tokens(prompt_tokens, completion_tokens, model)
+```
+
+**AVOID over-logging:**
+- ❌ Don't log in tight loops (use sampling: `if i % 100 == 0`)
+- ❌ Don't log sensitive data (PII, API keys, passwords)
+- ❌ Don't log at DEBUG level in production hot paths
+
+#### 3.6.5 Error Handling Pattern (MANDATORY)
+
+**Standard Pattern:**
+```python
+from backend.app.utils.error_handling import handle_service_error
+
+async def ai_implemented_function():
+    try:
+        result = await risky_operation()
+        return result
+    except SpecificError as e:
+        logger.error(f"Specific error: {e}", exc_info=True)
+        # Handle gracefully
+        return fallback_result
+    except Exception as e:
+        logger.exception(f"Unexpected error in ai_implemented_function")
+        # Re-raise or return error response
+        raise ServiceError("Operation failed") from e
+```
+
+**Don't:**
+```python
+# ❌ BAD - Swallows all errors silently
+try:
+    result = operation()
+except:
+    pass
+
+# ❌ BAD - No context
+except Exception as e:
+    raise e
+
+# ❌ BAD - String exception
+raise Exception("error")  # Use proper exception classes
+```
+
+#### 3.6.6 Code Quality Checklist (Before Commit)
+
+**AI must verify:**
+- [ ] ✅ Tests written for new code
+- [ ] ✅ Tests pass locally (`pytest tests/`)
+- [ ] ✅ Type hints added (`def func(x: int) -> str`)
+- [ ] ✅ Docstrings for public functions
+- [ ] ✅ No hardcoded values (prices, API keys, URLs)
+- [ ] ✅ Error handling implemented
+- [ ] ✅ Logging added for critical paths
+- [ ] ✅ No `print()` statements (use `logger`)
+- [ ] ✅ Imports organized (use `isort`)
+- [ ] ✅ Code formatted (use `ruff format`)
+
+**Run before commit:**
+```bash
+# Auto-format
+cd apps/backend-rag
+ruff format backend/
+
+# Lint check
+ruff check backend/
+
+# Type check (if mypy configured)
+mypy backend/services/
+```
+
+#### 3.6.7 Communication Protocol
+
+**When AI gets stuck:**
+1. ✅ Document what was attempted
+2. ✅ Share error messages/logs
+3. ✅ Propose 2-3 alternative approaches
+4. ✅ Ask specific questions (not "what should I do?")
+
+**Example:**
+> "I implemented feature X but tests are failing with error Y. I tried:
+> 1. Approach A - failed because Z
+> 2. Approach B - partial success but edge case W
+> 
+> Two options:
+> - Option 1: Refactor using pattern P
+> - Option 2: Add validation at layer L
+> 
+> Which approach aligns better with the architecture?"
 
 ---
 
@@ -378,6 +639,8 @@ PREVIEW_BASE_URL=https://balizero.com/preview
 | `apps/bali-intel-scraper/docs/` | Pipeline documentation |
 | `docs/` | Project documentation |
 | `scripts/` | Deployment, testing, analysis scripts |
+| `scripts/safe-deploy.sh` | ⭐ **Safe deployment script** (recommended) |
+| `scripts/backup-db.sh` | Database backup helper |
 
 ---
 
@@ -592,6 +855,8 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 | Doc | Path | Quando Leggerlo |
 |-----|------|-----------------|
 | AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
+| **⭐ AI Agent Best Practices** | `docs/AI_AGENT_BEST_PRACTICES.md` | **Prima di ogni implementazione** |
+| **⭐ Safe Deploy Guide** | `docs/SAFE_DEPLOY_GUIDE.md` | **Prima di ogni deploy** |
 | **CRM System** | `docs/CRM_SYSTEM.md` | Prima di toccare CRM client/practices |
 | System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
 | **Codebase Analysis** | `docs/CODEBASE_ANALYSIS.md` | Per identificare aree da refactorare |
@@ -599,7 +864,7 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 | **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
 | **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
 | AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
-| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy (o usa safe-deploy.sh) |
 | Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
 | **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | Per scraper news + SEO/AEO + Telegram |
 | **Refactoring Hardcoded Values** | `docs/REFACTORING_HARDCODED_VALUES.md` | Per vedere refactoring costanti |

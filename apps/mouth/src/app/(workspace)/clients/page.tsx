@@ -155,11 +155,17 @@ function VirtualizedClientGrid({
   // Virtualized grid rendering
   const virtualRows = virtualizer.getVirtualItems();
 
+  // Force re-measure when parent becomes available
+  useEffect(() => {
+    if (parentRef.current) {
+      virtualizer.measure();
+    }
+  }, [virtualizer]);
+
   return (
     <div
       ref={parentRef}
-      className="flex-1 overflow-auto pb-4"
-      style={{ contain: 'strict' }}
+      className="flex-1 overflow-auto pb-4 min-h-[400px]"
     >
       <div
         style={{

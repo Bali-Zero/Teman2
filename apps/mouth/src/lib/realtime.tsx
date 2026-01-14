@@ -42,7 +42,10 @@ class RealtimeService {
   private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.setupEventListeners();
+    // Only setup event listeners in browser (not during SSR)
+    if (typeof window !== 'undefined') {
+      this.setupEventListeners();
+    }
   }
 
   // Initialize WebSocket connection
@@ -51,11 +54,23 @@ class RealtimeService {
       return;
     }
 
+    // Get auth token from localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      logger.warn('Cannot connect WebSocket: No auth token available', {
+        component: 'RealtimeService',
+        action: 'connect_no_token',
+      });
+      return;
+    }
+
     this.isConnecting = true;
 
     try {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://nuzantara-rag.fly.dev/ws';
-      this.ws = new WebSocket(`${wsUrl}?userId=${userId}&userName=${encodeURIComponent(userName)}`);
+      // Pass token via subprotocol (browser WebSocket doesn't support custom headers)
+      // Backend expects: "bearer.<token>"
+      this.ws = new WebSocket(wsUrl, [`bearer.${token}`]);
 
       this.ws.onopen = () => {
         logger.info('WebSocket connected', {
@@ -194,10 +209,20 @@ class RealtimeService {
 
   // Auto-reconnect logic
   private scheduleReconnect(): void {
+    // Don't reconnect if no auth token available
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      logger.debug('Skipping WebSocket reconnect: No auth token', {
+        component: 'RealtimeService',
+        action: 'reconnect_skip',
+      });
+      return;
+    }
+
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
+
       logger.debug('Reconnecting WebSocket', {
         component: 'RealtimeService',
         action: 'reconnect',
@@ -206,12 +231,12 @@ class RealtimeService {
           attempt: this.reconnectAttempts,
         },
       });
-      
+
       setTimeout(() => {
         this.connect(this.getCurrentUserId(), this.getCurrentUserName());
       }, delay);
     } else {
-      logger.error('Max reconnection attempts reached', {
+      logger.warn('Max reconnection attempts reached', {
         component: 'RealtimeService',
         action: 'max_reconnect',
         metadata: {

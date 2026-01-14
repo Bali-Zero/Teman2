@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { OrganizationJsonLd, LocalBusinessJsonLd, WebsiteJsonLd } from '@/components/seo';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { WebVitalsMonitor } from '@/components/providers/WebVitalsMonitor';
 import './globals.css';
 
 const geistSans = Geist({
@@ -147,6 +148,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
       >
         <QueryProvider>
+          <WebVitalsMonitor />
           {children}
           <Toaster
             position="bottom-right"

@@ -5,10 +5,23 @@ Uses ZANTARA AI to extract structured data from conversations for CRM auto-popul
 
 import json
 import logging
+from datetime import date, datetime
+from uuid import UUID
 
 from backend.llm.zantara_ai_client import ZantaraAIClient
 
 from backend.app.core.config import settings
+
+
+class AsyncpgJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle asyncpg types (UUID, datetime, etc.)"""
+
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            return str(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +91,7 @@ class AICRMExtractor:
         existing_data_str = "NO EXISTING CLIENT DATA"
         if existing_client_data:
             existing_data_str = "EXISTING CLIENT DATA:\\n" + json.dumps(
-                existing_client_data, indent=2
+                existing_client_data, indent=2, cls=AsyncpgJSONEncoder
             )
 
         # Extraction prompt
