@@ -38,13 +38,12 @@ def resolve_query_param(value, default=None):
 
 
 def json_serializer(obj):
-        """Custom JSON serializer for objects not serializable by default json code."""
-        if isinstance(obj, (datetime, date)):
-                    return obj.isoformat()
-                if isinstance(obj, Decimal):
-                            return str(obj)
-                        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
+    """Custom JSON serializer for objects not serializable by default json code."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
@@ -651,8 +650,13 @@ async def update_practice(
 
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
+<<<<<<< HEAD
                         # Serialize changes dict to JSON string for asyncpg JSONB compatibility
                         changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
+=======
+            # Serialize changes dict to JSON string for asyncpg JSONB compatibility
+            changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
+>>>>>>> 5009039 (Fix PATCH practices endpoint: serialize changes dict to JSON for asyncpg JSONB)
             await conn.execute(
                 """
                 INSERT INTO activity_log (entity_type, entity_id, action, performed_by, description, changes)
@@ -663,7 +667,11 @@ async def update_practice(
                 "updated",
                 user_email,
                 f"Updated: {', '.join(changed_fields)}",
+<<<<<<< HEAD
                                 changes_json,
+=======
+                changes_json,
+>>>>>>> 5009039 (Fix PATCH practices endpoint: serialize changes dict to JSON for asyncpg JSONB)
             )
 
             # If status changed to 'completed' and there's an expiry date, create renewal alert
