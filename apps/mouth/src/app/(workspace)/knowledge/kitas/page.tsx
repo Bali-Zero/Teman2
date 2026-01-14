@@ -148,6 +148,11 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
   const difficulty = visa.metadata?.difficulty;
   const pdfUrl = visa.metadata?.pdf_url;
 
+  // Check if has Bali Zero price (not "Contact for quote")
+  const hasBaliZeroPrice = visa.cost_visa &&
+    visa.cost_visa !== 'Contact for quote' &&
+    visa.cost_visa !== 'Contact';
+
   const handlePdfDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (pdfUrl) {
@@ -165,8 +170,19 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
         bg-gradient-to-br ${getCategoryColor(visa.category)}
         hover:scale-[1.02] hover:shadow-lg hover:shadow-[var(--accent)]/10
         transition-all duration-300 ease-out
+        ${hasBaliZeroPrice ? 'scale-110 z-10 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20' : ''}
       `}
     >
+      {/* Bali Zero Price Badge - TOP PRIORITY */}
+      {hasBaliZeroPrice && (
+        <div className="absolute top-1.5 left-1.5 z-10">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[8px] font-semibold shadow-lg">
+            <DollarSign className="w-2 h-2" />
+            Bali Zero
+          </div>
+        </div>
+      )}
+
       {/* Recommended Badge */}
       {isRecommended && (
         <div className="absolute top-1.5 right-1.5 z-10">
@@ -178,7 +194,7 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
       )}
 
       {/* New Badge */}
-      {isNew && !isRecommended && (
+      {isNew && !isRecommended && !hasBaliZeroPrice && (
         <div className="absolute top-1.5 right-1.5 z-10">
           <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[8px] font-semibold shadow-lg">
             <Sparkles className="w-2 h-2" />
@@ -210,9 +226,9 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
             <Clock className="w-2.5 h-2.5 text-[var(--accent)]" />
             <span>{visa.duration || 'Varies'}</span>
           </div>
-          <div className="flex items-center gap-0.5">
-            <Wallet className="w-2.5 h-2.5 text-emerald-400" />
-            <span>{visa.cost_visa || 'Contact'}</span>
+          <div className={`flex items-center gap-0.5 ${hasBaliZeroPrice ? 'text-emerald-400 font-bold' : ''}`}>
+            <Wallet className={`w-2.5 h-2.5 ${hasBaliZeroPrice ? 'text-emerald-400' : 'text-emerald-400'}`} />
+            <span className={hasBaliZeroPrice ? 'text-[9px]' : ''}>{visa.cost_visa || 'Contact'}</span>
           </div>
         </div>
 
