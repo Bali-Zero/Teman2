@@ -74,7 +74,7 @@ export function DepartmentFolder({
 
         {/* Back panel with gradient */}
         <defs>
-          <linearGradient id={`folder-grad-${primaryColor}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={`folder-grad-${primaryColor.replace('#', '')}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={secondaryColor} />
             <stop offset="100%" stopColor={primaryColor} />
           </linearGradient>
@@ -93,7 +93,7 @@ export function DepartmentFolder({
         {/* Front panel with gradient */}
         <path
           d="M6 22C6 19.7909 7.79086 18 10 18H54C56.2091 18 58 19.7909 58 22V50C58 52.2091 56.2091 54 54 54H10C7.79086 54 6 52.2091 6 50V22Z"
-          fill={`url(#folder-grad-${primaryColor})`}
+          fill={`url(#folder-grad-${primaryColor.replace('#', '')})`}
         />
 
         {/* Top shine */}
