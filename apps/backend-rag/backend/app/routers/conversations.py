@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.metrics import metrics_collector
 from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success, log_warning
 from backend.services.memory import MemoryOrchestrator, get_memory_cache
 
@@ -221,8 +222,9 @@ async def save_conversation(
                             """,
                             user_email,
                             session_id,
-                            request.messages,
-                            request.metadata or {},
+                            # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+                            to_jsonb(request.messages),
+                            to_jsonb(request.metadata or {}),
                             datetime.now(),
                         )
 

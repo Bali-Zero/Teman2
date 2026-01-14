@@ -1,5 +1,124 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-14 - Asyncpg JSONB Best Practices)
+
+### Bug Fix: Process Update 503 Error - COMPLETED
+
+**Problem:** PATCH `/api/crm/practices/{id}` restituiva 503 "Database service temporarily unavailable" quando si aggiornava lo status di un process.
+
+**Root Cause:** asyncpg non può serializzare automaticamente Python dict contenenti `Decimal`, `datetime`, o `date` per colonne JSONB. Il codice passava `updates.dict(exclude_unset=True)` direttamente a PostgreSQL.
+
+**Fix applicato in `crm_practices.py`:**
+```python
+import json
+from decimal import Decimal
+from datetime import datetime, date
+
+def json_serializer(obj):
+    """Custom JSON serializer for asyncpg JSONB compatibility."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+# Uso corretto:
+changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
+await conn.execute(
+    "INSERT INTO activity_log (..., changes) VALUES (..., $6::jsonb)",
+    ..., changes_json
+)
+```
+
+---
+
+### ⚠️ CRITICAL: Asyncpg + JSONB Development Guidelines
+
+**SEMPRE seguire queste regole quando si lavora con asyncpg e colonne JSONB:**
+
+#### 1. Mai passare dict Python direttamente a JSONB
+```python
+# ❌ SBAGLIATO - causerà errore se dict contiene Decimal/datetime
+await conn.execute("INSERT INTO t (data) VALUES ($1)", my_dict)
+
+# ✅ CORRETTO - serializza esplicitamente con custom serializer
+await conn.execute("INSERT INTO t (data) VALUES ($1::jsonb)", json.dumps(my_dict, default=json_serializer))
+```
+
+#### 2. Usare sempre il cast esplicito `::jsonb`
+```python
+# ❌ SBAGLIATO - comportamento imprevedibile
+"VALUES ($1)"
+
+# ✅ CORRETTO - esplicito
+"VALUES ($1::jsonb)"
+```
+
+#### 3. Definire un json_serializer centralizzato
+Creare in `backend/app/utils/json_utils.py`:
+```python
+from decimal import Decimal
+from datetime import datetime, date
+import json
+
+def json_serializer(obj):
+    """Custom serializer for asyncpg JSONB compatibility."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return str(obj)
+    if hasattr(obj, '__dict__'):
+        return obj.__dict__
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+def to_jsonb(data: dict) -> str:
+    """Serialize dict to JSONB-compatible string."""
+    return json.dumps(data, default=json_serializer)
+```
+
+#### 4. Pydantic `.dict()` produce tipi non serializzabili
+```python
+# ❌ ATTENZIONE - .dict() può contenere Decimal, datetime, UUID
+updates.dict(exclude_unset=True)  # → {'amount': Decimal('100.00'), 'date': datetime(...)}
+
+# ✅ SEMPRE serializzare prima di INSERT
+json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
+```
+
+#### 5. Testing JSONB INSERT
+**Ogni endpoint che fa INSERT/UPDATE su colonne JSONB deve avere test con:**
+- datetime objects
+- Decimal values
+- UUID objects
+- Nested dicts
+
+---
+
+### Files che usano JSONB (verificati)
+
+| File | Pattern | Status |
+|------|---------|--------|
+| `crm_practices.py` | `activity_log.changes` | ✅ FIXED |
+| `crm_clients.py` | `activity_log` (no changes col) | ✅ OK |
+| `crm_clients.py:1389` | `passport_ocr_data` | ✅ FIXED (to_jsonb) |
+| `crm_enhanced.py:164` | `passport_ocr_data` | ✅ FIXED (to_jsonb) |
+| `legal_ingest.py:333` | `metadata` | ✅ FIXED (to_jsonb) |
+| `crm_interactions.py:200-201` | `extracted_entities`, `action_items` | ✅ FIXED (to_jsonb) |
+| `conversations.py:226-227` | `messages`, `metadata` | ✅ FIXED (to_jsonb) |
+| `knowledge_visa.py` INSERT | 8 JSONB fields | ✅ FIXED (to_jsonb) |
+| `knowledge_visa.py` UPDATE | dynamic JSONB fields | ✅ FIXED (to_jsonb) |
+
+---
+
+### Checklist per nuovi endpoint JSONB
+
+- [ ] Usare `json.dumps()` con `default=json_serializer`
+- [ ] Usare cast esplicito `::jsonb` nella query
+- [ ] Testare con dati contenenti Decimal/datetime
+- [ ] Non passare mai `.dict()` direttamente a asyncpg
+
+---
+
 ## Session Update (2026-01-14 13:30-14:00 UTC)
 
 ### Test Coverage, Logging & Documentation for 4 Production Fixes - COMPLETED

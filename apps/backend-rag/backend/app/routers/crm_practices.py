@@ -5,7 +5,6 @@ Endpoints for managing practices (KITAS, PT PMA, Visas, etc.)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -18,6 +17,7 @@ from pydantic import BaseModel, field_validator
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 
 logger = get_logger(__name__)
@@ -35,15 +35,6 @@ def resolve_query_param(value, default=None):
     if hasattr(value, 'default'):
         return value.default
     return value if value is not None else default
-
-
-def json_serializer(obj):
-    """Custom JSON serializer for objects not serializable by default json code."""
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return str(obj)
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
@@ -650,13 +641,9 @@ async def update_practice(
 
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
-<<<<<<< HEAD
-                        # Serialize changes dict to JSON string for asyncpg JSONB compatibility
-                        changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
-=======
             # Serialize changes dict to JSON string for asyncpg JSONB compatibility
-            changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
->>>>>>> 5009039 (Fix PATCH practices endpoint: serialize changes dict to JSON for asyncpg JSONB)
+            # See: backend/app/utils/json_utils.py and CLAUDE.md "Asyncpg + JSONB Guidelines"
+            changes_json = to_jsonb(updates.dict(exclude_unset=True))
             await conn.execute(
                 """
                 INSERT INTO activity_log (entity_type, entity_id, action, performed_by, description, changes)
@@ -667,11 +654,7 @@ async def update_practice(
                 "updated",
                 user_email,
                 f"Updated: {', '.join(changed_fields)}",
-<<<<<<< HEAD
-                                changes_json,
-=======
                 changes_json,
->>>>>>> 5009039 (Fix PATCH practices endpoint: serialize changes dict to JSON for asyncpg JSONB)
             )
 
             # If status changed to 'completed' and there's an expiry date, create renewal alert

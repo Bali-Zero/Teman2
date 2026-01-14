@@ -19,6 +19,7 @@ from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
+from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 
 logger = get_logger(__name__)
@@ -1384,7 +1385,8 @@ Use null for unclear fields. Return ONLY JSON."""
         # Update client record with extracted data
         async with db_pool.acquire() as conn:
             update_parts = ["passport_ocr_data = $1"]
-            params = [json.dumps(ocr_data)]
+            # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+            params = [to_jsonb(ocr_data)]
             param_idx = 2
 
             if extracted.get("passport_number"):
