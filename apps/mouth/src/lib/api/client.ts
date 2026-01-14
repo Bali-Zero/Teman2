@@ -49,7 +49,10 @@ export class ApiClientBase implements IApiClient {
     if (typeof window !== 'undefined') {
       const success = safeStorage.setItem('auth_token', token);
       if (!success) {
-        console.warn('[ApiClient] localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.');
+        logger.warn('localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.', {
+          component: 'ApiClient',
+          action: 'set_token_fallback',
+        });
       }
     }
   }
@@ -59,7 +62,10 @@ export class ApiClientBase implements IApiClient {
     if (typeof window !== 'undefined') {
       const success = safeStorage.setItem('user_profile', JSON.stringify(profile));
       if (!success) {
-        console.warn('[ApiClient] localStorage blocked - user profile in memory only (session-scoped).');
+        logger.warn('localStorage blocked - user profile in memory only (session-scoped).', {
+          component: 'ApiClient',
+          action: 'set_profile_fallback',
+        });
       }
     }
   }
@@ -105,10 +111,22 @@ export class ApiClientBase implements IApiClient {
         try {
           const parsed = JSON.parse(storedProfile);
           if (JSON.stringify(parsed) !== JSON.stringify(this.userProfile)) {
+            logger.debug('User profile synced from localStorage', {
+              component: 'ApiClient',
+              action: 'profile_sync',
+              metadata: {
+                previousEmail: this.userProfile?.email || 'none',
+                newEmail: parsed?.email || 'none',
+              },
+            });
             this.userProfile = parsed;
           }
-        } catch {
+        } catch (e) {
           // Keep existing profile if parsing fails
+          logger.warn('Failed to parse user profile from localStorage', {
+            component: 'ApiClient',
+            action: 'profile_parse_error',
+          });
         }
       }
     }

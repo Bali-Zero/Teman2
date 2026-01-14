@@ -1,5 +1,58 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-14 13:30-14:00 UTC)
+
+### Test Coverage, Logging & Documentation for 4 Production Fixes - COMPLETED
+
+**Obiettivo:** Aggiungere test coverage, logging e documentazione mancanti per i 4 fix di produzione fatti nella sessione precedente.
+
+---
+
+### 1. Test Coverage Aggiunto
+
+| File Test | Tests | Status |
+|-----------|-------|--------|
+| `tests/unit/services/crm/test_ai_crm_extractor.py` | 22 tests (AsyncpgJSONEncoder + AICRMExtractor) | ✅ Pass |
+| `apps/mouth/src/lib/api/client.test.ts` | +3 tests (getUserProfile sync) | ✅ Pass |
+| `apps/mouth/src/lib/realtime.test.ts` | 14 tests (WebSocket auth) | ✅ Pass |
+
+**Tests totali aggiunti:** 39
+
+---
+
+### 2. Logging Aggiunto
+
+**File:** `apps/mouth/src/lib/api/client.ts`
+
+- `getUserProfile()`: debug log quando profilo sincronizzato da localStorage
+- `getUserProfile()`: warn log quando parsing fallisce
+
+---
+
+### 3. Documentazione Creata
+
+**File:** `docs/operations/PRODUCTION_FIXES_2026_01_14.md`
+
+Documentazione completa dei 4 fix:
+1. Clients page virtualization (`contain: strict` + min-height)
+2. WebSocket auth (JWT via subprotocol)
+3. UUID serialization (AsyncpgJSONEncoder)
+4. Pollinations watermarks (static images)
+
+---
+
+### 4. Files Creati/Modificati
+
+| File | Tipo |
+|------|------|
+| `tests/unit/services/crm/test_ai_crm_extractor.py` | NEW |
+| `apps/mouth/src/lib/realtime.test.ts` | NEW |
+| `apps/mouth/src/lib/api/client.test.ts` | MODIFIED |
+| `apps/mouth/src/lib/api/client.ts` | MODIFIED |
+| `docs/operations/PRODUCTION_FIXES_2026_01_14.md` | NEW |
+
+---
+
 ## Session Update (2026-01-14 03:00-04:30 UTC)
 
 ### Visa Oracle Expansion + Knowledge Graph Integration - COMPLETED
