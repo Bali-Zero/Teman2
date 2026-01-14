@@ -42,8 +42,8 @@ export function ParticlesBackground({
     });
   }, []);
 
-  const options: Record<string, unknown> = useMemo(() => {
-    const baseOptions: Record<string, unknown> = {
+  const options: any = useMemo(() => {
+    const baseOptions: any = {
       fullScreen: false,
       background: {
         color: {
