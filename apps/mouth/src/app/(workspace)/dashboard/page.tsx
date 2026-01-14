@@ -201,39 +201,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* AI Insights Banner */}
-        {ai.insights && ai.insights.insights.length > 0 && (
-          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-            <h3 className="font-semibold text-blue-500 mb-2">🤖 AI Insights</h3>
-            <div className="space-y-2">
-              {ai.insights.insights.slice(0, 2).map((insight) => (
-                <div key={insight.id} className="text-sm text-blue-500/80">
-                  <span className="font-medium">{insight.title}:</span> {insight.description}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Mobile Optimization Indicator */}
         {mobile.isMobile && (
           <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-3">
             <p className="text-sm text-purple-500">
               📱 Mobile optimized • {mobile.getNavigationStyle()} navigation • {mobile.getInteractionMode()} interactions
             </p>
-          </div>
-        )}
-
-        {/* System Status Banner */}
-        {systemStatus === 'degraded' && (
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-500" />
-            <div>
-              <h3 className="font-semibold text-yellow-500">System Partial Outage</h3>
-              <p className="text-sm text-yellow-500/80">
-                Some data streams are currently unavailable. The dashboard is showing partial data.
-              </p>
-            </div>
           </div>
         )}
 
