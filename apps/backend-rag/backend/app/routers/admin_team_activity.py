@@ -5,7 +5,7 @@ Complete team activity dashboard with messages, timesheet, and CRM actions
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any
 
 import asyncpg
@@ -80,6 +80,7 @@ class OverviewStats(BaseModel):
 
 @router.get("/overview")
 async def get_overview(
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD), defaults to 30 days ago"),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -109,16 +110,29 @@ async def get_overview(
                 WHERE DATE(conversation_started) = CURRENT_DATE
             """)
 
-            # Top users by messages (last 30 days)
-            top_users = await conn.fetch("""
-                SELECT user_id, COUNT(*) as msg_count
-                FROM v_messages
-                WHERE role = 'user'
-                  AND conversation_started > NOW() - INTERVAL '30 days'
-                GROUP BY user_id
-                ORDER BY msg_count DESC
-                LIMIT 10
-            """)
+            # Top users by messages - use start_date if provided, else 30 days
+            if start_date:
+                # Parse string to date object for asyncpg
+                start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+                top_users = await conn.fetch("""
+                    SELECT user_id, COUNT(*) as msg_count
+                    FROM v_messages
+                    WHERE role = 'user'
+                      AND DATE(conversation_started) >= $1
+                    GROUP BY user_id
+                    ORDER BY msg_count DESC
+                    LIMIT 10
+                """, start_date_obj)
+            else:
+                top_users = await conn.fetch("""
+                    SELECT user_id, COUNT(*) as msg_count
+                    FROM v_messages
+                    WHERE role = 'user'
+                      AND conversation_started > NOW() - INTERVAL '30 days'
+                    GROUP BY user_id
+                    ORDER BY msg_count DESC
+                    LIMIT 10
+                """)
 
         return {
             "success": True,
@@ -219,61 +233,157 @@ async def get_messages(
 @router.get("/team-stats")
 async def get_team_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD), overrides days if provided"),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """Get detailed stats for each team member"""
     try:
         async with db_pool.acquire() as conn:
-            # Get all team members with their stats
-            query = """
-                WITH msg_stats AS (
-                    SELECT user_id,
-                           COUNT(DISTINCT conversation_id) as conversations,
-                           COUNT(*) FILTER (WHERE role = 'user') as messages,
-                           MAX(conversation_started) as last_msg
-                    FROM v_messages
-                    WHERE conversation_started > NOW() - $1 * INTERVAL '1 day'
-                    GROUP BY user_id
-                ),
-                timesheet_stats AS (
-                    SELECT email,
-                           COUNT(DISTINCT DATE(timestamp)) FILTER (WHERE action_type = 'clock_in') as days_worked
-                    FROM team_timesheet
-                    WHERE timestamp > NOW() - $1 * INTERVAL '1 day'
-                    GROUP BY email
-                ),
-                crm_stats AS (
-                    SELECT performed_by as email, COUNT(*) as crm_actions
-                    FROM activity_log
-                    WHERE performed_at > NOW() - $1 * INTERVAL '1 day'
-                    GROUP BY performed_by
-                )
-                SELECT
-                    tm.email,
-                    tm.name,
-                    tm.role,
-                    tm.department,
-                    COALESCE(ms.conversations, 0) as conversations,
-                    COALESCE(ms.messages, 0) as messages,
-                    COALESCE(ts.days_worked, 0) as days_worked,
-                    COALESCE(cs.crm_actions, 0) as crm_actions,
-                    ms.last_msg as last_activity
-                FROM team_members tm
-                LEFT JOIN msg_stats ms ON tm.email = ms.user_id
-                LEFT JOIN timesheet_stats ts ON tm.email = ts.email
-                LEFT JOIN crm_stats cs ON tm.email = cs.email
-                WHERE tm.role NOT IN ('client')
-                  AND tm.email NOT LIKE '%test%'
-                  AND tm.email NOT LIKE '%demo%'
-                  AND tm.email NOT LIKE '%example%'
-                ORDER BY COALESCE(ms.messages, 0) DESC
-            """
-            rows = await conn.fetch(query, days)
+            # Use start_date if provided, else use days parameter
+            if start_date:
+                # Parse string to date object for asyncpg
+                start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+                query = """
+                    WITH msg_stats AS (
+                        SELECT user_id,
+                               COUNT(DISTINCT conversation_id) as conversations,
+                               COUNT(*) FILTER (WHERE role = 'user') as messages,
+                               MAX(conversation_started) as last_msg
+                        FROM v_messages
+                        WHERE DATE(conversation_started) >= $1
+                        GROUP BY user_id
+                    ),
+                    timesheet_stats AS (
+                        SELECT email,
+                               COUNT(DISTINCT DATE(timestamp)) FILTER (WHERE action_type = 'clock_in') as days_worked
+                        FROM team_timesheet
+                        WHERE DATE(timestamp) >= $1
+                        GROUP BY email
+                    ),
+                    crm_stats AS (
+                        SELECT performed_by as email, COUNT(*) as crm_actions
+                        FROM activity_log
+                        WHERE DATE(performed_at) >= $1
+                        GROUP BY performed_by
+                    ),
+                    email_stats AS (
+                        SELECT user_email as email,
+                               COUNT(*) FILTER (WHERE operation = 'send') as emails_sent,
+                               COUNT(*) FILTER (WHERE operation = 'receive') as emails_received
+                        FROM email_activity_log
+                        WHERE DATE(created_at) >= $1
+                        GROUP BY user_email
+                    ),
+                    kb_stats AS (
+                        SELECT user_email as email,
+                               COUNT(*) FILTER (WHERE action_type = 'view') as kb_views,
+                               COUNT(*) FILTER (WHERE action_type = 'download') as kb_downloads
+                        FROM knowledge_activity_log
+                        WHERE DATE(created_at) >= $1
+                        GROUP BY user_email
+                    )
+                    SELECT
+                        tm.email,
+                        tm.name,
+                        tm.role,
+                        tm.department,
+                        COALESCE(ms.conversations, 0) as conversations,
+                        COALESCE(ms.messages, 0) as messages,
+                        COALESCE(ts.days_worked, 0) as days_worked,
+                        COALESCE(cs.crm_actions, 0) as crm_actions,
+                        COALESCE(es.emails_sent, 0) as emails_sent,
+                        COALESCE(es.emails_received, 0) as emails_received,
+                        COALESCE(kb.kb_views, 0) as kb_views,
+                        COALESCE(kb.kb_downloads, 0) as kb_downloads,
+                        ms.last_msg as last_activity
+                    FROM team_members tm
+                    LEFT JOIN msg_stats ms ON tm.email = ms.user_id
+                    LEFT JOIN timesheet_stats ts ON tm.email = ts.email
+                    LEFT JOIN crm_stats cs ON tm.email = cs.email
+                    LEFT JOIN email_stats es ON tm.email = es.email
+                    LEFT JOIN kb_stats kb ON tm.email = kb.email
+                    WHERE tm.role NOT IN ('client')
+                      AND tm.email NOT LIKE '%test%'
+                      AND tm.email NOT LIKE '%demo%'
+                      AND tm.email NOT LIKE '%example%'
+                    ORDER BY COALESCE(ms.messages, 0) DESC
+                """
+                rows = await conn.fetch(query, start_date_obj)
+                period_info = f"from {start_date}"
+            else:
+                query = """
+                    WITH msg_stats AS (
+                        SELECT user_id,
+                               COUNT(DISTINCT conversation_id) as conversations,
+                               COUNT(*) FILTER (WHERE role = 'user') as messages,
+                               MAX(conversation_started) as last_msg
+                        FROM v_messages
+                        WHERE conversation_started > NOW() - $1 * INTERVAL '1 day'
+                        GROUP BY user_id
+                    ),
+                    timesheet_stats AS (
+                        SELECT email,
+                               COUNT(DISTINCT DATE(timestamp)) FILTER (WHERE action_type = 'clock_in') as days_worked
+                        FROM team_timesheet
+                        WHERE timestamp > NOW() - $1 * INTERVAL '1 day'
+                        GROUP BY email
+                    ),
+                    crm_stats AS (
+                        SELECT performed_by as email, COUNT(*) as crm_actions
+                        FROM activity_log
+                        WHERE performed_at > NOW() - $1 * INTERVAL '1 day'
+                        GROUP BY performed_by
+                    ),
+                    email_stats AS (
+                        SELECT user_email as email,
+                               COUNT(*) FILTER (WHERE operation = 'send') as emails_sent,
+                               COUNT(*) FILTER (WHERE operation = 'receive') as emails_received
+                        FROM email_activity_log
+                        WHERE created_at > NOW() - $1 * INTERVAL '1 day'
+                        GROUP BY user_email
+                    ),
+                    kb_stats AS (
+                        SELECT user_email as email,
+                               COUNT(*) FILTER (WHERE action_type = 'view') as kb_views,
+                               COUNT(*) FILTER (WHERE action_type = 'download') as kb_downloads
+                        FROM knowledge_activity_log
+                        WHERE created_at > NOW() - $1 * INTERVAL '1 day'
+                        GROUP BY user_email
+                    )
+                    SELECT
+                        tm.email,
+                        tm.name,
+                        tm.role,
+                        tm.department,
+                        COALESCE(ms.conversations, 0) as conversations,
+                        COALESCE(ms.messages, 0) as messages,
+                        COALESCE(ts.days_worked, 0) as days_worked,
+                        COALESCE(cs.crm_actions, 0) as crm_actions,
+                        COALESCE(es.emails_sent, 0) as emails_sent,
+                        COALESCE(es.emails_received, 0) as emails_received,
+                        COALESCE(kb.kb_views, 0) as kb_views,
+                        COALESCE(kb.kb_downloads, 0) as kb_downloads,
+                        ms.last_msg as last_activity
+                    FROM team_members tm
+                    LEFT JOIN msg_stats ms ON tm.email = ms.user_id
+                    LEFT JOIN timesheet_stats ts ON tm.email = ts.email
+                    LEFT JOIN crm_stats cs ON tm.email = cs.email
+                    LEFT JOIN email_stats es ON tm.email = es.email
+                    LEFT JOIN kb_stats kb ON tm.email = kb.email
+                    WHERE tm.role NOT IN ('client')
+                      AND tm.email NOT LIKE '%test%'
+                      AND tm.email NOT LIKE '%demo%'
+                      AND tm.email NOT LIKE '%example%'
+                    ORDER BY COALESCE(ms.messages, 0) DESC
+                """
+                rows = await conn.fetch(query, days)
+                period_info = f"last {days} days"
 
         return {
             "success": True,
-            "period_days": days,
+            "period": period_info,
+            "start_date": start_date,
             "team_stats": [dict(r) for r in rows],
         }
     except Exception as e:

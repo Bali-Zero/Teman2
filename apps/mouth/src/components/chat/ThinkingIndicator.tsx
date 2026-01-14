@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * ThinkingIndicator - Visual indicator for AI reasoning process
+ * 
+ * PERFORMANCE NOTE: This component uses 45+ motion components which can impact INP.
+ * Consider optimizing by:
+ * - Using CSS animations for simple transitions (opacity, transform)
+ * - Reducing simultaneous animations (limit to 5-10 active)
+ * - Using will-change CSS property instead of Framer Motion for static animations
+ * - Lazy-loading this component if not always visible
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

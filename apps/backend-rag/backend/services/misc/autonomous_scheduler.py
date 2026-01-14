@@ -601,6 +601,60 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error(f"❌ Failed to register Knowledge Graph Builder: {e}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
+    # Enriches client birthplace with cultural context for personalized conversations
+    # Runs daily at ~22:00 Bali time (after work hours, when Ollama has capacity)
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from backend.services.crm.birthplace_enrichment_service import (
+            run_birthplace_enrichment_task,
+        )
+
+        async def run_birthplace_enrichment():
+            try:
+                stats = await run_birthplace_enrichment_task(db_pool)
+                logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
+            except Exception as e:
+                logger.error(f"❌ Birthplace Enrichment error: {e}", exc_info=True)
+
+        scheduler.register_task(
+            name="birthplace_enrichment",
+            task_func=run_birthplace_enrichment,
+            interval_seconds=86400,  # 24 hours
+            enabled=True,
+        )
+        logger.info("✅ Birthplace Enrichment registered (24h interval)")
+    except Exception as e:
+        logger.error(f"❌ Failed to register Birthplace Enrichment: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 9: BIRTHDAY EMAIL SERVICE
+    # Sends personalized birthday emails to clients in their language
+    # Runs daily at ~08:00 Bali time (morning greeting)
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from backend.services.crm.birthday_notifier_service import (
+            run_birthday_notifier_task,
+        )
+
+        async def run_birthday_notifier():
+            try:
+                stats = await run_birthday_notifier_task(db_pool)
+                logger.info(f"🎂 Birthday Notifier: {stats.get('sent', 0)} emails sent")
+            except Exception as e:
+                logger.error(f"❌ Birthday Notifier error: {e}", exc_info=True)
+
+        scheduler.register_task(
+            name="birthday_notifier",
+            task_func=run_birthday_notifier,
+            interval_seconds=86400,  # 24 hours
+            enabled=True,
+        )
+        logger.info("✅ Birthday Notifier registered (24h interval)")
+    except Exception as e:
+        logger.error(f"❌ Failed to register Birthday Notifier: {e}")
+
     # Start the scheduler
     await scheduler.start()
 

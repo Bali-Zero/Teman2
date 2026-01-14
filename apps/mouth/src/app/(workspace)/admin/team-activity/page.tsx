@@ -19,6 +19,9 @@ import {
   ChevronRight,
   TrendingUp,
   Calendar,
+  Mail,
+  BookOpen,
+  Eye,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
@@ -46,6 +49,10 @@ interface TeamMemberStat {
   messages: number;
   days_worked: number;
   crm_actions: number;
+  emails_sent: number;
+  emails_received: number;
+  kb_views: number;
+  kb_downloads: number;
   last_activity: string | null;
 }
 
@@ -111,11 +118,14 @@ export default function TeamActivityPage() {
 
   const LIMIT = 50;
 
+  // Start counting from January 5, 2026
+  const START_DATE = '2026-01-05';
+
   const loadOverview = useCallback(async () => {
     try {
       const [overviewRes, statsRes] = await Promise.all([
-        api.adminApi.getTeamActivityOverview(),
-        api.adminApi.getTeamStats(30),
+        api.adminApi.getTeamActivityOverview(START_DATE),
+        api.adminApi.getTeamStats(30, START_DATE),
       ]);
       setStats(overviewRes.stats);
       setTopUsers(overviewRes.top_users);
@@ -327,7 +337,7 @@ export default function TeamActivityPage() {
               <div className="space-y-6">
                 {/* Top Users */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Top 10 by Messages (30 days)</h3>
+                  <h3 className="text-lg font-semibold mb-4">Top 10 by Messages (dal 5 gennaio)</h3>
                   <div className="grid gap-2">
                     {topUsers.map((user, i) => (
                       <div
@@ -348,18 +358,29 @@ export default function TeamActivityPage() {
 
                 {/* Team Stats Table */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Team Member Stats (30 days)</h3>
+                  <h3 className="text-lg font-semibold mb-4">Team Member Stats (dal 5 gennaio)</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-[var(--border)]">
                           <th className="px-3 py-2 text-left">Name</th>
                           <th className="px-3 py-2 text-left">Role</th>
-                          <th className="px-3 py-2 text-left">Dept</th>
                           <th className="px-3 py-2 text-right">Convs</th>
                           <th className="px-3 py-2 text-right">Msgs</th>
                           <th className="px-3 py-2 text-right">Days</th>
                           <th className="px-3 py-2 text-right">CRM</th>
+                          <th className="px-3 py-2 text-right" title="Emails Sent">
+                            <Mail className="w-4 h-4 inline text-blue-400" /> Sent
+                          </th>
+                          <th className="px-3 py-2 text-right" title="Emails Received">
+                            <Mail className="w-4 h-4 inline text-green-400" /> Rcvd
+                          </th>
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Views">
+                            <Eye className="w-4 h-4 inline text-purple-400" /> Views
+                          </th>
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Downloads">
+                            <Download className="w-4 h-4 inline text-orange-400" /> DL
+                          </th>
                           <th className="px-3 py-2 text-left">Last Active</th>
                         </tr>
                       </thead>
@@ -373,13 +394,24 @@ export default function TeamActivityPage() {
                               </div>
                             </td>
                             <td className="px-3 py-2">{member.role || '-'}</td>
-                            <td className="px-3 py-2">{member.department || '-'}</td>
                             <td className="px-3 py-2 text-right">{member.conversations}</td>
                             <td className="px-3 py-2 text-right font-semibold text-[var(--accent)]">
                               {member.messages}
                             </td>
                             <td className="px-3 py-2 text-right">{member.days_worked}</td>
                             <td className="px-3 py-2 text-right">{member.crm_actions}</td>
+                            <td className="px-3 py-2 text-right text-blue-400">
+                              {member.emails_sent}
+                            </td>
+                            <td className="px-3 py-2 text-right text-green-400">
+                              {member.emails_received}
+                            </td>
+                            <td className="px-3 py-2 text-right text-purple-400">
+                              {member.kb_views}
+                            </td>
+                            <td className="px-3 py-2 text-right text-orange-400">
+                              {member.kb_downloads}
+                            </td>
                             <td className="px-3 py-2 text-xs">
                               {formatDate(member.last_activity)}
                             </td>

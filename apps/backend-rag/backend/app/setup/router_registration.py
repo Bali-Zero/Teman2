@@ -28,6 +28,7 @@ from backend.app.routers import (
     crm_shared_memory,
     dashboard_summary,
     debug,
+    documents_proxy,
     episodic_memory,
     feedback,
     google_drive,
@@ -35,6 +36,7 @@ from backend.app.routers import (
     health,
     ingest,
     intel,
+    knowledge_activity,
     knowledge_visa,
     legal_ingest,
     media,
@@ -131,6 +133,7 @@ def include_routers(api: FastAPI) -> None:
     # Integrations routers
     api.include_router(zoho_email.router)
     api.include_router(google_drive.router)
+    api.include_router(documents_proxy.router)  # Proxy Drive files without Google branding
     api.include_router(team_drive.router)  # Service Account based - for Zoho team members
 
     # Blog routers
@@ -150,6 +153,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Knowledge Base - Visa Types
     api.include_router(knowledge_visa.router)
+
+    # Knowledge Activity Tracking
+    api.include_router(knowledge_activity.router)
 
     # Additional routers (included directly on app instance)
     api.include_router(team.router)  # Team member visibility management

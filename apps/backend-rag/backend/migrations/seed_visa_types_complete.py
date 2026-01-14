@@ -535,7 +535,7 @@ VISA_TYPES = [
         "total_stay": "5 years (extendable to KITAP)",
         "renewable": True,
         "processing_time_normal": "7-10 days",
-        "cost_visa": "IDR 18,000,000 (5 years all-inclusive)",
+        "cost_visa": "IDR 14,000,000 (offshore) / IDR 16,000,000 (onshore)",
         "cost_extension": "IDR 15,000,000",
         "requirements": [
             "Passport valid min 6 years (for 5Y)",
@@ -562,7 +562,8 @@ VISA_TYPES = [
             "bali_zero_service": True,
             "bali_zero_recommended": True,
             "difficulty": "low",
-            "bali_zero_price": "IDR 18,000,000",
+            "bali_zero_price_offshore": "IDR 14,000,000",
+            "bali_zero_price_onshore": "IDR 16,000,000",
         },
     },
     {
