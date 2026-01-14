@@ -647,6 +647,12 @@ class Settings(BaseSettings):
     google_drive_root_folder_id: str | None = (
         None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
     )
+    gdrive_individuals_folder_id: str | None = (
+        None  # Set via GDRIVE_INDIVIDUALS_FOLDER_ID env var (parent for individual clients)
+    )
+    gdrive_companies_folder_id: str | None = (
+        None  # Set via GDRIVE_COMPANIES_FOLDER_ID env var (parent for company clients)
+    )
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================

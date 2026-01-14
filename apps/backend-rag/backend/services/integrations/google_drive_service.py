@@ -488,6 +488,62 @@ class GoogleDriveService:
 
         return None
 
+    async def create_folder(
+        self,
+        user_id: str,
+        name: str,
+        parent_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new folder in Google Drive.
+
+        Args:
+            user_id: User ID
+            name: Folder name
+            parent_id: Parent folder ID (optional, defaults to root)
+
+        Returns:
+            Folder metadata with id, name, webViewLink
+
+        Raises:
+            ValueError: If creation fails
+        """
+        access_token = await self.get_valid_token(user_id)
+        if not access_token:
+            raise ValueError("User not connected to Google Drive")
+
+        # Build folder metadata
+        folder_metadata = {
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+
+        # Add parent if specified
+        if parent_id:
+            folder_metadata["parents"] = [parent_id]
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.API_BASE}/files",
+                json=folder_metadata,
+                params={"fields": "id, name, webViewLink, parents"},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+            )
+
+            if response.status_code != 200:
+                error = response.json()
+                logger.error(f"[GDRIVE] Create folder failed: {error}")
+                raise ValueError(
+                    f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
+
+            folder_data = response.json()
+            logger.info(f"[GDRIVE] Created folder '{name}' with ID: {folder_data['id']}")
+            return folder_data
+
 
 # Database migration SQL for tokens table
 MIGRATION_SQL = """

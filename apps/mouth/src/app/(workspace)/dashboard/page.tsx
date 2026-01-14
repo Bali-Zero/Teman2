@@ -358,60 +358,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Advanced Features Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* AI Predictions */}
-        {ai.insights && (
-          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-            <h3 className="font-semibold text-blue-500 mb-3">🤖 AI Predictions</h3>
-            <div className="space-y-2 text-sm">
-              <div className="text-blue-500/80">
-                <span className="font-medium">Cases Next Month:</span> {ai.insights.predictions.casesNextMonth}
-              </div>
-              <div className="text-blue-500/80">
-                <span className="font-medium">Revenue Forecast:</span> ${ai.insights.predictions.revenueNextMonth.toLocaleString()}
-              </div>
-              <div className="text-blue-500/80">
-                <span className="font-medium">Churn Risk:</span> {(ai.insights.predictions.clientChurnRisk * 100).toFixed(1)}%
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Funnel Analytics */}
-        <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-          <h3 className="font-semibold text-green-500 mb-3">📊 Funnel Analytics</h3>
-          <div className="space-y-2 text-sm">
-            <div className="text-green-500/80">
-              <span className="font-medium">Active Users:</span> {funnel.getCompletionRate('dashboard_engagement') > 0 ? '1' : '0'}
-            </div>
-            <div className="text-green-500/80">
-              <span className="font-medium">Completion Rate:</span> {(funnel.getCompletionRate('dashboard_engagement') * 100).toFixed(1)}%
-            </div>
-            <div className="text-green-500/80">
-              <span className="font-medium">Avg Time:</span> {funnel.getAverageCompletionTime('dashboard_engagement')}s
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Optimization Stats */}
-        {mobile.isMobile && (
-          <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-4">
-            <h3 className="font-semibold text-purple-500 mb-3">📱 Mobile Stats</h3>
-            <div className="space-y-2 text-sm">
-              <div className="text-purple-500/80">
-                <span className="font-medium">Layout:</span> {mobile.getMobileConfig('mobile_layout').layout || 'stacked'}
-              </div>
-              <div className="text-purple-500/80">
-                <span className="font-medium">Navigation:</span> {mobile.getNavigationStyle()}
-              </div>
-              <div className="text-purple-500/80">
-                <span className="font-medium">Interactions:</span> {mobile.getInteractionMode()}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
       </div>
     </DashboardErrorBoundary>
   );

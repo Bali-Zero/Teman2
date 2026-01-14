@@ -626,7 +626,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         features: [
           '1 year validity (renewable)',
           '4-6 weeks (RPTKA + IMTA)',
-          'Extension: 31.500.000 IDR',
+          'Full conversion assistance',
         ],
         popular: false,
       },
@@ -648,7 +648,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         features: [
           '6 months validity',
           '4-6 weeks (RPTKA + IMTA)',
-          'Work permit (IMTA) included',
+          'Full conversion assistance',
         ],
         popular: false,
       },
