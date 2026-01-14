@@ -22,7 +22,7 @@ const featuredArticles: FeaturedArticle[] = [
     title: 'Suwung Landfill Closure: The Waste Crisis Hitting Bali\'s Tourist Zones',
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
-    imageUrl: 'https://image.pollinations.ai/prompt/Bali%20landfill%20waste%20crisis%20environmental%20photography%20dramatic?width=800&height=600&nologo=true',
+    imageUrl: '/images/articles/suwung-landfill.webp',
     href: 'https://balizero.com/lifestyle/suwung-landfill-closure-waste-crisis-bali',
   },
   {
