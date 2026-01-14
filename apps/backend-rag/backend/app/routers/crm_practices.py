@@ -5,6 +5,7 @@ Endpoints for managing practices (KITAS, PT PMA, Visas, etc.)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -34,6 +35,16 @@ def resolve_query_param(value, default=None):
     if hasattr(value, 'default'):
         return value.default
     return value if value is not None else default
+
+
+def json_serializer(obj):
+        """Custom JSON serializer for objects not serializable by default json code."""
+        if isinstance(obj, (datetime, date)):
+                    return obj.isoformat()
+                if isinstance(obj, Decimal):
+                            return str(obj)
+                        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
 
 
 router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
@@ -640,17 +651,19 @@ async def update_practice(
 
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
+                        # Serialize changes dict to JSON string for asyncpg JSONB compatibility
+                        changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
             await conn.execute(
                 """
                 INSERT INTO activity_log (entity_type, entity_id, action, performed_by, description, changes)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb)
                 """,
                 "practice",
                 practice_id,
                 "updated",
                 user_email,
                 f"Updated: {', '.join(changed_fields)}",
-                updates.dict(exclude_unset=True),
+                                changes_json,
             )
 
             # If status changed to 'completed' and there's an expiry date, create renewal alert
