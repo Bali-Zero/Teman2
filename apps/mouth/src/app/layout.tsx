@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/next';
 import { OrganizationJsonLd, LocalBusinessJsonLd, WebsiteJsonLd } from '@/components/seo';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import './globals.css';
@@ -161,6 +162,7 @@ export default function RootLayout({
               },
             }}
           />
+          <Analytics />
         </QueryProvider>
       </body>
     </html>

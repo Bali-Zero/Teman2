@@ -33,9 +33,11 @@
     "@tanstack/react-query": "^5.90.16",
     "@tanstack/react-query-devtools": "^5.91.2",
     "@tanstack/react-virtual": "^3.13.13",
+    "@tsparticles/engine": "^3.9.1",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
     "@types/dompurify": "^3.0.5",
+    "@vercel/analytics": "^1.6.1",
     "ai": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -56,6 +58,7 @@
     "remark-gfm": "^4.0.1",
     "sal.js": "^0.8.5",
     "sonner": "^2.0.7",
+    "swr": "^2.3.8",
     "tailwind-merge": "^3.4.0"
   },
   "lint-staged": {
