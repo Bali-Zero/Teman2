@@ -17,8 +17,8 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'https://zantara.balize
 export default function NewsPage() {
   const [articles] = React.useState<ArticleListItem[]>(MOCK_ARTICLES);
 
-  // Get specific articles for the asymmetric collage - PERFECT STORM SERIES
-  const mainNews1 = articles.find(a => a.slug === 'perfect-storm-bali-2026'); // RIGHT - large - MAIN FEATURE
+  // Get specific articles for the asymmetric collage - CONSTITUTIONAL CLASH FEATURED
+  const mainNews1 = articles.find(a => a.slug === 'constitutional-clash-bank-statements'); // RIGHT - large - MAIN FEATURE
   const mainNews2 = articles.find(a => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
   const mainNews3 = articles.find(a => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
   const mainNews4 = articles.find(a => a.slug === 'pajak-hiburan-tax-shock'); // MIDDLE bottom - Tax Shock
@@ -454,6 +454,22 @@ const SERVICES = [
 ];
 
 const MOCK_ARTICLES: ArticleListItem[] = [
+  // === CONSTITUTIONAL CLASH - MAIN FEATURE (Jan 2026) ===
+  {
+    id: '200',
+    slug: 'constitutional-clash-bank-statements',
+    title: "The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?",
+    excerpt: "Governor Koster wants 'quality tourists' to prove their wealth. But Jakarta might have the final say.",
+    coverImage: '/static/news/constitutional-clash-koster.jpg',
+    category: 'immigration',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-15'),
+    readingTime: 7,
+    viewCount: 12580,
+    featured: true,
+    trending: true,
+    aiGenerated: false,
+  },
   // === PERFECT STORM SERIES (Jan 2026) ===
   {
     id: '100',
@@ -466,7 +482,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     publishedAt: new Date('2026-01-13'),
     readingTime: 5,
     viewCount: 8420,
-    featured: true,
+    featured: false,
     trending: true,
     aiGenerated: false,
   },
