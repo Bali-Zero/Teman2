@@ -122,6 +122,68 @@ describe('ApiClientBase', () => {
       client.clearToken();
       expect(client.getUserProfile()).toBeNull();
     });
+
+    it('should sync profile from localStorage when external change occurs (FIX TEST)', () => {
+      // This tests the fix for getUserProfile() not re-reading from localStorage
+      // Scenario: Login happens AFTER ApiClient instantiation
+
+      // 1. Client initialized with no profile
+      const freshClient = new ApiClientBase(baseUrl);
+      expect(freshClient.getUserProfile()).toBeNull();
+
+      // 2. Profile saved externally (e.g., by login flow)
+      const newProfile: UserProfile = {
+        id: '456',
+        email: 'newuser@example.com',
+        name: 'New User',
+        role: 'admin',
+      };
+      localStorageMock.setItem('user_profile', JSON.stringify(newProfile));
+
+      // 3. getUserProfile should re-read from localStorage and get the new profile
+      const retrievedProfile = freshClient.getUserProfile();
+      expect(retrievedProfile).toEqual(newProfile);
+    });
+
+    it('should handle corrupted profile in localStorage gracefully during sync', () => {
+      const profile: UserProfile = {
+        id: '123',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'user',
+      };
+      client.setUserProfile(profile);
+
+      // Corrupt localStorage externally
+      localStorageMock.setItem('user_profile', 'not-valid-json');
+
+      // Should keep existing profile on parse error
+      expect(client.getUserProfile()).toEqual(profile);
+    });
+
+    it('should detect and update when localStorage profile differs from memory', () => {
+      // Set initial profile
+      const initialProfile: UserProfile = {
+        id: '1',
+        email: 'first@example.com',
+        name: 'First',
+        role: 'user',
+      };
+      client.setUserProfile(initialProfile);
+
+      // Modify localStorage directly (simulating another tab or login)
+      const updatedProfile: UserProfile = {
+        id: '2',
+        email: 'second@example.com',
+        name: 'Second',
+        role: 'admin',
+      };
+      localStorageMock.setItem('user_profile', JSON.stringify(updatedProfile));
+
+      // getUserProfile should pick up the new profile
+      const result = client.getUserProfile();
+      expect(result).toEqual(updatedProfile);
+    });
   });
 
   describe('CSRF Token Management', () => {
