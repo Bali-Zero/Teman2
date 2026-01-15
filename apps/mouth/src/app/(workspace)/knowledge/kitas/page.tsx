@@ -62,39 +62,55 @@ function getDifficultyLabel(difficulty: string | undefined): string {
 }
 
 function getCategoryColor(category: string): string {
-  // KITAS/KITAP = Intense Orange, Visa types = Intense Blue
-  switch (category) {
-    case 'KITAS':
-      return 'from-orange-400/50 to-amber-400/50 border-orange-500/60';
-    case 'KITAP':
-      return 'from-orange-500/50 to-amber-500/50 border-orange-600/60';
-    case 'Visa Free':
-      return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
-    case 'VOA':
-      return 'from-sky-400/50 to-cyan-400/50 border-sky-500/60';
-    case 'Visit':
-      return 'from-blue-400/50 to-sky-400/50 border-blue-500/60';
-    default:
-      return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
+  // Normalize category for matching
+  const cat = category?.toLowerCase() || '';
+  
+  // KITAS/KITAP = Intense Orange
+  if (cat.includes('kitas') || cat.includes('limited stay')) {
+    return 'from-orange-400/50 to-amber-400/50 border-orange-500/60';
   }
+  if (cat.includes('kitap') || cat.includes('permanent')) {
+    return 'from-orange-500/50 to-amber-500/50 border-orange-600/60';
+  }
+  
+  // Visa types = Intense Blue/Cyan
+  if (cat.includes('free')) {
+    return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
+  }
+  if (cat.includes('voa')) {
+    return 'from-sky-400/50 to-cyan-400/50 border-sky-500/60';
+  }
+  if (cat.includes('visit')) {
+    return 'from-blue-400/50 to-sky-400/50 border-blue-500/60';
+  }
+  if (cat.includes('multiple')) {
+    return 'from-indigo-400/50 to-blue-400/50 border-indigo-500/60';
+  }
+
+  // Default
+  return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
 }
 
 function getCategoryBadgeColor(category: string): string {
-  // KITAS/KITAP = Intense Orange badges, Visa types = Intense Blue badges
-  switch (category) {
-    case 'KITAS':
-      return 'bg-orange-500/30 text-orange-600 dark:text-orange-300 border-orange-500/50';
-    case 'KITAP':
-      return 'bg-amber-500/30 text-amber-600 dark:text-amber-300 border-amber-500/50';
-    case 'Visa Free':
-      return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
-    case 'VOA':
-      return 'bg-cyan-500/30 text-cyan-600 dark:text-cyan-300 border-cyan-500/50';
-    case 'Visit':
-      return 'bg-blue-500/30 text-blue-600 dark:text-blue-300 border-blue-500/50';
-    default:
-      return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
+  const cat = category?.toLowerCase() || '';
+
+  if (cat.includes('kitas') || cat.includes('limited stay')) {
+    return 'bg-orange-500/30 text-orange-600 dark:text-orange-300 border-orange-500/50';
   }
+  if (cat.includes('kitap')) {
+    return 'bg-amber-500/30 text-amber-600 dark:text-amber-300 border-amber-500/50';
+  }
+  if (cat.includes('free')) {
+    return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
+  }
+  if (cat.includes('voa')) {
+    return 'bg-cyan-500/30 text-cyan-600 dark:text-cyan-300 border-cyan-500/50';
+  }
+  if (cat.includes('visit') || cat.includes('multiple')) {
+    return 'bg-blue-500/30 text-blue-600 dark:text-blue-300 border-blue-500/50';
+  }
+
+  return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
 }
 
 // Get series letter from visa code (e.g., "E33G" -> "E", "A1" -> "A")
@@ -287,9 +303,29 @@ interface CategoryFilterProps {
 }
 
 function CategoryFilter({ categories, selected, onSelect, counts }: CategoryFilterProps) {
-  // Order: Visa types first (blue), then KITAS/KITAP (orange)
-  const orderedCategories = ['Visa Free', 'VOA', 'Visit', 'KITAS', 'KITAP'];
-  const sortedCategories = orderedCategories.filter(c => categories.includes(c));
+  // Priority order for known categories
+  const priorityOrder = [
+    'visa free/voa', 'voa', 'visa free', 
+    'visit visa', 'visit', 
+    'multiple entry',
+    'kitas/limited stay', 'kitas', 
+    'kitap', 'permanent residence'
+  ];
+
+  const sortedCategories = [...categories].sort((a, b) => {
+    const idxA = priorityOrder.findIndex(p => a.toLowerCase().includes(p));
+    const idxB = priorityOrder.findIndex(p => b.toLowerCase().includes(p));
+    
+    // If both found in priority list, sort by index
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    // If only A found, A comes first
+    if (idxA !== -1) return -1;
+    // If only B found, B comes first
+    if (idxB !== -1) return 1;
+    
+    // Otherwise alphabetical
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="flex flex-wrap gap-2">
