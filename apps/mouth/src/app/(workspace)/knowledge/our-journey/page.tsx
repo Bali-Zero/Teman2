@@ -104,11 +104,11 @@ export default function OurJourneyPage() {
             logger.userAction('cases_button_click', undefined, undefined, {
               component: 'OurJourneyPage',
               action: 'cases_navigation',
-              metadata: { destination: '/cases' },
+              metadata: { destination: '/process' },
             });
-            trackUserInteraction('click', 'cases_button', 'our_journey');
-            trackEvent('knowledge_cases_click', 'knowledge', 'cases');
-            router.push('/cases');
+            trackUserInteraction('click', 'process_button', 'our_journey');
+            trackEvent('knowledge_process_click', 'knowledge', 'process');
+            router.push('/process');
           }}
           className="group p-8 rounded-xl border-2 border-[var(--accent)]/30 bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 hover:border-[var(--accent)]/50 hover:shadow-lg hover:shadow-[var(--accent)]/10 transition-all duration-300 text-left"
         >

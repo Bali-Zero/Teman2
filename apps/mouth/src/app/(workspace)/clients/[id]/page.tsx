@@ -1231,7 +1231,7 @@ function ActiveProcessCard({
           size="sm"
           variant="ghost"
           className="h-7 px-2 text-xs"
-          onClick={() => router.push('/cases/new')}
+          onClick={() => router.push('/process/new')}
         >
           <Plus className="w-3 h-3 mr-1" />
           New
@@ -1243,7 +1243,7 @@ function ActiveProcessCard({
         {mainProcess ? (
           <div
             className="aspect-[3/2] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-500/40 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group"
-            onClick={() => router.push(`/cases/${mainProcess.id}`)}
+            onClick={() => router.push(`/process/${mainProcess.id}`)}
             style={{
               animation: 'pulse-glow 2s ease-in-out infinite',
             }}
@@ -1614,7 +1614,7 @@ function ProcessTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">All Process</h3>
-        <Button size="sm" className="gap-2" onClick={() => router.push(`/cases/new?client_id=${clientId}`)}>
+        <Button size="sm" className="gap-2" onClick={() => router.push(`/process/new?client_id=${clientId}`)}>
           <Plus className="w-4 h-4" />
           New Process
         </Button>
@@ -1635,7 +1635,7 @@ function ProcessTab({
               <div className="flex items-center justify-between mb-2">
                 <div
                   className="flex-1 cursor-pointer"
-                  onClick={() => router.push(`/cases/${practice.id}`)}
+                  onClick={() => router.push(`/process/${practice.id}`)}
                 >
                   <span className="text-sm font-medium text-[var(--foreground)]">
                     {practice.practice_type_name}
@@ -1657,7 +1657,7 @@ function ProcessTab({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/cases/${practice.id}/edit`);
+                        router.push(`/process/${practice.id}/edit`);
                       }}
                       className="p-1 rounded hover:bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                       title="Edit process"

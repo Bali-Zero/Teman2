@@ -48,7 +48,7 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
   '/clients': { cssClass: 'nav-icon-teal', activeColor: '#2DD4BF' },
-  '/cases': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
+  '/process': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
   '/documents': { cssClass: 'nav-icon-yellow', activeColor: '#FACC15' },
   '/knowledge': { cssClass: 'nav-icon-violet', activeColor: '#C084FC' },
   '/team': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },

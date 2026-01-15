@@ -138,7 +138,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           size="sm"
           variant="outline"
           className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
-          onClick={() => router.push('/cases')}
+          onClick={() => router.push('/process')}
         >
           <FolderKanban className="w-3 h-3 mr-1" />
           Practices
@@ -271,7 +271,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm font-medium text-green-400">{stats.practices_created}</span>
             {stats.practices_created > 0 && (
               <button
-                onClick={() => router.push('/cases')}
+                onClick={() => router.push('/process')}
                 className="text-xs text-white/60 hover:text-white/90 transition-colors"
               >
                 <ArrowRight className="w-3 h-3" />
@@ -330,7 +330,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
                     if (extraction.client_id) {
                       router.push(`/clients/${extraction.client_id}`);
                     } else if (extraction.practice_id) {
-                      router.push(`/cases/${extraction.practice_id}`);
+                      router.push(`/process/${extraction.practice_id}`);
                     }
                   }}
                 >
@@ -358,7 +358,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
               View All Clients
             </button>
             <button
-              onClick={() => router.push('/cases')}
+              onClick={() => router.push('/process')}
               className="flex-1 text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               View Practices
