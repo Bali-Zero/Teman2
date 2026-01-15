@@ -269,7 +269,7 @@ export default function DashboardPage() {
             title="Active Cases"
             value={stats.activeCases}
             icon={FolderKanban}
-            href="/cases"
+            href="/process"
             accentColor="amber"
           />
         </div>
@@ -278,7 +278,7 @@ export default function DashboardPage() {
             title="Critical Deadlines"
             value={stats.criticalDeadlines}
             icon={AlertTriangle}
-            href="/cases"
+            href="/process"
             variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
             accentColor="purple"
           />

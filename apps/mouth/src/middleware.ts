@@ -14,7 +14,7 @@ const INTERNAL_ROUTES = [
   '/login',
   '/dashboard',
   '/clients',
-  '/cases',
+  '/process',
   '/documents',
   '/email',
   '/knowledge',
