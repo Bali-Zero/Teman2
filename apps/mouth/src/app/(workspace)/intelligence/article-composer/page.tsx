@@ -36,6 +36,8 @@ import {
   Send,
   Globe,
   X,
+  Pencil,
+  Save,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -81,6 +83,10 @@ export default function ArticleComposerPage() {
   const [position, setPosition] = useState<"main_featured" | "secondary" | "normal">("normal");
   const [customSlug, setCustomSlug] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(null);
 
   useEffect(() => {
     logger.componentMount("ArticleComposerPage");
@@ -260,6 +266,42 @@ export default function ArticleComposerPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Start editing mode
+  const startEditing = () => {
+    if (result) {
+      setEditedResult(JSON.parse(JSON.stringify(result))); // Deep copy
+      setIsEditing(true);
+    }
+  };
+
+  // Save edits
+  const saveEdits = () => {
+    if (editedResult) {
+      setResult(editedResult);
+      setIsEditing(false);
+      toast.success("Saved!", "Article changes saved");
+    }
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditedResult(null);
+    setIsEditing(false);
+  };
+
+  // Update edited field helper
+  const updateEditedField = (path: string, value: string | string[]) => {
+    if (!editedResult) return;
+    const updated = { ...editedResult };
+    const keys = path.split(".");
+    let obj: Record<string, unknown> = updated;
+    for (let i = 0; i < keys.length - 1; i++) {
+      obj = obj[keys[i]] as Record<string, unknown>;
+    }
+    obj[keys[keys.length - 1]] = value;
+    setEditedResult(updated as EnrichedArticle);
   };
 
   const copyToClipboard = (text: string) => {
@@ -491,34 +533,71 @@ export default function ArticleComposerPage() {
               {/* Actions Bar */}
               <div className="flex flex-wrap gap-2 justify-between items-center">
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
-                    className="gap-2"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy JSON
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exportAsJson}
-                    className="gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={saveEdits}
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <Save className="h-4 w-4" />
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditing}
+                        className="gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={startEditing}
+                        className="gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-50"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit Article
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
+                        className="gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy JSON
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportAsJson}
+                        className="gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Publish Section */}
               {publishConfigured ? (
-                <Card className="border-emerald-500/30 bg-emerald-500/5">
+                <Card className={`border-emerald-500/30 bg-emerald-500/5 ${isEditing ? "opacity-50" : ""}`}>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Globe className="h-5 w-5 text-emerald-500" />
                       Publish to Site
+                      {isEditing && (
+                        <span className="text-xs text-amber-600 ml-2">(Save changes first)</span>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -526,7 +605,7 @@ export default function ArticleComposerPage() {
                       {/* Position Selector */}
                       <div className="space-y-2">
                         <Label>Position</Label>
-                        <Select value={position} onValueChange={(v) => setPosition(v as typeof position)}>
+                        <Select value={position} onValueChange={(v) => setPosition(v as typeof position)} disabled={isEditing}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -546,6 +625,7 @@ export default function ArticleComposerPage() {
                           placeholder="my-custom-article-url"
                           value={customSlug}
                           onChange={(e) => setCustomSlug(e.target.value)}
+                          disabled={isEditing}
                         />
                       </div>
                     </div>
@@ -553,7 +633,7 @@ export default function ArticleComposerPage() {
                     {/* Publish Button */}
                     <Button
                       onClick={handlePublish}
-                      disabled={publishing}
+                      disabled={publishing || isEditing}
                       className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-11"
                     >
                       {publishing ? (
@@ -603,7 +683,7 @@ export default function ArticleComposerPage() {
               )}
 
               {/* Headline Card */}
-              <Card>
+              <Card className={isEditing ? "border-amber-500/50" : ""}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-[var(--accent)] uppercase">
@@ -615,17 +695,40 @@ export default function ArticleComposerPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <h3 className="text-2xl font-bold text-[var(--foreground)] leading-tight">
-                    {result.headline}
-                  </h3>
-                  <p className="mt-2 text-[var(--foreground-muted)]">
-                    {result.ai_summary}
-                  </p>
+                  {isEditing && editedResult ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs text-amber-600">Headline</Label>
+                        <Input
+                          value={editedResult.headline}
+                          onChange={(e) => updateEditedField("headline", e.target.value)}
+                          className="text-lg font-bold"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">Summary</Label>
+                        <Textarea
+                          value={editedResult.ai_summary}
+                          onChange={(e) => updateEditedField("ai_summary", e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="text-2xl font-bold text-[var(--foreground)] leading-tight">
+                        {result.headline}
+                      </h3>
+                      <p className="mt-2 text-[var(--foreground-muted)]">
+                        {result.ai_summary}
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* TL;DR Card */}
-              <Card>
+              <Card className={isEditing ? "border-amber-500/50" : ""}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -633,46 +736,105 @@ export default function ArticleComposerPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Should Worry:</span>
-                      <span className={
-                        result.tldr.should_worry === "Yes"
-                          ? "text-red-600 font-bold"
-                          : result.tldr.should_worry === "No"
-                          ? "text-green-600"
-                          : "text-amber-600"
-                      }>
-                        {result.tldr.should_worry}
-                      </span>
+                  {isEditing && editedResult ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-amber-600">Should Worry</Label>
+                          <Select
+                            value={editedResult.tldr.should_worry}
+                            onValueChange={(v) => updateEditedField("tldr.should_worry", v)}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Yes">Yes</SelectItem>
+                              <SelectItem value="No">No</SelectItem>
+                              <SelectItem value="Maybe">Maybe</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-amber-600">Risk Level</Label>
+                          <Select
+                            value={editedResult.tldr.risk_level}
+                            onValueChange={(v) => updateEditedField("tldr.risk_level", v)}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="High">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">What</Label>
+                        <Textarea
+                          value={editedResult.tldr.what}
+                          onChange={(e) => updateEditedField("tldr.what", e.target.value)}
+                          className="min-h-[60px]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">Who</Label>
+                        <Input
+                          value={editedResult.tldr.who}
+                          onChange={(e) => updateEditedField("tldr.who", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">When</Label>
+                        <Input
+                          value={editedResult.tldr.when}
+                          onChange={(e) => updateEditedField("tldr.when", e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Risk Level:</span>
-                      <span className={
-                        result.tldr.risk_level === "High"
-                          ? "text-red-600 font-bold"
-                          : result.tldr.risk_level === "Low"
-                          ? "text-green-600"
-                          : "text-amber-600"
-                      }>
-                        {result.tldr.risk_level}
-                      </span>
-                    </div>
-                  </div>
-                  <div><strong>What:</strong> {result.tldr.what}</div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-[var(--foreground-muted)]" />
-                    <strong>Who:</strong> {result.tldr.who}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[var(--foreground-muted)]" />
-                    <strong>When:</strong> {result.tldr.when}
-                  </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Should Worry:</span>
+                          <span className={
+                            result.tldr.should_worry === "Yes"
+                              ? "text-red-600 font-bold"
+                              : result.tldr.should_worry === "No"
+                              ? "text-green-600"
+                              : "text-amber-600"
+                          }>
+                            {result.tldr.should_worry}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">Risk Level:</span>
+                          <span className={
+                            result.tldr.risk_level === "High"
+                              ? "text-red-600 font-bold"
+                              : result.tldr.risk_level === "Low"
+                              ? "text-green-600"
+                              : "text-amber-600"
+                          }>
+                            {result.tldr.risk_level}
+                          </span>
+                        </div>
+                      </div>
+                      <div><strong>What:</strong> {result.tldr.what}</div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-[var(--foreground-muted)]" />
+                        <strong>Who:</strong> {result.tldr.who}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-[var(--foreground-muted)]" />
+                        <strong>When:</strong> {result.tldr.when}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Facts Card */}
-              <Card>
+              <Card className={isEditing ? "border-amber-500/50" : ""}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -680,14 +842,22 @@ export default function ArticleComposerPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-[var(--foreground)] whitespace-pre-line">
-                    {result.facts}
-                  </p>
+                  {isEditing && editedResult ? (
+                    <Textarea
+                      value={editedResult.facts}
+                      onChange={(e) => updateEditedField("facts", e.target.value)}
+                      className="min-h-[150px]"
+                    />
+                  ) : (
+                    <p className="text-[var(--foreground)] whitespace-pre-line">
+                      {result.facts}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Bali Zero Take Card */}
-              <Card className="border-[var(--accent)]/30 bg-[var(--accent)]/5">
+              <Card className={`border-[var(--accent)]/30 bg-[var(--accent)]/5 ${isEditing ? "border-amber-500/50" : ""}`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Lightbulb className="h-5 w-5 text-[var(--accent)]" />
@@ -695,35 +865,66 @@ export default function ArticleComposerPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                      Hidden Insight
-                    </p>
-                    <p className="text-[var(--foreground)]">
-                      {result.bali_zero_take.hidden_insight}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                      Our Analysis
-                    </p>
-                    <p className="text-[var(--foreground)]">
-                      {result.bali_zero_take.our_analysis}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                      Our Advice
-                    </p>
-                    <p className="text-[var(--foreground)]">
-                      {result.bali_zero_take.our_advice}
-                    </p>
-                  </div>
+                  {isEditing && editedResult ? (
+                    <>
+                      <div>
+                        <Label className="text-xs text-amber-600">Hidden Insight</Label>
+                        <Textarea
+                          value={editedResult.bali_zero_take.hidden_insight}
+                          onChange={(e) => updateEditedField("bali_zero_take.hidden_insight", e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">Our Analysis</Label>
+                        <Textarea
+                          value={editedResult.bali_zero_take.our_analysis}
+                          onChange={(e) => updateEditedField("bali_zero_take.our_analysis", e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600">Our Advice</Label>
+                        <Textarea
+                          value={editedResult.bali_zero_take.our_advice}
+                          onChange={(e) => updateEditedField("bali_zero_take.our_advice", e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
+                          Hidden Insight
+                        </p>
+                        <p className="text-[var(--foreground)]">
+                          {result.bali_zero_take.hidden_insight}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
+                          Our Analysis
+                        </p>
+                        <p className="text-[var(--foreground)]">
+                          {result.bali_zero_take.our_analysis}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
+                          Our Advice
+                        </p>
+                        <p className="text-[var(--foreground)]">
+                          {result.bali_zero_take.our_advice}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Next Steps Card */}
-              <Card>
+              <Card className={isEditing ? "border-amber-500/50" : ""}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <TrendingUp className="h-5 w-5 text-emerald-500" />
@@ -731,87 +932,151 @@ export default function ArticleComposerPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="font-semibold text-[var(--foreground)] mb-2">For Expats</p>
-                    <ul className="space-y-1">
-                      {result.next_steps.expat.map((step, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-[var(--accent)]">•</span>
-                          {step}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[var(--foreground)] mb-2">For Investors</p>
-                    <ul className="space-y-1">
-                      {result.next_steps.investor.map((step, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-[var(--accent)]">•</span>
-                          {step}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {isEditing && editedResult ? (
+                    <>
+                      <div>
+                        <Label className="text-xs text-amber-600 mb-2 block">For Expats (one per line)</Label>
+                        <Textarea
+                          value={editedResult.next_steps.expat.join("\n")}
+                          onChange={(e) => updateEditedField("next_steps.expat", e.target.value.split("\n").filter(s => s.trim()))}
+                          className="min-h-[120px]"
+                          placeholder="Enter each step on a new line"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600 mb-2 block">For Investors (one per line)</Label>
+                        <Textarea
+                          value={editedResult.next_steps.investor.join("\n")}
+                          onChange={(e) => updateEditedField("next_steps.investor", e.target.value.split("\n").filter(s => s.trim()))}
+                          className="min-h-[120px]"
+                          placeholder="Enter each step on a new line"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="font-semibold text-[var(--foreground)] mb-2">For Expats</p>
+                        <ul className="space-y-1">
+                          {result.next_steps.expat.map((step, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <span className="text-[var(--accent)]">•</span>
+                              {step}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[var(--foreground)] mb-2">For Investors</p>
+                        <ul className="space-y-1">
+                          {result.next_steps.investor.map((step, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <span className="text-[var(--accent)]">•</span>
+                              {step}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Tags & Components */}
-              <Card>
+              <Card className={isEditing ? "border-amber-500/50" : ""}>
                 <CardContent className="pt-4 space-y-4">
-                  <div>
-                    <p className="font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
-                      <Tag className="h-4 w-4" />
-                      AI Tags
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {result.ai_tags.map((tag, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 rounded-full text-xs bg-[var(--background-elevated)] text-[var(--foreground-muted)] border border-[var(--border)]"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-[var(--foreground)] mb-2">
-                      Suggested Components
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {result.suggested_components.map((comp, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 rounded text-xs bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
-                        >
-                          {comp}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  {isEditing && editedResult ? (
+                    <>
+                      <div>
+                        <Label className="text-xs text-amber-600 mb-2 flex items-center gap-2">
+                          <Tag className="h-4 w-4" />
+                          AI Tags (comma separated)
+                        </Label>
+                        <Input
+                          value={editedResult.ai_tags.join(", ")}
+                          onChange={(e) => updateEditedField("ai_tags", e.target.value.split(",").map(s => s.trim()).filter(s => s))}
+                          placeholder="tag1, tag2, tag3"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-600 mb-2 block">
+                          Suggested Components (comma separated)
+                        </Label>
+                        <Input
+                          value={editedResult.suggested_components.join(", ")}
+                          onChange={(e) => updateEditedField("suggested_components", e.target.value.split(",").map(s => s.trim()).filter(s => s))}
+                          placeholder="checklist, comparison-table, alert-box"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
+                          <Tag className="h-4 w-4" />
+                          AI Tags
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {result.ai_tags.map((tag, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-1 rounded-full text-xs bg-[var(--background-elevated)] text-[var(--foreground-muted)] border border-[var(--border)]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[var(--foreground)] mb-2">
+                          Suggested Components
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {result.suggested_components.map((comp, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-1 rounded text-xs bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
+                            >
+                              {comp}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Image Prompt Card */}
-              {result.image_prompt && (
-                <Card>
+              {(result.image_prompt || isEditing) && (
+                <Card className={isEditing ? "border-amber-500/50" : ""}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Cover Image Prompt</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="p-3 rounded bg-[var(--background-secondary)] text-sm font-mono text-[var(--foreground-muted)] whitespace-pre-line">
-                      {result.image_prompt}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(result.image_prompt || "")}
-                      className="mt-2 gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Copy Prompt
-                    </Button>
+                    {isEditing && editedResult ? (
+                      <Textarea
+                        value={editedResult.image_prompt || ""}
+                        onChange={(e) => updateEditedField("image_prompt", e.target.value)}
+                        className="min-h-[150px] font-mono text-sm"
+                        placeholder="Enter AI image generation prompt..."
+                      />
+                    ) : (
+                      <>
+                        <div className="p-3 rounded bg-[var(--background-secondary)] text-sm font-mono text-[var(--foreground-muted)] whitespace-pre-line">
+                          {result.image_prompt}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyToClipboard(result.image_prompt || "")}
+                          className="mt-2 gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy Prompt
+                        </Button>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               )}
