@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { articlesApi, ComposeRequest, EnrichedArticle } from "@/lib/api/articles.api";
+import { useState, useEffect, useRef } from "react";
+import { articlesApi, ComposeRequest, EnrichedArticle, PublishRequest } from "@/lib/api/articles.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,11 @@ import {
   TrendingUp,
   Users,
   Calendar,
+  Upload,
+  ImageIcon,
+  Send,
+  Globe,
+  X,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -43,10 +48,18 @@ const CATEGORIES = [
   { value: "legal", label: "Legal Updates" },
 ];
 
+const POSITIONS = [
+  { value: "main_featured", label: "Main Featured (Homepage Hero)" },
+  { value: "secondary", label: "Secondary Featured" },
+  { value: "normal", label: "Normal Article" },
+];
+
 export default function ArticleComposerPage() {
   const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [configured, setConfigured] = useState(false);
+  const [publishConfigured, setPublishConfigured] = useState(false);
   const [result, setResult] = useState<EnrichedArticle | null>(null);
   const [apiCost, setApiCost] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +71,16 @@ export default function ArticleComposerPage() {
   const [category, setCategory] = useState("business");
   const [sourceUrl, setSourceUrl] = useState("");
   const [author, setAuthor] = useState("Marketing Team");
+
+  // Cover image state
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Publish state
+  const [position, setPosition] = useState<"main_featured" | "secondary" | "normal">("normal");
+  const [customSlug, setCustomSlug] = useState("");
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     logger.componentMount("ArticleComposerPage");
@@ -71,11 +94,15 @@ export default function ArticleComposerPage() {
   const checkStatus = async () => {
     setStatusLoading(true);
     try {
-      const status = await articlesApi.getStatus();
-      setConfigured(status.configured);
+      const [composeStatus, publishStatus] = await Promise.all([
+        articlesApi.getStatus(),
+        articlesApi.getPublishStatus().catch(() => ({ configured: false })),
+      ]);
+      setConfigured(composeStatus.configured);
+      setPublishConfigured(publishStatus.configured);
       logger.info("Article composer status", {
         component: "ArticleComposerPage",
-        metadata: status,
+        metadata: { composeStatus, publishStatus },
       });
     } catch (err) {
       logger.error("Failed to check composer status", {
@@ -84,6 +111,98 @@ export default function ArticleComposerPage() {
       setConfigured(false);
     } finally {
       setStatusLoading(false);
+    }
+  };
+
+  // Handle cover image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Invalid File", "Please select an image file");
+        return;
+      }
+      setCoverImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove cover image
+  const removeCoverImage = () => {
+    setCoverImage(null);
+    setCoverImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Publish article
+  const handlePublish = async () => {
+    if (!result) {
+      toast.error("No Article", "Please compose an article first");
+      return;
+    }
+
+    setPublishing(true);
+    setError(null);
+
+    try {
+      const request: PublishRequest = {
+        article: result,
+        position,
+        slug: customSlug || undefined,
+      };
+
+      // Add cover image if provided
+      if (coverImage) {
+        request.cover_image_base64 = await fileToBase64(coverImage);
+        request.cover_image_filename = coverImage.name;
+      }
+
+      const response = await articlesApi.publish(request);
+
+      if (response.success) {
+        setPublishedUrl(response.article_url || null);
+        toast.success(
+          "Published!",
+          response.message
+        );
+        logger.info("Article published", {
+          component: "ArticleComposerPage",
+          action: "publish_success",
+          metadata: { url: response.article_url, commit: response.commit_sha },
+        });
+      } else {
+        setError(response.error || "Unknown error");
+        toast.error("Publish Failed", response.error || "Unknown error");
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      setError(errMsg);
+      toast.error("Publish Error", errMsg);
+      logger.error("Publish failed", {
+        component: "ArticleComposerPage",
+        action: "publish_error",
+      }, err as Error);
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -289,6 +408,54 @@ export default function ArticleComposerPage() {
               />
             </div>
 
+            {/* Cover Image Upload */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Cover Image (optional)
+              </Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              {coverImagePreview ? (
+                <div className="relative">
+                  <img
+                    src={coverImagePreview}
+                    alt="Cover preview"
+                    className="w-full h-48 object-cover rounded-lg border border-[var(--border)]"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8"
+                    onClick={removeCoverImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+                    {coverImage?.name}
+                  </p>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[var(--border)] rounded-lg cursor-pointer hover:bg-[var(--background-secondary)] transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-[var(--foreground-muted)] mb-2" />
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    Click to upload cover image
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    PNG, JPG, WebP (recommended 1200x630)
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Submit Button */}
             <Button
               onClick={handleCompose}
@@ -322,26 +489,118 @@ export default function ArticleComposerPage() {
           {result ? (
             <>
               {/* Actions Bar */}
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
-                  className="gap-2"
-                >
-                  <Copy className="h-4 w-4" />
-                  Copy JSON
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportAsJson}
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Export
-                </Button>
+              <div className="flex flex-wrap gap-2 justify-between items-center">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
+                    className="gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportAsJson}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export
+                  </Button>
+                </div>
               </div>
+
+              {/* Publish Section */}
+              {publishConfigured ? (
+                <Card className="border-emerald-500/30 bg-emerald-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Globe className="h-5 w-5 text-emerald-500" />
+                      Publish to Site
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Position Selector */}
+                      <div className="space-y-2">
+                        <Label>Position</Label>
+                        <Select value={position} onValueChange={(v) => setPosition(v as typeof position)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {POSITIONS.map((pos) => (
+                              <SelectItem key={pos.value} value={pos.value}>
+                                {pos.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Custom Slug */}
+                      <div className="space-y-2">
+                        <Label>Custom Slug (optional)</Label>
+                        <Input
+                          placeholder="my-custom-article-url"
+                          value={customSlug}
+                          onChange={(e) => setCustomSlug(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Publish Button */}
+                    <Button
+                      onClick={handlePublish}
+                      disabled={publishing}
+                      className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-11"
+                    >
+                      {publishing ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Publishing to BaliZero.com...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-5 w-5" />
+                          Publish Article
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Published URL */}
+                    {publishedUrl && (
+                      <div className="p-3 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800">
+                        <p className="font-medium flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Published Successfully!
+                        </p>
+                        <a
+                          href={publishedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm underline hover:text-emerald-600"
+                        >
+                          {publishedUrl}
+                        </a>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-amber-500/30 bg-amber-500/5">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3 text-amber-700">
+                      <AlertTriangle className="h-5 w-5" />
+                      <div>
+                        <p className="font-medium">Publishing Not Configured</p>
+                        <p className="text-sm">Set GITHUB_TOKEN environment variable to enable direct publishing.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Headline Card */}
               <Card>

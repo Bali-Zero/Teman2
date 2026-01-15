@@ -72,6 +72,32 @@ export interface ComposerStatus {
   estimated_cost_per_article: string;
 }
 
+export interface PublishRequest {
+  article: EnrichedArticle;
+  cover_image_base64?: string;
+  cover_image_filename?: string;
+  position: 'main_featured' | 'secondary' | 'normal';
+  slug?: string;
+}
+
+export interface PublishResponse {
+  success: boolean;
+  message: string;
+  article_url?: string;
+  mdx_path?: string;
+  image_path?: string;
+  commit_sha?: string;
+  error?: string;
+}
+
+export interface PublishStatus {
+  configured: boolean;
+  github_token_set: boolean;
+  github_owner: string;
+  github_repo: string;
+  target_branch: string;
+}
+
 // --- API Functions ---
 
 export const articlesApi = {
@@ -95,6 +121,31 @@ export const articlesApi = {
   async getStatus(): Promise<ComposerStatus> {
     const response = await apiClient.request<ComposerStatus>(
       "/api/articles/compose/status",
+      { method: "GET" }
+    );
+    return response;
+  },
+
+  /**
+   * Publish an enriched article to the site
+   */
+  async publish(request: PublishRequest): Promise<PublishResponse> {
+    const response = await apiClient.request<PublishResponse>(
+      "/api/articles/publish",
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      }
+    );
+    return response;
+  },
+
+  /**
+   * Check if article publishing is configured
+   */
+  async getPublishStatus(): Promise<PublishStatus> {
+    const response = await apiClient.request<PublishStatus>(
+      "/api/articles/publish/status",
       { method: "GET" }
     );
     return response;
