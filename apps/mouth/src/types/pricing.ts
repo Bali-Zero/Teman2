@@ -10,7 +10,7 @@ export interface PricingItem {
   description?: string;
   requirements?: string[];
   legacy_names?: string[];
-  [key: string]: any;
+  [key: string]: string | string[] | number | boolean | null | undefined;
 }
 
 export interface PricingCategory {

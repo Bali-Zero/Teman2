@@ -44,6 +44,21 @@ import { logger } from '@/lib/logger';
 import { saveConversation } from './actions';
 import type { ChatMessage } from './actions';
 
+/**
+ * Type guard for conversation message from API
+ */
+interface ApiConversationMessage {
+  id?: string;
+  role: string;
+  content?: string;
+  timestamp?: string | Date;
+  sources?: Array<{ title?: string; content?: string; url?: string; score?: number }>;
+  images?: Array<{ id: string; base64: string; name: string; size: number }>;
+  steps?: Array<{ type: string; data: unknown; timestamp: Date }>;
+  metadata?: unknown;
+  imageUrl?: string;
+}
+
 // Types
 interface OptimisticMessage extends ChatMessage {
   isPending?: boolean;
@@ -319,14 +334,28 @@ export default function ChatPage() {
       try {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setMessages(conv.messages.map((m: any) => ({
-            id: m.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-            role: m.role as 'user' | 'assistant',
-            content: m.content || '',
-            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-            sources: m.sources,
-          })));
+          setMessages(
+            conv.messages
+              .filter(isApiConversationMessage)
+              .map((m): ChatMessage => {
+                // Validate and convert role
+                const role: 'user' | 'assistant' = 
+                  m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant';
+                
+                // Convert timestamp
+                const timestamp = m.timestamp 
+                  ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date)
+                  : new Date();
+
+                return {
+                  id: m.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+                  role,
+                  content: m.content || '',
+                  timestamp,
+                  sources: m.sources,
+                };
+              })
+          );
           if (conv.session_id) {
             setSessionId(conv.session_id);
           }

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import type { FunnelAnalyticsReturn } from './types/funnel-analytics.types';
 
 interface FunnelStep {
   id: string;
@@ -414,7 +415,7 @@ export function useFunnelAnalytics() {
 
 // Higher-order component for funnel tracking
 export function withFunnelTracking<P extends object>(
-  Component: React.ComponentType<P & { funnel?: any }>,
+  Component: React.ComponentType<P & { funnel?: FunnelAnalyticsReturn }>,
   funnelId: string
 ) {
   const WrappedComponent = (props: P) => {

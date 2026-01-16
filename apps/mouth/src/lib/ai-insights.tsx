@@ -4,6 +4,15 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
+import type {
+  HistoricalData,
+  PredictionResult,
+  TrendAnalysis,
+  AnomalyDetection,
+  ClientChurnPrediction,
+  WorkloadPrediction,
+} from './api/types/ai-insights.types';
+import { isHistoricalData } from './api/types/ai-insights.types';
 
 interface Insight {
   id: string;
@@ -109,7 +118,7 @@ class AIInsightsService {
   }
 
   // Generate AI insights for dashboard
-  async generateInsights(historicalData: any): Promise<DashboardInsight> {
+  async generateInsights(historicalData: HistoricalData): Promise<DashboardInsight> {
     if (!this.isInitialized) {
       await this.initializeAI();
     }
@@ -136,7 +145,7 @@ class AIInsightsService {
   }
 
   // Generate specific insights
-  private async generateSpecificInsights(data: any): Promise<Insight[]> {
+  private async generateSpecificInsights(data: HistoricalData): Promise<Insight[]> {
     const insights: Insight[] = [];
 
     // Case volume insight
@@ -231,7 +240,12 @@ class AIInsightsService {
   }
 
   // Generate predictions
-  private async generatePredictions(data: any): Promise<any> {
+  private async generatePredictions(data: HistoricalData): Promise<{
+    casesNextMonth: number;
+    revenueNextMonth: number;
+    clientChurnRisk: number;
+    workloadForecast: number[];
+  }> {
     const casesNextMonth = await this.predictCaseVolume(data);
     const revenueNextMonth = await this.predictRevenue(data);
     const clientChurnRisk = await this.predictClientChurn(data);
@@ -246,7 +260,11 @@ class AIInsightsService {
   }
 
   // Analyze trends
-  private async analyzeTrends(data: any): Promise<any> {
+  private async analyzeTrends(data: HistoricalData): Promise<{
+    caseVolume: TrendAnalysis;
+    revenue: TrendAnalysis;
+    efficiency: TrendAnalysis;
+  }> {
     const caseVolume = this.generateTrendData(data.cases || [], 'cases');
     const revenue = this.generateTrendData(data.revenue || [], 'revenue');
     const efficiency = this.generateTrendData(data.efficiency || [], 'efficiency');
@@ -255,7 +273,7 @@ class AIInsightsService {
   }
 
   // Detect anomalies
-  private async detectAnomalies(data: any): Promise<any> {
+  private async detectAnomalies(data: HistoricalData): Promise<AnomalyDetection[]> {
     const anomalies = [];
 
     // Check for response time anomalies
@@ -285,7 +303,7 @@ class AIInsightsService {
     return (recent - older) / older;
   }
 
-  private async predictCaseVolume(data: any): Promise<{ value: number; confidence: number }> {
+  private async predictCaseVolume(data: HistoricalData): Promise<PredictionResult> {
     // Simplified prediction logic
     const historical = data.cases || [];
     if (historical.length === 0) {
@@ -301,7 +319,7 @@ class AIInsightsService {
     };
   }
 
-  private async predictRevenue(data: any): Promise<{ value: number; confidence: number }> {
+  private async predictRevenue(data: HistoricalData): Promise<PredictionResult> {
     const historical = data.revenue || [];
     if (historical.length === 0) {
       return { value: 0, confidence: 0.5 };
@@ -316,12 +334,20 @@ class AIInsightsService {
     };
   }
 
-  private async predictClientChurn(data: any): Promise<{ riskScore: number; highRiskClients: any[] }> {
+  private async predictClientChurn(data: HistoricalData): Promise<ClientChurnPrediction> {
     // Simplified churn prediction
     const clients = data.clients || [];
-    const highRiskClients = clients.filter((client: any) => 
-      client.lastActivity > 30 || client.satisfactionScore < 3
-    );
+    const highRiskClients = clients
+      .filter((client) => {
+        const lastActivity = typeof client.lastActivity === 'number' ? client.lastActivity : 0;
+        const satisfactionScore = typeof client.satisfactionScore === 'number' ? client.satisfactionScore : 5;
+        return lastActivity > 30 || satisfactionScore < 3;
+      })
+      .map((client) => ({
+        clientId: client.id,
+        riskScore: 0.7, // Simplified
+        reasons: ['Low activity', 'Low satisfaction'],
+      }));
     
     return {
       riskScore: highRiskClients.length / Math.max(clients.length, 1),
@@ -329,7 +355,7 @@ class AIInsightsService {
     };
   }
 
-  private async predictWorkload(data: any): Promise<{ values: number[] }> {
+  private async predictWorkload(data: HistoricalData): Promise<WorkloadPrediction> {
     // Generate 30-day workload forecast
     const values = [];
     let currentWorkload = data.currentWorkload || 10;
@@ -372,7 +398,7 @@ class AIInsightsService {
     return result;
   }
 
-  private detectMetricAnomaly(data: number[], metric: string): any {
+  private detectMetricAnomaly(data: number[], metric: string): AnomalyDetection | null {
     if (data.length < 10) return null;
 
     const recent = data.slice(-5);
@@ -397,7 +423,7 @@ class AIInsightsService {
     return null;
   }
 
-  private async detectEfficiencyAnomalies(data: any): Promise<{ detected: boolean; deviation: number }> {
+  private async detectEfficiencyAnomalies(data: HistoricalData): Promise<AnomalyDetection> {
     const efficiency = data.efficiency || [];
     if (efficiency.length < 10) return { detected: false, deviation: 0 };
 
@@ -444,7 +470,7 @@ export function useAIInsights() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateInsights = useCallback(async (data: any) => {
+  const generateInsights = useCallback(async (data: HistoricalData) => {
     setLoading(true);
     setError(null);
     
@@ -470,7 +496,7 @@ export function useAIInsights() {
 
 // Higher-order component for AI insights
 export function withAIInsights<P extends object>(
-  Component: React.ComponentType<P & { ai?: any }>
+  Component: React.ComponentType<P & { ai?: AIInsightsService }>
 ) {
   const WrappedComponent = (props: P) => {
     const ai = useAIInsights();

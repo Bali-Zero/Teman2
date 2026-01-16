@@ -39,12 +39,16 @@ export function useChatTTS(): UseChatTTSReturn {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const toastCallbackRef = useRef<((message: string, type: 'success' | 'error') => void) | null>(null);
+
+  // Keep ref in sync with state (synchronously for immediate access)
+  toastCallbackRef.current = toastCallback;
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    if (toastCallback) {
-      toastCallback(message, type);
+    if (toastCallbackRef.current) {
+      toastCallbackRef.current(message, type);
     }
-  }, [toastCallback]);
+  }, []);
 
   const stopTTS = useCallback(() => {
     if (audioRef.current) {

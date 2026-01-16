@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
-// ISourceOptions type is inferred from @tsparticles/slim
+import type { ISourceOptions } from '@tsparticles/engine';
 
 interface ParticlesBackgroundProps {
   className?: string;
@@ -42,8 +42,8 @@ export function ParticlesBackground({
     });
   }, []);
 
-  const options: any = useMemo(() => {
-    const baseOptions: any = {
+  const options: ISourceOptions = useMemo(() => {
+    const baseOptions: ISourceOptions = {
       fullScreen: false,
       background: {
         color: {
