@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback, useOptimistic, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { chatMetrics } from '@/lib/metrics';
@@ -49,7 +50,7 @@ export interface OptimisticMessage extends ChatMessage {
 }
 
 const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const generateSessionId = () => `session_${uuidv4()}`;
 
 export interface UseChatPageReturn {
   // State
@@ -64,6 +65,7 @@ export interface UseChatPageReturn {
   isPending: boolean;
   currentStatus: string;
   streamingSteps: Array<AgentStep>;
+  imageModalOpen: boolean;
   
   // Refs
   messagesEndRef: React.RefObject<HTMLDivElement>;
@@ -89,6 +91,7 @@ export interface UseChatPageReturn {
   showToast: (message: string, type: 'success' | 'error') => void;
   setShowUserMenu: (show: boolean) => void;
   setToast: (toast: { message: string; type: 'success' | 'error' } | null) => void;
+  setImageModalOpen: (open: boolean) => void;
 }
 
 export function useChatPage(): UseChatPageReturn {
@@ -99,7 +102,15 @@ export function useChatPage(): UseChatPageReturn {
   const isAbortedRef = useRef(false);
 
   // Session state
-  const [sessionId, setSessionId] = useState(() => generateSessionId());
+  const [sessionId, setSessionId] = useState(() => {
+    const id = generateSessionId();
+    logger.info('Session ID generated with UUID v4', {
+      component: 'useChatPage',
+      action: 'init_session',
+      metadata: { sessionIdFormat: 'uuid_v4', length: id.length },
+    });
+    return id;
+  });
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [messages, setMessages] = useState<OptimisticMessage[]>([]);
   const [currentStatus, setCurrentStatus] = useState('');
@@ -108,6 +119,7 @@ export function useChatPage(): UseChatPageReturn {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -446,6 +458,13 @@ export function useChatPage(): UseChatPageReturn {
   // Handle image generation submit
   const handleImageGenSubmit = useCallback(() => {
     if (!chatInput.imageGenPrompt.trim()) return;
+
+    logger.info('Image generation modal submitted', {
+      component: 'useChatPage',
+      action: 'handleImageGenSubmit',
+      metadata: { promptLength: chatInput.imageGenPrompt.trim().length },
+    });
+
     chatInput.setInput(`Genera un'immagine: ${chatInput.imageGenPrompt.trim()}`);
     chatInput.setImageGenPrompt('');
     setTimeout(() => {
@@ -524,6 +543,7 @@ export function useChatPage(): UseChatPageReturn {
     isPending: isPending || chatSend.isStreaming,
     currentStatus,
     streamingSteps,
+    imageModalOpen,
     messagesEndRef,
     fileInputRef,
     isMountedRef,
@@ -543,5 +563,6 @@ export function useChatPage(): UseChatPageReturn {
     showToast,
     setShowUserMenu,
     setToast,
+    setImageModalOpen,
   };
 }

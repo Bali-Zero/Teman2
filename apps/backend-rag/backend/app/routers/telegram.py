@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.core.intel_approvers import get_required_votes, get_team_config
-from backend.app.dependencies import get_orchestrator
+from backend.app.dependencies import get_database, get_orchestrator
 from backend.app.metrics import (
     intel_items_approved,
     intel_items_rejected,
@@ -22,6 +22,9 @@ from backend.app.metrics import (
     intel_qdrant_ingestion_total,
     intel_votes_cast,
     intel_voting_duration,
+)
+from backend.services.integrations.messaging_identity_service import (
+    get_messaging_identity_service,
 )
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.rag.agentic import AgenticRAGOrchestrator
@@ -283,6 +286,95 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
     return data, "vote_recorded"
 
 
+async def send_telegram_message_with_fallback(
+    chat_id: int,
+    text: str,
+    reply_to_message_id: int | None = None,
+    reply_markup: dict | None = None,
+) -> bool:
+    """
+    Send Telegram message with markdown fallback strategy.
+
+    Tries multiple formatting strategies in order:
+    1. MarkdownV2 (richest formatting)
+    2. HTML (safer formatting)
+    3. Plain text (always works)
+
+    Args:
+        chat_id: Telegram chat ID
+        text: Message text (with markdown)
+        reply_to_message_id: Optional message ID to reply to
+        reply_markup: Optional inline keyboard
+
+    Returns:
+        True if message sent successfully
+    """
+    import re
+
+    # Strategy 1: Try MarkdownV2 (richest)
+    try:
+        escaped_text = _escape_markdown_v2(text)
+        await telegram_bot.send_message(
+            chat_id=chat_id,
+            text=escaped_text,
+            parse_mode="MarkdownV2",
+            reply_to_message_id=reply_to_message_id,
+            reply_markup=reply_markup,
+        )
+        logger.debug(f"✅ Telegram message sent with MarkdownV2 to {chat_id}")
+        return True
+    except Exception as e:
+        logger.debug(f"MarkdownV2 failed for {chat_id}: {e}")
+
+    # Strategy 2: Try HTML (safer)
+    try:
+        # Convert markdown to HTML
+        html_text = text
+        # **bold** → <b>bold</b>
+        html_text = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', html_text)
+        # *italic* → <i>italic</i>
+        html_text = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', html_text)
+        # _italic_ → <i>italic</i>
+        html_text = re.sub(r'_([^_]+)_', r'<i>\1</i>', html_text)
+        # [text](url) → <a href="url">text</a>
+        html_text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', html_text)
+
+        await telegram_bot.send_message(
+            chat_id=chat_id,
+            text=html_text,
+            parse_mode="HTML",
+            reply_to_message_id=reply_to_message_id,
+            reply_markup=reply_markup,
+        )
+        logger.debug(f"✅ Telegram message sent with HTML to {chat_id}")
+        return True
+    except Exception as e:
+        logger.debug(f"HTML parse_mode failed for {chat_id}: {e}")
+
+    # Strategy 3: Plain text (always works)
+    try:
+        # Strip all markdown
+        plain_text = text
+        plain_text = re.sub(r'^#{1,6}\s+', '', plain_text, flags=re.MULTILINE)  # Headers
+        plain_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', plain_text)  # **bold**
+        plain_text = re.sub(r'\*([^*]+)\*', r'\1', plain_text)  # *italic*
+        plain_text = re.sub(r'_([^_]+)_', r'\1', plain_text)  # _italic_
+        plain_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', plain_text)  # [text](url)
+
+        await telegram_bot.send_message(
+            chat_id=chat_id,
+            text=plain_text,
+            parse_mode=None,
+            reply_to_message_id=reply_to_message_id,
+            reply_markup=reply_markup,
+        )
+        logger.debug(f"✅ Telegram message sent with plain text to {chat_id}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ All Telegram send strategies failed for {chat_id}: {e}")
+        return False
+
+
 def format_intel_vote_tally(data: dict, intel_type: str, original_text: str = "") -> str:
     """Format the current intel vote tally for display."""
     approve_votes = data["votes"]["approve"]
@@ -464,8 +556,30 @@ async def process_telegram_message(
         # 2. Get orchestrator (sync function from backend.app.dependencies)
         orchestrator = get_orchestrator(request)
 
-        # Create unique user_id for Telegram users
-        telegram_user_id = f"telegram_{chat_id}"
+        # Get database pool for identity lookup
+        db_pool = get_database(request)
+        identity_service = get_messaging_identity_service(db_pool)
+
+        # Check if Telegram chat_id is mapped to a user (team member or portal client)
+        mapping = await identity_service.get_user_by_telegram(chat_id)
+
+        if mapping:
+            # Use user ID for unified cross-channel conversation
+            telegram_user_id = str(mapping["user_id"])
+            session_id = f"unified_session_{telegram_user_id}"
+
+            # Update last message timestamp
+            await identity_service.update_last_message(telegram_chat_id=chat_id)
+
+            logger.info(
+                f"🔗 Telegram {chat_id} mapped to user {telegram_user_id} "
+                f"(verified: {mapping['verified']})"
+            )
+        else:
+            # Fallback: channel-specific user_id (original behavior)
+            telegram_user_id = f"telegram_{chat_id}"
+            session_id = f"telegram_session_{chat_id}"
+            logger.info(f"📱 Telegram {chat_id} NOT mapped, using channel-specific ID")
 
         # 3. Send placeholder message
         logger.info(
@@ -487,7 +601,7 @@ async def process_telegram_message(
             result = await orchestrator.process_query(
                 query=message_text,
                 user_id=telegram_user_id,
-                session_id=f"telegram_session_{chat_id}",
+                session_id=session_id,
             )
             response_text = result.answer
             if len(response_text) > 4000:
@@ -518,7 +632,7 @@ async def process_telegram_message(
                 async for event in orchestrator.stream_query(
                     query=message_text,
                     user_id=telegram_user_id,
-                    session_id=f"telegram_session_{chat_id}",
+                    session_id=session_id,
                 ):
                     event_count += 1
                     event_type = event.get("type", "unknown")
