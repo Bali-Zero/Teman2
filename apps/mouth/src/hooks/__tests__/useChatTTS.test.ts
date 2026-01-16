@@ -41,7 +41,6 @@ vi.mock('@/lib/analytics', () => ({
 describe('useChatTTS', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGenerateSpeech.mockClear();
     // Mock URL.createObjectURL
     global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
     global.URL.revokeObjectURL = vi.fn();
@@ -98,7 +97,7 @@ describe('useChatTTS', () => {
     const mockBlob = new Blob(['audio data'], { type: 'audio/mpeg' });
     vi.mocked(api.generateSpeech).mockResolvedValue(mockBlob);
 
-    const mockAudio = {
+    const mockAudio1 = {
       play: vi.fn().mockResolvedValue(undefined),
       pause: vi.fn(),
       src: '',
@@ -106,20 +105,44 @@ describe('useChatTTS', () => {
       onerror: null as any,
     };
 
-    global.Audio = vi.fn(() => mockAudio) as any;
+    const mockAudio2 = {
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      src: '',
+      onended: null as any,
+      onerror: null as any,
+    };
+
+    let audioCallCount = 0;
+    global.Audio = vi.fn(() => {
+      audioCallCount++;
+      return audioCallCount === 1 ? mockAudio1 : mockAudio2;
+    }) as any;
 
     act(() => {
       result.current.setShowToast(showToast);
     });
 
+    await waitFor(() => {
+      expect(result.current.showToast).toBeDefined();
+    });
+
     await act(async () => {
       await result.current.handleTTS('msg1', 'Hello');
+    });
+
+    // Wait for first TTS to start
+    await waitFor(() => {
+      expect(result.current.playingMessageId).toBe('msg1');
+    });
+
+    await act(async () => {
       // Second call should stop the first
       await result.current.handleTTS('msg1', 'Hello');
     });
 
     // Audio should be paused when calling TTS on same message
-    expect(mockAudio.pause).toHaveBeenCalled();
+    expect(mockAudio1.pause).toHaveBeenCalled();
   });
 
   it('should handle TTS errors gracefully', async () => {
@@ -133,17 +156,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    await waitFor(() => {
+      expect(result.current.showToast).toBeDefined();
+    });
+
     await act(async () => {
-      try {
-        await result.current.handleTTS('msg1', 'Hello');
-      } catch {
-        // Expected to throw
-      }
+      await result.current.handleTTS('msg1', 'Hello');
     });
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    });
+    }, { timeout: 1000 });
 
     expect(showToast).toHaveBeenCalledWith('TTS generation failed. Please try again.', 'error');
     expect(result.current.ttsLoading).toBeNull();
@@ -162,17 +185,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    await waitFor(() => {
+      expect(result.current.showToast).toBeDefined();
+    });
+
     await act(async () => {
-      try {
-        await result.current.handleTTS('msg1', 'Hello');
-      } catch {
-        // Expected to throw
-      }
+      await result.current.handleTTS('msg1', 'Hello');
     });
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    });
+    }, { timeout: 1000 });
 
     expect(showToast).toHaveBeenCalledWith('TTS generation timeout. Please try again.', 'error');
   });
@@ -189,17 +212,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    await waitFor(() => {
+      expect(result.current.showToast).toBeDefined();
+    });
+
     await act(async () => {
-      try {
-        await result.current.handleTTS('msg1', 'Hello');
-      } catch {
-        // Expected to throw
-      }
+      await result.current.handleTTS('msg1', 'Hello');
     });
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    });
+    }, { timeout: 1000 });
 
     expect(showToast).toHaveBeenCalledWith('Too many TTS requests. Please wait a moment.', 'error');
   });

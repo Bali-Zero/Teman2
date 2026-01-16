@@ -113,9 +113,19 @@ describe('useChatInput', () => {
     const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
+    // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Wait for state to update - verify callback is set by calling showToast
+    await waitFor(() => {
+      result.current.showToast('test', 'success');
+      return showToast.mock.calls.length > 0;
+    });
+
+    // Reset mock
+    showToast.mockClear();
 
     const file = new File(['test'], 'test.txt', { type: 'text/plain' });
     Object.defineProperty(file, 'size', { value: 1000 });
@@ -140,11 +150,7 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
-    // Wait a bit for async validation
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 100 });
-
+    // Toast is called synchronously during validation
     expect(showToast).toHaveBeenCalledWith('Please select an image file', 'error');
     expect(result.current.attachedImages.length).toBe(0);
   });
@@ -153,9 +159,19 @@ describe('useChatInput', () => {
     const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
+    // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Wait for state to update - verify callback is set by calling showToast
+    await waitFor(() => {
+      result.current.showToast('test', 'success');
+      return showToast.mock.calls.length > 0;
+    });
+
+    // Reset mock
+    showToast.mockClear();
 
     // Create a file larger than 10MB
     const largeFile = new File(['x'], 'large.png', { type: 'image/png' });
@@ -181,11 +197,7 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
-    // Wait for async validation
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 100 });
-
+    // Toast is called synchronously during validation
     expect(showToast).toHaveBeenCalledWith('Image must be less than 10MB', 'error');
   });
 
@@ -242,13 +254,22 @@ describe('useChatInput', () => {
     expect(result.current.imageGenPrompt).toBe('A beautiful sunset');
   });
 
-  it('should call toast callback when set', () => {
+  it('should call toast callback when set', async () => {
     const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
 
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Wait for state to update - verify callback is set by calling showToast
+    await waitFor(() => {
+      result.current.showToast('test', 'success');
+      return showToast.mock.calls.length > 0;
+    });
+
+    // Reset mock
+    showToast.mockClear();
 
     act(() => {
       result.current.showToast('Test message', 'success');
