@@ -36,7 +36,7 @@ class KGIncrementalBuilder:
     ]
 
     # Google AI Studio Free Tier Limits
-    MAX_CHUNKS_PER_RUN = 1,500  # Daily limit: 1,500 requests per day
+    MAX_CHUNKS_PER_RUN = 1500  # Daily limit: 1,500 requests per day
     MAX_RPM = 15  # Rate limit: 15 requests per minute
 
     def __init__(self, db_pool: asyncpg.Pool | None = None):

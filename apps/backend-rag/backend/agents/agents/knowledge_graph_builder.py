@@ -288,10 +288,10 @@ class KnowledgeGraphBuilder:
                     """
                     SELECT conversation_id
                     FROM conversations
-                    WHERE created_at >= NOW() - INTERVAL $1
+                    WHERE created_at >= NOW() - INTERVAL '1 day' * $1
                     ORDER BY created_at DESC
                     """,
-                    f"{days_back} days",
+                    days_back,
                 )
 
                 conversation_ids = [row["conversation_id"] for row in rows]

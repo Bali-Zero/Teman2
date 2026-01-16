@@ -675,6 +675,7 @@ async def _init_background_services(
             memory_service=getattr(app.state, "memory_service", None),
             intelligent_router=getattr(app.state, "intelligent_router", None),
             tool_executor=getattr(app.state, "tool_executor", None),
+            app_state=app.state,  # Pass app.state for dynamic lookups
         )
 
         await health_monitor.start()
@@ -727,7 +728,7 @@ async def _init_background_services(
             self_healing_enabled=True,  # Continuous health monitoring
             conversation_trainer_enabled=True,  # Learn from conversations
             client_value_predictor_enabled=True,  # Nurture high-value clients
-            knowledge_graph_enabled=True,  # Build knowledge graphs
+            knowledge_graph_enabled=False,  # DISABLED - quota exhausted
         )
         logger.info("DEBUG: Scheduler started")
 

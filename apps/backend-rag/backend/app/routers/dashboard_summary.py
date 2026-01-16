@@ -250,10 +250,14 @@ async def get_neural_pulse(
     """
     start_time = time.time()
     try:
-        # 1. Get memory facts count
-        memory_service = CollectiveMemoryService(pool=db_pool)
-        memory_stats = await memory_service.get_stats()
-        memory_facts = memory_stats.get("total_facts", 0)
+        # 1. Get memory facts count (graceful fallback if table missing)
+        memory_facts = 0
+        try:
+            memory_service = CollectiveMemoryService(pool=db_pool)
+            memory_stats = await memory_service.get_stats()
+            memory_facts = memory_stats.get("total_facts", 0)
+        except Exception as e:
+            logger.warning(f"Failed to get memory stats (table may not exist): {e}")
 
         # 2. Get knowledge docs count (from Qdrant)
         knowledge_docs = 0
@@ -278,7 +282,7 @@ async def get_neural_pulse(
                     last_activity = f"Last chat: {last_conv[:30]}..."
                 else:
                     last_int = await conn.fetchval(
-                        "SELECT summary FROM crm_interactions ORDER BY created_at DESC LIMIT 1"
+                        "SELECT summary FROM interactions ORDER BY created_at DESC LIMIT 1"
                     )
                     if last_int:
                         last_activity = f"Last CRM: {last_int[:30]}..."
