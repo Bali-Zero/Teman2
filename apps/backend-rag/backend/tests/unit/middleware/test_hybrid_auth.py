@@ -122,10 +122,38 @@ async def test_dispatch_options(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_public(middleware, mock_request):
     mock_request.url.path = "/health"
+    mock_request.headers = {"user-agent": "test-agent"}
     call_next = AsyncMock(return_value=Response("OK"))
 
-    response = await middleware.dispatch(mock_request, call_next)
-    assert response.headers["X-Auth-Type"] == "public"
+    with patch("middleware.hybrid_auth.logger") as mock_logger:
+        response = await middleware.dispatch(mock_request, call_next)
+        assert response.headers["X-Auth-Type"] == "public"
+        
+        # Verify structured logging was called
+        mock_logger.info.assert_called_once()
+        call_args = mock_logger.info.call_args
+        assert call_args[0][0] == "Public endpoint accessed"
+        assert "extra" in call_args[1]
+        assert call_args[1]["extra"]["endpoint"] == "/health"
+        assert call_args[1]["extra"]["method"] == "GET"
+        assert call_args[1]["extra"]["event_type"] == "public_endpoint_access"
+
+
+@pytest.mark.asyncio
+async def test_temporary_endpoints_removed(middleware, mock_request):
+    """Test that TEMPORARY/FIX/DEBUG endpoints are no longer public"""
+    temporary_endpoints = [
+        "/api/fix/users-auth",
+        "/api/fix/check-user/",
+        "/api/fix/test-login",
+        "/api/debug/migrate",
+    ]
+    
+    for endpoint in temporary_endpoints:
+        mock_request.url.path = endpoint
+        assert middleware.is_public_endpoint(mock_request) is False, (
+            f"Temporary endpoint {endpoint} should not be public"
+        )
 
 
 @pytest.mark.asyncio

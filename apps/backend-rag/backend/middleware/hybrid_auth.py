@@ -90,46 +90,88 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         self.api_auth_bypass_db = settings.api_auth_bypass_db
 
         # Define public endpoints that don't require authentication
+        # SECURITY POLICY: Only endpoints that MUST be public for legitimate business reasons
+        # Each endpoint has a documented business justification below
         self.public_endpoints = [
-            "/health",
-            "/health/",
-            "/docs",
-            "/docs/",
-            "/openapi.json",
-            "/api/v1/openapi.json",  # OpenAPI spec for contract verification
-            "/redoc",
-            "/metrics",
-            "/metrics/",
-            "/api/auth/team/login",  # Login endpoint must be public
-            "/api/auth/login",  # Login endpoint must be public
-            "/api/auth/csrf-token",  # CSRF token endpoint must be public
-            # SECURITY: Removed /debug/config from public endpoints - requires authentication
-            "/webhook/whatsapp",  # Meta webhook verification
-            "/webhook/instagram",  # Meta webhook verification
-            "/api/oracle/health",  # Oracle health check (public)
-            "/api/debug/migrate",  # Temporary debug endpoint
-            "/api/legal/parent-documents",  # Internal ingestion endpoint (no auth)
-            "/api/portal/invite/validate/",  # Client invitation validation (public)
-            "/api/portal/invite/complete",  # Client registration completion (public)
-            "/api/intel/scraper/submit",  # Scraper → Intelligence Center bridge (public)
-            "/api/intel/staging/approve/",  # Auto-approve staging items to Telegram (internal)
-            "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
-            "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
-            "/api/integrations/google-drive/system/status",  # System OAuth status check (public)
-            "/api/audio/",  # Audio TTS/STT endpoints (public for now)
-            "/api/voice/elevenlabs",  # ElevenLabs webhook (public, no auth)
-            "/api/knowledge/visa",  # Visa types knowledge base (public)
-            "/api/blog/newsletter/subscribe",  # Newsletter subscription (public)
-            "/api/blog/newsletter/confirm",  # Newsletter confirmation (public)
-            "/api/blog/newsletter/unsubscribe",  # Newsletter unsubscribe (public)
-            "/api/blog/ask",  # AskZantara widget on blog articles (public)
-            "/api/telegram/webhook",  # Telegram bot webhook (public, verified by secret token)
-            "/preview/",  # Article preview pages for Telegram approval (public, no indexing)
-            "/preview/upload",  # Preview upload from local scraper (public)
-            "/api/fix/users-auth",  # TEMPORARY: Fix user authentication endpoint (remove after fixing)
-            "/api/fix/check-user/",  # TEMPORARY: Check user endpoint (remove after fixing)
-            "/api/fix/test-login",  # TEMPORARY: Test login endpoint (remove after fixing)
+            # ========================================================================
+            # INFRASTRUCTURE & MONITORING ENDPOINTS
+            # ========================================================================
+            "/health",  # BUSINESS: Health checks required by load balancers, monitoring systems
+            "/health/",  # BUSINESS: Alternative health check path (common pattern)
+            "/docs",  # BUSINESS: API documentation for developers (dev/staging only via router config)
+            "/docs/",  # BUSINESS: Alternative docs path
+            "/openapi.json",  # BUSINESS: OpenAPI spec for API contract verification and client generation
+            "/api/v1/openapi.json",  # BUSINESS: Versioned OpenAPI spec for backward compatibility
+            "/redoc",  # BUSINESS: Alternative API documentation UI (dev/staging only)
+            "/metrics",  # BUSINESS: Prometheus metrics endpoint for observability (should be IP-restricted in production)
+            "/metrics/",  # BUSINESS: Alternative metrics path
+            
+            # ========================================================================
+            # AUTHENTICATION ENDPOINTS (Must be public for initial login)
+            # ========================================================================
+            "/api/auth/team/login",  # BUSINESS: Team member login - must be public to allow initial authentication
+            "/api/auth/login",  # BUSINESS: User login endpoint - must be public to allow initial authentication
+            "/api/auth/csrf-token",  # BUSINESS: CSRF token generation - must be public for CSRF protection flow
+            
+            # ========================================================================
+            # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
+            # ========================================================================
+            "/webhook/whatsapp",  # BUSINESS: Meta WhatsApp webhook - verified by WHATSAPP_VERIFY_TOKEN
+            "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
+            "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook - verified by TELEGRAM_WEBHOOK_SECRET header
+            "/api/voice/elevenlabs",  # BUSINESS: ElevenLabs voice webhook - should add signature verification
+            
+            # ========================================================================
+            # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
+            # ========================================================================
+            "/api/integrations/zoho/callback",  # BUSINESS: Zoho OAuth callback - required by OAuth 2.0 flow
+            "/api/integrations/google-drive/callback",  # BUSINESS: Google Drive OAuth callback - required by OAuth 2.0 flow
+            "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
+            
+            # ========================================================================
+            # CLIENT PORTAL ENDPOINTS (Public for client self-service)
+            # ========================================================================
+            "/api/portal/invite/validate/",  # BUSINESS: Client invitation validation - token-based security
+            "/api/portal/invite/complete",  # BUSINESS: Client registration completion - token-based security
+            
+            # ========================================================================
+            # PUBLIC KNOWLEDGE BASE ENDPOINTS
+            # ========================================================================
+            "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
+            "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
+            
+            # ========================================================================
+            # BLOG & MARKETING ENDPOINTS (Public for website visitors)
+            # ========================================================================
+            "/api/blog/newsletter/subscribe",  # BUSINESS: Newsletter subscription - public marketing endpoint
+            "/api/blog/newsletter/confirm",  # BUSINESS: Newsletter confirmation - token-based verification
+            "/api/blog/newsletter/unsubscribe",  # BUSINESS: Newsletter unsubscribe - token-based verification (legal requirement)
+            "/api/blog/ask",  # BUSINESS: AskZantara widget on blog articles - public Q&A feature
+            
+            # ========================================================================
+            # PREVIEW ENDPOINTS (Public for content preview)
+            # ========================================================================
+            "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
+            
+            # ========================================================================
+            # INTERNAL SERVICE ENDPOINTS (Should be protected with API keys/IP whitelist)
+            # ========================================================================
+            # SECURITY NOTE: These endpoints are public but should have additional protection:
+            # - Rate limiting (configured in rate_limiter.py)
+            # - API key authentication (recommended)
+            # - IP whitelisting (recommended for production)
+            "/api/intel/scraper/submit",  # BUSINESS: Scraper → Intelligence Center bridge - REVIEW: Add secret token verification
+            "/api/intel/staging/approve/",  # BUSINESS: Auto-approve staging items - REVIEW: Add authentication or secret token
+            "/api/legal/parent-documents",  # BUSINESS: Internal ingestion endpoint - REVIEW: Add API key or IP whitelist
+            "/api/audio/",  # BUSINESS: Audio TTS/STT endpoints - REVIEW: Add rate limiting + API key authentication
+            "/preview/upload",  # BUSINESS: Preview upload from local scraper - REVIEW: Add authentication or secret token
         ]
+        
+        # SECURITY: Removed TEMPORARY/FIX/DEBUG endpoints:
+        # - "/api/fix/users-auth" - REMOVED: No router implementation found
+        # - "/api/fix/check-user/" - REMOVED: No router implementation found
+        # - "/api/fix/test-login" - REMOVED: No router implementation found
+        # - "/api/debug/migrate" - REMOVED: Debug endpoint should require ADMIN_API_KEY
 
         logger.info(
             f"HybridAuthMiddleware initialized - API Auth: {self.api_auth_enabled}, "
@@ -165,7 +207,45 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             # Step 1: Check if this is a public endpoint
             if self.is_public_endpoint(request):
-                logger.debug(f"Public endpoint accessed: {request.url.path}")
+                # Log structured access to public endpoints for security audit
+                correlation_id = _get_correlation_id(request)
+                client_ip = request.client.host if request.client else "unknown"
+                user_agent = request.headers.get("user-agent", "unknown")
+                
+                # Structured logging for public endpoint access
+                logger.info(
+                    "Public endpoint accessed",
+                    extra={
+                        "event_type": "public_endpoint_access",
+                        "endpoint": request.url.path,
+                        "method": request.method,
+                        "client_ip": client_ip,
+                        "user_agent": user_agent[:200],  # Truncate long user agents
+                        "correlation_id": correlation_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                
+                # Record metrics for public endpoint access
+                try:
+                    from backend.app.metrics import (
+                        public_endpoint_access_by_ip,
+                        public_endpoint_access_total,
+                    )
+                    
+                    # Record total access
+                    public_endpoint_access_total.labels(
+                        endpoint=request.url.path, method=request.method
+                    ).inc()
+                    
+                    # Record access by IP (for abuse detection)
+                    public_endpoint_access_by_ip.labels(
+                        endpoint=request.url.path, client_ip=client_ip
+                    ).inc()
+                except (ImportError, AttributeError):
+                    # Metrics not available, continue without metrics
+                    logger.debug("Metrics not available for public endpoint tracking")
+                
                 response = await call_next(request)
                 response.headers["X-Auth-Type"] = "public"
                 return response

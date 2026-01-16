@@ -27,6 +27,18 @@ request_duration = Histogram(
     "zantara_request_duration_seconds", "Request duration in seconds", ["method", "endpoint"]
 )
 
+# Public Endpoint Access Metrics (Security Audit)
+public_endpoint_access_total = Counter(
+    "zantara_public_endpoint_access_total",
+    "Total access to public endpoints (no authentication required)",
+    ["endpoint", "method"],
+)
+public_endpoint_access_by_ip = Counter(
+    "zantara_public_endpoint_access_by_ip_total",
+    "Public endpoint access by client IP",
+    ["endpoint", "client_ip"],
+)
+
 # Cache Metrics
 cache_hits = Counter("zantara_cache_hits_total", "Total cache hits")
 cache_misses = Counter("zantara_cache_misses_total", "Total cache misses")
