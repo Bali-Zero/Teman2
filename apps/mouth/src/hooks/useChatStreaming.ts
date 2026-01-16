@@ -26,7 +26,8 @@ export interface UseChatStreamingReturn {
   sendStreamingMessage: (
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
-    callbacks: StreamingCallbacks
+    callbacks: StreamingCallbacks,
+    images?: Array<{ base64: string; name: string }>
   ) => Promise<void>;
   abortStream: () => void;
   monitoring: ReturnType<typeof useConversationMonitoring>;
@@ -65,7 +66,8 @@ export function useChatStreaming(
     async (
       message: string,
       conversationHistory: Array<{ role: string; content: string }>,
-      callbacks: StreamingCallbacks
+      callbacks: StreamingCallbacks,
+      images?: Array<{ base64: string; name: string }>
     ) => {
       const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       streamingRequestIdRef.current = requestId;
@@ -123,7 +125,8 @@ export function useChatStreaming(
           abortController.signal,
           requestId,
           60000,
-          600000
+          600000,
+          images
         );
       } catch (error) {
         if (!isMountedRef.current || isAbortedRef.current) return;

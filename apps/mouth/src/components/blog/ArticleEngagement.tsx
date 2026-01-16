@@ -384,8 +384,8 @@ export function ArticleEngagement({
     }
     localStorage.setItem('likedArticles', JSON.stringify(likedArticles));
 
-    // TODO: Send to backend
-    // fetch(`/api/articles/${articleId}/like`, { method: 'POST' });
+    // Feature: Backend integration for article likes - Tracked in backlog
+    // Future: fetch(`/api/articles/${articleId}/like`, { method: 'POST' });
   };
 
   const handleCommentSubmit = async (content: string, author: string) => {

@@ -83,7 +83,8 @@ export default function CaseDetailPage() {
       const apiStart = performance.now();
 
       try {
-        // TODO: Replace with dedicated getPractice(id) API endpoint
+        // NOTE: Using getPractices with filter until dedicated getPractice(id) endpoint is available
+        // Backend endpoint: GET /api/crm/practices/{id} - TODO: Implement in backend
         const allPractices = await api.crm.getPractices({ limit: 200 });
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall('/api/crm/practices', 'GET', true, apiDuration, caseId, userEmail.current || undefined);
@@ -470,7 +471,7 @@ export default function CaseDetailPage() {
           </div>
 
           {/* Notes Section - Coming soon */}
-          {/* TODO: Add notes field to Practice type and implement notes functionality */}
+          {/* Feature: Notes functionality - Tracked in backlog */}
         </div>
 
         {/* Sidebar */}
