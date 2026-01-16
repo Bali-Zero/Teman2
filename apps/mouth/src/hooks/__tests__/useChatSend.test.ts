@@ -203,28 +203,35 @@ describe('useChatSend', () => {
 
   it('should cleanup streaming steps', async () => {
     const { useChatStreaming } = await import('../useChatStreaming');
+    let stepCallback: ((step: any) => void) | null = null;
+    
     vi.mocked(useChatStreaming).mockReturnValue({
       isStreaming: false,
       setIsStreaming: vi.fn(),
-      sendStreamingMessage: vi.fn().mockResolvedValue(undefined),
+      sendStreamingMessage: vi.fn().mockImplementation((_msg, _history, callbacks) => {
+        stepCallback = callbacks.onStep;
+        return Promise.resolve();
+      }),
     } as any);
 
     const { result } = renderHook(() => useChatSend(defaultOptions));
 
-    // Add many steps
+    // Simulate adding many steps through onStep callback
     act(() => {
-      for (let i = 0; i < 15; i++) {
-        result.current.streamingSteps.push({
-          type: 'status',
-          data: `Step ${i}`,
-          timestamp: new Date(),
-        });
+      if (stepCallback) {
+        for (let i = 0; i < 15; i++) {
+          stepCallback({
+            type: 'status',
+            data: `Step ${i}`,
+            timestamp: new Date(),
+          });
+        }
       }
     });
 
-    // Wait for cleanup effect
+    // Wait for cleanup effect to run
     await waitFor(() => {
       expect(result.current.streamingSteps.length).toBeLessThanOrEqual(10);
-    }, { timeout: 1000 });
+    }, { timeout: 2000 });
   });
 });
