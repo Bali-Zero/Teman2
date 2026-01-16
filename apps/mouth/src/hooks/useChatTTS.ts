@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { chatMetrics } from '@/lib/metrics';
+import { trackEvent } from '@/lib/analytics';
 
 export interface UseChatTTSReturn {
   // State
@@ -111,7 +112,6 @@ export function useChatTTS(): UseChatTTSReturn {
           // Track metrics
           chatMetrics.ttsCompleted(messageId, ttsDuration / 1000);
 
-          const { trackEvent } = require('@/lib/analytics');
           const userProfile = api.getUserProfile();
           trackEvent('chat_tts_completed', { messageId, duration: ttsDuration }, userProfile?.email);
 
@@ -134,7 +134,6 @@ export function useChatTTS(): UseChatTTSReturn {
           // Track metrics
           chatMetrics.ttsError(messageId, 'playback');
 
-          const { trackEvent } = require('@/lib/analytics');
           const userProfile = api.getUserProfile();
           trackEvent('chat_tts_error', { messageId, errorType: 'playback', errorMessage }, userProfile?.email);
 
@@ -152,7 +151,6 @@ export function useChatTTS(): UseChatTTSReturn {
         setPlayingMessageId(messageId);
         await audio.play();
         
-        const { trackEvent } = require('@/lib/analytics');
         const userProfile = api.getUserProfile();
         trackEvent('chat_tts_started', { messageId, textLength: text.length }, userProfile?.email);
       } catch (playError) {
@@ -166,7 +164,6 @@ export function useChatTTS(): UseChatTTSReturn {
         // Track metrics
         chatMetrics.ttsError(messageId, 'play');
 
-        const { trackEvent } = require('@/lib/analytics');
         const userProfile = api.getUserProfile();
         trackEvent('chat_tts_error', { messageId, errorType: 'play', errorMessage }, userProfile?.email);
 

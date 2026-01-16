@@ -12,6 +12,8 @@
 import { useState, useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import { chatMetrics } from '@/lib/metrics';
+import { trackEvent } from '@/lib/analytics';
+import { api } from '@/lib/api';
 
 export interface UseChatSidebarReturn {
   // State
@@ -39,8 +41,6 @@ export function useChatSidebar(): UseChatSidebarReturn {
     // Track metrics
     chatMetrics.sidebarOpened();
     
-    const { trackEvent } = require('@/lib/analytics');
-    const { api } = require('@/lib/api');
     const userProfile = api.getUserProfile();
     trackEvent('chat_sidebar_opened', {}, userProfile?.email);
 
@@ -56,8 +56,6 @@ export function useChatSidebar(): UseChatSidebarReturn {
     // Track metrics
     chatMetrics.sidebarClosed();
     
-    const { trackEvent } = require('@/lib/analytics');
-    const { api } = require('@/lib/api');
     const userProfile = api.getUserProfile();
     trackEvent('chat_sidebar_closed', {}, userProfile?.email);
 
@@ -78,8 +76,6 @@ export function useChatSidebar(): UseChatSidebarReturn {
       action: 'openSearchDocs',
     });
     
-    const { trackEvent } = require('@/lib/analytics');
-    const { api } = require('@/lib/api');
     const userProfile = api.getUserProfile();
     trackEvent('chat_search_docs_opened', {}, userProfile?.email);
 
