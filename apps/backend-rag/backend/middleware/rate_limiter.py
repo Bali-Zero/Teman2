@@ -155,6 +155,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/api/": (120, 60),  # 120 per minute
         # Reranker-specific endpoints (if any in future)
         "/rerank": (100, 60),  # 100 per minute (anti-abuse)
+        # Public endpoint rate limits (Security Audit 2026-01-13)
+        "/api/intel/scraper/submit": (10, 60),  # 10 per minute - prevent spam
+        "/api/intel/staging/approve/": (20, 60),  # 20 per minute - prevent abuse
+        "/api/audio/": (30, 60),  # 30 per minute - prevent cost abuse (TTS/STT)
+        "/api/voice/elevenlabs": (60, 60),  # 60 per minute - webhook rate limit
+        "/api/knowledge/visa": (100, 60),  # 100 per minute - public knowledge base
+        "/preview/": (60, 60),  # 60 per minute - article previews
+        "/preview/upload": (10, 60),  # 10 per minute - prevent storage abuse
+        "/api/legal/parent-documents": (20, 60),  # 20 per minute - internal ingestion
         # Default for all other endpoints
         "*": (200, 60),  # 200 per minute
     }
