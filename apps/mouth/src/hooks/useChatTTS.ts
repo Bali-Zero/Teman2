@@ -141,7 +141,9 @@ export function useChatTTS(): UseChatTTSReturn {
           const userProfile = api.getUserProfile();
           trackEvent('chat_tts_error', { messageId, errorType: 'playback', errorMessage }, userProfile?.email);
 
-          showToast('Audio playback failed', 'error');
+          if (toastCallbackRef.current) {
+            toastCallbackRef.current('Audio playback failed', 'error');
+          }
           setPlayingMessageId(null);
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
@@ -177,7 +179,9 @@ export function useChatTTS(): UseChatTTSReturn {
         audioRef.current = null;
         setTtsLoading(null);
         setPlayingMessageId(null);
-        showToast('Failed to play audio. Please try again.', 'error');
+        if (toastCallbackRef.current) {
+          toastCallbackRef.current('Failed to play audio. Please try again.', 'error');
+        }
       }
     } catch (error) {
       // Cleanup on generation failure
@@ -198,15 +202,17 @@ export function useChatTTS(): UseChatTTSReturn {
         metadata: { messageId, errorType, errorMessage },
       }, error instanceof Error ? error : new Error(String(error)));
 
-      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
-        showToast('TTS generation timeout. Please try again.', 'error');
-      } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
-        showToast('Too many TTS requests. Please wait a moment.', 'error');
-      } else {
-        showToast('TTS generation failed. Please try again.', 'error');
+      if (toastCallbackRef.current) {
+        if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+          toastCallbackRef.current('TTS generation timeout. Please try again.', 'error');
+        } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+          toastCallbackRef.current('Too many TTS requests. Please wait a moment.', 'error');
+        } else {
+          toastCallbackRef.current('TTS generation failed. Please try again.', 'error');
+        }
       }
     }
-  }, [playingMessageId, showToast, stopTTS]);
+  }, [playingMessageId, stopTTS]);
 
   // Cleanup audio and URLs on unmount
   useEffect(() => {

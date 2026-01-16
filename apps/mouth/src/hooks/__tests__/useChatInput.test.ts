@@ -111,13 +111,16 @@ describe('useChatInput', () => {
   });
 
   it('should reject non-image files', async () => {
-    const { result } = renderHook(() => useChatInput());
+    const { result, rerender } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
     // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Force re-render to sync ref
+    rerender();
 
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
@@ -157,13 +160,16 @@ describe('useChatInput', () => {
   });
 
   it('should reject files larger than 10MB', async () => {
-    const { result } = renderHook(() => useChatInput());
+    const { result, rerender } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
     // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Force re-render to sync ref
+    rerender();
 
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
@@ -256,12 +262,15 @@ describe('useChatInput', () => {
   });
 
   it('should call toast callback when set', async () => {
-    const { result } = renderHook(() => useChatInput());
+    const { result, rerender } = renderHook(() => useChatInput());
     const showToast = vi.fn();
 
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Force re-render to sync ref
+    rerender();
 
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
