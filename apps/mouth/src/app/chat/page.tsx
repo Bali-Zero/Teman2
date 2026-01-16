@@ -46,18 +46,19 @@ export default function ChatPage() {
     isPending,
     currentStatus,
     streamingSteps,
-    
+    imageModalOpen,
+
     // Refs
     messagesEndRef,
     fileInputRef,
-    
+
     // Hooks
     chatInput,
     sidebar,
     conversations,
     teamStatus,
     audioRecorder,
-    
+
     // Handlers
     handleSend,
     handleNewChat,
@@ -69,6 +70,7 @@ export default function ChatPage() {
     showToast,
     setShowUserMenu,
     setToast,
+    setImageModalOpen,
   } = useChatPage();
 
   // Loading state
@@ -122,8 +124,8 @@ export default function ChatPage() {
 
       {/* Image Generation Modal */}
       <ImageGenModal
-        isOpen={false}
-        onClose={() => {}}
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
         onSubmit={handleImageGenSubmit}
       />
 
@@ -167,10 +169,10 @@ export default function ChatPage() {
           input={chatInput.input}
           setInput={chatInput.setInput}
           isLoading={isPending}
-          showImagePrompt={false}
-          setShowImagePrompt={() => {}}
+          showImagePrompt={imageModalOpen}
+          setShowImagePrompt={setImageModalOpen}
           onSend={handleSend}
-          onImageGenerate={() => {}}
+          onImageGenerate={() => setImageModalOpen(true)}
           showAttachMenu={false}
           setShowAttachMenu={() => {}}
           attachMenuRef={chatInput.imageInputRef}
