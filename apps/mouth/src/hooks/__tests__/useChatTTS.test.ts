@@ -111,6 +111,9 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    // Force re-render to sync ref
+    rerender();
+
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
       result.current.showToast('test', 'success');
@@ -147,6 +150,9 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    // Force re-render to sync ref
+    rerender();
+
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
       result.current.showToast('test', 'success');
@@ -182,6 +188,9 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
+    // Force re-render to sync ref
+    rerender();
+
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
       result.current.showToast('test', 'success');
@@ -214,6 +223,9 @@ describe('useChatTTS', () => {
     act(() => {
       result.current.setShowToast(showToast);
     });
+
+    // Force re-render to sync ref
+    rerender();
 
     // Ref is synced synchronously, so callback should work immediately
     act(() => {
