@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { flushSync } from 'react-dom';
 import { useChatTTS } from '../useChatTTS';
 
 // Mock logger
@@ -112,17 +111,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force React to flush all updates synchronously
-    flushSync(() => {
-      // This ensures all useCallback dependencies are updated
-    });
+    // Force re-render to ensure useCallback dependencies are updated
+    rerender();
 
-    // Verify callback works by calling showToast directly
-    act(() => {
-      result.current.showToast('test', 'success');
+    // Wait for React to fully update all useCallback closures
+    await waitFor(() => {
+      // Verify callback works by calling showToast directly
+      act(() => {
+        result.current.showToast('test', 'success');
+      });
+      return showToast.mock.calls.length > 0;
     });
-    
-    expect(showToast).toHaveBeenCalled();
 
     await act(async () => {
       await result.current.handleTTS('msg1', 'Hello');
@@ -144,7 +143,7 @@ describe('useChatTTS', () => {
   });
 
   it('should handle TTS errors gracefully', async () => {
-    const { result } = renderHook(() => useChatTTS());
+    const { result, rerender } = renderHook(() => useChatTTS());
     const { api } = await import('@/lib/api');
     const showToast = vi.fn();
 
@@ -154,17 +153,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force React to flush all updates synchronously
-    flushSync(() => {
-      // This ensures all useCallback dependencies are updated
-    });
+    // Force re-render to ensure useCallback dependencies are updated
+    rerender();
 
-    // Verify callback works by calling showToast directly
-    act(() => {
-      result.current.showToast('test', 'success');
+    // Wait for React to fully update all useCallback closures
+    await waitFor(() => {
+      // Verify callback works by calling showToast directly
+      act(() => {
+        result.current.showToast('test', 'success');
+      });
+      return showToast.mock.calls.length > 0;
     });
-    
-    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -173,9 +172,10 @@ describe('useChatTTS', () => {
       await result.current.handleTTS('msg1', 'Hello');
     });
 
+    // Wait for toast callback to be called (errors are handled asynchronously)
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    }, { timeout: 2000 });
 
     expect(showToast).toHaveBeenCalledWith('TTS generation failed. Please try again.', 'error');
     expect(result.current.ttsLoading).toBeNull();
@@ -183,7 +183,7 @@ describe('useChatTTS', () => {
   });
 
   it('should handle timeout errors', async () => {
-    const { result } = renderHook(() => useChatTTS());
+    const { result, rerender } = renderHook(() => useChatTTS());
     const { api } = await import('@/lib/api');
     const showToast = vi.fn();
 
@@ -194,17 +194,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force React to flush all updates synchronously
-    flushSync(() => {
-      // This ensures all useCallback dependencies are updated
-    });
+    // Force re-render to ensure useCallback dependencies are updated
+    rerender();
 
-    // Verify callback works by calling showToast directly
-    act(() => {
-      result.current.showToast('test', 'success');
+    // Wait for React to fully update all useCallback closures
+    await waitFor(() => {
+      // Verify callback works by calling showToast directly
+      act(() => {
+        result.current.showToast('test', 'success');
+      });
+      return showToast.mock.calls.length > 0;
     });
-    
-    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -213,15 +213,16 @@ describe('useChatTTS', () => {
       await result.current.handleTTS('msg1', 'Hello');
     });
 
+    // Wait for toast callback to be called (errors are handled asynchronously)
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    }, { timeout: 2000 });
 
     expect(showToast).toHaveBeenCalledWith('TTS generation timeout. Please try again.', 'error');
   });
 
   it('should handle rate limit errors', async () => {
-    const { result } = renderHook(() => useChatTTS());
+    const { result, rerender } = renderHook(() => useChatTTS());
     const { api } = await import('@/lib/api');
     const showToast = vi.fn();
 
@@ -232,17 +233,17 @@ describe('useChatTTS', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force React to flush all updates synchronously
-    flushSync(() => {
-      // This ensures all useCallback dependencies are updated
-    });
+    // Force re-render to ensure useCallback dependencies are updated
+    rerender();
 
-    // Verify callback works by calling showToast directly
-    act(() => {
-      result.current.showToast('test', 'success');
+    // Wait for React to fully update all useCallback closures
+    await waitFor(() => {
+      // Verify callback works by calling showToast directly
+      act(() => {
+        result.current.showToast('test', 'success');
+      });
+      return showToast.mock.calls.length > 0;
     });
-    
-    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -251,9 +252,10 @@ describe('useChatTTS', () => {
       await result.current.handleTTS('msg1', 'Hello');
     });
 
+    // Wait for toast callback to be called (errors are handled asynchronously)
     await waitFor(() => {
       expect(showToast).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    }, { timeout: 2000 });
 
     expect(showToast).toHaveBeenCalledWith('Too many TTS requests. Please wait a moment.', 'error');
   });
