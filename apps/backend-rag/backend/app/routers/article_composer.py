@@ -352,3 +352,271 @@ async def compose_status():
         "model": "claude-sonnet-4-20250514",
         "estimated_cost_per_article": "$0.02-0.05"
     }
+
+
+# --- PUBLISHING MODELS ---
+
+class PublishRequest(BaseModel):
+    """Request to publish an article to the site"""
+    article: EnrichedArticle
+    cover_image_base64: Optional[str] = Field(default=None, description="Cover image as base64 encoded string")
+    cover_image_filename: Optional[str] = Field(default=None, description="Cover image filename (e.g., 'article-cover.jpg')")
+    position: str = Field(default="normal", description="Position: main_featured|secondary|normal")
+    slug: Optional[str] = Field(default=None, description="Custom slug, auto-generated if not provided")
+
+
+class PublishResponse(BaseModel):
+    """Response from publish endpoint"""
+    success: bool
+    message: str
+    article_url: Optional[str] = None
+    mdx_path: Optional[str] = None
+    image_path: Optional[str] = None
+    commit_sha: Optional[str] = None
+    error: Optional[str] = None
+
+
+def generate_slug(headline: str) -> str:
+    """Generate URL-friendly slug from headline"""
+    import re
+    # Convert to lowercase and replace spaces with hyphens
+    slug = headline.lower()
+    # Remove special characters except hyphens
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    # Replace spaces with hyphens
+    slug = re.sub(r'\s+', '-', slug)
+    # Remove multiple consecutive hyphens
+    slug = re.sub(r'-+', '-', slug)
+    # Remove leading/trailing hyphens
+    slug = slug.strip('-')
+    return slug[:60]  # Limit slug length
+
+
+def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
+    """Generate MDX file content from enriched article"""
+    # Map category to URL-friendly format
+    category_map = {
+        "immigration": "immigration",
+        "business": "business",
+        "tax": "tax-legal",
+        "tax-legal": "tax-legal",
+        "property": "property",
+        "lifestyle": "lifestyle",
+        "tech": "tech",
+        "legal": "tax-legal",
+    }
+    category_slug = category_map.get(article.category, article.category)
+
+    # Generate reading time estimate (avg 200 words per minute)
+    word_count = len(article.facts.split()) + len(article.bali_zero_take.our_analysis.split())
+    reading_time = max(3, word_count // 200 + 1)
+
+    # Build tags string
+    tags_str = ', '.join([f'"{tag}"' for tag in article.ai_tags])
+
+    # Cover image path
+    cover_img = cover_image_path or f'/static/news/{slug}.jpg'
+
+    mdx_content = f'''---
+title: "{article.headline}"
+slug: "{slug}"
+excerpt: "{article.ai_summary}"
+coverImage: "{cover_img}"
+coverImageAlt: "{article.headline}"
+category: "{category_slug}"
+tags: [{tags_str}]
+publishedAt: "{datetime.utcnow().strftime('%Y-%m-%d')}"
+author: "{article.source}"
+trending: {str(article.priority == 'high').lower()}
+featured: false
+readingTime: {reading_time}
+difficulty: "intermediate"
+seoTitle: "{article.headline}"
+seoDescription: "{article.ai_summary}"
+---
+
+## TL;DR
+
+<InfoCard
+  title="Quick Summary"
+  items={{[
+    {{ label: "Should I Worry?", value: "{article.tldr.should_worry}" }},
+    {{ label: "Risk Level", value: "{article.tldr.risk_level}" }},
+    {{ label: "Who's Affected", value: "{article.tldr.who}" }},
+    {{ label: "When", value: "{article.tldr.when}" }},
+  ]}}
+/>
+
+**{article.tldr.what}**
+
+---
+
+## The Facts
+
+{article.facts}
+
+---
+
+## Bali Zero Take
+
+### The Hidden Insight
+
+{article.bali_zero_take.hidden_insight}
+
+### Our Analysis
+
+{article.bali_zero_take.our_analysis}
+
+### Our Advice
+
+{article.bali_zero_take.our_advice}
+
+---
+
+## Next Steps
+
+<Checklist
+  title="Action Items"
+  items={{[
+    {{ text: "For Expats", subItems: {article.next_steps.expat} }},
+    {{ text: "For Investors", subItems: {article.next_steps.investor} }},
+  ]}}
+/>
+
+---
+
+<AskZantara
+  question="Have questions about this topic?"
+  placeholder="Ask Zantara AI for personalized advice..."
+/>
+'''
+    return mdx_content
+
+
+@router.post("/publish", response_model=PublishResponse)
+async def publish_article(request: PublishRequest):
+    """
+    Publish an enriched article to the Bali Zero website.
+
+    Creates MDX file and optionally uploads cover image via GitHub API.
+    Triggers Vercel auto-deploy.
+    """
+    from backend.services.integrations.github_publisher import github_publisher, GitHubPublisherError
+
+    if not github_publisher.is_configured:
+        logger.error("GitHub publisher not configured")
+        return PublishResponse(
+            success=False,
+            message="GitHub API not configured",
+            error="Missing GITHUB_TOKEN environment variable"
+        )
+
+    try:
+        # Generate slug
+        slug = request.slug or generate_slug(request.article.headline)
+
+        # Map category to folder
+        category_map = {
+            "immigration": "immigration",
+            "business": "business",
+            "tax": "tax-legal",
+            "tax-legal": "tax-legal",
+            "property": "property",
+            "lifestyle": "lifestyle",
+            "tech": "tech",
+            "legal": "tax-legal",
+        }
+        category_folder = category_map.get(request.article.category, request.article.category)
+
+        # Prepare files for atomic commit
+        files_to_commit = []
+        cover_image_path = None
+
+        # 1. Handle cover image if provided
+        if request.cover_image_base64 and request.cover_image_filename:
+            import base64
+
+            # Decode base64 image
+            image_data = base64.b64decode(request.cover_image_base64)
+
+            # Determine image path
+            image_filename = request.cover_image_filename or f"{slug}.jpg"
+            image_git_path = f"apps/mouth/public/static/news/{image_filename}"
+            cover_image_path = f"/static/news/{image_filename}"
+
+            files_to_commit.append({
+                "path": image_git_path,
+                "content": image_data
+            })
+            logger.info(f"Will upload cover image: {image_git_path}")
+
+        # 2. Generate MDX content
+        mdx_content = generate_mdx_content(request.article, slug, cover_image_path)
+        mdx_git_path = f"apps/mouth/src/content/articles/{category_folder}/{slug}.mdx"
+
+        files_to_commit.append({
+            "path": mdx_git_path,
+            "content": mdx_content
+        })
+
+        # 3. Commit files to GitHub
+        commit_message = f"feat(article): Add article '{request.article.headline[:50]}...'\n\nCategory: {category_folder}\nPosition: {request.position}\n\n🤖 Published via Article Composer"
+
+        if len(files_to_commit) == 1:
+            # Single file commit
+            result = await github_publisher.upload_file(
+                path=mdx_git_path,
+                content=mdx_content,
+                message=commit_message
+            )
+        else:
+            # Atomic multi-file commit
+            result = await github_publisher.create_commit_with_files(
+                files=files_to_commit,
+                message=commit_message
+            )
+
+        # Build article URL
+        article_url = f"https://balizero.com/{category_folder}/{slug}"
+
+        logger.info(f"✅ Article published: {article_url}")
+        logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
+
+        return PublishResponse(
+            success=True,
+            message=f"Article published successfully. Vercel will auto-deploy in ~1 minute.",
+            article_url=article_url,
+            mdx_path=mdx_git_path,
+            image_path=cover_image_path,
+            commit_sha=result.get("commit_sha")
+        )
+
+    except GitHubPublisherError as e:
+        logger.error(f"GitHub publish error: {e}")
+        return PublishResponse(
+            success=False,
+            message="Failed to publish to GitHub",
+            error=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Publish failed: {e}", exc_info=True)
+        return PublishResponse(
+            success=False,
+            message="Failed to publish article",
+            error=str(e)
+        )
+
+
+@router.get("/publish/status")
+async def publish_status():
+    """Check if article publishing is properly configured"""
+    from backend.services.integrations.github_publisher import github_publisher
+    from backend.app.core.config import settings
+
+    return {
+        "configured": github_publisher.is_configured,
+        "github_token_set": bool(settings.github_token),
+        "github_owner": settings.github_owner,
+        "github_repo": settings.github_repo,
+        "target_branch": "main"
+    }

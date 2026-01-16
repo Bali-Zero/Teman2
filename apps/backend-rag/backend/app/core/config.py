@@ -469,6 +469,22 @@ class Settings(BaseSettings):
     )
 
     # ========================================
+    # GITHUB PUBLISHING CONFIGURATION
+    # ========================================
+    github_token: str | None = Field(
+        default=None,
+        description="GitHub Personal Access Token for publishing articles. Set via GITHUB_TOKEN env var.",
+    )
+    github_owner: str = Field(
+        default="Balizero1987",
+        description="GitHub repository owner. Set via GITHUB_OWNER env var.",
+    )
+    github_repo: str = Field(
+        default="Teman2",
+        description="GitHub repository name. Set via GITHUB_REPO env var.",
+    )
+
+    # ========================================
     # FEATURE FLAGS
     # ========================================
     enable_skill_detection: bool = False  # Set via ENABLE_SKILL_DETECTION env var

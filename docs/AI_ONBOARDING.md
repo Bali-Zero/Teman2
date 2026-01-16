@@ -1,874 +1,407 @@
-# 🧠 AI ONBOARDING PROTOCOL - NUZANTARA PROJECT
+# AI ONBOARDING GUIDE - Nuzantara Project
 
-**ATTENTION NEW AI AGENT:**
-You have been instantiated as a core contributor to the **Nuzantara** platform. This document defines your operational parameters, the system architecture, and the standards you must uphold.
+**Last Updated:** 2026-01-10  
+**Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
----
-
-## ⚖️ LEGGE ZERO - LA REGOLA FONDAMENTALE
-
-> **Se non sai o non capisci qualcosa del sistema — come è stata fatta, come si usa, dove si trova — il DevAI NON PRESUME.**
->
-> **Si ferma e studia la codebase. Legge la documentazione recente.**
-
-Questa è la legge più importante. Prima di modificare, suggerire, o implementare qualsiasi cosa:
-
-1. **STOP** — Non inventare. Non assumere. Non "intuire".
-2. **SEARCH** — Usa `Grep`, `Glob`, `Read` per trovare il codice esistente.
-3. **STUDY** — Leggi `docs/LIVING_ARCHITECTURE.md`, i file correlati, i test.
-4. **ASK** — Se dopo lo studio rimane ambiguità, chiedi all'utente.
-
-**Violare questa legge produce codice duplicato, bug, e regressioni.**
+> **READ THIS FIRST** before making any changes to the codebase.
 
 ---
 
-## 1. 🌍 PROJECT MISSION
-**Nuzantara** is an enterprise-grade **Intelligent Business Operating System** designed for **Bali Zero**.
-It is not merely a chatbot; it is a comprehensive platform integrating RAG (Retrieval-Augmented Generation), complex business logic, CRM capabilities, and multi-channel communication (WhatsApp, Web, Instagram, API).
+## 🎯 QUICK START CHECKLIST
 
-**Core Objectives:**
-- **Reliability:** Systems must be robust, fail-safe, and self-healing.
-- **Scalability:** Architecture must support growing data and user loads.
-- **Maintainability:** Code must be clean, typed, and well-documented.
+When starting a new session, verify you understand:
 
-## 🏗️ SYSTEM ARCHITECTURE
-
-The project is a **Monorepo** managed with `pnpm workspaces` (unified package manager) and Docker.
-For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer to [docs/SYSTEM_MAP_4D.md](docs/SYSTEM_MAP_4D.md).
-
-### 2.1 Core Services
-
-| Service | Path | Stack | Status | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 51 routers (352+ endpoints), 156 services, 41+ migrations (70 tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
-| **Frontend** | `apps/mouth` | **Next.js 16** (React 19) | ✅ **PRIMARY** | The modern user interface. Uses Tailwind CSS 4, TypeScript, shadcn/ui components, and lightweight state management. |
-| **Intel Scraper** | `apps/bali-intel-scraper` | **Python 3.11** | ✅ **ACTIVE** | News processing pipeline: RSS → Scoring → Claude Validation → Enrichment → Image Gen → SEO/AEO → Telegram Approval → Publish. Cost: ~$0.06/article. |
-
-
-### 2.2 Infrastructure
-- **Database:** PostgreSQL (asyncpg with connection pooling, 70 tables), Qdrant Cloud (Vector, **54,154 documents** across 7 active collections), Redis (Cache/Queue).
-- **Deployment:** 
-  - **Backend:** Fly.io (Docker-based, Singapore region)
-  - **Frontend:** Vercel (Next.js Edge, global CDN)
-- **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
-- **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
-
-### 2.3 Qdrant Collections (Knowledge Base) - Aggiornato 2026-01-10
-
-| Collezione | Docs | Scopo | Query Router Keywords |
-|------------|------|-------|----------------------|
-| `legal_unified_hybrid` | **47,959** | Laws, regulations (PP, UU) - **PRIMARY** | legal, law, regulation |
-| `training_conversations_hybrid` | 3,525 | Training conversations (hybrid) | - |
-| `training_conversations` | 2,898 | Training conversations (standard) | - |
-| `kbli_unified` | **2,818** | Business classification codes | kbli, business code |
-| `tax_genius_hybrid` | 332 | PPh 21, PPN/VAT, taxes (hybrid) | tax, pajak, pph, ppn |
-| `tax_genius` | 332 | PPh 21, PPN/VAT, taxes (standard) | tax, pajak, pph, ppn |
-| `visa_oracle` | **82** | Immigration, KITAS, KITAP | visa, kitas, kitap, immigration |
-| `bali_zero_pricing` | 70 | Service pricing | price, cost, quanto costa |
-| `balizero_news_history` | 6 | News history | - |
-| `collective_memories` | 0 | Collective memory (vuota) | - |
-
-**⚠️ NOTA:** `bali_zero_team` non esiste più. Il sistema usa `TeamKnowledgeTool` che legge da PostgreSQL.
-
-**Totale:** 58,022 documenti in 11 collezioni (verificato 2026-01-10)
-
-**Routing:** `backend/services/routing/query_router.py` routes queries to collections based on keywords.
-**Ingestion:** Use `scripts/ingest_tax_genius.py` as template for new collections.
-
-**⚠️ IMPORTANTE (2026-01-10):**
-- `legal_unified` non esiste più - usare `legal_unified_hybrid`
-- `bali_zero_team` non esiste più - sistema usa `TeamKnowledgeTool` (database)
-- Alcune collezioni hanno meno documenti del previsto (verificare migrazioni)
+- [ ] **Project Structure:** Monorepo with `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
+- [ ] **Golden Rules:** No root execution, absolute imports, async-first, type hints required
+- [ ] **Critical Files:** `reasoning.py` (evidence scoring), `llm_gateway.py` (LLM routing)
+- [ ] **Toolkit:** Sentinel (quality control), Scribe (documentation), Observability stack
+- [ ] **Deployment:** Backend on Fly.io (Singapore), Frontend on Vercel
 
 ---
 
-## 3. 📜 OPERATIONAL STANDARDS
+## 📋 THE GOLDEN RULES (MUST FOLLOW)
 
-### 3.1 Coding Guidelines
-- **Python:**
-    -   Use **Type Hints** everywhere (`def func(x: int) -> str:`).
-    -   Use `async/await` for I/O bound operations (FastAPI).
-    -   Follow PEP 8.
--   **TypeScript:**
-    -   Strict typing required (no `any`).
-    -   Use Functional Components with Hooks for React.
--   **Data vs. Logic (Knowledge Governance):**
-    -   **NO Hardcoded Volatile Data:** Business facts belong in the Knowledge Base, not the Python/TS logic.
-    -   **Prices:** Never write specific prices (e.g., `price = "10M"`) in code.
-    -   **Identity/Team:** Never hardcode employee names or specific roles in logic checks.
-    -   **Regulations:** Specific visa/tax numbers or thresholds must be retrieved via RAG.
-    -   **Contact/Location:** Use `settings` or KB for addresses and phone numbers.
--   **General:**
-    -   **No Hardcoding:** Use `os.getenv()` or `process.env`.
-    -   **Error Handling:** Fail gracefully. Use try/catch and log errors.
-
-### 3.2 File System Discipline
--   **Root (`/`) is Restricted:** Do not create files in the root unless explicitly instructed.
--   **Documentation:** Place docs in `docs/`.
--   **Scripts:** Place utility scripts in `scripts/` or service-specific `scripts/` folders.
-
-### 3.3 Testing & Verification
--   **Test Coverage:** The project maintains **95.01%** test coverage (exceeding 90% target).
-    -   `reasoning.py`: 96.30% coverage
-    -   `feedback.py`: 89.61% coverage
-    -   72+ comprehensive tests covering all critical paths
-    -   Run coverage tests: `cd apps/backend-rag && pytest --cov=services.rag.agentic.reasoning --cov=app.routers.feedback --cov-report=html`
--   **Sentinel:** The project uses a `sentinel` script for quality control.
-    -   Run `./sentinel` to verify integrity before requesting review.
--   **Logs:** Check logs (`fly logs` or local output) to verify behavior.
-
-### 3.4 Deployment Operations
-
-#### 3.4.1 Backend (Fly.io) - **SAFE DEPLOY** ⭐ RECOMMENDED
-
-**Primary Method - Safe Deploy Script:**
+### 1. NO ROOT EXECUTION
 ```bash
-./scripts/safe-deploy.sh
-```
+# ❌ WRONG
+python script.py
 
-**Features:**
-- ✅ Automatic pre-deployment testing
-- ✅ Database backup before deploy
-- ✅ Post-deployment health verification
-- ✅ Automatic rollback on failure
-- ✅ Comprehensive logging
-
-**See:** `docs/SAFE_DEPLOY_GUIDE.md` for complete documentation.
-
-**Alternative Methods:**
--   **Helper script:** `./scripts/fly-backend.sh <command>` (status, logs, deploy)
--   **Direct deploy:** `cd apps/backend-rag && flyctl deploy -a nuzantara-rag`
-    -   ⚠️ **WARNING:** No safety checks, use with caution
-
-#### 3.4.2 Frontend (Vercel)
--   Frontend is deployed on **Vercel** (not Fly.io)
--   Use Vercel CLI: `vercel deploy --prod` (from `apps/mouth/`)
--   Or deploy via Vercel dashboard/GitHub integration
-
-### 3.5 🚨 DEPLOYMENT PHILOSOPHY
--   **MANUAL CONTROL:** Deploy è manuale e controllato dal developer (no auto-deploy)
--   **SAFETY FIRST:** Usa `safe-deploy.sh` per protezioni automatiche senza perdere controllo
--   **CI FOR QUALITY:** GitHub Actions può essere usata per quality checks (lint, test) ma NON per auto-deploy
--   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio, con safety nets automatici
-
-### 3.6 🤖 **MANDATORY RULES FOR AI AGENTS**
-
-> **CRITICAL:** AI agents operate under stricter rules than human developers due to lack of intuition and real-time monitoring capability.
-
-#### 3.6.1 Testing Before Deploy (MANDATORY)
-
-**RULE:** AI agents MUST run tests before EVERY deployment, no exceptions.
-
-```bash
-# ✅ CORRECT - AI must always do this
+# ✅ CORRECT
 cd apps/backend-rag
-PYTHONPATH=backend pytest tests/unit/ -q --tb=short
-
-# Then deploy
-cd ../..
-./scripts/safe-deploy.sh
+python -m backend.scripts.script_name
 ```
 
-**Why:**
-- ✅ AI-introduced bugs are caught before production
-- ✅ Regression testing prevents breaking existing features
-- ✅ Evidence of code quality before deploy
-
-**Forbidden:**
-```bash
-# ❌ FORBIDDEN - AI must NEVER skip tests
-./scripts/safe-deploy.sh --skip-tests
-```
-
-#### 3.6.2 Deployment Method (MANDATORY)
-
-**RULE:** AI agents MUST ALWAYS use `safe-deploy.sh`. Direct `flyctl deploy` is FORBIDDEN.
-
-```bash
-# ✅ CORRECT - AI agents must use this
-./scripts/safe-deploy.sh
-
-# ❌ FORBIDDEN - AI agents must NOT use this
-cd apps/backend-rag && flyctl deploy -a nuzantara-rag
-```
-
-**Rationale:**
-- AI lacks intuition to assess deploy risk
-- Automated health checks verify AI changes work in production
-- Auto-rollback recovers from AI mistakes without human intervention
-- Database backups protect against schema errors
-
-**If tests fail:**
-1. ❌ **NEVER** use `--skip-tests` to bypass
-2. ✅ Read test output: `cat /tmp/test-output.txt`
-3. ✅ Fix the failing tests
-4. ✅ Retry safe deploy
-5. ✅ Ask human if stuck after 2 failed attempts
-
-#### 3.6.3 Coverage Testing (RECOMMENDED)
-
-**WHEN:** Run coverage tests in these scenarios:
-
-**Scenario A - New Feature Implementation:**
-```bash
-# After implementing new feature, before deploy
-cd apps/backend-rag
-PYTHONPATH=backend pytest --cov=backend.services.rag.agentic \
-  --cov=backend.app.routers \
-  --cov-report=html \
-  --cov-report=term \
-  --cov-fail-under=90
-
-# Review coverage report
-open htmlcov/index.html  # macOS
-xdg-open htmlcov/index.html  # Linux
-```
-
-**Target:** Maintain **≥90% coverage** (current: 95.01%)
-
-**Scenario B - Critical Path Changes:**
-- Modified `reasoning.py`, `orchestrator.py`, `llm_gateway.py`
-- Changed core routers (auth, RAG, CRM)
-- Updated database models or migrations
-
-**Scenario C - Weekly Quality Check:**
-```bash
-# Full test suite with coverage (Friday afternoon or before major release)
-cd apps/backend-rag
-PYTHONPATH=backend pytest --cov=backend --cov-report=html --cov-fail-under=90
-```
-
-**NOT required for:**
-- Minor documentation changes
-- UI-only changes (frontend)
-- Configuration tweaks (no code changes)
-
-#### 3.6.4 Logging & Metrics (BEST PRACTICES)
-
-**WHEN to add logging:**
-
-**A) New Service/Router:**
+### 2. PATH DISCIPLINE
 ```python
-import logging
-logger = logging.getLogger(__name__)
+# ❌ WRONG - Relative imports
+from ..core import config
 
-class NewService:
-    async def critical_operation(self, data: dict) -> Result:
-        logger.info(f"Starting critical_operation with {len(data)} items")
-        try:
-            result = await self._process(data)
-            logger.info(f"✅ Operation completed: {result.summary}")
-            return result
-        except Exception as e:
-            logger.error(f"❌ Operation failed: {e}", exc_info=True)
-            raise
+# ✅ CORRECT - Absolute imports
+from backend.core import config
 ```
 
-**B) External API Calls:**
+**Always run from `apps/backend-rag` root with `PYTHONPATH=.`**
+
+### 3. ASYNC FIRST
 ```python
-logger.debug(f"Calling external API: {endpoint}")
-response = await client.post(endpoint, data=payload)
-logger.info(f"API response: status={response.status_code}, time={response.elapsed}ms")
+# ❌ WRONG - Blocking requests
+import requests
+response = requests.get(url)
+
+# ✅ CORRECT - Async httpx
+import httpx
+async with httpx.AsyncClient() as client:
+    response = await client.get(url)
 ```
 
-**C) Decision Points (AI Reasoning):**
+### 4. TYPE HINTS REQUIRED
 ```python
-logger.info(f"🤔 Evidence score: {evidence_score:.2f} (threshold: {threshold})")
-if evidence_score < threshold:
-    logger.warning("🛡️ ABSTAIN triggered - insufficient evidence")
-```
+# ❌ WRONG
+def process_query(query):
+    return result
 
-**WHEN to add metrics:**
-
-**A) Performance-Critical Paths:**
-```python
-from backend.app.metrics import metrics_collector
-
-@trace_span("service.operation")
-async def expensive_operation():
-    start = time.time()
-    result = await do_work()
-    duration = time.time() - start
-    
-    # Record metric
-    metrics_collector.record_operation_duration("operation_name", duration)
+# ✅ CORRECT
+def process_query(query: str) -> dict[str, Any]:
     return result
 ```
 
-**B) Business KPIs:**
+### 5. NO HARDCODING
 ```python
-# Tool usage tracking
-metrics_collector.increment_counter("tool_calls", {"tool": tool_name})
+# ❌ WRONG
+api_key = "sk-1234567890"
 
-# Cache performance
-metrics_collector.record_cache_hit("semantic_cache", hit=True)
-
-# LLM costs
-metrics_collector.record_llm_tokens(prompt_tokens, completion_tokens, model)
+# ✅ CORRECT
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY not set")
 ```
 
-**AVOID over-logging:**
-- ❌ Don't log in tight loops (use sampling: `if i % 100 == 0`)
-- ❌ Don't log sensitive data (PII, API keys, passwords)
-- ❌ Don't log at DEBUG level in production hot paths
-
-#### 3.6.5 Error Handling Pattern (MANDATORY)
-
-**Standard Pattern:**
-```python
-from backend.app.utils.error_handling import handle_service_error
-
-async def ai_implemented_function():
-    try:
-        result = await risky_operation()
-        return result
-    except SpecificError as e:
-        logger.error(f"Specific error: {e}", exc_info=True)
-        # Handle gracefully
-        return fallback_result
-    except Exception as e:
-        logger.exception(f"Unexpected error in ai_implemented_function")
-        # Re-raise or return error response
-        raise ServiceError("Operation failed") from e
-```
-
-**Don't:**
-```python
-# ❌ BAD - Swallows all errors silently
-try:
-    result = operation()
-except:
-    pass
-
-# ❌ BAD - No context
-except Exception as e:
-    raise e
-
-# ❌ BAD - String exception
-raise Exception("error")  # Use proper exception classes
-```
-
-#### 3.6.6 Code Quality Checklist (Before Commit)
-
-**AI must verify:**
-- [ ] ✅ Tests written for new code
-- [ ] ✅ Tests pass locally (`pytest tests/`)
-- [ ] ✅ Type hints added (`def func(x: int) -> str`)
-- [ ] ✅ Docstrings for public functions
-- [ ] ✅ No hardcoded values (prices, API keys, URLs)
-- [ ] ✅ Error handling implemented
-- [ ] ✅ Logging added for critical paths
-- [ ] ✅ No `print()` statements (use `logger`)
-- [ ] ✅ Imports organized (use `isort`)
-- [ ] ✅ Code formatted (use `ruff format`)
-
-**Run before commit:**
-```bash
-# Auto-format
-cd apps/backend-rag
-ruff format backend/
-
-# Lint check
-ruff check backend/
-
-# Type check (if mypy configured)
-mypy backend/services/
-```
-
-#### 3.6.7 Communication Protocol
-
-**When AI gets stuck:**
-1. ✅ Document what was attempted
-2. ✅ Share error messages/logs
-3. ✅ Propose 2-3 alternative approaches
-4. ✅ Ask specific questions (not "what should I do?")
-
-**Example:**
-> "I implemented feature X but tests are failing with error Y. I tried:
-> 1. Approach A - failed because Z
-> 2. Approach B - partial success but edge case W
-> 
-> Two options:
-> - Option 1: Refactor using pattern P
-> - Option 2: Add validation at layer L
-> 
-> Which approach aligns better with the architecture?"
+### 6. SEPARATION OF DATA AND LOGIC
+- **Volatile Data** (prices, names, addresses) → Knowledge Base (Qdrant/Postgres) or `settings`
+- **Business Logic** → `backend/services/`
+- **Never** hardcode data in code
 
 ---
 
-## 4. 🧩 KEY FEATURES & MODULES
+## 🏗️ PROJECT STRUCTURE
 
-### 4.1 RAG Engine (Agentic RAG v6.5)
-Located in `apps/backend-rag/backend/services/rag/agentic/`. Implements ReAct pattern for intelligent query processing.
-
-**Core Components:**
-- **AgenticRagOrchestrator** (`orchestrator.py`): Central brain. Coordinates ReAct loop, tool execution, and response generation.
-- **ReasoningEngine** (`reasoning.py`): ReAct loop (Thought→Action→Observation). Native function calling with regex fallback.
-- **LLMGateway** (`llm_gateway.py`): Multi-tier LLM cascade: Gemini 3 Flash Preview → 2.0 Flash fallback.
-- **Tools** (`tools.py`): VectorSearchTool, PricingTool, TeamKnowledgeTool, CalculatorTool, VisionTool.
-
-**Supporting Services:**
-- **SearchService**: Hybrid search (Dense 0.7 + BM25 Sparse 0.3) with federated collection routing.
-- **RerankerService**: Ultra-precision re-ranking using ZeroEntropy (zerank-2).
-- **GenAIClient** (`llm/genai_client.py`): Unified wrapper for Google's `google-genai` SDK v1.56+.
-
-### 4.2 Intelligent Router
-Located in `apps/backend-rag/backend/services/intelligent_router.py`. Orchestrates incoming requests, routing them to the appropriate AI model or tool based on intent.
-- Wraps `AgenticRAGOrchestrator` for all chat operations
-- Supports streaming via SSE (Server-Sent Events)
-
-### 4.3 Debug & Monitoring Tools
-Located in `apps/backend-rag/backend/app/routers/debug.py` and `apps/backend-rag/backend/app/utils/`.
-
-**Debug Endpoints** (`/api/debug/*`):
-- Request tracing and correlation IDs
-- RAG pipeline debugging
-- Database query monitoring
-- Qdrant collection inspection
-- **PostgreSQL Debug** (NEW): Comprehensive database inspection
-  - Connection testing and pool statistics
-  - Schema inspection (tables, columns, indexes, foreign keys)
-  - Database statistics (sizes, row counts, indexes)
-  - Read-only query execution (SELECT only, with security validation)
-  - Performance metrics (slow queries, locks, connections)
-
-**Authentication**: All debug endpoints require `ADMIN_API_KEY` (configured in Fly.io secrets).
-- Production: Available when `ADMIN_API_KEY` is set
-- Development/Staging: Available with `ADMIN_API_KEY` or JWT token
-
-See [Debug Guide](../docs/DEBUG_GUIDE.md) for complete documentation.
-- Integrates with CRM context, memory, and agent data
-
-### 4.3 Jaksel Personality Module
-A specialized module that applies "Jakarta Selatan" persona to ALL responses.
-- **Primary Endpoint:** `https://jaksel.balizero.com` (Oracle Cloud VM + Ollama)
-- **Model:** `zantara:latest` (Gemma 9B Fine-tuned)
-- **Fallback:** Gemini 3 Flash Preview with style-transfer prompt (now integrated in Agentic RAG)
-
-### 4.4 CRM System
-Full-featured Customer Relationship Management:
-- **Clients:** CRUD operations, search, filtering
-- **Practices:** Service/product management (KITAS, PT PMA, Visas)
-- **Interactions:** Call, email, meeting logging
-- **Shared Memory:** Team-wide knowledge access
-- **Auto-CRM:** AI-powered entity extraction from conversations
-
-### 4.5 Agent System
-Autonomous agents for business automation (10 total):
-- **Tier 1 Agents:** Conversation Trainer, Client Value Predictor, Knowledge Graph Builder
-- **Orchestration Agents:** Client Journey Orchestrator, Proactive Compliance Monitor
-- **Advanced Agents:** Autonomous Research Service, Cross-Oracle Synthesis Service, Knowledge Graph Builder
-- **Automation Agents:** Auto Ingestion Orchestrator
-
-### 4.6 Plugin System
-Located in `apps/backend-rag/backend/core/plugins/`:
-- Base plugin interface with lifecycle management
-- Auto-discovery from `backend/plugins/` directory
-- Current plugins: Bali Zero Pricing, Team Member Search/List
-
-### 4.7 Ultra Hybrid Features (v5.4)
-New capabilities for high-trust enterprise responses:
-- **Quality Routing:** Automatically selects the best model (Flash vs Pro vs Reasoning) based on intent.
-- **Evidence Pack:** All business answers include verifiable citations [1] and source links.
-- **Standard Output:** Enforced markdown templates for Visa, Tax, and Company Setup queries.
-- **Privacy:** Automated PII redaction in all logs.
-
-### 4.8 Observability Stack
-
-Full monitoring, tracing, e quality control per production debugging:
-
-| Servizio | Porta | Funzione | Auto-Start |
-|----------|-------|----------|------------|
-| **Prometheus** | 9090 | Metrics collection (scrape 15s) | `docker compose up` |
-| **Grafana** | 3001 | Dashboards (auto-provisioned) | `docker compose up` |
-| **Alertmanager** | 9093 | Alert routing e notifiche | `docker compose up` |
-| **Jaeger** | 16686 | Distributed tracing (OpenTelemetry) | `docker compose up` |
-| **SonarQube** | 9000 | Code quality analysis | `docker compose up` |
-
-**Grafana Dashboard Auto-Provisioning:**
-I dashboard sono caricati automaticamente all'avvio. Non serve import manuale.
-
-**Dashboard Disponibili** (6 totali in `config/grafana/dashboards/`):
-- `rag-dashboard.json` - RAG latency, cache hit rate, tool calls
-- `system-health-dashboard.json` - CPU, RAM, uptime
-- `qdrant-health-dashboard.json` - Vector DB metrics
-- `error-tracking-dashboard.json` - 4xx/5xx per endpoint
-- `security-dashboard.json` - Failed logins, rate limits
-- `lock-contention-dashboard.json` - Race conditions, memory locks
-
-**Metriche Esposte** (`/metrics` - ~50 metriche Prometheus):
 ```
-zantara_rag_pipeline_duration_seconds    # RAG totale
-zantara_llm_prompt_tokens_total          # Token usage
-zantara_cache_hits_total                 # Cache performance
-zantara_http_requests_total              # Request count
-zantara_memory_lock_contention_seconds   # Lock contention
-zantara_llm_fallback_count_total         # Model fallbacks
+nuzantara/
+├── apps/
+│   ├── backend-rag/          # CORE: FastAPI Backend
+│   │   ├── backend/
+│   │   │   ├── app/          # FastAPI entrypoint (main_cloud.py)
+│   │   │   ├── core/         # Config, Security, Logging
+│   │   │   ├── services/     # Business Logic
+│   │   │   │   ├── rag/agentic/  # CORE: Orchestrator, ReAct, LLM Gateway
+│   │   │   │   └── memory/       # Memory Orchestrator
+│   │   │   └── api/          # Routers/Endpoints
+│   │   └── scripts/          # Maintenance scripts
+│   │
+│   ├── mouth/                # Frontend: Next.js 16 + React 19
+│   │   └── src/
+│   │       ├── app/          # Pages (chat, dashboard, clienti)
+│   │       ├── components/   # UI components
+│   │       └── lib/          # API clients, store
+│   │
+│   ├── bali-intel-scraper/   # News processing pipeline
+│   └── zantara-media/        # Editorial content system
+│
+├── docs/                     # Documentation
+│   ├── ai/                   # AI handover protocols
+│   └── operations/           # Runbooks, guides
+│
+└── scripts/                  # Root-level utilities
 ```
 
-**Comandi Utili:**
+---
+
+## 🛠️ THE TOOLKIT
+
+### Sentinel (Quality Control)
 ```bash
-# Avvia TUTTO lo stack monitoring
-docker compose up prometheus grafana alertmanager jaeger sonarqube
-
-# Accesso UI
-open http://localhost:3001   # Grafana (admin/changeme123)
-open http://localhost:9090   # Prometheus
-open http://localhost:9093   # Alertmanager
-open http://localhost:16686  # Jaeger
-open http://localhost:9000   # SonarQube (admin/admin)
-```
-
-**Alert Critici** (vedi [ALERTS_RUNBOOK.md](operations/ALERTS_RUNBOOK.md)):
-- `CriticalQdrantErrorRate` - Error rate > 5% per 2m
-- `CriticalQdrantSearchLatency` - Latency > 1000ms per 2m
-- `QdrantMetricsEndpointDown` - Backend unreachable
-
-### 4.9 Sentinel (Quality Control)
-
-**Sentinel** è il guardian della qualità del codice. Esegui SEMPRE prima di chiedere review.
-
-```bash
-# Esegui quality check completo
+# From project root
 ./sentinel
 
-# Output salvato in: sentinel-results/sentinel-run-TIMESTAMP.log
+# What it does:
+# 1. Auto-healing (Ruff check + fix)
+# 2. Testing (Pytest with coverage)
+# 3. Health checks (Qdrant, DB)
+
+# Output: sentinel-results/sentinel-run-TIMESTAMP.log
 ```
 
-**Fasi Sentinel:**
-1. **Auto-Healing** - Ruff linting + formatting automatico
-2. **Testing** - Pytest con coverage
-3. **Health Checks** - Qdrant connectivity
+**RULE:** Always run Sentinel before asking for review.
 
-**Enhanced Mode** (opzionale - richiede setup):
+### Scribe (Documentation Generator)
 ```bash
-# Installa tool avanzati (semgrep + codeql)
-./scripts/setup-deep-analysis.sh
+python apps/core/scribe.py
 
-# Poi sentinel userà automaticamente la modalità enhanced
-./sentinel
+# Generates: docs/LIVING_ARCHITECTURE.md
+# Use to understand codebase structure
 ```
 
-### 4.10 Intel Scraper Pipeline (BaliZero News)
-
-Located in `apps/bali-intel-scraper/scripts/`. Automated news processing for BaliZero.
-
-**Pipeline Flow (7 Steps):**
-```
-RSS Fetcher → LLAMA Scorer → Claude Validator → Claude Enricher →
-Image Generator → SEO/AEO Optimizer → Telegram Approval → Publish
-```
-
-**Key Components:**
-
-| Step | File | Purpose | Cost |
-|------|------|---------|------|
-| 1. RSS Fetch | `rss_fetcher.py` | Fetch from RSS feeds | $0 |
-| 2. Scoring | `professional_scorer.py` | Keyword scoring + heuristics | $0 |
-| 3. Validation | `claude_validator.py` | AI gate for ambiguous articles | ~$0.01 |
-| 4. Enrichment | `article_deep_enricher.py` | Full article rewrite, Executive Brief | ~$0.05 |
-| 5. Image | `gemini_image_generator.py` | Cover image via Gemini | $0 |
-| 5.5. SEO/AEO | `seo_aeo_optimizer.py` | Schema.org, meta tags, FAQ, entities | $0 |
-| 6. Approval | `telegram_approval.py` | Telegram notification with buttons | $0 |
-| 7. Publish | `intel_pipeline.py` | POST to BaliZero API | $0 |
-
-**SEO/AEO Optimizer (NEW):**
-Optimizes for both traditional search (Google, Bing) AND AI search engines (ChatGPT, Claude, Perplexity, Gemini):
-- Schema.org JSON-LD (Article, FAQ, Organization, Breadcrumb)
-- OpenGraph and Twitter meta tags
-- TL;DR summary for AI citation
-- FAQ generation for featured snippets
-- Entity extraction for knowledge graphs
-- Keyword extraction
-
-**Documentation:** `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md`
-
-### 4.11 Telegram Integration
-
-**Bot:** `@zantara_bot`
-
-**Approval System:**
-- Sends HTML preview of articles before publishing
-- Inline buttons: ✅ Approve | ❌ Reject | ✏️ Request Changes
-- Multi-recipient support (comma-separated chat IDs)
-- HTML preview looks like final published article
-
-**Configuration (Fly.io Secrets):**
+### Observability Stack
 ```bash
-# View current secrets
-fly secrets list -a nuzantara-rag
+# Start all services
+docker compose up -d
 
-# Set Telegram approval chat ID
-fly secrets set TELEGRAM_APPROVAL_CHAT_ID=8290313965 -a nuzantara-rag
-
-# For multiple recipients
-fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_ID" -a nuzantara-rag
+# Services:
+# - Grafana: http://localhost:3001 (admin/changeme123)
+# - Prometheus: http://localhost:9090
+# - Jaeger: http://localhost:16686
+# - Qdrant UI: http://localhost:6333/dashboard
 ```
 
-**Current Approvers:**
-- Zero (Chat ID: 8290313965)
-- Dea (Chat ID: 6217157548)
-- Damar (Chat ID: 1813875994)
+**Full guide:** `docs/operations/OBSERVABILITY_GUIDE.md`
 
-**Local Development:**
-Create `.env` in `apps/bali-intel-scraper/`:
-```bash
-TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}  # From Fly.io secrets
-TELEGRAM_CHAT_ID=8290313965
-PREVIEW_BASE_URL=https://balizero.com/preview
+---
+
+## ⚠️ CRITICAL FIXES & KNOWN ISSUES
+
+### Evidence Score System
+
+**File:** `backend/services/rag/agentic/reasoning.py`
+
+The system uses `evidence_score` (0.0-1.0) to decide responses:
+- **< 0.3** → ABSTAIN (refuses to answer)
+- **0.3-0.6** → Cautious response
+- **> 0.6** → Normal response
+
+**Threshold changed:** 0.8 → 0.3 (v1175, 2025-12-30)
+
+### Trusted Tools (Bypass Evidence Check)
+
+These tools bypass evidence scoring because they provide their own evidence:
+
+| Tool | Location | Purpose |
+|------|----------|---------|
+| `calculator` | `tools.py` | Mathematical calculations |
+| `get_pricing` | `zantara_tools.py` | Bali Zero service pricing |
+| `team_knowledge` | `zantara_tools.py` | Team member search/list |
+
+**Implementation:** `reasoning.py:867-883`
+
+**⚠️ DO NOT modify trusted tools check without understanding the full flow.**
+
+### CRM RBAC (Role-Based Access Control)
+
+**File:** `backend/app/routers/crm_practices.py`
+
+| Role | Access |
+|------|--------|
+| Admin (`zero@balizero.com`, `admin@balizero.com`) | All clients and practices |
+| Team Member | Only clients with `assigned_to` = own email |
+
+### Date Conversion Fix (v1490, 2026-01-10)
+
+**Files:** `crm_enhanced.py`, `crm_clients.py`
+
+PostgreSQL DATE fields must be converted explicitly when using asyncpg:
+```python
+# ✅ CORRECT
+date_value = row['date_field'].isoformat() if row['date_field'] else None
 ```
 
 ---
 
-## 5. 📁 KEY DIRECTORIES
+## 🔍 DEBUGGING PATTERNS
 
-| Directory | Purpose |
-| :--- | :--- |
-| `apps/backend-rag/backend/app/routers/` | **51** API routers (352+ endpoints) |
-| `apps/backend-rag/backend/services/` | **156** business services |
-| `apps/backend-rag/backend/services/rag/agentic/` | **Core**: Orchestrator, ReAct, LLM Gateway, Tools |
-| `apps/backend-rag/backend/services/memory/` | Memory system (Facts, Episodic, Collective) |
-| `apps/backend-rag/backend/core/` | Core utilities (embeddings, chunking, plugins) |
-| `apps/backend-rag/backend/llm/` | LLM clients: `genai_client.py` (Google) |
-| `apps/backend-rag/backend/migrations/` | **41+** database migrations |
-| `apps/backend-rag/backend/middleware/` | Auth, rate limiting, error monitoring |
-| `apps/mouth/src/app/` | Next.js App Router pages |
-| `apps/mouth/src/components/` | React components (shadcn/ui based) |
-| `apps/mouth/src/lib/api/` | API client layer (Zantara SDK) |
-| `apps/bali-intel-scraper/scripts/` | Intel pipeline: RSS, scoring, enrichment, SEO, Telegram |
-| `apps/bali-intel-scraper/docs/` | Pipeline documentation |
-| `docs/` | Project documentation |
-| `scripts/` | Deployment, testing, analysis scripts |
-| `scripts/safe-deploy.sh` | ⭐ **Safe deployment script** (recommended) |
-| `scripts/backup-db.sh` | Database backup helper |
-
----
-
-## 6. 📖 ESSENTIAL FILES (Read First!)
-
-**Per nuovi AI/sviluppatori - leggi questi file in ordine:**
-
-### Tier 1: Documentazione (5 min)
-```
-docs/AI_ONBOARDING.md              # ← SEI QUI - Regole e struttura
-docs/ai/AI_HANDOVER_PROTOCOL.md    # Golden rules, tech stack
-docs/SYSTEM_MAP_4D.md              # Mappa completa del sistema
-```
-
-### Tier 2: Configurazione (2 min)
-```
-apps/backend-rag/backend/app/core/config.py   # Tutte le env vars
-apps/backend-rag/fly.toml                      # Deploy config
-```
-
-### Tier 3: Core Architecture - Agentic RAG (10 min)
-```
-apps/backend-rag/backend/services/rag/agentic/
-├── orchestrator.py      # Il cervello - coordina tutto
-├── reasoning.py         # ReAct loop (Thought→Action→Observation)
-├── llm_gateway.py       # LLM cascade (Flash→Lite→OpenRouter)
-├── tools.py             # I 5 tool disponibili
-└── __init__.py          # Exports pubblici
-```
-
-### Tier 4: Entry Points (3 min)
-```
-apps/backend-rag/backend/app/main_cloud.py              # FastAPI app
-apps/backend-rag/backend/services/intelligent_router.py # Request routing
-apps/backend-rag/backend/services/memory/orchestrator.py # Memory system
-```
-
----
-
-## 7. 🚨 CRITICAL FIXES (Dec 2025) - MUST READ
-
-> **ATTENZIONE:** Prima di modificare `reasoning.py` o il sistema di evidence scoring, leggi:
-> `docs/operations/AGENTIC_RAG_FIXES.md`
-
-### 7.1 Evidence Score System
-
-Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
-
-| Soglia | Valore | Comportamento |
-|--------|--------|---------------|
-| **ABSTAIN** | < 0.3 | Rifiuta di rispondere |
-| **WEAK** | 0.3-0.6 | Risponde con cautela |
-| **CONFIDENT** | > 0.6 | Risposta normale |
-
-### 7.2 Trusted Tools (Bypass Evidence Check)
-
-Questi tool bypassano l'evidence check perché forniscono evidence propria:
-
-| Tool | Descrizione | File |
-|------|-------------|------|
-| `calculator` | Calcoli matematici | `tools.py` |
-| `get_pricing` | Prezzi servizi | `zantara_tools.py` |
-| `team_knowledge` | Team members | `zantara_tools.py` |
-
-**NON modificare il trusted tools check senza capire il flusso completo.**
-
-### 7.3 Fix Recenti Applicati
-
-| Data | Fix | File | Versione |
-|------|-----|------|----------|
-| 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py` | v1175 |
-| 2025-12-31 | Trusted tools bypass | `reasoning.py` | v1177 |
-| 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
-| 2025-12-31 | Image gen URL cleaning | `chat.api.ts` | v1179 |
-
-### 7.4 Debug Patterns nei Log
-
+### Check Evidence Scoring
 ```bash
 fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
 ```
 
-| Pattern | Significato |
-|---------|-------------|
-| `🛡️ [Uncertainty] Evidence Score: X.XX` | Score calcolato |
-| `🧮 [Trusted Tool] X used successfully` | Bypass attivo |
-| `🛡️ [Uncertainty] Triggered ABSTAIN` | Sistema rifiuta |
-| `🔧 [Native Function Call] Detected: X` | Tool chiamato |
+**Log patterns:**
+- `🛡️ [Uncertainty] Evidence Score: X.XX` → Score calculated
+- `🧮 [Trusted Tool] X used successfully` → Bypass active
+- `🛡️ [Uncertainty] Triggered ABSTAIN` → System refused
 
----
-
-## 8. 🔧 TROUBLESHOOTING COMUNI
-
-### 8.1 "Mi dispiace, non ho trovato informazioni..."
-
-**Causa:** Evidence score < 0.3 e nessun trusted tool usato.
-
-**Diagnosi:**
+### Common Import Errors
 ```bash
-fly logs -a nuzantara-rag | grep "Evidence Score"
+# Error: ImportError: attempted relative import with no known parent package
+# Solution: Run with PYTHONPATH=.
+cd apps/backend-rag
+PYTHONPATH=. python -m backend.scripts.script_name
 ```
 
-**Soluzioni:**
-1. Verifica che le collezioni Qdrant abbiano documenti rilevanti
-2. Se è un calcolo/prezzo/team, verifica che il tool giusto sia stato chiamato
-3. Controlla `trusted_tool_names` in `reasoning.py`
+### Fly.io Crashes
+**Common causes:**
+1. Missing `PORT` env var → Check `fly.toml`
+2. Missing `QDRANT_URL` → Check secrets
+3. Database connection → Check `DATABASE_URL`
 
-### 8.2 "Sorry, there was an error processing your request"
-
-**Causa:** Errore interno nel backend (LLM, tool, o parametri).
-
-**Diagnosi:**
+**Debug:**
 ```bash
-fly logs -a nuzantara-rag | grep -E "Error|Exception|TypeError"
+fly logs -a nuzantara-rag
+fly ssh console -a nuzantara-rag
 ```
 
-**Cause comuni:**
-- `TypeError: unexpected keyword argument` → Parametro mancante in funzione
-- `ResourceExhausted` → Quota LLM esaurita, fallback dovrebbe attivarsi
-- `Connection refused` → Qdrant/Postgres non raggiungibile
+---
 
-### 8.3 Frontend mostra "Offline"
+## 📚 ESSENTIAL DOCUMENTATION
 
-**Causa:** SSE connection intermittente o backend non risponde.
+| Document | Path | When to Read |
+|----------|------|--------------|
+| **AI Handover Protocol** | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Always (this is the brain) |
+| **System Map 4D** | `docs/SYSTEM_MAP_4D.md` | To understand architecture |
+| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | For debugging/monitoring |
+| **Deploy Checklist** | `docs/operations/DEPLOY_CHECKLIST.md` | Before deploying |
+| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | For news scraper |
 
-**Soluzioni:**
-1. Verifica health: `curl https://nuzantara-rag.fly.dev/health`
-2. Ricarica la pagina
-3. Controlla logs per errori di connessione
+---
 
-### 8.4 Tool non viene chiamato
+## 🚀 COMMON WORKFLOWS
 
-**Causa:** LLM non riconosce l'intent o tool non registrato.
+### Adding a New API Endpoint
 
-**Diagnosi:**
+1. **Create router** in `backend/app/routers/`
+   ```python
+   from fastapi import APIRouter
+   router = APIRouter(prefix="/api/my-feature", tags=["my-feature"])
+   
+   @router.get("/")
+   async def list_items() -> list[dict]:
+       # Implementation
+   ```
+
+2. **Add business logic** in `backend/services/`
+   ```python
+   # backend/services/my_service.py
+   async def get_items() -> list[dict]:
+       # Business logic here
+   ```
+
+3. **Register router** in `backend/app/main_cloud.py`
+   ```python
+   from backend.app.routers import my_router
+   app.include_router(my_router.router)
+   ```
+
+4. **Add tests** in `backend/tests/api/`
+5. **Run Sentinel** before committing
+
+### Modifying RAG Pipeline
+
+**⚠️ CRITICAL:** Read `docs/operations/AGENTIC_RAG_FIXES.md` first (if it exists)
+
+**Key files:**
+- `backend/services/rag/agentic/reasoning.py` - Evidence scoring
+- `backend/services/rag/agentic/llm_gateway.py` - LLM routing
+- `backend/services/rag/agentic/orchestrator.py` - Main orchestrator
+
+**Test changes:**
 ```bash
-fly logs -a nuzantara-rag | grep "Native Function Call"
+cd apps/backend-rag
+PYTHONPATH=. pytest backend/tests/services/rag/agentic/ -v
 ```
 
-**Soluzioni:**
-1. Verifica che il tool sia in `gemini_tools` nel `LLMGateway`
-2. Controlla la descrizione del tool (deve essere chiara per l'LLM)
-3. Verifica `tool_config` in `llm_gateway.py`
+### Frontend Changes
 
----
+**Structure:**
+- Pages: `apps/mouth/src/app/`
+- Components: `apps/mouth/src/components/`
+- API clients: `apps/mouth/src/lib/api/`
 
-## 9. 🚀 IMMEDIATE ACTION PROTOCOL
-
-1.  **Read Essential Files:** Segui l'ordine in Section 6 sopra.
-2.  **Read Critical Fixes:** Leggi Section 7 per i fix recenti.
-3.  **Context Acquisition:** Read `task.md` (if present) to understand the current objective.
-4.  **Architecture Reference:** Check `docs/LIVING_ARCHITECTURE.md` for auto-generated API documentation.
-5.  **Environment Check:** Verify that critical environment variables (API keys, DB URLs) are loaded.
-6.  **Execution:** Proceed with your task, adhering strictly to the standards above.
-
-**Maintain the standard. Build for the future.**
-
----
-
-## 9.1 📝 MANDATORY DOCUMENTATION UPDATES
-
-> **REGOLA:** Dopo ogni sessione di sviluppo significativa, la documentazione DEVE essere aggiornata.
-
-**Quando Aggiornare:**
-- Nuovi endpoint API creati
-- Nuove feature frontend implementate
-- Modifiche architetturali
-- Fix critici applicati
-- Integrazioni con servizi esterni
-
-**Cosa Aggiornare:**
-1. **Session Logs** - `docs/sessions/SESSION_YYYY-MM-DD_TOPIC.md`
-2. **Feature Docs** - Documentazione specifica (es: `docs/CRM_SYSTEM.md`)
-3. **AI_ONBOARDING.md** - Se nuovi pattern o regole emergono
-4. **CLAUDE.md locale** - Memory per sessioni future
-
-**Template Session Log:**
-```markdown
-# Session Log - YYYY-MM-DD
-
-## Summary
-[1-2 frasi su cosa è stato fatto]
-
-## Changes Made
-| File | Type | Description |
-|------|------|-------------|
-| path/to/file | NEW/MODIFIED | What changed |
-
-## New Features
-- Feature 1: Description
-- Feature 2: Description
-
-## API Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/... | What it does |
-
-## Deployment
-- Backend: vXXXX
-- Frontend: Vercel (if applicable)
-
-## Next Steps
-- [ ] Task 1
-- [ ] Task 2
+**Run locally:**
+```bash
+cd apps/mouth
+npm run dev
 ```
 
-**NON saltare questo step.** La documentazione è memoria del progetto.
+**Deploy:**
+```bash
+# Automatic via Vercel on push to main
+# Or manually:
+./scripts/fly-frontend.sh deploy
+```
 
 ---
 
-## 10. 📚 DOCUMENTATION INDEX
+## 🔐 ENVIRONMENT VARIABLES
 
-| Doc | Path | Quando Leggerlo |
-|-----|------|-----------------|
-| AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
-| **⭐ AI Agent Best Practices** | `docs/AI_AGENT_BEST_PRACTICES.md` | **Prima di ogni implementazione** |
-| **⭐ Safe Deploy Guide** | `docs/SAFE_DEPLOY_GUIDE.md` | **Prima di ogni deploy** |
-| **CRM System** | `docs/CRM_SYSTEM.md` | Prima di toccare CRM client/practices |
-| System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
-| **Codebase Analysis** | `docs/CODEBASE_ANALYSIS.md` | Per identificare aree da refactorare |
-| **Cleanup Summary** | `docs/CLEANUP_SUMMARY.md` | Per vedere cleanup completati |
-| **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
-| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
-| AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
-| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy (o usa safe-deploy.sh) |
-| Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
-| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | Per scraper news + SEO/AEO + Telegram |
-| **Refactoring Hardcoded Values** | `docs/REFACTORING_HARDCODED_VALUES.md` | Per vedere refactoring costanti |
+**Critical variables (check before running):**
+
+| Variable | Purpose | Where Used |
+|----------|---------|------------|
+| `DATABASE_URL` | PostgreSQL connection | Backend |
+| `QDRANT_URL` | Vector DB connection | Backend |
+| `OPENAI_API_KEY` | Embeddings | Backend |
+| `GOOGLE_API_KEY` | Gemini LLM | Backend |
+| `JWT_SECRET_KEY` | Auth tokens | Backend |
+| `PORT` | Server port | Fly.io |
+
+**Check secrets:**
+```bash
+fly secrets list -a nuzantara-rag
+```
 
 ---
 
-**Last Updated:** 2026-01-XX | **Deployed Version:** v1479+
+## ✅ PRE-COMMIT CHECKLIST
+
+Before asking for review:
+
+- [ ] Ran `./sentinel` and it passed
+- [ ] All new functions have type hints
+- [ ] No hardcoded secrets or URLs
+- [ ] Used async/await (no blocking calls)
+- [ ] Absolute imports only
+- [ ] Tests added/updated
+- [ ] Documentation updated (if needed)
+
+---
+
+## 🆘 GETTING HELP
+
+### If Something Breaks
+
+1. **Check logs:**
+   ```bash
+   fly logs -a nuzantara-rag | tail -100
+   ```
+
+2. **Check observability:**
+   - Grafana dashboards
+   - Prometheus metrics
+   - Jaeger traces
+
+3. **Check documentation:**
+   - `docs/operations/` for runbooks
+   - `docs/ai/AI_HANDOVER_PROTOCOL.md` for context
+
+4. **Search codebase:**
+   ```bash
+   # Use grep or codebase_search
+   grep -r "function_name" apps/backend-rag/backend/
+   ```
+
+### Common Questions
+
+**Q: Where do I put new code?**  
+A: Business logic → `backend/services/`, API endpoints → `backend/app/routers/`
+
+**Q: How do I test locally?**  
+A: `docker compose up -d` for services, then `cd apps/backend-rag && PYTHONPATH=. python -m backend.app.main_cloud`
+
+**Q: How do I deploy?**  
+A: See `docs/operations/DEPLOY_CHECKLIST.md`
+
+**Q: Why is my import failing?**  
+A: Make sure you're using absolute imports and running from `apps/backend-rag` with `PYTHONPATH=.`
+
+---
+
+## 📝 NOTES FOR AI ASSISTANTS
+
+1. **Always read the handover protocol** (`docs/ai/AI_HANDOVER_PROTOCOL.md`) - it's the "brain" of the project
+2. **Use the toolkit** - Sentinel, Scribe, Observability stack are your friends
+3. **Follow the golden rules** - They exist for good reasons
+4. **Check critical fixes** - Especially evidence scoring and trusted tools
+5. **Test before asking** - Run Sentinel, check logs, verify locally
+
+---
+
+**Remember:** This is a production system. Be careful, test thoroughly, and use the observability tools to verify your changes.
+
+**Last Updated:** 2026-01-10

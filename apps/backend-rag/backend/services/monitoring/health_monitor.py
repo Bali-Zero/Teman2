@@ -39,6 +39,7 @@ class HealthMonitor:
         self.memory_service = None
         self.intelligent_router = None
         self.tool_executor = None
+        self.app_state = None  # Reference to app.state for dynamic lookups
 
         logger.info(f"✅ HealthMonitor initialized (check_interval={check_interval}s)")
 
@@ -64,6 +65,16 @@ class HealthMonitor:
     async def _monitoring_loop(self):
         """Main monitoring loop with robust error handling"""
         logger.info("🔄 HealthMonitor loop entered")
+
+        # Initial delay to allow services to fully initialize after startup
+        # This prevents false "unhealthy" alerts during cold start
+        try:
+            await asyncio.sleep(15)  # Wait 15 seconds before first check
+            logger.info("🔍 HealthMonitor starting checks after initial delay")
+        except asyncio.CancelledError:
+            logger.info("👋 HealthMonitor cancelled during initial delay")
+            return
+
         while self.running:
             try:
                 await self._check_health()
@@ -85,11 +96,13 @@ class HealthMonitor:
         memory_service: Any = None,
         intelligent_router: Any = None,
         tool_executor: Any = None,
+        app_state: Any = None,
     ):
         """Inject services after initialization"""
         self.memory_service = memory_service
         self.intelligent_router = intelligent_router
         self.tool_executor = tool_executor
+        self.app_state = app_state  # Store for dynamic lookups
         logger.info("✅ HealthMonitor services injected")
 
     async def _check_health(self):
@@ -194,23 +207,61 @@ class HealthMonitor:
             return False
 
     async def _check_postgresql(self, memory_service) -> bool:
-        """Check if PostgreSQL is actually working"""
-        if memory_service is None:
-            return False
+        """Check if PostgreSQL is actually working by executing a real query"""
+        import asyncpg
 
+        from backend.app.core.config import settings
+
+        # Strategy 1: Try to get memory_service dynamically from app_state
+        service = memory_service
+        if service is None and self.app_state:
+            service = getattr(self.app_state, "memory_service", None)
+            logger.debug(f"Strategy 1: Got memory_service from app_state={service is not None}")
+
+        # Strategy 2: Try memory_service pool with actual query
+        if service is not None:
+            pool = getattr(service, "pool", None)
+            if pool:
+                try:
+                    async with pool.acquire() as conn:
+                        result = await conn.fetchval("SELECT 1")
+                        if result == 1:
+                            return True
+                except Exception as e:
+                    logger.warning(f"PostgreSQL Strategy 2 (memory_service.pool) failed: {e}")
+
+        # Strategy 3: Try db_pool from app_state
+        if self.app_state:
+            db_pool = getattr(self.app_state, "db_pool", None)
+            if db_pool:
+                try:
+                    async with db_pool.acquire() as conn:
+                        result = await conn.fetchval("SELECT 1")
+                        if result == 1:
+                            return True
+                except Exception as e:
+                    logger.warning(f"PostgreSQL Strategy 3 (app_state.db_pool) failed: {e}")
+
+        # Strategy 4: Direct connection test (fallback)
         try:
-            # Try a simple connection check or check pool status
-            if hasattr(memory_service, "pool") and memory_service.pool:
-                return True
-
-            # Check if it has a health method
-            if hasattr(memory_service, "health_check"):
-                return await memory_service.health_check()
-
-            return False
+            if settings.database_url:
+                conn = await asyncpg.connect(settings.database_url, timeout=5.0)
+                result = await conn.fetchval("SELECT 1")
+                await conn.close()
+                if result == 1:
+                    return True
+            else:
+                logger.warning("PostgreSQL Strategy 4: DATABASE_URL not set")
         except Exception as e:
-            logger.debug(f"PostgreSQL health check failed: {e}")
-            return False
+            logger.warning(f"PostgreSQL Strategy 4 (direct connect) failed: {e}")
+
+        # If we reach here, all strategies failed - log for debugging
+        logger.warning(
+            f"PostgreSQL health check failed: "
+            f"memory_service={memory_service is not None}, "
+            f"app_state={self.app_state is not None}"
+        )
+        return False
 
     async def _check_ai_router(self, intelligent_router) -> bool:
         """Check if AI Router is actually working"""

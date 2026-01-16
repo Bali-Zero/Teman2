@@ -120,23 +120,30 @@ class KBLIPlatinumIngestion:
         risk_data = data.get('risk_data', {})
         legal_notices = data.get('legal_notices', [])
         
+        # Keys in Atlas: risiko, skala, authority, ruang, sektor
+        risk_level = risk_data.get('risiko', 'Unknown')
+        scale = risk_data.get('skala', 'None')
+        sector = risk_data.get('sektor', 'General')
+        authority = risk_data.get('authority', 'N/A')
+        scope = risk_data.get('ruang', 'See regulation.')
+
         # Context Header
-        text = f"[CONTEXT: KBLI 2026 PLATINUM - Code {code} - {risk_data.get('sektor', 'General')} - Risk {risk_data.get('tingkat_risiko', 'Unknown')}]\n\n"
+        text = f"[CONTEXT: KBLI 2026 PLATINUM - Code {code} - {sector} - Risk {risk_level}]\n\n"
         
         # Main Body
         text += f"# {code} - {title}\n\n"
-        text += f"**Risk Level**: {risk_data.get('tingkat_risiko')} (Scale: {risk_data.get('skala_usaha')})\n"
-        text += f"**Sector**: {risk_data.get('sektor')}\n"
-        text += f"**Authority**: {risk_data.get('kewenangan', 'N/A')}\n\n"
+        text += f"**Risk Level**: {risk_level} (Scale: {scale})\n"
+        text += f"**Sector**: {sector}\n"
+        text += f"**Authority**: {authority}\n\n"
 
         # Scope
-        text += f"## Scope\n{risk_data.get('ruang_lingkup', 'See regulation.')}\n\n"
+        text += f"## Scope\n{scope}\n\n"
 
         # Legal Notices (Critical for RAG)
         if legal_notices:
             text += "## ⚠️ Critical Intelligence & Notices\n"
             for notice in legal_notices:
-                text += f"### {notice.get('title')}\n{notice.get('content')}\n"
+                text += f"### {notice.get('title')}\n{notice.get('description', 'No details available.')}\n"
                 if notice.get('tags'):
                     text += f"Tags: {', '.join(notice.get('tags'))}\n"
             text += "\n"
@@ -348,7 +355,10 @@ class KBLIPlatinumIngestion:
         # Save KG Data (Bulk)
         if not self.dry_run:
             logger.info(f"Saving KG Data: {len(all_nodes)} Nodes, {len(all_edges)} Edges...")
-            await self.save_kg_batch(all_nodes, all_edges)
+            try:
+                await self.save_kg_batch(all_nodes, all_edges)
+            except Exception as e:
+                logger.warning(f"Failed to persist KG to Postgres: {e}. Qdrant ingestion is unaffected.")
         else:
             logger.info(f"[DRY RUN] Would save {len(all_nodes)} Nodes and {len(all_edges)} Edges.")
             logger.info(f"[DRY RUN] Sample Pivots found: {pivot_samples[:5]}")
