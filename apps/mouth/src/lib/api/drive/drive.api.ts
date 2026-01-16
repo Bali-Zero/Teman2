@@ -322,8 +322,8 @@ export class DriveApi {
         reject(new Error('Network error during upload'));
       });
 
-      // Get auth token from client
-      const baseUrl = (this.client as unknown as { baseUrl: string }).baseUrl || '';
+      // Get base URL from client
+      const baseUrl = this.client.getBaseUrl();
       xhr.open('POST', `${baseUrl}/api/drive/files/upload`);
 
       // Set Authorization header

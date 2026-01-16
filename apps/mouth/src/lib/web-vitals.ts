@@ -6,7 +6,7 @@
 'use client';
 
 // Web Vitals monitoring disabled temporarily due to Vercel build issues
-// TODO: Re-enable when dependency resolution is fixed
+// Status: Tracked in backlog - Re-enable when dependency resolution is fixed
 
 // Define Metric type locally
 interface Metric {

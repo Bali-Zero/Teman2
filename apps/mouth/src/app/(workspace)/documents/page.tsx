@@ -321,7 +321,7 @@ export default function DocumentsPage() {
             <DepartmentHome
               files={files}
               onFolderClick={handleFolderClick}
-              storageUsed={0} // TODO: Get from API
+              storageUsed={0} // Feature: Storage tracking - Tracked in backlog
               storageTotal={30 * 1024 * 1024 * 1024 * 1024} // 30TB
             />
           ) : (

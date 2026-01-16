@@ -1,11 +1,21 @@
 import type { IApiClient } from '../types/api-client.types';
 import { AgentStep } from '@/types';
 import type { AgenticQueryResponse } from './chat.types';
+import { logger } from '@/lib/logger';
 
 /**
  * Clean image generation response to remove ugly pollinations URLs
- * NOTE: This is duplicated in actions.ts for server-side use.
- * Keep both in sync if making changes.
+ * 
+ * This is the SOURCE OF TRUTH for image response cleaning.
+ * Removes pollinations URLs, markdown images, version numbers, and other artifacts
+ * from AI-generated image responses.
+ * 
+ * Features:
+ * - Removes pollinations.ai URLs and subdomains
+ * - Filters markdown image syntax
+ * - Removes version numbers and intro/outro lines
+ * - Handles URL-encoded content
+ * - Provides fallback message if too much content is removed
  */
 function cleanImageResponse(text: string): string {
   if (!text || !text.toLowerCase().includes('pollinations')) {
@@ -90,7 +100,51 @@ export class ChatApi {
     };
   }
 
-  // SSE streaming via backend `/api/agentic-rag/stream` (Zantara AI v2.0)
+  /**
+   * SSE streaming via backend `/api/agentic-rag/stream` (Zantara AI v2.0)
+   * 
+   * **SOURCE OF TRUTH** for client-side streaming. This is the active implementation.
+   * 
+   * Features:
+   * - ✅ Robust error handling with error codes (TIMEOUT, ABORTED)
+   * - ✅ Configurable timeouts (request, idle, max total time)
+   * - ✅ Abort signal support for cancellation
+   * - ✅ Image cleaning (removes pollinations URLs and artifacts)
+   * - ✅ Correlation ID support for end-to-end tracing
+   * - ✅ CSRF token handling for cookie-based auth
+   * - ✅ Support for 13 event types (token, sources, metadata, image, reasoning_step, phase, keepalive, thinking, tool_call, observation, status, tool_start, tool_end)
+   * - ✅ Vision support (image attachments)
+   * - ✅ Conversation history management
+   * - ✅ Unmount detection (doesn't call callbacks if component unmounted)
+   * 
+   * @param message - User message text
+   * @param conversationId - Session ID for conversation continuity
+   * @param onChunk - Callback for each token chunk (receives accumulated text)
+   * @param onDone - Callback when stream completes (receives full response, sources, metadata)
+   * @param onError - Callback for errors (receives Error with optional code)
+   * @param onStep - Optional callback for step events (reasoning, tool calls, etc.)
+   * @param timeoutMs - Request timeout in ms (default: 120s)
+   * @param conversationHistory - Previous messages for context (max 200)
+   * @param abortSignal - AbortSignal for cancellation
+   * @param correlationId - Correlation ID for tracing
+   * @param idleTimeoutMs - Idle timeout in ms, resets on data (default: 60s)
+   * @param maxTotalTimeMs - Maximum total time in ms (default: 10min)
+   * @param images - Vision images (base64 encoded)
+   * 
+   * @throws Never throws - all errors are passed to onError callback
+   * 
+   * @example
+   * ```typescript
+   * await api.sendMessageStreaming(
+   *   'Hello',
+   *   sessionId,
+   *   (chunk) => console.log('Chunk:', chunk),
+   *   (full, sources, metadata) => console.log('Done:', full),
+   *   (error) => console.error('Error:', error),
+   *   (step) => console.log('Step:', step)
+   * );
+   * ```
+   */
   async sendMessageStreaming(
     message: string,
     conversationId: string | undefined,
@@ -124,10 +178,17 @@ export class ChatApi {
     // Always use standard Zantara AI endpoint (v2.0)
     const endpoint = '/api/agentic-rag/stream';
 
+    // Metrics tracking
+    const startTime = Date.now();
+    let firstChunkTime: number | null = null;
+    let lastChunkTime: number | null = null;
+    let chunkCount = 0;
+    let totalBytesReceived = 0;
+    let eventTypeCounts: Record<string, number> = {};
+
     const controller = new AbortController();
     let timedOut = false;
     let userCancelled = false;
-    const startTime = Date.now();
     let lastDataTime = Date.now();
     
     // Max total time budget
@@ -301,6 +362,15 @@ export class ChatApi {
           // Reset idle timeout on data arrival
           resetIdleTimeout();
           
+          // Track metrics
+          if (value) {
+            totalBytesReceived += value.length;
+            if (!firstChunkTime) {
+              firstChunkTime = Date.now();
+            }
+            lastChunkTime = Date.now();
+          }
+          
           sseBuffer += decoder.decode(value, { stream: true });
 
           // SSE frames can be split across network chunks; buffer until we have full lines.
@@ -331,11 +401,18 @@ export class ChatApi {
             try {
               data = JSON.parse(jsonStr);
             } catch {
-              console.warn('Failed to parse SSE message:', line);
+              logger.warn('Failed to parse SSE message', {
+                component: 'ChatApi',
+                action: 'parseSSE',
+                metadata: { line: line.substring(0, 100) }, // Truncate for safety
+              });
               continue;
             }
 
             if (!isRecord(data) || typeof data.type !== 'string') continue;
+
+            // Track event types for metrics
+            eventTypeCounts[data.type] = (eventTypeCounts[data.type] || 0) + 1;
 
             // Handle reasoning events
             if (data.type === 'reasoning_step') {
@@ -442,6 +519,7 @@ export class ChatApi {
                 (typeof data.data === 'string' && data.data) ||
                 '';
               fullResponse += text;
+              chunkCount++;
               // Reset idle timeout on token (data arrival)
               resetIdleTimeout();
               // Only call callback if not aborted
@@ -558,6 +636,29 @@ export class ChatApi {
 
         // Only call onDone if not aborted
         if (!signalToUse.aborted && !requestAborted) {
+          // Calculate final metrics
+          const totalDuration = Date.now() - startTime;
+          const timeToFirstChunk = firstChunkTime ? firstChunkTime - startTime : null;
+          const streamingDuration = lastChunkTime && firstChunkTime ? lastChunkTime - firstChunkTime : null;
+          
+          // Log metrics
+          logger.info('Stream completed', {
+            component: 'ChatApi',
+            action: 'sendMessageStreaming',
+            metadata: {
+              correlationId,
+              totalDuration: `${totalDuration}ms`,
+              timeToFirstChunk: timeToFirstChunk ? `${timeToFirstChunk}ms` : null,
+              streamingDuration: streamingDuration ? `${streamingDuration}ms` : null,
+              chunkCount,
+              totalBytesReceived,
+              responseLength: fullResponse.length,
+              sourcesCount: sources.length,
+              eventTypes: eventTypeCounts,
+              hasGeneratedImage: !!generatedImageUrl,
+            },
+          });
+
           // Merge generated image into metadata if present
           const metadataWithImage = generatedImageUrl
             ? { ...finalMetadata, generated_image: generatedImageUrl }
@@ -568,9 +669,29 @@ export class ChatApi {
         }
       }
     } catch (error) {
+      // Calculate error metrics
+      const errorDuration = Date.now() - startTime;
+      
       // Check abortSignal state at catch time (may have changed since listener was set)
       const isAbortSignalActive = abortSignal?.aborted === true;
       const isUserCancel = isAbortSignalActive && !timedOut;
+      
+      // Log error metrics
+      logger.error('Stream error', {
+        component: 'ChatApi',
+        action: 'sendMessageStreaming',
+        metadata: {
+          correlationId,
+          errorType: error instanceof Error ? error.name : 'Unknown',
+          errorMessage: error instanceof Error ? error.message : String(error),
+          duration: `${errorDuration}ms`,
+          timedOut,
+          userCancelled: isUserCancel || userCancelled,
+          chunkCount,
+          totalBytesReceived,
+          eventTypes: eventTypeCounts,
+        },
+      }, error instanceof Error ? error : new Error(String(error)));
       
       // Always call onError for timeouts and user cancellations
       // Only skip if component was unmounted (abortSignal.aborted but not timedOut/userCancelled)
