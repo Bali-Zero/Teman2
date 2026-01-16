@@ -1,0 +1,5450 @@
+{
+  "93112": {
+    "judul": "FASILITAS SIRKUIT",
+    "sektor": "Pariwisata / Pemuda Olahraga",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Terverifikasi)",
+    "kewenangan": "Gubernur (Lintas Kab) / Menteri (PMA)",
+    "status": "VERIFIED"
+  },
+  "86103": {
+    "judul": "AKTIVITAS RUMAH SAKIT SWASTA",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Izin Berusaha Rumah Sakit)",
+    "kewenangan": "Menteri (Kelas A/PMA), Gubernur (Kelas B), Bupati/Walikota (Kelas C/D)",
+    "status": "VERIFIED"
+  },
+  "78102": {
+    "judul": "AKTIVITAS PENEMPATAN TENAGA KERJA LUAR NEGERI",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SIP3MI)",
+    "kewenangan": "Menteri Ketenagakerjaan",
+    "status": "VERIFIED"
+  },
+  "80110": {
+    "judul": "AKTIVITAS INVESTIGASI DAN KEAMANAN SWASTA",
+    "sektor": "Kepolisian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Rekomendasi Polri)",
+    "kewenangan": "Kapolri / Kapolda",
+    "status": "VERIFIED"
+  },
+  "61101": {
+    "judul": "AKTIVITAS TELEKOMUNIKASI DENGAN KABEL",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Izin Penyelenggaraan Jaringan)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "43212": {
+    "judul": "PEMASANGAN JARINGAN TELEKOMUNIKASI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "69101": {
+    "judul": "AKTIVITAS PENGACARA",
+    "sektor": "Hukum dan HAM",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Hukum dan HAM",
+    "status": "VERIFIED"
+  },
+  "68112": {
+    "judul": "AKTIVITAS PENYEWAAN BANGUNAN DAN LAHAN HUNIAN MILIK SENDIRI",
+    "sektor": "Pertanahan/ATR",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "53100": {
+    "judul": "AKTIVITAS POS",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "53200": {
+    "judul": "AKTIVITAS KURIR",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "11020": {
+    "judul": "INDUSTRI MINUMAN BERALKOHOL HASIL FERMENTASI ANGGUR",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (IUI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "11030": {
+    "judul": "INDUSTRI MINUMAN BERALKOHOL HASIL FERMENTASI MALT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (IUI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "11040": {
+    "judul": "INDUSTRI MALT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "11051": {
+    "judul": "INDUSTRI AIR KEMASAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SNI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "11052": {
+    "judul": "INDUSTRI AIR MINUM ISI ULANG",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "12001": {
+    "judul": "INDUSTRI SIGARET KRETEK TANGAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (NPPBKC)",
+    "kewenangan": "Bea Cukai",
+    "status": "VERIFIED"
+  },
+  "13112": {
+    "judul": "PEMINTALAN BENANG SELAIN BENANG JAHIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "14111": {
+    "judul": "INDUSTRI PAKAIAN JADI (KONFEKSI) DARI TEKSTIL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15112": {
+    "judul": "PENYAMAKAN KULIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (IUI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "17021": {
+    "judul": "INDUSTRI KERTAS DAN PAPAN KERTAS BERGELOMBANG",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "18113": {
+    "judul": "PENCETAKAN TIGA DIMENSI (3D)",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "19201": {
+    "judul": "INDUSTRI BAHAN BAKAR DARI PEMURNIAN DAN PENGILANGAN",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "20112": {
+    "judul": "INDUSTRI GAS INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (IUI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "21012": {
+    "judul": "INDUSTRI PRODUK FARMASI UNTUK MANUSIA",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Kesehatan",
+    "status": "VERIFIED"
+  },
+  "22111": {
+    "judul": "INDUSTRI BAN LUAR DAN BAN DALAM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23941": {
+    "judul": "INDUSTRI SEMEN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "24310": {
+    "judul": "PENGECORAN BESI DAN BAJA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "25130": {
+    "judul": "INDUSTRI GENERATOR UAP BUKAN KETEL PEMANAS",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26210": {
+    "judul": "INDUSTRI KOMPUTER DAN PERAKITAN KOMPUTER",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "27112": {
+    "judul": "INDUSTRI GENERATOR PEMBANGKIT LISTRIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28111": {
+    "judul": "INDUSTRI MESIN UAP, TURBIN, DAN KINCIR",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "29100": {
+    "judul": "INDUSTRI KENDARAAN BERMOTOR RODA EMPAT ATAU LEBIH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "30301": {
+    "judul": "INDUSTRI PESAWAT UDARA BERAWAK DAN MESIN TERKAIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "31011": {
+    "judul": "INDUSTRI FURNITUR DARI KAYU",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "32501": {
+    "judul": "INDUSTRI FURNITUR UNTUK OPERASI, PERAWATAN KEDOKTERAN",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Produksi",
+    "kewenangan": "Menteri Kesehatan",
+    "status": "VERIFIED"
+  },
+  "33121": {
+    "judul": "REPARASI DAN PEMELIHARAAN MESIN UNTUK KEPERLUAN UMUM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "11053": {
+    "judul": "INDUSTRI MINUMAN RINGAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "11059": {
+    "judul": "INDUSTRI MINUMAN LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "12002": {
+    "judul": "INDUSTRI SIGARET KRETEK MESIN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (NPPBKC)",
+    "kewenangan": "Bea Cukai",
+    "status": "VERIFIED"
+  },
+  "12003": {
+    "judul": "INDUSTRI ROKOK PUTIH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (NPPBKC)",
+    "kewenangan": "Bea Cukai",
+    "status": "VERIFIED"
+  },
+  "12004": {
+    "judul": "INDUSTRI PENGERINGAN DAN PENGOLAHAN TEMBAKAU",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "12005": {
+    "judul": "INDUSTRI BUMBU ROKOK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "12009": {
+    "judul": "INDUSTRI PRODUK TEMBAKAU LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "13121": {
+    "judul": "PERTENUNAN TEKSTIL DENGAN MESIN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "13122": {
+    "judul": "PERTENUNAN TEKSTIL BUKAN DENGAN MESIN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13139": {
+    "judul": "PENYEMPURNAAN TEKSTIL LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13911": {
+    "judul": "INDUSTRI KAIN RAJUTAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13912": {
+    "judul": "INDUSTRI KAIN CROCHETED",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13923": {
+    "judul": "INDUSTRI KARUNG GONI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13929": {
+    "judul": "INDUSTRI BARANG TEKSTIL BUKAN PAKAIAN JADI LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13942": {
+    "judul": "INDUSTRI BARANG DARI TALI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13992": {
+    "judul": "INDUSTRI KAIN YANG DILAPISI DAN SEJENISNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "13994": {
+    "judul": "INDUSTRI KAIN BAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "14112": {
+    "judul": "INDUSTRI PAKAIAN JADI (KONFEKSI) DARI KULIT DAN TIRUAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "14120": {
+    "judul": "INDUSTRI PENJAHITAN DAN PEMBUATAN (BUKAN KONFEKSI)",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "14132": {
+    "judul": "INDUSTRI PERLENGKAPAN PAKAIAN DARI KULIT DAN TIRUAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "14200": {
+    "judul": "INDUSTRI BARANG DARI KULIT BERBULU",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "14302": {
+    "judul": "INDUSTRI HOSIERY RAJUTAN DAN CROCHETED",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15113": {
+    "judul": "PEWARNAAN KULIT BERBULU",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "15122": {
+    "judul": "INDUSTRI PELANA, ALAT PENGEKANG/HARNESS, DAN BARANG",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15129": {
+    "judul": "INDUSTRI BARANG LAINNYA DARI KULIT DAN KULIT KOMPOSISI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15201": {
+    "judul": "INDUSTRI ALAS KAKI UNTUK KEPERLUAN SEHARI-HARI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15202": {
+    "judul": "INDUSTRI SEPATU OLAHRAGA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15203": {
+    "judul": "INDUSTRI SEPATU TEKNIK LAPANGAN/KEPERLUAN INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "15209": {
+    "judul": "INDUSTRI ALAS KAKI LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "18120": {
+    "judul": "KEGIATAN JASA PENUNJANG PENCETAKAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "18201": {
+    "judul": "REPRODUKSI MEDIA REKAMAN SUARA DAN PERANGKAT LUNAK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "18202": {
+    "judul": "REPRODUKSI MEDIA REKAMAN FILM DAN VIDEO",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "19202": {
+    "judul": "INDUSTRI MINYAK PELUMAS",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "19203": {
+    "judul": "INDUSTRI PRODUK DARI BAHAN LIMBAH MINYAK PELUMAS",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "19204": {
+    "judul": "INDUSTRI MINYAK PELUMAS DASAR",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "19205": {
+    "judul": "INDUSTRI BRIKET",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "19206": {
+    "judul": "INDUSTRI PRODUK DARI PENCAMPURAN HASIL KILANG MINYAK",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "20113": {
+    "judul": "INDUSTRI KIMIA DASAR ZAT WARNA DAN PIGMEN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20114": {
+    "judul": "INDUSTRI KIMIA DASAR RADIOAKTIF",
+    "sektor": "ESDM / Ketenaganukliran",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "BAPETEN",
+    "status": "VERIFIED"
+  },
+  "20116": {
+    "judul": "INDUSTRI KIMIA DASAR DARI MINYAK BUMI, GAS ALAM, DAN BATU",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20132": {
+    "judul": "INDUSTRI KARET BUATAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20213": {
+    "judul": "INDUSTRI ZAT PENGATUR TUMBUH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20229": {
+    "judul": "INDUSTRI SEDIAAN PEWARNA DAN PELAPIS LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20231": {
+    "judul": "INDUSTRI BAHAN DAN PRODUK PEMBERSIH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20235": {
+    "judul": "INDUSTRI PARFUM SESUAI PESANAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "20291": {
+    "judul": "INDUSTRI PEREKAT/LEM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "20297": {
+    "judul": "INDUSTRI BIOFUEL CAIR",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "20298": {
+    "judul": "INDUSTRI CAIRAN ROKOK ELEKTRIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "22112": {
+    "judul": "INDUSTRI PEMBENTUKAN KEMBALI BAN DAN VULKANISASI BAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "22123": {
+    "judul": "INDUSTRI KARET REMAH (CRUMB RUBBER)",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "22193": {
+    "judul": "INDUSTRI BARANG KARET LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "22199": {
+    "judul": "INDUSTRI BARANG LAINNYA DARI KARET YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "22204": {
+    "judul": "INDUSTRI PLASTIK LEMBARAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "22209": {
+    "judul": "INDUSTRI BARANG LAINNYA DARI PLASTIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23111": {
+    "judul": "INDUSTRI KACA LEMBARAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23112": {
+    "judul": "INDUSTRI KACA PENGAMAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23119": {
+    "judul": "INDUSTRI KACA LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23121": {
+    "judul": "INDUSTRI PERLENGKAPAN DAN PERALATAN RUMAH TANGGA DARI KACA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23122": {
+    "judul": "INDUSTRI PERALATAN LABORATORIUM DAN KESEHATAN DARI KACA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23911": {
+    "judul": "INDUSTRI BATA, MORTAR, SEMEN YANG TAHAN API",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23921": {
+    "judul": "INDUSTRI BATU BATA DARI TANAH LIAT ATAU KERAMIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23991": {
+    "judul": "INDUSTRI PRODUK ABRASIF",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "23992": {
+    "judul": "INDUSTRI BATUAN ASPAL DAN BARANG DARI ASPAL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23993": {
+    "judul": "INDUSTRI PRODUK HASIL PEMURNIAN MINERAL NONLOGAM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "23999": {
+    "judul": "INDUSTRI PRODUK MINERAL NONLOGAM LAINNYA YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "24201": {
+    "judul": "INDUSTRI LOGAM DASAR MULIA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "24202": {
+    "judul": "INDUSTRI LOGAM DASAR BUKAN BESI LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "24203": {
+    "judul": "PENGGILINGAN LOGAM BUKAN BESI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "25119": {
+    "judul": "INDUSTRI PRODUK LOGAM STRUKTURAL LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "25951": {
+    "judul": "INDUSTRI BARANG DARI KAWAT LOGAM BUKAN KABEL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26110": {
+    "judul": "INDUSTRI KOMPONEN ELEKTRONIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26191": {
+    "judul": "INDUSTRI TABUNG ELEKTRON DAN KONEKTOR ELEKTRONIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26199": {
+    "judul": "INDUSTRI KOMPONEN DAN PAPAN ELEKTRONIK LAINNYA YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26391": {
+    "judul": "INDUSTRI KARTU CERDAS (SMART CARD)",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26511": {
+    "judul": "INDUSTRI ALAT UKUR DAN ALAT UJI MANUAL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26519": {
+    "judul": "INDUSTRI ALAT UKUR, ALAT UJI, DAN PERALATAN NAVIGASI LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "26601": {
+    "judul": "INDUSTRI PERALATAN RADIASI DAN ELEKTROMEDIS",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Produksi",
+    "kewenangan": "Menteri Kesehatan",
+    "status": "VERIFIED"
+  },
+  "26701": {
+    "judul": "INDUSTRI PERALATAN FOTOGRAFI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26702": {
+    "judul": "INDUSTRI PERALATAN SINEMATOGRAFI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26703": {
+    "judul": "INDUSTRI LENSA BUKAN KACAMATA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26709": {
+    "judul": "INDUSTRI PERALATAN FOTOGRAFI DAN INSTRUMEN OPTIK LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "26800": {
+    "judul": "INDUSTRI MEDIA MAGNETIK DAN MEDIA OPTIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "27113": {
+    "judul": "INDUSTRI TRANSFORMATOR, PENGONTROL DAN PENYALUR LISTRIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "27310": {
+    "judul": "INDUSTRI KABEL SERAT OPTIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "27401": {
+    "judul": "INDUSTRI BOLA LAMPU PIJAR, LAMPU SOROT, DAN LAMPU LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "27402": {
+    "judul": "INDUSTRI LAMPU GAS DAN DISCHARGE",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "27520": {
+    "judul": "INDUSTRI PERALATAN ELEKTROTERMAL RUMAH TANGGA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28112": {
+    "judul": "INDUSTRI MOTOR PEMBAKARAN DALAM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28152": {
+    "judul": "INDUSTRI OVEN, PERAPIAN DAN TUNGKU PEMBAKAR SEJENIS",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28172": {
+    "judul": "INDUSTRI MESIN KANTOR DAN AKUNTANSI ELEKTRIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28173": {
+    "judul": "INDUSTRI MESIN KANTOR DAN AKUNTANSI ELEKTRONIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28179": {
+    "judul": "INDUSTRI PERALATAN KANTOR",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28180": {
+    "judul": "INDUSTRI PERKAKAS TANGAN YANG DIGERAKKAN TENAGA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28192": {
+    "judul": "INDUSTRI MESIN TIMBANGAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28199": {
+    "judul": "INDUSTRI MESIN UNTUK KEPERLUAN UMUM LAINNYA YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28210": {
+    "judul": "INDUSTRI MESIN PERTANIAN DAN KEHUTANAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28220": {
+    "judul": "INDUSTRI MESIN DAN PERKAKAS MESIN UNTUK PENGERJAAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28230": {
+    "judul": "INDUSTRI MESIN METALURGI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28240": {
+    "judul": "INDUSTRI MESIN PENAMBANGAN, PENGGALIAN DAN KONSTRUKSI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28261": {
+    "judul": "INDUSTRI MESIN JAHIT, MESIN CUCI, DAN MESIN PENGERING",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "28262": {
+    "judul": "INDUSTRI MESIN TEKSTIL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28263": {
+    "judul": "INDUSTRI MESIN PENYIAPAN DAN PEMBUATAN PRODUK KULIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28291": {
+    "judul": "INDUSTRI MESIN PERCETAKAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28292": {
+    "judul": "INDUSTRI MESIN PABRIK KERTAS",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "28299": {
+    "judul": "INDUSTRI MESIN KEPERLUAN KHUSUS LAINNYA YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "29200": {
+    "judul": "INDUSTRI KAROSERI KENDARAAN BERMOTOR RODA EMPAT ATAU LEBIH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "30302": {
+    "judul": "INDUSTRI PESAWAT UDARA TANPA AWAK DAN MESIN TERKAIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "30303": {
+    "judul": "INDUSTRI WAHANA ANTARIKSA DAN MESIN TERKAIT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "31021": {
+    "judul": "INDUSTRI FURNITUR DARI PLASTIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "31022": {
+    "judul": "INDUSTRI FURNITUR DARI LOGAM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "31029": {
+    "judul": "INDUSTRI FURNITUR DARI BAHAN LAINNYA YTDL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "32113": {
+    "judul": "INDUSTRI BARANG BERHARGA DARI LOGAM MULIA BUKAN PERHIASAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "32119": {
+    "judul": "INDUSTRI BARANG BERHARGA LAINNYA DARI LOGAM MULIA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "32908": {
+    "judul": "INDUSTRI PEMANTIK API/LIGHTER",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "33131": {
+    "judul": "REPARASI DAN PEMELIHARAAN ALAT UKUR, ALAT UJI LAINNYA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "33132": {
+    "judul": "REPARASI PERALATAN FOTOGRAFI E OPTIK",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "33141": {
+    "judul": "REPARASI DAN PEMELIHARAAN MOTOR LISTRIK, GENERATOR",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "33152": {
+    "judul": "REPARASI DAN PEMELIHARAAN LOKOMOTIF DAN GERBONG",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "33201": {
+    "judul": "INSTALASI/PEMASANGAN DAN PERANGKAIAN MESIN INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "33202": {
+    "judul": "PEMBONGKARAN MESIN, PERALATAN, DAN SISTEM INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "33203": {
+    "judul": "PEMASANGAN PERLENGKAPAN METEOROLOGI, KLIMATOLOGI",
+    "sektor": "ESDM / Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri/Gubernur",
+    "status": "VERIFIED"
+  },
+  "35133": {
+    "judul": "PENGOPERASIAN FASILITAS PENGISIAN KENDARAAN LISTRIK (SPKLU)",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Izin Usaha Penyediaan Tenaga Listrik - IUPTL)",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "35151": {
+    "judul": "PENGOPERASIAN INSTALASI PENYEDIAAN TENAGA LISTRIK",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (IUPTL)",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "35152": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "35159": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "35301": {
+    "judul": "PENGADAAN UAP/AIR PANAS DAN UDARA DINGIN",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "35401": {
+    "judul": "AKTIVITAS BROKER DAN AGEN PENJUALAN TENAGA LISTRIK",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "35402": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "37001": {
+    "judul": "PENGUMPULAN AIR LIMBAH",
+    "sektor": "LHK / PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Persetujuan Teknis Pembuangan Air Limbah)",
+    "kewenangan": "Menteri LHK / Bupati",
+    "status": "VERIFIED"
+  },
+  "37002": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38110": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38121": {
+    "judul": "PENGUMPULAN LIMBAH BERBAHAYA (B3)",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Izin Pengelolaan Limbah B3)",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "38122": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38211": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38219": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38221": {
+    "judul": "PENGOLAHAN LIMBAH BERBAHAYA (B3)",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Izin Pengolahan B3)",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "38222": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38302": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "38309": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "39001": {
+    "judul": "AKTIVITAS PENANGKAPAN KARBON (CCS)",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Khusus Karbon",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "39002": {
+    "judul": "UTILITIES_AND_WASTE",
+    "sektor": "ESDM / LHK",
+    "tingkat_risiko": "Menengah Tinggi - Tinggi",
+    "perizinan_berusaha": "NIB + Izin/Sertifikat Standar Sektoral",
+    "kewenangan": "Menteri ESDM / LHK",
+    "status": "VERIFIED"
+  },
+  "85101": {
+    "judul": "PENDIDIKAN TAMAN KANAK-KANAK",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Pendirian Satuan Pendidikan (Non-OSS / Integrasi)",
+    "kewenangan": "Bupati/Walikota (Dinas Pendidikan)",
+    "status": "VERIFIED"
+  },
+  "85103": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85104": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85201": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85203": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85204": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85311": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85313": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85314": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85315": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85317": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85318": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85321": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85323": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85324": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85330": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85401": {
+    "judul": "PENDIDIKAN TINGGI UMUM",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Pendirian Perguruan Tinggi",
+    "kewenangan": "Menteri Pendidikan (Kemendikbudristek)",
+    "status": "VERIFIED"
+  },
+  "85403": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85510": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85520": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85530": {
+    "judul": "KEGIATAN SEKOLAH MENGEMUDI",
+    "sektor": "Perhubungan / Polri",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Izin Lembaga Pelatihan)",
+    "kewenangan": "Kapolri / Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "85541": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85542": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85549": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85550": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85560": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85572": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85573": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85574": {
+    "judul": "PELATIHAN KERJA PARIWISATA DAN PERHOTELAN",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (LPK)",
+    "kewenangan": "Bupati/Walikota / Menaker",
+    "status": "VERIFIED"
+  },
+  "85575": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85576": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85577": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85578": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85579": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85581": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85582": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85583": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85584": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85585": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85586": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85587": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85589": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85591": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85592": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85595": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85597": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85610": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85693": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85694": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "85699": {
+    "judul": "SPECIAL_EDUCATION_SECTOR",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "Izin Satuan Pendidikan",
+    "kewenangan": "Kemendikbudristek / Kemenag",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "99000": {
+    "judul": "AKTIVITAS EKSTRATERITORIAL (KEDUTAAN)",
+    "sektor": "Internasional",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Kemenlu",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "64110": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64121": {
+    "judul": "PERBANKAN UMUM KONVENSIONAL",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Bank Umum (OJK)",
+    "kewenangan": "Otoritas Jasa Keuangan (OJK)",
+    "status": "VERIFIED"
+  },
+  "64122": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64123": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64124": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64191": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64192": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64193": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64194": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64199": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64210": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64220": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64310": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64320": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64330": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64910": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64920": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64930": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64940": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64951": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64952": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64953": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64954": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64955": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64959": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64991": {
+    "judul": "AKTIVITAS MODAL VENTURA",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Modal Ventura (OJK)",
+    "kewenangan": "OJK",
+    "status": "VERIFIED"
+  },
+  "64992": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64993": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64994": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64995": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64996": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64997": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "64999": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66111": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66112": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66113": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66114": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66115": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66116": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66117": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66119": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66121": {
+    "judul": "KEPIALANGAN EFEK (BROKER-DEALER)",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Perusahaan Efek (OJK)",
+    "kewenangan": "OJK",
+    "status": "VERIFIED"
+  },
+  "66122": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66123": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66124": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66125": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66126": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66127": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66129": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66131": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66132": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66133": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66141": {
+    "judul": "PENYEDIAAN JASA PEMBAYARAN (PJP)",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin PJP (Bank Indonesia)",
+    "kewenangan": "Bank Indonesia",
+    "status": "VERIFIED"
+  },
+  "66142": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66143": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66144": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66149": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66151": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66152": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66153": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66159": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66161": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66162": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66191": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66192": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66193": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66194": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66195": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66196": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66197": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66198": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66199": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66211": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66212": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66221": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66222": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66223": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66224": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66225": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66226": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66291": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66299": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66301": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66302": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66303": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "66309": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "97000": {
+    "judul": "NON_BUSINESS_OR_SPECIAL",
+    "sektor": "Lainnya",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Instansi Terkait",
+    "status": "UNREGULATED"
+  },
+  "65111": {
+    "judul": "ASURANSI JIWA KONVENSIONAL",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Asuransi (OJK)",
+    "kewenangan": "OJK",
+    "status": "VERIFIED"
+  },
+  "65112": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65121": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65122": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65123": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65131": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65132": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65201": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65202": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65203": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65204": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65301": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65302": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65303": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "65304": {
+    "judul": "SPECIAL_FINANCIAL_SECTOR",
+    "sektor": "Keuangan (OJK/BI)",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Usaha Sektoral OJK/BI",
+    "kewenangan": "OJK / Bank Indonesia",
+    "status": "RECOVERED_FROM_LEX_SPECIALIS"
+  },
+  "84111": {
+    "judul": "LEMBAGA LEGISLATIF",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI / REGULATED BY STATE",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84112": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84113": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84114": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84115": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84119": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84121": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84122": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84123": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84124": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84125": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84126": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84129": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84130": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84141": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84142": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84143": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84144": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84145": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84146": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84147": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84148": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84149": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84210": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84221": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84222": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84223": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84224": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84231": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84232": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84233": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84234": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "84300": {
+    "judul": "GOVERNMENT_ADMINISTRATION",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Negara",
+    "status": "UNREGULATED_BY_OSS"
+  },
+  "98100": {
+    "judul": "NON_BUSINESS_OR_SPECIAL",
+    "sektor": "Lainnya",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Instansi Terkait",
+    "status": "UNREGULATED"
+  },
+  "98200": {
+    "judul": "NON_BUSINESS_OR_SPECIAL",
+    "sektor": "Lainnya",
+    "tingkat_risiko": "NON-BUSINESS",
+    "perizinan_berusaha": "NON-KBLI",
+    "kewenangan": "Instansi Terkait",
+    "status": "UNREGULATED"
+  },
+  "75001": {
+    "judul": "AKTIVITAS PERSONEL KESEHATAN HEWAN MANDIRI",
+    "sektor": "Pertanian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "75002": {
+    "judul": "AKTIVITAS PENGELOLAAN SARANA KESEHATAN HEWAN",
+    "sektor": "Pertanian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "75009": {
+    "judul": "AKTIVITAS PENGELOLAAN KESEHATAN HEWAN LAINNYA",
+    "sektor": "Pertanian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "02102": {
+    "judul": "PEMANFAATAN KAYU HUTAN",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Izin Usaha Pemanfaatan Hasil Hutan Kayu)",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "02103": {
+    "judul": "PEMBENIHAN TANAMAN KEHUTANAN",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "02201": {
+    "judul": "PEMANENAN KAYU",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "02202": {
+    "judul": "PEMUNGUTAN KAYU",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "02300": {
+    "judul": "PEMUNGUTAN HASIL HUTAN BUKAN KAYU",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "02401": {
+    "judul": "JASA LINGKUNGAN HUTAN",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "02402": {
+    "judul": "JASA PENGGUNAAN KAWASAN KEHUTANAN",
+    "sektor": "Lingkungan Hidup dan Kehutanan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "03300": {
+    "judul": "JASA PENUNJANG PERIKANAN",
+    "sektor": "Kelautan dan Perikanan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri KKP",
+    "status": "VERIFIED"
+  },
+  "46420": {
+    "judul": "PERDAGANGAN BESAR FURNITUR, KARPET, PERLENGKAPAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "46739": {
+    "judul": "PERDAGANGAN BESAR BAHAN KONSTRUKSI LAINNYA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "46901": {
+    "judul": "PERDAGANGAN BESAR BERBAGAI MACAM BARANG",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "47211": {
+    "judul": "PERDAGANGAN ECERAN BAHAN MAKANAN DAN MINUMAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "73201": {
+    "judul": "PENELITIAN PASAR",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "73202": {
+    "judul": "JAJAK PENDAPAT OPINI",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "73300": {
+    "judul": "AKTIVITAS KEHUMASAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77291": {
+    "judul": "PENYEWAAN PERALATAN DAN PERLENGKAPAN ACARA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77292": {
+    "judul": "PENYEWAAN ALAT MUSIK",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77294": {
+    "judul": "PENYEWAAN BUNGA DAN TANAMAN HIAS",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77299": {
+    "judul": "PENYEWAAN BARANG PRIBADI DAN BARANG RUMAH TANGGA LAINNYA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77395": {
+    "judul": "PENYEWAAN MESIN KANTOR",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77400": {
+    "judul": "SEWA GUNA USAHA KEKAYAAN INTELEKTUAL DAN PRODUK SEJENIS",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77510": {
+    "judul": "AKTIVITAS JASA INTERMEDIASI UNTUK PENYEWAAN DAN SEWA GUNA USAHA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "77520": {
+    "judul": "AKTIVITAS JASA INTERMEDIASI UNTUK PENYEWAAN DAN SEWA GUNA USAHA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82100": {
+    "judul": "AKTIVITAS ADMINISTRASI KANTOR DAN PENUNJANG KANTOR",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82300": {
+    "judul": "PENYELENGGARAAN KONVENSI DAN PAMERAN BISNIS",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82400": {
+    "judul": "JASA INTERMEDIASI UNTUK AKTIVITAS PENUNJANG USAHA YTDL",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82911": {
+    "judul": "AKTIVITAS AGEN PENAGIHAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82912": {
+    "judul": "AKTIVITAS BIRO KREDIT",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82921": {
+    "judul": "AKTIVITAS PENGEPAKAN BAHAN DAN PRODUK HASIL PERTANIAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82922": {
+    "judul": "AKTIVITAS PENGEPAKAN BAHAN DAN PRODUK MAKANAN DAN MINUMAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82923": {
+    "judul": "AKTIVITAS PENGEPAKAN TEKSTIL DAN PRODUK TEKSTIL",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82924": {
+    "judul": "AKTIVITAS PENGEPAKAN BAHAN DAN PRODUK KIMIA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82925": {
+    "judul": "AKTIVITAS PENGEPAKAN BAHAN DAN PRODUK FARMASI",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82929": {
+    "judul": "AKTIVITAS PENGEPAKAN LAINNYA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "82990": {
+    "judul": "AKTIVITAS JASA PENUNJANG USAHA LAINNYA YTDL",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95101": {
+    "judul": "REPARASI DAN PEMELIHARAAN KOMPUTER DAN PERALATAN SEJENISNYA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95102": {
+    "judul": "REPARASI DAN PEMELIHARAAN PERALATAN KOMUNIKASI",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95210": {
+    "judul": "REPARASI BARANG ELEKTRONIK KONSUMEN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95311": {
+    "judul": "REPARASI MOBIL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95312": {
+    "judul": "PENCUCIAN DAN SALON MOBIL",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95320": {
+    "judul": "REPARASI DAN PERAWATAN SEPEDA MOTOR",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "95400": {
+    "judul": "JASA INTERMEDIASI REPARASI DAN PERAWATAN KOMPUTER",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "49111": {
+    "judul": "ANGKUTAN KERETA WISATA ANTARKOTA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasi",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49119": {
+    "judul": "TRANSPORTASI REL LAINNYA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasi",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49120": {
+    "judul": "TRANSPORTASI KERETA API UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasi",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49212": {
+    "judul": "ANGKUTAN KERETA API PERKOTAAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasi",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49213": {
+    "judul": "ANGKUTAN PERKOTAAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur/Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "49214": {
+    "judul": "ANGKUTAN PERDESAAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "49219": {
+    "judul": "TRANSPORTASI DARAT DALAM KOTA LAINNYA UNTUK PENUMPANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "49221": {
+    "judul": "ANGKUTAN ANTARKOTA ANTARPROVINSI (AKAP)",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49222": {
+    "judul": "ANGKUTAN ANTARKOTA DALAM PROVINSI (AKDP)",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "49223": {
+    "judul": "ANGKUTAN LINTAS BATAS NEGARA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49291": {
+    "judul": "ANGKUTAN KERETA API LAINNYA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasi",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49292": {
+    "judul": "ANGKUTAN PARIWISATA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49293": {
+    "judul": "ANGKUTAN TAKSI",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Gubernur/Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "49294": {
+    "judul": "ANGKUTAN KHUSUS",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "49295": {
+    "judul": "ANGKUTAN SEWA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penyelenggaraan Angkutan",
+    "kewenangan": "Gubernur/Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "50112": {
+    "judul": "ANGKUTAN LAUT DALAM NEGERI PERINTIS UNTUK PENUMPANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50113": {
+    "judul": "ANGKUTAN LAUT DALAM NEGERI UNTUK WISATA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50115": {
+    "judul": "ANGKUTAN LAUT LUAR NEGERI UNTUK WISATA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50122": {
+    "judul": "ANGKUTAN LAUT DALAM NEGERI UNTUK BARANG KHUSUS",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50123": {
+    "judul": "ANGKUTAN LAUT DALAM NEGERI PERINTIS UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50124": {
+    "judul": "ANGKUTAN LAUT DALAM NEGERI PELAYARAN RAKYAT UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur/Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "50125": {
+    "judul": "ANGKUTAN LAUT LUAR NEGERI UNTUK BARANG UMUM",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50126": {
+    "judul": "ANGKUTAN LAUT LUAR NEGERI UNTUK BARANG KHUSUS",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Laut",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50127": {
+    "judul": "ANGKUTAN LAUT LUAR NEGERI PELAYARAN RAKYAT UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "50139": {
+    "judul": "TRANSPORTASI PESISIR LAINNYA UNTUK PENUMPANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "50149": {
+    "judul": "TRANSPORTASI PESISIR LAINNYA UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "50212": {
+    "judul": "ANGKUTAN SUNGAI DAN DANAU TRAMPER",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "50213": {
+    "judul": "ANGKUTAN SUNGAI DAN DANAU UNTUK WISATA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "51102": {
+    "judul": "ANGKUTAN UDARA NIAGA TIDAK BERJADWAL UNTUK PENUMPANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Angkutan Udara",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52101": {
+    "judul": "PENGELOLA GUDANG SISTEM RESI GUDANG",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (Persetujuan Bappebti)",
+    "kewenangan": "Menteri Perdagangan",
+    "status": "VERIFIED"
+  },
+  "52104": {
+    "judul": "PENYIMPANAN MINYAK DAN GAS BUMI",
+    "sektor": "ESDM",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Penyimpanan Migas",
+    "kewenangan": "Menteri ESDM",
+    "status": "VERIFIED"
+  },
+  "52105": {
+    "judul": "AKTIVITAS PENYIMPANAN BARANG BERBAHAYA DAN BERACUN",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Pengelolaan Limbah B3",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "52107": {
+    "judul": "PENYIMPANAN MINERAL IKUTAN RADIOAKTIF",
+    "sektor": "Ketenaganukliran",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (BAPETEN)",
+    "kewenangan": "BAPETEN",
+    "status": "VERIFIED"
+  },
+  "52109": {
+    "judul": "PERGUDANGAN DAN PENYIMPANAN LAINNYA",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "52211": {
+    "judul": "AKTIVITAS TERMINAL DARAT",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52212": {
+    "judul": "AKTIVITAS PENYELENGGARAAN PRASARANA PERKERETAAPIAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Prasarana",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52213": {
+    "judul": "AKTIVITAS JALAN TOL",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Jalan Tol",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "52219": {
+    "judul": "AKTIVITAS JASA TERKAIT TRANSPORTASI DARAT LAINNYA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "52226": {
+    "judul": "AKTIVITAS PENYELAMATAN KAPAL DAN MUATANNYA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52227": {
+    "judul": "ANGKUTAN PERAIRAN PELABUHAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52232": {
+    "judul": "JASA PELAYANAN NAVIGASI PENERBANGAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52233": {
+    "judul": "PELAYANAN PENUMPANG, BAGASI, KARGO, POS, DAN TEKNIS",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52234": {
+    "judul": "AKTIVITAS GROUND HANDLING",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52239": {
+    "judul": "AKTIVITAS JASA TERKAIT ANGKUTAN UDARA LAINNYA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52292": {
+    "judul": "AKTIVITAS TALLY MANDIRI",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52299": {
+    "judul": "AKTIVITAS PENUNJANG ANGKUTAN LAINNYA YTDL",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52311": {
+    "judul": "JASA PENGURUSAN TRANSPORTASI (JPT)",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52312": {
+    "judul": "JASA KEAGENAN KAPAL/AGEN PERKAPALAN",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52313": {
+    "judul": "AKTIVITAS PERWAKILAN OPERASIONAL TRANSPORTASI UDARA",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52319": {
+    "judul": "JASA INTERMEDIASI TRANSPORTASI LAINNYA UNTUK BARANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52321": {
+    "judul": "AGEN PENJUALAN TIKET TRANSPORTASI",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "52322": {
+    "judul": "AGEN PENGURUS PERSETUJUAN TERBANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52323": {
+    "judul": "AKTIVITAS PERWAKILAN OPERASIONAL TRANSPORTASI UDARA ASING",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "52329": {
+    "judul": "JASA INTERMEDIASI TRANSPORTASI LAINNYA UNTUK PENUMPANG",
+    "sektor": "Perhubungan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "55102": {
+    "judul": "AKTIVITAS HOTEL BINTANG EMPAT",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "55103": {
+    "judul": "AKTIVITAS HOTEL BINTANG TIGA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "55104": {
+    "judul": "AKTIVITAS HOTEL BINTANG DUA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55105": {
+    "judul": "AKTIVITAS HOTEL BINTANG SATU",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55106": {
+    "judul": "AKTIVITAS HOTEL NONBINTANG",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55201": {
+    "judul": "AKTIVITAS RUMAH TINGGAL SEWA (HOMESTAY)",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55203": {
+    "judul": "AKTIVITAS VILA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55204": {
+    "judul": "AKTIVITAS APARTEMEN HOTEL",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "55209": {
+    "judul": "AKTIVITAS PENYEDIAAN AKOMODASI JANGKA PENDEK LAINNYA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55300": {
+    "judul": "AKTIVITAS PENYEDIAAN BUMI PERKEMAHAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55400": {
+    "judul": "AKTIVITAS JASA INTERMEDIASI AKOMODASI",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55901": {
+    "judul": "AKTIVITAS JASA MANAJEMEN AKOMODASI",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "55909": {
+    "judul": "PENYEDIAAN AKOMODASI LAINNYA YTDL",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "56102": {
+    "judul": "AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TIDAK TETAP",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "56210": {
+    "judul": "AKTIVITAS JASA BOGA UNTUK SUATU EVENT TERTENTU (CATERING)",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Sertifikat Laik Higiene)",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "56400": {
+    "judul": "AKTIVITAS JASA INTERMEDIASI PENYEDIAAN MAKANAN DAN MINUMAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74111": {
+    "judul": "AKTIVITAS DESAIN ALAT TRANSPORTASI DAN PERMESINAN",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74113": {
+    "judul": "AKTIVITAS DESAIN TEKSTIL, MODE/FESYEN",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74115": {
+    "judul": "AKTIVITAS DESAIN ALAT KOMUNIKASI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74117": {
+    "judul": "AKTIVITAS DESAIN KEMASAN",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74191": {
+    "judul": "AKTIVITAS DESAIN INTERIOR",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74192": {
+    "judul": "AKTIVITAS DESAIN GRAFIS",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74193": {
+    "judul": "AKTIVITAS DESAIN KHUSUS FILM, VIDEO",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74209": {
+    "judul": "AKTIVITAS FOTOGRAFI LAINNYA",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74300": {
+    "judul": "AKTIVITAS PENERJEMAH ATAU INTERPRETER",
+    "sektor": "Pendidikan / Kebudayaan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74910": {
+    "judul": "AKTIVITAS BROKER DAN LAYANAN PEMASARAN PATEN",
+    "sektor": "Hukum dan HAM",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "74991": {
+    "judul": "JASA METEOROLOGI DAN PRAKIRAAN CUACA",
+    "sektor": "BMKG",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "BMKG",
+    "status": "VERIFIED"
+  },
+  "74999": {
+    "judul": "SEMUA AKTIVITAS PROFESIONAL LAINNYA YTDL",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "79110": {
+    "judul": "AKTIVITAS AGEN PERJALANAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "79121": {
+    "judul": "AKTIVITAS BIRO PERJALANAN WISATA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "79129": {
+    "judul": "AKTIVITAS BIRO PERJALANAN LAINNYA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "79909": {
+    "judul": "AKTIVITAS TERKAIT PERJALANAN LAINNYA YTDL",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "92000": {
+    "judul": "AKTIVITAS PERJUDIAN DAN PERTARUHAN",
+    "sektor": "DILARANG",
+    "tingkat_risiko": "DILARANG",
+    "perizinan_berusaha": "DILARANG",
+    "kewenangan": "DILARANG",
+    "status": "VERIFIED"
+  },
+  "96100": {
+    "judul": "AKTIVITAS PENCUCIAN TEKSTIL (LAUNDRY)",
+    "sektor": "Perindustrian / Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "96230": {
+    "judul": "AKTIVITAS SPA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (STPT)",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "96400": {
+    "judul": "AKTIVITAS JASA INTERMEDIASI JASA PERORANGAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "41014": {
+    "judul": "KONSTRUKSI GEDUNG PERBELANJAAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "41015": {
+    "judul": "KONSTRUKSI GEDUNG KESEHATAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "41016": {
+    "judul": "KONSTRUKSI GEDUNG PENDIDIKAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "41017": {
+    "judul": "KONSTRUKSI GEDUNG PENGINAPAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "41019": {
+    "judul": "KONSTRUKSI GEDUNG LAINNYA",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "41020": {
+    "judul": "KONSTRUKSI PRAPABRIKASI BANGUNAN GEDUNG",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42101": {
+    "judul": "KONSTRUKSI JALAN RAYA",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42102": {
+    "judul": "KONSTRUKSI JEMBATAN DAN JALAN LAYANG",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42103": {
+    "judul": "KONSTRUKSI JALAN REL",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42104": {
+    "judul": "KONSTRUKSI TEROWONGAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42201": {
+    "judul": "KONSTRUKSI JARINGAN IRIGASI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42911": {
+    "judul": "KONSTRUKSI BANGUNAN PRASARANA SUMBER DAYA AIR",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42912": {
+    "judul": "KONSTRUKSI BANGUNAN PELABUHAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42914": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL PLTA",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42915": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL PELINDUNG PANTAI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42919": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL PRASARANA PERAIRAN LAINNYA",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42991": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL MINYAK DAN GAS BUMI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42992": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL PERTAMBANGAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42993": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL PANAS BUMI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42994": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL FASILITAS OLAHRAGA",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42995": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL FASILITAS PENGOLAHAN",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42996": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL FASILITAS MILITER",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42997": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL FASILITAS SUMBER RADIASI",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42998": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL REAKTOR NUKLIR",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "42999": {
+    "judul": "KONSTRUKSI BANGUNAN SIPIL LAINNYA YTDL",
+    "sektor": "PUPR",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (SBU)",
+    "kewenangan": "Menteri PUPR",
+    "status": "VERIFIED"
+  },
+  "60101": {
+    "judul": "AKTIVITAS PENYIARAN RADIO ANALOG",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + IPP",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60103": {
+    "judul": "AKTIVITAS DISTRIBUSI DAN STREAMING AUDIO",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60201": {
+    "judul": "AKTIVITAS PENYIARAN TELEVISI ANALOG",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + IPP",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60203": {
+    "judul": "AKTIVITAS DISTRIBUSI DAN STREAMING VIDEO",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60311": {
+    "judul": "AKTIVITAS KANTOR BERITA PEMERINTAH",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60312": {
+    "judul": "AKTIVITAS KANTOR BERITA SWASTA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "60390": {
+    "judul": "AKTIVITAS SITUS JEJARING SOSIAL",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (PSE)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61102": {
+    "judul": "AKTIVITAS TELEKOMUNIKASI NIRKABEL",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jartel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61103": {
+    "judul": "AKTIVITAS TELEKOMUNIKASI SATELIT",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jartel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61105": {
+    "judul": "AKTIVITAS JASA SISTEM KOMUNIKASI DATA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61106": {
+    "judul": "AKTIVITIAS JASA TELEVISI PROTOKOL INTERNET (IPTV)",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61107": {
+    "judul": "AKTIVITAS JASA GERBANG AKSES INTERNET",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel (NAP)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61108": {
+    "judul": "AKTIVITAS JASA TELEPONI DASAR",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61201": {
+    "judul": "AKTIVITAS PENJUALAN KEMBALI JASA TELEKOMUNIKASI",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61209": {
+    "judul": "AKTIVITAS RESELLER JASA TELEKOMUNIKASI LAINNYA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61901": {
+    "judul": "AKTIVITAS JASA PANGGILAN PREMIUM",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61902": {
+    "judul": "AKTIVITAS JASA KONTEN SMS PREMIUM",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61903": {
+    "judul": "AKTIVITAS JASA INTERNET TELEPONI (VOIP)",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61904": {
+    "judul": "AKTIVITAS JASA PANGGILAN TERKELOLA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61905": {
+    "judul": "AKTIVITAS JASA TELEKOMUNIKASI KHUSUS SATELIT",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jartel Khusus",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "61909": {
+    "judul": "AKTIVITAS TELEKOMUNIKASI LAINNYA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Jastel",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62110": {
+    "judul": "PENGEMBANGAN VIDEO GIM",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62193": {
+    "judul": "PENGEMBANGAN APLIKASI TEKNOLOGI",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62194": {
+    "judul": "PENGEMBANGAN AI",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62201": {
+    "judul": "KONSULTANSI KEAMANAN SIBER",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62202": {
+    "judul": "PENGELOLAAN IDENTITAS DIGITAL",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (PSrE)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62204": {
+    "judul": "KONSULTANSI INTERNET OF THINGS (IOT)",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "62209": {
+    "judul": "KONSULTANSI KOMPUTER LAINNYA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "63101": {
+    "judul": "AKTIVITAS PENGOLAHAN DATA",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (PSE)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "63102": {
+    "judul": "PENYEDIAAN INFRASTRUKTUR HOSTING",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "63900": {
+    "judul": "PORTAL PENCARIAN WEB",
+    "sektor": "Kominfo",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (PSE)",
+    "kewenangan": "Menteri Kominfo",
+    "status": "VERIFIED"
+  },
+  "90111": {
+    "judul": "PENCIPTAAN KARYA SASTRA",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "90112": {
+    "judul": "PENCIPTAAN KOMPOSISI MUSIK",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "90113": {
+    "judul": "JURNALIS INDEPENDEN",
+    "sektor": "Pariwisata (Ekraf)",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "90310": {
+    "judul": "OPERASIONAL TEMPAT KESENIAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "90391": {
+    "judul": "PENYELENGGARAAN KEGIATAN KESENIAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "90399": {
+    "judul": "PENUNJANG KARYA SENI",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "91111": {
+    "judul": "PERPUSTAKAAN PEMERINTAH",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "91112": {
+    "judul": "PERPUSTAKAAN SWASTA",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "91121": {
+    "judul": "KEARSIPAN PEMERINTAH",
+    "sektor": "Pemerintahan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "91122": {
+    "judul": "KEARSIPAN SWASTA",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "91211": {
+    "judul": "MUSEUM PEMERINTAH",
+    "sektor": "Kebudayaan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "91212": {
+    "judul": "MUSEUM SWASTA",
+    "sektor": "Kebudayaan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "91221": {
+    "judul": "SITUS BERSEJARAH PEMERINTAH",
+    "sektor": "Kebudayaan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "91222": {
+    "judul": "SITUS BERSEJARAH SWASTA",
+    "sektor": "Kebudayaan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "91300": {
+    "judul": "KONSERVASI DAN RESTORASI",
+    "sektor": "Kebudayaan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Dikbud",
+    "status": "VERIFIED"
+  },
+  "91410": {
+    "judul": "KEBUN BINATANG",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Lembaga Konservasi",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "91421": {
+    "judul": "SUAKA MARGASATWA",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Pengelola",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "91422": {
+    "judul": "TAMAN NASIONAL",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Pengelola",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "91423": {
+    "judul": "HUTAN LINDUNG",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Pengelola",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "91424": {
+    "judul": "TAMAN WISATA ALAM",
+    "sektor": "LHK",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "91425": {
+    "judul": "TAMAN HUTAN RAYA",
+    "sektor": "LHK",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "91426": {
+    "judul": "TAMAN LAUT",
+    "sektor": "KKP",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Pengelola",
+    "kewenangan": "Menteri KKP",
+    "status": "VERIFIED"
+  },
+  "91429": {
+    "judul": "CAGAR ALAM LAINNYA",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "93113": {
+    "judul": "FASILITAS GELANGGANG/ARENA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93116": {
+    "judul": "FASILITAS PUSAT KEBUGARAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93121": {
+    "judul": "KLUB SEPAK BOLA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93122": {
+    "judul": "KLUB GOLF",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93123": {
+    "judul": "KLUB RENANG",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93124": {
+    "judul": "KLUB TENIS LAPANGAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93125": {
+    "judul": "KLUB TINJU",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93126": {
+    "judul": "KLUB BELA DIRI",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93127": {
+    "judul": "KLUB KEBUGARAN/BINARAGA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93128": {
+    "judul": "KLUB BOLING",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93129": {
+    "judul": "KLUB OLAHRAGA LAINNYA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93192": {
+    "judul": "JURI DAN WASIT PROFESIONAL",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93193": {
+    "judul": "PERBURUAN DI KAWASAN BURU",
+    "sektor": "LHK",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Berburu",
+    "kewenangan": "Menteri LHK",
+    "status": "VERIFIED"
+  },
+  "93194": {
+    "judul": "BADAN REGULASI OLAHRAGA",
+    "sektor": "Pemuda Olahraga",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Kemenpora",
+    "status": "VERIFIED"
+  },
+  "93195": {
+    "judul": "OLAHRAGA TRADISIONAL",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93197": {
+    "judul": "ATLET INDEPENDEN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93199": {
+    "judul": "AKTIVITAS OLAHRAGA LAINNYA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93210": {
+    "judul": "TAMAN BERTEMA DAN HIBURAN",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (CHSE)",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "93291": {
+    "judul": "LANTAI DANSA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86102": {
+    "judul": "PUSKESMAS",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (Akreditasi)",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86105": {
+    "judul": "KLINIK SWASTA",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86109": {
+    "judul": "RUMAH SAKIT LAINNYA",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Menteri/Gubernur",
+    "status": "VERIFIED"
+  },
+  "86201": {
+    "judul": "PRAKTIK DOKTER UMUM",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + SIP",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86202": {
+    "judul": "PRAKTIK DOKTER SPESIALIS",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + SIP",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86203": {
+    "judul": "PRAKTIK DOKTER GIGI",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + SIP",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86910": {
+    "judul": "AKTIVITAS INTERMEDIASI KESEHATAN",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86993": {
+    "judul": "PELAYANAN PENUNJANG KESEHATAN",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86994": {
+    "judul": "ANGKUTAN KHUSUS ORANG SAKIT (AMBULANS)",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "86995": {
+    "judul": "RUMAH PIJAT",
+    "sektor": "Pariwisata / Kesehatan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (STPT)",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "87101": {
+    "judul": "PANTI REHAB NARKOBA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Menteri Sosial",
+    "status": "VERIFIED"
+  },
+  "87102": {
+    "judul": "PANTI REHAB MENTAL",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Menteri Sosial",
+    "status": "VERIFIED"
+  },
+  "87201": {
+    "judul": "PERAWATAN DISABILITAS",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "87202": {
+    "judul": "PERAWATAN DISABILITAS MENTAL",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "87301": {
+    "judul": "PANTI WERDHA (LANSIA)",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "87302": {
+    "judul": "PERAWATAN LANSIA/DISABILITAS SWASTA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "87303": {
+    "judul": "PENGELOLAAN AKOMODASI LANSIA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "87910": {
+    "judul": "JASA INTERMEDIASI PERAWATAN",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "87991": {
+    "judul": "LKSA ANAK",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "87992": {
+    "judul": "PERAWATAN ANAK BERMASALAH HUKUM",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Menteri Sosial",
+    "status": "VERIFIED"
+  },
+  "87993": {
+    "judul": "TUNASOSIAL RESIDENSIAL",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Gubernur",
+    "status": "VERIFIED"
+  },
+  "80190": {
+    "judul": "AKTIVITAS KEAMANAN LAINNYA",
+    "sektor": "Kepolisian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Operasional (Mabes Polri)",
+    "kewenangan": "Mabes Polri",
+    "status": "VERIFIED"
+  },
+  "78104": {
+    "judul": "PENEMPATAN AWAK KAPAL",
+    "sektor": "Ketenagakerjaan / Perhubungan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + SIUPPAK",
+    "kewenangan": "Menteri Perhubungan",
+    "status": "VERIFIED"
+  },
+  "78105": {
+    "judul": "PENYEDIAAN INFORMASI LOWONGAN KERJA",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Disnaker",
+    "status": "VERIFIED"
+  },
+  "78109": {
+    "judul": "PENEMPATAN TENAGA KERJA LAINNYA",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin LPTKS",
+    "kewenangan": "Menteri Ketenagakerjaan",
+    "status": "VERIFIED"
+  },
+  "78200": {
+    "judul": "PENYEDIAAN TENAGA KERJA WAKTU TERTENTU (OUTSOURCING)",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Ketenagakerjaan",
+    "status": "VERIFIED"
+  },
+  "69102": {
+    "judul": "KONSULTAN HUKUM",
+    "sektor": "Hukum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "69103": {
+    "judul": "KONSULTAN KEKAYAAN INTELEKTUAL",
+    "sektor": "Hukum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB + SK Konsultan KI",
+    "kewenangan": "Kemenkumham",
+    "status": "VERIFIED"
+  },
+  "69104": {
+    "judul": "NOTARIS DAN PPAT",
+    "sektor": "Hukum / Pertanahan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "SK Pengangkatan (Non-OSS)",
+    "kewenangan": "Kemenkumham / BPN",
+    "status": "VERIFIED"
+  },
+  "69201": {
+    "judul": "AKUNTANSI DAN PEMBUKUAN",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Izin KJA",
+    "kewenangan": "Kemenkeu",
+    "status": "VERIFIED"
+  },
+  "69202": {
+    "judul": "KONSULTANSI PAJAK",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Izin Praktik",
+    "kewenangan": "Kemenkeu",
+    "status": "VERIFIED"
+  },
+  "70100": {
+    "judul": "AKTIVITAS KANTOR PUSAT",
+    "sektor": "Umum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "88101": {
+    "judul": "SOSIAL PEMERINTAH NON-AKOMODASI",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "88102": {
+    "judul": "LKSA NON-AKOMODASI",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Dinsos",
+    "status": "VERIFIED"
+  },
+  "88901": {
+    "judul": "SOSIAL PEMERINTAH LAINNYA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB (Non-Usaha)",
+    "kewenangan": "Instansi Pemerintah",
+    "status": "VERIFIED"
+  },
+  "88902": {
+    "judul": "LKSA SWASTA LAINNYA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Dinsos",
+    "status": "VERIFIED"
+  },
+  "88903": {
+    "judul": "PENGUMPULAN DANA KEISLAMAN (ZISWAF)",
+    "sektor": "Agama",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin LAZ",
+    "kewenangan": "Kemenag / BAZNAS",
+    "status": "VERIFIED"
+  },
+  "88904": {
+    "judul": "PENGUMPULAN DANA NONISLAM",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin PUB",
+    "kewenangan": "Kemensos",
+    "status": "VERIFIED"
+  },
+  "88905": {
+    "judul": "PENGUMPULAN DANA LAINNYA",
+    "sektor": "Sosial",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin PUB",
+    "kewenangan": "Kemensos",
+    "status": "VERIFIED"
+  },
+  "88906": {
+    "judul": "KELOMPOK BERMAIN",
+    "sektor": "Pendidikan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Izin Operasional PAUD",
+    "kewenangan": "Disdik",
+    "status": "VERIFIED"
+  },
+  "88907": {
+    "judul": "TAMAN PENITIPAN ANAK",
+    "sektor": "Pendidikan / Sosial",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Izin Operasional",
+    "kewenangan": "Disdik / Dinsos",
+    "status": "VERIFIED"
+  },
+  "94110": {
+    "judul": "ORGANISASI BISNIS",
+    "sektor": "Umum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "SK Kemenkumham",
+    "kewenangan": "Kemenkumham",
+    "status": "VERIFIED"
+  },
+  "94121": {
+    "judul": "ORGANISASI PROFESI KESEHATAN",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "SK Kemenkumham",
+    "kewenangan": "Kemenkumham",
+    "status": "VERIFIED"
+  },
+  "94122": {
+    "judul": "ORGANISASI PROFESI LAINNYA",
+    "sektor": "Umum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "SK Kemenkumham",
+    "kewenangan": "Kemenkumham",
+    "status": "VERIFIED"
+  },
+  "94200": {
+    "judul": "SERIKAT BURUH",
+    "sektor": "Ketenagakerjaan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "Pencatatan Disnaker",
+    "kewenangan": "Disnaker",
+    "status": "VERIFIED"
+  },
+  "94910": {
+    "judul": "ORGANISASI KEAGAMAAN",
+    "sektor": "Agama",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "SK Kemenag",
+    "kewenangan": "Kemenag",
+    "status": "VERIFIED"
+  },
+  "94920": {
+    "judul": "PARTAI POLITIK",
+    "sektor": "Politik",
+    "tingkat_risiko": "Non-Usaha",
+    "perizinan_berusaha": "SK Kemenkumham",
+    "kewenangan": "Kemenkumham",
+    "status": "VERIFIED"
+  },
+  "94990": {
+    "judul": "ORGANISASI KEMASYARAKATAN LAINNYA",
+    "sektor": "Umum",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "SK Kemenkumham / SKT Kemendagri",
+    "kewenangan": "Kemendagri",
+    "status": "VERIFIED"
+  },
+  "68121": {
+    "judul": "PENGELOLAAN KAWASAN PARIWISATA",
+    "sektor": "Pariwisata",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68122": {
+    "judul": "PENGELOLAAN KAWASAN INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin Usaha Kawasan Industri (IUKI)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "68123": {
+    "judul": "PENGELOLAAN KEK",
+    "sektor": "Ekonomi",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "Izin Administrator KEK",
+    "kewenangan": "Dewan Nasional KEK",
+    "status": "VERIFIED"
+  },
+  "68124": {
+    "judul": "PENYEWAAN LAHAN",
+    "sektor": "Properti",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68125": {
+    "judul": "PENGELOLAAN PUSAT PERBELANJAAN",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68126": {
+    "judul": "PENYEWAAN GUDANG",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68127": {
+    "judul": "PENGELOLAAN GEDUNG PERKANTORAN",
+    "sektor": "Properti",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68129": {
+    "judul": "REAL ESTAT NON-HUNIAN LAINNYA",
+    "sektor": "Properti",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68210": {
+    "judul": "JASA INTERMEDIASI REAL ESTAT (BROKER)",
+    "sektor": "Perdagangan",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + SIU-P4",
+    "kewenangan": "Menteri Perdagangan",
+    "status": "VERIFIED"
+  },
+  "68291": {
+    "judul": "JASA PENAKSIR REAL ESTAT (APPRAISAL)",
+    "sektor": "Keuangan",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin KJPP",
+    "kewenangan": "Kemenkeu",
+    "status": "VERIFIED"
+  },
+  "68292": {
+    "judul": "PENGELOLAAN REAL ESTAT ATAS DASAR KONTRAK",
+    "sektor": "Properti",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "68299": {
+    "judul": "AKTIVITAS REAL ESTAT FEE LAINNYA",
+    "sektor": "Properti",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "72101": {
+    "judul": "PENELITIAN ILMU ALAM",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penelitian",
+    "kewenangan": "BRIN",
+    "status": "VERIFIED"
+  },
+  "72102": {
+    "judul": "PENELITIAN TEKNOLOGI",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin Penelitian",
+    "kewenangan": "BRIN",
+    "status": "VERIFIED"
+  },
+  "72103": {
+    "judul": "PENELITIAN MEDIS",
+    "sektor": "Kesehatan",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Persetujuan Etik",
+    "kewenangan": "Kemenkes / BRIN",
+    "status": "VERIFIED"
+  },
+  "72104": {
+    "judul": "PENELITIAN BIOTEKNOLOGI",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "BRIN / LHK",
+    "status": "VERIFIED"
+  },
+  "72105": {
+    "judul": "PENELITIAN FISIKA/ASTRONOMI",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "BRIN",
+    "status": "VERIFIED"
+  },
+  "72106": {
+    "judul": "PENELITIAN NUKLIR",
+    "sektor": "Ketenaganukliran",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin BAPETEN",
+    "kewenangan": "BAPETEN",
+    "status": "VERIFIED"
+  },
+  "72201": {
+    "judul": "PENELITIAN SOSIAL",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "BRIN",
+    "status": "VERIFIED"
+  },
+  "72202": {
+    "judul": "PENELITIAN HUMANIORA",
+    "sektor": "Ristek",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "BRIN",
+    "status": "VERIFIED"
+  },
+  "10432": {
+    "judul": "INDUSTRI MINYAK INTI SAWIT (PKO)",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "10503": {
+    "judul": "INDUSTRI ES KRIM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (MD/ML)",
+    "kewenangan": "BPOM",
+    "status": "VERIFIED"
+  },
+  "10504": {
+    "judul": "INDUSTRI ES PENCUCI MULUT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10612": {
+    "judul": "INDUSTRI GILINGAN KACANG",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10622": {
+    "judul": "INDUSTRI PATI PALEM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "10623": {
+    "judul": "INDUSTRI GLUKOSA",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Tinggi",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "10722": {
+    "judul": "INDUSTRI GULA MERAH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Rendah",
+    "perizinan_berusaha": "NIB",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10723": {
+    "judul": "INDUSTRI SIROP",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar (P-IRT/MD)",
+    "kewenangan": "Bupati/BPOM",
+    "status": "VERIFIED"
+  },
+  "10732": {
+    "judul": "INDUSTRI COKELAT",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10740": {
+    "judul": "INDUSTRI MAKARONI DAN MI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10762": {
+    "judul": "PENGOLAHAN TEH",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10772": {
+    "judul": "INDUSTRI GARAM BERYODIUM",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin (SNI Wajib)",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "10773": {
+    "judul": "INDUSTRI GARAM INDUSTRI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Tinggi",
+    "perizinan_berusaha": "NIB + Izin",
+    "kewenangan": "Menteri Perindustrian",
+    "status": "VERIFIED"
+  },
+  "10795": {
+    "judul": "INDUSTRI SARI NABATI",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  },
+  "10797": {
+    "judul": "INDUSTRI INFUSI HERBAL",
+    "sektor": "Perindustrian",
+    "tingkat_risiko": "Menengah Rendah",
+    "perizinan_berusaha": "NIB + Sertifikat Standar",
+    "kewenangan": "Bupati/Walikota",
+    "status": "VERIFIED"
+  }
+}
