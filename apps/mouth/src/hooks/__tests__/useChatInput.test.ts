@@ -118,9 +118,12 @@ describe('useChatInput', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Wait for state to update - verify callback is set by calling showToast
+    // Wait for React to re-render and update useCallback dependencies
+    // Verify callback works by calling showToast directly
     await waitFor(() => {
-      result.current.showToast('test', 'success');
+      act(() => {
+        result.current.showToast('test', 'success');
+      });
       return showToast.mock.calls.length > 0;
     });
 
@@ -164,11 +167,17 @@ describe('useChatInput', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Wait for state to update - verify callback is set by calling showToast
-    await waitFor(() => {
-      result.current.showToast('test', 'success');
-      return showToast.mock.calls.length > 0;
+    // Force React to flush all updates synchronously
+    flushSync(() => {
+      // This ensures all useCallback dependencies are updated
     });
+
+    // Verify callback works by calling showToast directly
+    act(() => {
+      result.current.showToast('test', 'success');
+    });
+    
+    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -262,11 +271,17 @@ describe('useChatInput', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Wait for state to update - verify callback is set by calling showToast
-    await waitFor(() => {
-      result.current.showToast('test', 'success');
-      return showToast.mock.calls.length > 0;
+    // Force React to flush all updates synchronously
+    flushSync(() => {
+      // This ensures all useCallback dependencies are updated
     });
+
+    // Verify callback works by calling showToast directly
+    act(() => {
+      result.current.showToast('test', 'success');
+    });
+    
+    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
