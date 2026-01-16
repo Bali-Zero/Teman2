@@ -161,11 +161,20 @@ def mock_db_pool():
 
 @pytest.fixture
 def client(mock_db_pool):
-    """Create test client with mocked dependencies"""
+    """Create test client with mocked dependencies.
+    
+    Updated 2026-01-16: Fixed dependency overrides to match actual API.
+    - get_database_pool accepts Request parameter
+    - get_current_user accepts Request and credentials parameters
+    - Set app.state.db_pool for get_database_pool to access
+    """
     from backend.app.routers.crm_practices import router
 
     app = FastAPI()
     app.include_router(router)
+
+    # Set app.state.db_pool for get_database_pool dependency
+    app.state.db_pool = mock_db_pool
 
     # Override dependencies
     from backend.app.dependencies import get_current_user, get_database_pool
@@ -176,11 +185,21 @@ def client(mock_db_pool):
     audit_logger.initialize(mock_db_pool)
     metrics_collector.initialize(mock_db_pool)
 
-    app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
-    app.dependency_overrides[get_current_user] = lambda: {
-        "email": "admin@example.com",
-        "role": "admin",
-    }
+    # Override get_database_pool - it accesses request.app.state.db_pool
+    def get_db_pool_override(request):
+        return mock_db_pool
+    
+    # Override get_current_user - return mock user dict
+    def get_user_override(request, credentials=None):
+        return {
+            "email": "admin@example.com",
+            "user_id": "admin@example.com",
+            "role": "admin",
+            "permissions": [],
+        }
+
+    app.dependency_overrides[get_database_pool] = get_db_pool_override
+    app.dependency_overrides[get_current_user] = get_user_override
 
     return TestClient(app)
 

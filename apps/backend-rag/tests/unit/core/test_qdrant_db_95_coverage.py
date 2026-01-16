@@ -72,15 +72,21 @@ class TestQdrantDB95Coverage:
         http_client2 = await client._get_client()
         assert http_client1 is http_client2
 
-    async def test_get_headers_with_api_key(self):
-        """Test _get_headers includes API key"""
+    def test_get_headers_with_api_key(self):
+        """Test _get_headers includes API key.
+        
+        Updated 2026-01-16: _get_headers() is not async, removed async decorator.
+        """
         client = QdrantClient(api_key="test_key")
         headers = client._get_headers()
         assert headers["api-key"] == "test_key"
         assert headers["Content-Type"] == "application/json"
 
-    async def test_get_headers_without_api_key(self):
-        """Test _get_headers without API key"""
+    def test_get_headers_without_api_key(self):
+        """Test _get_headers without API key.
+        
+        Updated 2026-01-16: _get_headers() is not async, removed async decorator.
+        """
         # Create client explicitly without api_key
         client = QdrantClient(api_key=None)
         # Ensure api_key is None even if settings has one
@@ -150,17 +156,30 @@ class TestQdrantDB95Coverage:
         assert "filter" in call_args[1]["json"]
 
     async def test_search_timeout(self):
-        """Test search with timeout"""
+        """Test search with timeout.
+        
+        Updated 2026-01-16: search() catches TimeoutException via _retry_with_backoff
+        and eventually returns empty results after retries fail.
+        """
         client = QdrantClient(qdrant_url="http://localhost:6333")
 
+        # Mock _get_client to return a mock client
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Timeout"))
-        client._http_client = mock_client
+        
+        # Patch _get_client to return our mock
+        original_get_client = client._get_client
+        async def mock_get_client():
+            return mock_client
+        client._get_client = mock_get_client
 
-        # Search catches exceptions and returns empty results instead of raising
+        # Search catches exceptions via _retry_with_backoff and returns empty results
         result = await client.search([0.1] * 1536, limit=10)
         assert result["total_found"] == 0
         assert len(result["ids"]) == 0
+        
+        # Restore original method
+        client._get_client = original_get_client
 
     async def test_search_5xx_error(self):
         """Test search with 5xx error (should retry)"""
@@ -198,17 +217,30 @@ class TestQdrantDB95Coverage:
         assert result["total_found"] == 0
 
     async def test_search_request_error(self):
-        """Test search with request error"""
+        """Test search with request error.
+        
+        Updated 2026-01-16: search() catches RequestError via _retry_with_backoff
+        and eventually returns empty results after retries fail.
+        """
         client = QdrantClient(qdrant_url="http://localhost:6333")
 
+        # Mock _get_client to return a mock client
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection error"))
-        client._http_client = mock_client
+        
+        # Patch _get_client to return our mock
+        original_get_client = client._get_client
+        async def mock_get_client():
+            return mock_client
+        client._get_client = mock_get_client
 
-        # Search catches exceptions and returns empty results instead of raising
+        # Search catches exceptions via _retry_with_backoff and returns empty results
         result = await client.search([0.1] * 1536, limit=10)
         assert result["total_found"] == 0
         assert len(result["ids"]) == 0
+        
+        # Restore original method
+        client._get_client = original_get_client
 
     async def test_search_empty_embedding(self):
         """Test search with empty embedding"""

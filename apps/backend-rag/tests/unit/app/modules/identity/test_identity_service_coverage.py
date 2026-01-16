@@ -31,7 +31,11 @@ class _DummyConn:
 
 
 def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jwt_alg="HS256"):
-    # Ensure jwt_secret is at least 32 characters
+    """Create IdentityService instance with mocked settings.
+    
+    Updated 2026-01-16: Enhanced to ensure jwt_secret meets minimum length requirement.
+    """
+    # Ensure jwt_secret is at least 32 characters (required by Settings validation)
     if len(jwt_secret) < 32:
         jwt_secret = jwt_secret + "_" * (32 - len(jwt_secret))
     mock_settings = create_mock_settings(
@@ -44,6 +48,10 @@ def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jw
 
 
 def test_init_warns_on_default_secret(monkeypatch, caplog):
+    """Test that IdentityService warns when using default JWT secret.
+    
+    Updated 2026-01-16: Test verifies warning is logged for default secret.
+    """
     mock_settings = create_mock_settings(
         database_url="db",
         jwt_secret_key="zantara_default_secret_key_2025_change_in_production",

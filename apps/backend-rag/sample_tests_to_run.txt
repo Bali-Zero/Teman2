@@ -1,0 +1,9 @@
+tests/unit/routers/test_crm_clients_router.py::TestCreateClient::test_create_client_success
+tests/unit/routers/test_crm_clients_router.py::TestListClients::test_list_clients_no_filters
+tests/unit/routers/test_team_activity_router.py::TestVerifyAdmin::test_verify_admin_valid_zero_email
+tests/unit/app/modules/identity/test_identity_service_coverage.py::test_init_warns_on_default_secret
+tests/unit/core/test_qdrant_db_95_coverage.py::TestQdrantDB95Coverage::test_get_headers_without_api_key
+tests/unit/rag/test_llm_gateway.py::TestLLMGatewayInitialization::test_gateway_initializes_successfully
+tests/unit/rag/test_llm_gateway.py::TestLLMGatewaySendMessage::test_flash_tier_success
+tests/unit/error_handling/test_complete_error_handling_suite.py::TestLLMGatewayCircuitBreaker::test_circuit_breaker_state_machine
+tests/unit/services/test_intelligent_router.py::TestIntelligentRouterInit::test_init_minimal_params

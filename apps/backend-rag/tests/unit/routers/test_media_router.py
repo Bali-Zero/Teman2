@@ -46,7 +46,11 @@ def client(app):
 
 @pytest.fixture
 def mock_image_service():
-    """Mock ImageGenerationService"""
+    """Mock ImageGenerationService.
+    
+    Updated 2026-01-16: Service is instantiated inside the endpoint,
+    so we need to patch the class constructor.
+    """
     service = AsyncMock()
     service.generate_image = AsyncMock()
     return service

@@ -50,6 +50,11 @@ export function useChatTTS(): UseChatTTSReturn {
     }
   }, []);
 
+  const setShowToastWrapper = useCallback((callback: (message: string, type: 'success' | 'error') => void) => {
+    // Wrap in function to avoid React treating callback as updater function
+    setToastCallback(() => callback);
+  }, []);
+
   const stopTTS = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -237,6 +242,6 @@ export function useChatTTS(): UseChatTTSReturn {
     handleTTS,
     stopTTS,
     showToast,
-    setShowToast: setToastCallback,
+    setShowToast: setShowToastWrapper,
   };
 }

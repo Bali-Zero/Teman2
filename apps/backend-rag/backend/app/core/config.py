@@ -558,6 +558,61 @@ class Settings(BaseSettings):
         default=None,
         description="Secret token for webhook verification. Set via TELEGRAM_WEBHOOK_SECRET env var.",
     )
+    admin_telegram_chat_id: str | None = Field(
+        default=None,
+        description="Admin Telegram chat ID for WhatsApp escalation notifications. Set via ADMIN_TELEGRAM_CHAT_ID env var.",
+    )
+
+    # ========================================
+    # META WHATSAPP CONFIGURATION
+    # ========================================
+    whatsapp_api_token: str | None = Field(
+        default=None,
+        description="WhatsApp Cloud API access token from Meta Business. Set via WHATSAPP_API_TOKEN env var.",
+    )
+    whatsapp_phone_number_id: str | None = Field(
+        default=None,
+        description="WhatsApp Business Phone Number ID from Meta. Set via WHATSAPP_PHONE_NUMBER_ID env var.",
+    )
+    whatsapp_verify_token: str = Field(
+        default="dev_whatsapp_token_for_testing",
+        description=(
+            "WhatsApp webhook verify token - Set via WHATSAPP_VERIFY_TOKEN env var "
+            "(default: dev token for testing only)"
+        ),
+    )
+    whatsapp_personal_contacts: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated list of personal contact phone numbers (no + prefix). "
+            "Messages from these numbers will always escalate to human. "
+            "Set via WHATSAPP_PERSONAL_CONTACTS env var. "
+            "Example: '393471234567,628123456789'"
+        ),
+    )
+
+    @field_validator("whatsapp_verify_token", mode="before")
+    @classmethod
+    def validate_whatsapp_token(cls, v):
+        """Validate WhatsApp token - warn in production if using default"""
+        env = os.getenv("ENVIRONMENT", "development")
+        is_production = env.lower() == "production"
+
+        if not v:
+            if is_production:
+                raise ValueError(
+                    "WHATSAPP_VERIFY_TOKEN must be set in production. "
+                    "Provide a secure random token."
+                )
+            return "dev_whatsapp_token_for_testing"
+
+        if is_production and v == "dev_whatsapp_token_for_testing":
+            raise ValueError(
+                "Cannot use default WhatsApp verify token in production. "
+                "Set WHATSAPP_VERIFY_TOKEN to a secure random string."
+            )
+
+        return v
 
     # ========================================
     # META INSTAGRAM CONFIGURATION

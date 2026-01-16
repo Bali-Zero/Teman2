@@ -30,17 +30,26 @@ def mock_db_pool():
 
 @pytest.fixture
 def mock_memory_service():
-    """Mock memory service"""
+    """Mock memory service.
+    
+    Updated 2026-01-16: Fixed to return UserMemory object
+    that matches what get_memory() actually returns.
+    """
+    from backend.services.memory.memory_service_postgres import UserMemory
+    from datetime import datetime
+    
     service = MagicMock()
     service.pool = AsyncMock()
-    service.get_memory = AsyncMock(
-        return_value=MagicMock(
-            profile_facts=["fact1", "fact2"],
-            summary="Test summary",
-            counters={"conversations": 5},
-            updated_at=None,
-        )
+    
+    # get_memory() returns a UserMemory dataclass
+    mock_memory = UserMemory(
+        user_id="test@example.com",
+        profile_facts=["fact1", "fact2"],
+        summary="Test summary",
+        counters={"conversations": 5},
+        updated_at=datetime.now(),
     )
+    service.get_memory = AsyncMock(return_value=mock_memory)
     service.add_fact = AsyncMock(return_value=True)
     service.increment_counter = AsyncMock()
     return service

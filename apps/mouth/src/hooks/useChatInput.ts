@@ -73,6 +73,11 @@ export function useChatInput(): UseChatInputReturn {
     }
   }, []);
 
+  const setShowToastWrapper = useCallback((callback: (message: string, type: 'success' | 'error') => void) => {
+    // Wrap in function to avoid React treating callback as updater function
+    setToastCallback(() => callback);
+  }, []);
+
   const handleImageAttach = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -207,6 +212,6 @@ export function useChatInput(): UseChatInputReturn {
     clearInput,
     clearAttachments,
     showToast,
-    setShowToast: setToastCallback,
+    setShowToast: setShowToastWrapper,
   };
 }
