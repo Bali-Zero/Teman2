@@ -114,40 +114,6 @@ jobs:
         run: |
           isort --check-only backend/services/intel/ backend/app/routers/intel.py || echo "Import check skipped"
 
-  post-deploy-test:
-    name: Post-Deploy Production Tests
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install requests
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting 30 seconds for deployment to stabilize..."
-          sleep 30
-
-      - name: Run production tests
-        env:
-          INTEL_API_URL: https://nuzantara-rag.fly.dev
-        run: |
-          python3 scripts/testing/test_intel_production.py || echo "Production tests completed with warnings"
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-test-report
-          path: scripts/monitoring/intel_production_test_report.json
-          retention-days: 7
+  # Note: Post-deploy tests are run manually after local deployment to Fly.io
+  # Deploy is done locally: fly deploy -a nuzantara-rag
+  # Then run: python3 scripts/testing/test_intel_production.py
