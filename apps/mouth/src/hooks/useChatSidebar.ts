@@ -11,6 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { logger } from '@/lib/logger';
+import { chatMetrics } from '@/lib/metrics';
 
 export interface UseChatSidebarReturn {
   // State
@@ -35,6 +36,9 @@ export function useChatSidebar(): UseChatSidebarReturn {
       action: 'openSidebar',
     });
     
+    // Track metrics
+    chatMetrics.sidebarOpened();
+    
     const { trackEvent } = require('@/lib/analytics');
     const { api } = require('@/lib/api');
     const userProfile = api.getUserProfile();
@@ -48,6 +52,9 @@ export function useChatSidebar(): UseChatSidebarReturn {
       component: 'useChatSidebar',
       action: 'closeSidebar',
     });
+    
+    // Track metrics
+    chatMetrics.sidebarClosed();
     
     const { trackEvent } = require('@/lib/analytics');
     const { api } = require('@/lib/api');

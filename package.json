@@ -45,7 +45,8 @@
     "coverage:gate:generate": "bash scripts/coverage/gate.sh --generate-coverage",
     "coverage:report": "bash scripts/coverage/report.sh",
     "coverage:diff:backend": "python3 scripts/coverage/diff_coverage_py.py",
-    "coverage:diff:frontend": "node scripts/coverage/diff_coverage_lcov.mjs"
+    "coverage:diff:frontend": "node scripts/coverage/diff_coverage_lcov.mjs",
+    "optimize:images": "node scripts/optimize-images.cjs"
   },
   "lint-staged": {
     "*.{ts,js,json,md,yml,yaml}": [

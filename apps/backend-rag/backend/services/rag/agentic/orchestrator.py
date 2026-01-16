@@ -215,6 +215,23 @@ class AgenticRAGOrchestrator:
 
         logger.debug("AgenticRAGOrchestrator.__init__ completed")
 
+        # Initialize OrchestratorCore (delegates main logic)
+        from .orchestrator_core import OrchestratorCore
+
+        self.core = OrchestratorCore(
+            llm_gateway=self.llm_gateway,
+            reasoning_engine=self.reasoning_engine,
+            prompt_builder=self.prompt_builder,
+            query_gates=self.query_gates,
+            memory_handler=self.memory_handler,
+            context_window_manager=self.context_window_manager,
+            entity_extractor=self.entity_extractor,
+            kg_retrieval=self.kg_retrieval,
+            semantic_cache=self.semantic_cache,
+            db_pool=db_pool,
+        )
+        logger.info("✅ OrchestratorCore initialized (Refactored Architecture)")
+
     async def process_query(
         self,
         query: str,
@@ -223,7 +240,19 @@ class AgenticRAGOrchestrator:
         start_time: float | None = None,
         session_id: str | None = None,
     ) -> CoreResult:
-        # Fix: evaluate at call time, not definition time
+        """
+        Process query with full RAG pipeline - Delegates to OrchestratorCore.
+
+        Args:
+            query: Query string
+            user_id: Optional user ID
+            conversation_history: Optional conversation history
+            start_time: Optional start time (defaults to now)
+            session_id: Optional session ID
+
+        Returns:
+            CoreResult with answer, sources, and metadata
+        """
         start_time = start_time or time.time()
 
         # Initialize tool execution counter for rate limiting
@@ -239,447 +268,16 @@ class AgenticRAGOrchestrator:
                 "has_history": bool(conversation_history),
             },
         ):
-            # 1. UNIVERSAL CONTEXT LOADING (CRITICAL: Must be first for Identity)
-            effective_user_id = user_id or "anonymous"
-            with trace_span("context.load_user", {"user_id": effective_user_id}):
-                try:
-                    memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
-                    user_context = await get_user_context(
-                        self.db_pool,
-                        effective_user_id,
-                        memory_orchestrator,
-                        query=query,
-                        session_id=session_id,
-                    )
-                    set_span_attribute("facts_count", len(user_context.get("facts", [])))
-                    set_span_status("ok")
-                except Exception as e:
-                    logger.warning(
-                        f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True
-                    )
-                    user_context = {
-                        "profile": None,
-                        "facts": [],
-                        "collective_facts": [],
-                        "history": [],
-                    }
-                    set_span_status("error", str(e))
-
-        history_to_use = conversation_history or user_context.get("history", [])
-        if (
-            not isinstance(history_to_use, list)
-            or history_to_use
-            and not isinstance(history_to_use[0], dict)
-        ):
-            history_to_use = []
-
-        # Apply context window management for long conversations
-        # This prevents "lost in the middle" phenomenon by summarizing older messages
-        if len(history_to_use) > 0:
-            trim_result = self.context_window_manager.trim_conversation_history(history_to_use)
-            if trim_result["needs_summarization"]:
-                logger.info(
-                    f"📊 [ContextWindow] Summarizing {len(trim_result['messages_to_summarize'])} older messages"
-                )
-                try:
-                    summary = await self.context_window_manager.generate_summary(
-                        trim_result["messages_to_summarize"], trim_result["context_summary"]
-                    )
-                    history_to_use = self.context_window_manager.inject_summary_into_history(
-                        trim_result["trimmed_messages"], summary
-                    )
-                    logger.info(
-                        f"✅ [ContextWindow] Summarized to {len(history_to_use)} messages with summary"
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"⚠️ [ContextWindow] Summarization failed, using trimmed history: {e}"
-                    )
-                    history_to_use = trim_result["trimmed_messages"]
-            else:
-                history_to_use = trim_result["trimmed_messages"]
-
-        logger.info(
-            f"🧠 [Context] Loaded context for {user_id or 'anonymous'} (Facts: {len(user_context.get('facts', []))}, History: {len(history_to_use)} msgs)"
-        )
-
-        # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
-        is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
-        if is_injection:
-            logger.warning("🛡️ [Security] Blocked prompt injection/off-topic request")
-            return CoreResult(
-                answer=injection_response,
-                sources=[],
-                verification_score=1.0,
-                evidence_score=1.0,
-                is_ambiguous=False,
-                entities={},
-                model_used="security-gate",
-                timings={"total": time.time() - start_time},
-                verification_status="blocked",
-                document_count=0,
+            # Delegate to OrchestratorCore
+            logger.debug("Delegating process_query to OrchestratorCore")
+            return await self.core.process_query_core(
+                query=query,
+                user_id=user_id,
+                conversation_history=conversation_history,
+                start_time=start_time,
+                session_id=session_id,
+                tool_execution_counter=tool_execution_counter,
             )
-
-        # 0. Check Greetings (skip RAG for simple greetings)
-        # INJECT CONTEXT: Now check_greetings knows who the user is
-        greeting_response = self.prompt_builder.check_greetings(query, context=user_context)
-        if greeting_response:
-            logger.info("👋 [Greeting] Returning direct greeting response (skipping RAG)")
-            return CoreResult(
-                answer=greeting_response,
-                sources=[],
-                verification_score=1.0,  # Trusted pattern
-                evidence_score=1.0,
-                is_ambiguous=False,
-                entities={},
-                model_used="greeting-pattern",
-                timings={"total": time.time() - start_time},
-                verification_status="passed",
-                document_count=0,
-            )
-
-        # 0.05 Check Casual Conversation (skip RAG for "come stai", "how are you", etc.)
-        casual_response = self.prompt_builder.get_casual_response(query, context=user_context)
-        if casual_response:
-            logger.info("💬 [Casual] Returning direct casual response (skipping RAG)")
-            return CoreResult(
-                answer=casual_response,
-                sources=[],
-                verification_score=1.0,
-                evidence_score=1.0,
-                is_ambiguous=False,
-                entities={},
-                model_used="casual-pattern",
-                timings={"total": time.time() - start_time},
-                verification_status="passed",
-                document_count=0,
-            )
-
-        # 0.1 CLARIFICATION GATE (Ambiguity Detection)
-        # Check if query is ambiguous and needs clarification before expensive RAG
-        if self.clarification_service:
-            ambiguity_info = self.clarification_service.detect_ambiguity(
-                query, conversation_history or user_context.get("history", [])
-            )
-            if (
-                ambiguity_info["is_ambiguous"]
-                and ambiguity_info["confidence"] > 0.6  # High confidence ambiguity
-                and ambiguity_info["clarification_needed"]
-            ):
-                logger.info(
-                    f"🛑 [Clarification Gate] Stopped ambiguous query: {ambiguity_info['reasons']}"
-                )
-                clarification_msg = self.clarification_service.generate_clarification_request(
-                    query, ambiguity_info
-                )
-
-                return CoreResult(
-                    answer=clarification_msg,
-                    sources=[],
-                    verification_score=0.0,
-                    evidence_score=0.0,
-                    is_ambiguous=True,
-                    clarification_question=clarification_msg,
-                    entities=ambiguity_info.get("entities", {}),  # Pass if available, else empty
-                    model_used="clarification-gate",
-                    timings={"total": time.time() - start_time},
-                    verification_status="skipped",
-                    document_count=0,
-                )
-
-        # 0.5 Check Identity / Hardcoded Patterns
-        identity_response = self.prompt_builder.check_identity_questions(
-            query, context=user_context
-        )
-        if identity_response:
-            logger.info("🤖 [Identity] Returning hardcoded identity response")
-            return CoreResult(
-                answer=identity_response,
-                sources=[],
-                verification_score=1.0,
-                evidence_score=1.0,
-                is_ambiguous=False,
-                entities={},
-                model_used="identity-pattern",
-                timings={"total": time.time() - start_time},
-                verification_status="passed",
-                document_count=0,
-            )
-
-        # NOTE: Casual conversation detection removed (Dec 2025)
-        # The ReAct loop + system prompt now handles this via QUERY CLASSIFICATION - STEP 0
-        # The LLM decides when to use tools vs respond directly based on query type
-
-        # 0.7 Check Out-of-Domain Questions
-        out_of_domain, reason = is_out_of_domain(query)
-        if out_of_domain and reason:
-            logger.info(f"🚫 [Out-of-Domain] Query rejected: {reason}")
-            answer_text = OUT_OF_DOMAIN_RESPONSES.get(reason, OUT_OF_DOMAIN_RESPONSES["unknown"])
-            return CoreResult(
-                answer=answer_text,
-                sources=[],
-                verification_score=0.0,
-                evidence_score=0.0,
-                is_ambiguous=False,
-                entities={},
-                model_used=f"out-of-domain-{reason}",
-                timings={"total": time.time() - start_time},
-                verification_status="blocked",
-                document_count=0,
-                warnings=[f"Query blocked: {reason}"],
-            )
-
-        # 0.8 PRE-RAG ENTITY EXTRACTION
-        with trace_span("entity.extraction", {"query_length": len(query)}):
-            extracted_entities = await self.entity_extractor.extract_entities(query)
-            if any(extracted_entities.values()):
-                logger.info(f"🔍 [Entity Extraction] Extracted entities: {extracted_entities}")
-                set_span_attribute("entities_found", str(extracted_entities))
-            set_span_status("ok")
-
-        # OPTIMIZATION 1: Check semantic cache first
-        with trace_span("cache.semantic_check", {"cache_enabled": bool(self.semantic_cache)}):
-            if self.semantic_cache:
-                try:
-                    cached = await self.semantic_cache.get_cached_result(query)
-                    if cached:
-                        logger.info("✅ [Cache Hit] Returning cached result for query")
-                        set_span_attribute("cache_hit", "true")
-                        set_span_status("ok")
-                        # If cached is already a dict compatible with CoreResult?
-                        # Semantic Cache stores dicts. We might need to map it back to CoreResult.
-                        # Assuming cached['result'] is the answer if it's the old format.
-                        # Best effort mapping for now:
-
-                        cached_result = cached.get("result", cached)  # Handle wrapper
-
-                        # Check if it's a dict that looks like CoreResult (has 'model_used' etc) or old result
-                        answer = cached_result.get("answer", "")
-                        sources = cached_result.get("sources", [])
-
-                        return CoreResult(
-                            answer=answer,
-                            sources=sources,
-                            model_used="cache",
-                            cache_hit=True,
-                            timings={"total": time.time() - start_time},
-                            entities=extracted_entities,
-                            document_count=len(sources),
-                        )
-                    else:
-                        set_span_attribute("cache_hit", "false")
-                except (KeyError, ValueError, RuntimeError) as e:
-                    logger.warning(f"Cache lookup failed: {e}", exc_info=True)
-                    set_span_status("error", str(e))
-
-        # Default model tier (will be refined by intent classifier if not streaming)
-        model_tier = TIER_PRO  # Default to PRO for non-streaming
-        deep_think_mode = False
-
-        # Initialize state components for ReAct
-        # Non-streaming defaults to business_complex to allow multi-tool reasoning
-        state = AgentState(query=query, intent_type="business_complex")
-
-        # Build system prompt with KG context
-        system_context_for_prompt = ""
-        if any(extracted_entities.values()):
-            system_context_for_prompt = (
-                f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
-            )
-
-        # KG-Enhanced Retrieval: Get graph context for query
-        kg_context = None
-        if self.kg_retrieval:
-            try:
-                kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
-                if kg_context and kg_context.graph_summary:
-                    system_context_for_prompt += "\n" + kg_context.graph_summary
-                    logger.info(
-                        f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context"
-                    )
-            except Exception as e:
-                logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
-
-        system_prompt = self.prompt_builder.build_system_prompt(
-            user_id=user_id or "anonymous",
-            context=user_context,
-            query=query,
-            additional_context=system_context_for_prompt,  # Inject extracted entities + KG context
-            conversation_history=history_to_use,  # Pass history for greeting check
-        )
-
-        # Create chat session with system prompt (includes user memory/context)
-        chat = self.llm_gateway.create_chat_with_history(
-            history_to_use=history_to_use, model_tier=model_tier, system_instruction=system_prompt
-        )
-        # --- QUALITY ROUTING: REACT LOOP (Full Agentic Architecture) ---
-        logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
-
-        # 🔍 EXTENDED TRACING: Metrics Collection
-        timings = {
-            "total": 0.0,
-            "embedding": 0.0,
-            "search": 0.0,
-            "rerank": 0.0,
-            "llm": 0.0,
-            "reasoning": 0.0,
-        }
-
-        # Initialize token usage for tracking (default if exception occurs)
-        token_usage = TokenUsage()
-
-        with trace_span(
-            "react.loop",
-            {
-                "model_tier": model_tier,
-                "user_id": user_id or "anonymous",
-                "query_length": len(query),
-            },
-        ):
-            try:
-                loop_start = time.time()
-                (
-                    state,
-                    model_used_name,
-                    conversation_messages,
-                    token_usage,
-                ) = await self.reasoning_engine.execute_react_loop(
-                    state=state,
-                    llm_gateway=self.llm_gateway,
-                    chat=chat,
-                    initial_prompt=_wrap_query_with_language_instruction(query),
-                    system_prompt=system_prompt,
-                    query=query,
-                    user_id=user_id or "anonymous",
-                    model_tier=model_tier,
-                    tool_execution_counter=tool_execution_counter,
-                )
-                loop_duration = time.time() - loop_start
-                timings["reasoning"] = loop_duration
-
-                # Note: Granular timing extraction moved to post-loop processing
-                # where we iterate over state.steps and use step.action.execution_time
-
-                set_span_attribute("model_used", model_used_name)
-                set_span_attribute("steps_count", len(state.steps))
-                set_span_attribute("tools_executed", tool_execution_counter["count"])
-                set_span_status("ok")
-            except Exception as react_error:
-                logger.error(f"❌ ReAct loop failed: {react_error}", exc_info=True)
-                set_span_status("error", str(react_error))
-                raise
-
-        # Calculate execution time
-        execution_time = time.time() - start_time
-        timings["total"] = execution_time
-
-        # Extract sources from tool results
-        if hasattr(state, "sources") and state.sources:
-            sources = state.sources
-        else:
-            sources = [s.action.result for s in state.steps if s.action and s.action.result]
-
-        # Calculate context used (sum of observation lengths)
-        context_used = sum(len(s.observation or "") for s in state.steps)
-
-        # 🔍 Extract REAL timings from tool execution_time (Dec 2025 fix)
-        # Each ToolCall now has execution_time populated by execute_tool()
-        search_latency_accum = 0.0
-        tool_latency_accum = 0.0
-        collections_used = set()
-
-        for step in state.steps:
-            if step.action:
-                # Get real execution time from the tool call
-                tool_time = getattr(step.action, "execution_time", 0.0)
-                tool_latency_accum += tool_time
-
-                if step.action.tool_name == "vector_search":
-                    search_latency_accum += tool_time
-                    # Try to extract collection from arguments
-                    if step.action.arguments:
-                        col = step.action.arguments.get("collection")
-                        if col:
-                            collections_used.add(col)
-
-        # Calculate timing breakdown
-        if tool_latency_accum > 0:
-            timings["search"] = search_latency_accum
-            timings["tools"] = tool_latency_accum
-            # LLM time = total reasoning time minus tool execution time
-            timings["llm"] = max(0, timings["reasoning"] - tool_latency_accum)
-        else:
-            # No tools executed - all time was LLM
-            timings["llm"] = timings["reasoning"]
-
-        # 📊 Record RAG query metrics for Prometheus/Grafana
-        primary_collection = next(iter(collections_used), "unknown")
-        route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
-        evidence_score = getattr(state, "evidence_score", 0.0)
-
-        metrics_collector.record_rag_query(
-            collection=primary_collection,
-            route_used=route_used,
-            status="success",
-            context_tokens=context_used,
-        )
-
-        # Record detailed histogram metrics
-        metrics_collector.record_rag_detailed_metrics(
-            duration_seconds=execution_time,
-            evidence_score=evidence_score,
-            documents_count=len(sources),
-            collection=primary_collection,
-            route_used=route_used,
-        )
-
-        # 📝 Structured Logging for Query Completion
-        logger.info(
-            "✅ [AgenticRAG] Query completed successfully",
-            extra={
-                "user_id": user_id or "anonymous",
-                "query_hash": str(hash(query))[:8],
-                "model_used": model_used_name,
-                "duration_s": round(execution_time, 3),
-                "evidence_score": round(evidence_score, 2),
-                "doc_count": len(sources),
-                "steps": len(state.steps),
-                "tokens_total": token_usage.total_tokens,
-                "cost_usd": round(token_usage.cost_usd, 6),
-                "route": route_used,
-                "tools": list(collections_used) if collections_used else [],
-            },
-        )
-
-        # Record token usage metrics for Prometheus
-        metrics_collector.record_llm_token_usage(
-            model=model_used_name,
-            prompt_tokens=token_usage.prompt_tokens,
-            completion_tokens=token_usage.completion_tokens,
-            cost_usd=token_usage.cost_usd,
-            endpoint="chat",
-        )
-
-        # Build CoreResult
-        return CoreResult(
-            answer=state.final_answer,
-            sources=sources,
-            verification_score=getattr(state, "verification_score", 0.0),
-            evidence_score=getattr(state, "evidence_score", 0.0),
-            is_ambiguous=False,
-            entities=extracted_entities,
-            model_used=model_used_name,
-            prompt_tokens=token_usage.prompt_tokens,
-            completion_tokens=token_usage.completion_tokens,
-            total_tokens=token_usage.total_tokens,
-            cost_usd=token_usage.cost_usd,
-            verification_status="passed"
-            if getattr(state, "verification_score", 0.0) > 0.7
-            else "unchecked",
-            document_count=len(sources),
-            timings=timings,
-            warnings=[],
-        )
 
     def _create_error_event(
         self,

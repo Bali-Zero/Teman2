@@ -12,6 +12,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { logger } from '@/lib/logger';
+import { chatMetrics } from '@/lib/metrics';
 
 export interface AttachedImage {
   id: string;
@@ -129,6 +130,11 @@ export function useChatInput(): UseChatInputReturn {
             action: 'handleImageAttach',
             metadata: { imageCount: newImages.length, fileName: file.name, fileSize: file.size },
           });
+          
+          // Track metrics
+          const totalSize = newImages.reduce((sum, img) => sum + img.size, 0);
+          chatMetrics.imageAttached(newImages.length, totalSize);
+          
           return newImages;
         });
       };
