@@ -56,17 +56,30 @@ describe('useChatInput', () => {
     const { result } = renderHook(() => useChatInput());
 
     // Mock FileReader
+    let onloadendCallback: (() => void) | null = null;
     const mockFileReader = {
-      readAsDataURL: vi.fn(),
+      readAsDataURL: vi.fn(function(this: any, file: File) {
+        // Simulate async read
+        setTimeout(() => {
+          if (this.onloadend) {
+            this.onloadend();
+          }
+        }, 0);
+      }),
       result: 'data:image/png;base64,test',
       onloadend: null as any,
       onerror: null as any,
     };
 
-    global.FileReader = vi.fn(() => mockFileReader) as any;
+    global.FileReader = vi.fn(function(this: any) {
+      Object.assign(this, mockFileReader);
+      return this;
+    }) as any;
 
     // Create mock file
     const file = new File(['test'], 'test.png', { type: 'image/png' });
+    Object.defineProperty(file, 'size', { value: 1000 });
+    
     const fileList = {
       0: file,
       length: 1,
@@ -87,19 +100,16 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
-    // Simulate FileReader onloadend
-    await act(async () => {
-      mockFileReader.onloadend();
-      await waitFor(() => {
-        expect(result.current.attachedImages.length).toBeGreaterThan(0);
-      });
-    });
+    // Wait for FileReader to complete
+    await waitFor(() => {
+      expect(result.current.attachedImages.length).toBeGreaterThan(0);
+    }, { timeout: 1000 });
 
     expect(result.current.attachedImages.length).toBe(1);
     expect(result.current.attachedImages[0].name).toBe('test.png');
   });
 
-  it('should reject non-image files', () => {
+  it('should reject non-image files', async () => {
     const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
@@ -108,6 +118,8 @@ describe('useChatInput', () => {
     });
 
     const file = new File(['test'], 'test.txt', { type: 'text/plain' });
+    Object.defineProperty(file, 'size', { value: 1000 });
+    
     const fileList = {
       0: file,
       length: 1,
@@ -128,11 +140,16 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
+    // Wait a bit for async validation
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalled();
+    }, { timeout: 100 });
+
     expect(showToast).toHaveBeenCalledWith('Please select an image file', 'error');
     expect(result.current.attachedImages.length).toBe(0);
   });
 
-  it('should reject files larger than 10MB', () => {
+  it('should reject files larger than 10MB', async () => {
     const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
@@ -141,7 +158,7 @@ describe('useChatInput', () => {
     });
 
     // Create a file larger than 10MB
-    const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.png', { type: 'image/png' });
+    const largeFile = new File(['x'], 'large.png', { type: 'image/png' });
     Object.defineProperty(largeFile, 'size', { value: 11 * 1024 * 1024 });
 
     const fileList = {
@@ -163,6 +180,11 @@ describe('useChatInput', () => {
     act(() => {
       result.current.handleImageAttach(event);
     });
+
+    // Wait for async validation
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalled();
+    }, { timeout: 100 });
 
     expect(showToast).toHaveBeenCalledWith('Image must be less than 10MB', 'error');
   });
@@ -226,6 +248,9 @@ describe('useChatInput', () => {
 
     act(() => {
       result.current.setShowToast(showToast);
+    });
+
+    act(() => {
       result.current.showToast('Test message', 'success');
     });
 
