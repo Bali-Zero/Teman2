@@ -35,8 +35,10 @@ interface LogContext {
   level: LogLevel;
 }
 
+import type { ApiRequestParams, ErrorInfo } from '@/lib/api/types/logger.types';
+
 interface LogMetadata {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface LogData {
@@ -237,7 +239,8 @@ class CasesLogger {
 
   // ===== API CALLS =====
 
-  logApiRequest(endpoint: string, method: string, params?: any) {
+
+  logApiRequest(endpoint: string, method: string, params?: ApiRequestParams) {
     const logData = this.formatLog(
       LogLevel.INFO,
       LogCategory.API_CALL,
@@ -435,7 +438,7 @@ class CasesLogger {
     this.sendToLoggingService(logData);
   }
 
-  logComponentError(componentName: string, error: Error, errorInfo?: any) {
+  logComponentError(componentName: string, error: Error, errorInfo?: ErrorInfo): void {
     const logData = this.formatLog(
       LogLevel.ERROR,
       LogCategory.ERROR,

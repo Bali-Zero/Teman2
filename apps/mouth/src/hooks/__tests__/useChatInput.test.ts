@@ -111,7 +111,7 @@ describe('useChatInput', () => {
   });
 
   it('should reject non-image files', async () => {
-    const { result, rerender } = renderHook(() => useChatInput());
+    const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
     // Set toast callback first
@@ -119,17 +119,11 @@ describe('useChatInput', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force re-render to ensure useCallback dependencies are updated
-    rerender();
-
-    // Wait for React to fully update all useCallback closures
-    await waitFor(() => {
-      // Verify callback works by calling showToast directly
-      act(() => {
-        result.current.showToast('test', 'success');
-      });
-      return showToast.mock.calls.length > 0;
+    // Ref is synced synchronously, so callback should work immediately
+    act(() => {
+      result.current.showToast('test', 'success');
     });
+    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -157,17 +151,13 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
-    // Wait for toast callback to be called (it should be called synchronously, but we wait to be sure)
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 100 });
-
+    // Toast is called synchronously during validation
     expect(showToast).toHaveBeenCalledWith('Please select an image file', 'error');
     expect(result.current.attachedImages.length).toBe(0);
   });
 
   it('should reject files larger than 10MB', async () => {
-    const { result, rerender } = renderHook(() => useChatInput());
+    const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
     
     // Set toast callback first
@@ -175,17 +165,11 @@ describe('useChatInput', () => {
       result.current.setShowToast(showToast);
     });
 
-    // Force re-render to ensure useCallback dependencies are updated
-    rerender();
-
-    // Wait for React to fully update all useCallback closures
-    await waitFor(() => {
-      // Verify callback works by calling showToast directly
-      act(() => {
-        result.current.showToast('test', 'success');
-      });
-      return showToast.mock.calls.length > 0;
+    // Ref is synced synchronously, so callback should work immediately
+    act(() => {
+      result.current.showToast('test', 'success');
     });
+    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();
@@ -214,11 +198,7 @@ describe('useChatInput', () => {
       result.current.handleImageAttach(event);
     });
 
-    // Wait for toast callback to be called (it should be called synchronously, but we wait to be sure)
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 100 });
-
+    // Toast is called synchronously during validation
     expect(showToast).toHaveBeenCalledWith('Image must be less than 10MB', 'error');
   });
 
@@ -276,24 +256,18 @@ describe('useChatInput', () => {
   });
 
   it('should call toast callback when set', async () => {
-    const { result, rerender } = renderHook(() => useChatInput());
+    const { result } = renderHook(() => useChatInput());
     const showToast = vi.fn();
 
     act(() => {
       result.current.setShowToast(showToast);
     });
 
-    // Force re-render to ensure useCallback dependencies are updated
-    rerender();
-
-    // Wait for React to fully update all useCallback closures
-    await waitFor(() => {
-      // Verify callback works by calling showToast directly
-      act(() => {
-        result.current.showToast('test', 'success');
-      });
-      return showToast.mock.calls.length > 0;
+    // Ref is synced synchronously, so callback should work immediately
+    act(() => {
+      result.current.showToast('test', 'success');
     });
+    expect(showToast).toHaveBeenCalled();
 
     // Reset mock
     showToast.mockClear();

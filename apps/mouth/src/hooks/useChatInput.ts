@@ -62,12 +62,16 @@ export function useChatInput(): UseChatInputReturn {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const toastCallbackRef = useRef<((message: string, type: 'success' | 'error') => void) | null>(null);
+
+  // Keep ref in sync with state (synchronously for immediate access)
+  toastCallbackRef.current = toastCallback;
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    if (toastCallback) {
-      toastCallback(message, type);
+    if (toastCallbackRef.current) {
+      toastCallbackRef.current(message, type);
     }
-  }, [toastCallback]);
+  }, []);
 
   const handleImageAttach = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -88,7 +92,9 @@ export function useChatInput(): UseChatInputReturn {
           action: 'handleImageAttach',
           metadata: { fileType: file.type, fileName: file.name },
         });
-        showToast('Please select an image file', 'error');
+        if (toastCallbackRef.current) {
+          toastCallbackRef.current('Please select an image file', 'error');
+        }
         return;
       }
       
@@ -98,7 +104,9 @@ export function useChatInput(): UseChatInputReturn {
           action: 'handleImageAttach',
           metadata: { fileSize: file.size, fileName: file.name },
         });
-        showToast('Image must be less than 10MB', 'error');
+        if (toastCallbackRef.current) {
+          toastCallbackRef.current('Image must be less than 10MB', 'error');
+        }
         return;
       }
       
@@ -108,7 +116,9 @@ export function useChatInput(): UseChatInputReturn {
           action: 'handleImageAttach',
           metadata: { currentCount: attachedImages.length, attemptCount: attachedCount },
         });
-        showToast('Maximum 5 images allowed', 'error');
+        if (toastCallbackRef.current) {
+          toastCallbackRef.current('Maximum 5 images allowed', 'error');
+        }
         return;
       }
 
@@ -144,7 +154,9 @@ export function useChatInput(): UseChatInputReturn {
           action: 'handleImageAttach',
           metadata: { fileName: file.name },
         }, new Error('FileReader error'));
-        showToast('Failed to read image file', 'error');
+        if (toastCallbackRef.current) {
+          toastCallbackRef.current('Failed to read image file', 'error');
+        }
       };
       reader.readAsDataURL(file);
       attachedCount++;
@@ -152,7 +164,7 @@ export function useChatInput(): UseChatInputReturn {
 
     // Reset input to allow selecting same file again
     e.target.value = '';
-  }, [attachedImages.length, showToast]);
+  }, [attachedImages.length]);
 
   const removeAttachedImage = useCallback((imageId: string) => {
     logger.debug('Removing attached image', {

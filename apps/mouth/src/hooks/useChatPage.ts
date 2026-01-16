@@ -21,6 +21,28 @@ import { useAudioRecorder } from './useAudioRecorder';
 import type { ChatMessage, Source } from '@/app/chat/actions';
 import type { AgentStep } from '@/types';
 
+import type { SingleConversationResponse } from '@/lib/api/conversations/conversations.types';
+
+/**
+ * Type guard for conversation message from API
+ * Uses SingleConversationResponse type from API
+ */
+type ApiConversationMessage = SingleConversationResponse['messages'][number] & {
+  id?: string;
+  timestamp?: string | Date;
+  images?: Array<{ id: string; base64: string; name: string; size: number }>;
+  steps?: AgentStep[];
+  metadata?: unknown;
+};
+
+function isApiConversationMessage(value: unknown): value is ApiConversationMessage {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const msg = value as Record<string, unknown>;
+  return typeof msg.role === 'string' && typeof msg.content === 'string';
+}
+
 export interface OptimisticMessage extends ChatMessage {
   isPending?: boolean;
   isStreaming?: boolean;
@@ -366,12 +388,14 @@ export function useChatPage(): UseChatPageReturn {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
           setMessages(
-            conv.messages.map((m: any) => ({
-              id: m.id || generateId(),
-              role: m.role as 'user' | 'assistant',
-              content: m.content || '',
-              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-              sources: m.sources,
+            conv.messages
+              .filter(isApiConversationMessage)
+              .map((m): ChatMessage => ({
+                id: m.id || generateId(),
+                role: (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as 'user' | 'assistant',
+                content: m.content || '',
+                timestamp: m.timestamp ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date) : new Date(),
+                sources: m.sources,
             }))
           );
           if (conv.session_id) setSessionId(conv.session_id);

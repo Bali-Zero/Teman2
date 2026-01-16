@@ -5,39 +5,27 @@
 
 import React from 'react';
 import { logger } from './logger';
+import type {
+  WebSocketMessage,
+  WebSocketMessageType,
+  DashboardUpdateData,
+  UserPresenceData,
+  CaseUpdateData,
+  EmailUpdateData,
+  SystemAlertData,
+  WebSocketMessageData,
+} from './api/types/realtime.types';
+import { isWebSocketMessage, isMessageType } from './api/types/realtime.types';
+import type { RealtimeHookReturn } from './types/realtime-hook.types';
 
-interface WebSocketMessage {
-  type: 'dashboard_update' | 'user_presence' | 'case_update' | 'email_update' | 'system_alert';
-  data: any;
-  timestamp: string;
-  userId: string;
-  userName: string;
-}
-
-interface UserPresence {
-  userId: string;
-  userName: string;
-  email: string;
-  avatar?: string;
-  currentView: string;
-  lastSeen: string;
-  isOnline: boolean;
-}
-
-interface DashboardUpdate {
-  userId: string;
-  action: 'view' | 'edit' | 'delete' | 'create';
-  resource: 'case' | 'email' | 'client' | 'document';
-  resourceId: string;
-  changes?: Record<string, any>;
-}
+// Types moved to realtime.types.ts - using imported types
 
 class RealtimeService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private listeners: Map<string, Set<(data: WebSocketMessageData) => void>> = new Map();
   private isConnecting = false;
   private heartbeatInterval: NodeJS.Timeout | null = null;
 
@@ -155,7 +143,10 @@ class RealtimeService {
   }
 
   // Subscribe to specific message types
-  subscribe(type: string, callback: (data: any) => void): () => void {
+  subscribe<T extends WebSocketMessageType>(
+    type: T,
+    callback: (data: WebSocketMessage<T>['data']) => void
+  ): () => void {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
     }
@@ -174,10 +165,13 @@ class RealtimeService {
   }
 
   // Send message to server
-  private send(type: string, data: any): void {
+  private send<T extends WebSocketMessageType>(
+    type: T,
+    data: WebSocketMessage<T>['data']
+  ): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message: WebSocketMessage = {
-        type: type as any,
+      const message: WebSocketMessage<T> = {
+        type,
         data,
         timestamp: new Date().toISOString(),
         userId: this.getCurrentUserId(),
@@ -197,7 +191,12 @@ class RealtimeService {
   }
 
   // Send dashboard activity
-  sendDashboardUpdate(action: DashboardUpdate['action'], resource: DashboardUpdate['resource'], resourceId: string, changes?: Record<string, any>): void {
+  sendDashboardUpdate(
+    action: DashboardUpdateData['action'],
+    resource: DashboardUpdateData['resource'],
+    resourceId: string,
+    changes?: Record<string, unknown>
+  ): void {
     this.send('dashboard_update', {
       action,
       resource,
@@ -211,20 +210,19 @@ class RealtimeService {
   private handleMessage(message: WebSocketMessage): void {
     const callbacks = this.listeners.get(message.type);
     if (callbacks) {
-      callbacks.forEach(callback => callback(message.data));
+      callbacks.forEach(callback => {
+        // Type-safe callback invocation
+        callback(message.data as WebSocketMessageData);
+      });
     }
 
-    // Handle system messages
-    switch (message.type) {
-      case 'user_presence':
-        this.updateUserPresence(message.data);
-        break;
-      case 'dashboard_update':
-        this.handleDashboardUpdate(message.data);
-        break;
-      case 'system_alert':
-        this.showSystemAlert(message.data);
-        break;
+    // Handle system messages with type guards
+    if (isMessageType(message, 'user_presence')) {
+      this.updateUserPresence(message.data);
+    } else if (isMessageType(message, 'dashboard_update')) {
+      this.handleDashboardUpdate(message.data);
+    } else if (isMessageType(message, 'system_alert')) {
+      this.showSystemAlert(message.data);
     }
   }
 
@@ -284,7 +282,7 @@ class RealtimeService {
   }
 
   // Update user presence in local state
-  private updateUserPresence(data: UserPresence): void {
+  private updateUserPresence(data: UserPresenceData): void {
     // This would typically update a global state management store
     logger.debug('User presence updated', {
       component: 'RealtimeService',
@@ -294,7 +292,7 @@ class RealtimeService {
   }
 
   // Handle dashboard updates from other users
-  private handleDashboardUpdate(data: DashboardUpdate): void {
+  private handleDashboardUpdate(data: DashboardUpdateData): void {
     logger.debug('Dashboard update received', {
       component: 'RealtimeService',
       action: 'dashboard_update',
@@ -305,7 +303,7 @@ class RealtimeService {
   }
 
   // Show system alerts
-  private showSystemAlert(data: any): void {
+  private showSystemAlert(data: SystemAlertData): void {
     logger.info('System alert', {
       component: 'RealtimeService',
       action: 'system_alert',
@@ -315,10 +313,10 @@ class RealtimeService {
   }
 
   // Notify dashboard components of updates
-  private notifyDashboardUpdate(update: DashboardUpdate): void {
+  private notifyDashboardUpdate(update: DashboardUpdateData): void {
     const callbacks = this.listeners.get('dashboard_refresh');
     if (callbacks) {
-      callbacks.forEach(callback => callback(update));
+      callbacks.forEach(callback => callback(update as WebSocketMessageData));
     }
   }
 
@@ -371,9 +369,9 @@ class RealtimeService {
 export const realtimeService = new RealtimeService();
 
 // React hook for real-time features
-export function useRealtime() {
+export function useRealtime(): RealtimeHookReturn {
   const [isConnected, setIsConnected] = React.useState(false);
-  const [onlineUsers, setOnlineUsers] = React.useState<UserPresence[]>([]);
+  const [onlineUsers, setOnlineUsers] = React.useState<UserPresenceData[]>([]);
 
   React.useEffect(() => {
     // Subscribe to connection status changes
@@ -405,7 +403,7 @@ export function useRealtime() {
 
 // Higher-order component for real-time updates
 export function withRealtime<P extends object>(
-  Component: React.ComponentType<P & { realtime?: any }>
+  Component: React.ComponentType<P & { realtime?: RealtimeHookReturn }>
 ) {
   const WrappedComponent = (props: P) => {
     const realtime = useRealtime();

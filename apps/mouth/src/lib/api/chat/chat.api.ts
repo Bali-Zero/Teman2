@@ -4,70 +4,21 @@ import type { AgenticQueryResponse } from './chat.types';
 import { logger } from '@/lib/logger';
 
 /**
- * Clean image generation response to remove ugly pollinations URLs
+ * NOTE: Image response cleaning is now handled by the backend.
  * 
- * This is the SOURCE OF TRUTH for image response cleaning.
- * Removes pollinations URLs, markdown images, version numbers, and other artifacts
- * from AI-generated image responses.
+ * The backend's `clean_image_generation_response` function (in agentic_rag.py)
+ * is the SINGLE SOURCE OF TRUTH for image response cleaning.
  * 
- * Features:
- * - Removes pollinations.ai URLs and subdomains
- * - Filters markdown image syntax
- * - Removes version numbers and intro/outro lines
- * - Handles URL-encoded content
- * - Provides fallback message if too much content is removed
+ * It processes token events during streaming, removing:
+ * - Pollinations URLs and subdomains
+ * - Markdown image syntax
+ * - Version numbers and intro/outro lines
+ * - URL-encoded content
+ * - Other image generation artifacts
+ * 
+ * This frontend function has been removed to eliminate code duplication.
+ * The backend ensures all responses are cleaned before being sent to the client.
  */
-function cleanImageResponse(text: string): string {
-  if (!text || !text.toLowerCase().includes('pollinations')) {
-    return text;
-  }
-
-  // Process line by line
-  const lines = text.split('\n');
-  const cleanedLines = lines.filter(line => {
-    const lineLower = line.toLowerCase();
-    // Skip lines with pollinations URLs
-    if (lineLower.includes('pollinations')) return false;
-    // Skip lines with image.pollinations or any pollinations subdomain
-    if (lineLower.includes('image') && lineLower.includes('http')) return false;
-    // Skip markdown image syntax ![...](...)
-    if (/!\[.*?\]\(.*?\)/i.test(line)) return false;
-    // Skip lines that look like broken markdown images (start with ![ or contain](http)
-    if (line.includes('![') || line.includes('](http')) return false;
-    // Skip [Visualizza Immagine] lines
-    if (line.trim().startsWith('[Visualizza')) return false;
-    // Skip numbered version lines like "1. **Versione..." or "1. Versione..."
-    if (/^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
-    // Skip bullet version lines like "* Versione..." or "- Versione..."
-    if (/^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
-    // Skip lines that are just "Versione X" headers
-    if (/^\s*\*{0,2}Versione\s*\d/i.test(line)) return false;
-    // Skip intro lines that mention "opzioni" or "varianti" for images
-    if (/ecco le (opzioni|immagini)|ho (elaborato|generato|creato) (due|le)|ti propongo|due varianti|ecco i risultati|queste versioni/i.test(lineLower)) return false;
-    // Skip "Spero che queste opzioni" outro lines
-    if (/spero che queste|se hai bisogno di|vadano bene per|sembra che queste/i.test(lineLower)) return false;
-    // Skip lines starting with (http...
-    if (line.trim().startsWith('(http')) return false;
-    // Skip lines that are just URLs
-    if (/^https?:\/\//i.test(line.trim())) return false;
-    // Skip lines that contain URL-encoded content (long %20 sequences)
-    if (/%20.*%20.*%20/i.test(line)) return false;
-    // Skip lines mentioning "alta risoluzione" or "atmosfera" for image descriptions
-    if (/alta risoluzione|atmosfera tradizionale|luce dorata/i.test(lineLower)) return false;
-    return true;
-  });
-
-  let result = cleanedLines.join('\n');
-  // Clean up multiple newlines
-  result = result.replace(/\n{3,}/g, '\n\n').trim();
-
-  // If almost everything was removed, provide default
-  if (result.length < 30) {
-    result = "Ecco l'immagine che hai richiesto! 🎨";
-  }
-
-  return result;
-}
 
 /**
  * Chat/Streaming API methods
@@ -523,10 +474,9 @@ export class ChatApi {
               // Reset idle timeout on token (data arrival)
               resetIdleTimeout();
               // Only call callback if not aborted
+              // Note: Image cleaning is handled by backend (clean_image_generation_response)
               if (!signalToUse.aborted && !requestAborted) {
-                // Clean accumulated response to remove ugly pollinations URLs
-                const cleanedResponse = cleanImageResponse(fullResponse);
-                onChunk(cleanedResponse);
+                onChunk(fullResponse);
               }
             } else if (data.type === 'status') {
               // Reset idle timeout on status update (data arrival)
@@ -618,8 +568,9 @@ export class ChatApi {
                   (typeof data.data === 'string' && data.data) ||
                   '';
                 fullResponse += text;
+                // Note: Image cleaning is handled by backend
                 if (!signalToUse.aborted && !requestAborted) {
-                  onChunk(cleanImageResponse(fullResponse));
+                  onChunk(fullResponse);
                 }
               } else if (isRecord(data) && data.type === 'sources') {
                 sources = Array.isArray(data.data)
@@ -663,9 +614,9 @@ export class ChatApi {
           const metadataWithImage = generatedImageUrl
             ? { ...finalMetadata, generated_image: generatedImageUrl }
             : finalMetadata;
-          // Clean final response to remove ugly pollinations URLs
-          const cleanedFinalResponse = cleanImageResponse(fullResponse);
-          onDone(cleanedFinalResponse, sources, metadataWithImage);
+          // Note: Image cleaning is handled by backend (clean_image_generation_response)
+          // Backend processes token events during streaming, so fullResponse is already cleaned
+          onDone(fullResponse, sources, metadataWithImage);
         }
       }
     } catch (error) {
