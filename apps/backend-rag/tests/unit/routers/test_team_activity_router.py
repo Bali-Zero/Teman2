@@ -81,23 +81,32 @@ def mock_user_data():
 
 @pytest.fixture
 def test_app(mock_timesheet_service, mock_user_data):
-    """Create FastAPI test app with router"""
+    """Create FastAPI test app with router.
+    
+    Updated 2026-01-16: Fixed dependency overrides to match actual API.
+    - get_current_user accepts Request parameter
+    - get_admin_user accepts current_user parameter (from get_current_user)
+    - Patch get_timesheet_service at module level
+    """
     from backend.app.routers.team_activity import router
 
     app = FastAPI()
     app.include_router(router)
 
-    # Override authentication dependencies with controllable lambdas
+    # Override authentication dependencies
     from backend.app.dependencies import get_current_user
     from backend.app.routers.team_activity import get_admin_user
 
-    def override_get_current_user():
-        if app.state.current_user is None:
+    # get_current_user accepts Request parameter
+    def override_get_current_user(request=None):
+        if not hasattr(app.state, "current_user") or app.state.current_user is None:
             raise HTTPException(status_code=401, detail="Not authenticated")
         return app.state.current_user
 
-    def override_get_admin_user():
-        user = app.state.admin_user
+    # get_admin_user accepts current_user parameter (from get_current_user dependency)
+    def override_get_admin_user(current_user=None):
+        # Use current_user from dependency or fallback to app.state
+        user = current_user or getattr(app.state, "admin_user", None)
         if user is None:
             raise HTTPException(status_code=401, detail="Not authenticated")
         from backend.app.utils.crm_utils import is_crm_admin
@@ -112,7 +121,7 @@ def test_app(mock_timesheet_service, mock_user_data):
     app.state.current_user = mock_user_data
     app.state.admin_user = mock_user_data
 
-    # Patch get_timesheet_service which is imported locally in router
+    # Patch get_timesheet_service at module level (imported locally in endpoints)
     with patch(
         "backend.services.analytics.team_timesheet_service.get_timesheet_service",
         return_value=mock_timesheet_service,

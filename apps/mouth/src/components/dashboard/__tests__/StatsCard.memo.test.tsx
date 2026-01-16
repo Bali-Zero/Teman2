@@ -23,10 +23,13 @@ describe('StatsCard Memoization', () => {
 
   it('should be memoized (React.memo)', () => {
     // Check that StatsCard is wrapped with React.memo
+    // React.memo creates a special component type
     const component = StatsCard;
     expect(component).toBeDefined();
-    // React.memo adds displayName
-    expect(component.displayName || component.name).toBe('StatsCard');
+
+    // React.memo components have a $$typeof symbol
+    // We can verify by checking if the component is not a plain function
+    expect(typeof component).toBe('object');
   });
 
   it('should render with variant styles', () => {

@@ -19,7 +19,7 @@ Date: 2025-12-17
 """
 
 from contextlib import nullcontext
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
@@ -54,9 +54,17 @@ def mock_settings():
 
 @pytest.fixture
 def mock_genai_client():
-    """Mock GenAIClient from backend.llm.genai_client."""
+    """Mock GenAIClient from backend.llm.genai_client.
+    
+    Updated 2026-01-16: Fixed mock to match actual GenAIClient API.
+    - is_available is a property, not an attribute
+    - create_chat_session returns ChatSession instance
+    - ChatSession.send_message is async method
+    """
     mock_client = MagicMock()
-    mock_client.is_available = True
+    
+    # is_available is a property, not an attribute
+    type(mock_client).is_available = PropertyMock(return_value=True)
 
     # Mock the internal _client.aio.models.generate_content
     mock_response = create_mock_response("Test response")
@@ -71,11 +79,20 @@ def mock_genai_client():
     # Mock generate_content for health checks
     mock_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-    # Mock create_chat and create_chat_session
+    # Mock create_chat_session - returns ChatSession instance
     mock_chat = MagicMock()
     mock_chat.send_message = AsyncMock(return_value={"text": "Chat response"})
-    mock_client.create_chat = MagicMock(return_value=mock_chat)
+    mock_chat.send_message_stream = AsyncMock()
+    # Create async generator for streaming
+    async def mock_stream(*args, **kwargs):
+        mock_chunk = MagicMock()
+        mock_chunk.text = "Stream chunk"
+        yield mock_chunk
+    mock_chat.send_message_stream = mock_stream
+    
     mock_client.create_chat_session = MagicMock(return_value=mock_chat)
+    # For backward compatibility
+    mock_client.create_chat = MagicMock(return_value=mock_chat)
 
     return mock_client
 

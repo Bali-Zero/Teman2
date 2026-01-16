@@ -209,7 +209,13 @@ class TestClientUpdateValidation:
 
 @pytest.fixture
 def mock_db_pool():
-    """Create mock database pool with connection context manager"""
+    """Create mock database pool with connection context manager.
+    
+    Updated 2026-01-16: Enhanced mock to match actual asyncpg.Pool API.
+    - Proper async context manager for acquire()
+    - Mock connection methods (fetchrow, fetchval, fetch, execute)
+    - Default return values set to None/[] to avoid truthiness issues
+    """
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
 
@@ -218,12 +224,17 @@ def mock_db_pool():
     mock_conn.fetchrow.return_value = None
     mock_conn.fetchval.return_value = None
     mock_conn.fetch.return_value = []
+    mock_conn.execute.return_value = None
 
     # Setup async context manager for pool.acquire()
+    # This matches the actual asyncpg.Pool.acquire() API
     async_context = AsyncMock()
     async_context.__aenter__.return_value = mock_conn
     async_context.__aexit__.return_value = None
     mock_pool.acquire.return_value = async_context
+
+    # Ensure mock_pool has acquire method (for get_database_pool check)
+    assert hasattr(mock_pool, "acquire"), "Mock pool must have acquire method"
 
     return mock_pool
 
@@ -252,11 +263,21 @@ def mock_client_row():
 
 @pytest.fixture
 def test_app(mock_db_pool):
-    """Create FastAPI test app with mocked dependencies"""
+    """Create FastAPI test app with mocked dependencies.
+    
+    Updated 2026-01-16: Fixed dependency overrides to match actual API.
+    - get_database_pool accepts Request parameter
+    - get_current_user accepts Request and credentials parameters
+    - Set app.state.db_pool for get_database_pool to access
+    """
     from backend.app.routers.crm_clients import router
 
     app = FastAPI()
     app.include_router(router)
+
+    # Set app.state.db_pool for get_database_pool dependency
+    # This matches how the actual dependency accesses the pool
+    app.state.db_pool = mock_db_pool
 
     # Override dependencies
     from backend.app.dependencies import get_current_user, get_database_pool
@@ -266,11 +287,21 @@ def test_app(mock_db_pool):
     audit_logger.initialize(mock_db_pool)
     metrics_collector.initialize(mock_db_pool)
 
-    app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
-    app.dependency_overrides[get_current_user] = lambda: {
-        "email": "admin@example.com",
-        "role": "admin",
-    }
+    # Override get_database_pool - it accesses request.app.state.db_pool
+    def get_db_pool_override(request):
+        return mock_db_pool
+    
+    # Override get_current_user - return mock user dict
+    def get_user_override(request, credentials=None):
+        return {
+            "email": "admin@example.com",
+            "user_id": "admin@example.com",
+            "role": "admin",
+            "permissions": [],
+        }
+
+    app.dependency_overrides[get_database_pool] = get_db_pool_override
+    app.dependency_overrides[get_current_user] = get_user_override
 
     return app
 

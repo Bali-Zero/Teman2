@@ -113,9 +113,27 @@ def _load_module(monkeypatch):
 
 
 def _make_client(module, pool):
+    """Create test client with mocked dependencies.
+    
+    Updated 2026-01-16: Fixed dependency override to use get_database_pool
+    from backend.app.dependencies instead of module.get_database_pool.
+    """
+    from backend.app.dependencies import get_database_pool, get_current_user
+    
     app = FastAPI()
     app.include_router(module.router)
-    app.dependency_overrides[module.get_database_pool] = lambda: pool
+    
+    # Override get_database_pool from dependencies
+    def get_db_pool_override(request=None):
+        return pool
+    
+    # Override get_current_user to return mock user
+    def get_user_override(request=None, credentials=None):
+        return {"email": "test@example.com", "role": "admin"}
+    
+    app.dependency_overrides[get_database_pool] = get_db_pool_override
+    app.dependency_overrides[get_current_user] = get_user_override
+    
     return TestClient(app)
 
 

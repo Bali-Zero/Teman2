@@ -252,6 +252,12 @@ class IntelApprovalService:
             enriched_data: Optional enriched data
             image_path: Optional image path
         """
+        # #region agent log
+        import json as json_module
+        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
+            log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:255","message":"_save_voting_status entry","data":{"item_id":item_id,"intel_type":intel_type},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+        # #endregion
+        
         voting_status = {
             "item_id": item_id,
             "intel_type": intel_type,
@@ -264,4 +270,28 @@ class IntelApprovalService:
         }
 
         status_file = self.pending_intel_path / f"{item_id}.json"
-        status_file.write_text(json.dumps(voting_status, indent=2))
+        
+        # #region agent log
+        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
+            log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:267","message":"Before voting status write","data":{"status_file":str(status_file),"path_exists":self.pending_intel_path.exists()},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+        # #endregion
+        
+        try:
+            status_file.write_text(json.dumps(voting_status, indent=2))
+            
+            # #region agent log
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
+                log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:272","message":"_save_voting_status success","data":{"status_file":str(status_file),"file_exists":status_file.exists()},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+            # #endregion
+            
+        except Exception as e:
+            # #region agent log
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
+                log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:277","message":"_save_voting_status error","data":{"error":str(e),"error_type":type(e).__name__,"status_file":str(status_file)},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+            # #endregion
+            logger.error(
+                f"Failed to save voting status for {item_id}: {e}",
+                exc_info=True,
+                extra={"item_id": item_id, "intel_type": intel_type},
+            )
+            raise

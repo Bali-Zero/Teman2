@@ -103,8 +103,27 @@ def _load_module(
 
 
 def _make_client(module):
+    """Create test client with mocked dependencies.
+    
+    Updated 2026-01-16: Added dependency overrides for get_current_user
+    if the router uses it.
+    """
+    from backend.app.dependencies import get_current_user
+    
     app = FastAPI()
     app.include_router(module.router)
+    
+    # Override get_current_user if router uses it
+    def get_user_override(request=None, credentials=None):
+        return {"email": "test@example.com", "role": "admin"}
+    
+    # Only override if router actually uses this dependency
+    # Check if router has endpoints that use get_current_user
+    try:
+        app.dependency_overrides[get_current_user] = get_user_override
+    except Exception:
+        pass  # Router might not use this dependency
+    
     return TestClient(app)
 
 

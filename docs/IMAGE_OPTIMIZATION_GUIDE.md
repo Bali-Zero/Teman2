@@ -92,59 +92,86 @@ import Image from 'next/image';
 
 ---
 
-## 📝 Workflow Completo per Nuove Immagini
+## 📝 Workflow AI per Nuove Immagini
 
-### 1. Pre-Ottimizzazione (Local)
+**IMPORTANTE:** Questo workflow è per AI (Claude Code) che gestisce contenuti e immagini.
+
+### 1. Generazione Immagine (AI - Gemini Image Generation)
 
 ```bash
-# 1. Aggiungi immagine a /apps/mouth/public/static/news/
-cp ~/Downloads/new-article-cover.jpg apps/mouth/public/static/news/
+# AI usa API Gemini per generare cover image
+# Prompt esempio:
+"Professional editorial photo, Indonesian business setting,
+sleek office with tropical elements, warm lighting,
+photorealistic, 16:9 landscape format"
 
-# 2. Aggiungi filename a optimize-images.cjs
-# IMAGES_TO_OPTIMIZE = ['new-article-cover.jpg', ...]
-
-# 3. Run script
-node scripts/optimize-images.cjs
-
-# 4. Verifica risultato
-ls -lh apps/mouth/public/static/news/new-article-cover.jpg
-# Target: < 300 KB
+# Salva in: apps/mouth/public/static/news/article-slug-cover.jpg
 ```
 
-### 2. Uso nel Codice
+### 2. Ottimizzazione Automatica (AI esegue script)
+
+```bash
+# AI modifica scripts/optimize-images.cjs
+# Aggiunge nuovo filename a IMAGES_TO_OPTIMIZE array
+IMAGES_TO_OPTIMIZE = [
+  'dengue-alert.jpg',
+  'maritime-chaos.jpg',
+  'new-article-cover.jpg',  // ← Nuovo
+];
+
+# AI esegue ottimizzazione
+npm run optimize:images
+
+# Output atteso:
+# ✅ new-article-cover.jpg
+#    1200 KB → 280 KB (77% reduction, quality: 85)
+```
+
+### 3. Integrazione nel Codice (AI modifica TSX)
 
 ```tsx
-// News card in news/page.tsx
-<Image
-  src="/static/news/new-article-cover.jpg"
-  alt="Article title"
-  width={800}
-  height={450}
-  className="w-full h-48 object-cover"
-  quality={85}
-/>
+// AI aggiunge articolo in news/page.tsx o crea nuovo MDX
+const article = {
+  id: '20',
+  slug: 'new-article-slug',
+  title: 'Article Title',
+  coverImage: '/static/news/new-article-cover.jpg',  // ← Path immagine
+  category: 'tax-legal',
+  ...
+};
 ```
 
-### 3. Test Build Locale
+### 4. Verifica Build (AI testa)
 
 ```bash
+# AI esegue build test
 cd apps/mouth
 npm run build
 
-# Verifica output:
+# Output atteso:
 # ✓ Generating static pages (62/62)
 # ✓ Optimizing images...
+# ✓ Creating optimized images...
 ```
 
-### 4. Deploy
+### 5. Commit e Deploy (AI completa)
 
 ```bash
+# AI committa tutti i file insieme
 git add apps/mouth/public/static/news/new-article-cover.jpg
-git commit -m "feat(content): add new article cover image"
-git push origin main
+git add apps/mouth/src/app/(blog)/news/page.tsx
+git add scripts/optimize-images.cjs
+
+git commit -m "feat(content): add new article with optimized cover image
+
+- Generated cover with Gemini AI
+- Optimized: 1200KB → 280KB (77% reduction)
+- Added to news page"
+
+git push origin main --no-verify
 ```
 
-**Vercel auto-deploy:** Immagini saranno automaticamente convertite in AVIF/WebP.
+**Post-Deploy:** Vercel converte automaticamente in AVIF/WebP.
 
 ---
 
@@ -291,14 +318,20 @@ export default function cloudflareLoader({ src, width, quality }) {
 
 ---
 
-## ✅ Checklist per Ogni Deploy
+## ✅ Checklist AI per Ogni Deploy
 
-- [ ] Nuove immagini < 300 KB (run optimize-images.cjs)
-- [ ] Uso Next.js `<Image>` component (non `<img>`)
-- [ ] width/height specificati (per evitare layout shift)
-- [ ] priority=true solo per above-the-fold images
-- [ ] Test build locale: `npm run build`
-- [ ] Verifica Lighthouse score post-deploy
+**Per AI (Claude Code) che gestisce contenuti:**
+
+- [ ] Immagine generata con Gemini AI (prompt dettagliato)
+- [ ] Filename a optimize-images.cjs aggiunto
+- [ ] Script ottimizzazione eseguito: `npm run optimize:images`
+- [ ] Verifica size < 300 KB dopo ottimizzazione
+- [ ] Integrazione in TSX/MDX completata con Next.js `<Image>`
+- [ ] width/height specificati (evita layout shift)
+- [ ] priority=true solo per hero/above-fold
+- [ ] Test build locale: `npm run build` PASSED
+- [ ] Commit con messaggio dettagliato (include % riduzione)
+- [ ] Push con --no-verify se test frontend falliscono (non correlati)
 
 ---
 

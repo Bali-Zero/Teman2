@@ -137,7 +137,8 @@ Done!"""
 [Visualizza immagine](link)"""
 
         result = clean_image_generation_response(text)
-        assert len(result) >= 20  # Should have default message
+        assert len(result) >= 30  # Should have default message (threshold updated to 30)
+        assert "Ecco l'immagine" in result
 
     def test_empty_input_returns_empty(self):
         """Empty input should return empty"""

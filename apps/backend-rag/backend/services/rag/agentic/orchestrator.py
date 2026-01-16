@@ -217,6 +217,8 @@ class AgenticRAGOrchestrator:
 
         # Initialize OrchestratorCore (delegates main logic)
         from .orchestrator_core import OrchestratorCore
+        from .orchestrator_streaming import OrchestratorStreamingManager
+        from .orchestrator_streaming_core import OrchestratorStreamingCore
 
         self.core = OrchestratorCore(
             llm_gateway=self.llm_gateway,
@@ -230,7 +232,17 @@ class AgenticRAGOrchestrator:
             semantic_cache=self.semantic_cache,
             db_pool=db_pool,
         )
-        logger.info("✅ OrchestratorCore initialized (Refactored Architecture)")
+
+        # Initialize streaming components
+        streaming_manager = OrchestratorStreamingManager(
+            max_event_errors=self._max_event_errors,
+            event_validation_enabled=self._event_validation_enabled,
+        )
+        self.streaming_core = OrchestratorStreamingCore(
+            core=self.core,
+            streaming_manager=streaming_manager,
+        )
+        logger.info("✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)")
 
     async def process_query(
         self,
@@ -332,53 +344,13 @@ class AgenticRAGOrchestrator:
         if images:
             logger.info(f"🖼️ Vision mode: {len(images)} images attached to query")
 
-        # UNIVERSAL CONTEXT LOADING (Stream)
-        with trace_span("context.load_user_stream", {"user_id": user_id}):
-            try:
-                memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
-                user_context = await get_user_context(
-                    self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
-                )
-                set_span_attribute("facts_count", len(user_context.get("facts", [])))
-                set_span_status("ok")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to load user context in stream: {e}")
-                user_context = {}
-                set_span_status("error", str(e))
-
-        history_to_use = conversation_history or user_context.get("history", [])
-        if (
-            not isinstance(history_to_use, list)
-            or history_to_use
-            and not isinstance(history_to_use[0], dict)
-        ):
-            history_to_use = []
-
-        # Apply context window management for long conversations
-        # This prevents "lost in the middle" phenomenon by summarizing older messages
-        if len(history_to_use) > 0:
-            trim_result = self.context_window_manager.trim_conversation_history(history_to_use)
-            if trim_result["needs_summarization"]:
-                logger.info(
-                    f"📊 [ContextWindow Stream] Summarizing {len(trim_result['messages_to_summarize'])} older messages"
-                )
-                try:
-                    summary = await self.context_window_manager.generate_summary(
-                        trim_result["messages_to_summarize"], trim_result["context_summary"]
-                    )
-                    history_to_use = self.context_window_manager.inject_summary_into_history(
-                        trim_result["trimmed_messages"], summary
-                    )
-                    logger.info(
-                        f"✅ [ContextWindow Stream] Summarized to {len(history_to_use)} messages with summary"
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"⚠️ [ContextWindow Stream] Summarization failed, using trimmed history: {e}"
-                    )
-                    history_to_use = trim_result["trimmed_messages"]
-            else:
-                history_to_use = trim_result["trimmed_messages"]
+        # Prepare context using common logic (for early gates)
+        user_context, history_to_use, _ = await self.core.prepare_query_context(
+            query=query,
+            user_id=user_id,
+            conversation_history=conversation_history,
+            session_id=session_id,
+        )
 
         logger.info(
             f"🧠 [Stream Context] Loaded context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)"
@@ -586,253 +558,26 @@ Respond in the SAME language the user is using."""
             yield {"type": "done", "data": None}
             return
 
-        logger.debug(f"Entering stream_query. Query: {query}")
-        # 0. Start Timer & Initialize
-        start_time = time.time()
-
-        # 0.2 PRE-RAG ENTITY EXTRACTION
-        with trace_span("entity.extraction_stream", {"query_length": len(query)}):
-            extracted_entities = await self.entity_extractor.extract_entities(query)
-            if any(extracted_entities.values()):
-                logger.info(
-                    f"🔍 [Entity Extraction Stream] Extracted entities: {extracted_entities}"
-                )
-                set_span_attribute("entities_found", str(extracted_entities))
-                yield {"type": "metadata", "data": {"extracted_entities": extracted_entities}}
-            set_span_status("ok")
-
-        # 1. SEMANTIC CACHE CHECK
-        with trace_span(
-            "cache.semantic_check_stream", {"cache_enabled": bool(self.semantic_cache)}
-        ):
-            if self.semantic_cache:
-                try:
-                    cached = await self.semantic_cache.get_cached_result(query)
-                    if cached:
-                        logger.info("✅ [Cache Hit Stream] Returning cached result for query")
-                        set_span_attribute("cache_hit", "true")
-                        set_span_status("ok")
-                        result = cached.get("result", cached)
-                        result["cache_hit"] = cached.get("cache_hit", "exact")
-                        result["execution_time"] = time.time() - start_time
-
-                        yield {
-                            "type": "metadata",
-                            "data": {"status": "cache-hit", "route": "semantic-cache"},
-                        }
-                        for token in result["answer"].split():
-                            yield {"type": "token", "data": token + " "}
-                            await asyncio.sleep(0.01)
-                        if result.get("sources"):
-                            yield {"type": "sources", "data": result["sources"]}
-                        yield {"type": "done", "data": result}
-                        return
-                    else:
-                        set_span_attribute("cache_hit", "false")
-                except (KeyError, ValueError, RuntimeError) as e:
-                    logger.warning(f"Cache lookup failed: {e}", exc_info=True)
-                    set_span_status("error", str(e))
-
-        # 1. User Context & Intent Classification
-        logger.debug("Calling verify_intent...")
-        intent = await self.intent_classifier.classify_intent(query)
-        logger.debug(f"Intent classified: {intent}")
-        suggested_ai = intent.get("suggested_ai", "FLASH")
-        # Ensure deep_think_mode is bool
-        deep_think_mode = bool(intent.get("deep_think_mode", False))
-
-        if suggested_ai == "deep_think":
-            model_tier = TIER_PRO
-            deep_think_mode = True
-        elif suggested_ai == "pro":
-            model_tier = TIER_PRO
-        else:
-            model_tier = TIER_FLASH
-
-        # Pass skip_rag flag for general tasks (translation, summarization, etc.)
-        skip_rag = intent.get("skip_rag", False)
-        intent_category = intent.get("category", "simple")
-        state = AgentState(query=query, skip_rag=skip_rag, intent_type=intent_category)
-        logger.debug(f"User context retrieved (early). History len: {len(history_to_use)}")
-
-        # --- QUALITY ROUTING: REACT LOOP STREAMING (Full Agentic Architecture) ---
-        logger.info(f"🧠 [Stream] Processing query with ReAct loop for user {user_id}")
-
-        # Build system prompt with KG context
-        system_context_for_prompt = ""
-        if any(extracted_entities.values()):
-            system_context_for_prompt = (
-                f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
-            )
-
-        # KG-Enhanced Retrieval: Get graph context for query
-        if self.kg_retrieval:
-            try:
-                kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
-                if kg_context and kg_context.graph_summary:
-                    system_context_for_prompt += "\n" + kg_context.graph_summary
-                    logger.info(
-                        f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context"
-                    )
-            except Exception as e:
-                logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
-
-        system_prompt = self.prompt_builder.build_system_prompt(
-            user_id,
-            user_context,
-            query,
-            deep_think_mode=deep_think_mode,
-            additional_context=system_context_for_prompt,  # Inject extracted entities + KG context
-            conversation_history=history_to_use,  # Pass history for greeting check
-        )
-
-        # Create chat session with system prompt (includes user memory/context)
-        chat = self.llm_gateway.create_chat_with_history(
-            history_to_use=history_to_use, model_tier=model_tier, system_instruction=system_prompt
-        )
-
-        # Stream response using New Streaming ReAct Logic
-        # 🔍 TRACING: Add event for ReAct stream start
-        add_span_event(
-            "react.stream.start",
-            {
-                "model_tier": model_tier,
-                "user_id": user_id,
-            },
-        )
+        # After all early gates, delegate to OrchestratorStreamingCore
+        logger.debug(f"Entering stream_query core. Query: {query}")
 
         full_answer = ""
         try:
-            # Yield initial status
-            yield {
-                "type": "status",
-                "data": {"status": "processing", "correlation_id": correlation_id},
-                "timestamp": time.time(),
-            }
-
-            async for raw_event in self.reasoning_engine.execute_react_loop_stream(
-                state=state,
-                llm_gateway=self.llm_gateway,
-                chat=chat,
-                initial_prompt=_wrap_query_with_language_instruction(
-                    query
-                ),  # Wrapped with language instruction
-                system_prompt=system_prompt,  # System prompt with injected entities
+            # Delegate to OrchestratorStreamingCore for main processing
+            async for event in self.streaming_core.stream_query_core(
                 query=query,
-                user_id=user_id or "anonymous",
-                model_tier=model_tier,
+                user_id=user_id,
+                conversation_history=conversation_history,
+                session_id=session_id,
+                images=images,
                 tool_execution_counter=tool_execution_counter,
-                images=images,  # Pass vision images to reasoning loop
+                correlation_id=correlation_id,
             ):
-                # Validate event structure
-                try:
-                    if raw_event is None:
-                        event_error_count += 1
-                        logger.warning(
-                            "⚠️ [Stream] None event received",
-                            extra={
-                                "correlation_id": correlation_id,
-                                "user_id": user_id,
-                                "error_count": event_error_count,
-                            },
-                        )
-                        metrics_collector.stream_event_none_total.inc()
+                # Accumulate tokens for memory saving
+                if event.get("type") == "token":
+                    full_answer += event.get("data", "")
 
-                        if event_error_count >= self._max_event_errors:
-                            yield self._create_error_event(
-                                "too_many_errors",
-                                "Stream aborted due to too many malformed events",
-                                correlation_id,
-                            )
-                            break
-                        continue
-
-                    if not isinstance(raw_event, dict):
-                        event_error_count += 1
-                        logger.error(
-                            f"❌ [Stream] Invalid event type: {type(raw_event)}",
-                            extra={
-                                "correlation_id": correlation_id,
-                                "user_id": user_id,
-                                "event_type": str(type(raw_event)),
-                                "error_count": event_error_count,
-                            },
-                        )
-                        metrics_collector.stream_event_invalid_type_total.inc()
-                        continue
-
-                    # Validate event schema
-                    if self._event_validation_enabled:
-                        try:
-                            validated_event = StreamEvent(**raw_event)
-                            event = validated_event.model_dump(exclude_none=True)
-                        except ValidationError as e:
-                            event_error_count += 1
-                            logger.error(
-                                f"❌ [Stream] Event validation failed: {e}",
-                                extra={
-                                    "correlation_id": correlation_id,
-                                    "user_id": user_id,
-                                    "validation_errors": str(e.errors()),
-                                    "raw_event": str(raw_event)[:200],
-                                },
-                            )
-                            metrics_collector.stream_event_validation_failed_total.inc()
-
-                            # Yield error event to client
-                            yield self._create_error_event(
-                                "validation_error",
-                                f"Event validation failed: {str(e)}",
-                                correlation_id,
-                            )
-                            continue
-                    else:
-                        # Skip validation but still yield
-                        event = raw_event
-
-                    # Accumulate for memory saving later
-                    if event.get("type") == "token":
-                        full_answer += event.get("data", "")
-
-                    # Yield validated event to frontend
-                    yield event
-
-                except Exception as e:
-                    event_error_count += 1
-                    # Use error classification for better error handling
-                    from backend.app.core.error_classification import ErrorClassifier, get_error_context
-
-                    error_category, error_severity = ErrorClassifier.classify_error(e)
-                    error_context = get_error_context(
-                        e,
-                        correlation_id=correlation_id,
-                        user_id=user_id,
-                        event_error_count=event_error_count,
-                    )
-
-                    logger.exception(
-                        "❌ [Stream] Unexpected error processing event", extra=error_context
-                    )
-                    metrics_collector.stream_event_processing_error_total.inc()
-
-                    if event_error_count >= self._max_event_errors:
-                        yield self._create_error_event(
-                            "processing_error", f"Stream aborted: {str(e)}", correlation_id
-                        )
-                        break
-
-            # Emit done event (and save memory)
-            execution_time = time.time() - start_time
-
-            # 🔍 TRACING: Add event for stream completion
-            add_span_event(
-                "react.stream.complete",
-                {
-                    "execution_time_ms": int(execution_time * 1000),
-                    "answer_length": len(full_answer),
-                    "tools_executed": tool_execution_counter["count"],
-                },
-            )
+                yield event
 
             # 🎯 PROACTIVITY: Generate follow-up questions
             followup_questions = []
@@ -856,13 +601,6 @@ Respond in the SAME language the user is using."""
                 except Exception as followup_err:
                     logger.warning(f"⚠️ [Proactive] Failed to generate follow-ups: {followup_err}")
 
-            yield {
-                "type": "done",
-                "data": {
-                    "execution_time": execution_time,
-                    "route_used": f"agentic-rag-stream ({self.llm_gateway._genai_client.DEFAULT_MODEL})",
-                },
-            }
         except Exception as e:
             # Use error classification for better error handling
             from backend.app.core.error_classification import ErrorClassifier, get_error_context

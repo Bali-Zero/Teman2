@@ -1,0 +1,203 @@
+"""
+Orchestrator Response Builder
+
+Responsabilità singola: Response formatting e post-processing.
+Include:
+- CoreResult building da AgentState
+- Response validation
+- Verification status calculation
+- Entity injection
+
+Questo modulo è testabile in isolamento mockando AgentState.
+"""
+
+import logging
+from typing import Any
+
+from backend.services.rag.agentic.entity_extractor import EntityExtractionService
+from backend.services.tools.definitions import AgentState
+
+from .schema import CoreResult
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Enable debug logging for response building
+
+
+class OrchestratorResponseBuilder:
+    """
+    Gestisce response formatting e post-processing.
+
+    Responsabilità:
+    - Costruisce CoreResult da AgentState
+    - Calcola verification status
+    - Inietta entities e metadata
+    - Valida response structure
+    """
+
+    def __init__(self, entity_extractor: EntityExtractionService | None = None):
+        """
+        Inizializza il response builder.
+
+        Args:
+            entity_extractor: Optional entity extractor per entity injection
+        """
+        self.entity_extractor = entity_extractor
+
+    def build_core_result(
+        self,
+        state: AgentState,
+        sources: list[Any],
+        extracted_entities: dict[str, Any],
+        model_used: str,
+        token_usage: Any,  # TokenUsage
+        timings: dict[str, float],
+        start_time: float,
+    ) -> CoreResult:
+        """
+        Costruisce CoreResult da AgentState e metadata.
+
+        Args:
+            state: AgentState completato
+            sources: Lista di sources trovati
+            extracted_entities: Entities estratte dalla query
+            model_used: Nome modello usato
+            token_usage: TokenUsage object
+            timings: Dict con timing breakdown
+            start_time: Timestamp di inizio
+
+        Returns:
+            CoreResult completo
+        """
+        execution_time = timings.get("total", 0.0)
+        verification_score = getattr(state, "verification_score", 0.0)
+        evidence_score = getattr(state, "evidence_score", 0.0)
+
+        return CoreResult(
+            answer=state.final_answer,
+            sources=sources,
+            verification_score=verification_score,
+            evidence_score=evidence_score,
+            is_ambiguous=False,
+            entities=extracted_entities,
+            model_used=model_used,
+            prompt_tokens=token_usage.prompt_tokens,
+            completion_tokens=token_usage.completion_tokens,
+            total_tokens=token_usage.total_tokens,
+            cost_usd=token_usage.cost_usd,
+            verification_status="passed" if verification_score > 0.7 else "unchecked",
+            document_count=len(sources),
+            timings=timings,
+            warnings=[],
+        )
+
+    def build_gate_response(
+        self,
+        answer: str,
+        model_used: str,
+        verification_score: float = 1.0,
+        evidence_score: float = 1.0,
+        verification_status: str = "passed",
+        entities: dict[str, Any] | None = None,
+        start_time: float | None = None,
+    ) -> CoreResult:
+        """
+        Costruisce CoreResult per gate responses (greeting, identity, etc.).
+
+        Args:
+            answer: Risposta testuale
+            model_used: Nome modello/gate usato
+            verification_score: Verification score (default 1.0 per trusted gates)
+            evidence_score: Evidence score (default 1.0 per trusted gates)
+            verification_status: Status verification
+            entities: Optional entities
+            start_time: Timestamp di inizio (per timing)
+
+        Returns:
+            CoreResult per gate response
+        """
+        import time
+
+        execution_time = (time.time() - start_time) if start_time else 0.0
+
+        return CoreResult(
+            answer=answer,
+            sources=[],
+            verification_score=verification_score,
+            evidence_score=evidence_score,
+            is_ambiguous=False,
+            entities=entities or {},
+            model_used=model_used,
+            timings={"total": execution_time},
+            verification_status=verification_status,
+            document_count=0,
+        )
+
+    def build_clarification_response(
+        self,
+        clarification_msg: str,
+        ambiguity_info: dict[str, Any],
+        start_time: float,
+    ) -> CoreResult:
+        """
+        Costruisce CoreResult per clarification requests.
+
+        Args:
+            clarification_msg: Messaggio di chiarimento
+            ambiguity_info: Info su ambiguità rilevata
+            start_time: Timestamp di inizio
+
+        Returns:
+            CoreResult per clarification
+        """
+        import time
+
+        execution_time = time.time() - start_time
+
+        return CoreResult(
+            answer=clarification_msg,
+            sources=[],
+            verification_score=0.0,
+            evidence_score=0.0,
+            is_ambiguous=True,
+            clarification_question=clarification_msg,
+            entities=ambiguity_info.get("entities", {}),
+            model_used="clarification-gate",
+            timings={"total": execution_time},
+            verification_status="skipped",
+            document_count=0,
+        )
+
+    def build_out_of_domain_response(
+        self,
+        answer_text: str,
+        reason: str,
+        start_time: float,
+    ) -> CoreResult:
+        """
+        Costruisce CoreResult per out-of-domain queries.
+
+        Args:
+            answer_text: Risposta per out-of-domain
+            reason: Ragione del blocco
+            start_time: Timestamp di inizio
+
+        Returns:
+            CoreResult per out-of-domain
+        """
+        import time
+
+        execution_time = time.time() - start_time
+
+        return CoreResult(
+            answer=answer_text,
+            sources=[],
+            verification_score=0.0,
+            evidence_score=0.0,
+            is_ambiguous=False,
+            entities={},
+            model_used=f"out-of-domain-{reason}",
+            timings={"total": execution_time},
+            verification_status="blocked",
+            document_count=0,
+            warnings=[f"Query blocked: {reason}"],
+        )

@@ -40,6 +40,7 @@ from backend.app.routers import (
     knowledge_visa,
     legal_ingest,
     media,
+    messaging_identity,
     news,
     newsletter,
     nusantara_health,
@@ -56,13 +57,13 @@ from backend.app.routers import (
     telegram,
     voice,
     websocket,
+    whatsapp_chat,
     zoho_email,
 )
 
 # NOTE: Removed routers (will be MCP):
 # - productivity (Gmail/Calendar)
 # - notifications (Email/SMS/Slack/Discord)
-# - whatsapp (Meta WhatsApp)
 # - instagram (Meta Instagram)
 
 
@@ -126,9 +127,11 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(preview.router)
 
-    # Communication routers (notifications/whatsapp/instagram removed - will be MCP)
+    # Communication routers (notifications/instagram removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
+    api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
+    api.include_router(messaging_identity.router)  # Admin: Manage phone/telegram → team_member mappings
 
     # Integrations routers
     api.include_router(zoho_email.router)
