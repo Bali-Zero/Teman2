@@ -1,0 +1,12 @@
+{
+  "total_clients": 0,
+  "total_files": 0,
+  "dry_run": true,
+  "clients": [],
+  "errors": [
+    {
+      "path": "",
+      "error": "(403, b'Forbidden')"
+    }
+  ]
+}
