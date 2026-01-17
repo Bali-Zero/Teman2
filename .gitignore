@@ -108,6 +108,11 @@ google_credentials.json
 # Security scanners (local output)
 .scannerwork/
 
+# Service account keys (CRITICAL: never commit)
+service-account-key.json
+*service-account-key*.json
+*service_account_key*.json
+
 # Local secrets directory (keep only docs)
 .secrets/*
 !.secrets/README.md
