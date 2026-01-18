@@ -11,33 +11,32 @@
 > **See full strategy:** [OMNICHANNEL_STRATEGY.md](../docs/architecture/OMNICHANNEL_STRATEGY.md)
 
 ### The Hydrated Frontend
-
 The interface is liquid; intelligence is solid.
 
-| Channel              | Tech              | Role                                  |
-| -------------------- | ----------------- | ------------------------------------- |
-| **Web Command Deck** | Next.js 16        | Deep Work, Admin, Analytics           |
-| **Telegram**         | Bot API + Scraper | Notifications, Approvals, Quick Tasks |
-| **WhatsApp**         | Business API      | Client Communication, Docs            |
-| **Voice**            | ElevenLabs + VAPI | Concierge, Hands-free                 |
-| **Social**           | Instagram/X APIs  | Brand Presence, Listening             |
+| Channel | Tech | Role |
+|---------|------|------|
+| **Web Command Deck** | Next.js 16 | Deep Work, Admin, Analytics |
+| **Telegram** | Bot API + Scraper | Notifications, Approvals, Quick Tasks |
+| **WhatsApp** | Business API | Client Communication, Docs |
+| **Voice** | ElevenLabs + VAPI | Concierge, Hands-free |
+| **Social** | Instagram/X APIs | Brand Presence, Listening |
 
 ---
 
 ## QUICK STATS (Numeri Reali Verificati)
 
-| Metrica                 | Valore     | Note                 |
-| ----------------------- | ---------- | -------------------- |
-| **Documenti Qdrant**    | **53,757** | 4 collezioni attive  |
-| **API Endpoints**       | **387**    | 60 file router       |
-| **Servizi Python**      | **200**    | /backend/services/   |
-| **File Test**           | **271**    | unit/api/integration |
-| **Test Cases**          | **~4170+** | pytest coverage      |
-| **Tabelle Database**    | **24**     | PostgreSQL           |
-| **Migrazioni**          | **49**     | Applicate            |
-| **Variabili Ambiente**  | **63+**    | Across all apps      |
-| **File Documentazione** | **89+**    | Markdown             |
-| **Fonti Intel**         | **630+**   | 12 categorie         |
+| Metrica | Valore | Note |
+|---------|--------|------|
+| **Documenti Qdrant** | **53,757** | 4 collezioni attive |
+| **API Endpoints** | **387** | 60 file router |
+| **Servizi Python** | **200** | /backend/services/ |
+| **File Test** | **271** | unit/api/integration |
+| **Test Cases** | **~4170+** | pytest coverage |
+| **Tabelle Database** | **24** | PostgreSQL |
+| **Migrazioni** | **49** | Applicate |
+| **Variabili Ambiente** | **63+** | Across all apps |
+| **File Documentazione** | **93+** | Markdown |
+| **Fonti Intel** | **630+** | 12 categorie |
 
 ---
 
@@ -67,7 +66,7 @@ nuzantara/
 │   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)
 │   └── kb/                   ← SATELLITE: legal scraping utilities
 │
-├── docs/                     (89+ markdown files)
+├── docs/                     (93+ markdown files)
 ├── config/                   (prometheus, alertmanager)
 ├── scripts/                  (deploy, test, analysis tools)
 └── docker-compose.yml        (local dev stack)
@@ -75,27 +74,27 @@ nuzantara/
 
 ### Servizi Backend Principali
 
-| Categoria         | File                        | Funzione                            |
-| ----------------- | --------------------------- | ----------------------------------- |
-| **RAG**           | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct  |
-| **Search**        | search_service.py           | Hybrid search (dense + BM25)        |
-| **Memory**        | memory_orchestrator.py      | Facts + Episodic + Collective       |
-| **CRM**           | auto_crm_service.py         | Estrazione automatica entità        |
-| **LLM**           | llm_gateway.py              | Multi-provider (Gemini, OpenRouter) |
-| **Sessions**      | session_service.py          | Gestione sessioni utente            |
-| **Conversations** | conversation_service.py     | Storico conversazioni               |
+| Categoria | File | Funzione |
+|-----------|------|----------|
+| **RAG** | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct |
+| **Search** | search_service.py | Hybrid search (dense + BM25) |
+| **Memory** | memory_orchestrator.py | Facts + Episodic + Collective |
+| **CRM** | auto_crm_service.py | Estrazione automatica entità |
+| **LLM** | llm_gateway.py | Multi-provider (Gemini, OpenRouter) |
+| **Sessions** | session_service.py | Gestione sessioni utente |
+| **Conversations** | conversation_service.py | Storico conversazioni |
 
 ### Frontend Pages
 
-| Route        | Componente    | Funzione                    |
-| ------------ | ------------- | --------------------------- |
-| `/login`     | LoginPage     | Autenticazione              |
-| `/chat`      | ChatPage      | Interfaccia conversazionale |
-| `/dashboard` | CommandDeck   | Analytics e overview        |
-| `/clienti`   | ClientiPage   | Gestione clienti CRM        |
-| `/pratiche`  | PratichePage  | Gestione pratiche           |
-| `/whatsapp`  | WhatsAppPage  | Integrazione WhatsApp       |
-| `/knowledge` | KnowledgePage | Knowledge base browser      |
+| Route | Componente | Funzione |
+|-------|------------|----------|
+| `/login` | LoginPage | Autenticazione |
+| `/chat` | ChatPage | Interfaccia conversazionale |
+| `/dashboard` | CommandDeck | Analytics e overview |
+| `/clienti` | ClientiPage | Gestione clienti CRM |
+| `/pratiche` | PratichePage | Gestione pratiche |
+| `/whatsapp` | WhatsAppPage | Integrazione WhatsApp |
+| `/knowledge` | KnowledgePage | Knowledge base browser |
 
 ---
 
@@ -242,7 +241,6 @@ REQUEST
 ```
 
 **Public Endpoints (no auth):**
-
 - `/health`, `/health/ready`, `/health/live`
 - `/api/auth/login`, `/api/auth/team/login`
 - `/api/auth/csrf-token`
@@ -263,7 +261,6 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **Keyword Routing:**
-
 - **visa_oracle**: visa, immigration, imigrasi, passport, KITAS, stay permit
 - **legal_unified**: company, incorporation, notary, contract, pasal, ayat
 - **tax_genius**: tax, pajak, calculation, tarif, PPh, PPN
@@ -305,7 +302,6 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **CRM Endpoints (24 total):**
-
 - `/api/crm/clients/*` - CRUD clienti (8 endpoints)
 - `/api/crm/practices/*` - CRUD pratiche (8 endpoints)
 - `/api/crm/interactions/*` - Log interazioni (7 endpoints)
@@ -360,14 +356,12 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **Embedding Config:**
-
 - Provider: OpenAI
 - Model: text-embedding-3-small
 - Dimensions: 1536
 - Distance: Cosine
 
 **BM25 Sparse Config:**
-
 - Vocab Size: 30,000
 - k1: 1.5 (term frequency saturation)
 - b: 0.75 (length normalization)
@@ -375,15 +369,15 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 
 ### Database Tables (24)
 
-| Categoria           | Tabelle                                              |
-| ------------------- | ---------------------------------------------------- |
-| **CRM**             | clients, practices, interactions, practice_documents |
-| **Memory**          | memory_facts, collective_memories, episodic_memories |
-| **Knowledge Graph** | kg_entities, kg_edges                                |
-| **Sessions**        | sessions, conversations, conversation_messages       |
-| **Auth**            | team_members, user_stats                             |
-| **RAG**             | parent_documents, document_chunks, golden_answers    |
-| **System**          | migrations, query_clusters, cultural_knowledge       |
+| Categoria | Tabelle |
+|-----------|---------|
+| **CRM** | clients, practices, interactions, practice_documents |
+| **Memory** | memory_facts, collective_memories, episodic_memories |
+| **Knowledge Graph** | kg_entities, kg_edges |
+| **Sessions** | sessions, conversations, conversation_messages |
+| **Auth** | team_members, user_stats |
+| **RAG** | parent_documents, document_chunks, golden_answers |
+| **System** | migrations, query_clusters, cultural_knowledge |
 
 ### Test Coverage
 
@@ -444,29 +438,29 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 
 ### Environment Variables (63+)
 
-| Categoria    | Variabili Chiave                                  |
-| ------------ | ------------------------------------------------- |
-| **Database** | DATABASE_URL, REDIS_URL, QDRANT_URL               |
-| **AI**       | OPENAI_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY |
-| **Auth**     | JWT_SECRET_KEY, API_KEYS, ADMIN_API_KEY           |
-| **Services** | RAG_BACKEND_URL, JAKSEL_API_URL                   |
-| **Features** | ENABLE_BM25, ENABLE_COLLECTIVE_MEMORY             |
+| Categoria | Variabili Chiave |
+|-----------|------------------|
+| **Database** | DATABASE_URL, REDIS_URL, QDRANT_URL |
+| **AI** | OPENAI_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY |
+| **Auth** | JWT_SECRET_KEY, API_KEYS, ADMIN_API_KEY |
+| **Services** | RAG_BACKEND_URL, JAKSEL_API_URL |
+| **Features** | ENABLE_BM25, ENABLE_COLLECTIVE_MEMORY |
 
 ---
 
 ## KEY INTEGRATION POINTS
 
-| From          | To         | Method         | Purpose           |
-| ------------- | ---------- | -------------- | ----------------- |
-| Frontend      | Backend    | REST API + SSE | Chat, CRM, Auth   |
-| Backend       | Qdrant     | HTTP + gRPC    | Vector search     |
-| Backend       | PostgreSQL | asyncpg        | Metadata, CRM     |
-| Backend       | Redis      | aioredis       | Cache, sessions   |
-| Backend       | Gemini     | REST API       | LLM generation    |
-| Backend       | OpenRouter | REST API       | LLM fallback      |
-| Intel Scraper | Backend    | REST API       | Document indexing |
-| Zantara Media | Backend    | REST API       | Content sync      |
-| Evaluator     | Backend    | REST API       | RAG quality       |
+| From | To | Method | Purpose |
+|------|-----|--------|---------|
+| Frontend | Backend | REST API + SSE | Chat, CRM, Auth |
+| Backend | Qdrant | HTTP + gRPC | Vector search |
+| Backend | PostgreSQL | asyncpg | Metadata, CRM |
+| Backend | Redis | aioredis | Cache, sessions |
+| Backend | Gemini | REST API | LLM generation |
+| Backend | OpenRouter | REST API | LLM fallback |
+| Intel Scraper | Backend | REST API | Document indexing |
+| Zantara Media | Backend | REST API | Content sync |
+| Evaluator | Backend | REST API | RAG quality |
 
 ---
 
@@ -503,19 +497,19 @@ python apps/core/scribe.py           # Regenerate docs
 
 ## FILE LOCATIONS
 
-| Cosa                | Path                                          |
-| ------------------- | --------------------------------------------- |
-| Backend entry       | `apps/backend-rag/backend/app/main_cloud.py`  |
-| Config              | `apps/backend-rag/backend/app/core/config.py` |
-| Routers             | `apps/backend-rag/backend/app/routers/`       |
-| Services            | `apps/backend-rag/backend/services/`          |
-| Migrations          | `apps/backend-rag/backend/migrations/`        |
-| Frontend pages      | `apps/mouth/src/app/`                         |
-| Frontend components | `apps/mouth/src/components/`                  |
-| Documentation       | `docs/`                                       |
-| Operations runbooks | `docs/operations/`                            |
+| Cosa | Path |
+|------|------|
+| Backend entry | `apps/backend-rag/backend/app/main_cloud.py` |
+| Config | `apps/backend-rag/backend/app/core/config.py` |
+| Routers | `apps/backend-rag/backend/app/routers/` |
+| Services | `apps/backend-rag/backend/services/` |
+| Migrations | `apps/backend-rag/backend/migrations/` |
+| Frontend pages | `apps/mouth/src/app/` |
+| Frontend components | `apps/mouth/src/components/` |
+| Documentation | `docs/` |
+| Operations runbooks | `docs/operations/` |
 
 ---
 
-_System Map Complete. 36 agents synthesized. 4 dimensions mapped._
-_Generated: 2026-01-18_
+*System Map Complete. 36 agents synthesized. 4 dimensions mapped.*
+*Generated: 2026-01-18*

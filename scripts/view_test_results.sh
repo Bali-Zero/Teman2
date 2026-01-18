@@ -84,12 +84,27 @@ echo -e "${CYAN}📋 Quick Summary:${NC}"
 echo ""
 
 if [ -f "$LOG_DIR/agent_test.log" ]; then
-    # Extract summary from log
-    PASSED=$(grep -c "PASSED" "$LOG_DIR/agent_test.log" | tail -1 || echo "0")
-    FAILED=$(grep -c "FAILED" "$LOG_DIR/agent_test.log" | tail -1 || echo "0")
+    # Extract summary from log - look for pytest summary lines
+    echo "   Last run results:"
     
-    echo "   Last run summary:"
-    grep -E "Passed:|Failed:|Summary" "$LOG_DIR/agent_test.log" | tail -3 | sed 's/^/     /' || echo "     No summary found"
+    # Find pytest summary (e.g., "19 passed in 0.44s")
+    PYTEST_SUMMARY=$(grep -E "passed|failed|error" "$LOG_DIR/agent_test.log" | grep -E "in [0-9]+\.[0-9]+s" | tail -1)
+    if [ -n "$PYTEST_SUMMARY" ]; then
+        echo "     $PYTEST_SUMMARY" | sed 's/^/     /'
+    fi
+    
+    # Find our custom summary
+    CUSTOM_SUMMARY=$(grep -E "Passed: [0-9]+ \| Failed: [0-9]+" "$LOG_DIR/agent_test.log" | tail -1)
+    if [ -n "$CUSTOM_SUMMARY" ]; then
+        echo "     $CUSTOM_SUMMARY" | sed 's/^/     /'
+    fi
+    
+    # Check if all passed
+    if grep -q "✅ All agent tests passed" "$LOG_DIR/agent_test.log" | tail -1; then
+        echo -e "     ${GREEN}✅ All tests passed!${NC}"
+    elif grep -q "❌.*failed" "$LOG_DIR/agent_test.log" | tail -1; then
+        echo -e "     ${RED}❌ Some tests failed${NC}"
+    fi
     echo ""
 fi
 
@@ -107,14 +122,16 @@ fi
 echo -e "${CYAN}🔧 Useful Commands:${NC}"
 echo ""
 echo "   View full log:"
-echo "   ${CYAN}tail -f $LOG_DIR/agent_test.log${NC}"
+echo -e "   ${CYAN}tail -f $LOG_DIR/agent_test.log${NC}"
 echo ""
 echo "   Run tests now:"
-echo "   ${CYAN}./scripts/auto_agent_test.sh${NC}"
+echo -e "   ${CYAN}./scripts/auto_agent_test.sh${NC}"
 echo ""
 echo "   Generate coverage:"
-echo "   ${CYAN}./scripts/run_coverage_test.sh${NC}"
+echo -e "   ${CYAN}./scripts/run_coverage_test.sh${NC}"
 echo ""
 echo "   Check Ollama status:"
-echo "   ${CYAN}./scripts/ollama_cron_window.sh status${NC}"
+echo -e "   ${CYAN}./scripts/ollama_cron_window.sh status${NC}"
+echo ""
+echo -e "${GREEN}💡 Tip:${NC} Run tests to see results: ./scripts/auto_agent_test.sh"
 echo ""
