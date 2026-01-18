@@ -11,7 +11,7 @@ export interface StagingItem {
   detection_type: "NEW" | "UPDATED";
   content?: string;
   is_critical?: boolean;
-  cover_image: string;  // Mandatory
+  cover_image?: string;  // Optional for tests
   source_name?: string;
 }
 

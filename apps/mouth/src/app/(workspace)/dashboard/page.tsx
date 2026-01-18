@@ -84,10 +84,9 @@ export default function DashboardPage() {
 
       // Generate AI insights
       ai.generateInsights({
-        cases: [stats.activeCases, stats.criticalDeadlines],
-        revenue: [0], // Would come from actual revenue data
+        cases: [], // Would come from actual case data
+        revenue: [], // Would come from actual revenue data
         clients: [], // Would come from actual client data
-        currentWorkload: stats.activeCases,
       });
 
       // Track dashboard load

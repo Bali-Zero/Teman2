@@ -20,6 +20,7 @@ export interface Practice {
   expiry_date?: string;
   notes?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Interaction {

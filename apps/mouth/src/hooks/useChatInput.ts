@@ -35,8 +35,8 @@ export interface UseChatInputReturn {
   setImageGenPrompt: (value: string) => void;
   
   // Refs
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  imageInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  imageInputRef: React.RefObject<HTMLInputElement | null>;
   
   // Handlers
   handleImageAttach: (e: React.ChangeEvent<HTMLInputElement>) => void;
