@@ -139,6 +139,17 @@ class UnifiedTestForceOrchestrator:
                     coverage_report, options.get("max_tests_per_component", 5)
                 )
                 results["test_generation"] = test_generation
+                
+                # Step 5: Ricalcola coverage dopo i test generati ed eseguiti
+                if test_generation.get("tests_passed", 0) > 0:
+                    logger.info("📊 Step 5: Ricalcolo coverage dopo test generati...")
+                    updated_coverage = await self._recalculate_coverage_after_tests()
+                    if updated_coverage:
+                        logger.info(f"   ✅ Coverage aggiornata: {updated_coverage.get('overall_coverage', 0):.1f}%")
+                        # Aggiorna coverage nel report
+                        coverage_report.overall_coverage = updated_coverage.get("overall_coverage", coverage_report.overall_coverage)
+                        results["coverage_report"]["overall_coverage"] = coverage_report.overall_coverage
+                        results["coverage_after_tests"] = updated_coverage
 
             # Generate summary
             duration = time.time() - start_time
@@ -210,11 +221,24 @@ class UnifiedTestForceOrchestrator:
             try:
                 test_code = await self._generate_test_with_qwen(gap)
                 if test_code:
-                    test_results["tests_generated"] += 1
-                    comp_name = gap["component"]
-                    if comp_name not in test_results["tests_by_component"]:
-                        test_results["tests_by_component"][comp_name] = 0
-                    test_results["tests_by_component"][comp_name] += 1
+                    # Salva il test generato in file
+                    test_file_path = self._save_test_file(gap, test_code)
+                    if test_file_path:
+                        test_results["tests_generated"] += 1
+                        comp_name = gap["component"]
+                        if comp_name not in test_results["tests_by_component"]:
+                            test_results["tests_by_component"][comp_name] = 0
+                        test_results["tests_by_component"][comp_name] += 1
+                        
+                        # Esegui il test per verificare che funzioni
+                        test_passed = await self._run_test(test_file_path, gap)
+                        if test_passed:
+                            test_results["tests_passed"] += 1
+                        else:
+                            test_results["tests_failed"] += 1
+                    else:
+                        logger.warning(f"   ⚠️ Failed to save test for {gap['file']}")
+                        test_results["tests_failed"] += 1
 
             except Exception as e:
                 logger.error(f"   ❌ Failed to generate test: {e}")
@@ -283,6 +307,111 @@ Generate complete test file."""
                 return None
         except Exception as e:
             logger.error(f"❌ Qwen generation failed: {e}")
+            return None
+
+    def _save_test_file(self, gap: dict[str, Any], test_code: str) -> str | None:
+        """Save generated test code to file"""
+        try:
+            file_path = Path(gap["file"])
+            component = gap["component"]
+            component_type = gap["component_type"]
+            
+            # Determina directory test basata sul componente
+            if component == "zantara-media-backend":
+                test_dir = Path("apps/zantara-media-backend/tests")
+            elif component == "bali-intel-scraper":
+                test_dir = Path("apps/bali-intel-scraper/tests/unit")
+            elif component == "mouth-frontend":
+                test_dir = Path("apps/mouth-frontend/tests")
+            else:
+                # Default: cerca directory tests nel componente
+                component_path = Path(f"apps/{component}")
+                test_dir = component_path / "tests" / "unit" if (component_path / "tests" / "unit").exists() else component_path / "tests"
+            
+            # Crea directory se non esiste
+            test_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Nome file test basato sul file originale
+            test_filename = f"test_{file_path.stem}.py" if component_type == "backend" else f"{file_path.stem}.test.ts"
+            test_file_path = test_dir / test_filename
+            
+            # Salva il test
+            with open(test_file_path, "w") as f:
+                f.write(test_code)
+            
+            logger.info(f"   ✅ Test salvato: {test_file_path}")
+            return str(test_file_path)
+            
+        except Exception as e:
+            logger.error(f"   ❌ Errore salvataggio test: {e}")
+            return None
+
+    async def _run_test(self, test_file_path: str, gap: dict[str, Any]) -> bool:
+        """Run generated test to verify it works"""
+        try:
+            component_type = gap["component_type"]
+            component = gap["component"]
+            
+            if component_type == "backend":
+                # Esegui pytest
+                import subprocess
+                result = subprocess.run(
+                    ["pytest", test_file_path, "-v", "--tb=short"],
+                    capture_output=True,
+                    text=True,
+                    timeout=60.0,
+                    cwd=Path("apps") / component,
+                )
+                if result.returncode == 0:
+                    logger.info(f"   ✅ Test passato: {test_file_path}")
+                    return True
+                else:
+                    logger.warning(f"   ⚠️ Test fallito: {test_file_path}")
+                    logger.debug(f"   Output: {result.stderr[:200]}")
+                    return False
+            else:
+                # Frontend: esegui vitest
+                import subprocess
+                result = subprocess.run(
+                    ["npm", "run", "test", "--", test_file_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=60.0,
+                    cwd=Path("apps") / component,
+                )
+                if result.returncode == 0:
+                    logger.info(f"   ✅ Test passato: {test_file_path}")
+                    return True
+                else:
+                    logger.warning(f"   ⚠️ Test fallito: {test_file_path}")
+                    return False
+                    
+        except Exception as e:
+            logger.warning(f"   ⚠️ Errore esecuzione test: {e}")
+            return False
+
+    async def _recalculate_coverage_after_tests(self) -> dict[str, Any] | None:
+        """Ricalcola coverage dopo aver generato ed eseguito i test"""
+        try:
+            # Raccogli coverage aggiornata
+            collector = UnifiedCoverageCollector()
+            updated_report = await collector.collect_all_coverage()
+            
+            if updated_report:
+                logger.info(f"   📊 Coverage aggiornata: {updated_report.overall_coverage:.1f}%")
+                return {
+                    "overall_coverage": updated_report.overall_coverage,
+                    "components": {
+                        name: {
+                            "coverage": comp.coverage,
+                            "files": comp.files_count,
+                        }
+                        for name, comp in updated_report.components.items()
+                    },
+                }
+            return None
+        except Exception as e:
+            logger.warning(f"   ⚠️ Errore ricalcolo coverage: {e}")
             return None
 
     def _generate_summary(self, results: dict[str, Any]) -> dict[str, Any]:

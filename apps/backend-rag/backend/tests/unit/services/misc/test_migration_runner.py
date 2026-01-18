@@ -109,10 +109,10 @@ from backend.db.migration_base import BaseMigration
 
 class Migration001(BaseMigration):
     migration_number = 1
-    
+
     async def up(self):
         pass
-    
+
     async def down(self):
         pass
 """)
