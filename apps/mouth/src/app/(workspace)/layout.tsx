@@ -37,12 +37,16 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Load user profile
   const loadUserProfile = useCallback(async () => {
     // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:38',message:'loadUserProfile entry',data:{hasStoredProfile:!!api.getUserProfile()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    const logData = {location:'layout.tsx:38',message:'loadUserProfile entry',data:{hasStoredProfile:!!api.getUserProfile()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+    console.log('[DEBUG]', logData);
+    fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
     // #endregion
     try {
       const storedProfile = api.getUserProfile();
       // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:42',message:'storedProfile check',data:{hasStoredProfile:!!storedProfile,hasEmail:!!storedProfile?.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      const logData2 = {location:'layout.tsx:42',message:'storedProfile check',data:{hasStoredProfile:!!storedProfile,hasEmail:!!storedProfile?.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+      console.log('[DEBUG]', logData2);
+      fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
       // #endregion
       if (storedProfile) {
         const userName = storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
@@ -80,7 +84,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       });
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:72',message:'loadUserProfile error',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      const errorLog = {location:'layout.tsx:72',message:'loadUserProfile error',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown',stack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+      console.error('[DEBUG] ERROR:', errorLog);
+      fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(errorLog)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
       // #endregion
       console.error('Failed to load profile:', error);
     }

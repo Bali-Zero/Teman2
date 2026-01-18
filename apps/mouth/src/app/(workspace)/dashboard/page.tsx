@@ -28,7 +28,11 @@ import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
 
 export default function DashboardPage() {
   // #region agent log
-  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.tsx:29',message:'DashboardPage render entry',data:{pathname:window.location.pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  if(typeof window!=='undefined'){
+    const logData = {location:'dashboard/page.tsx:29',message:'DashboardPage render entry',data:{pathname:window.location.pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+    console.log('[DEBUG]', logData);
+    fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
+  }
   // #endregion
   const {
     user,
@@ -45,7 +49,12 @@ export default function DashboardPage() {
     isHealthy,
   } = useDashboardData();
   // #region agent log
-  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.tsx:45',message:'useDashboardData result',data:{isLoading,isError:!!error,hasUser:!!user,hasStats:!!stats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  if(typeof window!=='undefined'){
+    const logData = {location:'dashboard/page.tsx:45',message:'useDashboardData result',data:{isLoading,isError:!!error,hasUser:!!user,hasStats:!!stats,userEmail:user?.email,errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+    console.log('[DEBUG]', logData);
+    if(error) console.error('[DEBUG] Dashboard error:', error);
+    fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
+  }
   // #endregion
 
   // Analytics and A/B testing hooks
