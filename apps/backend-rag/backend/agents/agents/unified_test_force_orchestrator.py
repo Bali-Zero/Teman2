@@ -147,7 +147,15 @@ class UnifiedTestForceOrchestrator:
             import traceback
             traceback.print_exc()
             self.orchestrator_metrics.record_operation(time.time() - start_time, False, error_msg)
-            return {"success": False, "error": error_msg}
+            # Try to return partial results if available
+            partial_results = {
+                "success": False,
+                "error": error_msg,
+                "coverage_report": results.get("coverage_report"),
+                "test_generation": results.get("test_generation"),
+                "components_analyzed": results.get("components_analyzed", []),
+            }
+            return partial_results
 
     async def _generate_tests_for_gaps(
         self, coverage_report: UnifiedCoverageReport, max_per_component: int
@@ -257,13 +265,14 @@ Generate complete test file."""
 
     def _generate_summary(self, results: dict[str, Any]) -> dict[str, Any]:
         """Generate comprehensive summary"""
+        differential_report = results.get("differential_report")
         summary = {
             "duration": results.get("duration", 0),
             "components_analyzed": len(results.get("components_analyzed", [])),
             "overall_coverage": results.get("coverage_report", {}).get("overall_coverage", 0.0),
             "tests_generated": results.get("test_generation", {}).get("tests_generated", 0),
-            "regressions": results.get("differential_report", {}).get("regressions", 0),
-            "improvements": results.get("differential_report", {}).get("improvements", 0),
+            "regressions": differential_report.get("regressions", 0) if differential_report else 0,
+            "improvements": differential_report.get("improvements", 0) if differential_report else 0,
         }
         return summary
 

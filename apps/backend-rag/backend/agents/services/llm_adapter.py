@@ -154,8 +154,8 @@ class LLMAdapter:
         retry_jitter: float = 0.5,  # Jitter range (seconds) to avoid thundering herd
         auto_start_ollama: bool = True,  # Try to start Ollama if down
         # Circuit Breaker settings
-        circuit_breaker_failure_threshold: int = 5,  # Failures before opening circuit
-        circuit_breaker_timeout: float = 60.0,  # Seconds before trying half-open
+        circuit_breaker_failure_threshold: int = 10,  # Failures before opening circuit (increased for slow but working Ollama)
+        circuit_breaker_timeout: float = 30.0,  # Seconds before trying half-open (reduced for faster recovery)
         circuit_breaker_success_threshold: int = 2,  # Successes to close circuit
     ):
         self.primary_provider = primary_provider
@@ -238,8 +238,16 @@ class LLMAdapter:
                 logger.info("🔄 Circuit breaker: OPEN → HALF_OPEN (testing recovery)")
                 self.circuit_breaker.state = CircuitState.HALF_OPEN
                 self.circuit_breaker.success_count = 0
+                self.circuit_breaker.failure_count = 0  # Reset failure count on recovery attempt
                 return True
             else:
+                # Allow one request every 30s even when OPEN (probe for recovery)
+                time_since_open = current_time - self.circuit_breaker.opened_at
+                if time_since_open >= 30.0 and (time_since_open % 30.0) < 5.0:
+                    logger.info("🔍 Circuit breaker: Probing for recovery...")
+                    self.circuit_breaker.state = CircuitState.HALF_OPEN
+                    self.circuit_breaker.success_count = 0
+                    return True
                 logger.debug(
                     f"🚫 Circuit breaker OPEN - rejecting request "
                     f"({self.circuit_breaker_timeout - (current_time - self.circuit_breaker.opened_at):.1f}s remaining)"

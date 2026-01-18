@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, Badge } from '@/components/ui/primitives';
 import { Database, Search, Layers, Shield, Users, FileText, Activity } from 'lucide-react';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 // Define categories
 const CATEGORIES: Record<string, { label: string; icon: any; match: (name: string) => boolean }> = {
@@ -32,13 +33,19 @@ export default function PostgresPage() {
   const [tables, setTables] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     fetch('/api/postgres/tables')
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch tables');
         if (data.tables) setTables(data.tables);
+      })
+      .catch(err => {
+        logger.error('Failed to fetch tables:', err);
+        setError(err.message);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -91,6 +98,18 @@ export default function PostgresPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">Loading schema metadata...</div>
+      ) : error ? (
+        <div className="p-8 border-2 border-dashed border-destructive/50 rounded-lg bg-destructive/5 text-center">
+            <h3 className="text-lg font-bold text-destructive mb-2">Database Connection Failed</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <div className="text-sm text-muted-foreground bg-background p-4 rounded border inline-block text-left">
+                <p className="font-semibold mb-1">Troubleshooting:</p>
+                <ul className="list-disc list-inside space-y-1">
+                    <li>Ensure the Fly Proxy is running: <code>fly proxy 15432:5432 -a nuzantara-postgres</code></li>
+                    <li>Verify your database credentials in <code>.env.local</code></li>
+                </ul>
+            </div>
+        </div>
       ) : (
         <div className="space-y-10">
           {sections.map(section => {
