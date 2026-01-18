@@ -12,6 +12,7 @@ import { CrmApi } from './crm/crm.api';
 import { DriveApi } from './drive/drive.api';
 import { EmailApi } from './email/email.api';
 import { PortalApi } from './portal/portal.api';
+import { WhatsAppApi } from './whatsapp/whatsapp.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
 import { KnowledgeActivityApi } from './knowledge-activity.api';
@@ -49,6 +50,7 @@ export class ApiClient extends ApiClientBase {
   private driveApi: DriveApi;
   private emailApi: EmailApi;
   private portalApi: PortalApi;
+  private whatsappApi: WhatsAppApi;
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
   private kbActivityApi: KnowledgeActivityApi;
@@ -68,6 +70,7 @@ export class ApiClient extends ApiClientBase {
     this.driveApi = new DriveApi(this);
     this.emailApi = new EmailApi(this);
     this.portalApi = new PortalApi(this);
+    this.whatsappApi = new WhatsAppApi(this);
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
     this.kbActivityApi = new KnowledgeActivityApi(this);
@@ -124,6 +127,14 @@ export class ApiClient extends ApiClientBase {
 
   public get portal(): PortalApi {
     return this.portalApi;
+  }
+
+  // ============================================================================
+  // WhatsApp (Business messaging)
+  // ============================================================================
+
+  public get whatsapp(): WhatsAppApi {
+    return this.whatsappApi;
   }
 
   // ============================================================================
