@@ -1,7 +1,7 @@
 "use client"
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, FolderTree, Home } from 'lucide-react';
+import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -11,6 +11,10 @@ export function Sidebar() {
     { href: '/', label: 'Overview', icon: Home },
     { href: '/postgres', label: 'PostgreSQL', icon: Database },
     { href: '/qdrant', label: 'Qdrant', icon: FolderTree },
+    { href: '/rag', label: 'RAG Playground', icon: Sparkles },
+    { href: '/knowledge-graph', label: 'Knowledge Graph', icon: Network },
+    { href: '/activity', label: 'Agent Activity', icon: Activity },
+    { href: '/users', label: 'User Context', icon: UserCog },
   ];
 
   return (

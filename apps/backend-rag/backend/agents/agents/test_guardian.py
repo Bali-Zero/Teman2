@@ -111,7 +111,7 @@ class TestGuardian:
     Enhanced Test Guardian with comprehensive metrics and logging.
 
     Features:
-    - LLM adapter integration (Ollama Qwen 2.5, Gemini, Mock)
+    - LLM adapter integration (Ollama Qwen 2.5, Mock) - QWEN-FIRST!
     - Real-time metrics collection
     - Performance tracking and alerting
     - Detailed operation logging
@@ -119,8 +119,17 @@ class TestGuardian:
     """
 
     def __init__(
-        self, provider: str = "local", local_model: str = "qwen2.5-coder:7b-instruct-q4_K_M"
+        self, provider: str = "local", local_model: str = None
     ):
+        import os
+        # Use environment variable or default
+        if local_model is None:
+            local_model = os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
+        # Force provider to "local" (Ollama/Qwen) - NO GEMINI!
+        if provider not in ["local", "mock"]:
+            logger.warning(f"⚠️ Provider '{provider}' not supported. Using 'local' (Qwen)")
+            provider = "local"
+        
         self.provider = provider
         self.local_model = local_model
 
@@ -129,7 +138,7 @@ class TestGuardian:
             self.llm_adapter = get_llm_adapter()
             self.metrics_collector = get_metrics_collector()
             self.agent_metrics = self.metrics_collector.register_agent("TestGuardian")
-            logger.info("🚀 TestGuardian initialized with Test Force services")
+            logger.info("🚀 TestGuardian initialized with Test Force services (QWEN-FIRST)")
         else:
             # Fallback to legacy system
             self.llm_adapter = None
@@ -139,7 +148,7 @@ class TestGuardian:
             if ZANTARA_AVAILABLE:
                 self.ai_client = ZantaraAIClient()
                 if provider == "local":
-                    logger.info(f"🌙 Night Mode: Using Local LLM ({local_model})")
+                    logger.info(f"🔥 Qwen Mode: Using Local LLM ({local_model})")
                     self.ai_client.mock_mode = True
             else:
                 self.ai_client = None
@@ -171,10 +180,9 @@ class TestGuardian:
 
         try:
             if self.llm_adapter:
-                # Use new LLM adapter system
+                # Use new LLM adapter system - SOLO OLLAMA o MOCK
                 provider_map = {
                     "local": LLMProvider.OLLAMA,
-                    "gemini": LLMProvider.GEMINI,
                     "mock": LLMProvider.MOCK,
                 }
 
@@ -526,7 +534,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="TestGuardian Agent")
     parser.add_argument(
-        "--provider", default="gemini", choices=["gemini", "local"], help="LLM Provider"
+        "--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)"
     )
     args = parser.parse_args()
 

@@ -819,7 +819,7 @@ async def main():
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--no-dry-run", action="store_true", help="Perform actual cleanup")
     parser.add_argument("--aggressive", action="store_true", help="Use aggressive cleanup criteria")
-    parser.add_argument("--provider", default="local", choices=["local", "gemini", "mock"])
+    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
     parser.add_argument("--report", help="Save report to file")
 
     args = parser.parse_args()
