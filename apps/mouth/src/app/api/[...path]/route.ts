@@ -128,8 +128,13 @@ async function proxy(req: NextRequest): Promise<Response> {
       // HTTP 307 and 308 preserve the original method (including POST/DELETE body)
       // HTTP 301, 302, 303 convert POST to GET (standard browser behavior)
       // For DELETE with body, we need to preserve the method and body
-      const preserveMethod = upstream.status === 307 || upstream.status === 308 || req.method === 'DELETE';
-      const redirectMethod = preserveMethod ? req.method : (req.method === 'POST' ? 'GET' : req.method);
+      const preserveMethod =
+        upstream.status === 307 || upstream.status === 308 || req.method === 'DELETE';
+      const redirectMethod = preserveMethod
+        ? req.method
+        : req.method === 'POST'
+          ? 'GET'
+          : req.method;
 
       upstream = await fetch(redirectUrl, {
         method: redirectMethod,
@@ -154,7 +159,7 @@ async function proxy(req: NextRequest): Promise<Response> {
     // Log errors in development and production (for auth errors)
     if (upstream.status >= 400) {
       const isAuthError = upstream.status === 401 || upstream.status === 403;
-      
+
       // Always log auth errors (critical for debugging)
       if (isAuthError) {
         console.error(`[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`, {

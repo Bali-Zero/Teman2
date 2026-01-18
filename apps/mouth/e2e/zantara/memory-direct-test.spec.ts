@@ -25,11 +25,17 @@ async function loginAndGetToken(page: Page): Promise<string> {
   await page.goto(`${TEST_CONFIG.baseUrl}/login`);
   await page.waitForLoadState('domcontentloaded');
 
-  const emailInput = page.locator('input[placeholder*="balizero"], input[type="email"], input').first();
+  const emailInput = page
+    .locator('input[placeholder*="balizero"], input[type="email"], input')
+    .first();
   await emailInput.waitFor({ timeout: 15000 });
   await emailInput.fill(TEST_CONFIG.email);
 
-  const pinInput = page.locator('input[placeholder*="PIN"], input[placeholder*="digit"], input[type="password"], input').nth(1);
+  const pinInput = page
+    .locator(
+      'input[placeholder*="PIN"], input[placeholder*="digit"], input[type="password"], input'
+    )
+    .nth(1);
   await pinInput.fill(TEST_CONFIG.pin);
 
   await page.locator('button:has-text("Sign in"), button[type="submit"]').click();
@@ -58,7 +64,7 @@ async function saveConversation(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       messages,
@@ -78,13 +84,17 @@ async function saveConversation(
 async function getConversationHistory(
   token: string,
   sessionId: string
-): Promise<{ success: boolean; messages?: Array<{ role: string; content: string }>; total_messages?: number }> {
+): Promise<{
+  success: boolean;
+  messages?: Array<{ role: string; content: string }>;
+  total_messages?: number;
+}> {
   const response = await fetch(
     `${TEST_CONFIG.apiUrl}/api/bali-zero/conversations/history?session_id=${sessionId}&limit=50`,
     {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -195,8 +205,12 @@ test.describe('Direct Memory Test', () => {
     expect(historyResult.messages).toBeDefined();
 
     // Check that messages contain entity information
-    const userMessages = historyResult.messages!.filter((m: { role: string; content: string }) => m.role === 'user');
-    const allUserContent = userMessages.map((m: { role: string; content: string }) => m.content).join(' ');
+    const userMessages = historyResult.messages!.filter(
+      (m: { role: string; content: string }) => m.role === 'user'
+    );
+    const allUserContent = userMessages
+      .map((m: { role: string; content: string }) => m.content)
+      .join(' ');
 
     console.log(`[TEST] User messages content:`, allUserContent);
     expect(allUserContent).toContain('Marco');
@@ -204,4 +218,3 @@ test.describe('Direct Memory Test', () => {
     expect(allUserContent).toContain('50');
   });
 });
-

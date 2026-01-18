@@ -131,7 +131,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
-    api.include_router(messaging_identity.router)  # Admin: Manage phone/telegram → team_member mappings
+    api.include_router(
+        messaging_identity.router
+    )  # Admin: Manage phone/telegram → team_member mappings
 
     # Integrations routers
     api.include_router(zoho_email.router)

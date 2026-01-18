@@ -31,14 +31,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -50,11 +44,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -139,9 +129,7 @@
               "flatPath": "v2alpha1/projects/{projectsId}/operations/{operationsId}:cancel",
               "httpMethod": "POST",
               "id": "genomics.projects.operations.cancel",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "The name of the operation resource to be cancelled.",
@@ -168,9 +156,7 @@
               "flatPath": "v2alpha1/projects/{projectsId}/operations/{operationsId}",
               "httpMethod": "GET",
               "id": "genomics.projects.operations.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "The name of the operation resource.",
@@ -194,9 +180,7 @@
               "flatPath": "v2alpha1/projects/{projectsId}/operations",
               "httpMethod": "GET",
               "id": "genomics.projects.operations.list",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "filter": {
                   "description": "A string for filtering Operations. In v2alpha1, the following filter fields are supported: * createTime: The time this job was created * events: The set of event (names) that have occurred while running the pipeline. The : operator can be used to determine if a particular event has occurred. * error: If the pipeline is running, this value is NULL. Once the pipeline finishes, the value is the standard Google error code. * labels.key or labels.\"key with space\" where key is a label key. * done: If the pipeline is running, this value is false. Once the pipeline finishes, the value is true. Examples: * `projectId = my-project AND createTime >= 1432140000` * `projectId = my-project AND createTime >= 1432140000 AND createTime <= 1432150000 AND status = RUNNING` * `projectId = my-project AND labels.color = *` * `projectId = my-project AND labels.color = red`",
@@ -240,9 +224,7 @@
               "flatPath": "v2alpha1/projects/{projectsId}/workers/{workersId}:checkIn",
               "httpMethod": "POST",
               "id": "genomics.projects.workers.checkIn",
-              "parameterOrder": [
-                "id"
-              ],
+              "parameterOrder": ["id"],
               "parameters": {
                 "id": {
                   "description": "The VM identity token for authenticating the VM instance. https://cloud.google.com/compute/docs/instances/verifying-instance-identity",
@@ -275,9 +257,7 @@
           "flatPath": "v2alpha1/workers/{id}:checkIn",
           "httpMethod": "POST",
           "id": "genomics.workers.checkIn",
-          "parameterOrder": [
-            "id"
-          ],
+          "parameterOrder": ["id"],
           "parameters": {
             "id": {
               "description": "The VM identity token for authenticating the VM instance. https://cloud.google.com/compute/docs/instances/verifying-instance-identity",

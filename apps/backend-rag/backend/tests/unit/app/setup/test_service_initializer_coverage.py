@@ -79,7 +79,8 @@ async def test_init_critical_services_success(mock_app):
 async def test_init_critical_services_search_failure_generic(mock_app):
     with (
         patch(
-            "backend.app.setup.service_initializer.SearchService", side_effect=RuntimeError("Unexpected")
+            "backend.app.setup.service_initializer.SearchService",
+            side_effect=RuntimeError("Unexpected"),
         ) as MockSearch,
         patch("backend.app.setup.service_initializer.ZantaraAIClient") as MockAI,
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
@@ -216,7 +217,9 @@ async def test_initialize_database_services_retry_then_success(mock_app):
         patch(
             "backend.app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create_pool,
-        patch("backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch(
+            "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
+        ) as mock_sleep,
         patch("backend.services.analytics.daily_checkin_notifier.init_daily_notifier"),
         patch("backend.services.analytics.team_timesheet_service.init_timesheet_service"),
         patch("backend.services.analytics.weekly_email_reporter.init_weekly_reporter"),
@@ -263,7 +266,9 @@ async def test_database_health_check_loop_exception_recovery():
     mock_pool = MagicMock()
 
     with (
-        patch("backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch(
+            "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
+        ) as mock_sleep,
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         # Success CM

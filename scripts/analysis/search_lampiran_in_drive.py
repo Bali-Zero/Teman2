@@ -9,11 +9,14 @@ import json
 from typing import List, Dict
 
 # Add backend path
-backend_path = os.path.join(os.path.dirname(__file__), "..", "..", "apps", "backend-rag")
+backend_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "apps", "backend-rag"
+)
 sys.path.insert(0, backend_path)
 sys.path.insert(0, os.path.join(backend_path, "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(backend_path, ".env"))
 
 from services.oracle.smart_oracle import get_drive_service
@@ -47,7 +50,7 @@ def search_lampiran_files() -> List[Dict]:
         print(f"  Cercando: {pattern}...")
         try:
             query = f"name contains '{pattern}' and mimeType = 'application/pdf' and trashed = false"
-            
+
             results = (
                 service.files()
                 .list(
@@ -63,15 +66,17 @@ def search_lampiran_files() -> List[Dict]:
                 print(f"    ✅ Trovati {len(files)} file")
                 for f in files:
                     print(f"      - {f['name']} (ID: {f['id']})")
-                    all_files.append({
-                        "id": f["id"],
-                        "name": f["name"],
-                        "size": f.get("size", 0),
-                        "modifiedTime": f.get("modifiedTime"),
-                        "webViewLink": f.get("webViewLink"),
-                    })
+                    all_files.append(
+                        {
+                            "id": f["id"],
+                            "name": f["name"],
+                            "size": f.get("size", 0),
+                            "modifiedTime": f.get("modifiedTime"),
+                            "webViewLink": f.get("webViewLink"),
+                        }
+                    )
             else:
-                print(f"    ⏭️  Nessun file trovato")
+                print("    ⏭️  Nessun file trovato")
         except Exception as e:
             print(f"    ❌ Errore: {e}")
 
@@ -117,7 +122,7 @@ def search_specific_lampiran_files() -> List[Dict]:
         try:
             # Cerca esatto o contiene
             query = f"name contains '{filename.replace('.pdf', '')}' and mimeType = 'application/pdf' and trashed = false"
-            
+
             results = (
                 service.files()
                 .list(
@@ -131,15 +136,17 @@ def search_specific_lampiran_files() -> List[Dict]:
             files = results.get("files", [])
             if files:
                 for f in files:
-                    if filename.replace('.pdf', '') in f['name']:
+                    if filename.replace(".pdf", "") in f["name"]:
                         print(f"  ✅ {f['name']} (ID: {f['id']})")
-                        found_files.append({
-                            "id": f["id"],
-                            "name": f["name"],
-                            "size": f.get("size", 0),
-                            "modifiedTime": f.get("modifiedTime"),
-                            "webViewLink": f.get("webViewLink"),
-                        })
+                        found_files.append(
+                            {
+                                "id": f["id"],
+                                "name": f["name"],
+                                "size": f.get("size", 0),
+                                "modifiedTime": f.get("modifiedTime"),
+                                "webViewLink": f.get("webViewLink"),
+                            }
+                        )
         except Exception as e:
             print(f"  ⚠️  Errore cercando {filename}: {e}")
 
@@ -184,10 +191,12 @@ def main():
         output_file = "reports/lampiran_drive_search.json"
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump({
-                "total_found": len(all_files),
-                "files": list(all_files.values())
-            }, f, indent=2, ensure_ascii=False)
+            json.dump(
+                {"total_found": len(all_files), "files": list(all_files.values())},
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
         print(f"📁 Risultati salvati in: {output_file}")
     else:
         print("\n❌ Nessun file Lampiran trovato in Google Drive")

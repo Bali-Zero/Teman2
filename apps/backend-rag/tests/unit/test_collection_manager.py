@@ -65,7 +65,9 @@ class TestCollectionManagerGetCollection:
         """Test getting collection with alias"""
         manager = CollectionManager()
 
-        with patch("backend.services.ingestion.collection_manager.QdrantClient") as mock_client_class:
+        with patch(
+            "backend.services.ingestion.collection_manager.QdrantClient"
+        ) as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -91,7 +93,9 @@ class TestCollectionManagerGetCollection:
         """Test getting collection by direct name"""
         manager = CollectionManager()
 
-        with patch("backend.services.ingestion.collection_manager.QdrantClient") as mock_client_class:
+        with patch(
+            "backend.services.ingestion.collection_manager.QdrantClient"
+        ) as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -119,7 +123,9 @@ class TestCollectionManagerListCollections:
         """Test getting all collection clients"""
         manager = CollectionManager()
 
-        with patch("backend.services.ingestion.collection_manager.QdrantClient") as mock_client_class:
+        with patch(
+            "backend.services.ingestion.collection_manager.QdrantClient"
+        ) as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 

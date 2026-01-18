@@ -18,23 +18,27 @@ The Intelligence Center provides a comprehensive platform for managing automated
 ## ✨ Features
 
 ### 🔍 Filters & Sorting
+
 - **Real-time Search**: Filter by title, ID, or source
 - **Type Filters**: All, NEW, UPDATED, Critical (News)
 - **Sort Options**: Date (newest/oldest), Title (A-Z/Z-A)
 
 ### 📊 Analytics Dashboard
+
 - **Summary Cards**: Total Processed, Approval Rate, Rejection Rate, Published
 - **Daily Trends**: Visual chart showing daily activity
 - **Type Breakdown**: Separate statistics for Visa and News
 - **Period Selector**: 7, 30, 90, 180 days
 
 ### ⚡ Bulk Operations
+
 - **Multi-select**: Checkbox selection for multiple items
 - **Bulk Approve/Reject**: Process multiple items at once
 - **Bulk Publish**: Publish multiple news articles
 - **Select All/Deselect All**: Quick selection management
 
 ### 📈 Prometheus Metrics
+
 - **Bulk Operations**: Tracking and distribution
 - **Filter/Sort Usage**: User behavior analytics
 - **Search Queries**: Query pattern tracking
@@ -46,10 +50,12 @@ The Intelligence Center provides a comprehensive platform for managing automated
 ## 🚀 Quick Start
 
 ### Access
+
 - **URL**: `https://zantara.balizero.com/intelligence`
 - **Default**: Redirects to `/intelligence/visa-oracle`
 
 ### Navigation
+
 - Use tabs at the top to switch between sections
 - Each section has its own filters and actions
 - Analytics provides historical insights
@@ -82,15 +88,18 @@ npm test -- analytics/page.test.tsx --run
 ## 📊 Monitoring
 
 ### Grafana Dashboard
+
 - **Location**: `config/grafana/dashboards/intelligence-center-dashboard.json`
 - **Access**: `http://localhost:3001` (Grafana UI)
 - **Auto-loaded**: Via Grafana provisioning
 
 ### Prometheus Metrics
+
 - **Endpoint**: `http://localhost:9090/metrics`
 - **Prefix**: `zantara_intel_*`
 
 ### Key Metrics
+
 - `zantara_intel_staging_queue_size` - Pending items
 - `zantara_intel_bulk_operations_total` - Bulk operations count
 - `zantara_intel_user_actions_total` - User action tracking
@@ -101,6 +110,7 @@ npm test -- analytics/page.test.tsx --run
 ## 🛠️ Development
 
 ### File Structure
+
 ```
 intelligence/
 ├── layout.tsx              # Main layout with tabs
@@ -116,6 +126,7 @@ intelligence/
 ```
 
 ### API Client
+
 ```typescript
 import { intelligenceApi } from '@/lib/api/intelligence.api';
 
@@ -144,16 +155,19 @@ await intelligenceApi.approveItem('visa', 'item-id');
 ## 🔧 Troubleshooting
 
 ### Items not showing
+
 - Check filters are not too restrictive
 - Verify backend staging directory exists
 - Check browser console for errors
 
 ### Bulk operations failing
+
 - Verify items are selected
 - Check backend logs for errors
 - Ensure sufficient permissions
 
 ### Analytics not loading
+
 - Verify backend archived directories exist
 - Check period selector value
 - Review backend logs

@@ -47,7 +47,7 @@ langchain-core>=0.1.0
 
 # HTTP/Network - UPGRADED TO RESOLVE CONFLICTS
 httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility (requires >=0.28.1)
-requests==2.31.0
+requests>=2.32.0  # Security updates in 2.32.x
 aiohttp>=3.10.0  # Required by litellm, runpod
 urllib3>=2.0.0  # Required by selenium, types-requests
 sse-starlette>=1.8.0  # For Server-Sent Events (Streaming)

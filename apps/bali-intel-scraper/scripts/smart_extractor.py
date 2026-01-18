@@ -16,7 +16,6 @@ from raw HTML/text using natural language understanding.
 Cost: $0 (runs locally)
 """
 
-import asyncio
 import httpx
 import re
 import json
@@ -73,10 +72,10 @@ class SmartExtractor:
         stats = self.stats.copy()
         # Compute total extractions
         successes = (
-            stats.get("css_success", 0) +
-            stats.get("trafilatura_success", 0) +
-            stats.get("newspaper_success", 0) +
-            stats.get("llama_success", 0)
+            stats.get("css_success", 0)
+            + stats.get("trafilatura_success", 0)
+            + stats.get("newspaper_success", 0)
+            + stats.get("llama_success", 0)
         )
         failed = stats.get("failed", 0)
         total = successes + failed
@@ -107,15 +106,17 @@ class SmartExtractor:
                     if has_model:
                         self.ollama_available = True
                         return True
-                    
+
                     # Fallback to any available model if specific one missing
                     if models:
                         first_model = models[0].get("name")
-                        logger.warning(f"Requested model {self.ollama_model} not found, falling back to {first_model}")
+                        logger.warning(
+                            f"Requested model {self.ollama_model} not found, falling back to {first_model}"
+                        )
                         self.ollama_model = first_model
                         self.ollama_available = True
                         return True
-                        
+
         except Exception:
             pass
 
@@ -167,12 +168,23 @@ class SmartExtractor:
 
             # 3. Standard meta tags
             meta_names = [
-                "date", "Date", "DC.date", "dc.date", "pubdate", "publication_date",
-                "article:published", "datePublished", "publish-date", "published-date",
-                "sailthru.date", "parsely-pub-date"
+                "date",
+                "Date",
+                "DC.date",
+                "dc.date",
+                "pubdate",
+                "publication_date",
+                "article:published",
+                "datePublished",
+                "publish-date",
+                "published-date",
+                "sailthru.date",
+                "parsely-pub-date",
             ]
             for name in meta_names:
-                meta = soup.find("meta", attrs={"name": name}) or soup.find("meta", attrs={"property": name})
+                meta = soup.find("meta", attrs={"name": name}) or soup.find(
+                    "meta", attrs={"property": name}
+                )
                 if meta and meta.get("content"):
                     try:
                         parsed = date_parser.parse(meta["content"], fuzzy=True)
@@ -203,6 +215,7 @@ class SmartExtractor:
                     try:
                         year, month, day = match.groups()
                         from datetime import datetime
+
                         dt = datetime(int(year), int(month), int(day))
                         logger.debug(f"Date from URL: {dt.isoformat()}")
                         return dt.isoformat()
@@ -215,25 +228,27 @@ class SmartExtractor:
         return None
 
     def _clean_html_for_llm(self, html: str) -> str:
-        """ Aggressively clean HTML to save tokens and reduce noise for LLM """
+        """Aggressively clean HTML to save tokens and reduce noise for LLM"""
         try:
             soup = BeautifulSoup(html, "html.parser")
-            
+
             # Remove distracting elements
-            for element in soup(["script", "style", "nav", "footer", "iframe", "svg", "noscript"]):
+            for element in soup(
+                ["script", "style", "nav", "footer", "iframe", "svg", "noscript"]
+            ):
                 element.decompose()
-                
+
             # Remove comments
             for comment in soup.find_all(text=lambda text: isinstance(text, Comment)):
                 comment.extract()
-                
+
             # Get text with minimal structure
             text = soup.get_text(separator="\n", strip=True)
-            
+
             # Collapse whitespace
             text = re.sub(r"\n\s*\n", "\n\n", text)
-            
-            return text[:20000] # Limit context window safely
+
+            return text[:20000]  # Limit context window safely
         except Exception:
             return html[:15000]
 
@@ -287,10 +302,10 @@ OUTPUT FORMAT (JSON ONLY):
                         "model": self.ollama_model,
                         "prompt": prompt,
                         "stream": False,
-                        "format": "json", # Force JSON mode if supported by model
+                        "format": "json",  # Force JSON mode if supported by model
                         "options": {
-                            "temperature": 0.1, # Low temp for factual extraction
-                            "num_ctx": 4096,    # Ensure enough context
+                            "temperature": 0.1,  # Low temp for factual extraction
+                            "num_ctx": 4096,  # Ensure enough context
                         },
                     },
                 )
@@ -348,9 +363,11 @@ OUTPUT FORMAT (JSON ONLY):
 
                     # Extract content
                     # Remove unwanted tags inside the article body
-                    for bad_tag in elem.select("script, style, .ad, .advertisement, .related, .share"):
+                    for bad_tag in elem.select(
+                        "script, style, .ad, .advertisement, .related, .share"
+                    ):
                         bad_tag.decompose()
-                        
+
                     content = elem.get_text(separator="\n\n", strip=True)
 
                     if len(content) > 200:
@@ -369,11 +386,11 @@ OUTPUT FORMAT (JSON ONLY):
 
         try:
             content = trafilatura_extract(
-                html, 
-                include_comments=False, 
-                include_tables=True, 
+                html,
+                include_comments=False,
+                include_tables=True,
                 output_format="txt",
-                deduplicate=True
+                deduplicate=True,
             )
 
             if content and len(content) > 200:

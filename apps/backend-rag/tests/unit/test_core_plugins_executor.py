@@ -18,7 +18,13 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.core.plugins.executor import PluginExecutor
-from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.plugin import (
+    Plugin,
+    PluginCategory,
+    PluginInput,
+    PluginMetadata,
+    PluginOutput,
+)
 
 # ============================================================================
 # Mock Plugin Classes

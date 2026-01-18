@@ -165,7 +165,9 @@ async def test_process_query_with_tool_execution(mock_llm_gateway, mock_services
     ]
 
     # Patch execute_tool in reasoning.py to return our mock result
-    with patch("backend.services.rag.agentic.reasoning.execute_tool", new_callable=AsyncMock) as mock_exec:
+    with patch(
+        "backend.services.rag.agentic.reasoning.execute_tool", new_callable=AsyncMock
+    ) as mock_exec:
         mock_exec.return_value = ("Tool Result Data", 0.5)  # (result, duration)
 
         with patch(

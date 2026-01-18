@@ -53,9 +53,9 @@ CLIENT_NAME_MAPPING = {
 def generate_complete_csv():
     """Generate fully completed CSV"""
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🤖 GENERAZIONE CSV COMPLETATO AUTOMATICAMENTE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     categories = categorize_folders()
 
@@ -64,75 +64,78 @@ def generate_complete_csv():
 
     for folder in DROPBOX_FOLDERS:
         row = {
-            'dropbox_folder': folder,
-            'category': '',
-            'crm_client_id': '',
-            'crm_client_name': '',
-            'action': '',
-            'notes': '',
-            'verified': 'NO'
+            "dropbox_folder": folder,
+            "category": "",
+            "crm_client_id": "",
+            "crm_client_name": "",
+            "action": "",
+            "notes": "",
+            "verified": "NO",
         }
 
         # Determine category
-        if folder in categories['process_folders']:
-            row['category'] = 'PROCESS'
-            row['action'] = 'SKIP'
-            row['notes'] = 'Cartella di processo - non migrare'
-            row['verified'] = 'YES'
+        if folder in categories["process_folders"]:
+            row["category"] = "PROCESS"
+            row["action"] = "SKIP"
+            row["notes"] = "Cartella di processo - non migrare"
+            row["verified"] = "YES"
 
-        elif folder in categories['utility_folders']:
-            row['category'] = 'UTILITY'
-            row['action'] = 'SKIP'
-            row['notes'] = 'Cartella utility/sistema - non migrare'
-            row['verified'] = 'YES'
+        elif folder in categories["utility_folders"]:
+            row["category"] = "UTILITY"
+            row["action"] = "SKIP"
+            row["notes"] = "Cartella utility/sistema - non migrare"
+            row["verified"] = "YES"
 
         else:
             # CLIENT folder
-            row['category'] = 'CLIENT'
+            row["category"] = "CLIENT"
 
             # Get client name from mapping
             client_name = CLIENT_NAME_MAPPING.get(folder, folder)
 
             if client_name:
-                row['crm_client_id'] = str(client_id_counter)
-                row['crm_client_name'] = client_name
-                row['action'] = 'MIGRATE'
-                row['notes'] = f'Auto-matched - VERIFY ID in CRM'
-                row['verified'] = 'NO'  # Needs verification
+                row["crm_client_id"] = str(client_id_counter)
+                row["crm_client_name"] = client_name
+                row["action"] = "MIGRATE"
+                row["notes"] = "Auto-matched - VERIFY ID in CRM"
+                row["verified"] = "NO"  # Needs verification
                 client_id_counter += 1
             else:
-                row['notes'] = 'Manual matching required'
-                row['action'] = 'MANUAL'
+                row["notes"] = "Manual matching required"
+                row["action"] = "MANUAL"
 
         rows.append(row)
 
     # Generate CSV
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = f"dropbox_crm_matching_AUTO_COMPLETE_{timestamp}.csv"
 
-    with open(output_file, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            'dropbox_folder',
-            'category',
-            'crm_client_id',
-            'crm_client_name',
-            'action',
-            'notes',
-            'verified'
-        ])
+    with open(output_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "dropbox_folder",
+                "category",
+                "crm_client_id",
+                "crm_client_name",
+                "action",
+                "notes",
+                "verified",
+            ],
+        )
 
         writer.writeheader()
         writer.writerows(rows)
 
     # Statistics
-    clients = [r for r in rows if r['category'] == 'CLIENT']
-    auto_matched = [r for r in clients if r['crm_client_id']]
-    needs_manual = [r for r in clients if not r['crm_client_id']]
-    utility = [r for r in rows if r['category'] == 'UTILITY']
-    process = [r for r in rows if r['category'] == 'PROCESS']
+    clients = [r for r in rows if r["category"] == "CLIENT"]
+    auto_matched = [r for r in clients if r["crm_client_id"]]
+    needs_manual = [r for r in clients if not r["crm_client_id"]]
+    utility = [r for r in rows if r["category"] == "UTILITY"]
+    process = [r for r in rows if r["category"] == "PROCESS"]
 
-    print(f"✅ CSV COMPLETATO AUTOMATICAMENTE!")
-    print(f"\n📊 STATISTICHE:")
+    print("✅ CSV COMPLETATO AUTOMATICAMENTE!")
+    print("\n📊 STATISTICHE:")
     print(f"   • Totale cartelle: {len(rows)}")
     print(f"   • Clienti auto-matched: {len(auto_matched)}")
     print(f"   • Clienti da verificare manualmente: {len(needs_manual)}")
@@ -141,9 +144,9 @@ def generate_complete_csv():
 
     print(f"\n💾 File generato: {output_file}")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📝 COSA FARE ADESSO:")
-    print("="*80)
+    print("=" * 80)
     print("\n1. Apri il CRM nel browser: https://nuzantara.fly.dev")
     print(f"2. Apri il CSV: {output_file}")
     print("\n3. Per ogni riga con verified = NO:")
@@ -156,9 +159,9 @@ def generate_complete_csv():
     print("   (UTILITY e PROCESS folders)")
     print("\n5. Salva il CSV quando hai finito")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("💡 TRUCCO VELOCE:")
-    print("="*80)
+    print("=" * 80)
     print("\nSe nel CRM vedi che gli ID dei clienti seguono un pattern")
     print("(es: iniziano da 1, 2, 3...), puoi:")
     print("\n1. Ordinare il CSV per 'crm_client_name'")
@@ -166,14 +169,16 @@ def generate_complete_csv():
     print("3. Fare una rapida verifica nel CRM")
     print("\nQuesto può ridurre il lavoro da 30min a 5-10min!")
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
     # Show sample rows
     print("📄 ANTEPRIMA CSV (prime 10 righe):")
     print("-" * 80)
     for i, row in enumerate(rows[:10]):
-        if row['category'] == 'CLIENT':
-            print(f"{row['dropbox_folder']:30} → ID:{row['crm_client_id']:4} {row['crm_client_name']:20} [{row['verified']}]")
+        if row["category"] == "CLIENT":
+            print(
+                f"{row['dropbox_folder']:30} → ID:{row['crm_client_id']:4} {row['crm_client_name']:20} [{row['verified']}]"
+            )
         else:
             print(f"{row['dropbox_folder']:30} → [{row['category']}] SKIP")
     print("-" * 80 + "\n")
@@ -187,4 +192,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Errore: {e}")
         import traceback
+
         traceback.print_exc()

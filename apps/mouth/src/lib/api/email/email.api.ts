@@ -79,7 +79,8 @@ export class EmailApi {
     if (params.limit) queryParams.append('limit', params.limit.toString());
     if (params.offset) queryParams.append('offset', params.offset.toString());
     if (params.is_read !== undefined) queryParams.append('is_read', params.is_read.toString());
-    if (params.is_flagged !== undefined) queryParams.append('is_flagged', params.is_flagged.toString());
+    if (params.is_flagged !== undefined)
+      queryParams.append('is_flagged', params.is_flagged.toString());
 
     const queryString = queryParams.toString();
     const url = `${API_PREFIX}/emails${queryString ? `?${queryString}` : ''}`;
@@ -145,39 +146,30 @@ export class EmailApi {
    * Mark emails as read/unread
    */
   async markRead(params: MarkReadParams): Promise<OperationResponse> {
-    return this.client.request<OperationResponse>(
-      `${API_PREFIX}/emails/mark-read`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(params),
-      }
-    );
+    return this.client.request<OperationResponse>(`${API_PREFIX}/emails/mark-read`, {
+      method: 'PATCH',
+      body: JSON.stringify(params),
+    });
   }
 
   /**
    * Toggle flag/star on an email
    */
   async toggleFlag(messageId: string, isFlagged: boolean): Promise<OperationResponse> {
-    return this.client.request<OperationResponse>(
-      `${API_PREFIX}/emails/${messageId}/flag`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ is_flagged: isFlagged }),
-      }
-    );
+    return this.client.request<OperationResponse>(`${API_PREFIX}/emails/${messageId}/flag`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_flagged: isFlagged }),
+    });
   }
 
   /**
    * Delete emails (move to trash)
    */
   async deleteEmails(messageIds: string[]): Promise<OperationResponse> {
-    return this.client.request<OperationResponse>(
-      `${API_PREFIX}/emails/delete`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ message_ids: messageIds }),
-      }
-    );
+    return this.client.request<OperationResponse>(`${API_PREFIX}/emails/delete`, {
+      method: 'POST',
+      body: JSON.stringify({ message_ids: messageIds }),
+    });
   }
 
   // ============================================================================
@@ -188,13 +180,10 @@ export class EmailApi {
    * Save a draft email
    */
   async saveDraft(params: SaveDraftParams): Promise<SaveDraftResponse> {
-    return this.client.request<SaveDraftResponse>(
-      `${API_PREFIX}/drafts`,
-      {
-        method: 'POST',
-        body: JSON.stringify(params),
-      }
-    );
+    return this.client.request<SaveDraftResponse>(`${API_PREFIX}/drafts`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
   }
 
   // ============================================================================

@@ -100,7 +100,10 @@ class TestMainCloudIntegration:
 
     def test_app_initialization(self):
         """Test that FastAPI app can be imported and initialized"""
-        with patch("backend.app.main_cloud.initialize_services"), patch("backend.app.main_cloud.include_routers"):
+        with (
+            patch("backend.app.main_cloud.initialize_services"),
+            patch("backend.app.main_cloud.include_routers"),
+        ):
             from backend.app.main_cloud import app
 
             assert app is not None

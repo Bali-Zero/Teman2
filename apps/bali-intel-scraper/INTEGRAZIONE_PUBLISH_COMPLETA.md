@@ -19,6 +19,7 @@ SCRAPER → VALIDATION (duplicate check) → ENRICHMENT → NEWS ROOM
 ### Backend
 
 **`apps/backend-rag/backend/app/routers/intel.py`**
+
 - ✅ Aggiunto import path per ClaudeValidator (linee 27-34)
 - ✅ Nuovo endpoint `/api/intel/staging/publish/{type}/{item_id}` (linee 546-680)
   - Ingest to Qdrant (knowledge base)
@@ -28,10 +29,12 @@ SCRAPER → VALIDATION (duplicate check) → ENRICHMENT → NEWS ROOM
 ### Frontend
 
 **`apps/mouth/src/lib/api/intelligence.api.ts`**
+
 - ✅ Aggiunta interface `PublishResponse` (linee 27-35)
 - ✅ Nuovo metodo `publishItem()` (linee 147-178)
 
 **`apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx`**
+
 - ✅ Aggiunto state `publishingIds` per loading (linea 15)
 - ✅ Funzione `handlePublish()` (linee 52-96)
 - ✅ Button "Publish" con loading state (linee 196-213)
@@ -39,9 +42,11 @@ SCRAPER → VALIDATION (duplicate check) → ENRICHMENT → NEWS ROOM
 ### Scraper
 
 **`apps/bali-intel-scraper/scripts/intel_pipeline.py`**
+
 - ✅ TODO comment in header (linee 62-70)
 
 **`apps/bali-intel-scraper/scripts/claude_validator.py`**
+
 - ✅ Sistema anti-duplicate completo (già implementato)
 
 ---
@@ -138,11 +143,13 @@ curl -X POST \
 ### Test 2: Frontend UI (manual)
 
 1. **Login to Zantara**
+
    ```
    https://zantara.balizero.com/login
    ```
 
 2. **Navigate to News Room**
+
    ```
    https://zantara.balizero.com/intelligence/news-room
    ```
@@ -157,11 +164,13 @@ curl -X POST \
    - Article should disappear from list (moved to archived/approved)
 
 5. **Verify in backend logs**
+
    ```bash
    fly logs -a nuzantara-rag | grep -A 5 "publish"
    ```
 
    Expected logs:
+
    ```
    Publish request received | type=news item_id=test_...
    Publishing article | title="Test Article..."
@@ -269,11 +278,13 @@ python run_intel_feed.py \
 ### Issue 1: ImportError - ClaudeValidator not found
 
 **Symptom:**
+
 ```
 ⚠️ ClaudeValidator not available - skipping duplicate registration
 ```
 
 **Fix:**
+
 ```bash
 # Verify path is correct
 fly ssh console -a nuzantara-rag -C "ls -la ../bali-intel-scraper/scripts/claude_validator.py"
@@ -284,6 +295,7 @@ fly ssh console -a nuzantara-rag -C "python3 -c 'import sys; print(sys.path)'"
 
 **Solution:**
 Il path import è relativo. Assicurarsi che la struttura sia:
+
 ```
 /app/
 ├── backend-rag/
@@ -295,11 +307,13 @@ Il path import è relativo. Assicurarsi che la struttura sia:
 ### Issue 2: Registry file not found
 
 **Symptom:**
+
 ```
 Error: [Errno 2] No such file or directory: '.../data/published_articles.json'
 ```
 
 **Fix:**
+
 ```bash
 # Create directory manually
 fly ssh console -a nuzantara-rag -C "mkdir -p ../bali-intel-scraper/scripts/data"
@@ -310,6 +324,7 @@ fly ssh console -a nuzantara-rag -C "mkdir -p ../bali-intel-scraper/scripts/data
 ### Issue 3: Publish button doesn't work
 
 **Check browser console:**
+
 ```javascript
 // DevTools → Console
 // Should see:
@@ -318,6 +333,7 @@ Response: { success: true, ... }
 ```
 
 **Check backend logs:**
+
 ```bash
 fly logs -a nuzantara-rag | grep "publish"
 ```
@@ -327,9 +343,10 @@ fly logs -a nuzantara-rag | grep "publish"
 **Cause:** `loadNews()` not called after success
 
 **Check:**
+
 ```typescript
 // In news-room/page.tsx:79
-loadNews();  // Should be called after success toast
+loadNews(); // Should be called after success toast
 ```
 
 ---
@@ -339,6 +356,7 @@ loadNews();  // Should be called after success toast
 ### Backend Metrics
 
 Vedi `/api/intel/metrics` endpoint per:
+
 - Articles published today
 - Duplicate detection rate
 - Qdrant health
@@ -396,6 +414,7 @@ fly logs -a nuzantara-rag | grep "Added to published registry"
 ✅ **Sistema 100% completo e pronto per deploy**
 
 **Prossimi step:**
+
 1. Deploy backend (`fly deploy -a nuzantara-rag`)
 2. Deploy frontend (`vercel deploy --prod` da `apps/mouth/`)
 3. Test E2E con articolo reale

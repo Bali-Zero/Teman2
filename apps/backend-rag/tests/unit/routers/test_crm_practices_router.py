@@ -162,7 +162,7 @@ def mock_db_pool():
 @pytest.fixture
 def client(mock_db_pool):
     """Create test client with mocked dependencies.
-    
+
     Updated 2026-01-16: Fixed dependency overrides to match actual API.
     - get_database_pool accepts Request parameter
     - get_current_user accepts Request and credentials parameters
@@ -188,7 +188,7 @@ def client(mock_db_pool):
     # Override get_database_pool - it accesses request.app.state.db_pool
     def get_db_pool_override(request):
         return mock_db_pool
-    
+
     # Override get_current_user - return mock user dict
     def get_user_override(request, credentials=None):
         return {
@@ -459,8 +459,6 @@ class TestCreatePracticeEndpoint:
         )
 
         assert response.status_code == 422  # Validation error
-
-
 
 
 # ============================================================================

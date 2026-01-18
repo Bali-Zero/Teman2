@@ -25,7 +25,9 @@ class TestVertexAIService:
     def service(self, mock_vertexai):
         """Create VertexAIService instance"""
         with patch("backend.services.llm_clients.vertex_ai_service.vertexai") as mock_v:
-            with patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model:
+            with patch(
+                "backend.services.llm_clients.vertex_ai_service.GenerativeModel"
+            ) as mock_model:
                 with patch("backend.services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_v.init = MagicMock()
                     mock_model.return_value = MagicMock()
@@ -73,7 +75,9 @@ class TestVertexAIService:
         mock_model_class.return_value = mock_model
 
         with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            with patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel", mock_model_class):
+            with patch(
+                "backend.services.llm_clients.vertex_ai_service.GenerativeModel", mock_model_class
+            ):
                 from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                 service = VertexAIService(project_id="test-project")

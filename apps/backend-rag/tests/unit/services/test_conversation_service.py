@@ -129,7 +129,8 @@ def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
     """Test lazy loading of Auto-CRM service successfully"""
     # Mock the import at the module level
     with patch(
-        "backend.services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service
+        "backend.services.crm.auto_crm_service.get_auto_crm_service",
+        return_value=mock_auto_crm_service,
     ):
         result = conversation_service._get_auto_crm()
 
@@ -141,7 +142,8 @@ def test_get_auto_crm_cached(conversation_service, mock_auto_crm_service):
     """Test that Auto-CRM service is cached after first load"""
     # Mock the import at the module level
     with patch(
-        "backend.services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service
+        "backend.services.crm.auto_crm_service.get_auto_crm_service",
+        return_value=mock_auto_crm_service,
     ) as mock_get_service:
         # First call
         result1 = conversation_service._get_auto_crm()
@@ -203,7 +205,8 @@ async def test_save_conversation_success_db_and_cache(
     conn.fetchrow.return_value = {"id": 42}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.save_conversation(
             user_email=user_email,
@@ -243,7 +246,8 @@ async def test_save_conversation_auto_generated_session_id(
     conn.fetchrow.return_value = {"id": 10}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.save_conversation(
             user_email="test@example.com",
@@ -270,7 +274,8 @@ async def test_save_conversation_with_metadata(
     }
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.save_conversation(
             user_email="test@example.com",
@@ -303,7 +308,8 @@ async def test_save_conversation_with_auto_crm(
     mock_auto_crm_service.process_conversation.return_value = crm_result
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         with patch.object(
             conversation_service, "_get_auto_crm", return_value=mock_auto_crm_service
@@ -342,7 +348,8 @@ async def test_save_conversation_with_auto_crm_team_member(
     metadata = {"team_member": "jane@example.com"}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         with patch.object(
             conversation_service, "_get_auto_crm", return_value=mock_auto_crm_service
@@ -372,7 +379,8 @@ async def test_save_conversation_db_error_falls_back_to_memory(
     conn.fetchrow.side_effect = Exception("Database connection failed")
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.save_conversation(
             user_email="test@example.com",
@@ -397,7 +405,8 @@ async def test_save_conversation_no_db_pool(
 ):
     """Test save when no DB pool is available"""
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service_no_pool.save_conversation(
             user_email="test@example.com",
@@ -425,7 +434,9 @@ async def test_save_conversation_memory_cache_error(
     mock_cache = MagicMock()
     mock_cache.add_message.side_effect = Exception("Cache error")
 
-    with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+    with patch(
+        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+    ):
         result = await conversation_service.save_conversation(
             user_email="test@example.com",
             messages=sample_messages,
@@ -452,7 +463,8 @@ async def test_save_conversation_auto_crm_error(
     mock_crm.process_conversation = AsyncMock(side_effect=Exception("CRM error"))
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         with patch.object(conversation_service, "_get_auto_crm", return_value=mock_crm):
             result = await conversation_service.save_conversation(
@@ -478,7 +490,8 @@ async def test_save_conversation_no_auto_crm_available(
     conn.fetchrow.return_value = {"id": 35}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         with patch.object(conversation_service, "_get_auto_crm", return_value=None):
             result = await conversation_service.save_conversation(
@@ -501,7 +514,8 @@ async def test_save_conversation_empty_messages(
     conn.fetchrow.return_value = {"id": 40}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         with patch.object(conversation_service, "_get_auto_crm", return_value=None):
             result = await conversation_service.save_conversation(
@@ -649,7 +663,8 @@ async def test_get_history_fallback_to_cache(conversation_service, mock_db_pool,
     mock_memory_cache.get_conversation.return_value = cached_messages
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.get_history(
             user_email="test@example.com",
@@ -674,7 +689,8 @@ async def test_get_history_cache_no_session_id(
     conn.fetchrow.return_value = None
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.get_history(
             user_email="test@example.com",
@@ -700,7 +716,8 @@ async def test_get_history_db_error_fallback_to_cache(
     mock_memory_cache.get_conversation.return_value = cached_messages
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.get_history(
             user_email="test@example.com",
@@ -721,7 +738,8 @@ async def test_get_history_cache_error(conversation_service, mock_db_pool, mock_
     mock_memory_cache.get_conversation.side_effect = Exception("Cache error")
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.get_history(
             user_email="test@example.com",
@@ -740,7 +758,8 @@ async def test_get_history_no_db_pool(conversation_service_no_pool, mock_memory_
     mock_memory_cache.get_conversation.return_value = cached_messages
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service_no_pool.get_history(
             user_email="test@example.com",
@@ -779,7 +798,8 @@ async def test_get_history_cache_limit_applied(
     mock_memory_cache.get_conversation.return_value = cached_messages
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.get_history(
             user_email="test@example.com",
@@ -809,7 +829,8 @@ async def test_save_and_get_conversation_flow(
     conn.fetchrow.return_value = {"id": 100}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         # Save conversation
         save_result = await conversation_service.save_conversation(
@@ -848,7 +869,8 @@ async def test_save_conversation_special_characters(
     ]
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         result = await conversation_service.save_conversation(
             user_email="tëst@example.com",
@@ -889,7 +911,8 @@ async def test_save_conversation_metadata_defaults_to_empty_dict(
     conn.fetchrow.return_value = {"id": 300}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         await conversation_service.save_conversation(
             user_email="test@example.com",
@@ -910,7 +933,8 @@ async def test_save_conversation_timestamp_generated(
     conn.fetchrow.return_value = {"id": 400}
 
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         await conversation_service.save_conversation(
             user_email="test@example.com",

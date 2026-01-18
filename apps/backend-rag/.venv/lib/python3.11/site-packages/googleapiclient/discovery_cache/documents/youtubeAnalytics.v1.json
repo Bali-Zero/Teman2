@@ -41,25 +41,15 @@
     "$.xgafv": {
       "description": "V1 error format.",
       "type": "string",
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
-      "enum": [
-        "1",
-        "2"
-      ]
+      "enum": ["1", "2"]
     },
     "alt": {
       "location": "query",
       "description": "Data format for response.",
       "default": "json",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "type": "string",
       "enumDescriptions": [
         "Responses with Content-Type of application/json",

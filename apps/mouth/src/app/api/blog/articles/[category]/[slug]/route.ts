@@ -68,10 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(mockArticle);
     }
 
-    return NextResponse.json(
-      { error: 'Article not found' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   } catch (error) {
     console.error('Failed to fetch article:', error);
 
@@ -82,10 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(mockArticle);
     }
 
-    return NextResponse.json(
-      { error: 'Failed to fetch article' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch article' }, { status: 500 });
   }
 }
 
@@ -96,7 +90,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   const { category, slug } = await params;
   return NextResponse.json(
-    { error: `Article updates not supported. Edit MDX file directly: src/content/articles/${category}/${slug}.mdx` },
+    {
+      error: `Article updates not supported. Edit MDX file directly: src/content/articles/${category}/${slug}.mdx`,
+    },
     { status: 501 }
   );
 }
@@ -108,7 +104,9 @@ export async function PATCH(_request: NextRequest, { params }: RouteParams) {
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const { category, slug } = await params;
   return NextResponse.json(
-    { error: `Article deletion not supported. Delete MDX file directly: src/content/articles/${category}/${slug}.mdx` },
+    {
+      error: `Article deletion not supported. Delete MDX file directly: src/content/articles/${category}/${slug}.mdx`,
+    },
     { status: 501 }
   );
 }
@@ -120,7 +118,8 @@ function getMockArticle(category: string, slug: string): Article | null {
       id: '1',
       slug: 'golden-visa-revolution',
       title: "The Golden Visa Revolution: Indonesia's $350K Bet on Global Talent",
-      excerpt: 'Indonesia launches its Golden Visa program, offering 5-10 year stays for investors and high-net-worth individuals.',
+      excerpt:
+        'Indonesia launches its Golden Visa program, offering 5-10 year stays for investors and high-net-worth individuals.',
       content: `
 # The Golden Visa Revolution
 
@@ -198,8 +197,9 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
       trending: true,
       aiGenerated: true,
       status: 'published',
-      seoTitle: "Golden Visa Indonesia 2026: Complete Guide | Bali Zero",
-      seoDescription: "Everything you need to know about Indonesia's Golden Visa program. Investment requirements, benefits, and application process explained.",
+      seoTitle: 'Golden Visa Indonesia 2026: Complete Guide | Bali Zero',
+      seoDescription:
+        "Everything you need to know about Indonesia's Golden Visa program. Investment requirements, benefits, and application process explained.",
       relatedArticleIds: ['oss-2-complete-guide', 'kitas-application-2026'],
       coverImageAlt: 'Golden Visa Indonesia program',
       createdAt: new Date('2024-12-20'),
@@ -212,7 +212,8 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
       id: '2',
       slug: 'oss-2-complete-guide',
       title: 'OSS 2.0: The Complete Guide to Indonesia Business Licensing',
-      excerpt: 'Everything you need to know about the Online Single Submission system for company registration.',
+      excerpt:
+        'Everything you need to know about the Online Single Submission system for company registration.',
       content: `
 # OSS 2.0: Complete Guide
 
@@ -297,8 +298,9 @@ Under OSS-RBA, businesses are classified by risk level:
       trending: true,
       aiGenerated: false,
       status: 'published',
-      seoTitle: "OSS 2.0 Guide: Indonesia Business License System | Bali Zero",
-      seoDescription: "Complete guide to Indonesia's OSS 2.0 system. Learn how to register your business, obtain licenses, and navigate KBLI codes.",
+      seoTitle: 'OSS 2.0 Guide: Indonesia Business License System | Bali Zero',
+      seoDescription:
+        "Complete guide to Indonesia's OSS 2.0 system. Learn how to register your business, obtain licenses, and navigate KBLI codes.",
       relatedArticleIds: ['golden-visa-revolution', 'tax-deadlines-2026'],
       coverImageAlt: 'OSS 2.0 Business Licensing Indonesia',
       createdAt: new Date('2024-12-18'),
@@ -311,7 +313,8 @@ Under OSS-RBA, businesses are classified by risk level:
       id: '3',
       slug: 'tax-deadlines-2026',
       title: 'Tax Deadlines 2026: What Every Expat in Indonesia Needs to Know',
-      excerpt: 'Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.',
+      excerpt:
+        'Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.',
       content: `
 # Tax Deadlines 2026
 
@@ -374,8 +377,9 @@ Stay compliant with Indonesia's tax requirements. The new **Coretax** system is 
       trending: true,
       aiGenerated: true,
       status: 'published',
-      seoTitle: "Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero",
-      seoDescription: "Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.",
+      seoTitle: 'Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero',
+      seoDescription:
+        'Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.',
       relatedArticleIds: ['oss-2-complete-guide', 'golden-visa-revolution'],
       coverImageAlt: 'Indonesia Tax Calendar 2026',
       createdAt: new Date('2025-12-28'),

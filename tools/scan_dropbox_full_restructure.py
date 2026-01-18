@@ -11,7 +11,6 @@ Output:
 3. Struttura target Google Drive (YAML)
 """
 
-import os
 import sys
 import json
 import csv
@@ -42,7 +41,7 @@ def scan_directory(path: Path, max_depth=3, current_depth=0):
         "children": [],
         "file_count": 0,
         "total_size": 0,
-        "depth": current_depth
+        "depth": current_depth,
     }
 
     try:
@@ -50,7 +49,7 @@ def scan_directory(path: Path, max_depth=3, current_depth=0):
 
         for item in items:
             # Skip hidden and system files
-            if item.name.startswith('.'):
+            if item.name.startswith("."):
                 continue
 
             if item.is_file():
@@ -58,12 +57,14 @@ def scan_directory(path: Path, max_depth=3, current_depth=0):
                 result["file_count"] += 1
                 result["total_size"] += size
 
-                result["children"].append({
-                    "name": item.name,
-                    "type": "file",
-                    "size": size,
-                    "extension": item.suffix.lower()
-                })
+                result["children"].append(
+                    {
+                        "name": item.name,
+                        "type": "file",
+                        "size": size,
+                        "extension": item.suffix.lower(),
+                    }
+                )
 
             elif item.is_dir() and current_depth < max_depth:
                 subdir = scan_directory(item, max_depth, current_depth + 1)
@@ -84,60 +85,80 @@ def extract_client_folders(scan_result):
     clients = []
 
     def traverse(node, parent_path=""):
-        current_path = f"{parent_path}/{node['name']}" if parent_path else node['name']
+        current_path = f"{parent_path}/{node['name']}" if parent_path else node["name"]
 
         # Skip utility folders
-        utility_keywords = ['draft', 'random', 'foto', 'bali zero',
-                          'laporan', 'titip krisna', 'perubahan']
-        if any(kw in node['name'].lower() for kw in utility_keywords):
+        utility_keywords = [
+            "draft",
+            "random",
+            "foto",
+            "bali zero",
+            "laporan",
+            "titip krisna",
+            "perubahan",
+        ]
+        if any(kw in node["name"].lower() for kw in utility_keywords):
             return
 
         # Check if this looks like a client folder
         is_client = False
 
         # Pattern 1: Folders in PEMEGANG KITAS (all clients)
-        if 'PEMEGANG KITAS' in current_path:
-            if node.get('depth', 0) == 1:  # Direct children
+        if "PEMEGANG KITAS" in current_path:
+            if node.get("depth", 0) == 1:  # Direct children
                 is_client = True
 
         # Pattern 2: Personal name folders (2+ words, capitalized)
-        elif node.get('depth', 0) <= 2:
-            name_parts = node['name'].split()
+        elif node.get("depth", 0) <= 2:
+            name_parts = node["name"].split()
             if len(name_parts) >= 2:
                 # Check if looks like a name (not all caps, not codes)
-                if not node['name'].isupper() or ' ' in node['name']:
+                if not node["name"].isupper() or " " in node["name"]:
                     is_client = True
 
         # Pattern 3: Known patterns like "MAS ADIT", "OM YOYOK"
-        if node['name'].startswith(('MAS ', 'OM ', 'PAK ', 'IBU ')):
+        if node["name"].startswith(("MAS ", "OM ", "PAK ", "IBU ")):
             is_client = True
 
         # Pattern 4: "Titip Punya X" indicates X is a client
-        if 'titip punya' in node['name'].lower():
-            client_name = node['name'].replace('Titip Punya', '').replace('titip punya', '').strip()
+        if "titip punya" in node["name"].lower():
+            client_name = (
+                node["name"]
+                .replace("Titip Punya", "")
+                .replace("titip punya", "")
+                .strip()
+            )
             if client_name:
-                clients.append({
-                    'name': client_name,
-                    'source_path': current_path,
-                    'repository': parent_path.split('/')[0] if '/' in parent_path else 'root',
-                    'file_count': node.get('file_count', 0),
-                    'total_size': node.get('total_size', 0),
-                    'type': 'deposited'
-                })
+                clients.append(
+                    {
+                        "name": client_name,
+                        "source_path": current_path,
+                        "repository": parent_path.split("/")[0]
+                        if "/" in parent_path
+                        else "root",
+                        "file_count": node.get("file_count", 0),
+                        "total_size": node.get("total_size", 0),
+                        "type": "deposited",
+                    }
+                )
 
-        if is_client and not node['name'].startswith('###'):
-            clients.append({
-                'name': node['name'],
-                'source_path': current_path,
-                'repository': parent_path.split('/')[0] if '/' in parent_path else 'root',
-                'file_count': node.get('file_count', 0),
-                'total_size': node.get('total_size', 0),
-                'type': 'direct'
-            })
+        if is_client and not node["name"].startswith("###"):
+            clients.append(
+                {
+                    "name": node["name"],
+                    "source_path": current_path,
+                    "repository": parent_path.split("/")[0]
+                    if "/" in parent_path
+                    else "root",
+                    "file_count": node.get("file_count", 0),
+                    "total_size": node.get("total_size", 0),
+                    "type": "direct",
+                }
+            )
 
         # Recurse into children
-        for child in node.get('children', []):
-            if child.get('type') == 'directory':
+        for child in node.get("children", []):
+            if child.get("type") == "directory":
                 traverse(child, current_path)
 
     traverse(scan_result)
@@ -153,32 +174,34 @@ def match_with_crm(client_folders, crm_clients):
         best_score = 0.0
 
         for crm_client in crm_clients:
-            score = similarity(folder['name'], crm_client['name'])
+            score = similarity(folder["name"], crm_client["name"])
 
             if score > best_score:
                 best_score = score
                 best_match = crm_client
 
         if best_score >= 0.8:
-            confidence = 'high'
+            confidence = "high"
         elif best_score >= 0.6:
-            confidence = 'medium'
+            confidence = "medium"
         else:
-            confidence = 'low'
+            confidence = "low"
             best_match = None
 
-        matches.append({
-            'dropbox_name': folder['name'],
-            'dropbox_path': folder['source_path'],
-            'repository': folder['repository'],
-            'file_count': folder['file_count'],
-            'size_mb': round(folder['total_size'] / 1024 / 1024, 2),
-            'crm_id': best_match['id'] if best_match else None,
-            'crm_name': best_match['name'] if best_match else None,
-            'similarity': round(best_score, 3),
-            'confidence': confidence,
-            'needs_review': confidence != 'high'
-        })
+        matches.append(
+            {
+                "dropbox_name": folder["name"],
+                "dropbox_path": folder["source_path"],
+                "repository": folder["repository"],
+                "file_count": folder["file_count"],
+                "size_mb": round(folder["total_size"] / 1024 / 1024, 2),
+                "crm_id": best_match["id"] if best_match else None,
+                "crm_name": best_match["name"] if best_match else None,
+                "similarity": round(best_score, 3),
+                "confidence": confidence,
+                "needs_review": confidence != "high",
+            }
+        )
 
     return matches
 
@@ -186,10 +209,10 @@ def match_with_crm(client_folders, crm_clients):
 def generate_migration_plan(matches):
     """Generate migration plan with Google Drive target structure"""
     plan = {
-        'timestamp': datetime.now().isoformat(),
-        'strategy': 'Restructure by CRM Client (Option B)',
-        'target_structure': 'Google Drive/Bali Zero Clients/{CRM_CLIENT}/',
-        'clients': []
+        "timestamp": datetime.now().isoformat(),
+        "strategy": "Restructure by CRM Client (Option B)",
+        "target_structure": "Google Drive/Bali Zero Clients/{CRM_CLIENT}/",
+        "clients": [],
     }
 
     # Group by CRM client
@@ -197,69 +220,61 @@ def generate_migration_plan(matches):
     unmatched = []
 
     for match in matches:
-        if match['crm_id']:
-            by_crm[match['crm_id']].append(match)
+        if match["crm_id"]:
+            by_crm[match["crm_id"]].append(match)
         else:
             unmatched.append(match)
 
     # Generate plan for each CRM client
     for crm_id, sources in by_crm.items():
-        crm_name = sources[0]['crm_name']
+        crm_name = sources[0]["crm_name"]
 
         client_plan = {
-            'crm_id': crm_id,
-            'crm_name': crm_name,
-            'target_folder': f"Bali Zero Clients/{crm_name}/",
-            'source_folders': [s['dropbox_path'] for s in sources],
-            'total_files': sum(s['file_count'] for s in sources),
-            'total_size_mb': sum(s['size_mb'] for s in sources),
-            'migration_steps': [
+            "crm_id": crm_id,
+            "crm_name": crm_name,
+            "target_folder": f"Bali Zero Clients/{crm_name}/",
+            "source_folders": [s["dropbox_path"] for s in sources],
+            "total_files": sum(s["file_count"] for s in sources),
+            "total_size_mb": sum(s["size_mb"] for s in sources),
+            "migration_steps": [
                 {
-                    'step': 1,
-                    'action': 'create_folder',
-                    'path': f"Bali Zero Clients/{crm_name}/"
+                    "step": 1,
+                    "action": "create_folder",
+                    "path": f"Bali Zero Clients/{crm_name}/",
                 },
                 {
-                    'step': 2,
-                    'action': 'create_subfolders',
-                    'folders': [
-                        '01_Immigration',
-                        '02_Company',
-                        '03_Tax',
-                        '04_Family',
-                        '05_Contracts',
-                        '99_Uncategorized'
-                    ]
+                    "step": 2,
+                    "action": "create_subfolders",
+                    "folders": [
+                        "01_Immigration",
+                        "02_Company",
+                        "03_Tax",
+                        "04_Family",
+                        "05_Contracts",
+                        "99_Uncategorized",
+                    ],
                 },
-                {
-                    'step': 3,
-                    'action': 'migrate_and_categorize',
-                    'sources': sources
-                },
-                {
-                    'step': 4,
-                    'action': 'update_crm',
-                    'crm_id': crm_id
-                }
-            ]
+                {"step": 3, "action": "migrate_and_categorize", "sources": sources},
+                {"step": 4, "action": "update_crm", "crm_id": crm_id},
+            ],
         }
 
-        plan['clients'].append(client_plan)
+        plan["clients"].append(client_plan)
 
     # Add unmatched section
-    plan['unmatched'] = {
-        'count': len(unmatched),
-        'folders': unmatched,
-        'action': 'manual_review_required'
+    plan["unmatched"] = {
+        "count": len(unmatched),
+        "folders": unmatched,
+        "action": "manual_review_required",
     }
 
     return plan
 
 
 def main():
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🔍 DROPBOX FULL SCAN & CRM RESTRUCTURE PLAN")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Check if Dropbox exists
     if not DROPBOX_PATH.exists():
@@ -276,8 +291,11 @@ def main():
     scan_result = scan_directory(DROPBOX_PATH, max_depth=3)
 
     # Save full scan
-    scan_file = OUTPUT_DIR / f"dropbox_full_scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(scan_file, 'w') as f:
+    scan_file = (
+        OUTPUT_DIR
+        / f"dropbox_full_scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    )
+    with open(scan_file, "w") as f:
         json.dump(scan_result, f, indent=2)
     print(f"      ✅ Scan saved: {scan_file.name}")
 
@@ -301,17 +319,20 @@ def main():
     print("\n[4/5] Matching Dropbox → CRM...")
     matches = match_with_crm(client_folders, crm_clients)
 
-    high_conf = len([m for m in matches if m['confidence'] == 'high'])
-    med_conf = len([m for m in matches if m['confidence'] == 'medium'])
-    low_conf = len([m for m in matches if m['confidence'] == 'low'])
+    high_conf = len([m for m in matches if m["confidence"] == "high"])
+    med_conf = len([m for m in matches if m["confidence"] == "medium"])
+    low_conf = len([m for m in matches if m["confidence"] == "low"])
 
     print(f"      ✅ High confidence: {high_conf}")
     print(f"      ⚠️  Medium confidence: {med_conf}")
     print(f"      ❌ Low/No match: {low_conf}")
 
     # Save matches CSV
-    matches_file = OUTPUT_DIR / f"dropbox_crm_matches_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    with open(matches_file, 'w', newline='') as f:
+    matches_file = (
+        OUTPUT_DIR
+        / f"dropbox_crm_matches_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    )
+    with open(matches_file, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=matches[0].keys())
         writer.writeheader()
         writer.writerows(matches)
@@ -321,24 +342,26 @@ def main():
     print("\n[5/5] Generating migration plan...")
     plan = generate_migration_plan(matches)
 
-    plan_file = OUTPUT_DIR / f"migration_plan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(plan_file, 'w') as f:
+    plan_file = (
+        OUTPUT_DIR / f"migration_plan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    )
+    with open(plan_file, "w") as f:
         json.dump(plan, f, indent=2)
     print(f"      ✅ Plan saved: {plan_file.name}")
 
     # Summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 SUMMARY")
-    print("="*80)
+    print("=" * 80)
     print(f"\n📁 Total folders scanned: {len(client_folders)}")
     print(f"✅ Clients to migrate: {len(plan['clients'])}")
     print(f"⚠️  Unmatched folders: {plan['unmatched']['count']}")
     print(f"📊 Total files: {scan_result['file_count']:,}")
     print(f"💾 Total size: {scan_result['total_size'] / 1024**3:.1f} GB")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("✅ SCAN COMPLETE!")
-    print("="*80)
+    print("=" * 80)
     print(f"\nResults saved in: {OUTPUT_DIR}/")
     print("\nNext steps:")
     print("1. Review matches CSV")
@@ -359,5 +382,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

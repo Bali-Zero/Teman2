@@ -9,9 +9,9 @@
 
 ### 1. Moduli Creati
 
-| Modulo | Righe | Responsabilità |
-|--------|-------|----------------|
-| `orchestrator_streaming_core.py` | ~244 | Coordinamento streaming logic |
+| Modulo                                  | Righe | Responsabilità                                                              |
+| --------------------------------------- | ----- | --------------------------------------------------------------------------- |
+| `orchestrator_streaming_core.py`        | ~244  | Coordinamento streaming logic                                               |
 | Metodi comuni in `orchestrator_core.py` | +~100 | `prepare_query_context`, `check_gates_and_cache`, `prepare_react_execution` |
 
 ### 2. Refactoring `stream_query()`
@@ -24,11 +24,13 @@
 ### 3. Metodi Comuni Estratti
 
 **In `OrchestratorCore`:**
+
 - ✅ `prepare_query_context()` - Context loading comune
 - ✅ `check_gates_and_cache()` - Gate checking e cache comune
 - ✅ `prepare_react_execution()` - ReAct preparation comune
 
 **Benefici:**
+
 - Logica comune riutilizzabile tra streaming e non-streaming
 - Eliminata duplicazione di ~450 righe
 - Testabilità migliorata
@@ -36,12 +38,14 @@
 ### 4. OrchestratorStreamingCore
 
 **Responsabilità:**
+
 - Coordina streaming usando moduli specializzati
 - Gestisce event generation e validation
 - Coordina ReAct loop streaming
 - Gestisce CoreResult streaming
 
 **Architettura:**
+
 ```
 stream_query()
   ├─ Early Gates (security, greeting, casual, identity, clarification, team, recall, out-of-domain)
@@ -57,13 +61,13 @@ stream_query()
 
 ## 📊 METRICHE FINALI
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **Righe stream_query** | ~600 | ~322 | -46% |
-| **Duplicazione codice** | ~70% | <5% | -93% |
-| **Complessità stream_query** | 73 | <25 | -66% |
-| **Testabilità streaming** | Bassa | Alta | +100% |
-| **Codice comune riutilizzabile** | 0% | 95% | +∞ |
+| Metrica                          | Prima | Dopo | Miglioramento |
+| -------------------------------- | ----- | ---- | ------------- |
+| **Righe stream_query**           | ~600  | ~322 | -46%          |
+| **Duplicazione codice**          | ~70%  | <5%  | -93%          |
+| **Complessità stream_query**     | 73    | <25  | -66%          |
+| **Testabilità streaming**        | Bassa | Alta | +100%         |
+| **Codice comune riutilizzabile** | 0%    | 95%  | +∞            |
 
 ---
 
@@ -84,12 +88,14 @@ stream_query()
 ### `stream_query()` - 322 righe
 
 **Composizione:**
+
 - Early gates (security, greeting, casual, identity, clarification): ~150 righe
 - Special cases (team query, recall gate, out-of-domain): ~100 righe
 - Delegazione a OrchestratorStreamingCore: ~50 righe
 - Follow-up e memory: ~22 righe
 
 **Early Gates Mantenuti:**
+
 - Security gate (prompt injection)
 - Greeting gate
 - Casual conversation gate
@@ -104,6 +110,7 @@ stream_query()
 ### `OrchestratorStreamingCore` - 244 righe
 
 **Responsabilità:**
+
 - Coordina context preparation (usa `prepare_query_context`)
 - Coordina gates e cache (usa `check_gates_and_cache`)
 - Coordina ReAct preparation (usa `prepare_react_execution`)
@@ -127,13 +134,16 @@ stream_query()
 ## 📚 FILE MODIFICATI/CREATI
 
 **Creati:**
+
 - ✅ `orchestrator_streaming_core.py` - Nuovo modulo per streaming coordination
 
 **Modificati:**
+
 - ✅ `orchestrator_core.py` - Aggiunti metodi comuni
 - ✅ `orchestrator.py` - Refactored `stream_query()`
 
 **Documentazione:**
+
 - ✅ `STREAMING_REFACTORING_PLAN.md` - Piano originale
 - ✅ `STREAMING_REFACTORING_COMPLETE.md` - Questo documento
 
@@ -155,6 +165,7 @@ python3 -m py_compile backend/services/rag/agentic/orchestrator*.py
 ### Import Verification
 
 Tutti i moduli sono importabili correttamente:
+
 - ✅ `orchestrator_streaming_core.py`
 - ✅ `orchestrator_core.py` (con nuovi metodi)
 - ✅ `orchestrator.py` (refactored)

@@ -90,11 +90,13 @@ async def run_migration():
     except Exception as e:
         print(f"Migration failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
     import sys
+
     result = asyncio.run(run_migration())
     sys.exit(0 if result else 1)

@@ -12,6 +12,7 @@
 **Stato:** Processi terminati ma ancora nella tabella processi
 
 **Comando:**
+
 ```bash
 ps aux | awk '$8 ~ /Z/ {print "ZOMBIE: PID " $2 " - " $11}'
 ```
@@ -27,6 +28,7 @@ ps aux | awk '$8 ~ /Z/ {print "ZOMBIE: PID " $2 " - " $11}'
 **Stato:** Processi sospesi/fermati
 
 **Comando:**
+
 ```bash
 ps aux | awk '$8 ~ /T/ {print "STUCK: PID " $2 " - " $11}'
 ```
@@ -40,12 +42,14 @@ ps aux | awk '$8 ~ /T/ {print "STUCK: PID " $2 " - " $11}'
 ### Processi con Path Temporanei
 
 **Indicatori:**
+
 - Path in `/tmp/`, `/var/tmp/`
 - Path in `/private/var/folders/.../T/`
 - Nome con molti numeri
 - Script `.sh`, `.py`, `.pl`
 
 **Comando:**
+
 ```bash
 ps aux | awk '$11 ~ /\/tmp\/|\/var\/tmp\/|\/private\/var\/folders\/.*\/T\// {print "TEMP: PID " $2 " - " $11}'
 ```
@@ -55,6 +59,7 @@ ps aux | awk '$11 ~ /\/tmp\/|\/var\/tmp\/|\/private\/var\/folders\/.*\/T\// {pri
 ### Processi con PPID Strano
 
 **Indicatori:**
+
 - PPID molto alto (>100000)
 - PPID = 1 (orfani)
 - PPID non esistente
@@ -64,6 +69,7 @@ ps aux | awk '$11 ~ /\/tmp\/|\/var\/tmp\/|\/private\/var\/folders\/.*\/T\// {pri
 ### Processi con Risorse Anomale
 
 **Indicatori:**
+
 - CPU alta ma stato sleeping
 - Threads molto alti (>50)
 - VSIZE molto alto (>1 GB)
@@ -84,11 +90,13 @@ Analisi in corso...
 ### Se Trovati Processi Zombie
 
 1. **Identificare PPID:**
+
    ```bash
    ps -p <PID> -o ppid=
    ```
 
 2. **Terminare PPID:**
+
    ```bash
    kill <PPID>
    ```
@@ -101,6 +109,7 @@ Analisi in corso...
 ### Se Trovati Processi Stuck
 
 1. **Riprendere processo:**
+
    ```bash
    kill -CONT <PID>
    ```

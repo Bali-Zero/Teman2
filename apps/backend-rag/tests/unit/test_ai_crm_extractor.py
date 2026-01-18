@@ -416,7 +416,8 @@ def test_get_extractor_exception():
     """Test get_extractor with exception"""
     with patch("backend.services.crm.ai_crm_extractor._extractor_instance", None):
         with patch(
-            "backend.services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
+            "backend.services.crm.ai_crm_extractor.AICRMExtractor",
+            side_effect=Exception("Init error"),
         ):
             with pytest.raises(Exception):
                 get_extractor()

@@ -24,15 +24,16 @@ Added a **Conversation Recall Gate** that bypasses RAG entirely for recall quest
 
 ### Files Modified
 
-| File | Changes |
-|------|---------|
-| `backend/services/rag/agentic/orchestrator.py` | Added `RECALL_TRIGGERS`, `_is_conversation_recall_query()`, and Recall Gate early-exit |
-| `backend/prompts/zantara_system_prompt.md` | Added CONVERSATION MEMORY section with trigger phrases |
-| `backend/services/rag/agentic/prompt_builder.py` | Added CONVERSATION RECALL CHECK as priority 0 |
+| File                                             | Changes                                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `backend/services/rag/agentic/orchestrator.py`   | Added `RECALL_TRIGGERS`, `_is_conversation_recall_query()`, and Recall Gate early-exit |
+| `backend/prompts/zantara_system_prompt.md`       | Added CONVERSATION MEMORY section with trigger phrases                                 |
+| `backend/services/rag/agentic/prompt_builder.py` | Added CONVERSATION RECALL CHECK as priority 0                                          |
 
 ### Code Changes
 
 #### 1. Recall Triggers (orchestrator.py)
+
 ```python
 RECALL_TRIGGERS = [
     # Italian
@@ -48,6 +49,7 @@ RECALL_TRIGGERS = [
 ```
 
 #### 2. Detection Function
+
 ```python
 def _is_conversation_recall_query(query: str) -> bool:
     query_lower = query.lower()
@@ -55,6 +57,7 @@ def _is_conversation_recall_query(query: str) -> bool:
 ```
 
 #### 3. Recall Gate (in stream_query)
+
 - Detects recall queries using trigger phrases
 - Formats conversation history into prompt
 - Sends directly to LLM WITHOUT function calling
@@ -63,6 +66,7 @@ def _is_conversation_recall_query(query: str) -> bool:
 ## Test Results
 
 ### Before Fix
+
 ```
 User: "Ti ricordi il cliente di cui abbiamo parlato?"
 Logs: 🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: 0.20)
@@ -71,6 +75,7 @@ Time: ~20 seconds
 ```
 
 ### After Fix
+
 ```
 User: "Ti ricordi il cliente di cui abbiamo parlato?"
 Logs: 🧠 [Recall Gate] Detected conversation recall query - bypassing RAG

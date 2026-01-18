@@ -54,9 +54,7 @@ export function useKeyboardShortcuts({
       // Skip if user is typing in an input/textarea (unless it's a global shortcut)
       const target = event.target as HTMLElement;
       const isInput =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable;
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
       for (const shortcut of shortcutsRef.current) {
         // Skip disabled shortcuts

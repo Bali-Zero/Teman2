@@ -81,7 +81,9 @@ test.describe('Chat Flow', () => {
     const input = page.locator('textarea, input[type="text"]').first();
     await input.fill(testMessage);
     // Use consistent selector - try multiple possible selectors
-    const sendButton = page.locator('button[aria-label="Send message"], button:has-text("Send"), button[type="submit"]').first();
+    const sendButton = page
+      .locator('button[aria-label="Send message"], button:has-text("Send"), button[type="submit"]')
+      .first();
     await sendButton.click();
 
     // Attendi risposta AI

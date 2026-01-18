@@ -28,16 +28,13 @@ export function useChatMessages(): UseChatMessagesReturn {
     };
   }, []);
 
-  const safeSetMessages = useCallback(
-    (updater: (prev: Message[]) => Message[]) => {
-      if (!isMountedRef.current || isAbortedRef.current) return;
-      setMessages((prev) => {
-        if (!isMountedRef.current || isAbortedRef.current) return prev;
-        return updater(prev);
-      });
-    },
-    []
-  );
+  const safeSetMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
+    if (!isMountedRef.current || isAbortedRef.current) return;
+    setMessages((prev) => {
+      if (!isMountedRef.current || isAbortedRef.current) return prev;
+      return updater(prev);
+    });
+  }, []);
 
   const addMessage = useCallback(
     (message: Message) => {

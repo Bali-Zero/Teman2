@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from backend.core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, field_validator
 
@@ -18,6 +17,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.core.cache import cached
 
 logger = get_logger(__name__)
 
@@ -779,8 +779,7 @@ async def delete_interaction(
                 created_by = (existing.get("created_by") or "").lower()
                 if created_by != user_email:
                     raise HTTPException(
-                        status_code=403,
-                        detail="You can only delete interactions you created"
+                        status_code=403, detail="You can only delete interactions you created"
                     )
 
             # Delete the interaction

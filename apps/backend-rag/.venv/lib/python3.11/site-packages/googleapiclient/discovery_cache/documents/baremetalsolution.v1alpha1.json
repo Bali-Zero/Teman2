@@ -28,14 +28,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -47,11 +41,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -113,10 +103,7 @@
               "flatPath": "v1alpha1/projects/{projectsId}/locations/{locationsId}:submitProvisioningConfig",
               "httpMethod": "POST",
               "id": "baremetalsolution.projects.locations.submitProvisioningConfig",
-              "parameterOrder": [
-                "project",
-                "location"
-              ],
+              "parameterOrder": ["project", "location"],
               "parameters": {
                 "location": {
                   "description": "Required. The target location of the provisioning request.",
@@ -140,9 +127,7 @@
               "response": {
                 "$ref": "ProvisioningConfig"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           }
         },
@@ -153,9 +138,7 @@
               "flatPath": "v1alpha1/projects/{projectsId}/provisioningQuotas",
               "httpMethod": "GET",
               "id": "baremetalsolution.projects.provisioningQuotas.list",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "pageSize": {
                   "description": "The maximum number of items to return.",
@@ -180,9 +163,7 @@
               "response": {
                 "$ref": "ListProvisioningQuotasResponse"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           }
         }
@@ -311,20 +292,8 @@
       "properties": {
         "bandwidth": {
           "description": "Interconnect bandwidth. Set only when type is CLIENT.",
-          "enum": [
-            "BANDWIDTH_UNSPECIFIED",
-            "BW_1_GBPS",
-            "BW_2_GBPS",
-            "BW_5_GBPS",
-            "BW_10_GBPS"
-          ],
-          "enumDescriptions": [
-            "Unspecified value.",
-            "1 Gbps.",
-            "2 Gbps.",
-            "5 Gbps.",
-            "10 Gbps."
-          ],
+          "enum": ["BANDWIDTH_UNSPECIFIED", "BW_1_GBPS", "BW_2_GBPS", "BW_5_GBPS", "BW_10_GBPS"],
+          "enumDescriptions": ["Unspecified value.", "1 Gbps.", "2 Gbps.", "5 Gbps.", "10 Gbps."],
           "type": "string"
         },
         "cidr": {
@@ -341,13 +310,7 @@
         },
         "serviceCidr": {
           "description": "Service CIDR, if any.",
-          "enum": [
-            "SERVICE_CIDR_UNSPECIFIED",
-            "DISABLED",
-            "HIGH_26",
-            "HIGH_27",
-            "HIGH_28"
-          ],
+          "enum": ["SERVICE_CIDR_UNSPECIFIED", "DISABLED", "HIGH_26", "HIGH_27", "HIGH_28"],
           "enumDescriptions": [
             "Unspecified value.",
             "Services are disabled for the given network.",
@@ -359,11 +322,7 @@
         },
         "type": {
           "description": "The type of this network.",
-          "enum": [
-            "TYPE_UNSPECIFIED",
-            "CLIENT",
-            "PRIVATE"
-          ],
+          "enum": ["TYPE_UNSPECIFIED", "CLIENT", "PRIVATE"],
           "enumDescriptions": [
             "Unspecified value.",
             "Client network, that is a network peered to a GCP VPC.",
@@ -415,11 +374,7 @@
         },
         "permissions": {
           "description": "Export permissions.",
-          "enum": [
-            "PERMISSIONS_UNSPECIFIED",
-            "READ_ONLY",
-            "READ_WRITE"
-          ],
+          "enum": ["PERMISSIONS_UNSPECIFIED", "READ_ONLY", "READ_WRITE"],
           "enumDescriptions": [
             "Unspecified value.",
             "Read-only permission.",
@@ -538,16 +493,8 @@
         },
         "protocol": {
           "description": "Volume protocol.",
-          "enum": [
-            "PROTOCOL_UNSPECIFIED",
-            "PROTOCOL_FC",
-            "PROTOCOL_NFS"
-          ],
-          "enumDescriptions": [
-            "Unspecified value.",
-            "Fibre channel.",
-            "Network file system."
-          ],
+          "enum": ["PROTOCOL_UNSPECIFIED", "PROTOCOL_FC", "PROTOCOL_NFS"],
+          "enumDescriptions": ["Unspecified value.", "Fibre channel.", "Network file system."],
           "type": "string"
         },
         "sizeGb": {
@@ -561,11 +508,7 @@
         },
         "type": {
           "description": "The type of this Volume.",
-          "enum": [
-            "TYPE_UNSPECIFIED",
-            "FLASH",
-            "DISK"
-          ],
+          "enum": ["TYPE_UNSPECIFIED", "FLASH", "DISK"],
           "enumDescriptions": [
             "The unspecified type.",
             "This Volume is on flash.",

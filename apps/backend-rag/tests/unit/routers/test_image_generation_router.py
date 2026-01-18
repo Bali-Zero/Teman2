@@ -762,7 +762,7 @@ class TestAPIKeyPriority:
         mock_imagen_success_response,
     ):
         """Test that google_api_key is used when imagen_api_key is None
-        
+
         Updated 2026-01-16: Ensure mock_settings_with_google_key fixture is applied
         before making the request. The fixture patches settings at module level.
         """
@@ -774,7 +774,7 @@ class TestAPIKeyPriority:
         # The fixture patches "backend.app.routers.image_generation.settings"
         with mock_httpx_client(mock_response) as mock_client:
             response = client.post("/api/v1/image/generate", json=valid_image_request)
-            
+
             assert response.status_code == 200
             call_args = mock_client.post.call_args
             assert call_args[1]["headers"]["X-Goog-Api-Key"] == "test-google-api-key"

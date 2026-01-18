@@ -8,9 +8,11 @@
 ## ✅ COMPLETATO
 
 ### 1. Fix Mock LLM Gateway ✅
+
 **File:** `tests/unit/rag/test_llm_gateway.py`
 
 **Modifiche:**
+
 - ✅ Aggiunto `PropertyMock` import
 - ✅ Fixato `is_available` da attributo a property
 - ✅ Aggiornato mock per `create_chat_session` → `ChatSession`
@@ -23,9 +25,11 @@
 ---
 
 ### 2. Fix Mock CRM Router ✅
+
 **File:** `tests/unit/routers/test_crm_clients_router.py`
 
 **Modifiche:**
+
 - ✅ Migliorato `mock_db_pool` fixture con documentazione
 - ✅ Fixato `test_app` fixture:
   - Set `app.state.db_pool` per `get_database_pool` dependency
@@ -38,9 +42,11 @@
 ---
 
 ### 3. Fix Mock Identity Service ✅
+
 **File:** `tests/unit/app/modules/identity/test_identity_service_coverage.py`
 
 **Modifiche:**
+
 - ✅ Migliorato `_make_service` con documentazione
 - ✅ Migliorato `test_init_warns_on_default_secret` con docstring
 - ✅ Verificato che jwt_secret sia almeno 32 caratteri
@@ -50,9 +56,11 @@
 ---
 
 ### 4. Skip Markers per File Non Trovati ✅
+
 **File:** `tests/conftest.py`
 
 **Modifiche:**
+
 - ✅ Aggiunto `pytest_collection_modifyitems` hook
 - ✅ Skip automatico per test da file non trovati
 - ✅ Lista `MISSING_TEST_FILES` con 14 file (~70 test)
@@ -63,11 +71,13 @@
 ---
 
 ### 5. Fix Ambiente Pytest ⚠️
+
 **Status:** Parzialmente risolto
 
 **Problema:** `ModuleNotFoundError: No module named 'pygments.formatter'`
 
 **Tentativi:**
+
 - ✅ Reinstallato pygments (2.19.2)
 - ✅ Verificato pytest funziona (`pytest --version` OK)
 - ⚠️ Problema persiste con import pygments.formatter
@@ -79,6 +89,7 @@
 ## 📊 RISULTATI
 
 ### Test Fixati/Agiornati
+
 - ✅ **LLM Gateway:** ~38 test (mock aggiornati)
 - ✅ **CRM Router:** ~54 test (mock aggiornati)
 - ✅ **Identity Service:** ~12 test (mock aggiornati)
@@ -87,6 +98,7 @@
 **Totale:** ~174 test fixati/skippati
 
 ### Test Rimanenti da Fixare
+
 - ⏳ **Team Activity Router:** ~41 test
 - ⏳ **CRM Practices Router:** ~27 test
 - ⏳ **Cultural RAG Service:** ~23 test (file non trovato, già skippato)
@@ -129,17 +141,20 @@
 ## 🔍 NOTE IMPORTANTI
 
 ### Ambiente Pytest
+
 - ⚠️ Problema locale con pygments.formatter
 - ✅ Pytest funziona (`pytest --version` OK)
 - ✅ Test possono essere eseguiti in CI/CD
 - ⏳ Da verificare in ambiente pulito
 
 ### Skip Automatico
+
 - ✅ Test da file non trovati vengono skippati automaticamente
 - ✅ Reason chiaro: "Test file removed: ..."
 - ✅ Non interferisce con altri test
 
 ### Mock Aggiornati
+
 - ✅ Tutti i mock aggiornati con documentazione
 - ✅ Commenti "Updated 2026-01-16" per tracciabilità
 - ✅ Mock corrispondono alle API attuali
@@ -148,14 +163,14 @@
 
 ## 📊 METRICHE FINALI FASE 1
 
-| Categoria | Prima | Dopo | Miglioramento |
-|-----------|-------|------|---------------|
-| **Test Falliti** | 300 | ~116* | -61% |
-| **Mock Obsoleti** | ~120 | ~0 | -100% |
-| **File Non Trovati** | 14 | 0 (skippati) | -100% |
-| **Documentazione** | 0 | 6 file | +600% |
+| Categoria            | Prima | Dopo         | Miglioramento |
+| -------------------- | ----- | ------------ | ------------- |
+| **Test Falliti**     | 300   | ~116\*       | -61%          |
+| **Mock Obsoleti**    | ~120  | ~0           | -100%         |
+| **File Non Trovati** | 14    | 0 (skippati) | -100%         |
+| **Documentazione**   | 0     | 6 file       | +600%         |
 
-*Stima: 300 - 70 (skippati) - 114 (mock fixati) = ~116 rimanenti
+\*Stima: 300 - 70 (skippati) - 114 (mock fixati) = ~116 rimanenti
 
 ---
 

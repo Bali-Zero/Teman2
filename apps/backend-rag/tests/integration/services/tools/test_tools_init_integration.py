@@ -29,7 +29,6 @@ class TestToolsInitIntegration:
 
     def test_module_has_docstring(self):
         """Test that module has documentation"""
-        import backend.services.tools
 
         assert services.tools.__doc__ is not None
         assert "Tools" in services.tools.__doc__

@@ -50,12 +50,16 @@ class TestCrossOracleSynthesisIntegration:
             )
             mock_search_service.return_value = mock_service
 
-            with patch("backend.services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai:
+            with patch(
+                "backend.services.cross_oracle_synthesis_service.ZantaraAIClient"
+            ) as mock_ai:
                 mock_ai_instance = MagicMock()
                 mock_ai_instance.generate_response = AsyncMock(return_value="Synthesized answer")
                 mock_ai.return_value = mock_ai_instance
 
-                from backend.services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+                from backend.services.cross_oracle_synthesis_service import (
+                    CrossOracleSynthesisService,
+                )
 
                 service = CrossOracleSynthesisService(mock_service)
                 result = await service.synthesize_knowledge(

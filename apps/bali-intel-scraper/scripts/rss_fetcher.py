@@ -66,6 +66,7 @@ class GoogleNewsRSSFetcher:
     def _build_rss_url(self, query: str) -> str:
         """Build Google News RSS URL for a query"""
         from urllib.parse import quote_plus
+
         encoded_query = quote_plus(query)  # Proper URL encoding
         return f"{self.base_url}?q={encoded_query}&hl=en-ID&gl=ID&ceid=ID:en"
 

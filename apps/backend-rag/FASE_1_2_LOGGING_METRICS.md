@@ -15,14 +15,16 @@ This document describes the logging and metrics implemented for FASE 1 (WebApp f
 ## FASE 1: WebApp Fixes
 
 ### 1.1 handleSend (Already Working)
+
 **Status:** ✅ Verified - No changes needed
 
 Existing logging in `useChatSend.ts`:
+
 ```typescript
 logger.info('Message send started', {
   component: 'useChatSend',
   action: 'sendMessage',
-  metadata: { sessionId, textLength, hasImages, imageCount }
+  metadata: { sessionId, textLength, hasImages, imageCount },
 });
 ```
 
@@ -33,19 +35,22 @@ logger.info('Message send started', {
 **File:** `apps/mouth/src/hooks/useChatPage.ts`
 
 **Metrics:**
+
 - `image_modal_open_count` - Number of times modal was opened
 - `image_gen_prompt_length` - Length of image generation prompts
 
 **Logging:**
+
 ```typescript
 logger.info('Image generation modal submitted', {
   component: 'useChatPage',
   action: 'handleImageGenSubmit',
-  metadata: { promptLength: number }
+  metadata: { promptLength: number },
 });
 ```
 
 **Log Events:**
+
 1. Modal opened (implicit - via state change)
 2. Prompt submitted (explicit log)
 
@@ -56,26 +61,30 @@ logger.info('Image generation modal submitted', {
 **File:** `apps/mouth/src/hooks/useChatPage.ts`
 
 **Metrics:**
+
 - `session_id_format` - Always 'uuid_v4'
 - `session_id_length` - Length of generated session ID
 
 **Logging:**
+
 ```typescript
 logger.info('Session ID generated with UUID v4', {
   component: 'useChatPage',
   action: 'init_session',
   metadata: {
     sessionIdFormat: 'uuid_v4',
-    length: id.length
-  }
+    length: id.length,
+  },
 });
 ```
 
 **Log Events:**
+
 1. Session ID generated on hook init
 2. New session ID on conversation switch
 
 **Benefits:**
+
 - ✅ No collision risk (UUID v4 = 2^122 possible values)
 - ✅ Traceable in logs
 - ✅ Metrics on session creation patterns
@@ -89,6 +98,7 @@ logger.info('Session ID generated with UUID v4', {
 **File:** `apps/backend-rag/backend/app/routers/whatsapp_chat.py`
 
 **Metrics:**
+
 - `whatsapp_status_updates_sent` - Count of status messages sent
 - `whatsapp_phase_count` - Number of unique phases seen
 - `whatsapp_elapsed_seconds` - Time elapsed when each update sent
@@ -97,6 +107,7 @@ logger.info('Session ID generated with UUID v4', {
 **Logging:**
 
 **Start:**
+
 ```python
 logger.info(
     "🚀 [FASE 2.1] Processing business query with status updates",
@@ -111,6 +122,7 @@ logger.info(
 ```
 
 **Each Status Update:**
+
 ```python
 logger.info(
     "✅ [FASE 2.1] WhatsApp status update #{N} sent: {emoji} {phase}",
@@ -124,6 +136,7 @@ logger.info(
 ```
 
 **Completion:**
+
 ```python
 logger.info(
     "✅ [FASE 2] WhatsApp RAG response completed",
@@ -141,6 +154,7 @@ logger.info(
 ```
 
 **Phase Emoji Mapping:**
+
 ```python
 {
     "processing": "🔍",
@@ -153,6 +167,7 @@ logger.info(
 ```
 
 **Example Log Sequence:**
+
 ```
 15:30:00 🚀 [FASE 2.1] Processing business query...
 15:30:10 ✅ [FASE 2.1] Status update #1 sent: 🔍 Processing... (elapsed: 10.0s)
@@ -168,12 +183,14 @@ logger.info(
 **File:** `apps/backend-rag/backend/app/routers/whatsapp_chat.py`
 
 **Metrics:**
+
 - `timeout_seconds` - Fixed at 45
 - `actual_elapsed` - Actual time before timeout
 - `status_updates_sent` - Updates sent before timeout
 - `phases_seen` - Phases reached before timeout
 
 **Logging:**
+
 ```python
 logger.warning(
     "⏱️ [FASE 2.2] WhatsApp query TIMEOUT after 45.2s",
@@ -189,6 +206,7 @@ logger.warning(
 ```
 
 **Example Log (Timeout Case):**
+
 ```
 15:30:00 🚀 [FASE 2.1] Processing business query...
 15:30:10 ✅ [FASE 2.1] Status update #1 sent: 🔍 Processing...
@@ -199,6 +217,7 @@ logger.warning(
 ```
 
 **User Experience:**
+
 - User receives: "⏱️ Mi dispiace, la richiesta sta richiedendo troppo tempo..."
 - Prevents infinite waiting
 - Status updates showed progress before timeout
@@ -212,11 +231,13 @@ logger.warning(
 **Function:** `send_telegram_message_with_fallback()`
 
 **Strategies:**
+
 1. **MarkdownV2** - Richest formatting (bold, italic, links)
 2. **HTML** - Safer fallback (<b>, <i>, <a>)
 3. **Plain Text** - Always works (no formatting)
 
 **Metrics:**
+
 - `telegram_fallback_strategy` - Which strategy succeeded
 - `telegram_send_attempts` - Number of attempts (1-3)
 - `telegram_send_duration` - Time to send message
@@ -224,17 +245,20 @@ logger.warning(
 **Logging:**
 
 **Strategy 1 (Success):**
+
 ```python
 logger.debug("✅ Telegram message sent with MarkdownV2 to {chat_id}")
 ```
 
 **Strategy 2 (Fallback):**
+
 ```python
 logger.debug("MarkdownV2 failed for {chat_id}: {error}")
 logger.debug("✅ Telegram message sent with HTML to {chat_id}")
 ```
 
 **Strategy 3 (Last Resort):**
+
 ```python
 logger.debug("MarkdownV2 failed for {chat_id}: {error}")
 logger.debug("HTML parse_mode failed for {chat_id}: {error}")
@@ -242,17 +266,20 @@ logger.debug("✅ Telegram message sent with plain text to {chat_id}")
 ```
 
 **All Failed:**
+
 ```python
 logger.error("❌ All Telegram send strategies failed for {chat_id}: {error}")
 ```
 
 **Example Log Sequence (Markdown Fail → HTML Success):**
+
 ```
 15:30:00 MarkdownV2 failed for 123: Bad Request: can't parse entities
 15:30:00 ✅ Telegram message sent with HTML to 123
 ```
 
 **Markdown → HTML Conversions:**
+
 ```python
 "**bold**" → "<b>bold</b>"
 "*italic*" → "<i>italic</i>"
@@ -261,6 +288,7 @@ logger.error("❌ All Telegram send strategies failed for {chat_id}: {error}")
 ```
 
 **HTML → Plain Text Stripping:**
+
 ```python
 "## Header" → "Header"
 "**bold**" → "bold"
@@ -273,6 +301,7 @@ logger.error("❌ All Telegram send strategies failed for {chat_id}: {error}")
 ## Log Aggregation Queries
 
 ### Query 1: WhatsApp Status Update Performance
+
 ```sql
 SELECT
     AVG(total_duration_seconds) as avg_duration,
@@ -284,6 +313,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ```
 
 ### Query 2: Timeout Rate
+
 ```sql
 SELECT
     COUNT(*) FILTER (WHERE timed_out = true) as timeouts,
@@ -295,6 +325,7 @@ AND created_at > NOW() - INTERVAL '7 days';
 ```
 
 ### Query 3: Telegram Fallback Strategy Distribution
+
 ```sql
 SELECT
     COUNT(*) FILTER (WHERE message LIKE '%MarkdownV2%') as markdownv2_success,
@@ -307,6 +338,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ```
 
 ### Query 4: Image Generation Modal Usage
+
 ```sql
 SELECT
     DATE(created_at) as date,
@@ -320,6 +352,7 @@ LIMIT 30;
 ```
 
 ### Query 5: Session ID Collisions (Should be 0)
+
 ```sql
 SELECT
     COUNT(*) as total_sessions,
@@ -335,6 +368,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ## Metrics Dashboard (Grafana/Prometheus)
 
 ### Panel 1: WhatsApp Status Updates
+
 ```promql
 # Average updates per query
 avg(whatsapp_status_updates_sent{feature="whatsapp_complete"})
@@ -346,6 +380,7 @@ histogram_quantile(0.99, whatsapp_total_duration_seconds_bucket)
 ```
 
 ### Panel 2: Timeout Rate
+
 ```promql
 # Timeout rate (%)
 100 * (
@@ -356,6 +391,7 @@ histogram_quantile(0.99, whatsapp_total_duration_seconds_bucket)
 ```
 
 ### Panel 3: Telegram Fallback Strategy
+
 ```promql
 # Strategy distribution
 telegram_send_success{strategy="markdownv2"}
@@ -369,6 +405,7 @@ telegram_send_failures
 ## Alerts
 
 ### Alert 1: High Timeout Rate
+
 ```yaml
 alert: HighWhatsAppTimeoutRate
 expr: |
@@ -379,17 +416,18 @@ expr: |
   ) > 10
 for: 5m
 severity: warning
-message: "WhatsApp timeout rate > 10% for 5 minutes"
+message: 'WhatsApp timeout rate > 10% for 5 minutes'
 ```
 
 ### Alert 2: Telegram All Strategies Failing
+
 ```yaml
 alert: TelegramSendFailures
 expr: |
   rate(telegram_send_failures[5m]) > 0.05
 for: 5m
 severity: critical
-message: "Telegram messages failing all 3 strategies"
+message: 'Telegram messages failing all 3 strategies'
 ```
 
 ---
@@ -397,6 +435,7 @@ message: "Telegram messages failing all 3 strategies"
 ## Test Coverage
 
 ### Frontend Tests
+
 - **File:** `apps/mouth/src/hooks/__tests__/useChatPage.fase1.test.ts`
 - **Tests:** 14 tests covering:
   - ImageGenModal state management (5 tests)
@@ -404,6 +443,7 @@ message: "Telegram messages failing all 3 strategies"
   - Integration (3 tests)
 
 ### Backend Tests
+
 - **File:** `apps/backend-rag/tests/unit/app/routers/test_whatsapp_fase2.py`
 - **Tests:** 19 tests covering:
   - Status update tracking (4 tests)
@@ -423,17 +463,20 @@ message: "Telegram messages failing all 3 strategies"
 ## Performance Benchmarks
 
 ### WhatsApp Status Updates
+
 - **Overhead:** ~50ms per update (network call)
 - **Total overhead for 4 updates:** ~200ms (negligible vs 30-40s query time)
 - **User experience:** ✅ Significantly improved (visible progress)
 
 ### Telegram Fallback
+
 - **Fast path (MarkdownV2 success):** <10ms
 - **HTML fallback:** <20ms (1 retry)
 - **Plain fallback:** <30ms (2 retries)
 - **All failed:** <40ms (3 retries + error log)
 
 ### UUID v4 Generation
+
 - **Time:** <1ms (native crypto.randomUUID)
 - **Collision probability:** ~0% (2^122 possible values)
 
@@ -458,24 +501,28 @@ message: "Telegram messages failing all 3 strategies"
 ## Success Criteria
 
 ### FASE 1 (WebApp)
+
 - ✅ ImageGenModal opens/closes correctly
 - ✅ Session IDs are unique (UUID v4)
 - ✅ Logging captures modal usage
 - ✅ No collision in session IDs (test 100+ concurrent)
 
 ### FASE 2.1 (WhatsApp Status Updates)
+
 - ✅ Status updates sent every ~10 seconds
 - ✅ User receives visual progress
 - ✅ Logs show phase transitions
 - ✅ Metrics track update counts
 
 ### FASE 2.2 (WhatsApp Timeout)
+
 - ✅ Query times out at 45 seconds
 - ✅ User receives timeout message
 - ✅ Logs show timeout reason
 - ✅ Metrics track timeout rate (<5%)
 
 ### FASE 2.3 (Telegram Markdown Fallback)
+
 - ✅ MarkdownV2 tries first
 - ✅ HTML fallback works
 - ✅ Plain text always succeeds

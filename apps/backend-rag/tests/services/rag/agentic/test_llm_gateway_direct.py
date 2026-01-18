@@ -135,7 +135,9 @@ def sample_gemini_tools():
 @pytest.fixture
 def llm_gateway(mock_genai_client, sample_gemini_tools):
     """Create LLMGateway instance with mocked dependencies."""
-    with patch("backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client):
+    with patch(
+        "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+    ):
         gateway = LLMGateway(gemini_tools=sample_gemini_tools)
         gateway._genai_client = mock_genai_client
         gateway._available = True
@@ -148,7 +150,8 @@ class TestLLMGatewayBasic:
     def test_init_without_tools(self, mock_genai_client):
         """Test initialization without Gemini tools."""
         with patch(
-            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client",
+            return_value=mock_genai_client,
         ):
             gateway = LLMGateway()
             assert gateway.gemini_tools == []
@@ -161,7 +164,8 @@ class TestLLMGatewayBasic:
     def test_init_with_tools(self, mock_genai_client, sample_gemini_tools):
         """Test initialization with Gemini tools."""
         with patch(
-            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client",
+            return_value=mock_genai_client,
         ):
             gateway = LLMGateway(gemini_tools=sample_gemini_tools)
             assert gateway.gemini_tools == sample_gemini_tools
@@ -462,7 +466,9 @@ class TestHealthCheck:
         """Test health check when all services are healthy."""
         mock_genai_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-        with patch("backend.services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
+        with patch(
+            "backend.services.llm_clients.openrouter_client.OpenRouterClient"
+        ) as mock_openrouter:
             mock_openrouter.return_value = Mock()
 
             status = await llm_gateway.health_check()
@@ -476,7 +482,9 @@ class TestHealthCheck:
         """Test health check when GenAI client unavailable."""
         llm_gateway._available = False
 
-        with patch("backend.services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
+        with patch(
+            "backend.services.llm_clients.openrouter_client.OpenRouterClient"
+        ) as mock_openrouter:
             mock_openrouter.return_value = Mock()
 
             status = await llm_gateway.health_check()

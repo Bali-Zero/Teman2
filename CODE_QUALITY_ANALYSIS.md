@@ -16,11 +16,13 @@ Analisi completa della codebase per identificare aree poco chiare, code smells, 
 ### 1. Debug Logging Eccessivo e Inconsistente
 
 #### Backend: `zoho_oauth_service.py`
+
 **File:** `apps/backend-rag/backend/services/integrations/zoho_oauth_service.py`
 
 **Problema:** Logging di debug eccessivo con prefisso `[ZOHO_DEBUG]` in produzione. Oltre 20 log statements in una singola funzione.
 
 **Esempio:**
+
 ```python
 logger.info(f"[ZOHO_DEBUG] Starting exchange_code for user {user_id}")
 logger.info(f"[ZOHO_DEBUG] client_id: {self.client_id[:8] if self.client_id else 'None'}...")
@@ -32,12 +34,14 @@ logger.info(f"[ZOHO_DEBUG] code length: {len(code)}")
 ```
 
 **Impatto:**
+
 - Logs production inquinati
 - Performance degradation (troppi I/O)
 - Difficoltà nel debugging reale
 - Costi di log storage aumentati
 
 **Raccomandazione:**
+
 - Usare `logger.debug()` invece di `logger.info()` per debug
 - Rimuovere prefisso `[ZOHO_DEBUG]` o usare solo in development
 - Consolidare log multipli in un singolo log strutturato
@@ -51,12 +55,14 @@ logger.info(f"[ZOHO_DEBUG] code length: {len(code)}")
 **Problema:** 395+ occorrenze di `print()` nel backend invece di logger strutturato.
 
 **File principali:**
+
 - `apps/backend-rag/backend/migrations/*.py` - Tutti i file di migrazione
 - `apps/backend-rag/backend/db/migrate.py` - Script di migrazione
 - `apps/backend-rag/backend/scripts/*.py` - Script utility
 - `apps/backend-rag/backend/verify_*.py` - Script di verifica
 
 **Esempio:**
+
 ```python
 # ❌ SBAGLIATO
 print("✅ Connected to database")
@@ -70,12 +76,14 @@ logger.info("Applying migration...")
 ```
 
 **Impatto:**
+
 - Impossibile controllare livello di log
 - Logs non strutturati (difficili da parsare)
 - Nessun context (timestamp, module, level)
 - Non integrabile con sistemi di monitoring
 
 **Raccomandazione:**
+
 - Refactor sistematico: `print()` → `logger.info/debug/error()`
 - Creare utility script per conversione automatica
 - Aggiungere check nel pre-commit hook
@@ -89,12 +97,14 @@ logger.info("Applying migration...")
 **Problema:** 50+ occorrenze di `console.log/debug/warn/error` nel frontend invece del logger strutturato.
 
 **File principali:**
+
 - `apps/mouth/src/lib/api/client.ts` - 10+ console.log
 - `apps/mouth/src/lib/api/auth/auth.api.ts` - Logging inconsistente
 - `apps/mouth/src/lib/realtime.tsx` - WebSocket logging
 - `apps/mouth/src/lib/enhanced-analytics.tsx` - Analytics logging
 
 **Esempio:**
+
 ```typescript
 // ❌ SBAGLIATO
 console.log('[HTTP] 🌐 Request starting:', { method, endpoint });
@@ -106,13 +116,15 @@ logger.debug('HTTP response received', { status, ok, component: 'ApiClient' });
 ```
 
 **Impatto:**
+
 - Logs non strutturati
 - Impossibile filtrare per livello in produzione
 - Difficile debugging in produzione
 - Performance impact (console.log sempre attivo)
 
 **Raccomandazione:**
-- Usare `logger.ts` esistente invece di console.*
+
+- Usare `logger.ts` esistente invece di console.\*
 - Rimuovere console.log in produzione (usare env check)
 - Standardizzare formato log
 
@@ -129,6 +141,7 @@ logger.debug('HTTP response received', { status, ok, component: 'ApiClient' });
 **Esempi trovati:**
 
 #### `llm_gateway.py` - `_send_with_fallback()`
+
 ```python
 async def _send_with_fallback(
     self,
@@ -142,9 +155,11 @@ async def _send_with_fallback(
     images: list[dict] | None = None,
 ) -> tuple[str, str, Any, TokenUsage]:
 ```
+
 **8 parametri** - Dovrebbe usare un dataclass/Config object
 
 #### `search_service.py` - `search_with_conflict_resolution()`
+
 ```python
 async def search_with_conflict_resolution(
     self,
@@ -155,9 +170,11 @@ async def search_with_conflict_resolution(
     enable_fallbacks: bool = True,
 ) -> dict[str, Any]:
 ```
+
 **6 parametri** - Accettabile ma potrebbe essere migliorato
 
 **Raccomandazione:**
+
 - Usare dataclass/Pydantic models per parametri multipli
 - Esempio: `SearchRequest(query, user_level, limit, ...)` → `search(request: SearchRequest)`
 
@@ -170,10 +187,12 @@ async def search_with_conflict_resolution(
 **Problema:** Classe `BaseTool` duplicata in due file diversi.
 
 **File duplicati:**
+
 1. `apps/backend-rag/backend/services/tools/definitions.py` (linee 109-170)
 2. `apps/backend-rag/backend/services/rag/agent/structures.py` (linee 108-151)
 
 **Confronto:**
+
 ```python
 # File 1: services/tools/definitions.py
 class BaseTool(ABC):
@@ -182,7 +201,7 @@ class BaseTool(ABC):
     def name(self) -> str: ...
     # ... identico ...
 
-# File 2: services/rag/agent/structures.py  
+# File 2: services/rag/agent/structures.py
 class BaseTool(ABC):
     @property
     @abstractmethod
@@ -191,11 +210,13 @@ class BaseTool(ABC):
 ```
 
 **Impatto:**
+
 - Manutenzione duplicata
 - Rischi di divergenza
 - Confusione su quale usare
 
 **Raccomandazione:**
+
 - Consolidare in un singolo file base
 - Usare import da un'unica fonte
 - Verificare dipendenze e refactor
@@ -213,6 +234,7 @@ class BaseTool(ABC):
 **Categorie:**
 
 #### TODO Critici (da implementare):
+
 - `apps/backend-rag/backend/app/routers/intel.py:929`
   ```python
   "agent_status": "active",  # TODO: Implement agent health check
@@ -227,6 +249,7 @@ class BaseTool(ABC):
   ```
 
 #### TODO Frontend:
+
 - `apps/mouth/src/app/(workspace)/intelligence/system-pulse/page.tsx:39`
   ```typescript
   // TODO: Replace with real API call when backend endpoint is ready
@@ -237,6 +260,7 @@ class BaseTool(ABC):
   ```
 
 **Raccomandazione:**
+
 - Creare issue tracking per TODO critici
 - Rimuovere TODO obsoleti
 - Usare commenti più descrittivi con issue link
@@ -270,6 +294,7 @@ for step in state.steps:
 **Problema:** Alcuni file hanno try-except generici senza logging specifico.
 
 **Esempio:**
+
 ```python
 except Exception as e:
     logger.error(f"Search error: {e}")
@@ -283,15 +308,18 @@ except Exception as e:
 ## 📋 PRIORITÀ DI INTERVENTO
 
 ### 🔴 ALTA PRIORITÀ (Fare subito)
+
 1. ✅ Rimuovere debug logging eccessivo da `zoho_oauth_service.py`
 2. ✅ Convertire `print()` in logger nel backend (script e migrazioni)
 3. ✅ Sostituire `console.log` con logger nel frontend
 
 ### 🟡 MEDIA PRIORITÀ (Prossimo sprint)
+
 4. ✅ Consolidare `BaseTool` duplicato
 5. ✅ Refactor funzioni con troppi parametri (usare dataclass)
 
 ### 🟢 BASSA PRIORITÀ (Backlog)
+
 6. ✅ Gestire TODO/FIXME (creare issue tracking)
 7. ✅ Migliorare error handling consistency
 
@@ -338,20 +366,21 @@ find apps/backend-rag/backend -name "*.py" -type f \
 
 ## 📊 METRICHE
 
-| Categoria | Count | Severità |
-|-----------|-------|----------|
-| Debug logging eccessivo | 1 file | 🔴 Alta |
-| Print statements | 395+ | 🟡 Media |
-| Console.log | 50+ | 🟡 Media |
-| Funzioni complesse | 5+ | 🟢 Bassa |
-| Code duplication | 2 file | 🟡 Media |
-| TODO/FIXME | 1409+ | 🟢 Bassa |
+| Categoria               | Count  | Severità |
+| ----------------------- | ------ | -------- |
+| Debug logging eccessivo | 1 file | 🔴 Alta  |
+| Print statements        | 395+   | 🟡 Media |
+| Console.log             | 50+    | 🟡 Media |
+| Funzioni complesse      | 5+     | 🟢 Bassa |
+| Code duplication        | 2 file | 🟡 Media |
+| TODO/FIXME              | 1409+  | 🟢 Bassa |
 
 ---
 
 ## ✅ CONCLUSIONI
 
 La codebase è **generalmente ben strutturata** ma presenta alcuni problemi di qualità che impattano:
+
 - **Manutenibilità**: Debug logging eccessivo, print statements
 - **Consistenza**: Logging inconsistente tra backend/frontend
 - **Design**: Funzioni con troppi parametri, code duplication

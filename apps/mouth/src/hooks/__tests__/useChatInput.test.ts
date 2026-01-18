@@ -59,7 +59,7 @@ describe('useChatInput', () => {
     // Mock FileReader
     let onloadendCallback: (() => void) | null = null;
     const mockFileReader = {
-      readAsDataURL: vi.fn(function(this: any, file: File) {
+      readAsDataURL: vi.fn(function (this: any, file: File) {
         // Simulate async read
         setTimeout(() => {
           if (this.onloadend) {
@@ -72,7 +72,7 @@ describe('useChatInput', () => {
       onerror: null as any,
     };
 
-    global.FileReader = vi.fn(function(this: any) {
+    global.FileReader = vi.fn(function (this: any) {
       Object.assign(this, mockFileReader);
       return this;
     }) as any;
@@ -80,7 +80,7 @@ describe('useChatInput', () => {
     // Create mock file
     const file = new File(['test'], 'test.png', { type: 'image/png' });
     Object.defineProperty(file, 'size', { value: 1000 });
-    
+
     const fileList = {
       0: file,
       length: 1,
@@ -102,9 +102,12 @@ describe('useChatInput', () => {
     });
 
     // Wait for FileReader to complete
-    await waitFor(() => {
-      expect(result.current.attachedImages.length).toBeGreaterThan(0);
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(result.current.attachedImages.length).toBeGreaterThan(0);
+      },
+      { timeout: 1000 }
+    );
 
     expect(result.current.attachedImages.length).toBe(1);
     expect(result.current.attachedImages[0].name).toBe('test.png');
@@ -113,7 +116,7 @@ describe('useChatInput', () => {
   it('should reject non-image files', async () => {
     const { result, rerender } = renderHook(() => useChatInput());
     const showToast = vi.fn();
-    
+
     // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);
@@ -133,7 +136,7 @@ describe('useChatInput', () => {
 
     const file = new File(['test'], 'test.txt', { type: 'text/plain' });
     Object.defineProperty(file, 'size', { value: 1000 });
-    
+
     const fileList = {
       0: file,
       length: 1,
@@ -162,7 +165,7 @@ describe('useChatInput', () => {
   it('should reject files larger than 10MB', async () => {
     const { result, rerender } = renderHook(() => useChatInput());
     const showToast = vi.fn();
-    
+
     // Set toast callback first
     act(() => {
       result.current.setShowToast(showToast);

@@ -10,21 +10,21 @@
 
 ### Spazio Liberato
 
-| Metrica | Prima | Dopo | Differenza |
-|---------|-------|------|------------|
+| Metrica                | Prima  | Dopo   | Differenza  |
+| ---------------------- | ------ | ------ | ----------- |
 | **Spazio Disponibile** | 4.6 GB | 7.1 GB | **+2.5 GB** |
-| **Spazio Usato** | 72% | 62% | **-10%** |
+| **Spazio Usato**       | 72%    | 62%    | **-10%**    |
 
 ### Cache Pulite
 
-| Cache | Dimensione Stimata | Status | Risultato |
-|-------|-------------------|--------|-----------|
-| **Yarn** | 4.0 GB | ✅ | Cache completamente pulita (0B) |
-| **pnpm** | 213 MB | ✅ | 31,442 file rimossi, 800 packages |
-| **pip** | 135 MB | ✅ | 927 file rimossi (139.1 MB) |
-| **Playwright** | 233 MB | ✅ | Directory completamente rimossa |
-| **Homebrew** | 73 MB | ✅ | ~27 MB liberati |
-| **Logs** | 44 MB | ✅ | Tutti i log puliti |
+| Cache          | Dimensione Stimata | Status | Risultato                         |
+| -------------- | ------------------ | ------ | --------------------------------- |
+| **Yarn**       | 4.0 GB             | ✅     | Cache completamente pulita (0B)   |
+| **pnpm**       | 213 MB             | ✅     | 31,442 file rimossi, 800 packages |
+| **pip**        | 135 MB             | ✅     | 927 file rimossi (139.1 MB)       |
+| **Playwright** | 233 MB             | ✅     | Directory completamente rimossa   |
+| **Homebrew**   | 73 MB              | ✅     | ~27 MB liberati                   |
+| **Logs**       | 44 MB              | ✅     | Tutti i log puliti                |
 
 **Totale Cache Pulite:** ~4.7 GB
 
@@ -35,6 +35,7 @@
 Il comando `docker system prune -a --volumes -f` è stato avviato ma potrebbe essere ancora in esecuzione. Questo potrebbe liberare ulteriore spazio (~4.5 GB stimati).
 
 **Verifica Docker:**
+
 ```bash
 docker system df
 ```
@@ -124,6 +125,7 @@ Se vuoi liberare ulteriore spazio:
 ---
 
 **Documentazione Correlata:**
+
 - `LIBRARY_CLEANUP_RECOMMENDATIONS.md` - Raccomandazioni dettagliate
 - `LIBRARY_CLEANUP_SCRIPT.sh` - Script di pulizia
 - `LIBRARY_CLEANUP_EXECUTED.md` - Log esecuzione

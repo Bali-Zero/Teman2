@@ -8,13 +8,12 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from backend.app.models import TierLevel
 from backend.core.chunker import TextChunker
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.parsers import auto_detect_and_parse, get_document_info
 from backend.core.qdrant_db import QdrantClient
 from backend.utils.tier_classifier import TierClassifier
-
-from backend.app.models import TierLevel
 
 logger = logging.getLogger(__name__)
 

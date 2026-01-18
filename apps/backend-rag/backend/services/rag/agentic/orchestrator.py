@@ -24,15 +24,15 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
-import asyncpg
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.app.core.constants import HttpTimeoutConstants
 from backend.app.metrics import metrics_collector
-from backend.app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
+from backend.app.utils.tracing import (
+    add_span_event,
+    trace_span,
+)
 from backend.services.classification.intent_classifier import IntentClassifier
-from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.context_window_manager import ContextWindowManager
 from backend.services.misc.emotional_attunement import EmotionalAttunementService
@@ -42,9 +42,8 @@ from backend.services.rag.agentic.entity_extractor import EntityExtractionServic
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 from backend.services.search.semantic_cache import SemanticCache
-from backend.services.tools.definitions import AgentState, BaseTool
+from backend.services.tools.definitions import BaseTool
 
-from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
 from .memory_handler import MemoryHandler
 from .pipeline import create_default_pipeline
@@ -52,7 +51,6 @@ from .prompt_builder import SystemPromptBuilder
 from .query_gates import QueryGates
 from .query_helpers import (
     TIER_FLASH,
-    TIER_PRO,
     is_conversation_recall_query,
     wrap_query_with_language_instruction,
 )
@@ -61,6 +59,7 @@ from .schema import CoreResult
 from .tool_executor import execute_tool
 
 logger = logging.getLogger(__name__)
+
 
 class StreamEvent(BaseModel):
     """Schema per eventi stream."""
@@ -242,7 +241,9 @@ class AgenticRAGOrchestrator:
             core=self.core,
             streaming_manager=streaming_manager,
         )
-        logger.info("✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)")
+        logger.info(
+            "✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)"
+        )
 
     async def process_query(
         self,

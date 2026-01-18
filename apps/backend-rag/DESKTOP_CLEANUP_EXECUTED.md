@@ -13,6 +13,7 @@
 **Percorso:** `~/Library/Application Support/MobileSync/Backup/00008140-00011C523C41801C`
 
 **Dettagli:**
+
 - Device: iPhone K (iPhone 16e)
 - Ultimo Backup: 15 gennaio 2026
 - Dimensione: 9.0 GB
@@ -28,6 +29,7 @@
 **Percorso:** `~/Desktop/CRM_READY/Scan Kitas.zip`
 
 **Dettagli:**
+
 - Dimensione: 6.6 GB
 - Duplicato di: `Scan Kitas/` (6.6 GB - mantenuto)
 
@@ -42,6 +44,7 @@
 **Percorso:** `~/Desktop/Desktop - MacBook Air di Antonello/Docker.app`
 
 **Dettagli:**
+
 - Dimensione: 2.1 GB
 - Docker già installato: Sì
 
@@ -55,12 +58,12 @@
 
 ### Spazio Liberato
 
-| Elemento | Spazio Liberato |
-|----------|-----------------|
-| Backup iPhone | 9.0 GB |
-| Scan Kitas.zip (duplicato) | 6.6 GB |
-| Docker.app (duplicato) | 2.1 GB |
-| **TOTALE** | **~17.7 GB** |
+| Elemento                   | Spazio Liberato |
+| -------------------------- | --------------- |
+| Backup iPhone              | 9.0 GB          |
+| Scan Kitas.zip (duplicato) | 6.6 GB          |
+| Docker.app (duplicato)     | 2.1 GB          |
+| **TOTALE**                 | **~17.7 GB**    |
 
 ### Spazio Disponibile
 
@@ -75,13 +78,13 @@
 
 ### Elementi Rimasti
 
-| Elemento | Dimensione | Note |
-|----------|------------|------|
-| **CRM_READY** | ~18 GB | Ridotto da 25 GB (rimosso duplicato) |
-| **Desktop - MacBook Air** | ~7 GB | Ridotto da 9.3 GB (rimosso Docker.app) |
-| **nuzantara** | 8.0 GB | Mantenuto (progetto attivo) |
-| **CRM_ORGANIZED** | 1.8 GB | Mantenuto |
-| **Altri** | ~200 MB | Varie |
+| Elemento                  | Dimensione | Note                                   |
+| ------------------------- | ---------- | -------------------------------------- |
+| **CRM_READY**             | ~18 GB     | Ridotto da 25 GB (rimosso duplicato)   |
+| **Desktop - MacBook Air** | ~7 GB      | Ridotto da 9.3 GB (rimosso Docker.app) |
+| **nuzantara**             | 8.0 GB     | Mantenuto (progetto attivo)            |
+| **CRM_ORGANIZED**         | 1.8 GB     | Mantenuto                              |
+| **Altri**                 | ~200 MB    | Varie                                  |
 
 **Totale Desktop:** ~35 GB (ridotto da 44 GB)
 
@@ -136,5 +139,6 @@ Se vuoi liberare ulteriore spazio:
 ---
 
 **Documentazione Correlata:**
+
 - `DESKTOP_SPACE_ANALYSIS.md` - Analisi iniziale
 - `MOBILESYNC_BACKUP_ANALYSIS.md` - Analisi backup iPhone (rimosso)

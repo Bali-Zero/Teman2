@@ -4,6 +4,7 @@ Test coverage for reasoning_engine.py - 100% coverage target.
 This test module uses dynamic imports but coverage can still track the source file.
 Run with: pytest --cov=services/oracle/reasoning_engine --cov-report=term-missing
 """
+
 import importlib.util
 import sys
 import types
@@ -38,7 +39,7 @@ class DummyModel:
             raise self._error
         self.last_contents = contents
         self.last_config = generation_config
-        return SimpleNamespace(text=self.text, redis_url='redis://localhost:6379')
+        return SimpleNamespace(text=self.text, redis_url="redis://localhost:6379")
 
 
 class DummyValidator:
@@ -47,7 +48,9 @@ class DummyValidator:
         self.violations = violations or []
 
     def validate(self, raw_answer, context):
-        return SimpleNamespace(validated=self.validated, violations=self.violations, redis_url='redis://localhost:6379')
+        return SimpleNamespace(
+            validated=self.validated, violations=self.violations, redis_url="redis://localhost:6379"
+        )
 
 
 # Setup mock modules
@@ -60,7 +63,9 @@ validator_module = types.ModuleType("backend.services.response.validator")
 validator_module.ZantaraResponseValidator = DummyValidator
 
 google_services_module = types.ModuleType("backend.services.oracle.oracle_google_services")
-google_services_module.google_services = SimpleNamespace(get_gemini_model=lambda *_a, **_k: None, redis_url='redis://localhost:6379')
+google_services_module.google_services = SimpleNamespace(
+    get_gemini_model=lambda *_a, **_k: None, redis_url="redis://localhost:6379"
+)
 
 llm_pkg = types.ModuleType("llm")
 llm_adapters_pkg = types.ModuleType("backend.llm.adapters")
@@ -92,7 +97,9 @@ sys.modules.update(
 module_path = (
     Path(__file__).resolve().parents[4] / "backend" / "services" / "oracle" / "reasoning_engine.py"
 )
-spec = importlib.util.spec_from_file_location("backend.services.oracle.reasoning_engine", module_path)
+spec = importlib.util.spec_from_file_location(
+    "backend.services.oracle.reasoning_engine", module_path
+)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
@@ -162,8 +169,12 @@ def test_build_context_long_content_truncated():
         use_full_docs=False,
     )
     assert "..." in context  # Should be truncated
-    assert len([line for line in context.split("\n") if "x" * 600 in line]) == 0  # Full content not present
-    assert len([line for line in context.split("\n") if "x" * 500 in line]) > 0  # Truncated content present
+    assert (
+        len([line for line in context.split("\n") if "x" * 600 in line]) == 0
+    )  # Full content not present
+    assert (
+        len([line for line in context.split("\n") if "x" * 500 in line]) > 0
+    )  # Truncated content present
 
 
 @pytest.mark.asyncio

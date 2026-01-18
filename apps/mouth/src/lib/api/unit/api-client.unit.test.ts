@@ -134,7 +134,7 @@ describe('ApiClient Unit Tests', () => {
     it('should handle PUT and PATCH methods with CSRF', async () => {
       api.setCsrfToken('csrf-token');
       api.setToken('test-token');
-      
+
       // Test PUT through a real API call (e.g., saveConversation uses PUT internally)
       mockFetch.mockResolvedValueOnce({
         ok: true,

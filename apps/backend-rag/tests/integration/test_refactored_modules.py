@@ -64,7 +64,11 @@ def test_dashboard_stats_endpoint(client):
 
 def test_auth_validation_module_import():
     """Test that auth validation module can be imported"""
-    from backend.app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
+    from backend.app.auth.validation import (
+        validate_api_key,
+        validate_auth_mixed,
+        validate_auth_token,
+    )
 
     assert callable(validate_api_key)
     assert callable(validate_auth_token)

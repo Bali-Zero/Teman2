@@ -10,12 +10,13 @@ import csv
 from datetime import datetime
 from client_folder_matcher import DROPBOX_FOLDERS, categorize_folders
 
+
 def generate_template():
     """Generate CSV template for manual matching"""
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📋 GENERAZIONE TEMPLATE MATCHING DROPBOX → CRM")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Categorize folders
     categories = categorize_folders()
@@ -27,7 +28,7 @@ def generate_template():
     print()
 
     # Generate timestamp
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_file = f"dropbox_crm_matching_template_{timestamp}.csv"
 
     # Prepare data for CSV
@@ -35,11 +36,11 @@ def generate_template():
 
     for folder in DROPBOX_FOLDERS:
         # Determine category
-        if folder in categories['process_folders']:
+        if folder in categories["process_folders"]:
             category = "PROCESS"
             action = "SKIP"
             notes = "Cartella di processo - non migrare"
-        elif folder in categories['utility_folders']:
+        elif folder in categories["utility_folders"]:
             category = "UTILITY"
             action = "SKIP"
             notes = "Cartella utility/sistema - non migrare"
@@ -48,36 +49,41 @@ def generate_template():
             action = "MANUAL"
             notes = "Cerca il cliente nel CRM e inserisci l'ID"
 
-        rows.append({
-            'dropbox_folder': folder,
-            'category': category,
-            'crm_client_id': '',  # To be filled manually
-            'crm_client_name': '',  # To be filled manually
-            'action': action,
-            'notes': notes,
-            'verified': 'NO'
-        })
+        rows.append(
+            {
+                "dropbox_folder": folder,
+                "category": category,
+                "crm_client_id": "",  # To be filled manually
+                "crm_client_name": "",  # To be filled manually
+                "action": action,
+                "notes": notes,
+                "verified": "NO",
+            }
+        )
 
     # Write CSV
-    with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            'dropbox_folder',
-            'category',
-            'crm_client_id',
-            'crm_client_name',
-            'action',
-            'notes',
-            'verified'
-        ])
+    with open(csv_file, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "dropbox_folder",
+                "category",
+                "crm_client_id",
+                "crm_client_name",
+                "action",
+                "notes",
+                "verified",
+            ],
+        )
 
         writer.writeheader()
         writer.writerows(rows)
 
     print(f"✅ Template CSV generato: {csv_file}")
     print()
-    print("="*80)
+    print("=" * 80)
     print("📝 ISTRUZIONI PER LA COMPILAZIONE:")
-    print("="*80)
+    print("=" * 80)
     print()
     print("1. Apri il CSV con Excel/Numbers/Google Sheets")
     print()
@@ -103,7 +109,7 @@ def generate_template():
     print()
     print("6. Salva il CSV quando hai finito")
     print()
-    print("="*80)
+    print("=" * 80)
     print()
     print("💡 SUGGERIMENTI:")
     print()
@@ -112,13 +118,13 @@ def generate_template():
     print("• Tieni aperta la pagina CRM in un'altra finestra")
     print("• Usa Ctrl+F nel CRM per cercare i nomi")
     print()
-    print("="*80)
+    print("=" * 80)
     print()
 
     # Print summary by category
-    client_count = len([r for r in rows if r['category'] == 'CLIENT'])
-    process_count = len([r for r in rows if r['category'] == 'PROCESS'])
-    utility_count = len([r for r in rows if r['category'] == 'UTILITY'])
+    client_count = len([r for r in rows if r["category"] == "CLIENT"])
+    process_count = len([r for r in rows if r["category"] == "PROCESS"])
+    utility_count = len([r for r in rows if r["category"] == "UTILITY"])
 
     print("📊 RIEPILOGO:")
     print(f"   • Clienti da matchare manualmente: {client_count}")
@@ -126,8 +132,9 @@ def generate_template():
     print(f"   • Cartelle utility (auto-skip): {utility_count}")
     print(f"   • TOTALE cartelle: {len(rows)}")
     print()
-    print("="*80)
+    print("=" * 80)
     print()
+
 
 if __name__ == "__main__":
     try:
@@ -135,4 +142,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Errore: {e}")
         import traceback
+
         traceback.print_exc()

@@ -125,7 +125,9 @@ def mock_memory_orchestrator():
 def orchestrator(mock_search_service, mock_db_pool, mock_memory_orchestrator):
     """Create AgenticRAGOrchestrator with mocked dependencies"""
     with patch("backend.services.rag.agentic.create_agentic_rag") as mock_create:
-        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+        with patch(
+            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
+        ):
             orchestrator = AgenticRAGOrchestrator(
                 retriever=mock_search_service,
                 db_pool=mock_db_pool,
@@ -147,7 +149,9 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock intent classification
-        with patch("backend.services.classification.intent_classifier.IntentClassifier") as mock_intent:
+        with patch(
+            "backend.services.classification.intent_classifier.IntentClassifier"
+        ) as mock_intent:
             mock_classifier = MagicMock()
             mock_classifier.classify_intent = AsyncMock(
                 return_value={

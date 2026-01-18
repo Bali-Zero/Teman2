@@ -4,7 +4,6 @@ Verifica contenuto resoconto Lampiran I.H
 """
 
 import json
-import os
 from pathlib import Path
 from datetime import datetime
 
@@ -61,7 +60,7 @@ print(f"   Pagine totali: {data.get('total_pages', 'N/A')}")
 print(f"   Pagine analizzate: {data.get('total_pages_analyzed', 'N/A')}")
 print(f"   Agenti: {data.get('num_agents', 'N/A')}")
 print(f"   Data analisi: {data.get('analysis_date', 'N/A')}")
-elapsed = data.get('elapsed_time_seconds', 0)
+elapsed = data.get("elapsed_time_seconds", 0)
 if elapsed:
     print(f"   Tempo totale: {elapsed / 60:.1f} minuti")
 print()
@@ -81,21 +80,27 @@ for i, agent in enumerate(agents, 1):
         pages_analyzed = agent.get("pages_analyzed", 0)
         total_pages = agent.get("total_pages", 0)
         results = agent.get("results", [])
-        
+
         # Conta errori e successi
         errors = sum(1 for r in results if "error" in r or "parse_error" in r)
         success = len(results) - errors
         total_errors += errors
         total_success += success
-        
+
         print(f"   Agent {agent_id}:")
         print(f"      Pagine analizzate: {pages_analyzed}/{total_pages}")
         print(f"      Risultati: {success} successi, {errors} errori")
-        
+
         # Verifica pagine con errori
         if errors > 0:
-            error_pages = [r.get("page", "?") for r in results if "error" in r or "parse_error" in r]
-            print(f"      ⚠️  Pagine con errori: {error_pages[:10]}{'...' if len(error_pages) > 10 else ''}")
+            error_pages = [
+                r.get("page", "?")
+                for r in results
+                if "error" in r or "parse_error" in r
+            ]
+            print(
+                f"      ⚠️  Pagine con errori: {error_pages[:10]}{'...' if len(error_pages) > 10 else ''}"
+            )
 
 print(f"\n   📈 TOTALE: {total_success} successi, {total_errors} errori")
 print()
@@ -112,26 +117,26 @@ all_pb_umku_codes = set()
 for agent in agents:
     if "error" in agent:
         continue
-    
+
     results = agent.get("results", [])
     for result in results:
         if "error" in result or "parse_error" in result:
             continue
-        
+
         analysis = result.get("analysis", {})
         if not analysis:
             continue
-            
+
         content = analysis.get("content", {})
         extracted = analysis.get("extracted_data", {})
-        
+
         # Conta KBLI
         kbli_codes = extracted.get("kbli_codes", [])
         if kbli_codes:
             total_kbli += len(kbli_codes)
             pages_with_kbli += 1
             all_kbli_codes.update(kbli_codes)
-        
+
         # Conta PB UMKU
         pb_umku_codes = extracted.get("pb_umku_codes", [])
         if pb_umku_codes:
@@ -153,32 +158,32 @@ sample_count = 0
 for agent in agents:
     if "error" in agent or sample_count >= 5:
         break
-    
+
     results = agent.get("results", [])
     for result in results:
         if sample_count >= 5:
             break
-        
+
         if "error" in result or "parse_error" in result:
             continue
-        
+
         analysis = result.get("analysis", {})
         if not analysis:
             continue
-            
+
         extracted = analysis.get("extracted_data", {})
         kbli_codes = extracted.get("kbli_codes", [])
-        
+
         if kbli_codes:
             page_num = result.get("page", "?")
             print(f"   Pagina {page_num}:")
             print(f"      KBLI trovati: {len(kbli_codes)}")
             print(f"      Esempi: {kbli_codes[:5]}")
-            
+
             # Mostra anche struttura analysis se disponibile
             content = analysis.get("content", {})
             if content.get("has_kbli"):
-                print(f"      ✅ Contiene KBLI")
+                print("      ✅ Contiene KBLI")
             sample_count += 1
 
 print()

@@ -31,7 +31,9 @@ def context_window_manager():
 @pytest.fixture
 def context_window_manager_no_ai():
     """Create ContextWindowManager instance without AI"""
-    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("Not available")):
+    with patch(
+        "backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("Not available")
+    ):
         manager = ContextWindowManager()
         manager.zantara_client = None
         return manager

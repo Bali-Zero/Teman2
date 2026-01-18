@@ -5,14 +5,9 @@ Test coverage target: >95%
 """
 
 import pytest
-from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
-
-from pydantic import ValidationError
 
 from backend.services.rag.agentic.orchestrator_streaming import (
     OrchestratorStreamingManager,
-    StreamEvent,
 )
 
 
@@ -82,6 +77,7 @@ def test_validate_event_no_validation(streaming_manager_no_validation):
 @pytest.mark.asyncio
 async def test_process_event_stream_valid_events(streaming_manager):
     """Test processing stream with valid events"""
+
     async def event_generator():
         yield {"type": "token", "data": "hello"}
         yield {"type": "token", "data": " world"}
@@ -102,6 +98,7 @@ async def test_process_event_stream_valid_events(streaming_manager):
 @pytest.mark.asyncio
 async def test_process_event_stream_with_errors(streaming_manager):
     """Test processing stream with some invalid events"""
+
     async def event_generator():
         yield {"type": "token", "data": "valid"}
         yield None  # Invalid
@@ -122,6 +119,7 @@ async def test_process_event_stream_with_errors(streaming_manager):
 @pytest.mark.asyncio
 async def test_process_event_stream_too_many_errors(streaming_manager):
     """Test processing stream aborting after too many errors"""
+
     async def event_generator():
         for _ in range(5):
             yield None  # All invalid

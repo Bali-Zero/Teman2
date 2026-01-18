@@ -10,11 +10,14 @@ import sys
 import re
 
 # Add backend path
-backend_path = os.path.join(os.path.dirname(__file__), "..", "..", "apps", "backend-rag")
+backend_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "apps", "backend-rag"
+)
 sys.path.insert(0, backend_path)
 sys.path.insert(0, os.path.join(backend_path, "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(backend_path, ".env"))
 
 from services.multimodal.pdf_vision_service import PDFVisionService
@@ -43,7 +46,7 @@ async def test_vision_on_page(vision_service: PDFVisionService, page_num: int):
     
     Se NON vedi tabelle KBLI, descrivi cosa contiene questa pagina.
     """
-    
+
     try:
         result = await vision_service.analyze_page(
             PDF_PP28, page_num, prompt=prompt, is_drive_file=False
@@ -58,41 +61,43 @@ async def main():
     print("=" * 60)
     print("TEST VISION SU PAGINE LAMPIRAN")
     print("=" * 60)
-    
+
     vision_service = PDFVisionService()
     if not vision_service._available:
         print("❌ Vision service non disponibile")
         return
-    
+
     print(f"\n📄 PDF: {PDF_PP28}")
     print(f"   Pagine da testare: {TEST_PAGES}\n")
-    
+
     results = {}
-    
+
     for page_num in TEST_PAGES:
         print(f"📄 Analizzando pagina {page_num}...")
         result = await test_vision_on_page(vision_service, page_num)
         results[page_num] = result
-        
+
         # Mostra estratto
         if result:
             preview = result[:300].replace("\n", " ")
             print(f"   Preview: {preview}...")
-            
+
             # Verifica se contiene riferimenti a KBLI
-            if "kbli" in result.lower() or re.search(r'\d{5}', result):
-                print(f"   ✅ Possibile contenuto KBLI trovato!")
+            if "kbli" in result.lower() or re.search(r"\d{5}", result):
+                print("   ✅ Possibile contenuto KBLI trovato!")
         print()
-    
+
     # Salva risultati
     output_file = "reports/vision_lampiran_test.json"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump({
-            "test_pages": TEST_PAGES,
-            "results": results
-        }, f, indent=2, ensure_ascii=False)
-    
+        json.dump(
+            {"test_pages": TEST_PAGES, "results": results},
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+
     print(f"📁 Risultati salvati in: {output_file}")
 
 

@@ -101,7 +101,7 @@ async def notify_human_telegram(
     notification_text = f"""{emoji} **Messaggio WhatsApp Personale**
 
 **Da:** {display_name} ({phone})
-**Motivo:** {reason.replace('_', ' ').title()}
+**Motivo:** {reason.replace("_", " ").title()}
 
 **Messaggio:**
 {message_text}
@@ -160,9 +160,7 @@ async def process_whatsapp_message(
             TriageDecision.ESCALATE_CONTEXT,
         ]:
             # Send escalation message to user
-            escalation_msg = whatsapp_triage_service.get_escalation_message(
-                decision, sender_name
-            )
+            escalation_msg = whatsapp_triage_service.get_escalation_message(decision, sender_name)
             await whatsapp_service.send_message(
                 phone=phone,
                 text=escalation_msg,
@@ -227,7 +225,7 @@ async def process_whatsapp_message(
                 "user_id": whatsapp_user_id,
                 "message_length": len(message_text),
                 "feature": "whatsapp_status_updates",
-            }
+            },
         )
 
         # Stream query with status updates and timeout (WhatsApp doesn't support message editing)
@@ -279,7 +277,10 @@ async def process_whatsapp_message(
 
                     # Send periodic status updates (every 10 seconds)
                     current_time = time.time()
-                    if current_phase and (current_time - last_status_time) >= status_update_interval:
+                    if (
+                        current_phase
+                        and (current_time - last_status_time) >= status_update_interval
+                    ):
                         # Only send if we haven't sent this phase before
                         emoji = phase_emoji.get(current_phase, "⏳")
                         status_msg = f"{emoji} {current_phase.replace('_', ' ').title()}..."
@@ -299,12 +300,12 @@ async def process_whatsapp_message(
                                     "phase": current_phase,
                                     "elapsed_seconds": round(elapsed, 1),
                                     "update_number": status_updates_sent,
-                                }
+                                },
                             )
                         except Exception as status_error:
                             logger.warning(
                                 f"❌ [FASE 2.1] Failed status update to {phone}: {status_error}",
-                                extra={"phone": phone, "phase": current_phase}
+                                extra={"phone": phone, "phase": current_phase},
                             )
 
                         last_status_time = current_time
@@ -321,7 +322,7 @@ async def process_whatsapp_message(
                     "status_updates_sent": status_updates_sent,
                     "phases_seen": list(phases_seen),
                     "feature": "whatsapp_timeout_handling",
-                }
+                },
             )
             await whatsapp_service.send_message(
                 phone=phone,
@@ -363,7 +364,7 @@ async def process_whatsapp_message(
                 "phases_count": len(phases_seen),
                 "timed_out": False,
                 "feature": "whatsapp_complete",
-            }
+            },
         )
 
     except Exception as e:
@@ -404,7 +405,7 @@ async def verify_webhook(request: Request):
         # Return challenge as integer (Meta requirement)
         return int(challenge)
 
-    logger.warning(f"❌ Webhook verification failed: invalid token or mode")
+    logger.warning("❌ Webhook verification failed: invalid token or mode")
     raise HTTPException(status_code=403, detail="Invalid verify token")
 
 
@@ -458,9 +459,7 @@ async def whatsapp_webhook(
                 message_id = msg.get("id")
                 message_type = msg.get("type")
 
-                logger.info(
-                    f"Message from {phone}: type={message_type}, id={message_id}"
-                )
+                logger.info(f"Message from {phone}: type={message_type}, id={message_id}")
 
                 # Only handle text messages for now
                 if message_type != "text":
@@ -498,15 +497,11 @@ async def whatsapp_status():
 
     Public endpoint for health monitoring.
     """
-    configured = bool(
-        settings.whatsapp_api_token and settings.whatsapp_phone_number_id
-    )
+    configured = bool(settings.whatsapp_api_token and settings.whatsapp_phone_number_id)
 
     return {
         "configured": configured,
         "phone_number_id": settings.whatsapp_phone_number_id if configured else None,
         "triage_enabled": True,
-        "personal_contacts_count": len(
-            whatsapp_triage_service.personal_contacts
-        ),
+        "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
     }

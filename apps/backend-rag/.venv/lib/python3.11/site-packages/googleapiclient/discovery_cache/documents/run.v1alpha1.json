@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -114,9 +104,7 @@
               "flatPath": "apis/run.googleapis.com/v1alpha1/namespaces/{namespacesId}/jobs",
               "httpMethod": "POST",
               "id": "run.namespaces.jobs.create",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "parent": {
                   "description": "Required. The namespace in which the job should be created. Replace {namespace_id} with the project ID or number.",
@@ -133,18 +121,14 @@
               "response": {
                 "$ref": "Job"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "delete": {
               "description": "Delete a job.",
               "flatPath": "apis/run.googleapis.com/v1alpha1/namespaces/{namespacesId}/jobs/{jobsId}",
               "httpMethod": "DELETE",
               "id": "run.namespaces.jobs.delete",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "apiVersion": {
                   "description": "Optional. Cloud Run currently ignores this parameter.",
@@ -173,18 +157,14 @@
               "response": {
                 "$ref": "Empty"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "get": {
               "description": "Get information about a job.",
               "flatPath": "apis/run.googleapis.com/v1alpha1/namespaces/{namespacesId}/jobs/{jobsId}",
               "httpMethod": "GET",
               "id": "run.namespaces.jobs.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Required. The name of the job to retrieve. For Cloud Run (fully managed), replace {namespace_id} with the project ID or number.",
@@ -198,18 +178,14 @@
               "response": {
                 "$ref": "Job"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "list": {
               "description": "List jobs.",
               "flatPath": "apis/run.googleapis.com/v1alpha1/namespaces/{namespacesId}/jobs",
               "httpMethod": "GET",
               "id": "run.namespaces.jobs.list",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "continue": {
                   "description": "Optional. Optional encoded string to continue paging.",
@@ -259,9 +235,7 @@
               "response": {
                 "$ref": "ListJobsResponse"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           }
         }

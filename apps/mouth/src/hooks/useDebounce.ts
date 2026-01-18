@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 
 /**
  * Custom hook for debouncing values
- * 
+ *
  * @param value - The value to debounce
  * @param delay - Delay in milliseconds (default: 300ms)
  * @returns Debounced value
- * 
+ *
  * @example
  * const [input, setInput] = useState('');
  * const debouncedInput = useDebounce(input, 500);
- * 
+ *
  * useEffect(() => {
  *   // This will only run 500ms after user stops typing
  *   performSearch(debouncedInput);
@@ -33,4 +33,3 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
 
   return debouncedValue;
 }
-

@@ -3,14 +3,13 @@ Comprehensive tests for autonomous_agents router.
 Tests the autonomous agents HTTP endpoints for orchestration.
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI, BackgroundTasks
-from fastapi.testclient import TestClient
-
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4] / "backend"
@@ -37,7 +36,7 @@ def mock_db_pool():
 @pytest.fixture
 def mock_conversation_trainer():
     """Mock ConversationTrainer"""
-    with patch('backend.agents.agents.conversation_trainer.ConversationTrainer') as MockClass:
+    with patch("backend.agents.agents.conversation_trainer.ConversationTrainer") as MockClass:
         trainer = MagicMock()
         trainer.analyze_winning_patterns = AsyncMock(return_value={"patterns": []})
         trainer.generate_prompt_update = AsyncMock(return_value="improved prompt")
@@ -49,14 +48,16 @@ def mock_conversation_trainer():
 @pytest.fixture
 def mock_client_value_predictor():
     """Mock ClientValuePredictor"""
-    with patch('backend.agents.agents.client_value_predictor.ClientValuePredictor') as MockClass:
+    with patch("backend.agents.agents.client_value_predictor.ClientValuePredictor") as MockClass:
         predictor = MagicMock()
-        predictor.run_daily_nurturing = AsyncMock(return_value={
-            "vip_nurtured": 5,
-            "high_risk_contacted": 3,
-            "total_messages_sent": 8,
-            "errors": []
-        })
+        predictor.run_daily_nurturing = AsyncMock(
+            return_value={
+                "vip_nurtured": 5,
+                "high_risk_contacted": 3,
+                "total_messages_sent": 8,
+                "errors": [],
+            }
+        )
         MockClass.return_value = predictor
         yield predictor
 
@@ -64,15 +65,17 @@ def mock_client_value_predictor():
 @pytest.fixture
 def mock_knowledge_graph_builder():
     """Mock KnowledgeGraphBuilder"""
-    with patch('backend.agents.agents.knowledge_graph_builder.KnowledgeGraphBuilder') as MockClass:
+    with patch("backend.agents.agents.knowledge_graph_builder.KnowledgeGraphBuilder") as MockClass:
         builder = MagicMock()
         builder.init_graph_schema = AsyncMock()
         builder.build_graph_from_all_conversations = AsyncMock()
-        builder.get_entity_insights = AsyncMock(return_value={
-            "top_entities": [{"name": "PT PMA", "count": 10}],
-            "hubs": [{"name": "NIB", "connections": 5}],
-            "relationship_types": ["REQUIRES", "COSTS"]
-        })
+        builder.get_entity_insights = AsyncMock(
+            return_value={
+                "top_entities": [{"name": "PT PMA", "count": 10}],
+                "hubs": [{"name": "NIB", "connections": 5}],
+                "relationship_types": ["REQUIRES", "COSTS"],
+            }
+        )
         builder.add_entity = AsyncMock()
         MockClass.return_value = builder
         yield builder
@@ -106,7 +109,7 @@ class TestAgentExecutionResponseModel:
             agent_name="test_agent",
             status="started",
             message="Test message",
-            started_at="2024-01-01T00:00:00"
+            started_at="2024-01-01T00:00:00",
         )
 
         assert response.execution_id == "exec_123"
@@ -126,7 +129,7 @@ class TestAgentExecutionResponseModel:
             started_at="2024-01-01T00:00:00",
             completed_at="2024-01-01T00:01:00",
             result={"key": "value"},
-            error=None
+            error=None,
         )
 
         assert response.completed_at == "2024-01-01T00:01:00"
@@ -151,27 +154,26 @@ class TestConversationTrainerEndpoints:
     def test_run_conversation_trainer_with_days_back(self, client):
         """Should accept days_back parameter"""
         response = client.post(
-            "/api/autonomous-agents/conversation-trainer/run",
-            params={"days_back": 30}
+            "/api/autonomous-agents/conversation-trainer/run", params={"days_back": 30}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert "30 days" in data["message"] or "days_back" in str(data) or data["status"] == "started"
+        assert (
+            "30 days" in data["message"] or "days_back" in str(data) or data["status"] == "started"
+        )
 
     def test_run_conversation_trainer_invalid_days_back(self, client):
         """Should reject invalid days_back values"""
         # Test < 1
         response = client.post(
-            "/api/autonomous-agents/conversation-trainer/run",
-            params={"days_back": 0}
+            "/api/autonomous-agents/conversation-trainer/run", params={"days_back": 0}
         )
         assert response.status_code == 422
 
         # Test > 365
         response = client.post(
-            "/api/autonomous-agents/conversation-trainer/run",
-            params={"days_back": 400}
+            "/api/autonomous-agents/conversation-trainer/run", params={"days_back": 400}
         )
         assert response.status_code == 422
 
@@ -209,7 +211,7 @@ class TestKnowledgeGraphBuilderEndpoints:
         """Should accept days_back and init_schema parameters"""
         response = client.post(
             "/api/autonomous-agents/knowledge-graph-builder/run",
-            params={"days_back": 60, "init_schema": True}
+            params={"days_back": 60, "init_schema": True},
         )
 
         assert response.status_code == 200
@@ -226,7 +228,7 @@ class TestKnowledgeGraphExtraction:
         mock_app = MagicMock()
         mock_app.state.retriever = None
 
-        with patch.dict('sys.modules', {'backend.app.main_cloud': MagicMock(app=mock_app)}):
+        with patch.dict("sys.modules", {"backend.app.main_cloud": MagicMock(app=mock_app)}):
             response = client.get("/api/autonomous-agents/knowledge-graph/extract-sample")
 
             # Should fail gracefully (either 503 or error in response)
@@ -239,7 +241,7 @@ class TestKnowledgeGraphExtraction:
         mock_app.state.retriever.client = MagicMock()
         mock_app.state.db_pool = None
 
-        with patch.dict('sys.modules', {'backend.app.main_cloud': MagicMock(app=mock_app)}):
+        with patch.dict("sys.modules", {"backend.app.main_cloud": MagicMock(app=mock_app)}):
             response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample")
 
             # Should fail gracefully
@@ -315,6 +317,7 @@ class TestExecutionManagement:
         """GET /executions should return empty list initially"""
         # Clear executions for this test
         from backend.app.routers.autonomous_agents import agent_executions
+
         agent_executions.clear()
 
         response = client.get("/api/autonomous-agents/executions")
@@ -343,13 +346,11 @@ class TestSchedulerEndpoints:
 
     def test_get_scheduler_status(self, client):
         """GET /scheduler/status should return scheduler info"""
-        with patch('backend.services.misc.autonomous_scheduler.get_autonomous_scheduler') as mock_get:
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler"
+        ) as mock_get:
             mock_scheduler = MagicMock()
-            mock_scheduler.get_status.return_value = {
-                "running": True,
-                "task_count": 3,
-                "tasks": []
-            }
+            mock_scheduler.get_status.return_value = {"running": True, "task_count": 3, "tasks": []}
             mock_get.return_value = mock_scheduler
 
             response = client.get("/api/autonomous-agents/scheduler/status")
@@ -360,7 +361,9 @@ class TestSchedulerEndpoints:
 
     def test_enable_task_not_found(self, client):
         """Should return 404 for unknown task"""
-        with patch('backend.services.misc.autonomous_scheduler.get_autonomous_scheduler') as mock_get:
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler"
+        ) as mock_get:
             mock_scheduler = MagicMock()
             mock_scheduler.enable_task.return_value = False
             mock_get.return_value = mock_scheduler
@@ -371,7 +374,9 @@ class TestSchedulerEndpoints:
 
     def test_disable_task_not_found(self, client):
         """Should return 404 for unknown task"""
-        with patch('backend.services.misc.autonomous_scheduler.get_autonomous_scheduler') as mock_get:
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler"
+        ) as mock_get:
             mock_scheduler = MagicMock()
             mock_scheduler.disable_task.return_value = False
             mock_get.return_value = mock_scheduler
@@ -382,7 +387,9 @@ class TestSchedulerEndpoints:
 
     def test_enable_task_success(self, client):
         """Should return success when task enabled"""
-        with patch('backend.services.misc.autonomous_scheduler.get_autonomous_scheduler') as mock_get:
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler"
+        ) as mock_get:
             mock_scheduler = MagicMock()
             mock_scheduler.enable_task.return_value = True
             mock_get.return_value = mock_scheduler
@@ -396,7 +403,9 @@ class TestSchedulerEndpoints:
 
     def test_disable_task_success(self, client):
         """Should return success when task disabled"""
-        with patch('backend.services.misc.autonomous_scheduler.get_autonomous_scheduler') as mock_get:
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler"
+        ) as mock_get:
             mock_scheduler = MagicMock()
             mock_scheduler.disable_task.return_value = True
             mock_get.return_value = mock_scheduler
@@ -414,28 +423,31 @@ class TestBackgroundTaskExecution:
 
     def test_conversation_trainer_adds_background_task(self):
         """Verify conversation trainer adds task to BackgroundTasks"""
-        from backend.app.routers.autonomous_agents import router, run_conversation_trainer
-
         # This test verifies the endpoint signature uses BackgroundTasks
         import inspect
+
+        from backend.app.routers.autonomous_agents import run_conversation_trainer
+
         sig = inspect.signature(run_conversation_trainer)
         param_names = list(sig.parameters.keys())
         assert "background_tasks" in param_names
 
     def test_client_value_predictor_adds_background_task(self):
         """Verify client value predictor adds task to BackgroundTasks"""
+        import inspect
+
         from backend.app.routers.autonomous_agents import run_client_value_predictor
 
-        import inspect
         sig = inspect.signature(run_client_value_predictor)
         param_names = list(sig.parameters.keys())
         assert "background_tasks" in param_names
 
     def test_knowledge_graph_builder_adds_background_task(self):
         """Verify knowledge graph builder adds task to BackgroundTasks"""
+        import inspect
+
         from backend.app.routers.autonomous_agents import run_knowledge_graph_builder
 
-        import inspect
         sig = inspect.signature(run_knowledge_graph_builder)
         param_names = list(sig.parameters.keys())
         assert "background_tasks" in param_names

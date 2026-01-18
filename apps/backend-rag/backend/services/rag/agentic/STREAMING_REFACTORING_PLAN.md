@@ -28,6 +28,7 @@
 ### Step 1: Creare `orchestrator_streaming_core.py`
 
 **Responsabilità:**
+
 - Coordina streaming logic usando moduli specializzati
 - Gestisce event generation e validation
 - Coordina ReAct loop streaming
@@ -100,12 +101,12 @@ async def stream_query(...) -> AsyncGenerator[dict, None]:
 
 ## 🎯 BENEFICI ATTESI
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| Duplicazione codice | ~70% | <5% | -93% |
-| Righe stream_query | 600 | ~250 | -58% |
-| Complessità stream_query | 73 | <20 | -73% |
-| Testabilità streaming | Bassa | Alta | +100% |
+| Metrica                  | Prima | Dopo | Miglioramento |
+| ------------------------ | ----- | ---- | ------------- |
+| Duplicazione codice      | ~70%  | <5%  | -93%          |
+| Righe stream_query       | 600   | ~250 | -58%          |
+| Complessità stream_query | 73    | <20  | -73%          |
+| Testabilità streaming    | Bassa | Alta | +100%         |
 
 ---
 

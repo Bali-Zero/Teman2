@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-from backend.app.setup.service_initializer import initialize_database_services, _is_transient_error
+from backend.app.setup.service_initializer import _is_transient_error, initialize_database_services
 
 
 @pytest.fixture

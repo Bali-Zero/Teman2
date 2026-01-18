@@ -8,6 +8,7 @@
 ## 📊 SITUAZIONE ATTUALE
 
 ### Volume Principale (/)
+
 - **Spazio Usato:** 11 GB (df) / 12.3 GB (diskutil)
 - **Spazio Disponibile:** 13 GB
 - **Dimensione Totale:** 228 GB
@@ -19,15 +20,16 @@
 
 ### Spazio Occupato Visibile sul Volume Principale
 
-| Elemento | Dimensione | Note |
-|----------|------------|------|
-| **Progetto Nuzantara** | 8.0 GB | Dopo pulizia |
-| **Cache Library** | 5.1 GB | ~/Library/Caches |
-| **Cache Home** | 1.3 GB | ~/.cache |
-| **Docker (in Library)** | ~6.4 GB | Probabilmente in ~/Library |
-| **TOTALE VISIBILE** | ~21 GB | |
+| Elemento                | Dimensione | Note                       |
+| ----------------------- | ---------- | -------------------------- |
+| **Progetto Nuzantara**  | 8.0 GB     | Dopo pulizia               |
+| **Cache Library**       | 5.1 GB     | ~/Library/Caches           |
+| **Cache Home**          | 1.3 GB     | ~/.cache                   |
+| **Docker (in Library)** | ~6.4 GB    | Probabilmente in ~/Library |
+| **TOTALE VISIBILE**     | ~21 GB     |                            |
 
 ### Library Totale
+
 - **Dimensione:** 85 GB
 - **Include:**
   - Application Support (app data)
@@ -61,19 +63,21 @@ Il sistema mostra correttamente **~11-12 GB usati** sul volume principale perch�
 
 ### Spazio Visibile vs Spazio Usato
 
-| Metrica | Valore |
-|---------|--------|
-| **Spazio Usato (df)** | 11 GB |
+| Metrica                     | Valore  |
+| --------------------------- | ------- |
+| **Spazio Usato (df)**       | 11 GB   |
 | **Spazio Usato (diskutil)** | 12.3 GB |
-| **Spazio Visibile (du)** | ~21 GB |
-| **Library Totale** | 85 GB |
+| **Spazio Visibile (du)**    | ~21 GB  |
+| **Library Totale**          | 85 GB   |
 
 ### Differenza
+
 - **Spazio Usato Sistema:** 11-12 GB
 - **Spazio Visibile Utente:** ~21 GB
 - **Differenza:** ~9 GB
 
 **Spiegazione:** La differenza è dovuta a:
+
 - Compressione APFS
 - Snapshot APFS
 - Dati su volumi separati
@@ -83,7 +87,7 @@ Il sistema mostra correttamente **~11-12 GB usati** sul volume principale perch�
 
 ## ✅ CONCLUSIONE
 
-Il sistema mostra correttamente **11 GB usati** sul volume principale. 
+Il sistema mostra correttamente **11 GB usati** sul volume principale.
 
 - ✅ **Il calcolo è corretto**
 - ✅ **Docker e altri dati sono probabilmente su volumi separati o in Library**
@@ -96,12 +100,14 @@ Il sistema mostra correttamente **11 GB usati** sul volume principale.
 ## 📝 NOTE TECNICHE
 
 ### APFS (Apple File System)
+
 - Supporta compressione trasparente
 - Supporta snapshot
 - Supporta volumi multipli nello stesso container
 - Il calcolo dello spazio può variare tra `df` e `diskutil`
 
 ### Docker su macOS
+
 - Docker Desktop usa una VM Linux
 - I dati Docker sono tipicamente in `~/Library/Containers/com.docker.docker`
 - Potrebbero essere su un volume separato o compressi

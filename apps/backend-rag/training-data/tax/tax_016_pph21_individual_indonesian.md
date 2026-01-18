@@ -17,6 +17,7 @@ Halo! Selamat untuk pekerjaan barunya!
 **PPh 21** = Pajak Penghasilan Pasal 21 = **pajak yang dipotong dari gaji karyawan**.
 
 Setiap bulan, perusahaan kamu akan:
+
 1. **Potong PPh 21** dari gaji kotor
 2. **Setor** ke pemerintah (DJP - Direktorat Jenderal Pajak)
 3. Kamu **terima gaji bersih** (setelah pajak)
@@ -30,11 +31,13 @@ Jadi gaji saya Rp 8 juta itu kotor atau bersih?
 Biasanya **kotor** (sebelum pajak).
 
 **Contoh:**
+
 - Gaji kotor: **Rp 8.000.000**
 - Potongan PPh 21: **~Rp 175.000** (tergantung status)
 - **Gaji bersih (take home):** **Rp 7.825.000**
 
 Setelah tanda tangan offer letter, tanya HR:
+
 - "Apakah Rp 8 juta **gross** atau **net**?"
 - "Berapa **take home pay** setelah pajak?"
 
@@ -46,15 +49,16 @@ Berapa persen pajak PPh 21?
 
 **Tax Brackets:**
 
-| Penghasilan/Tahun | Tarif PPh 21 |
-|-------------------|--------------|
-| 0 - 60 juta | 5% |
-| 60 - 250 juta | 15% |
-| 250 - 500 juta | 25% |
-| 500 juta - 5 miliar | 30% |
-| > 5 miliar | 35% |
+| Penghasilan/Tahun   | Tarif PPh 21 |
+| ------------------- | ------------ |
+| 0 - 60 juta         | 5%           |
+| 60 - 250 juta       | 15%          |
+| 250 - 500 juta      | 25%          |
+| 500 juta - 5 miliar | 30%          |
+| > 5 miliar          | 35%          |
 
 **Contoh:**
+
 - Gaji Rp 8 juta/bulan = **Rp 96 juta/tahun**
 - Masuk bracket pertama (0-60 juta) + sebagian bracket kedua (60-250 juta)
 - **Effective tax rate:** ~5-10%
@@ -84,6 +88,7 @@ PTKP itu apa? Bisa berubah?
 **PTKP** = Penghasilan Tidak Kena Pajak (tax-free income).
 
 **PTKP 2025:**
+
 - **TK/0** (lajang, tidak ada tanggungan): **Rp 54.000.000/tahun**
 - **TK/1** (lajang, 1 tanggungan): Rp 54 juta + Rp 4.5 juta = **Rp 58.500.000**
 - **K/0** (menikah, tidak ada tanggungan): Rp 54 juta + Rp 4.5 juta = **Rp 58.500.000**
@@ -93,6 +98,7 @@ PTKP itu apa? Bisa berubah?
 **Tanggungan maksimal 3 orang** (istri/suami + 2 anak).
 
 **Kalau menikah/punya anak:**
+
 - PTKP naik → penghasilan kena pajak turun → **bayar pajak lebih kecil**
 
 **6 — Client:**
@@ -103,12 +109,13 @@ Kalau saya punya NPWP, pajak lebih murah?
 
 **Perbedaan:**
 
-| Status | Tarif PPh 21 |
-|--------|--------------|
-| **Punya NPWP** | Normal (5%, 15%, 25%, dst) |
+| Status               | Tarif PPh 21                              |
+| -------------------- | ----------------------------------------- |
+| **Punya NPWP**       | Normal (5%, 15%, 25%, dst)                |
 | **Tidak punya NPWP** | **Normal + 20%** (jadi 6%, 18%, 30%, dst) |
 
 **Contoh:**
+
 - Pajak normal (punya NPWP): Rp 175.000/bulan
 - Pajak tanpa NPWP: Rp 175.000 × 1.2 = **Rp 210.000/bulan**
 
@@ -123,6 +130,7 @@ Gimana cara bikin NPWP?
 **Super gampang!** Ada 2 cara:
 
 **Cara 1: Online (Rekomendasi):**
+
 1. Buka **ereg.pajak.go.id**
 2. Daftar akun (pakai email + NIK)
 3. Upload KTP, foto selfie dengan KTP
@@ -130,6 +138,7 @@ Gimana cara bikin NPWP?
 5. **NPWP keluar 1-3 hari** (dikirim email PDF)
 
 **Cara 2: Offline:**
+
 1. Datang ke **KPP** (Kantor Pelayanan Pajak) terdekat
 2. Bawa KTP asli + fotokopi
 3. Isi formulir
@@ -144,14 +153,17 @@ Kalau saya nggak punya NPWP, company bisa potong pajak lebih besar?
 **Bisa dan akan!**
 
 **Wajib** bagi perusahaan untuk:
+
 - Potong PPh 21 **20% lebih tinggi** kalau karyawan nggak ada NPWP
 - Tetap setor ke negara
 
 **Kamu yang rugi:**
+
 - Take home pay lebih kecil
 - Pajak lebih mahal
 
 **Plus:**
+
 - Saat lapor SPT tahunan, **tidak bisa claim refund** kalau nggak ada NPWP
 
 **Jadi: bikin NPWP wajib!**
@@ -163,16 +175,19 @@ SPT tahunan itu apa? Saya harus lapor sendiri?
 **SPT** = Surat Pemberitahuan Tahunan = **tax return** (laporan pajak setahun).
 
 **Wajib lapor setiap tahun** (deadline **31 Maret**) kalau:
+
 - Penghasilan > PTKP (> Rp 54 juta/tahun untuk lajang)
 - Atau punya NPWP
 
 **Yang dilaporkan:**
+
 - Total penghasilan setahun
 - Pajak yang sudah dibayar (bukti potong dari perusahaan)
 - Penghasilan lain (kalau ada)
 - Harta & utang
 
 **Tapi tenang:**
+
 - Perusahaan kasih **bukti potong PPh 21** (form 1721-A1) di akhir tahun
 - Kamu tinggal **copy data** dari bukti potong ke SPT
 - **Online via djponline.pajak.go.id**
@@ -184,15 +199,18 @@ Kalau saya lupa lapor SPT, ada denda?
 **Ya, ada denda!**
 
 **Denda SPT telat:**
+
 - **Rp 100.000** (untuk individu)
 - Berlaku **mulai 1 April** (sehari setelah deadline)
 
 **Contoh:**
+
 - Deadline: 31 Maret
 - Kamu lapor: 15 April (telat 15 hari)
 - **Denda:** Rp 100.000 (flat, bukan per hari)
 
 **Sanksi lain:**
+
 - NPWP bisa di-suspend
 - Nggak bisa urus perizinan (SIM, paspor di beberapa kantor imigrasi)
 - Rekening bank bisa direport ke DJP
@@ -208,11 +226,13 @@ Bonus akhir tahun kena pajak juga?
 Bonus = **penghasilan** → kena pajak.
 
 **Cara hitung:**
+
 - Bonus dijumlahkan dengan gaji tahunan
 - Hitung pajak total
 - Perusahaan potong pajak dari bonus
 
 **Contoh:**
+
 - Gaji 12 bulan: Rp 96 juta
 - Bonus: **Rp 20 juta**
 - **Total penghasilan:** Rp 116 juta
@@ -229,10 +249,12 @@ THR (Tunjangan Hari Raya) juga kena pajak?
 **Ya!** THR = penghasilan → kena PPh 21.
 
 **Tapi ada **tax relief** untuk THR:**
+
 - THR yang **setara 1 bulan gaji atau kurang** → PPh 21 dihitung **terpisah** (biasanya lebih kecil)
 - THR **lebih dari 1 bulan gaji** → dijumlahkan dengan penghasilan tahunan (seperti bonus)
 
 **Contoh:**
+
 - Gaji: Rp 8 juta/bulan
 - THR: Rp 8 juta (1 bulan gaji)
 - **Pajak THR:** ~Rp 350.000 - 400.000 (tergantung metode hitung)
@@ -246,12 +268,14 @@ Kalau saya baru kerja bulan Oktober, pajak dihitung gimana?
 **Pajak dihitung pro-rata** (sesuai bulan kerja).
 
 **Contoh:**
+
 - Mulai kerja: Oktober 2025
 - Kerja: **3 bulan** (Oktober, November, Desember)
 - Gaji/bulan: Rp 8 juta
 - Total penghasilan 2025: Rp 8 juta × 3 = **Rp 24 juta**
 
 **Hitung pajak:**
+
 - Penghasilan setahun (projected): Rp 8 juta × 12 = Rp 96 juta
 - Kurang PTKP: Rp 96 juta - Rp 54 juta = Rp 42 juta
 - Pajak: Rp 42 juta × 5% = Rp 2.1 juta/tahun
@@ -259,6 +283,7 @@ Kalau saya baru kerja bulan Oktober, pajak dihitung gimana?
 - **Per bulan:** Rp 525.000 ÷ 3 = **Rp 175.000**
 
 **Saat lapor SPT di Maret 2026:**
+
 - Total penghasilan 2025: **Rp 24 juta** (cuma 3 bulan)
 - Kurang PTKP: Rp 24 juta - Rp 54 juta = **negatif** → **tidak kena pajak!**
 - **Claim refund** Rp 525.000 yang sudah dipotong
@@ -268,10 +293,12 @@ Bisa dapat refund pajak? Gimana caranya?
 
 **Consultant:**
 **Bisa!** Kalau:
+
 - Pajak yang dipotong **lebih besar** dari pajak yang seharusnya dibayar
 - Contoh: baru kerja 3 bulan, tapi pajak dihitung seolah kerja 12 bulan
 
 **Cara claim refund:**
+
 1. **Lapor SPT** sebelum 31 Maret
 2. Sistem otomatis hitung → kalau **lebih bayar**, muncul **status "Lebih Bayar"**
 3. Isi **form permohonan pengembalian** (restitusi)
@@ -310,10 +337,12 @@ Saya kerja sambilan juga (freelance). Kena pajak terpisah?
 **Semua penghasilan dijumlahkan** di SPT tahunan.
 
 **Penghasilan freelance:**
+
 - Kalau **klien potong PPh 21/23**, kamu dapat bukti potong
 - Kalau **tidak dipotong**, kamu hitung sendiri
 
 **Contoh:**
+
 - Gaji kantor: Rp 96 juta/tahun
 - Freelance: Rp 30 juta/tahun
 - **Total:** Rp 126 juta/tahun
@@ -324,6 +353,7 @@ Saya kerja sambilan juga (freelance). Kena pajak terpisah?
   - **Total pajak:** Rp 4.8 juta
 
 **Kalau pajak kantor cuma Rp 2.1 juta:**
+
 - **Kurang bayar:** Rp 4.8 juta - Rp 2.1 juta = **Rp 2.7 juta**
 - **Bayar selisih** saat lapor SPT
 
@@ -336,15 +366,18 @@ BPJS dipotong juga kan? Itu termasuk pajak?
 **2 jenis BPJS:**
 
 **1. BPJS Kesehatan:**
+
 - Employer: 4%
 - Employee: **1%** (dipotong dari gaji)
 
 **2. BPJS Ketenagakerjaan:**
+
 - JHT (Jaminan Hari Tua): **2%** employee
 - JP (Jaminan Pensiun): **1%** employee
 - **Total dipotong:** ~**4%** dari gaji
 
 **Contoh:**
+
 - Gaji kotor: Rp 8 juta
 - Potongan BPJS: Rp 8 juta × 5% = **Rp 400.000**
 - **Gaji setelah BPJS:** Rp 7.600.000
@@ -362,10 +395,12 @@ Gaji saya naik tahun depan, pajak otomatis naik?
 PPh 21 **progresif** → makin besar gaji, makin besar pajak.
 
 **Contoh:**
+
 - Gaji sekarang: Rp 8 juta/bulan → pajak ~Rp 175K/bulan
 - Gaji naik: **Rp 12 juta/bulan** → pajak ~**Rp 700K/bulan**
 
 **Kenapa naik banyak?**
+
 - Penghasilan tahunan: Rp 12 juta × 12 = **Rp 144 juta**
 - Kurang PTKP: Rp 144 juta - Rp 54 juta = **Rp 90 juta** kena pajak
 - Pajak:
@@ -374,6 +409,7 @@ PPh 21 **progresif** → makin besar gaji, makin besar pajak.
   - **Total:** Rp 7.5 juta/tahun = **Rp 625K/bulan**
 
 **Tapi take home tetap naik:**
+
 - Gaji Rp 8 juta → take home ~Rp 7.4 juta
 - Gaji Rp 12 juta → take home ~**Rp 10.9 juta** (naik Rp 3.5 juta)
 
@@ -398,6 +434,7 @@ Saya mau tanya — apa ada cara legal untuk kurangi pajak?
    - Harus ada bukti pembayaran
 
 **Yang TIDAK boleh:**
+
 - ❌ Tidak lapor SPT
 - ❌ Underreport penghasilan
 - ❌ Pakai NPWP orang lain
@@ -409,18 +446,22 @@ Oke, jadi kesimpulannya saya harus apa?
 **Action items untuk kamu:**
 
 **Sebelum mulai kerja:**
+
 1. ✅ **Bikin NPWP** (online di ereg.pajak.go.id)
 2. ✅ **Kasih NPWP ke HR** perusahaan
 
 **Setiap bulan:**
+
 1. ✅ **Cek slip gaji** — pastikan PPh 21 dipotong sesuai
 2. ✅ **Simpan slip gaji** (for SPT filing)
 
 **Akhir tahun (Desember-Januari):**
+
 1. ✅ **Minta bukti potong** (form 1721-A1) dari HR
 2. ✅ Simpan untuk lapor SPT
 
 **Maret setiap tahun:**
+
 1. ✅ **Lapor SPT** via djponline.pajak.go.id (deadline **31 Maret**)
 2. ✅ Upload bukti potong
 3. ✅ Claim refund (kalau ada lebih bayar)
@@ -440,6 +481,7 @@ Hi! Congrats on your new job!
 **PPh 21** = Income Tax Article 21 = **tax withheld from employee salaries**.
 
 Every month, your company will:
+
 1. **Withhold PPh 21** from gross salary
 2. **Remit** to the government (DJP - Directorate General of Taxation)
 3. You **receive net salary** (after tax)
@@ -453,11 +495,13 @@ So my IDR 8 million salary is gross or net?
 Usually **gross** (before tax).
 
 **Example:**
+
 - Gross salary: **IDR 8,000,000**
 - PPh 21 deduction: **~IDR 175,000** (depends on status)
 - **Net salary (take home):** **IDR 7,825,000**
 
 After signing offer letter, ask HR:
+
 - "Is IDR 8 million **gross** or **net**?"
 - "What's my **take home pay** after tax?"
 
@@ -469,15 +513,16 @@ What percentage is PPh 21 tax?
 
 **Tax Brackets:**
 
-| Annual Income | PPh 21 Rate |
-|---------------|-------------|
-| 0 - 60 million | 5% |
-| 60 - 250 million | 15% |
-| 250 - 500 million | 25% |
-| 500 million - 5 billion | 30% |
-| > 5 billion | 35% |
+| Annual Income           | PPh 21 Rate |
+| ----------------------- | ----------- |
+| 0 - 60 million          | 5%          |
+| 60 - 250 million        | 15%         |
+| 250 - 500 million       | 25%         |
+| 500 million - 5 billion | 30%         |
+| > 5 billion             | 35%         |
 
 **Example:**
+
 - Salary IDR 8 million/month = **IDR 96 million/year**
 - Falls in first bracket (0-60 million) + part of second bracket (60-250 million)
 - **Effective tax rate:** ~5-10%
@@ -507,6 +552,7 @@ What's PTKP? Can it change?
 **PTKP** = Tax-Free Income Threshold.
 
 **PTKP 2025:**
+
 - **TK/0** (single, no dependents): **IDR 54,000,000/year**
 - **TK/1** (single, 1 dependent): IDR 54M + IDR 4.5M = **IDR 58,500,000**
 - **K/0** (married, no dependents): IDR 54M + IDR 4.5M = **IDR 58,500,000**
@@ -516,6 +562,7 @@ What's PTKP? Can it change?
 **Maximum 3 dependents** (spouse + 2 children).
 
 **If you get married/have children:**
+
 - PTKP increases → taxable income decreases → **pay less tax**
 
 **6 — Client:**
@@ -526,12 +573,13 @@ If I have NPWP (tax ID), is tax cheaper?
 
 **Difference:**
 
-| Status | PPh 21 Rate |
-|--------|-------------|
-| **Has NPWP** | Normal (5%, 15%, 25%, etc) |
-| **No NPWP** | **Normal + 20%** (becomes 6%, 18%, 30%, etc) |
+| Status       | PPh 21 Rate                                  |
+| ------------ | -------------------------------------------- |
+| **Has NPWP** | Normal (5%, 15%, 25%, etc)                   |
+| **No NPWP**  | **Normal + 20%** (becomes 6%, 18%, 30%, etc) |
 
 **Example:**
+
 - Normal tax (has NPWP): IDR 175,000/month
 - Tax without NPWP: IDR 175,000 × 1.2 = **IDR 210,000/month**
 
@@ -546,6 +594,7 @@ How do I get NPWP?
 **Super easy!** 2 ways:
 
 **Method 1: Online (Recommended):**
+
 1. Visit **ereg.pajak.go.id**
 2. Register account (use email + NIK)
 3. Upload ID card, selfie with ID
@@ -553,6 +602,7 @@ How do I get NPWP?
 5. **NPWP issued 1-3 days** (sent via email PDF)
 
 **Method 2: Offline:**
+
 1. Visit nearest **KPP** (Tax Office)
 2. Bring original ID + photocopy
 3. Fill form
@@ -567,14 +617,17 @@ If I don't have NPWP, can company deduct more tax?
 **Yes and they will!**
 
 **Mandatory** for companies to:
+
 - Withhold PPh 21 **20% higher** if employee has no NPWP
 - Still remit to government
 
 **You lose out:**
+
 - Take home pay smaller
 - Pay more tax
 
 **Plus:**
+
 - When filing annual tax return, **cannot claim refund** without NPWP
 
 **So: getting NPWP is mandatory!**
@@ -586,16 +639,19 @@ What's annual SPT? Do I file myself?
 **SPT** = Annual Tax Return.
 
 **Must file annually** (deadline **March 31**) if:
+
 - Income > PTKP (> IDR 54 million/year for single)
 - Or have NPWP
 
 **What to report:**
+
 - Total annual income
 - Tax already paid (withholding certificate from company)
 - Other income (if any)
 - Assets & liabilities
 
 **But relax:**
+
 - Company gives **PPh 21 withholding certificate** (form 1721-A1) at year-end
 - You just **copy data** from certificate to SPT
 - **Online via djponline.pajak.go.id**
@@ -607,15 +663,18 @@ If I forget to file SPT, is there a penalty?
 **Yes, there's a penalty!**
 
 **Late SPT fine:**
+
 - **IDR 100,000** (for individuals)
 - Applies **starting April 1** (day after deadline)
 
 **Example:**
+
 - Deadline: March 31
 - You file: April 15 (15 days late)
 - **Fine:** IDR 100,000 (flat, not per day)
 
 **Other sanctions:**
+
 - NPWP can be suspended
 - Cannot process permits (driver's license, passport at some immigration offices)
 - Bank account can be reported to DJP
@@ -631,11 +690,13 @@ Year-end bonus is taxed too?
 Bonus = **income** → taxed.
 
 **Calculation:**
+
 - Bonus added to annual salary
 - Calculate total tax
 - Company withholds tax from bonus
 
 **Example:**
+
 - 12-month salary: IDR 96 million
 - Bonus: **IDR 20 million**
 - **Total income:** IDR 116 million
@@ -652,10 +713,12 @@ THR (Holiday Allowance) is taxed too?
 **Yes!** THR = income → subject to PPh 21.
 
 **But there's **tax relief** for THR:**
+
 - THR **equal to 1 month salary or less** → PPh 21 calculated **separately** (usually smaller)
 - THR **more than 1 month salary** → added to annual income (like bonus)
 
 **Example:**
+
 - Salary: IDR 8 million/month
 - THR: IDR 8 million (1 month salary)
 - **THR tax:** ~IDR 350,000 - 400,000 (depends on method)
@@ -669,12 +732,14 @@ If I start work in October, how is tax calculated?
 **Tax calculated pro-rata** (according to working months).
 
 **Example:**
+
 - Start work: October 2025
 - Work: **3 months** (October, November, December)
 - Salary/month: IDR 8 million
 - Total 2025 income: IDR 8 million × 3 = **IDR 24 million**
 
 **Calculate tax:**
+
 - Annual income (projected): IDR 8 million × 12 = IDR 96 million
 - Minus PTKP: IDR 96 million - IDR 54 million = IDR 42 million
 - Tax: IDR 42 million × 5% = IDR 2.1 million/year
@@ -682,6 +747,7 @@ If I start work in October, how is tax calculated?
 - **Per month:** IDR 525,000 ÷ 3 = **IDR 175,000**
 
 **When filing SPT in March 2026:**
+
 - Total 2025 income: **IDR 24 million** (only 3 months)
 - Minus PTKP: IDR 24 million - IDR 54 million = **negative** → **no tax!**
 - **Claim refund** of IDR 525,000 already withheld
@@ -691,10 +757,12 @@ Can I get tax refund? How?
 
 **Consultant:**
 **Yes!** If:
+
 - Tax withheld **more than** tax actually owed
 - Example: worked only 3 months, but tax calculated as if worked 12 months
 
 **How to claim refund:**
+
 1. **File SPT** before March 31
 2. System auto-calculates → if **overpaid**, shows **status "Overpayment"**
 3. Fill **refund request form** (restitusi)
@@ -733,10 +801,12 @@ I also work part-time (freelance). Separate tax?
 **All income combined** in annual SPT.
 
 **Freelance income:**
+
 - If **client withholds PPh 21/23**, you get withholding certificate
 - If **not withheld**, you calculate yourself
 
 **Example:**
+
 - Office salary: IDR 96 million/year
 - Freelance: IDR 30 million/year
 - **Total:** IDR 126 million/year
@@ -747,6 +817,7 @@ I also work part-time (freelance). Separate tax?
   - **Total tax:** IDR 4.8 million
 
 **If office tax only IDR 2.1 million:**
+
 - **Underpayment:** IDR 4.8 million - IDR 2.1 million = **IDR 2.7 million**
 - **Pay difference** when filing SPT
 
@@ -759,15 +830,18 @@ BPJS is deducted too right? Is that tax?
 **2 types of BPJS:**
 
 **1. BPJS Kesehatan (Health):**
+
 - Employer: 4%
 - Employee: **1%** (deducted from salary)
 
 **2. BPJS Ketenagakerjaan (Employment):**
+
 - JHT (Old Age): **2%** employee
 - JP (Pension): **1%** employee
 - **Total deducted:** ~**4%** of salary
 
 **Example:**
+
 - Gross salary: IDR 8 million
 - BPJS deduction: IDR 8 million × 5% = **IDR 400,000**
 - **Salary after BPJS:** IDR 7,600,000
@@ -785,10 +859,12 @@ If my salary increases next year, tax automatically increases?
 PPh 21 **progressive** → higher salary, higher tax.
 
 **Example:**
+
 - Current salary: IDR 8 million/month → tax ~IDR 175K/month
 - Salary increase: **IDR 12 million/month** → tax ~**IDR 700K/month**
 
 **Why increase so much?**
+
 - Annual income: IDR 12 million × 12 = **IDR 144 million**
 - Minus PTKP: IDR 144 million - IDR 54 million = **IDR 90 million** taxable
 - Tax:
@@ -797,6 +873,7 @@ PPh 21 **progressive** → higher salary, higher tax.
   - **Total:** IDR 7.5 million/year = **IDR 625K/month**
 
 **But take home still increases:**
+
 - Salary IDR 8 million → take home ~IDR 7.4 million
 - Salary IDR 12 million → take home ~**IDR 10.9 million** (increase IDR 3.5 million)
 
@@ -821,6 +898,7 @@ Is there a legal way to reduce tax?
    - Must have payment proof
 
 **What's NOT allowed:**
+
 - ❌ Not filing SPT
 - ❌ Underreporting income
 - ❌ Using someone else's NPWP
@@ -832,18 +910,22 @@ Okay, so in summary what should I do?
 **Action items for you:**
 
 **Before starting work:**
+
 1. ✅ **Get NPWP** (online at ereg.pajak.go.id)
 2. ✅ **Give NPWP to HR** at company
 
 **Every month:**
+
 1. ✅ **Check payslip** — ensure PPh 21 deducted correctly
 2. ✅ **Save payslips** (for SPT filing)
 
 **Year-end (December-January):**
+
 1. ✅ **Request withholding certificate** (form 1721-A1) from HR
 2. ✅ Save for SPT filing
 
 **March every year:**
+
 1. ✅ **File SPT** via djponline.pajak.go.id (deadline **March 31**)
 2. ✅ Upload withholding certificate
 3. ✅ Claim refund (if overpaid)
@@ -863,6 +945,7 @@ Halo! Selamat kanggo kerjoan anyare!
 **PPh 21** = Pajak Penghasilan Pasal 21 = **pajak sing dipotong soko gaji karyawan**.
 
 Saben sasi, perusahaan sampeyan bakal:
+
 1. **Potong PPh 21** soko gaji kotor
 2. **Setor** neng pemerintah (DJP - Direktorat Jenderal Pajak)
 3. Sampeyan **nompo gaji bersih** (sakwise pajak)
@@ -876,11 +959,13 @@ Dadi gaji ku Rp 8 juta iku kotor utowo bersih?
 Biasane **kotor** (sakdurunge pajak).
 
 **Contone:**
+
 - Gaji kotor: **Rp 8.000.000**
 - Potongan PPh 21: **~Rp 175.000** (gumantung status)
 - **Gaji bersih (take home):** **Rp 7.825.000**
 
 Sakwise tanda tangan offer letter, takon HR:
+
 - "Opo Rp 8 juta **gross** utowo **net**?"
 - "Piro **take home pay** sakwise pajak?"
 
@@ -892,15 +977,16 @@ Piro persen pajak PPh 21?
 
 **Tax Brackets:**
 
-| Penghasilan/Taun | Tarif PPh 21 |
-|------------------|--------------|
-| 0 - 60 juta | 5% |
-| 60 - 250 juta | 15% |
-| 250 - 500 juta | 25% |
-| 500 juta - 5 miliar | 30% |
-| > 5 miliar | 35% |
+| Penghasilan/Taun    | Tarif PPh 21 |
+| ------------------- | ------------ |
+| 0 - 60 juta         | 5%           |
+| 60 - 250 juta       | 15%          |
+| 250 - 500 juta      | 25%          |
+| 500 juta - 5 miliar | 30%          |
+| > 5 miliar          | 35%          |
 
 **Contone:**
+
 - Gaji Rp 8 juta/sasi = **Rp 96 juta/taun**
 - Mlebu bracket pertama (0-60 juta) + sebagian bracket kedua (60-250 juta)
 - **Effective tax rate:** ~5-10%
@@ -930,6 +1016,7 @@ PTKP iku opo? Iso owah?
 **PTKP** = Penghasilan Tidak Kena Pajak (tax-free income).
 
 **PTKP 2025:**
+
 - **TK/0** (lajang, ora ono tanggungan): **Rp 54.000.000/taun**
 - **TK/1** (lajang, 1 tanggungan): Rp 54 juta + Rp 4.5 juta = **Rp 58.500.000**
 - **K/0** (nikah, ora ono tanggungan): Rp 54 juta + Rp 4.5 juta = **Rp 58.500.000**
@@ -939,6 +1026,7 @@ PTKP iku opo? Iso owah?
 **Tanggungan maksimal 3 wong** (bojo + 2 anak).
 
 **Nek nikah/duwe anak:**
+
 - PTKP mundhak → penghasilan kena pajak mudhun → **bayar pajak luwih cilik**
 
 **6 — Client:**
@@ -949,12 +1037,13 @@ Nek aku duwe NPWP, pajak luwih murah?
 
 **Bedane:**
 
-| Status | Tarif PPh 21 |
-|--------|--------------|
-| **Duwe NPWP** | Normal (5%, 15%, 25%, dst) |
+| Status            | Tarif PPh 21                              |
+| ----------------- | ----------------------------------------- |
+| **Duwe NPWP**     | Normal (5%, 15%, 25%, dst)                |
 | **Ora duwe NPWP** | **Normal + 20%** (dadi 6%, 18%, 30%, dst) |
 
 **Contone:**
+
 - Pajak normal (duwe NPWP): Rp 175.000/sasi
 - Pajak tanpo NPWP: Rp 175.000 × 1.2 = **Rp 210.000/sasi**
 
@@ -969,6 +1058,7 @@ Piye carane gawe NPWP?
 **Super gampang!** Ono 2 cara:
 
 **Cara 1: Online (Rekomendasi):**
+
 1. Buka **ereg.pajak.go.id**
 2. Daftar akun (nganggo email + NIK)
 3. Upload KTP, foto selfie karo KTP
@@ -976,6 +1066,7 @@ Piye carane gawe NPWP?
 5. **NPWP metu 1-3 dino** (dikirim email PDF)
 
 **Cara 2: Offline:**
+
 1. Teko neng **KPP** (Kantor Pelayanan Pajak) terdekat
 2. Gowo KTP asli + fotokopi
 3. Isi formulir
@@ -990,14 +1081,17 @@ Nek aku ora duwe NPWP, company iso potong pajak luwih gedhe?
 **Iso lan bakal!**
 
 **Wajib** bagi perusahaan kanggo:
+
 - Potong PPh 21 **20% luwih dhuwur** nek karyawan ora ono NPWP
 - Tetep setor neng negara
 
 **Sampeyan sing rugi:**
+
 - Take home pay luwih cilik
 - Pajak luwih larang
 
 **Plus:**
+
 - Naliko lapor SPT tahunan, **ora iso claim refund** nek ora ono NPWP
 
 **Dadi: gawe NPWP wajib!**
@@ -1009,16 +1103,19 @@ SPT tahunan iku opo? Aku kudu lapor dewe?
 **SPT** = Surat Pemberitahuan Tahunan = **tax return** (laporan pajak setaun).
 
 **Wajib lapor saben taun** (deadline **31 Maret**) nek:
+
 - Penghasilan > PTKP (> Rp 54 juta/taun kanggo lajang)
 - Utowo duwe NPWP
 
 **Sing dilaporke:**
+
 - Total penghasilan setaun
 - Pajak sing wis dibayar (bukti potong soko perusahaan)
 - Penghasilan liyo (nek ono)
 - Harta & utang
 
 **Tapi tenang:**
+
 - Perusahaan kasih **bukti potong PPh 21** (form 1721-A1) neng akhir taun
 - Sampeyan tinggal **copy data** soko bukti potong neng SPT
 - **Online via djponline.pajak.go.id**
@@ -1030,15 +1127,18 @@ Nek aku lali lapor SPT, ono denda?
 **Iyo, ono denda!**
 
 **Denda SPT telat:**
+
 - **Rp 100.000** (kanggo individu)
 - Berlaku **mulai 1 April** (sedino sakwise deadline)
 
 **Contone:**
+
 - Deadline: 31 Maret
 - Sampeyan lapor: 15 April (telat 15 dino)
 - **Denda:** Rp 100.000 (flat, dudu per dino)
 
 **Sanksi liyo:**
+
 - NPWP iso di-suspend
 - Ora iso urus perizinan (SIM, paspor neng sawetara kantor imigrasi)
 - Rekening bank iso direport neng DJP
@@ -1054,11 +1154,13 @@ Bonus akhir taun kena pajak yo?
 Bonus = **penghasilan** → kena pajak.
 
 **Cara etung:**
+
 - Bonus dijumlahke karo gaji tahunan
 - Etung pajak total
 - Perusahaan potong pajak soko bonus
 
 **Contone:**
+
 - Gaji 12 sasi: Rp 96 juta
 - Bonus: **Rp 20 juta**
 - **Total penghasilan:** Rp 116 juta
@@ -1075,10 +1177,12 @@ THR (Tunjangan Hari Raya) yo kena pajak?
 **Iyo!** THR = penghasilan → kena PPh 21.
 
 **Tapi ono **tax relief** kanggo THR:**
+
 - THR sing **setara 1 sasi gaji utowo kurang** → PPh 21 dihitung **pisah** (biasane luwih cilik)
 - THR **luwih soko 1 sasi gaji** → dijumlahke karo penghasilan tahunan (koyo bonus)
 
 **Contone:**
+
 - Gaji: Rp 8 juta/sasi
 - THR: Rp 8 juta (1 sasi gaji)
 - **Pajak THR:** ~Rp 350.000 - 400.000 (gumantung metode etung)
@@ -1092,12 +1196,14 @@ Nek aku nembe kerjo sasi Oktober, pajak dihitung piye?
 **Pajak dihitung pro-rata** (sesuai sasi kerjo).
 
 **Contone:**
+
 - Mulai kerjo: Oktober 2025
 - Kerjo: **3 sasi** (Oktober, November, Desember)
 - Gaji/sasi: Rp 8 juta
 - Total penghasilan 2025: Rp 8 juta × 3 = **Rp 24 juta**
 
 **Etung pajak:**
+
 - Penghasilan setaun (projected): Rp 8 juta × 12 = Rp 96 juta
 - Kurang PTKP: Rp 96 juta - Rp 54 juta = Rp 42 juta
 - Pajak: Rp 42 juta × 5% = Rp 2.1 juta/taun
@@ -1105,6 +1211,7 @@ Nek aku nembe kerjo sasi Oktober, pajak dihitung piye?
 - **Per sasi:** Rp 525.000 ÷ 3 = **Rp 175.000**
 
 **Naliko lapor SPT neng Maret 2026:**
+
 - Total penghasilan 2025: **Rp 24 juta** (mung 3 sasi)
 - Kurang PTKP: Rp 24 juta - Rp 54 juta = **negatif** → **ora kena pajak!**
 - **Claim refund** Rp 525.000 sing wis dipotong
@@ -1114,10 +1221,12 @@ Iso entuk refund pajak? Piye carane?
 
 **Consultant:**
 **Iso!** Nek:
+
 - Pajak sing dipotong **luwih gedhe** soko pajak sing kuduné dibayar
 - Contone: nembe kerjo 3 sasi, tapi pajak dihitung koyo kerjo 12 sasi
 
 **Cara claim refund:**
+
 1. **Lapor SPT** sakdurunge 31 Maret
 2. Sistem otomatis etung → nek **luwih bayar**, muncul **status "Lebih Bayar"**
 3. Isi **form permohonan pengembalian** (restitusi)
@@ -1156,10 +1265,12 @@ Aku kerjo sambilan yo (freelance). Kena pajak pisah?
 **Kabeh penghasilan dijumlahke** neng SPT tahunan.
 
 **Penghasilan freelance:**
+
 - Nek **klien potong PPh 21/23**, sampeyan entuk bukti potong
 - Nek **ora dipotong**, sampeyan etung dewe
 
 **Contone:**
+
 - Gaji kantor: Rp 96 juta/taun
 - Freelance: Rp 30 juta/taun
 - **Total:** Rp 126 juta/taun
@@ -1170,6 +1281,7 @@ Aku kerjo sambilan yo (freelance). Kena pajak pisah?
   - **Total pajak:** Rp 4.8 juta
 
 **Nek pajak kantor mung Rp 2.1 juta:**
+
 - **Kurang bayar:** Rp 4.8 juta - Rp 2.1 juta = **Rp 2.7 juta**
 - **Bayar selisih** naliko lapor SPT
 
@@ -1182,15 +1294,18 @@ BPJS dipotong yo kan? Iku termasuk pajak?
 **2 jenis BPJS:**
 
 **1. BPJS Kesehatan:**
+
 - Employer: 4%
 - Employee: **1%** (dipotong soko gaji)
 
 **2. BPJS Ketenagakerjaan:**
+
 - JHT (Jaminan Hari Tua): **2%** employee
 - JP (Jaminan Pensiun): **1%** employee
 - **Total dipotong:** ~**4%** soko gaji
 
 **Contone:**
+
 - Gaji kotor: Rp 8 juta
 - Potongan BPJS: Rp 8 juta × 5% = **Rp 400.000**
 - **Gaji sakwise BPJS:** Rp 7.600.000
@@ -1208,10 +1323,12 @@ Gaji ku mundhak taun ngarep, pajak otomatis mundhak?
 PPh 21 **progresif** → luwih gedhe gaji, luwih gedhe pajak.
 
 **Contone:**
+
 - Gaji saiki: Rp 8 juta/sasi → pajak ~Rp 175K/sasi
 - Gaji mundhak: **Rp 12 juta/sasi** → pajak ~**Rp 700K/sasi**
 
 **Kenopo mundhak kathah?**
+
 - Penghasilan tahunan: Rp 12 juta × 12 = **Rp 144 juta**
 - Kurang PTKP: Rp 144 juta - Rp 54 juta = **Rp 90 juta** kena pajak
 - Pajak:
@@ -1220,6 +1337,7 @@ PPh 21 **progresif** → luwih gedhe gaji, luwih gedhe pajak.
   - **Total:** Rp 7.5 juta/taun = **Rp 625K/sasi**
 
 **Tapi take home tetep mundhak:**
+
 - Gaji Rp 8 juta → take home ~Rp 7.4 juta
 - Gaji Rp 12 juta → take home ~**Rp 10.9 juta** (mundhak Rp 3.5 juta)
 
@@ -1244,6 +1362,7 @@ Aku arep takon — opo ono cara legal kanggo ngurangi pajak?
    - Kudu ono bukti pembayaran
 
 **Sing ORA oleh:**
+
 - ❌ Ora lapor SPT
 - ❌ Underreport penghasilan
 - ❌ Nganggo NPWP wong liyo
@@ -1255,18 +1374,22 @@ Oke, dadi kesimpulane aku kudu opo?
 **Action items kanggo sampeyan:**
 
 **Sakdurunge mulai kerjo:**
+
 1. ✅ **Gawe NPWP** (online neng ereg.pajak.go.id)
 2. ✅ **Kasih NPWP neng HR** perusahaan
 
 **Saben sasi:**
+
 1. ✅ **Cek slip gaji** — pastike PPh 21 dipotong sesuai
 2. ✅ **Simpen slip gaji** (kanggo SPT filing)
 
 **Akhir taun (Desember-Januari):**
+
 1. ✅ **Njaluk bukti potong** (form 1721-A1) soko HR
 2. ✅ Simpen kanggo lapor SPT
 
 **Maret saben taun:**
+
 1. ✅ **Lapor SPT** via djponline.pajak.go.id (deadline **31 Maret**)
 2. ✅ Upload bukti potong
 3. ✅ Claim refund (nek ono luwih bayar)
@@ -1277,28 +1400,28 @@ Oke, dadi kesimpulane aku kudu opo?
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **PPh 21** | Employee income tax (withholding) |
-| **Tax System** | Progressive (5%-35%) |
-| **Tax Bracket 1** | 0-60 million: 5% |
-| **Tax Bracket 2** | 60-250 million: 15% |
-| **Tax Bracket 3** | 250-500 million: 25% |
-| **Tax Bracket 4** | 500M-5B: 30% |
-| **Tax Bracket 5** | > 5 billion: 35% |
-| **PTKP Single** | IDR 54 million/year |
-| **PTKP Married** | +IDR 4.5 million |
-| **PTKP per Child** | +IDR 4.5 million (max 3) |
-| **No NPWP Penalty** | +20% tax rate |
-| **SPT Deadline** | March 31 annually |
-| **Late SPT Fine** | IDR 100,000 (flat) |
-| **Bonus Taxation** | Added to annual income, taxed progressively |
-| **THR Taxation** | Special calculation if ≤ 1 month salary |
-| **BPJS Kesehatan** | 1% employee (health insurance, not tax) |
+| Topic                    | Details                                       |
+| ------------------------ | --------------------------------------------- |
+| **PPh 21**               | Employee income tax (withholding)             |
+| **Tax System**           | Progressive (5%-35%)                          |
+| **Tax Bracket 1**        | 0-60 million: 5%                              |
+| **Tax Bracket 2**        | 60-250 million: 15%                           |
+| **Tax Bracket 3**        | 250-500 million: 25%                          |
+| **Tax Bracket 4**        | 500M-5B: 30%                                  |
+| **Tax Bracket 5**        | > 5 billion: 35%                              |
+| **PTKP Single**          | IDR 54 million/year                           |
+| **PTKP Married**         | +IDR 4.5 million                              |
+| **PTKP per Child**       | +IDR 4.5 million (max 3)                      |
+| **No NPWP Penalty**      | +20% tax rate                                 |
+| **SPT Deadline**         | March 31 annually                             |
+| **Late SPT Fine**        | IDR 100,000 (flat)                            |
+| **Bonus Taxation**       | Added to annual income, taxed progressively   |
+| **THR Taxation**         | Special calculation if ≤ 1 month salary       |
+| **BPJS Kesehatan**       | 1% employee (health insurance, not tax)       |
 | **BPJS Ketenagakerjaan** | 3-4% employee (employment insurance, not tax) |
-| **Tax Refund** | Available if overpaid, process 3-6 months |
-| **Job Cost Deduction** | 5% of gross income (max IDR 6M/year) |
+| **Tax Refund**           | Available if overpaid, process 3-6 months     |
+| **Job Cost Deduction**   | 5% of gross income (max IDR 6M/year)          |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data*
+_Generated by Nuzantara KB + Claude for Bali Zero training data_

@@ -26,8 +26,9 @@ class TestPluginExecutorIntegration:
     @pytest_asyncio.fixture
     async def mock_plugin(self):
         """Create mock plugin"""
-        from backend.core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
         from pydantic import BaseModel
+
+        from backend.core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
 
         class TestInput(BaseModel):
             test_field: str

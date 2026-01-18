@@ -21,12 +21,12 @@ Note: main_cloud.py still exports initialize_services() for backward compatibili
 import logging
 
 import asyncpg
-from backend.core.cache import CacheService, get_cache_service
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from backend.llm.zantara_ai_client import ZantaraAIClient
 
+from backend.core.cache import CacheService, get_cache_service
+from backend.llm.zantara_ai_client import ZantaraAIClient
 from backend.services.memory import MemoryServicePostgres
 from backend.services.routing.intelligent_router import IntelligentRouter
 from backend.services.search.search_service import SearchService
@@ -339,9 +339,7 @@ def get_orchestrator(request: Request):
 
         db_pool = getattr(request.app.state, "db_pool", None)
         search_service = getattr(request.app.state, "search_service", None)
-        _agentic_rag_orchestrator = create_agentic_rag(
-            retriever=search_service, db_pool=db_pool
-        )
+        _agentic_rag_orchestrator = create_agentic_rag(retriever=search_service, db_pool=db_pool)
 
     return _agentic_rag_orchestrator
 

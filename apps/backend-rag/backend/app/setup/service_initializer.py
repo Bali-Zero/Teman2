@@ -18,11 +18,11 @@ import random
 
 import asyncpg
 from fastapi import FastAPI
-from backend.llm.zantara_ai_client import ZantaraAIClient
 
 from backend.app.core.config import settings
 from backend.app.core.service_health import ServiceStatus, service_registry
 from backend.app.routers.websocket import redis_listener
+from backend.llm.zantara_ai_client import ZantaraAIClient
 from backend.services.crm.auto_crm_service import get_auto_crm_service
 from backend.services.crm.collaborator_service import CollaboratorService
 from backend.services.memory import MemoryServicePostgres

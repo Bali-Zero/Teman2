@@ -6,6 +6,7 @@
 ## Overview
 
 The BaliZero Intel Pipeline is a complete news processing system that:
+
 1. Fetches articles from RSS feeds
 2. Scores and validates relevance
 3. Enriches content with AI
@@ -80,14 +81,14 @@ The BaliZero Intel Pipeline is a complete news processing system that:
 
 ## Cost Breakdown
 
-| Step | Cost | Provider |
-|------|------|----------|
-| LLAMA scoring | $0 | Local Ollama |
-| Claude validation | ~$0.01/article | Anthropic |
-| Claude Max enrichment | ~$0.05/article | Anthropic |
-| Gemini image | $0 | Google One AI Premium |
-| SEO/AEO optimization | $0 | Local processing |
-| Telegram notification | $0 | Telegram Bot API |
+| Step                  | Cost           | Provider              |
+| --------------------- | -------------- | --------------------- |
+| LLAMA scoring         | $0             | Local Ollama          |
+| Claude validation     | ~$0.01/article | Anthropic             |
+| Claude Max enrichment | ~$0.05/article | Anthropic             |
+| Gemini image          | $0             | Google One AI Premium |
+| SEO/AEO optimization  | $0             | Local processing      |
+| Telegram notification | $0             | Telegram Bot API      |
 
 **Total cost per article: ~$0.06**
 
@@ -101,14 +102,14 @@ Optimizes articles for both traditional search engines (Google, Bing) and AI sea
 
 #### Features
 
-| Feature | For Google | For AI Search |
-|---------|-----------|---------------|
-| Schema.org JSON-LD | Rich snippets | Entity understanding |
-| Meta tags (OG, Twitter) | Social shares | Context signals |
-| TL;DR summary | - | Direct citation |
-| FAQ generation | Featured snippets | Q&A format for LLMs |
-| Entity extraction | Topic signals | Knowledge graph linking |
-| Canonical URL | Dedup | Source attribution |
+| Feature                 | For Google        | For AI Search           |
+| ----------------------- | ----------------- | ----------------------- |
+| Schema.org JSON-LD      | Rich snippets     | Entity understanding    |
+| Meta tags (OG, Twitter) | Social shares     | Context signals         |
+| TL;DR summary           | -                 | Direct citation         |
+| FAQ generation          | Featured snippets | Q&A format for LLMs     |
+| Entity extraction       | Topic signals     | Knowledge graph linking |
+| Canonical URL           | Dedup             | Source attribution      |
 
 #### Usage
 
@@ -202,16 +203,17 @@ Article ID: 65708874ed4d
 
 #### Approval Actions
 
-| Button | Action |
-|--------|--------|
-| ✅ Approve | Marks article as approved, queues for publishing |
-| ❌ Reject | Marks article as rejected, discards |
-| ✏️ Request Changes | Prompts user to reply with feedback |
-| 📄 View Full Article | Opens HTML preview in browser |
+| Button               | Action                                           |
+| -------------------- | ------------------------------------------------ |
+| ✅ Approve           | Marks article as approved, queues for publishing |
+| ❌ Reject            | Marks article as rejected, discards              |
+| ✏️ Request Changes   | Prompts user to reply with feedback              |
+| 📄 View Full Article | Opens HTML preview in browser                    |
 
 #### HTML Preview
 
 The HTML preview looks like the final published article:
+
 - Light background (white/gray)
 - BaliZero header with logo
 - Category badge
@@ -307,7 +309,7 @@ BALIZERO_API_URL=https://balizero.com/api
 BALIZERO_API_KEY=your_api_key
 
 # Preview URL Base
-# Note: Preview URLs can be served by backend (nuzantara-rag.fly.dev/preview) 
+# Note: Preview URLs can be served by backend (nuzantara-rag.fly.dev/preview)
 # or frontend (nuzantara-mouth.vercel.app/preview)
 PREVIEW_BASE_URL=https://nuzantara-rag.fly.dev/preview
 ```
@@ -377,12 +379,12 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_CHAT_ID" -a nuzant
 
 ## Current Configuration
 
-| Setting | Value |
-|---------|-------|
-| Telegram Bot | @zantara_bot |
-| Approvers | Zero (8290313965), Dea (6217157548), Damar (1813875994) |
-| Bot Token Secret | TELEGRAM_BOT_TOKEN |
-| Chat ID Secret | TELEGRAM_APPROVAL_CHAT_ID |
+| Setting          | Value                                                   |
+| ---------------- | ------------------------------------------------------- |
+| Telegram Bot     | @zantara_bot                                            |
+| Approvers        | Zero (8290313965), Dea (6217157548), Damar (1813875994) |
+| Bot Token Secret | TELEGRAM_BOT_TOKEN                                      |
+| Chat ID Secret   | TELEGRAM_APPROVAL_CHAT_ID                               |
 
 ---
 

@@ -13,7 +13,10 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.services.monitoring.unified_health_service import HealthCheckResult, UnifiedHealthService
+from backend.services.monitoring.unified_health_service import (
+    HealthCheckResult,
+    UnifiedHealthService,
+)
 
 
 @pytest.fixture
@@ -35,7 +38,9 @@ class TestUnifiedHealthService:
     async def test_initialize(self, unified_health_service):
         """Test initializing HTTP and Redis clients"""
         with patch("httpx.AsyncClient") as mock_client:
-            with patch("backend.services.monitoring.unified_health_service.settings") as mock_settings:
+            with patch(
+                "backend.services.monitoring.unified_health_service.settings"
+            ) as mock_settings:
                 mock_settings.redis_url = None
                 await unified_health_service.initialize()
                 assert unified_health_service.http_client is not None

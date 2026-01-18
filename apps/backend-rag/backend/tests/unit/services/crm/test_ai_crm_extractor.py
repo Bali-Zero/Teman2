@@ -84,7 +84,8 @@ class TestAICRMExtractor:
         """Test initialization error handling"""
         with (
             patch(
-                "backend.services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")
+                "backend.services.crm.ai_crm_extractor.ZantaraAIClient",
+                side_effect=Exception("Init error"),
             ),
             pytest.raises(Exception),
         ):
@@ -382,7 +383,8 @@ class TestGetExtractor:
 
         with (
             patch(
-                "backend.services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
+                "backend.services.crm.ai_crm_extractor.AICRMExtractor",
+                side_effect=Exception("Init error"),
             ),
             pytest.raises(Exception),
         ):

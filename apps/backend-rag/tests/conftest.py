@@ -34,14 +34,14 @@ MISSING_TEST_FILES = {
 def pytest_collection_modifyitems(config, items):
     """
     Skip tests from files that no longer exist.
-    
+
     Updated 2026-01-16: Automatically skip tests from missing files.
     This prevents pytest from trying to run tests from files that have been removed.
     """
     for item in items:
         # Get the file path of the test
         test_file = Path(item.fspath)
-        
+
         # Check if file exists
         if not test_file.exists():
             # Skip test with reason
@@ -50,7 +50,7 @@ def pytest_collection_modifyitems(config, items):
             )
             item.add_marker(skip_marker)
             continue
-        
+
         # Check if file is in missing files list (relative path)
         try:
             rel_path = str(test_file.relative_to(Path.cwd()))
@@ -62,6 +62,7 @@ def pytest_collection_modifyitems(config, items):
         except ValueError:
             # Path is not relative to cwd, skip check
             pass
+
 
 # Set required environment variables BEFORE any imports that use settings
 # These are required by app.core.config.Settings
@@ -190,6 +191,7 @@ def create_mock_settings(**kwargs):
             def __init__(self, **kwargs):
                 for k, v in kwargs.items():
                     setattr(self, k, v)
+
             def model_dump(self):
                 return self.__dict__
 
@@ -209,12 +211,16 @@ def create_mock_settings(**kwargs):
         "google_api_key": kwargs.get("google_api_key", "test_google_api_key_for_testing"),
         "api_keys": kwargs.get("api_keys", "test_api_key_1,test_api_key_2"),
         "whatsapp_verify_token": kwargs.get("whatsapp_verify_token", "test_whatsapp_verify_token"),
-        "instagram_verify_token": kwargs.get("instagram_verify_token", "test_instagram_verify_token"),
+        "instagram_verify_token": kwargs.get(
+            "instagram_verify_token", "test_instagram_verify_token"
+        ),
     }
     defaults.update(kwargs)
     # Re-apply jwt_secret_key fix if it was overridden
     if "jwt_secret_key" in kwargs and len(kwargs["jwt_secret_key"]) < 32:
-        defaults["jwt_secret_key"] = kwargs["jwt_secret_key"] + "_" * (32 - len(kwargs["jwt_secret_key"]))
+        defaults["jwt_secret_key"] = kwargs["jwt_secret_key"] + "_" * (
+            32 - len(kwargs["jwt_secret_key"])
+        )
 
     # Create Settings instance with test values
     return Settings(**defaults)

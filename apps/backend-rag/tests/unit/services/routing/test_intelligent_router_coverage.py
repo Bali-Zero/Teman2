@@ -10,8 +10,8 @@ import pytest
 class DummySuggestion:
     def __init__(self, suggestion_id="id1"):
         self.suggestion_id = suggestion_id
-        self.suggestion_type = SimpleNamespace(value="type", redis_url='redis://localhost:6379')
-        self.priority = SimpleNamespace(value="high", redis_url='redis://localhost:6379')
+        self.suggestion_type = SimpleNamespace(value="type", redis_url="redis://localhost:6379")
+        self.priority = SimpleNamespace(value="high", redis_url="redis://localhost:6379")
         self.title = "Title"
         self.description = "Desc"
         self.action_label = "Act"
@@ -107,7 +107,9 @@ module_path = (
     / "routing"
     / "intelligent_router.py"
 )
-spec = importlib.util.spec_from_file_location("backend.services.routing.intelligent_router", module_path)
+spec = importlib.util.spec_from_file_location(
+    "backend.services.routing.intelligent_router", module_path
+)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
@@ -147,7 +149,9 @@ async def test_route_chat_with_dict_and_suggestions():
 
 @pytest.mark.asyncio
 async def test_route_chat_core_result_no_suggestions():
-    result = SimpleNamespace(answer="ok", sources=[], routing_stats=None, redis_url='redis://localhost:6379')
+    result = SimpleNamespace(
+        answer="ok", sources=[], routing_stats=None, redis_url="redis://localhost:6379"
+    )
     orchestrator = DummyOrchestrator(result=result)
     suggestion_service = DummyContextSuggestionService()
 

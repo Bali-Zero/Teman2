@@ -11,6 +11,7 @@
 - ✅ Passa `conversation_history` a `AgenticRAGOrchestrator.stream_query()`
 
 **Codice rilevante**:
+
 ```python
 # Line 219-227
 conversation_history: list[dict] = []
@@ -33,13 +34,14 @@ if request.user_id and (request.conversation_id or request.session_id):
 - ✅ Aggiunge entità estratte a `user_memory_facts`
 
 **Codice rilevante** (line 1275-1293):
+
 ```python
 # Extract entities from conversation history and add to user context
 if history_to_use:
     try:
         from app.routers.oracle_universal import extract_entities_from_history
         extracted_entities = extract_entities_from_history(history_to_use)
-        
+
         # Add extracted entities to user_memory_facts for context
         entity_facts = []
         if extracted_entities.get("name"):
@@ -63,21 +65,25 @@ if history_to_use:
 
 **Situazione**: Il frontend passa solo `session_id`, non `conversation_id`
 
-**Impatto**: 
+**Impatto**:
+
 - Se `conversation_id` è `None`, il backend cerca per `session_id`
 - Funziona, ma potrebbe essere meno efficiente
 
-**Fix Necessario**: 
+**Fix Necessario**:
+
 - Opzione A: Frontend passa anche `conversation_id` quando disponibile
 - Opzione B: Backend usa solo `session_id` (già implementato)
 
 ### Problema 2: `user_id` vs `user_email` Mismatch
 
-**Situazione**: 
+**Situazione**:
+
 - Frontend passa `user_id` (che può essere email o ID)
 - Backend cerca conversazioni per `user_email` (email dal JWT)
 
 **Codice rilevante** (`get_conversation_history_for_agentic`, line 88-100):
+
 ```python
 user_email = user_id  # Assume user_id is email (common case)
 
@@ -86,26 +92,31 @@ if user_id.isdigit() or (not "@" in user_id):
     # Try to find email...
 ```
 
-**Impatto**: 
+**Impatto**:
+
 - Se `user_id` non è email, potrebbe non trovare conversazioni
 - Il codice cerca di risolvere questo, ma potrebbe fallire
 
-**Fix Necessario**: 
+**Fix Necessario**:
+
 - Verificare che `user_id` passato dal frontend sia sempre email
 - Oppure migliorare la logica di conversione `user_id` → `user_email`
 
 ### Problema 3: Entity Extraction Potrebbe Non Funzionare
 
-**Situazione**: 
+**Situazione**:
+
 - Entity extraction è implementata
 - Ma potrebbe non estrarre correttamente "Marco" e "Milano" da "Mi chiamo Marco e sono di Milano"
 
-**Test da Eseguire**: 
+**Test da Eseguire**:
+
 - `test_debug_entity_extraction` per verificare pattern regex
 
 ## 📋 Checklist Verifica
 
 ### ✅ Già Implementato
+
 - [x] Endpoint supporta `conversation_id` e `session_id`
 - [x] Conversation history viene recuperata
 - [x] Entity extraction è integrata
@@ -113,6 +124,7 @@ if user_id.isdigit() or (not "@" in user_id):
 - [x] Context window manager gestisce history
 
 ### ⚠️ Da Verificare
+
 - [ ] Frontend passa `session_id` correttamente
 - [ ] `user_id` è sempre email (non ID numerico)
 - [ ] Entity extraction estrae "Marco" e "Milano" correttamente
@@ -122,11 +134,13 @@ if user_id.isdigit() or (not "@" in user_id):
 ## 🧪 Test da Eseguire
 
 1. **Test Entity Extraction**:
+
    ```bash
    pytest tests/integration/test_conversation_memory_debug.py::TestConversationMemoryDebug::test_debug_entity_extraction -v -s
    ```
 
 2. **Test Conversation History Retrieval**:
+
    ```bash
    pytest tests/integration/test_conversation_memory_debug.py::TestConversationMemoryDebug::test_debug_conversation_history_retrieval -v -s
    ```

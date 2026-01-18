@@ -451,7 +451,9 @@ class TestWebSocketEndpoint:
 
         with (
             patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.get_current_user_ws", AsyncMock(return_value=None)),
+            patch(
+                "backend.app.routers.websocket.get_current_user_ws", AsyncMock(return_value=None)
+            ),
             patch("backend.app.routers.websocket.logger"),
         ):
             from backend.app.routers.websocket import websocket_endpoint

@@ -922,7 +922,9 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist = MagicMock()
         mock_hist.labels.return_value = label
 
-        with patch("backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
+        with patch(
+            "backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist
+        ):
             decorated = track_client_creation(client_type="individual", lead_source="web")(
                 create_client
             )
@@ -944,7 +946,9 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist = MagicMock()
         mock_hist.labels.return_value = label
 
-        with patch("backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
+        with patch(
+            "backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist
+        ):
             decorated = track_client_creation(client_type="existing", lead_source="referral")(
                 fail_client
             )

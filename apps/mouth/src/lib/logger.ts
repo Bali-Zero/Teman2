@@ -167,11 +167,7 @@ class Logger {
   }
 
   // Convenience methods for Intelligence Center specific logging
-  apiCall(
-    endpoint: string,
-    method: string = 'GET',
-    context: LogContext = {}
-  ): void {
+  apiCall(endpoint: string, method: string = 'GET', context: LogContext = {}): void {
     this.info(`API Call: ${method} ${endpoint}`, {
       ...context,
       action: 'api_call',
@@ -179,11 +175,7 @@ class Logger {
     });
   }
 
-  apiSuccess(
-    endpoint: string,
-    responseTime: number,
-    context: LogContext = {}
-  ): void {
+  apiSuccess(endpoint: string, responseTime: number, context: LogContext = {}): void {
     this.info(`API Success: ${endpoint}`, {
       ...context,
       action: 'api_success',
@@ -191,16 +183,16 @@ class Logger {
     });
   }
 
-  apiError(
-    endpoint: string,
-    error: Error,
-    context: LogContext = {}
-  ): void {
-    this.error(`API Error: ${endpoint}`, {
-      ...context,
-      action: 'api_error',
-      metadata: { endpoint },
-    }, error);
+  apiError(endpoint: string, error: Error, context: LogContext = {}): void {
+    this.error(
+      `API Error: ${endpoint}`,
+      {
+        ...context,
+        action: 'api_error',
+        metadata: { endpoint },
+      },
+      error
+    );
   }
 
   userAction(

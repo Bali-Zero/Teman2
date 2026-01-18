@@ -270,11 +270,14 @@ export default function IntelPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button variant="ghost" size="icon" asChild>
-                        <a href={signal.source_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </Button>
+                      <a
+                        href={signal.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center h-9 w-9 rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
                       {!signal.processed && (
                         <>
                           <Button variant="outline" size="sm" className="gap-1">

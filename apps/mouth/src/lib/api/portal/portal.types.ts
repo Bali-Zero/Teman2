@@ -220,7 +220,7 @@ export interface CompleteRegistrationRequest {
 export interface RegistrationResponse {
   success: boolean;
   message: string;
-  userId?: string;  // UUID string from team_members
+  userId?: string; // UUID string from team_members
   redirectTo?: string;
 }
 

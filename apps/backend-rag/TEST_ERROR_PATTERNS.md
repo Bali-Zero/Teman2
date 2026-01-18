@@ -15,16 +15,20 @@
 **Esempi Trovati:**
 
 1. **CRM Clients Router Tests**
+
    ```python
    from backend.app.routers.crm_clients import ClientCreate
    ```
+
    - File esiste: ✅ `backend/app/routers/crm_clients.py`
    - Problema probabile: Setup del path o PYTHONPATH non configurato correttamente
 
 2. **Identity Service Tests**
+
    ```python
    from backend.app.modules.identity.service import IdentityService
    ```
+
    - File esiste: ✅ `backend/app/modules/identity/service.py`
    - Problema probabile: Mock di `settings` non funzionante
 
@@ -32,10 +36,12 @@
    ```python
    from backend.services.rag.agentic.llm_gateway import LLMGateway
    ```
+
    - File esiste: ✅ `backend/services/rag/agentic/llm_gateway.py`
    - Problema probabile: Mock di `get_genai_client` o `GENAI_AVAILABLE` obsoleto
 
 **Fix Raccomandato:**
+
 - Verificare che PYTHONPATH sia configurato correttamente nei test
 - Verificare che i conftest.py impostino correttamente il path
 - Aggiornare import se i moduli sono stati spostati
@@ -49,16 +55,20 @@
 **Esempi Trovati:**
 
 1. **LLM Gateway Mock**
+
    ```python
    mock_client._client.aio.models.generate_content = AsyncMock(...)
    ```
+
    - Problema probabile: La struttura di GenAI client è cambiata
    - Mock potrebbe non corrispondere alla nuova API
 
 2. **Database Pool Mock**
+
    ```python
    mock_pool.acquire.return_value = async_context
    ```
+
    - Problema probabile: API di asyncpg cambiata o mock non completo
    - Potrebbe mancare configurazione per nuovi metodi
 
@@ -66,10 +76,12 @@
    ```python
    monkeypatch.setattr("backend.app.modules.identity.service.settings", mock_settings)
    ```
+
    - Problema probabile: Struttura di `settings` cambiata
    - Nuovi campi richiesti non mockati
 
 **Fix Raccomandato:**
+
 - Analizzare la struttura attuale delle API
 - Aggiornare mock per corrispondere alla nuova struttura
 - Verificare che tutti i metodi necessari siano mockati
@@ -98,6 +110,7 @@
    - Potrebbero essere cambiati i metodi di autenticazione
 
 **Fix Raccomandato:**
+
 - Verificare la signature attuale delle API
 - Aggiornare i test per corrispondere alle nuove API
 - Verificare che i modelli Pydantic siano ancora validi
@@ -111,9 +124,11 @@
 **Esempi Trovati:**
 
 1. **Pytest/Pygments Issue**
+
    ```
    ModuleNotFoundError: No module named 'pygments.formatter'
    ```
+
    - Problema attuale: pytest non può essere eseguito
    - Fix necessario: Reinstallare pytest e pygments
 
@@ -122,6 +137,7 @@
    - Potrebbero essere cambiate le versioni delle dipendenze
 
 **Fix Raccomandato:**
+
 - Verificare `requirements.txt` o `requirements-dev.txt`
 - Reinstallare dipendenze di test
 - Verificare compatibilità delle versioni
@@ -143,6 +159,7 @@
    - Potrebbero mancare setup per nuovi requisiti
 
 **Fix Raccomandato:**
+
 - Rivedere la logica dei test
 - Verificare che le assertion siano ancora valide
 - Completare il setup delle fixture
@@ -154,6 +171,7 @@
 ### 1. CRM Clients Router (54 test falliti)
 
 **Pattern Probabili:**
+
 - 🔴 **API Changes** (40%): Modelli Pydantic o endpoint cambiati
 - 🟡 **Mock Obsoleti** (30%): Database pool mock non completo
 - 🟢 **Test Logic** (20%): Assertion o setup errati
@@ -167,6 +185,7 @@
 ### 2. Team Activity Router (41 test falliti)
 
 **Pattern Probabili:**
+
 - 🔴 **API Changes** (35%): Endpoint o parametri cambiati
 - 🟡 **Mock Obsoleti** (30%): Admin verification mock obsoleto
 - 🟡 **Import Issues** (25%): Path o dipendenze mancanti
@@ -180,6 +199,7 @@
 ### 3. LLM Gateway (38 test falliti)
 
 **Pattern Probabili:**
+
 - 🔴 **Mock Obsoleti** (50%): GenAI client mock non corrisponde alla nuova API
 - 🟡 **API Changes** (30%): Signature di metodi cambiate
 - 🟡 **Import Issues** (15%): Path non configurato
@@ -193,6 +213,7 @@
 ### 4. CRM Practices Router (27 test falliti)
 
 **Pattern Probabili:**
+
 - 🔴 **API Changes** (40%): Modelli o endpoint cambiati
 - 🟡 **Mock Obsoleti** (35%): Database mock non completo
 - 🟡 **Import Issues** (20%): Path non configurato
@@ -206,6 +227,7 @@
 ### 5. Cultural RAG Service (23 test falliti)
 
 **Pattern Probabili:**
+
 - 🟡 **API Changes** (40%): Metodi del servizio cambiati
 - 🟡 **Mock Obsoleti** (35%): Mock di servizi dipendenti obsoleti
 - 🟡 **Import Issues** (20%): Path non configurato
@@ -219,6 +241,7 @@
 ## 🎯 PIANO DI FIX RACCOMANDATO
 
 ### Fase 1: Fix Ambiente (1-2 ore)
+
 1. ✅ Fix pytest/pygments issue
    ```bash
    pip install --upgrade pytest pygments
@@ -227,6 +250,7 @@
 3. ✅ Configurare PYTHONPATH correttamente
 
 ### Fase 2: Quick Wins - Import Path (4-6 ore)
+
 1. ✅ Fix import path issues nei test
 2. ✅ Aggiornare conftest.py per configurare path
 3. ✅ Verificare che tutti i moduli siano trovati
@@ -236,6 +260,7 @@
 ---
 
 ### Fase 3: Fix Mock Obsoleti (20-30 ore)
+
 1. ✅ Analizzare struttura attuale delle API
 2. ✅ Aggiornare mock per LLM Gateway
 3. ✅ Aggiornare mock per database pool
@@ -246,6 +271,7 @@
 ---
 
 ### Fase 4: Fix API Changes (30-40 ore)
+
 1. ✅ Verificare signature attuali delle API
 2. ✅ Aggiornare test per nuove API
 3. ✅ Verificare modelli Pydantic
@@ -256,6 +282,7 @@
 ---
 
 ### Fase 5: Fix Test Logic (10-15 ore)
+
 1. ✅ Rivedere assertion errate
 2. ✅ Completare setup delle fixture
 3. ✅ Fixare test logic errors
@@ -309,16 +336,19 @@
 ## 📊 METRICHE DI SUCCESSO
 
 ### Obiettivi a Breve Termine (1 settimana)
+
 - ✅ Ambiente di test funzionante
 - ✅ ~50-70 test fixati (import path + quick wins)
 - ✅ Pattern identificati e documentati
 
 ### Obiettivi a Medio Termine (1 mese)
+
 - ✅ ~200-250 test fixati
 - ✅ Tutti i router tests funzionanti
 - ✅ Tutti i coverage tests critici funzionanti
 
 ### Obiettivi a Lungo Termine (3 mesi)
+
 - ✅ 0 test falliti
 - ✅ Test suite sempre verde
 - ✅ CI/CD che blocca merge su test falliti

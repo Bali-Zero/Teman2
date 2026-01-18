@@ -20,14 +20,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -39,11 +33,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -160,11 +150,7 @@
         },
         "impressionType": {
           "description": "Required. The type of impression event.",
-          "enum": [
-            "IMPRESSION_TYPE_UNSPECIFIED",
-            "PRESENTED",
-            "INTERACTED"
-          ],
+          "enum": ["IMPRESSION_TYPE_UNSPECIFIED", "PRESENTED", "INTERACTED"],
           "enumDescriptions": [
             "Unspecified type. Do not use.",
             "The playable location was presented to a player.",
@@ -429,11 +415,7 @@
         },
         "pointType": {
           "description": "Specifies whether the minimum spacing constraint applies to the center-point or to the snapped point of playable locations. The default value is `CENTER_POINT`. If a snapped point is not available for a playable location, its center-point is used instead. Set this to the point type used in your game.",
-          "enum": [
-            "POINT_TYPE_UNSPECIFIED",
-            "CENTER_POINT",
-            "SNAPPED_POINT"
-          ],
+          "enum": ["POINT_TYPE_UNSPECIFIED", "CENTER_POINT", "SNAPPED_POINT"],
           "enumDescriptions": [
             "Unspecified point type. Do not use this value.",
             "The geographic coordinates correspond to the center of the location.",

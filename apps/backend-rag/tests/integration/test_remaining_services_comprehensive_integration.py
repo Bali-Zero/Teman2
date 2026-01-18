@@ -26,9 +26,8 @@ class TestNotificationsRouterIntegration:
     @pytest.fixture
     def client(self):
         """Create test client"""
-        from fastapi import FastAPI
-
         from backend.app.routers.notifications import router
+        from fastapi import FastAPI
 
         app = FastAPI()
         app.include_router(router)

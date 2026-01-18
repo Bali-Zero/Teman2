@@ -32,14 +32,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -51,11 +45,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -202,12 +192,7 @@
         },
         "encodingType": {
           "description": "The encoding type used by the API to calculate offsets.",
-          "enum": [
-            "NONE",
-            "UTF8",
-            "UTF16",
-            "UTF32"
-          ],
+          "enum": ["NONE", "UTF8", "UTF16", "UTF32"],
           "enumDescriptions": [
             "If `EncodingType` is not specified, encoding-dependent information (such as `begin_offset`) will be set at `-1`.",
             "Encoding-dependent information (such as `begin_offset`) is calculated based on the UTF-8 encoding of the input. C++ and Go are examples of languages that use this encoding natively.",
@@ -247,12 +232,7 @@
         },
         "encodingType": {
           "description": "The encoding type used by the API to calculate sentence offsets for the sentence sentiment.",
-          "enum": [
-            "NONE",
-            "UTF8",
-            "UTF16",
-            "UTF32"
-          ],
+          "enum": ["NONE", "UTF8", "UTF16", "UTF32"],
           "enumDescriptions": [
             "If `EncodingType` is not specified, encoding-dependent information (such as `begin_offset`) will be set at `-1`.",
             "Encoding-dependent information (such as `begin_offset`) is calculated based on the UTF-8 encoding of the input. C++ and Go are examples of languages that use this encoding natively.",
@@ -296,12 +276,7 @@
         },
         "encodingType": {
           "description": "The encoding type used by the API to calculate offsets.",
-          "enum": [
-            "NONE",
-            "UTF8",
-            "UTF16",
-            "UTF32"
-          ],
+          "enum": ["NONE", "UTF8", "UTF16", "UTF32"],
           "enumDescriptions": [
             "If `EncodingType` is not specified, encoding-dependent information (such as `begin_offset`) will be set at `-1`.",
             "Encoding-dependent information (such as `begin_offset`) is calculated based on the UTF-8 encoding of the input. C++ and Go are examples of languages that use this encoding natively.",
@@ -348,12 +323,7 @@
         },
         "encodingType": {
           "description": "The encoding type used by the API to calculate offsets.",
-          "enum": [
-            "NONE",
-            "UTF8",
-            "UTF16",
-            "UTF32"
-          ],
+          "enum": ["NONE", "UTF8", "UTF16", "UTF32"],
           "enumDescriptions": [
             "If `EncodingType` is not specified, encoding-dependent information (such as `begin_offset`) will be set at `-1`.",
             "Encoding-dependent information (such as `begin_offset`) is calculated based on the UTF-8 encoding of the input. C++ and Go are examples of languages that use this encoding natively.",
@@ -609,16 +579,8 @@
         },
         "type": {
           "description": "Required. If the type is not set or is `TYPE_UNSPECIFIED`, returns an `INVALID_ARGUMENT` error.",
-          "enum": [
-            "TYPE_UNSPECIFIED",
-            "PLAIN_TEXT",
-            "HTML"
-          ],
-          "enumDescriptions": [
-            "The content type is not specified.",
-            "Plain text",
-            "HTML"
-          ],
+          "enum": ["TYPE_UNSPECIFIED", "PLAIN_TEXT", "HTML"],
+          "enumDescriptions": ["The content type is not specified.", "Plain text", "HTML"],
           "type": "string"
         }
       },
@@ -688,16 +650,8 @@
         },
         "type": {
           "description": "The type of the entity mention.",
-          "enum": [
-            "TYPE_UNKNOWN",
-            "PROPER",
-            "COMMON"
-          ],
-          "enumDescriptions": [
-            "Unknown",
-            "Proper name",
-            "Common noun (or noun compound)"
-          ],
+          "enum": ["TYPE_UNKNOWN", "PROPER", "COMMON"],
+          "enumDescriptions": ["Unknown", "Proper name", "Common noun (or noun compound)"],
           "type": "string"
         }
       },
@@ -728,12 +682,7 @@
       "properties": {
         "aspect": {
           "description": "The grammatical aspect.",
-          "enum": [
-            "ASPECT_UNKNOWN",
-            "PERFECTIVE",
-            "IMPERFECTIVE",
-            "PROGRESSIVE"
-          ],
+          "enum": ["ASPECT_UNKNOWN", "PERFECTIVE", "IMPERFECTIVE", "PROGRESSIVE"],
           "enumDescriptions": [
             "Aspect is not applicable in the analyzed language or is not predicted.",
             "Perfective",
@@ -814,12 +763,7 @@
         },
         "gender": {
           "description": "The grammatical gender.",
-          "enum": [
-            "GENDER_UNKNOWN",
-            "FEMININE",
-            "MASCULINE",
-            "NEUTER"
-          ],
+          "enum": ["GENDER_UNKNOWN", "FEMININE", "MASCULINE", "NEUTER"],
           "enumDescriptions": [
             "Gender is not applicable in the analyzed language or is not predicted.",
             "Feminine",
@@ -852,12 +796,7 @@
         },
         "number": {
           "description": "The grammatical number.",
-          "enum": [
-            "NUMBER_UNKNOWN",
-            "SINGULAR",
-            "PLURAL",
-            "DUAL"
-          ],
+          "enum": ["NUMBER_UNKNOWN", "SINGULAR", "PLURAL", "DUAL"],
           "enumDescriptions": [
             "Number is not applicable in the analyzed language or is not predicted.",
             "Singular",
@@ -868,13 +807,7 @@
         },
         "person": {
           "description": "The grammatical person.",
-          "enum": [
-            "PERSON_UNKNOWN",
-            "FIRST",
-            "SECOND",
-            "THIRD",
-            "REFLEXIVE_PERSON"
-          ],
+          "enum": ["PERSON_UNKNOWN", "FIRST", "SECOND", "THIRD", "REFLEXIVE_PERSON"],
           "enumDescriptions": [
             "Person is not applicable in the analyzed language or is not predicted.",
             "First",
@@ -886,11 +819,7 @@
         },
         "proper": {
           "description": "The grammatical properness.",
-          "enum": [
-            "PROPER_UNKNOWN",
-            "PROPER",
-            "NOT_PROPER"
-          ],
+          "enum": ["PROPER_UNKNOWN", "PROPER", "NOT_PROPER"],
           "enumDescriptions": [
             "Proper is not applicable in the analyzed language or is not predicted.",
             "Proper",
@@ -900,11 +829,7 @@
         },
         "reciprocity": {
           "description": "The grammatical reciprocity.",
-          "enum": [
-            "RECIPROCITY_UNKNOWN",
-            "RECIPROCAL",
-            "NON_RECIPROCAL"
-          ],
+          "enum": ["RECIPROCITY_UNKNOWN", "RECIPROCAL", "NON_RECIPROCAL"],
           "enumDescriptions": [
             "Reciprocity is not applicable in the analyzed language or is not predicted.",
             "Reciprocal",
@@ -972,12 +897,7 @@
         },
         "voice": {
           "description": "The grammatical voice.",
-          "enum": [
-            "VOICE_UNKNOWN",
-            "ACTIVE",
-            "CAUSATIVE",
-            "PASSIVE"
-          ],
+          "enum": ["VOICE_UNKNOWN", "ACTIVE", "CAUSATIVE", "PASSIVE"],
           "enumDescriptions": [
             "Voice is not applicable in the analyzed language or is not predicted.",
             "Active",

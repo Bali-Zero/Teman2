@@ -41,10 +41,9 @@ except ImportError:
     logger.warning("Performance metrics not available")
     metrics_collector = None
 
-from backend.core.cache import cached
-
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
+from backend.core.cache import cached
 
 from ..ingestion.collection_manager import CollectionManager
 from ..ingestion.collection_warmup_service import CollectionWarmupService

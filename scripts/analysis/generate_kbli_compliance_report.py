@@ -13,9 +13,11 @@ import os
 import json
 import sys
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 COMPLIANCE_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_compliance")
 REPORT_DIR = os.path.join(PROJECT_ROOT, "reports")
 
@@ -60,17 +62,23 @@ def generate_html_report(
         diffs = len(cmp.get("differences", []))
         missing_fields = len(cmp.get("missing_fields", []))
 
-        status_class = "ok" if found_flag == "✅" and diffs == 0 and missing_fields == 0 else "warn"
-        diff_text = ", ".join(cmp.get("differences", [])[:2]) if cmp.get("differences") else "-"
+        status_class = (
+            "ok"
+            if found_flag == "✅" and diffs == 0 and missing_fields == 0
+            else "warn"
+        )
+        diff_text = (
+            ", ".join(cmp.get("differences", [])[:2]) if cmp.get("differences") else "-"
+        )
 
         rows_html.append(
             f'<tr class="{status_class}">'
-            f'<td>{code}</td>'
-            f'<td>{found_flag}</td>'
-            f'<td>{matches}</td>'
-            f'<td>{diffs}</td>'
-            f'<td>{missing_fields}</td>'
-            f'<td>{diff_text}</td>'
+            f"<td>{code}</td>"
+            f"<td>{found_flag}</td>"
+            f"<td>{matches}</td>"
+            f"<td>{diffs}</td>"
+            f"<td>{missing_fields}</td>"
+            f"<td>{diff_text}</td>"
             "</tr>"
         )
 
@@ -160,7 +168,7 @@ def generate_html_report(
         </tr>
       </thead>
       <tbody>
-        {''.join(rows_html)}
+        {"".join(rows_html)}
       </tbody>
     </table>
   </div>
@@ -227,9 +235,9 @@ Verifica compliance della collection `kbli_unified` in Qdrant rispetto alle font
 ### Risultati Chiave
 
 - **KBLI Verificati**: {total}
-- **Trovati in Qdrant**: {found} ({found*100/total:.1f}%)
-- **Mancanti**: {missing} ({missing*100/total:.1f}%)
-- **Completamente Allineati**: {aligned} ({aligned*100/total:.1f}%)
+- **Trovati in Qdrant**: {found} ({found * 100 / total:.1f}%)
+- **Mancanti**: {missing} ({missing * 100 / total:.1f}%)
+- **Completamente Allineati**: {aligned} ({aligned * 100 / total:.1f}%)
 - **Con Differenze**: {stats.get("has_differences", 0)}
 
 ## Gap Identificati
@@ -370,7 +378,9 @@ def main():
 
     if not compliance_data:
         print(f"❌ File non trovato: {compliance_file}")
-        print("   Esegui prima: python scripts/analysis/verify_kbli_qdrant_compliance.py")
+        print(
+            "   Esegui prima: python scripts/analysis/verify_kbli_qdrant_compliance.py"
+        )
         sys.exit(1)
 
     # Genera report

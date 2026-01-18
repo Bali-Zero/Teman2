@@ -84,6 +84,13 @@ def _register_builtin_providers():
     except ImportError:
         pass
 
+    try:
+        from backend.llm.providers.ollama import OllamaProvider
+
+        register_provider("ollama", OllamaProvider)
+    except ImportError:
+        pass
+
 
 # Auto-register built-in providers on module import
 _register_builtin_providers()

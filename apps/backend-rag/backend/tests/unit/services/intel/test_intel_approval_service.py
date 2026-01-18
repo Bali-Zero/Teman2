@@ -2,10 +2,9 @@
 Unit tests for IntelApprovalService.
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -36,9 +35,7 @@ class TestIntelApprovalService:
         return {
             "type": "visa",
             "required_votes": 2,
-            "approvers": [
-                {"name": "Test User", "chat_id": 123456, "email": "test@example.com"}
-            ],
+            "approvers": [{"name": "Test User", "chat_id": 123456, "email": "test@example.com"}],
         }
 
     @pytest.fixture
@@ -57,16 +54,20 @@ class TestIntelApprovalService:
     @patch("backend.services.intel.intel_approval_service.get_team_config")
     @patch("backend.services.intel.intel_approval_service.telegram_bot")
     async def test_send_approval_notification_success(
-        self, mock_bot, mock_get_config, mock_get_chat_ids, service, mock_team_config, mock_item_data
+        self,
+        mock_bot,
+        mock_get_config,
+        mock_get_chat_ids,
+        service,
+        mock_team_config,
+        mock_item_data,
     ):
         """Test successful approval notification."""
         mock_get_config.return_value = mock_team_config
         mock_get_chat_ids.return_value = [123456]
         mock_bot.send_message = AsyncMock()
 
-        result = await service.send_approval_notification(
-            "visa", "test_item_123", mock_item_data
-        )
+        result = await service.send_approval_notification("visa", "test_item_123", mock_item_data)
 
         assert result is True
         mock_bot.send_message.assert_called_once()
@@ -79,9 +80,7 @@ class TestIntelApprovalService:
         """Test notification fails when no team config."""
         mock_get_config.return_value = None
 
-        result = await service.send_approval_notification(
-            "visa", "test_item_123", mock_item_data
-        )
+        result = await service.send_approval_notification("visa", "test_item_123", mock_item_data)
 
         assert result is False
 
@@ -94,9 +93,7 @@ class TestIntelApprovalService:
         mock_get_config.return_value = mock_team_config
         mock_get_chat_ids.return_value = []
 
-        result = await service.send_approval_notification(
-            "visa", "test_item_123", mock_item_data
-        )
+        result = await service.send_approval_notification("visa", "test_item_123", mock_item_data)
 
         assert result is False
 
@@ -104,7 +101,13 @@ class TestIntelApprovalService:
     @patch("backend.services.intel.intel_approval_service.get_team_config")
     @patch("backend.services.intel.intel_approval_service.telegram_bot")
     async def test_send_approval_notification_with_image(
-        self, mock_bot, mock_get_config, mock_get_chat_ids, service, mock_team_config, mock_item_data
+        self,
+        mock_bot,
+        mock_get_config,
+        mock_get_chat_ids,
+        service,
+        mock_team_config,
+        mock_item_data,
     ):
         """Test approval notification with image."""
         mock_get_config.return_value = mock_team_config
@@ -124,7 +127,13 @@ class TestIntelApprovalService:
     @patch("backend.services.intel.intel_approval_service.get_team_config")
     @patch("backend.services.intel.intel_approval_service.telegram_bot")
     async def test_send_approval_notification_with_enriched_data(
-        self, mock_bot, mock_get_config, mock_get_chat_ids, service, mock_team_config, mock_item_data
+        self,
+        mock_bot,
+        mock_get_config,
+        mock_get_chat_ids,
+        service,
+        mock_team_config,
+        mock_item_data,
     ):
         """Test approval notification with enriched data."""
         mock_get_config.return_value = mock_team_config

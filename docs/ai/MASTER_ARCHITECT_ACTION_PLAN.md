@@ -10,6 +10,7 @@
 ## 🔍 VERIFICATION WORKFLOW
 
 For each action:
+
 1. **VERIFY** - Run verification prompt to confirm the problem exists
 2. **MEASURE** - Quantify the impact (if applicable)
 3. **PATCH** - Apply fix only if verification confirms the issue
@@ -335,7 +336,7 @@ REQUISITI:
 
 ### 🔍 VERIFICATION PROMPT
 
-```
+````
 @apps/mouth/src
 
 ANALISI TYPE SAFETY:
@@ -347,7 +348,7 @@ Verifica uso di `any` nel frontend:
    grep -r ":\s*any" apps/mouth/src --include="*.ts" --include="*.tsx" | wc -l
    grep -r "@ts-ignore" apps/mouth/src --include="*.ts" --include="*.tsx" | wc -l
    grep -r "eslint-disable" apps/mouth/src --include="*.ts" --include="*.tsx" | wc -l
-   ```
+````
 
 2. Analizza pattern:
    - `any` usati per API responses?
@@ -361,15 +362,18 @@ Verifica uso di `any` nel frontend:
    - Ci sono type errors nascosti da `any`?
 
 RESTITUISCI:
+
 - Numero totale occorrenze `any`
 - Numero totale `@ts-ignore`
 - Lista file con più `any` (top 10)
 - Stima rischio: quanti `any` sono in codice critico?
+
 ```
 
 ### ✅ PATCH PROMPT (solo se verificato)
 
 ```
+
 @apps/mouth/src/lib/api @apps/mouth/src/lib/realtime.tsx @apps/mouth/src/hooks
 
 PROBLEMA VERIFICATO: [Inserisci risultati verifica - es: 972 occorrenze any, 100+ in API clients]
@@ -377,6 +381,7 @@ PROBLEMA VERIFICATO: [Inserisci risultati verifica - es: 972 occorrenze any, 100
 MIGRAZIONE GRADUALE TYPE SAFETY:
 
 FASE 1: API Clients (priorità alta)
+
 1. Crea tipi TypeScript per tutte le API responses:
    - `src/lib/api/types/chat.types.ts` - Chat API types
    - `src/lib/api/types/crm.types.ts` - CRM API types (già esiste?)
@@ -386,18 +391,22 @@ FASE 1: API Clients (priorità alta)
 3. Usa `unknown` invece di `any` dove il tipo non è noto, con type guards
 
 FASE 2: Realtime Service
+
 1. Definisci tipi per WebSocket messages
 2. Rimuovi `any` da `realtime.tsx`
 
 FASE 3: Hooks
+
 1. Tipizza tutti i custom hooks
 2. Rimuovi `any` da return types
 
 REQUISITI:
+
 - Non rompere funzionalità esistente
 - Usa `unknown` + type guards invece di `any` dove necessario
 - Aggiungi `// @ts-expect-error` con commento esplicativo se `any` è temporaneo
 - Abilita `noImplicitAny` in `tsconfig.json` gradualmente (file per file)
+
 ```
 
 ---
@@ -407,6 +416,7 @@ REQUISITI:
 ### 🔍 VERIFICATION PROMPT
 
 ```
+
 @apps/backend-rag/300_failing_tests.txt @apps/backend-rag/tests
 
 ANALISI TEST DEBT:
@@ -414,6 +424,7 @@ ANALISI TEST DEBT:
 Verifica lo stato reale dei test:
 
 1. Esegui test suite:
+
    ```bash
    cd apps/backend-rag
    PYTHONPATH=. pytest --co -q | wc -l  # Totale test
@@ -432,16 +443,19 @@ Verifica lo stato reale dei test:
    - Test che necessitano aggiornamento per nuove API
 
 RESTITUISCI:
+
 - Numero totale test
 - Numero test falliti (reale, non dal file)
 - Categorizzazione test falliti
 - Stima tempo per fixare (ore)
 - Priorità: quali test sono critici?
+
 ```
 
 ### ✅ PATCH PROMPT (solo se verificato)
 
 ```
+
 @apps/backend-rag/tests @apps/backend-rag/300_failing_tests.txt
 
 PROBLEMA VERIFICATO: [Inserisci risultati verifica - es: 150 test falliti su 9278, 50% obsoleti]
@@ -449,25 +463,30 @@ PROBLEMA VERIFICATO: [Inserisci risultati verifica - es: 150 test falliti su 927
 PIANO DI RECUPERO TEST:
 
 FASE 1: Pulizia (1-2 giorni)
+
 1. Rimuovi test obsoleti (testano codice rimosso)
 2. Aggiorna test con API cambiate
 3. Fixa test con bug evidenti
 
 FASE 2: Fix Critici (3-5 giorni)
+
 1. Identifica test critici (testano funzionalità core)
 2. Fixa test che rivelano bug reali
 3. Aggiorna test per nuove signature API
 
 FASE 3: Automazione (1 giorno)
+
 1. Aggiungi test failure tracking in CI
 2. Blocca merge se test critici falliscono
 3. Genera report automatico test falliti
 
 REQUISITI:
+
 - Non rimuovere test senza verificare che codice sia davvero rimosso
 - Aggiungi `@pytest.mark.skip(reason="...")` invece di rimuovere test temporaneamente
 - Documenta ogni test fixato con issue/ticket number
 - Obiettivo: < 5% test falliti
+
 ```
 
 ---
@@ -477,6 +496,7 @@ REQUISITI:
 ### 🔍 VERIFICATION PROMPT
 
 ```
+
 @apps/backend-rag/backend/app/routers/intel.py
 
 ANALISI COMPLESSITÀ INTEL ROUTER:
@@ -499,15 +519,18 @@ Verifica se `intel.py` è troppo grande:
    - Quanto è difficile mockare le dipendenze?
 
 RESTITUISCI:
+
 - Numero righe
 - Numero endpoint
 - Numero responsabilità
 - Stima complessità (1-10)
+
 ```
 
 ### ✅ PATCH PROMPT (solo se verificato)
 
 ```
+
 @apps/backend-rag/backend/app/routers/intel.py
 
 PROBLEMA VERIFICATO: [Inserisci risultati verifica - es: 1474 righe, 20+ endpoint, logica business mista]
@@ -531,11 +554,13 @@ REFACTOR INTEL ROUTER:
    - Servizi sono testabili in isolamento
 
 REQUISITI:
+
 - Mantieni stessa API pubblica (non breaking changes)
 - Ogni servizio ha una responsabilità chiara
 - Aggiungi type hints completi
 - Documenta ogni servizio con docstring
-```
+
+````
 
 ---
 
@@ -548,21 +573,26 @@ Quando identifichi un nuovo potenziale problema, usa questo template:
 
 ### 🔍 VERIFICATION PROMPT
 
-```
+````
+
 [Comandi/query per verificare se il problema esiste]
 [File da analizzare]
 [Metrica da misurare]
 [Output atteso]
+
 ```
 
 ### ✅ PATCH PROMPT (solo se verificato)
 
 ```
+
 [Azioni concrete da fare]
 [File da modificare]
 [Requisiti da rispettare]
 [Test da eseguire]
+
 ```
+
 ```
 
 ---

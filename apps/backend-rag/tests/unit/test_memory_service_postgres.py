@@ -51,7 +51,9 @@ def mock_pool():
 def memory_service(mock_pool):
     """Create MemoryServicePostgres instance with mocked pool"""
     pool, conn = mock_pool
-    with patch("backend.services.memory.memory_service_postgres.asyncpg.create_pool", return_value=pool):
+    with patch(
+        "backend.services.memory.memory_service_postgres.asyncpg.create_pool", return_value=pool
+    ):
         with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             service = MemoryServicePostgres()

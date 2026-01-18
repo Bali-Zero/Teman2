@@ -64,7 +64,9 @@ def orchestrator(mock_db_pool):
     """Create AgenticRAGOrchestrator instance with all dependencies mocked"""
     with (
         patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_intent,
-        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService") as mock_emotional,
+        patch(
+            "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
+        ) as mock_emotional,
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_prompt,
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipeline,
         patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
@@ -317,7 +319,8 @@ class TestStreamQueryRouting:
     async def test_stream_query_out_of_domain(self, orchestrator):
         """Test out-of-domain detection in stream"""
         with patch(
-            "backend.services.rag.agentic.orchestrator.is_out_of_domain", return_value=(True, "coding")
+            "backend.services.rag.agentic.orchestrator.is_out_of_domain",
+            return_value=(True, "coding"),
         ):
             events = []
             async for event in orchestrator.stream_query(
@@ -372,7 +375,8 @@ class TestStreamQueryRouting:
 
         with (
             patch(
-                "backend.services.rag.agentic.orchestrator._is_conversation_recall_query", return_value=True
+                "backend.services.rag.agentic.orchestrator._is_conversation_recall_query",
+                return_value=True,
             ),
             patch.object(orchestrator.llm_gateway, "create_chat_with_history") as mock_chat,
             patch.object(orchestrator.llm_gateway, "send_message") as mock_send,

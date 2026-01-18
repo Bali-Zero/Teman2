@@ -105,8 +105,12 @@ class TestAgenticRagRouter:
         request_data = AgenticQueryRequest(query="What is KITAS?")
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
@@ -135,8 +139,12 @@ class TestAgenticRagRouter:
         )
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -156,8 +164,12 @@ class TestAgenticRagRouter:
         mock_orchestrator.process_query.side_effect = Exception("Error")
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
         ):
             from fastapi import HTTPException
 
@@ -398,9 +410,15 @@ class TestAgenticQueryResponse:
         request_data = AgenticQueryRequest(query="Tell me more", conversation_id=123)
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
-            patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db
+            ),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -433,8 +451,12 @@ class TestAgenticQueryResponse:
         mock_orchestrator.stream_query = AsyncMock(return_value=mock_stream())
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
         ):
             from backend.app.routers.agentic_rag import stream_agentic_rag
@@ -470,8 +492,12 @@ class TestAgenticQueryResponse:
             yield MagicMock()
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
             patch("backend.app.routers.agentic_rag.trace_span", side_effect=mock_trace_span),
         ):
@@ -513,8 +539,12 @@ class TestAgenticQueryResponse:
         mock_orchestrator.stream_query = AsyncMock(return_value=mock_stream())
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
         ):
             from backend.app.routers.agentic_rag import stream_agentic_rag
@@ -542,8 +572,12 @@ class TestAgenticQueryResponse:
         request_data = AgenticQueryRequest(query="test")
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
         ):
             from backend.app.routers.agentic_rag import stream_agentic_rag
@@ -574,8 +608,12 @@ class TestAgenticQueryResponse:
         mock_orchestrator.stream_query = AsyncMock(side_effect=Exception("Stream error"))
 
         with (
-            patch("backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
-            patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
         ):
             from backend.app.routers.agentic_rag import stream_agentic_rag
@@ -603,7 +641,8 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=503)
+            "backend.app.routers.agentic_rag.get_database_pool",
+            side_effect=HTTPException(status_code=503),
         ):
             from backend.app.routers.agentic_rag import get_optional_database_pool
 
@@ -617,7 +656,8 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=500)
+            "backend.app.routers.agentic_rag.get_database_pool",
+            side_effect=HTTPException(status_code=500),
         ):
             from backend.app.routers.agentic_rag import get_optional_database_pool
 

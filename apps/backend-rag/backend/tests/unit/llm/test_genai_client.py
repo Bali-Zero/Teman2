@@ -96,7 +96,6 @@ class TestGenAIClient:
             mock_genai.Client.return_value = mock_client
 
             # Reset singleton
-            import backend.llm.genai_client
 
             llm.genai_client._client_instance = None
 

@@ -8,12 +8,12 @@ import logging
 import time
 from typing import Any
 
-from backend.core.embeddings import create_embeddings_generator
-from backend.core.qdrant_db import QdrantClient
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/memory", tags=["memory"])

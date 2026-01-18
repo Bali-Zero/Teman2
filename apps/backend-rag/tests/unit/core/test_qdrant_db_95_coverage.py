@@ -74,7 +74,7 @@ class TestQdrantDB95Coverage:
 
     def test_get_headers_with_api_key(self):
         """Test _get_headers includes API key.
-        
+
         Updated 2026-01-16: _get_headers() is not async, removed async decorator.
         """
         client = QdrantClient(api_key="test_key")
@@ -84,7 +84,7 @@ class TestQdrantDB95Coverage:
 
     def test_get_headers_without_api_key(self):
         """Test _get_headers without API key.
-        
+
         Updated 2026-01-16: _get_headers() is not async, removed async decorator.
         """
         # Create client explicitly without api_key
@@ -157,7 +157,7 @@ class TestQdrantDB95Coverage:
 
     async def test_search_timeout(self):
         """Test search with timeout.
-        
+
         Updated 2026-01-16: search() catches TimeoutException via _retry_with_backoff
         and eventually returns empty results after retries fail.
         """
@@ -166,18 +166,20 @@ class TestQdrantDB95Coverage:
         # Mock _get_client to return a mock client
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Timeout"))
-        
+
         # Patch _get_client to return our mock
         original_get_client = client._get_client
+
         async def mock_get_client():
             return mock_client
+
         client._get_client = mock_get_client
 
         # Search catches exceptions via _retry_with_backoff and returns empty results
         result = await client.search([0.1] * 1536, limit=10)
         assert result["total_found"] == 0
         assert len(result["ids"]) == 0
-        
+
         # Restore original method
         client._get_client = original_get_client
 
@@ -218,7 +220,7 @@ class TestQdrantDB95Coverage:
 
     async def test_search_request_error(self):
         """Test search with request error.
-        
+
         Updated 2026-01-16: search() catches RequestError via _retry_with_backoff
         and eventually returns empty results after retries fail.
         """
@@ -227,18 +229,20 @@ class TestQdrantDB95Coverage:
         # Mock _get_client to return a mock client
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection error"))
-        
+
         # Patch _get_client to return our mock
         original_get_client = client._get_client
+
         async def mock_get_client():
             return mock_client
+
         client._get_client = mock_get_client
 
         # Search catches exceptions via _retry_with_backoff and returns empty results
         result = await client.search([0.1] * 1536, limit=10)
         assert result["total_found"] == 0
         assert len(result["ids"]) == 0
-        
+
         # Restore original method
         client._get_client = original_get_client
 

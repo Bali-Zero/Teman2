@@ -200,7 +200,9 @@ async def test_voice_query_success():
     mock_api_user = {"user_id": "voice-service", "role": "service"}
     mock_request = MagicMock(spec=Request)
 
-    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.VoiceQueryRequest(query="Test query")
@@ -234,7 +236,9 @@ async def test_voice_query_with_conversation_history():
     mock_api_user = {"user_id": "voice-service", "role": "service"}
     mock_request = MagicMock(spec=Request)
 
-    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.VoiceQueryRequest(
@@ -278,7 +282,9 @@ async def test_elevenlabs_webhook_success():
     mock_search_service.search = AsyncMock(return_value={"results": []})
     mock_request = MagicMock(spec=Request)
 
-    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.ElevenLabsRequest(query="Test query")
@@ -308,7 +314,9 @@ async def test_elevenlabs_webhook_get_query_from_question():
     mock_search_service.search = AsyncMock(return_value={"results": []})
     mock_request = MagicMock(spec=Request)
 
-    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch(
+        "backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock
+    ) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.ElevenLabsRequest(question="Test question")

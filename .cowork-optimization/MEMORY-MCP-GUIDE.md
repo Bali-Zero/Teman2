@@ -5,6 +5,7 @@
 **Memory MCP** è un server che permette a Claude di **mantenere memoria persistente tra sessioni diverse** - come un cervello che ricorda!
 
 ### Senza Memory MCP ❌
+
 ```
 Sessione 1:
 Tu: "Mi chiamo Antonello e lavoro su nuzantara"
@@ -19,6 +20,7 @@ Claude: "Quale progetto? Chi sei?"
 ```
 
 ### Con Memory MCP ✅
+
 ```
 Sessione 1:
 Tu: "Mi chiamo Antonello e lavoro su nuzantara"
@@ -46,6 +48,7 @@ Claude: "Certo Antonello! Continuiamo con nuzantara..."
 ## ⚙️ Configurazione
 
 ### File: `claude_desktop_config.json`
+
 ```json
 {
   "mcpServers": {
@@ -59,9 +62,7 @@ Claude: "Certo Antonello! Continuiamo con nuzantara..."
   },
   "preferences": {
     "quickEntryDictationShortcut": "capslock",
-    "localAgentModeTrustedFolders": [
-      "/Users/antonellosiano"
-    ]
+    "localAgentModeTrustedFolders": ["/Users/antonellosiano"]
   }
 }
 ```
@@ -80,6 +81,7 @@ Claude: "Certo Antonello! Continuiamo con nuzantara..."
 ### 1. Riavvia Claude Desktop
 
 **IMPORTANTE:** Dopo l'installazione, riavvia Claude:
+
 ```bash
 killall Claude && open /Applications/Claude.app
 ```
@@ -100,6 +102,7 @@ Se vedi il server "memory" disponibile, è attivo! ✅
 ## 💡 Casi d'Uso Pratici
 
 ### A) Preferenze Personali
+
 ```
 Tu: "Ricorda: preferisco sempre codice TypeScript con strict mode"
 Claude: [Salva in memoria]
@@ -110,6 +113,7 @@ Claude: "Certo! Uso TypeScript con strict mode come preferisci..."
 ```
 
 ### B) Context Progetto
+
 ```
 Tu: "Sto lavorando su nuzantara: app Next.js con backend Python FastAPI,
      database PostgreSQL e Qdrant per RAG. Stack: TypeScript, Python 3.12,
@@ -122,6 +126,7 @@ Claude: "Aggiungo al backend FastAPI di nuzantara. Uso Python 3.12..."
 ```
 
 ### C) Team Information
+
 ```
 Tu: "Il team nuzantara:
      - Backend: PostgreSQL + FastAPI + Qdrant
@@ -134,6 +139,7 @@ Claude: [Costruisce knowledge graph]
 ```
 
 ### D) Workflow Patterns
+
 ```
 Tu: "Quando faccio deploy, segui sempre:
      1. Test locali
@@ -202,6 +208,7 @@ Claude: "Ok! Seguo il workflow standard: 1. Test locali..."
 ## 🔧 Comandi Memory MCP
 
 ### Salva Informazione
+
 ```
 "Ricorda che preferisco React hooks invece di class components"
 "Memorizza: il backend API è su https://api.nuzantara.com"
@@ -209,6 +216,7 @@ Claude: "Ok! Seguo il workflow standard: 1. Test locali..."
 ```
 
 ### Query Memoria
+
 ```
 "Cosa ricordi del progetto nuzantara?"
 "Quali sono le mie preferenze di coding?"
@@ -216,12 +224,14 @@ Claude: "Ok! Seguo il workflow standard: 1. Test locali..."
 ```
 
 ### Aggiorna Memoria
+
 ```
 "Aggiorna: ora uso Python 3.13 invece di 3.12"
 "Modifica la memoria: il backend è stato migrato a Fly.io"
 ```
 
 ### Elimina da Memoria
+
 ```
 "Dimentica le preferenze vecchie su class components"
 "Rimuovi dalla memoria le info sul vecchio server"
@@ -232,6 +242,7 @@ Claude: "Ok! Seguo il workflow standard: 1. Test locali..."
 ## 📊 Monitoring
 
 ### Check Database
+
 ```bash
 # Vedi dimensioni database
 du -sh ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db
@@ -242,6 +253,7 @@ cp ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db \
 ```
 
 ### Inspect Database (se sai SQL)
+
 ```bash
 sqlite3 ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db
 .tables
@@ -275,6 +287,7 @@ Claude: "Certo! Uso la struttura che preferisci:
 ## 🎓 Tips Avanzati
 
 ### 1. Knowledge Graph Strutturato
+
 ```
 "Crea un knowledge graph per nuzantara:
  - Entità: nuzantara (progetto)
@@ -285,6 +298,7 @@ Claude: "Certo! Uso la struttura che preferisci:
 ```
 
 ### 2. Relazioni tra Entità
+
 ```
 "Collega nella memoria:
  - nuzantara -> usa -> Qdrant
@@ -293,6 +307,7 @@ Claude: "Certo! Uso la struttura che preferisci:
 ```
 
 ### 3. Update Incrementali
+
 ```
 "Aggiorna nuzantara nella memoria:
  - Aggiungi: Frontend migrato a Next.js 15
@@ -307,22 +322,26 @@ Claude: "Certo! Uso la struttura che preferisci:
 ### Memory MCP non funziona
 
 **Check 1: Server attivo?**
+
 ```bash
 # Controlla log MCP
 tail -f ~/Library/Logs/Claude/mcp.log | grep memory
 ```
 
 **Check 2: Database accessibile?**
+
 ```bash
 ls -la ~/Desktop/nuzantara/.cowork-optimization/memory-data/
 ```
 
 **Check 3: Config corretta?**
+
 ```bash
 cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```
 
 **Soluzione: Riavvia Claude**
+
 ```bash
 killall Claude && open /Applications/Claude.app
 ```
@@ -330,6 +349,7 @@ killall Claude && open /Applications/Claude.app
 ### Database corrotto
 
 **Backup e reset:**
+
 ```bash
 # Backup
 cp ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db \
@@ -342,6 +362,7 @@ rm ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db
 ### Memoria troppo grande
 
 **Cleanup selettivo:**
+
 ```
 Claude prompt:
 "Mostrami tutte le entità nella memoria. Poi elimina quelle obsolete
@@ -354,14 +375,14 @@ Claude prompt:
 
 ### Metriche Attese
 
-| Metrica | Valore |
-|---------|--------|
-| Latency query | <50ms |
-| Latency write | <100ms |
-| Max entities | ~10,000 |
+| Metrica       | Valore   |
+| ------------- | -------- |
+| Latency query | <50ms    |
+| Latency write | <100ms   |
+| Max entities  | ~10,000  |
 | Database size | ~10-50MB |
-| Thread-safe | ✅ Yes |
-| ACID | ✅ Yes |
+| Thread-safe   | ✅ Yes   |
+| ACID          | ✅ Yes   |
 
 ### Limiti
 
@@ -374,6 +395,7 @@ Claude prompt:
 ## 🔐 Privacy & Security
 
 ### Dove sono i dati?
+
 ```
 ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db
 ```
@@ -384,6 +406,7 @@ Claude prompt:
 - ⚠️ **Backup** consigliato periodicamente
 
 ### Cosa può vedere Claude?
+
 - ✅ Tutto quello che hai esplicitamente salvato
 - ❌ NON vede file system senza permesso
 - ❌ NON vede altre app
@@ -393,13 +416,13 @@ Claude prompt:
 
 ## 🎉 Benefici Memory MCP
 
-| Senza Memory | Con Memory |
-|--------------|------------|
-| Ripeti context ogni volta | Context automatico |
-| "Chi sei?" ogni sessione | Ti riconosce sempre |
-| Workflow inconsistenti | Workflow memorizzati |
-| Preferenze dimenticate | Preferenze persistenti |
-| Zero continuità | Continuità totale |
+| Senza Memory              | Con Memory             |
+| ------------------------- | ---------------------- |
+| Ripeti context ogni volta | Context automatico     |
+| "Chi sei?" ogni sessione  | Ti riconosce sempre    |
+| Workflow inconsistenti    | Workflow memorizzati   |
+| Preferenze dimenticate    | Preferenze persistenti |
+| Zero continuità           | Continuità totale      |
 
 **Risultato:** +50% efficienza, zero ripetizioni, esperienze consistenti
 
@@ -427,11 +450,13 @@ Claude prompt:
 ## 🚀 Prossimi Step
 
 1. **Riavvia Claude Desktop**
+
    ```bash
    killall Claude && open /Applications/Claude.app
    ```
 
 2. **Test Memory**
+
    ```
    Chat: "Salva nella memoria: mi chiamo Antonello e lavoro su nuzantara"
    [Chiudi/Riapri Claude]
@@ -440,6 +465,7 @@ Claude prompt:
    ```
 
 3. **Popola Memoria Base**
+
    ```
    "Memorizza le seguenti informazioni su nuzantara:
     - Progetto: RAG-powered legal assistant per Bali

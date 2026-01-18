@@ -26,26 +26,48 @@ SYSTEM_SENDER_USER_ID = "b4b4b4b4-b4b4-4b4b-b4b4-b4b4b4b4b4b4"  # Will need to c
 # Nationality to language mapping
 NATIONALITY_LANGUAGE_MAP = {
     # Italian
-    "Italian": "it", "Italy": "it", "IT": "it",
+    "Italian": "it",
+    "Italy": "it",
+    "IT": "it",
     # English (default)
-    "American": "en", "USA": "en", "United States": "en",
-    "British": "en", "UK": "en", "United Kingdom": "en",
-    "Australian": "en", "Australia": "en",
-    "Canadian": "en", "Canada": "en",
-    "Irish": "en", "Ireland": "en",
-    "New Zealand": "en", "Kiwi": "en",
+    "American": "en",
+    "USA": "en",
+    "United States": "en",
+    "British": "en",
+    "UK": "en",
+    "United Kingdom": "en",
+    "Australian": "en",
+    "Australia": "en",
+    "Canadian": "en",
+    "Canada": "en",
+    "Irish": "en",
+    "Ireland": "en",
+    "New Zealand": "en",
+    "Kiwi": "en",
     # Indonesian
-    "Indonesian": "id", "Indonesia": "id", "ID": "id",
+    "Indonesian": "id",
+    "Indonesia": "id",
+    "ID": "id",
     # Ukrainian
-    "Ukrainian": "uk", "Ukraine": "uk", "UA": "uk",
+    "Ukrainian": "uk",
+    "Ukraine": "uk",
+    "UA": "uk",
     # Russian
-    "Russian": "ru", "Russia": "ru", "RU": "ru",
+    "Russian": "ru",
+    "Russia": "ru",
+    "RU": "ru",
     # German (use English)
-    "German": "en", "Germany": "en", "DE": "en",
+    "German": "en",
+    "Germany": "en",
+    "DE": "en",
     # French (use English)
-    "French": "en", "France": "en", "FR": "en",
+    "French": "en",
+    "France": "en",
+    "FR": "en",
     # Dutch (use English)
-    "Dutch": "en", "Netherlands": "en", "NL": "en",
+    "Dutch": "en",
+    "Netherlands": "en",
+    "NL": "en",
 }
 
 # Birthday email templates by language
@@ -207,7 +229,9 @@ class BirthdayNotifierService:
         # Mention famous people from birthplace
         famous = enrichment.get("famous_people", [])
         if famous and client.get("birthplace"):
-            notes.append(f"As someone from {client['birthplace']}, home of {famous[0]}, you bring a special perspective!")
+            notes.append(
+                f"As someone from {client['birthplace']}, home of {famous[0]}, you bring a special perspective!"
+            )
 
         # Mention local specialties
         specialties = enrichment.get("local_specialties", [])

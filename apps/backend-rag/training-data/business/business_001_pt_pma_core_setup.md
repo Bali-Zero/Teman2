@@ -6,11 +6,12 @@
 
 ### Costo Base Obbligatorio
 
-| Item | Costo | Note |
-|------|-------|------|
+| Item                             | Costo              | Note                       |
+| -------------------------------- | ------------------ | -------------------------- |
 | **PT PMA Setup (all-inclusive)** | **IDR 20.000.000** | Fisso, include tutto sotto |
 
 **Cosa include il pacchetto PT PMA:**
+
 - Atto costitutivo notarile (Akta Pendirian)
 - Approvazione Kemenkumham (SK Menkumham)
 - NPWP aziendale (codice fiscale PT)
@@ -40,11 +41,13 @@ Hai già un ufficio/locale commerciale in Indonesia?
 ### Scenari di Costo
 
 **Scenario A: Cliente CON sede propria**
+
 - PT PMA Setup: IDR 20.000.000
 - Virtual Office: IDR 0 (usa sede propria)
 - **Totale: IDR 20.000.000**
 
 **Scenario B: Cliente SENZA sede propria**
+
 - PT PMA Setup: IDR 20.000.000
 - Virtual Office (1 anno): IDR 5.000.000
 - **Totale: IDR 25.000.000**
@@ -65,12 +68,12 @@ La PT deve avere un indirizzo in zona commerciale. Opzioni valide:
 
 ## Timeline Setup
 
-| Fase | Durata |
-|------|--------|
-| Notaio + Kemenkumham | 5-7 giorni |
-| NPWP + NIB | 2-3 giorni |
-| Apertura conto bancario | 3-7 giorni |
-| **Totale** | **2-3 settimane** |
+| Fase                    | Durata            |
+| ----------------------- | ----------------- |
+| Notaio + Kemenkumham    | 5-7 giorni        |
+| NPWP + NIB              | 2-3 giorni        |
+| Apertura conto bancario | 3-7 giorni        |
+| **Totale**              | **2-3 settimane** |
 
 ---
 
@@ -92,7 +95,9 @@ R: IDR 5.000.000/anno. Se poi trovi un ufficio fisico, puoi cambiare l'indirizzo
 Per preventivo personalizzato: info@balizero.com | WhatsApp: +62 811-3888-110
 
 ---
+
 ---
+
 ---
 
 # PT PMA Core Setup - Bali Zero 2025 (ENGLISH)
@@ -103,11 +108,12 @@ Per preventivo personalizzato: info@balizero.com | WhatsApp: +62 811-3888-110
 
 ### Mandatory Base Cost
 
-| Item | Cost | Notes |
-|------|------|-------|
+| Item                             | Cost               | Notes                            |
+| -------------------------------- | ------------------ | -------------------------------- |
 | **PT PMA Setup (all-inclusive)** | **IDR 20,000,000** | Fixed, includes everything below |
 
 **What's included in the PT PMA package:**
+
 - Notarial deed (Akta Pendirian)
 - Kemenkumham approval (SK Menkumham)
 - Company tax ID (NPWP PT)
@@ -137,11 +143,13 @@ Do you already have a commercial office/space in Indonesia?
 ### Cost Scenarios
 
 **Scenario A: Client WITH own premises**
+
 - PT PMA Setup: IDR 20,000,000
 - Virtual Office: IDR 0 (uses own address)
 - **Total: IDR 20,000,000**
 
 **Scenario B: Client WITHOUT own premises**
+
 - PT PMA Setup: IDR 20,000,000
 - Virtual Office (1 year): IDR 5,000,000
 - **Total: IDR 25,000,000**
@@ -162,12 +170,12 @@ The PT must have an address in a commercial zone. Valid options:
 
 ## Setup Timeline
 
-| Phase | Duration |
-|-------|----------|
-| Notary + Kemenkumham | 5-7 days |
-| NPWP + NIB | 2-3 days |
-| Bank account opening | 3-7 days |
-| **Total** | **2-3 weeks** |
+| Phase                | Duration      |
+| -------------------- | ------------- |
+| Notary + Kemenkumham | 5-7 days      |
+| NPWP + NIB           | 2-3 days      |
+| Bank account opening | 3-7 days      |
+| **Total**            | **2-3 weeks** |
 
 ---
 
@@ -189,7 +197,9 @@ A: IDR 5,000,000/year. If you later find a physical office, you can change the P
 For custom quote: info@balizero.com | WhatsApp: +62 811-3888-110
 
 ---
+
 ---
+
 ---
 
 # PT PMA Core Setup - Bali Zero 2025 (BAHASA INDONESIA)
@@ -200,11 +210,12 @@ For custom quote: info@balizero.com | WhatsApp: +62 811-3888-110
 
 ### Biaya Dasar Wajib
 
-| Item | Biaya | Catatan |
-|------|-------|---------|
+| Item                             | Biaya              | Catatan                              |
+| -------------------------------- | ------------------ | ------------------------------------ |
 | **PT PMA Setup (all-inclusive)** | **IDR 20.000.000** | Tetap, sudah termasuk semua di bawah |
 
 **Apa saja yang termasuk dalam paket PT PMA:**
+
 - Akta pendirian notaris
 - Persetujuan Kemenkumham (SK Menkumham)
 - NPWP PT (nomor pajak perusahaan)
@@ -234,11 +245,13 @@ Apakah kamu sudah punya kantor/ruang komersial di Indonesia?
 ### Skenario Biaya
 
 **Skenario A: Klien SUDAH PUNYA tempat sendiri**
+
 - PT PMA Setup: IDR 20.000.000
 - Virtual Office: IDR 0 (pakai alamat sendiri)
 - **Total: IDR 20.000.000**
 
 **Skenario B: Klien BELUM PUNYA tempat**
+
 - PT PMA Setup: IDR 20.000.000
 - Virtual Office (1 tahun): IDR 5.000.000
 - **Total: IDR 25.000.000**
@@ -259,12 +272,12 @@ PT harus punya alamat di zona komersial. Opsi yang valid:
 
 ## Timeline Setup
 
-| Fase | Durasi |
-|------|--------|
-| Notaris + Kemenkumham | 5-7 hari |
-| NPWP + NIB | 2-3 hari |
-| Buka rekening bank | 3-7 hari |
-| **Total** | **2-3 minggu** |
+| Fase                  | Durasi         |
+| --------------------- | -------------- |
+| Notaris + Kemenkumham | 5-7 hari       |
+| NPWP + NIB            | 2-3 hari       |
+| Buka rekening bank    | 3-7 hari       |
+| **Total**             | **2-3 minggu** |
 
 ---
 

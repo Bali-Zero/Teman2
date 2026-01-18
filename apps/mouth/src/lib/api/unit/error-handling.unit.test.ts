@@ -356,14 +356,9 @@ describe('Error Handling Unit Tests', () => {
         });
 
         await expect(api.transcribeAudio(audioBlob)).rejects.toThrow('Transcription failed');
-        
+
         global.fetch = originalFetch;
       });
-
-
     });
   });
-
-
 });
-

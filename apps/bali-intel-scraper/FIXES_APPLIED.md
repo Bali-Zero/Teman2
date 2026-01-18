@@ -12,6 +12,7 @@
 **File:** `semantic_deduplicator_httpx.py`
 
 **Cambiamenti:**
+
 - ✅ Lazy initialization del client HTTP (`_get_client()`)
 - ✅ Metodo `close()` esplicito per cleanup
 - ✅ Context manager support (`__enter__`, `__exit__`)
@@ -26,11 +27,13 @@
 **File:** `intel_pipeline.py:609`
 
 **Prima:**
+
 ```python
 if article.pending_approval and not self.dry_run:
 ```
 
 **Dopo:**
+
 ```python
 if article.validation_approved and article.enriched and not self.dry_run:
 ```
@@ -44,11 +47,13 @@ if article.validation_approved and article.enriched and not self.dry_run:
 **File:** `intel_pipeline.py:555`
 
 **Prima:**
+
 ```python
 if article.seo_optimized:  # ❌ SEO può fallire
 ```
 
 **Dopo:**
+
 ```python
 if article.enriched and article.enriched_article:  # ✅ Enrichment è necessario
 ```
@@ -62,11 +67,13 @@ if article.enriched and article.enriched_article:  # ✅ Enrichment è necessari
 **File:** `rss_fetcher.py:66-69`
 
 **Prima:**
+
 ```python
 encoded_query = query.replace(" ", "+")  # ❌ Non gestisce caratteri speciali
 ```
 
 **Dopo:**
+
 ```python
 from urllib.parse import quote_plus
 encoded_query = quote_plus(query)  # ✅ Encoding corretto
@@ -81,6 +88,7 @@ encoded_query = quote_plus(query)  # ✅ Encoding corretto
 **File:** `rss_fetcher.py:182-199`
 
 **Prima:**
+
 ```python
 seen_titles = set()
 # Deduplicate by title similarity
@@ -90,6 +98,7 @@ if title_key not in seen_titles:
 ```
 
 **Dopo:**
+
 ```python
 # NOTE: Deduplication is handled by semantic deduplicator in pipeline
 # Simple title-based dedup here can filter legitimate articles with similar titles
@@ -105,6 +114,7 @@ all_items.extend(items)
 **File:** `intel_pipeline.py:661-669`
 
 **Aggiunto:**
+
 ```python
 # Validate URL before creating article
 url = article_dict.get("url", article_dict.get("source_url", ""))
@@ -123,6 +133,7 @@ if not url or not url.startswith(("http://", "https://")):
 **File:** `intel_pipeline.py:240-252`
 
 **Aggiunto:**
+
 ```python
 def _verify_dependencies(self):
     """Verify critical dependencies are available"""
@@ -140,6 +151,7 @@ def _verify_dependencies(self):
 **File:** `semantic_deduplicator_httpx.py:26-27`
 
 **Aggiunto:**
+
 ```python
 if not openai_key:
     logger.warning("⚠️ OPENAI_API_KEY not set - embedding generation will fail")
@@ -153,6 +165,7 @@ self.openai = AsyncOpenAI(api_key=openai_key) if openai_key else None
 ## 📊 IMPATTO FIXES
 
 ### Prima dei Fix:
+
 - ❌ Memory leaks possibili (HTTP client non chiuso)
 - ❌ Articoli approvati non salvati in memoria (se Telegram fallisce)
 - ❌ Articoli non inviati se SEO fallisce
@@ -160,6 +173,7 @@ self.openai = AsyncOpenAI(api_key=openai_key) if openai_key else None
 - ❌ Deduplicazione doppia incoerente
 
 ### Dopo i Fix:
+
 - ✅ Nessun memory leak
 - ✅ Tutti gli articoli approvati salvati in memoria
 - ✅ Articoli inviati anche se SEO fallisce

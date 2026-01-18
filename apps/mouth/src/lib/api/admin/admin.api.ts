@@ -1,5 +1,10 @@
 import type { IApiClient } from '../types/api-client.types';
-import type { SystemHealthReport, TableDataResponse, QdrantCollectionsResponse, QdrantPointsResponse } from './admin.types';
+import type {
+  SystemHealthReport,
+  TableDataResponse,
+  QdrantCollectionsResponse,
+  QdrantPointsResponse,
+} from './admin.types';
 
 /**
  * Team member status
@@ -76,9 +81,12 @@ export class AdminApi {
     const params = new URLSearchParams();
     if (weekStart) params.append('week_start', weekStart);
 
-    return this.client.request<WeeklySummaryEntry[]>(`/api/team/activity/weekly?${params.toString()}`, {
-      headers: this.client.getAdminHeaders(),
-    });
+    return this.client.request<WeeklySummaryEntry[]>(
+      `/api/team/activity/weekly?${params.toString()}`,
+      {
+        headers: this.client.getAdminHeaders(),
+      }
+    );
   }
 
   // Get monthly work summary
@@ -86,9 +94,12 @@ export class AdminApi {
     const params = new URLSearchParams();
     if (monthStart) params.append('month_start', monthStart);
 
-    return this.client.request<MonthlySummaryEntry[]>(`/api/team/activity/monthly?${params.toString()}`, {
-      headers: this.client.getAdminHeaders(),
-    });
+    return this.client.request<MonthlySummaryEntry[]>(
+      `/api/team/activity/monthly?${params.toString()}`,
+      {
+        headers: this.client.getAdminHeaders(),
+      }
+    );
   }
 
   // Export timesheet as CSV
@@ -147,7 +158,11 @@ export class AdminApi {
     });
   }
 
-  async getQdrantPoints(collection: string, limit = 20, offset?: string): Promise<QdrantPointsResponse> {
+  async getQdrantPoints(
+    collection: string,
+    limit = 20,
+    offset?: string
+  ): Promise<QdrantPointsResponse> {
     let url = `/api/admin/qdrant/points?collection=${collection}&limit=${limit}`;
     if (offset) url += `&offset=${offset}`;
 
@@ -361,4 +376,3 @@ interface CrmActionsResponse {
   offset: number;
   actions: CrmAction[];
 }
-

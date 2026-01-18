@@ -9,7 +9,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.services.misc.performance_optimizer import PerformanceMonitor, async_timed, perf_monitor, timed
+from backend.services.misc.performance_optimizer import (
+    PerformanceMonitor,
+    async_timed,
+    perf_monitor,
+    timed,
+)
 
 
 class TestPerformanceMonitor:

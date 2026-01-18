@@ -13,7 +13,7 @@ async function optimizeAvatar(filename) {
     await sharp(inputPath)
       .resize(200, 200, {
         fit: 'cover',
-        position: 'center'
+        position: 'center',
       })
       .png({ quality: 80, compressionLevel: 9 })
       .toFile(outputPath + '.tmp');

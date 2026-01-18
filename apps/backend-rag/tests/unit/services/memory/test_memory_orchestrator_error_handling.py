@@ -20,7 +20,7 @@ except ImportError:
     class ErrorCategory:
         TRANSIENT = "transient"
         PERMANENT = "permanent"
-    
+
     class ErrorClassifier:
         @staticmethod
         def classify_error(error):
@@ -29,6 +29,8 @@ except ImportError:
             elif isinstance(error, ImportError):
                 return ErrorCategory.PERMANENT, "high"
             return ErrorCategory.PERMANENT, "medium"
+
+
 from backend.services.memory.orchestrator import MemoryOrchestrator, MemoryServiceStatus
 
 
@@ -50,13 +52,16 @@ async def test_degraded_mode_on_non_critical_failure(memory_orchestrator):
     # Mock fact extractor to fail (non-critical)
     with (
         patch(
-            "backend.services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
+            "backend.services.memory.orchestrator.MemoryServicePostgres",
+            return_value=mock_memory_service,
         ),
         patch(
             "backend.services.memory.orchestrator.MemoryFactExtractor",
             side_effect=Exception("Fact extractor failed"),
         ),
-        patch("backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
+        patch(
+            "backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()
+        ),
     ):
         await memory_orchestrator.initialize()
 
@@ -93,10 +98,13 @@ async def test_healthy_status_on_success(memory_orchestrator):
 
     with (
         patch(
-            "backend.services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
+            "backend.services.memory.orchestrator.MemoryServicePostgres",
+            return_value=mock_memory_service,
         ),
         patch("backend.services.memory.orchestrator.MemoryFactExtractor", return_value=MagicMock()),
-        patch("backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
+        patch(
+            "backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()
+        ),
     ):
         await memory_orchestrator.initialize()
 
@@ -108,12 +116,12 @@ async def test_healthy_status_on_success(memory_orchestrator):
 @pytest.mark.asyncio
 async def test_error_classification_for_failures(memory_orchestrator):
     """Test that initialization failures are classified correctly.
-    
-    Updated 2026-01-16: Fixed to handle ErrorClassifier.classify_error() 
+
+    Updated 2026-01-16: Fixed to handle ErrorClassifier.classify_error()
     returning (ErrorCategory, ErrorSeverity) tuple.
     """
     from backend.app.core.error_classification import ErrorSeverity
-    
+
     # Transient error (connection)
     transient_error = ConnectionError("Connection failed")
     category, severity = ErrorClassifier.classify_error(transient_error)

@@ -5,13 +5,14 @@
   "type": "module",
   "workspaces": [
     "apps/backend-rag",
-    "apps/bali-intel-scraper",
-    "apps/mouth"
+    "apps/mouth",
+    "apps/zantara-media/dashboard"
   ],
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write \"**/*.{ts,js,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,md,yml,yaml}\"",
+    "lint:check": "prettier --check \"**/*.{ts,js,json,md,yml,yaml}\"",
     "pre-commit": "lint-staged",
     "test": "npm run test:ci -w apps/mouth",
     "test:coverage": "npm run test:coverage -w apps/mouth",

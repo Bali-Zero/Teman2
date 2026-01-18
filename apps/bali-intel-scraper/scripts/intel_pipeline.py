@@ -93,8 +93,9 @@ from article_deep_enricher import ArticleDeepEnricher, EnrichedArticle
 from gemini_image_generator import GeminiImageGenerator
 from seo_aeo_optimizer import SEOAEOOptimizer, optimize_article as seo_optimize
 from telegram_approval import TelegramApproval
-from metrics import MetricsCollector, track_latency, StructuredLogger
-from logging_config import setup_logging, get_logger, log_context, correlation_context, PerformanceLogger
+from metrics import MetricsCollector, StructuredLogger
+from logging_config import setup_logging, get_logger
+
 # Usa versione httpx per evitare problemi TLS con qdrant-client
 try:
     from semantic_deduplicator_httpx import SemanticDeduplicator
@@ -239,8 +240,12 @@ class IntelPipeline:
             self.image_generator = GeminiImageGenerator()
             logger.info("✅ Gemini Image Generator initialized (mandatory)")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Gemini Image Generator (mandatory): {e}")
-            raise RuntimeError(f"Image generator is mandatory but failed to initialize: {e}")
+            logger.error(
+                f"❌ Failed to initialize Gemini Image Generator (mandatory): {e}"
+            )
+            raise RuntimeError(
+                f"Image generator is mandatory but failed to initialize: {e}"
+            )
         self.seo_optimizer = SEOAEOOptimizer()
         self.approval_system = TelegramApproval() if require_approval else None
 
@@ -263,24 +268,28 @@ class IntelPipeline:
         logger.info(f"   Require human review: {require_human_review} (E-E-A-T)")
         logger.info(f"   Dry run: {dry_run}")
         logger.info("=" * 70)
-    
+
     def _verify_dependencies(self):
         """Verify critical dependencies are available"""
         import os
-        
+
         # Check OpenAI API key (required for semantic deduplication)
         if not os.getenv("OPENAI_API_KEY"):
-            logger.warning("⚠️ OPENAI_API_KEY not set - semantic deduplication will fail")
-        
+            logger.warning(
+                "⚠️ OPENAI_API_KEY not set - semantic deduplication will fail"
+            )
+
         # Check Qdrant credentials
         if not os.getenv("QDRANT_API_KEY"):
             logger.warning("⚠️ QDRANT_API_KEY not set - Qdrant operations will fail")
-        
+
         # Check backend URL
         backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         logger.debug(f"Backend URL: {backend_url}")
 
-    async def send_to_news_room(self, article: PipelineArticle, preview_url: str = None) -> bool:
+    async def send_to_news_room(
+        self, article: PipelineArticle, preview_url: str = None
+    ) -> bool:
         """
         Send article to backend Intelligence Center News Room.
 
@@ -308,7 +317,9 @@ class IntelPipeline:
             if enriched.bali_zero_take:
                 content_parts.append(f"## Bali Zero Take\n{enriched.bali_zero_take}")
             if enriched.next_steps:
-                next_steps_str = "\n".join([f"- {k}: {v}" for k, v in enriched.next_steps.items()])
+                next_steps_str = "\n".join(
+                    [f"- {k}: {v}" for k, v in enriched.next_steps.items()]
+                )
                 content_parts.append(f"## Next Steps\n{next_steps_str}")
 
             content = "\n\n".join(content_parts) if content_parts else article.summary
@@ -342,10 +353,14 @@ class IntelPipeline:
         # Cover image is mandatory for enriched articles
         if enriched:
             if not enriched.cover_image:
-                logger.error(f"   ❌ Cover image missing (mandatory) for article: {title[:50]}")
+                logger.error(
+                    f"   ❌ Cover image missing (mandatory) for article: {title[:50]}"
+                )
                 # This should not happen if retry/fallback worked, but log as error
                 logger.error("   ⚠️ Article will be skipped - no cover image available")
-                raise ValueError("Cover image is mandatory but missing after all retries and fallback")
+                raise ValueError(
+                    "Cover image is mandatory but missing after all retries and fallback"
+                )
             payload["cover_image"] = enriched.cover_image
             logger.info(f"   📷 Cover image included: {enriched.cover_image}")
 
@@ -355,7 +370,7 @@ class IntelPipeline:
             api_key = os.getenv("NUZANTARA_API_KEY")
             if api_key:
                 headers["X-API-Key"] = api_key
-            
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
@@ -399,14 +414,12 @@ class IntelPipeline:
         # STEP 0: SEMANTIC DEDUPLICATION (The Gatekeeper)
         # ═══════════════════════════════════════════════════════════════
         logger.info("🧠 Step 0: Semantic Deduplication Check...")
-        
+
         try:
             is_dup, original_title, score = await self.deduplicator.is_duplicate(
-                article.title, 
-                article.summary, 
-                article.url
+                article.title, article.summary, article.url
             )
-            
+
             if is_dup:
                 logger.warning(f"   🛑 DUPLICATE DETECTED (Score: {score:.2f})")
                 logger.warning(f"      Original: {original_title}")
@@ -415,9 +428,9 @@ class IntelPipeline:
                 article.similarity_score = score
                 self.stats.dedup_filtered += 1
                 return article
-            
+
             logger.info("   ✅ New unique content")
-            
+
         except Exception as e:
             logger.error(f"   Dedup check failed (continuing safely): {e}")
 
@@ -593,7 +606,9 @@ class IntelPipeline:
                 logger.error("   ❌ Image generator not available (mandatory)")
                 self.stats.errors += 1
             elif not article.enriched_article.cover_image:
-                logger.warning("   ⚠️ Cover image not generated during enrichment (mandatory)")
+                logger.warning(
+                    "   ⚠️ Cover image not generated during enrichment (mandatory)"
+                )
                 self.stats.errors += 1
             logger.info("\n🎨 Step 4: Image Reasoning Prepared...")
             logger.info("   Image context saved for Claude to reason about")
@@ -601,7 +616,9 @@ class IntelPipeline:
             # Check if image was prepared in enricher
             if article.enriched_article and article.enriched_article.cover_image:
                 self.stats.images_generated += 1
-                logger.success(f"   ✅ Image prepared: {article.enriched_article.cover_image}")
+                logger.success(
+                    f"   ✅ Image prepared: {article.enriched_article.cover_image}"
+                )
             # Actual image generation happens in enricher with browser automation
 
         # ═══════════════════════════════════════════════════════════════
@@ -696,7 +713,9 @@ class IntelPipeline:
                     article.approval_id = pending.article_id
                     article.approval_status = "pending"
                     article.preview_url = pending.preview_url  # Store on article
-                    article.requires_human_review = self.require_human_review  # E-E-A-T flag
+                    article.requires_human_review = (
+                        self.require_human_review
+                    )  # E-E-A-T flag
                     preview_url = pending.preview_url  # Get preview URL for news room
                     self.stats.pending_approval += 1
                     if self.require_human_review:
@@ -706,7 +725,9 @@ class IntelPipeline:
                     logger.info(f"   Article ID: {pending.article_id}")
                     logger.info(f"   🖼️ Preview URL: {pending.preview_url}")
                     if self.require_human_review:
-                        logger.info("   👤 E-E-A-T: Human review REQUIRED before publish")
+                        logger.info(
+                            "   👤 E-E-A-T: Human review REQUIRED before publish"
+                        )
                     if pending.telegram_message_id:
                         logger.info("   📱 Telegram notification sent!")
                     else:
@@ -721,12 +742,14 @@ class IntelPipeline:
             # 6b. Send to News Room WITH preview_url (zantara.balizero.com/intelligence/news-room)
             if not self.dry_run:
                 try:
-                    news_room_sent = await self.send_to_news_room(article, preview_url=preview_url)
+                    news_room_sent = await self.send_to_news_room(
+                        article, preview_url=preview_url
+                    )
                     if news_room_sent:
                         logger.info("   📰 Sent to News Room UI (with preview link)")
                 except Exception as e:
                     logger.warning(f"   ⚠️ News Room submission failed: {e}")
-        
+
         # ═══════════════════════════════════════════════════════════════
         # STEP 7: AUTO-MEMORY (Save to Qdrant)
         # ═══════════════════════════════════════════════════════════════
@@ -740,19 +763,24 @@ class IntelPipeline:
                 if not enriched:
                     logger.warning("   ⚠️ Cannot save: enriched_article is None")
                     return article
-                
-                await self.deduplicator.save_article({
-                    "title": enriched.headline or article.title,
-                    "summary": enriched.ai_summary or article.summary[:500], # Short AI summary
-                    "content": enriched.facts or enriched.ai_summary or article.summary,      # Full facts for deeper context
-                    "url": article.url,
-                    "source": article.source,
-                    "category": article.final_category,
-                    "publishedAt": article.published_at,
-                    "tier": "T2"
-                })
+
+                await self.deduplicator.save_article(
+                    {
+                        "title": enriched.headline or article.title,
+                        "summary": enriched.ai_summary
+                        or article.summary[:500],  # Short AI summary
+                        "content": enriched.facts
+                        or enriched.ai_summary
+                        or article.summary,  # Full facts for deeper context
+                        "url": article.url,
+                        "source": article.source,
+                        "category": article.final_category,
+                        "publishedAt": article.published_at,
+                        "tier": "T2",
+                    }
+                )
                 logger.success("   ✅ Saved to Qdrant (Future deduplication enabled)")
-                
+
             except Exception as e:
                 logger.error(f"   Memory save failed: {e}")
 
@@ -785,7 +813,7 @@ class IntelPipeline:
         # Track input count in metrics
         self.metrics.increment("articles_input", len(articles))
 
-        self.metrics_logger.info(f"Processing batch", article_count=len(articles))
+        self.metrics_logger.info("Processing batch", article_count=len(articles))
         logger.info("=" * 70)
         logger.info(f"🚀 PROCESSING BATCH: {len(articles)} articles")
         logger.info("=" * 70)
@@ -798,8 +826,8 @@ class IntelPipeline:
             # Validate URL before creating article
             # Support multiple URL field names: url, source_url, sourceUrl
             url = (
-                article_dict.get("url") 
-                or article_dict.get("source_url") 
+                article_dict.get("url")
+                or article_dict.get("source_url")
                 or article_dict.get("sourceUrl")
                 or ""
             )
@@ -807,7 +835,7 @@ class IntelPipeline:
                 logger.warning(f"Skipping article with invalid URL: {url}")
                 self.stats.errors += 1
                 continue
-            
+
             # Create pipeline article
             article = PipelineArticle(
                 title=article_dict.get("title", ""),
@@ -856,7 +884,7 @@ class IntelPipeline:
                     },
                     f,
                     indent=2,
-                    default=str, # Fix for serialization issues
+                    default=str,  # Fix for serialization issues
                 )
             logger.info(f"📁 Run audit saved to {audit_file}")
         except Exception as e:
@@ -867,13 +895,15 @@ class IntelPipeline:
 
         # Save metrics to file alongside audit log
         try:
-            metrics_file = audit_dir / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            metrics_file = (
+                audit_dir / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
             self.metrics.save_to_file(str(metrics_file))
         except Exception as e:
             logger.warning(f"⚠️ Failed to save metrics: {e}")
 
         # Cleanup resources
-        if hasattr(self.deduplicator, 'close'):
+        if hasattr(self.deduplicator, "close"):
             self.deduplicator.close()
 
         return results, self.stats
@@ -894,7 +924,9 @@ class IntelPipeline:
         logger.info(f"   Images generated:    {self.stats.images_generated}")
         logger.info(f"   SEO optimized:       {self.stats.seo_optimized}")
         logger.info(f"   Pending approval:    {self.stats.pending_approval}")
-        logger.info(f"   👤 Pending review:   {self.stats.pending_human_review} (E-E-A-T)")
+        logger.info(
+            f"   👤 Pending review:   {self.stats.pending_human_review} (E-E-A-T)"
+        )
         logger.info(f"   Published:           {self.stats.published}")
         logger.info(f"   Errors:              {self.stats.errors}")
         logger.info(f"   Duration:            {self.stats.duration_seconds:.1f}s")
@@ -949,18 +981,26 @@ async def test_pipeline():
 
     for article in results:
         if article.is_duplicate:
-            logger.info(f"DUPLICATE: {article.title[:50]}... Of: {article.duplicate_of}")
+            logger.info(
+                f"DUPLICATE: {article.title[:50]}... Of: {article.duplicate_of}"
+            )
             continue
 
         status = "APPROVED" if article.validation_approved else "REJECTED"
         logger.info(f"{status}: {article.title[:50]}...")
         logger.info(f"   LLAMA: {article.llama_score} ({article.llama_category})")
-        logger.info(f"   Validated: {article.validated}, Approved: {article.validation_approved}")
+        logger.info(
+            f"   Validated: {article.validated}, Approved: {article.validation_approved}"
+        )
         logger.info(f"   Reason: {article.validation_reason}")
         if article.seo_optimized:
             logger.info("   SEO: Optimized")
-            logger.info(f"   Keywords: {', '.join(article.seo_metadata.get('keywords', [])[:5])}")
-            logger.info(f"   Entities: {', '.join(article.seo_metadata.get('key_entities', [])[:3])}")
+            logger.info(
+                f"   Keywords: {', '.join(article.seo_metadata.get('keywords', [])[:5])}"
+            )
+            logger.info(
+                f"   Entities: {', '.join(article.seo_metadata.get('key_entities', [])[:3])}"
+            )
 
 
 if __name__ == "__main__":

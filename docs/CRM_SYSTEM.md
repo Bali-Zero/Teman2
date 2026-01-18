@@ -10,13 +10,13 @@ The Nuzantara CRM system manages client relationships, practices (services), int
 
 ### Database Schema
 
-| Table | Purpose |
-|-------|---------|
-| `clients` | Client profiles (name, email, phone, passport, visa info) |
-| `practices` | Services/engagements (PT PMA, KITAS, Visas) |
-| `interactions` | Communication logs (calls, emails, meetings) |
-| `client_documents` | Document attachments (passports, visas, contracts) |
-| `team_members` | Staff profiles and assignments |
+| Table              | Purpose                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `clients`          | Client profiles (name, email, phone, passport, visa info) |
+| `practices`        | Services/engagements (PT PMA, KITAS, Visas)               |
+| `interactions`     | Communication logs (calls, emails, meetings)              |
+| `client_documents` | Document attachments (passports, visas, contracts)        |
+| `team_members`     | Staff profiles and assignments                            |
 
 ### API Router
 
@@ -28,27 +28,27 @@ The Nuzantara CRM system manages client relationships, practices (services), int
 
 ### Client Management
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients` | List clients with pagination |
-| GET | `/api/crm/clients/{id}` | Get client profile with practices, docs |
-| POST | `/api/crm/clients` | Create new client |
-| PUT | `/api/crm/clients/{id}` | Update client |
-| DELETE | `/api/crm/clients/{id}` | Delete client |
+| Method | Endpoint                | Description                             |
+| ------ | ----------------------- | --------------------------------------- |
+| GET    | `/api/crm/clients`      | List clients with pagination            |
+| GET    | `/api/crm/clients/{id}` | Get client profile with practices, docs |
+| POST   | `/api/crm/clients`      | Create new client                       |
+| PUT    | `/api/crm/clients/{id}` | Update client                           |
+| DELETE | `/api/crm/clients/{id}` | Delete client                           |
 
 ### Document Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/documents` | List client documents |
-| POST | `/api/crm/clients/{id}/documents` | Upload document |
-| DELETE | `/api/crm/clients/documents/{doc_id}` | Delete document |
+| Method | Endpoint                              | Description           |
+| ------ | ------------------------------------- | --------------------- |
+| GET    | `/api/crm/clients/{id}/documents`     | List client documents |
+| POST   | `/api/crm/clients/{id}/documents`     | Upload document       |
+| DELETE | `/api/crm/clients/documents/{doc_id}` | Delete document       |
 
 ### OCR & Extraction
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/crm/clients/extract-passport` | Extract passport data from image (Gemini Vision) |
+| Method | Endpoint                            | Description                                      |
+| ------ | ----------------------------------- | ------------------------------------------------ |
+| POST   | `/api/crm/clients/extract-passport` | Extract passport data from image (Gemini Vision) |
 
 ---
 
@@ -87,6 +87,7 @@ Three equal-sized cards in passport-like 3:2 ratio:
 ### Document Previews (2026-01-13)
 
 Documents tab now shows:
+
 - Thumbnail preview using Google Drive embed
 - Alert color border based on expiry
 - Click to open in Google Drive
@@ -100,6 +101,7 @@ Documents tab now shows:
 **POST** `/api/crm/clients/extract-passport`
 
 **Request:**
+
 ```json
 {
   "client_id": 123,
@@ -108,6 +110,7 @@ Documents tab now shows:
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -118,6 +121,7 @@ Documents tab now shows:
 ```
 
 **Flow:**
+
 1. Download image from Google Drive (converts view URL to download URL)
 2. Convert to base64
 3. Send to Gemini Vision with OCR prompt
@@ -128,6 +132,7 @@ Documents tab now shows:
 **Gemini Model:** `gemini-3-flash-preview`
 
 **Prompt:**
+
 ```
 Analyze this passport image and extract the following information.
 Return ONLY a JSON object with these fields:
@@ -186,11 +191,11 @@ interface ClientDocument {
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_API_KEY` | Gemini API key for Vision OCR |
-| `GOOGLE_DRIVE_CLIENT_ID` | OAuth client for Drive access |
-| `GOOGLE_DRIVE_CLIENT_SECRET` | OAuth secret |
+| Variable                     | Description                   |
+| ---------------------------- | ----------------------------- |
+| `GOOGLE_API_KEY`             | Gemini API key for Vision OCR |
+| `GOOGLE_DRIVE_CLIENT_ID`     | OAuth client for Drive access |
+| `GOOGLE_DRIVE_CLIENT_SECRET` | OAuth secret                  |
 
 ---
 
@@ -207,9 +212,9 @@ interface ClientDocument {
 
 ## Related Files
 
-| File | Purpose |
-|------|---------|
-| `backend/app/routers/crm_clients.py` | API router |
-| `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx` | Profile page |
-| `backend/services/multimodal/pdf_vision_service.py` | Vision service |
-| `backend/llm/genai_client.py` | Gemini client wrapper |
+| File                                                   | Purpose               |
+| ------------------------------------------------------ | --------------------- |
+| `backend/app/routers/crm_clients.py`                   | API router            |
+| `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx` | Profile page          |
+| `backend/services/multimodal/pdf_vision_service.py`    | Vision service        |
+| `backend/llm/genai_client.py`                          | Gemini client wrapper |

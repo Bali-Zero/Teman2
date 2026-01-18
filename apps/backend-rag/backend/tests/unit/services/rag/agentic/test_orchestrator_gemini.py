@@ -72,13 +72,20 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
-        patch("backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway),
         patch(
-            "backend.services.rag.agentic.orchestrator.ReasoningEngine", return_value=mock_reasoning_engine
+            "backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway
         ),
-        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as MockEntityExtractor,
+        patch(
+            "backend.services.rag.agentic.orchestrator.ReasoningEngine",
+            return_value=mock_reasoning_engine,
+        ),
+        patch(
+            "backend.services.rag.agentic.orchestrator.EntityExtractionService"
+        ) as MockEntityExtractor,
         patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
-        patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_get_user_context,
+        patch(
+            "backend.services.rag.agentic.orchestrator.get_user_context"
+        ) as mock_get_user_context,
         patch("backend.services.rag.agentic.orchestrator.trace_span") as mock_trace_span,
     ):
         # Setup specific mocks

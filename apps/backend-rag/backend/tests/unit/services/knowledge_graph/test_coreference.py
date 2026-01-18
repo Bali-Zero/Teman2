@@ -13,7 +13,11 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.services.knowledge_graph.coreference import CoreferenceResolver, EntityCluster, EntityMention
+from backend.services.knowledge_graph.coreference import (
+    CoreferenceResolver,
+    EntityCluster,
+    EntityMention,
+)
 from backend.services.knowledge_graph.ontology import EntityType
 
 
@@ -95,7 +99,9 @@ class TestCoreferenceResolver:
     @pytest.mark.asyncio
     async def test_resolve_reference(self, coreference_resolver):
         """Test resolving reference"""
-        with patch("backend.services.knowledge_graph.coreference.anthropic.Anthropic") as mock_anthropic:
+        with patch(
+            "backend.services.knowledge_graph.coreference.anthropic.Anthropic"
+        ) as mock_anthropic:
             mock_client = MagicMock()
             mock_message = MagicMock()
             mock_message.content = [

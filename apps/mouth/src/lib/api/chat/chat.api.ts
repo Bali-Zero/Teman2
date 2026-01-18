@@ -5,17 +5,17 @@ import { logger } from '@/lib/logger';
 
 /**
  * NOTE: Image response cleaning is now handled by the backend.
- * 
+ *
  * The backend's `clean_image_generation_response` function (in agentic_rag.py)
  * is the SINGLE SOURCE OF TRUTH for image response cleaning.
- * 
+ *
  * It processes token events during streaming, removing:
  * - Pollinations URLs and subdomains
  * - Markdown image syntax
  * - Version numbers and intro/outro lines
  * - URL-encoded content
  * - Other image generation artifacts
- * 
+ *
  * This frontend function has been removed to eliminate code duplication.
  * The backend ensures all responses are cleaned before being sent to the client.
  */
@@ -53,9 +53,9 @@ export class ChatApi {
 
   /**
    * SSE streaming via backend `/api/agentic-rag/stream` (Zantara AI v2.0)
-   * 
+   *
    * **SOURCE OF TRUTH** for client-side streaming. This is the active implementation.
-   * 
+   *
    * Features:
    * - ✅ Robust error handling with error codes (TIMEOUT, ABORTED)
    * - ✅ Configurable timeouts (request, idle, max total time)
@@ -67,7 +67,7 @@ export class ChatApi {
    * - ✅ Vision support (image attachments)
    * - ✅ Conversation history management
    * - ✅ Unmount detection (doesn't call callbacks if component unmounted)
-   * 
+   *
    * @param message - User message text
    * @param conversationId - Session ID for conversation continuity
    * @param onChunk - Callback for each token chunk (receives accumulated text)
@@ -81,9 +81,9 @@ export class ChatApi {
    * @param idleTimeoutMs - Idle timeout in ms, resets on data (default: 60s)
    * @param maxTotalTimeMs - Maximum total time in ms (default: 10min)
    * @param images - Vision images (base64 encoded)
-   * 
+   *
    * @throws Never throws - all errors are passed to onError callback
-   * 
+   *
    * @example
    * ```typescript
    * await api.sendMessageStreaming(
@@ -141,13 +141,13 @@ export class ChatApi {
     let timedOut = false;
     let userCancelled = false;
     let lastDataTime = Date.now();
-    
+
     // Max total time budget
     const maxTimeId = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, maxTotalTimeMs);
-    
+
     // Idle timeout (reset on data arrival)
     let idleTimeoutId: NodeJS.Timeout | null = null;
     const resetIdleTimeout = () => {
@@ -273,7 +273,7 @@ export class ChatApi {
       let fullResponse = '';
       let sources: Array<{ title?: string; content?: string }> = [];
       let finalMetadata: Record<string, unknown> | undefined = undefined;
-      let generatedImageUrl: string | undefined = undefined;  // Track generated images
+      let generatedImageUrl: string | undefined = undefined; // Track generated images
       let readerCancelled = false;
       // requestAborted already declared above in function scope
 
@@ -312,7 +312,7 @@ export class ChatApi {
 
           // Reset idle timeout on data arrival
           resetIdleTimeout();
-          
+
           // Track metrics
           if (value) {
             totalBytesReceived += value.length;
@@ -321,7 +321,7 @@ export class ChatApi {
             }
             lastChunkTime = Date.now();
           }
-          
+
           sseBuffer += decoder.decode(value, { stream: true });
 
           // SSE frames can be split across network chunks; buffer until we have full lines.
@@ -397,30 +397,29 @@ export class ChatApi {
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
-                onStep({ 
-                  type: 'phase', 
-                  data: { 
-                    name: data.data.name as string, 
-                    status: (data.data.status as string) || 'started' 
-                  }, 
-                  timestamp: new Date() 
+                onStep({
+                  type: 'phase',
+                  data: {
+                    name: data.data.name as string,
+                    status: (data.data.status as string) || 'started',
+                  },
+                  timestamp: new Date(),
                 });
               }
             } else if (data.type === 'keepalive') {
               // Reset idle timeout on keepalive - this keeps connection alive during long operations
               resetIdleTimeout();
               // Optionally notify about progress
-              if (
-                onStep &&
-                isRecord(data.data) &&
-                !signalToUse.aborted &&
-                !requestAborted
-              ) {
+              if (onStep && isRecord(data.data) && !signalToUse.aborted && !requestAborted) {
                 const phase = (data.data.phase as string) || 'processing';
                 const elapsed = (data.data.elapsed as number) || 0;
                 // Only show status for longer operations (after 20s)
                 if (elapsed >= 20) {
-                  onStep({ type: 'status', data: `⏳ Still ${phase}... (${elapsed}s)`, timestamp: new Date() });
+                  onStep({
+                    type: 'status',
+                    data: `⏳ Still ${phase}... (${elapsed}s)`,
+                    timestamp: new Date(),
+                  });
                 }
               }
             } else if (data.type === 'thinking') {
@@ -448,7 +447,7 @@ export class ChatApi {
                   type: 'tool_call',
                   data: {
                     tool: data.data.tool,
-                    args: isRecord(data.data.args) ? data.data.args : {}
+                    args: isRecord(data.data.args) ? data.data.args : {},
                   },
                   timestamp: new Date(),
                 });
@@ -590,8 +589,9 @@ export class ChatApi {
           // Calculate final metrics
           const totalDuration = Date.now() - startTime;
           const timeToFirstChunk = firstChunkTime ? firstChunkTime - startTime : null;
-          const streamingDuration = lastChunkTime && firstChunkTime ? lastChunkTime - firstChunkTime : null;
-          
+          const streamingDuration =
+            lastChunkTime && firstChunkTime ? lastChunkTime - firstChunkTime : null;
+
           // Log metrics
           logger.info('Stream completed', {
             component: 'ChatApi',
@@ -622,28 +622,32 @@ export class ChatApi {
     } catch (error) {
       // Calculate error metrics
       const errorDuration = Date.now() - startTime;
-      
+
       // Check abortSignal state at catch time (may have changed since listener was set)
       const isAbortSignalActive = abortSignal?.aborted === true;
       const isUserCancel = isAbortSignalActive && !timedOut;
-      
+
       // Log error metrics
-      logger.error('Stream error', {
-        component: 'ChatApi',
-        action: 'sendMessageStreaming',
-        metadata: {
-          correlationId,
-          errorType: error instanceof Error ? error.name : 'Unknown',
-          errorMessage: error instanceof Error ? error.message : String(error),
-          duration: `${errorDuration}ms`,
-          timedOut,
-          userCancelled: isUserCancel || userCancelled,
-          chunkCount,
-          totalBytesReceived,
-          eventTypes: eventTypeCounts,
+      logger.error(
+        'Stream error',
+        {
+          component: 'ChatApi',
+          action: 'sendMessageStreaming',
+          metadata: {
+            correlationId,
+            errorType: error instanceof Error ? error.name : 'Unknown',
+            errorMessage: error instanceof Error ? error.message : String(error),
+            duration: `${errorDuration}ms`,
+            timedOut,
+            userCancelled: isUserCancel || userCancelled,
+            chunkCount,
+            totalBytesReceived,
+            eventTypes: eventTypeCounts,
+          },
         },
-      }, error instanceof Error ? error : new Error(String(error)));
-      
+        error instanceof Error ? error : new Error(String(error))
+      );
+
       // Always call onError for timeouts and user cancellations
       // Only skip if component was unmounted (abortSignal.aborted but not timedOut/userCancelled)
       if (timedOut) {

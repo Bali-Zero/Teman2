@@ -223,7 +223,9 @@ class TestTeamDriveServiceIntegration:
 
     def test_metrics_enabled_flag(self):
         """Test that METRICS_ENABLED flag exists."""
-        flag, error = safe_import("backend.services.integrations.team_drive_service", "METRICS_ENABLED")
+        flag, error = safe_import(
+            "backend.services.integrations.team_drive_service", "METRICS_ENABLED"
+        )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         assert isinstance(flag, bool)

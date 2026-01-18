@@ -1,9 +1,9 @@
 /**
  * API Client Module - Refactored for maintainability
- * 
+ *
  * This module maintains backward compatibility with the original api.ts file.
  * All exports remain identical to ensure zero breaking changes.
- * 
+ *
  * Internal structure:
  * - client.ts: Base API client with token management
  * - api-client.ts: Unified client that composes domain-specific APIs
@@ -19,7 +19,11 @@ import type {
   ConversationListResponse,
   SingleConversationResponse,
 } from './conversations/conversations.types';
-import type { KnowledgeChunkMetadata, KnowledgeSearchResult, KnowledgeSearchResponse } from './knowledge/knowledge.types';
+import type {
+  KnowledgeChunkMetadata,
+  KnowledgeSearchResult,
+  KnowledgeSearchResponse,
+} from './knowledge/knowledge.types';
 import { TierLevel } from './knowledge/knowledge.types';
 import type { Practice, Interaction, PracticeStats, InteractionStats } from './crm/crm.types';
 

@@ -10,21 +10,25 @@
 ### Frontend (apps/mouth)
 
 #### 1. Consolidamento Streaming SSE
+
 - ✅ Rimossa implementazione server-side duplicata (`sendMessageStream`)
 - ✅ Eliminato hook deprecato (`useOptimisticChat.ts`)
 - ✅ Consolidato tutto su client-side streaming (`chat.api.ts`)
 - ✅ Rimossa duplicazione `cleanImageResponse()`
 
 #### 2. Pulizia Codice Legacy
+
 - ✅ Sostituito console logging con logger strutturato
 - ✅ Risolti/documentati tutti i TODO
 - ✅ Migliorata type safety (rimosso `as unknown as`)
 - ✅ Creato utility error handling centralizzata
 
 #### 3. Nuovi File
+
 - ✅ `apps/mouth/src/lib/utils/error-handler.ts` - Utility error handling
 
 #### 4. File Eliminati
+
 - ✅ `apps/mouth/src/hooks/useOptimisticChat.ts` - Hook deprecato
 
 ---
@@ -78,6 +82,7 @@ flyctl deploy -a nuzantara-rag
 ### Frontend (Vercel)
 
 1. **Verifica Build:**
+
    ```bash
    # Check deployment status
    vercel ls
@@ -99,6 +104,7 @@ flyctl deploy -a nuzantara-rag
 Se deploy backend necessario:
 
 1. **Verifica Health:**
+
    ```bash
    curl https://nuzantara-rag.fly.dev/health
    ```
@@ -113,12 +119,14 @@ Se deploy backend necessario:
 ## 📊 METRICHE
 
 ### Codice Rimosso:
+
 - ~454 righe di codice legacy
 - 1 file eliminato (`useOptimisticChat.ts`)
 - 2 funzioni duplicate rimosse
 - 1 type non utilizzato rimosso
 
 ### Codice Migliorato:
+
 - Logger strutturato implementato
 - Type safety migliorata
 - Error handling centralizzato
@@ -129,6 +137,7 @@ Se deploy backend necessario:
 ## 🎯 RISULTATO ATTESO
 
 Dopo il deploy:
+
 - ✅ Streaming SSE consolidato (solo client-side)
 - ✅ Logging strutturato attivo
 - ✅ Error handling standardizzato

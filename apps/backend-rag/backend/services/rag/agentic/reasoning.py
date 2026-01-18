@@ -24,7 +24,12 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.config import settings
 from backend.app.core.constants import EvidenceScoreConstants
-from backend.app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
+from backend.app.utils.tracing import (
+    add_span_event,
+    set_span_attribute,
+    set_span_status,
+    trace_span,
+)
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.tools.definitions import AgentState, AgentStep
 
@@ -211,7 +216,10 @@ def calculate_evidence_score(
             context_text = " ".join(context_gathered).lower()
             matching_keywords = sum(1 for kw in query_keywords if kw in context_text)
             # If at least threshold% of keywords match, add score
-            if matching_keywords / len(query_keywords) >= EvidenceScoreConstants.KEYWORD_MATCH_THRESHOLD:
+            if (
+                matching_keywords / len(query_keywords)
+                >= EvidenceScoreConstants.KEYWORD_MATCH_THRESHOLD
+            ):
                 base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
 
     # Cap at maximum score
@@ -574,7 +582,9 @@ class ReasoningEngine:
                                     },
                                 )
                                 try:
-                                    from backend.app.metrics import reasoning_low_context_quality_total
+                                    from backend.app.metrics import (
+                                        reasoning_low_context_quality_total,
+                                    )
 
                                     reasoning_low_context_quality_total.inc()
                                 except ImportError:

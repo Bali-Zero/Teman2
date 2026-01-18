@@ -103,8 +103,7 @@ async def run_migration():
 
         # Check if migration already applied
         existing = await conn.fetchval(
-            "SELECT COUNT(*) FROM migrations WHERE migration_name = $1",
-            MIGRATION_NAME
+            "SELECT COUNT(*) FROM migrations WHERE migration_name = $1", MIGRATION_NAME
         )
         if existing:
             logger.info(f"Migration {MIGRATION_NAME} already applied, skipping")
@@ -136,10 +135,7 @@ async def run_migration():
             logger.info(f"Upserted practice type: {pt['code']}")
 
         # Record migration
-        await conn.execute(
-            "INSERT INTO migrations (migration_name) VALUES ($1)",
-            MIGRATION_NAME
-        )
+        await conn.execute("INSERT INTO migrations (migration_name) VALUES ($1)", MIGRATION_NAME)
         logger.info(f"Migration {MIGRATION_NAME} completed successfully")
 
         # Verify

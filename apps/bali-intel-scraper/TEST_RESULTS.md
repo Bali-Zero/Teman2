@@ -8,15 +8,18 @@
 ## ✅ Test Completati
 
 ### 1. Test Strutturale (Locale)
+
 **Comando:**
+
 ```bash
 cd apps/bali-intel-scraper/scripts
 python test_dedup_dry_run.py
 ```
 
 **Risultato:** ✅ PASSATO
+
 - ✅ Import `semantic_deduplicator` OK
-- ✅ Import `intel_pipeline` OK  
+- ✅ Import `intel_pipeline` OK
 - ✅ Import `init_news_collection` OK
 - ✅ Configurazione collezione: `balizero_news_history`
 - ✅ Threshold: `0.88`

@@ -9,6 +9,7 @@
 ## 🔍 MONITORING STATUS
 
 ### Deploy Status:
+
 - ✅ **Status:** Ready (Production)
 - ✅ **Build:** Success (1m duration)
 - ✅ **Created:** 2026-01-16 22:43:25 GMT+0800
@@ -16,6 +17,7 @@
 - ✅ **URL:** https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 
 ### Domain Status:
+
 - ✅ `zantara.balizero.com` → Redirect a `/login` (normale)
 - ✅ `balizero.com` → Attivo
 - ✅ `www.balizero.com` → Attivo
@@ -25,17 +27,20 @@
 ## 📊 LOGS MONITORING
 
 ### Vercel Logs:
+
 - **Status:** Nessun log runtime disponibile (normale per deploy recente)
 - **Nota:** Logs runtime appaiono solo quando c'è traffico attivo
 - **Monitoraggio:** Continuare a monitorare durante test manuali
 
 ### Cosa Monitorare:
+
 1. **Durante Test Manuali:**
    - Logs di streaming (`[INFO] Stream completed`)
    - Errori streaming (`[ERROR] Stream error`)
    - Logger strutturato attivo
 
 2. **Pattern Attesi:**
+
    ```
    [INFO] Stream completed [component: "ChatApi", action: "sendMessageStreaming", ...]
    [INFO] Message received successfully [component: "ChatPage", ...]
@@ -52,12 +57,14 @@
 ## 🧪 TEST MANUALE - ISTRUZIONI
 
 ### Step 1: Accesso
+
 1. Apri browser
 2. Vai a: https://zantara.balizero.com
 3. Verifica redirect a `/login`
 4. Login con credenziali
 
 ### Step 2: Chat Streaming Test
+
 1. Naviga a `/chat`
 2. Apri DevTools Console (F12)
 3. Invia messaggio: "Hello, test streaming"
@@ -68,6 +75,7 @@
    - ✅ Logs strutturati visibili (se logger attivo)
 
 ### Step 3: Verifica Logger Strutturato
+
 1. In Console, cerca logs strutturati:
    ```javascript
    // Dovresti vedere:
@@ -77,6 +85,7 @@
    ```
 
 ### Step 4: Test Error Handling
+
 1. Simula errore (disabilita network in DevTools)
 2. Invia messaggio
 3. Verifica messaggio errore user-friendly
@@ -87,16 +96,19 @@
 ## 📈 PERFORMANCE METRICS
 
 ### Build Metrics:
+
 - ✅ Build time: ~1m
 - ✅ Build success: Yes
 - ✅ Output items: 573
 
 ### Runtime Metrics (da verificare):
-- TTFB: ___ms (target: < 500ms)
-- Streaming latency: ___ms (target: < 1000ms)
-- Error rate: ___% (target: < 1%)
+
+- TTFB: \_\_\_ms (target: < 500ms)
+- Streaming latency: \_\_\_ms (target: < 1000ms)
+- Error rate: \_\_\_% (target: < 1%)
 
 ### Vercel Dashboard:
+
 - Accedere a: https://vercel.com/nuzantara-2026/mouth
 - Verificare:
   - [ ] Deploy success rate
@@ -109,6 +121,7 @@
 ## ✅ VERIFICA MODIFICHE
 
 ### Modifiche Deployate:
+
 1. ✅ Streaming SSE consolidato
    - `sendMessageStream` rimosso ✅
    - `useOptimisticChat` eliminato ✅
@@ -131,6 +144,7 @@
 ## 🎯 RISULTATO ATTESO
 
 Dopo test manuali:
+
 - ✅ Chat streaming funziona correttamente
 - ✅ Logger strutturato attivo e funzionante
 - ✅ Error handling migliorato
@@ -146,6 +160,7 @@ Dopo test manuali:
    - Documentare risultati
 
 2. **Monitorare Logs:**
+
    ```bash
    cd apps/mouth
    vercel logs https://mouth-77xuogi1i-nuzantara-2026.vercel.app

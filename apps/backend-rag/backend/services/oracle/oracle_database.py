@@ -7,10 +7,11 @@ import json
 import logging
 from typing import Any
 
-from backend.db.utils import db_retry
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
+
+from backend.db.utils import db_retry
 
 from .oracle_config import oracle_config
 

@@ -11,12 +11,14 @@ Confronta i dati estratti dai PDF con quelli in Qdrant e identifica:
 import os
 import json
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
 import requests
 from dotenv import load_dotenv
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 EXTRACTION_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_extraction")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_compliance")
 
@@ -38,9 +40,7 @@ def fetch_kbli_from_qdrant(code: str) -> Optional[Dict]:
         headers["api-key"] = QDRANT_API_KEY
 
     body = {
-        "filter": {
-            "must": [{"key": "metadata.kode", "match": {"value": code}}]
-        },
+        "filter": {"must": [{"key": "metadata.kode", "match": {"value": code}}]},
         "limit": 1,
         "with_payload": True,
     }
@@ -127,7 +127,9 @@ def compare_kbli(pdf_entry: Dict, qdrant_data: Optional[Dict]) -> Dict:
         elif pdf_judul in q_judul or q_judul in pdf_judul:
             comparison["matches"]["judul"] = "simile"
         else:
-            comparison["differences"].append(f"Judul diverso: PDF='{pdf_entry.get('judul')}', Qdrant='{meta.get('judul')}'")
+            comparison["differences"].append(
+                f"Judul diverso: PDF='{pdf_entry.get('judul')}', Qdrant='{meta.get('judul')}'"
+            )
 
     # Confronto risk level (se presente in PDF)
     pdf_risk = pdf_entry.get("tingkat_risiko", "")
@@ -136,7 +138,9 @@ def compare_kbli(pdf_entry: Dict, qdrant_data: Optional[Dict]) -> Dict:
         if pdf_risk == q_risk:
             comparison["matches"]["risk_level"] = "allineato"
         else:
-            comparison["differences"].append(f"Risk level diverso: PDF={pdf_risk}, Qdrant={q_risk}")
+            comparison["differences"].append(
+                f"Risk level diverso: PDF={pdf_risk}, Qdrant={q_risk}"
+            )
 
     # Confronto PMA
     pdf_pma = pdf_entry.get("pma_allowed")
@@ -145,7 +149,9 @@ def compare_kbli(pdf_entry: Dict, qdrant_data: Optional[Dict]) -> Dict:
         if pdf_pma == q_pma:
             comparison["matches"]["pma_allowed"] = "allineato"
         else:
-            comparison["differences"].append(f"PMA diverso: PDF={pdf_pma}, Qdrant={q_pma}")
+            comparison["differences"].append(
+                f"PMA diverso: PDF={pdf_pma}, Qdrant={q_pma}"
+            )
 
     # Verifica persyaratan/kewajiban
     reqs = extract_persyaratan_kewajiban(text)
@@ -245,7 +251,11 @@ def main():
 
     # Identifica gap
     missing_codes = [c["code"] for c in comparisons if not c["found_in_qdrant"]]
-    needs_update = [c["code"] for c in comparisons if c["found_in_qdrant"] and (c["differences"] or c["missing_fields"])]
+    needs_update = [
+        c["code"]
+        for c in comparisons
+        if c["found_in_qdrant"] and (c["differences"] or c["missing_fields"])
+    ]
 
     gap_report = {
         "missing_in_qdrant": missing_codes,
@@ -265,9 +275,15 @@ def main():
     print("RISULTATI VERIFICA COMPLIANCE")
     print("=" * 60)
     print(f"Totale verificati: {stats['total_checked']}")
-    print(f"✅ Trovati in Qdrant: {stats['found_in_qdrant']} ({stats['found_in_qdrant']*100/stats['total_checked']:.1f}%)")
-    print(f"❌ Mancanti in Qdrant: {stats['missing_in_qdrant']} ({stats['missing_in_qdrant']*100/stats['total_checked']:.1f}%)")
-    print(f"✅ Completamente allineati: {stats['fully_aligned']} ({stats['fully_aligned']*100/stats['total_checked']:.1f}%)")
+    print(
+        f"✅ Trovati in Qdrant: {stats['found_in_qdrant']} ({stats['found_in_qdrant'] * 100 / stats['total_checked']:.1f}%)"
+    )
+    print(
+        f"❌ Mancanti in Qdrant: {stats['missing_in_qdrant']} ({stats['missing_in_qdrant'] * 100 / stats['total_checked']:.1f}%)"
+    )
+    print(
+        f"✅ Completamente allineati: {stats['fully_aligned']} ({stats['fully_aligned'] * 100 / stats['total_checked']:.1f}%)"
+    )
     print(f"⚠️  Con differenze: {stats['has_differences']}")
     print(f"   - Mancano persyaratan: {stats['missing_persyaratan']}")
     print(f"   - Mancano kewajiban: {stats['missing_kewajiban']}")

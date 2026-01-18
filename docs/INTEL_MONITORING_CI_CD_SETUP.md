@@ -18,21 +18,25 @@ Complete monitoring, testing, and CI/CD setup for Intel Router refactoring.
 **Purpose:** Monitor Fly.io logs for Intel-related errors and warnings.
 
 **Usage:**
+
 ```bash
 python3 scripts/monitoring/monitor_intel_logs.py [limit]
 ```
 
 **Features:**
+
 - Fetches logs from Fly.io
 - Analyzes for errors, warnings, Intel operations
 - Tracks service call counts
 - Generates JSON report
 
 **Output:**
+
 - Terminal report with color-coded status
 - JSON report: `scripts/monitoring/intel_logs_report.json`
 
 **Exit Codes:**
+
 - `0`: No errors (warnings may be present)
 - `1`: Errors detected
 
@@ -43,11 +47,13 @@ python3 scripts/monitoring/monitor_intel_logs.py [limit]
 **Purpose:** Monitor Prometheus metrics for Intel services.
 
 **Usage:**
+
 ```bash
 python3 scripts/monitoring/monitor_intel_metrics.py
 ```
 
 **Features:**
+
 - Fetches metrics from `/metrics` endpoint
 - Analyzes Intel-specific metrics
 - Calculates duplicate rates
@@ -55,10 +61,12 @@ python3 scripts/monitoring/monitor_intel_metrics.py
 - Generates JSON report
 
 **Output:**
+
 - Terminal report with metrics summary
 - JSON report: `scripts/monitoring/intel_metrics_report.json`
 
 **Metrics Tracked:**
+
 - Articles submitted
 - Duplicates detected
 - Classifications by type
@@ -66,6 +74,7 @@ python3 scripts/monitoring/monitor_intel_metrics.py
 - Service health indicators
 
 **Exit Codes:**
+
 - `0`: All metrics within normal range
 - `1`: Staging queue size exceeds 100 items
 
@@ -76,32 +85,38 @@ python3 scripts/monitoring/monitor_intel_metrics.py
 **Purpose:** Measure response times and performance of Intel endpoints.
 
 **Usage:**
+
 ```bash
 python3 scripts/monitoring/monitor_intel_performance.py [iterations]
 ```
 
 **Features:**
+
 - Measures response times for key endpoints
 - Calculates min, max, avg, P50, P95
 - Identifies slow endpoints
 - Generates performance recommendations
 
 **Endpoints Tested:**
+
 - `/health`
 - `/metrics`
 - `/api/intel/metrics`
 
 **Output:**
+
 - Terminal report with performance metrics
 - JSON report: `scripts/monitoring/intel_performance_report.json`
 
 **Performance Thresholds:**
+
 - Excellent: < 200ms
 - Good: < 500ms
 - Acceptable: < 1000ms
 - Slow: > 1000ms
 
 **Exit Codes:**
+
 - `0`: All endpoints performing well
 - `1`: Performance degraded
 
@@ -112,18 +127,21 @@ python3 scripts/monitoring/monitor_intel_performance.py [iterations]
 **Purpose:** Run all monitoring checks daily via cron.
 
 **Usage:**
+
 ```bash
 # Add to crontab:
 0 9 * * * /path/to/scripts/monitoring/daily_intel_monitor.sh
 ```
 
 **Features:**
+
 - Runs all monitoring scripts
 - Generates daily reports
 - Provides summary status
 - Saves reports to `scripts/monitoring/reports/`
 
 **Reports Generated:**
+
 - `logs_YYYYMMDD.txt`
 - `metrics_YYYYMMDD.txt`
 - `performance_YYYYMMDD.txt`
@@ -138,25 +156,30 @@ python3 scripts/monitoring/monitor_intel_performance.py [iterations]
 **Purpose:** End-to-end tests of Intel Router endpoints in production.
 
 **Usage:**
+
 ```bash
 python3 scripts/testing/test_intel_production.py
 ```
 
 **Environment Variables:**
+
 - `INTEL_API_URL`: Base URL (default: https://nuzantara-rag.fly.dev)
 - `INTEL_API_KEY`: API key for authenticated endpoints
 
 **Tests Performed:**
+
 1. Health check (`/health`)
 2. System metrics (`/api/intel/metrics`)
 3. Staging pending (`/api/intel/staging/pending`)
 4. Prometheus metrics (`/metrics`)
 
 **Output:**
+
 - Terminal report with test results
 - JSON report: `scripts/monitoring/intel_production_test_report.json`
 
 **Exit Codes:**
+
 - `0`: All tests passed
 - `1`: Tests failed or errors occurred
 
@@ -167,16 +190,19 @@ python3 scripts/testing/test_intel_production.py
 **Purpose:** Verify approval workflow functionality.
 
 **Usage:**
+
 ```bash
 python3 scripts/testing/test_intel_approval_workflow.py
 ```
 
 **Features:**
+
 - Checks pending items in staging
 - Verifies staging item access
 - Checks Telegram notification status (requires file system access)
 
 **Output:**
+
 - Terminal report with workflow status
 - JSON report: `scripts/monitoring/intel_approval_workflow_test.json`
 
@@ -189,6 +215,7 @@ python3 scripts/testing/test_intel_approval_workflow.py
 **Location:** `.github/workflows/intel-router-tests.yml`
 
 **Triggers:**
+
 - Push to `main` branch (Intel Router files)
 - Pull requests to `main` branch
 - Manual workflow dispatch
@@ -196,27 +223,32 @@ python3 scripts/testing/test_intel_approval_workflow.py
 **Jobs:**
 
 #### 1. Test Job
+
 - Runs unit tests for all Intel services
 - Checks code syntax
 - Uploads test results as artifacts
 
 **Test Files:**
+
 - `test_intel_classification_service.py`
 - `test_intel_staging_service.py`
 - `test_intel_approval_service.py`
 - `test_intel_analytics_service.py`
 
 #### 2. Lint Job
+
 - Checks code formatting (black)
 - Checks import ordering (isort)
 - Validates code style
 
 #### 3. Post-Deploy Test Job
+
 - **Note:** Deploy is done manually from local machine using `fly deploy`
 - Post-deploy tests should be run manually after deployment
 - Use `scripts/deployment/deploy_intel_router.sh` for automated deploy + test flow
 
 **Artifacts:**
+
 - Test results (7 days retention)
 - Production test reports (7 days retention)
 
@@ -273,6 +305,7 @@ python3 scripts/testing/test_intel_approval_workflow.py
 ## 📝 Usage Examples
 
 ### Daily Monitoring
+
 ```bash
 # Run all monitoring checks
 ./scripts/monitoring/daily_intel_monitor.sh
@@ -288,6 +321,7 @@ python3 scripts/monitoring/monitor_intel_performance.py 10
 ```
 
 ### Production Testing
+
 ```bash
 # Run production tests
 python3 scripts/testing/test_intel_production.py
@@ -310,6 +344,7 @@ fly deploy -a nuzantara-rag --remote-only
 ```
 
 **Post-deploy verification:**
+
 ```bash
 # Run production tests after deployment
 python3 scripts/testing/test_intel_production.py
@@ -322,6 +357,7 @@ python3 scripts/monitoring/monitor_intel_performance.py
 ```
 
 ### CI/CD
+
 ```bash
 # Trigger workflow manually (tests only, no deploy)
 gh workflow run intel-router-tests.yml

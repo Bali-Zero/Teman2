@@ -47,14 +47,11 @@ export class ZantaraSDK {
     this.timeout = config.timeout || 30000;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.apiKey) {
@@ -98,9 +95,7 @@ export class ZantaraSDK {
   // Agentic RAG
   // ============================================================================
 
-  async queryAgenticRAG(
-    request: AgenticRAGQueryRequest
-  ): Promise<AgenticRAGQueryResponse> {
+  async queryAgenticRAG(request: AgenticRAGQueryRequest): Promise<AgenticRAGQueryResponse> {
     return this.request<AgenticRAGQueryResponse>('/api/agentic-rag/query', {
       method: 'POST',
       body: JSON.stringify(request),
@@ -122,21 +117,14 @@ export class ZantaraSDK {
     });
   }
 
-  async getCollectiveMemory(
-    category?: string,
-    limit = 10
-  ): Promise<CollectiveMemory[]> {
+  async getCollectiveMemory(category?: string, limit = 10): Promise<CollectiveMemory[]> {
     const params = new URLSearchParams();
     if (category) params.set('category', category);
     params.set('limit', limit.toString());
-    return this.request<CollectiveMemory[]>(
-      `/api/collective-memory?${params.toString()}`
-    );
+    return this.request<CollectiveMemory[]>(`/api/collective-memory?${params.toString()}`);
   }
 
-  async getEpisodicTimeline(
-    request: EpisodicTimelineRequest
-  ): Promise<EpisodicEvent[]> {
+  async getEpisodicTimeline(request: EpisodicTimelineRequest): Promise<EpisodicEvent[]> {
     const params = new URLSearchParams();
     params.set('user_id', request.user_id);
     if (request.start_date) params.set('start_date', request.start_date);
@@ -146,9 +134,7 @@ export class ZantaraSDK {
     if (request.limit) params.set('limit', request.limit.toString());
     if (request.offset) params.set('offset', request.offset.toString());
 
-    return this.request<EpisodicEvent[]>(
-      `/api/episodic-memory/timeline?${params.toString()}`
-    );
+    return this.request<EpisodicEvent[]>(`/api/episodic-memory/timeline?${params.toString()}`);
   }
 
   // ============================================================================
@@ -165,9 +151,7 @@ export class ZantaraSDK {
     const response = await fetch(`${this.baseUrl}/audio/transcribe`, {
       method: 'POST',
       body: formData,
-      headers: this.apiKey
-        ? { Authorization: `Bearer ${this.apiKey}` }
-        : {},
+      headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {},
     });
 
     if (!response.ok) {
@@ -244,41 +228,28 @@ export class ZantaraSDK {
     if (request.client_id) params.set('client_id', request.client_id);
     if (request.days_ahead) params.set('days_ahead', request.days_ahead.toString());
 
-    return this.request<ComplianceItem[]>(
-      `/api/compliance/deadlines?${params.toString()}`
-    );
+    return this.request<ComplianceItem[]>(`/api/compliance/deadlines?${params.toString()}`);
   }
 
-  async getComplianceAlerts(
-    clientId?: string,
-    status?: string
-  ): Promise<ComplianceAlert[]> {
+  async getComplianceAlerts(clientId?: string, status?: string): Promise<ComplianceAlert[]> {
     const params = new URLSearchParams();
     if (clientId) params.set('client_id', clientId);
     if (status) params.set('status', status);
 
-    return this.request<ComplianceAlert[]>(
-      `/api/compliance/alerts?${params.toString()}`
-    );
+    return this.request<ComplianceAlert[]>(`/api/compliance/alerts?${params.toString()}`);
   }
 
   async acknowledgeAlert(alertId: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>(
-      `/api/compliance/alerts/${alertId}/acknowledge`,
-      {
-        method: 'POST',
-      }
-    );
+    return this.request<{ success: boolean }>(`/api/compliance/alerts/${alertId}/acknowledge`, {
+      method: 'POST',
+    });
   }
 
   // ============================================================================
   // Dynamic Pricing
   // ============================================================================
 
-  async calculatePricing(
-    scenario: string,
-    userLevel = 3
-  ): Promise<PricingResult> {
+  async calculatePricing(scenario: string, userLevel = 3): Promise<PricingResult> {
     return this.request<PricingResult>('/api/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify({ scenario, user_level: userLevel }),
@@ -291,9 +262,7 @@ export class ZantaraSDK {
 
   async getBurnoutSignals(userEmail?: string): Promise<BurnoutSignal[]> {
     const params = userEmail ? `?user_email=${userEmail}` : '';
-    return this.request<BurnoutSignal[]>(
-      `/api/team-analytics/burnout${params}`
-    );
+    return this.request<BurnoutSignal[]>(`/api/team-analytics/burnout${params}`);
   }
 
   async getTeamInsights(): Promise<TeamInsights> {
@@ -323,15 +292,10 @@ export class ZantaraSDK {
     relationType?: string
   ): Promise<Array<{ target_id: string; target_name: string; relationship_type: string }>> {
     const params = relationType ? `?relation_type=${relationType}` : '';
-    return this.request(
-      `/api/graph/entities/${entityId}/neighbors${params}`
-    );
+    return this.request(`/api/graph/entities/${entityId}/neighbors${params}`);
   }
 
-  async traverseGraph(
-    startId: string,
-    maxDepth = 2
-  ): Promise<GraphTraversalResult> {
+  async traverseGraph(startId: string, maxDepth = 2): Promise<GraphTraversalResult> {
     return this.request<GraphTraversalResult>(
       `/api/graph/traverse?start_id=${startId}&max_depth=${maxDepth}`
     );
@@ -341,9 +305,7 @@ export class ZantaraSDK {
   // Image Generation
   // ============================================================================
 
-  async generateImage(
-    request: ImageGenerationRequest
-  ): Promise<ImageGenerationResponse> {
+  async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     return this.request<ImageGenerationResponse>('/api/image/generate', {
       method: 'POST',
       body: JSON.stringify(request),
@@ -355,5 +317,3 @@ export class ZantaraSDK {
 export function createZantaraSDK(config: ZantaraSDKConfig): ZantaraSDK {
   return new ZantaraSDK(config);
 }
-
-

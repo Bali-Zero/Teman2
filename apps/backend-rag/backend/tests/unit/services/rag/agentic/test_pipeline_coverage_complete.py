@@ -204,7 +204,8 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "backend.services.rag.agentic.pipeline.post_process_response", side_effect=ValueError("Invalid")
+            "backend.services.rag.agentic.pipeline.post_process_response",
+            side_effect=ValueError("Invalid"),
         ):
             data = {"response": "Test response", "query": "test"}
             result = await stage.process(data)
@@ -217,7 +218,8 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "backend.services.rag.agentic.pipeline.post_process_response", side_effect=RuntimeError("Error")
+            "backend.services.rag.agentic.pipeline.post_process_response",
+            side_effect=RuntimeError("Error"),
         ):
             data = {"response": "Test response", "query": "test"}
             result = await stage.process(data)
@@ -230,7 +232,8 @@ class TestPostProcessingStageComplete:
         stage = PostProcessingStage()
 
         with patch(
-            "backend.services.rag.agentic.pipeline.post_process_response", return_value="Cleaned response"
+            "backend.services.rag.agentic.pipeline.post_process_response",
+            return_value="Cleaned response",
         ):
             data = {"response": "Original response with THOUGHT: ...", "query": "test"}
             result = await stage.process(data)

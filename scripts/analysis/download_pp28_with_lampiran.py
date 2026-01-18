@@ -5,11 +5,12 @@ Scarica PP 28/2025 completo con Lampiran da siti ufficiali JDIH
 
 import os
 import requests
-from pathlib import Path
 
 # URL ufficiali trovati
 JDIH_KEMENKEU = "https://jdih.kemenkeu.go.id/dok/pp-28-tahun-2025"
-JDIH_MENLHK = "https://jdih.menlhk.go.id/new2/home/portfolioDetails2/PP_28_2025.pdf/28/2025/7"
+JDIH_MENLHK = (
+    "https://jdih.menlhk.go.id/new2/home/portfolioDetails2/PP_28_2025.pdf/28/2025/7"
+)
 DPMPTSP_PURBALINGGA = "https://dpmptsp.purbalinggakab.go.id/wp-content/uploads/2025/06/Bahan-Sosialisasi-PP-28-Tahun-2025.pdf"
 
 DOWNLOAD_DIR = "/Users/antonellosiano/Desktop"
@@ -23,7 +24,7 @@ def download_pdf(url: str, filename: str) -> bool:
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
         response = requests.get(url, headers=headers, timeout=30, allow_redirects=True)
-        
+
         if response.status_code == 200:
             filepath = os.path.join(DOWNLOAD_DIR, filename)
             with open(filepath, "wb") as f:
@@ -46,22 +47,27 @@ def extract_pdf_link_from_jdih(url: str) -> str | None:
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
         response = requests.get(url, headers=headers, timeout=10)
-        
+
         if response.status_code == 200:
             html = response.text
             # Cerca link PDF nella pagina
             import re
-            pdf_links = re.findall(r'href=["\']([^"\']*\.pdf[^"\']*)["\']', html, re.IGNORECASE)
+
+            pdf_links = re.findall(
+                r'href=["\']([^"\']*\.pdf[^"\']*)["\']', html, re.IGNORECASE
+            )
             if pdf_links:
                 # Prendi il primo link PDF trovato
                 pdf_link = pdf_links[0]
                 # Se è un link relativo, convertilo in assoluto
                 if pdf_link.startswith("/"):
                     from urllib.parse import urlparse
+
                     base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
                     pdf_link = base_url + pdf_link
                 elif not pdf_link.startswith("http"):
                     from urllib.parse import urljoin
+
                     pdf_link = urljoin(url, pdf_link)
                 return pdf_link
     except Exception as e:
@@ -74,7 +80,7 @@ def main():
     print("=" * 60)
     print("DOWNLOAD PP 28/2025 CON LAMPIRAN DA SITI UFFICIALI")
     print("=" * 60)
-    
+
     # 1. Prova a scaricare dalla pagina JDIH Kemenkeu
     print("\n1️⃣ Tentativo da JDIH Kemenkeu...")
     pdf_link = extract_pdf_link_from_jdih(JDIH_KEMENKEU)
@@ -83,11 +89,11 @@ def main():
         download_pdf(pdf_link, "PP_28_2025_JDIH_Kemenkeu.pdf")
     else:
         print("   ⚠️  Link PDF non trovato nella pagina")
-    
+
     # 2. Prova link diretto DPMPTSP (presentazione con Lampiran)
     print("\n2️⃣ Tentativo da DPMPTSP Purbalingga (presentazione)...")
     download_pdf(DPMPTSP_PURBALINGGA, "Bahan_Sosialisasi_PP_28_2025.pdf")
-    
+
     # 3. Verifica file esistenti
     print("\n3️⃣ Verifica file esistenti sul Desktop...")
     existing_files = [
@@ -95,7 +101,7 @@ def main():
         "PP_28_2025_JDIH_Kemenkeu.pdf",
         "Bahan_Sosialisasi_PP_28_2025.pdf",
     ]
-    
+
     for filename in existing_files:
         filepath = os.path.join(DOWNLOAD_DIR, filename)
         if os.path.exists(filepath):
@@ -103,7 +109,7 @@ def main():
             print(f"  ✅ {filename} ({size_mb:.2f} MB)")
         else:
             print(f"  ❌ {filename} (non trovato)")
-    
+
     print("\n" + "=" * 60)
     print("DOWNLOAD COMPLETATO")
     print("=" * 60)

@@ -4,8 +4,9 @@ Unit tests for OrchestratorContextManager
 Test coverage target: >95%
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.rag.agentic.orchestrator_context import OrchestratorContextManager
 
@@ -86,9 +87,7 @@ async def test_load_user_context_error_fallback(context_manager, mock_memory_han
         new_callable=AsyncMock,
         side_effect=Exception("Connection failed"),
     ):
-        result = await context_manager.load_user_context(
-            user_id="user123", query="test query"
-        )
+        result = await context_manager.load_user_context(user_id="user123", query="test query")
 
         assert result == {
             "profile": None,
@@ -181,17 +180,21 @@ async def test_get_full_context_success(context_manager):
         "history": [{"role": "user", "content": "test"}],
     }
 
-    with patch.object(
-        context_manager, "load_user_context", new_callable=AsyncMock, return_value=mock_context
-    ), patch.object(
-        context_manager,
-        "prepare_conversation_history",
-        return_value=[{"role": "user", "content": "test"}],
-    ), patch.object(
-        context_manager,
-        "apply_context_window_management",
-        new_callable=AsyncMock,
-        return_value=[{"role": "user", "content": "test"}],
+    with (
+        patch.object(
+            context_manager, "load_user_context", new_callable=AsyncMock, return_value=mock_context
+        ),
+        patch.object(
+            context_manager,
+            "prepare_conversation_history",
+            return_value=[{"role": "user", "content": "test"}],
+        ),
+        patch.object(
+            context_manager,
+            "apply_context_window_management",
+            new_callable=AsyncMock,
+            return_value=[{"role": "user", "content": "test"}],
+        ),
     ):
         user_context, history = await context_manager.get_full_context(
             user_id="user123", query="test", session_id="session123"
@@ -206,15 +209,17 @@ async def test_get_full_context_empty_history(context_manager):
     """Test getting full context with empty history"""
     mock_context = {"profile": None, "facts": [], "collective_facts": [], "history": []}
 
-    with patch.object(
-        context_manager, "load_user_context", new_callable=AsyncMock, return_value=mock_context
-    ), patch.object(
-        context_manager, "prepare_conversation_history", return_value=[]
-    ), patch.object(
-        context_manager,
-        "apply_context_window_management",
-        new_callable=AsyncMock,
-        return_value=[],
+    with (
+        patch.object(
+            context_manager, "load_user_context", new_callable=AsyncMock, return_value=mock_context
+        ),
+        patch.object(context_manager, "prepare_conversation_history", return_value=[]),
+        patch.object(
+            context_manager,
+            "apply_context_window_management",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
     ):
         user_context, history = await context_manager.get_full_context(
             user_id="user123", query="test"

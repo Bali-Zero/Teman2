@@ -85,7 +85,7 @@ def categorize_folders():
         "potential_clients": [],
         "process_folders": PROCESS_FOLDERS.copy(),
         "utility_folders": UTILITY_FOLDERS.copy(),
-        "unknown": []
+        "unknown": [],
     }
 
     for folder in DROPBOX_FOLDERS:
@@ -95,10 +95,10 @@ def categorize_folders():
         # Check if it looks like a client folder
         # Heuristics: personal names, single words, company names
         if (
-            folder.startswith("###") or  # Process folder
-            folder.lower() in ["driver", "data scan", "screenshots"] or  # Utility
-            "PC" in folder.upper() or  # Computer sync
-            "uploads" in folder.lower()  # Auto uploads
+            folder.startswith("###")  # Process folder
+            or folder.lower() in ["driver", "data scan", "screenshots"]  # Utility
+            or "PC" in folder.upper()  # Computer sync
+            or "uploads" in folder.lower()  # Auto uploads
         ):
             if folder not in categories["utility_folders"]:
                 categories["utility_folders"].append(folder)
@@ -134,11 +134,19 @@ def fuzzy_match_clients(crm_clients: list, threshold: float = 0.6):
 
         match_info = {
             "dropbox_folder": folder,
-            "crm_client_id": best_match["id"] if best_match and best_score >= threshold else None,
-            "crm_client_name": best_match["name"] if best_match and best_score >= threshold else None,
+            "crm_client_id": best_match["id"]
+            if best_match and best_score >= threshold
+            else None,
+            "crm_client_name": best_match["name"]
+            if best_match and best_score >= threshold
+            else None,
             "similarity_score": round(best_score, 3),
-            "confidence": "high" if best_score >= 0.8 else "medium" if best_score >= threshold else "low",
-            "needs_review": best_score < 0.8
+            "confidence": "high"
+            if best_score >= 0.8
+            else "medium"
+            if best_score >= threshold
+            else "low",
+            "needs_review": best_score < 0.8,
         }
 
         matches.append(match_info)
@@ -154,10 +162,16 @@ def fuzzy_match_clients(crm_clients: list, threshold: float = 0.6):
             "potential_clients": len(categories["potential_clients"]),
             "process_folders": len(categories["process_folders"]),
             "utility_folders": len(categories["utility_folders"]),
-            "high_confidence_matches": sum(1 for m in matches if m["confidence"] == "high"),
-            "medium_confidence_matches": sum(1 for m in matches if m["confidence"] == "medium"),
-            "low_confidence_matches": sum(1 for m in matches if m["confidence"] == "low"),
-        }
+            "high_confidence_matches": sum(
+                1 for m in matches if m["confidence"] == "high"
+            ),
+            "medium_confidence_matches": sum(
+                1 for m in matches if m["confidence"] == "medium"
+            ),
+            "low_confidence_matches": sum(
+                1 for m in matches if m["confidence"] == "low"
+            ),
+        },
     }
 
 
@@ -185,62 +199,70 @@ def generate_sample_report():
 
     results = fuzzy_match_clients(mock_crm_clients, threshold=0.6)
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 DROPBOX → CRM CLIENT MATCHING REPORT")
-    print("="*80)
+    print("=" * 80)
 
     print(f"\n📁 Total Dropbox Folders: {results['summary']['total_dropbox_folders']}")
     print(f"   • Potential Clients: {results['summary']['potential_clients']}")
     print(f"   • Process Folders: {results['summary']['process_folders']}")
     print(f"   • Utility Folders: {results['summary']['utility_folders']}")
 
-    print(f"\n🎯 Matching Confidence:")
+    print("\n🎯 Matching Confidence:")
     print(f"   • High (≥80%): {results['summary']['high_confidence_matches']}")
     print(f"   • Medium (≥60%): {results['summary']['medium_confidence_matches']}")
     print(f"   • Low (<60%): {results['summary']['low_confidence_matches']}")
 
-    print(f"\n✅ HIGH CONFIDENCE MATCHES:")
-    for match in results['matches']:
-        if match['confidence'] == 'high':
+    print("\n✅ HIGH CONFIDENCE MATCHES:")
+    for match in results["matches"]:
+        if match["confidence"] == "high":
             print(f"   📁 {match['dropbox_folder']}")
-            print(f"      → CRM: {match['crm_client_name']} (ID: {match['crm_client_id']})")
+            print(
+                f"      → CRM: {match['crm_client_name']} (ID: {match['crm_client_id']})"
+            )
             print(f"      Score: {match['similarity_score']:.1%}")
 
-    print(f"\n⚠️  MEDIUM CONFIDENCE MATCHES (NEED REVIEW):")
-    for match in results['matches']:
-        if match['confidence'] == 'medium':
+    print("\n⚠️  MEDIUM CONFIDENCE MATCHES (NEED REVIEW):")
+    for match in results["matches"]:
+        if match["confidence"] == "medium":
             print(f"   📁 {match['dropbox_folder']}")
-            print(f"      → CRM: {match['crm_client_name']} (ID: {match['crm_client_id']})")
+            print(
+                f"      → CRM: {match['crm_client_name']} (ID: {match['crm_client_id']})"
+            )
             print(f"      Score: {match['similarity_score']:.1%}")
 
-    print(f"\n❌ LOW CONFIDENCE / NO MATCH:")
-    for match in results['matches']:
-        if match['confidence'] == 'low':
+    print("\n❌ LOW CONFIDENCE / NO MATCH:")
+    for match in results["matches"]:
+        if match["confidence"] == "low":
             print(f"   📁 {match['dropbox_folder']}")
-            if match['crm_client_name']:
-                print(f"      Best guess: {match['crm_client_name']} (Score: {match['similarity_score']:.1%})")
+            if match["crm_client_name"]:
+                print(
+                    f"      Best guess: {match['crm_client_name']} (Score: {match['similarity_score']:.1%})"
+                )
             else:
-                print(f"      No match found in CRM")
+                print("      No match found in CRM")
 
-    print(f"\n🗂️  PROCESS FOLDERS (excluded from matching):")
-    for folder in results['categories']['process_folders']:
+    print("\n🗂️  PROCESS FOLDERS (excluded from matching):")
+    for folder in results["categories"]["process_folders"]:
         print(f"   • {folder}")
 
-    print(f"\n🛠️  UTILITY FOLDERS (excluded from matching):")
-    for folder in results['categories']['utility_folders'][:10]:
+    print("\n🛠️  UTILITY FOLDERS (excluded from matching):")
+    for folder in results["categories"]["utility_folders"][:10]:
         print(f"   • {folder}")
-    if len(results['categories']['utility_folders']) > 10:
+    if len(results["categories"]["utility_folders"]) > 10:
         print(f"   ... and {len(results['categories']['utility_folders']) - 10} more")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
 
     # Save to JSON
-    output_file = f"client_matching_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(output_file, 'w') as f:
+    output_file = (
+        f"client_matching_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    )
+    with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
 
     print(f"\n💾 Full report saved to: {output_file}")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     return results
 

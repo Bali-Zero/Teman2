@@ -15,7 +15,9 @@ The "Frontend" is not a single Next.js app. It is a **ubiquitous layer of intera
 ## 2. The Channels (The Declinations)
 
 ### 🖥️ The Web Command Deck (High Bandwidth)
+
 **Role:** Deep Work, Analysis, Admin, Complete Visualization.
+
 - **Tech:** Next.js 16 + React 19 + Tailwind 4 (The `apps/mouth`).
 - **Use Cases:**
   - Complex dashboard analytics (Grafana/Custom).
@@ -24,7 +26,9 @@ The "Frontend" is not a single Next.js app. It is a **ubiquitous layer of intera
   - "God Mode" system control.
 
 ### 📱 Telegram: The Tactical Companion (Low Friction)
+
 **Role:** Notifications, Approvals, Quick Tasks, Intelligence Feed.
+
 - **Tech:** Telegram Bot API (Webhooks) + `apps/bali-intel-scraper` pipeline.
 - **Bot:** `@zantara_bot`
 - **Use Cases:**
@@ -34,7 +38,9 @@ The "Frontend" is not a single Next.js app. It is a **ubiquitous layer of intera
   - **Alerts:** System health, Critical User Actions.
 
 ### 💬 WhatsApp: The Client Direct Line (External)
+
 **Role:** Client Communication, Automated Service, Document Collection.
+
 - **Tech:** WhatsApp Business API (via BSP) + `zoho-integration`.
 - **Use Cases:**
   - **Client Onboarding:** Automated flow to collect basic info.
@@ -42,14 +48,18 @@ The "Frontend" is not a single Next.js app. It is a **ubiquitous layer of intera
   - **Document Submission:** User sends photo of passport -> Ingested to CRM.
 
 ### 🗣️ Voice: The Invisible Interface (Ambient)
+
 **Role:** High-touch concierge, Hands-free operation.
+
 - **Tech:** ElevenLabs (Synthesis) + OpenAI Whisper (ASR) + Twilio/VAPI.
 - **Use Cases:**
   - **Concierge Calls:** "Welcome to Nuzantara".
   - **Voice Notes:** Team dictating meeting notes -> Transcribed to CRM Interaction.
 
 ### 🌐 Social Satellites (Instagram, X)
+
 **Role:** Outreach, Brand Presence, Trend Monitoring.
+
 - **Tech:** API Integrations.
 - **Use Cases:**
   - **Publishing:** Auto-posting approved content from `zantara-media`.
@@ -79,4 +89,4 @@ To prevent fragmentation, all channels share the **Single Source of Truth**:
 
 ---
 
-> *"The Interface is liquid. It takes the shape of the container it fills, but the Intelligence remains solid."*
+> _"The Interface is liquid. It takes the shape of the container it fills, but the Intelligence remains solid."_

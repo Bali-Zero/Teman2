@@ -5,6 +5,7 @@
 Il backend è stato configurato per usare **Vertex AI** con il service account Google Cloud fornito.
 
 ### Credenziali configurate:
+
 - **Project ID**: `gen-lang-client-0498009027`
 - **Service Account**: `vertex-express@gen-lang-client-0498009027.iam.gserviceaccount.com`
 - **Credito disponibile**: ~5 milioni IDR (scade il 6 febbraio 2026)
@@ -20,16 +21,20 @@ Il backend è stato configurato per usare **Vertex AI** con il service account G
    - Inizializza il client GenAI con `vertexai=True` e il `project_id`
 
 ### Modelli configurati (2025-12-28):
+
 - **gemini-3-flash** (primary) - Veloce e cost-effective
 - **gemini-2.0-flash** (fallback) - Stabile e affidabile
 
 ### Strategia di Fallback:
+
 ```
 gemini-3-flash → gemini-2.0-flash
 ```
+
 **Nota**: OpenRouter è stato rimosso come fallback. Ora usiamo solo modelli Gemini.
 
 ### Vantaggi di Vertex AI:
+
 - ✅ Usa i crediti Google Cloud invece di API key con limiti
 - ✅ Nessun costo aggiuntivo fino a esaurimento crediti
 - ✅ Maggiore affidabilità e quota più alta
@@ -38,14 +43,17 @@ gemini-3-flash → gemini-2.0-flash
 ### Verifica funzionamento:
 
 Il backend logga automaticamente:
+
 - `✅ Service Account credentials configured: <email> (project: <project_id>)`
 - `✅ GenAI client initialized with Vertex AI (project: <project_id>)`
 
 ### File modificati:
+
 - `apps/backend-rag/backend/app/core/config.py`: Aggiunto campo `google_credentials_json`
 - `apps/backend-rag/backend/llm/genai_client.py`: Supporto per `GEMINI_SA_TOKEN` alias
 
 ### Prossimi passi:
+
 1. ✅ Secret configurato su Fly.io
 2. ✅ Codice aggiornato per supportare Vertex AI
 3. ✅ Backend riavviato con nuove credenziali
@@ -56,14 +64,18 @@ Il backend logga automaticamente:
 ## Fix Persona (2025-12-23)
 
 ### Problema identificato:
+
 Alcune risposte iniziavano con intro filosofici invece di risposte dirette.
 
 ### Root Cause:
+
 Conflitto tra istruzioni nel prompt:
+
 - **Persona** diceva: "Start with 'The ancestors would say...'"
 - **Tools block** diceva: "DO NOT start with philosophical statements"
 
 ### Fix applicato:
+
 Modificato `zantara_system_prompt.md` - sezione OPENER:
 
 ```diff
@@ -83,7 +95,3 @@ Modificato `zantara_system_prompt.md` - sezione OPENER:
 **Data configurazione**: 2025-12-22
 **Ultimo update**: 2025-12-23 (v912)
 **Status**: ✅ Configurato e attivo
-
-
-
-

@@ -4,15 +4,15 @@
 
 ## File Excel
 
-| File | Sheets | Righe | Contenuto |
-|------|--------|-------|-----------|
-| 01_CRM.xlsx | 7 | - | clients, practices, interactions, practice_types |
-| 02_TEAM.xlsx | 6 | - | team_members, team_timesheet, departments |
-| 03_MEMORY.xlsx | 5 | - | memory_facts, episodic_memories, conversations |
-| 04_KNOWLEDGE.xlsx | 5 | - | parent_documents, kg_nodes, kg_edges |
-| 05_USERS.xlsx | 5 | - | user_profiles, users, user_facts |
-| 06_CONTENT.xlsx | 4 | - | news_items, visa_types, document_categories |
-| 07_SYSTEM.xlsx | 5 | - | activity_log, schema_migrations |
+| File              | Sheets | Righe | Contenuto                                        |
+| ----------------- | ------ | ----- | ------------------------------------------------ |
+| 01_CRM.xlsx       | 7      | -     | clients, practices, interactions, practice_types |
+| 02_TEAM.xlsx      | 6      | -     | team_members, team_timesheet, departments        |
+| 03_MEMORY.xlsx    | 5      | -     | memory_facts, episodic_memories, conversations   |
+| 04_KNOWLEDGE.xlsx | 5      | -     | parent_documents, kg_nodes, kg_edges             |
+| 05_USERS.xlsx     | 5      | -     | user_profiles, users, user_facts                 |
+| 06_CONTENT.xlsx   | 4      | -     | news_items, visa_types, document_categories      |
+| 07_SYSTEM.xlsx    | 5      | -     | activity_log, schema_migrations                  |
 
 **Totale: 6,737 righe in 36 tabelle**
 

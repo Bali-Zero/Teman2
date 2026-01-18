@@ -8,7 +8,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 from backend.app.core.config import settings
 from backend.app.core.constants import IntelConstants
@@ -35,9 +35,9 @@ class IntelApprovalService:
         self,
         intel_type: Literal["visa", "news"],
         item_id: str,
-        item_data: Dict[str, Any],
-        enriched_data: Optional[Dict[str, Any]] = None,
-        image_path: Optional[str] = None,
+        item_data: dict[str, Any],
+        enriched_data: dict[str, Any] | None = None,
+        image_path: str | None = None,
     ) -> bool:
         """
         Send Telegram notification to approval team with voting buttons.
@@ -78,9 +78,7 @@ class IntelApprovalService:
         keyboard = self._build_approval_keyboard(intel_type, item_id)
 
         # Save voting status
-        self._save_voting_status(
-            item_id, intel_type, item_data, enriched_data, image_path
-        )
+        self._save_voting_status(item_id, intel_type, item_data, enriched_data, image_path)
 
         # Send to all approvers
         success_count = 0
@@ -135,9 +133,9 @@ class IntelApprovalService:
         self,
         intel_type: Literal["visa", "news"],
         item_id: str,
-        item_data: Dict[str, Any],
-        enriched_data: Optional[Dict[str, Any]],
-        team_config: Dict[str, Any],
+        item_data: dict[str, Any],
+        enriched_data: dict[str, Any] | None,
+        team_config: dict[str, Any],
     ) -> str:
         """
         Build HTML formatted caption for Telegram notification.
@@ -154,9 +152,7 @@ class IntelApprovalService:
         """
         # Use enriched data if available, otherwise fallback to raw
         if enriched_data:
-            title = enriched_data.get(
-                "enriched_title", item_data.get("title", "Untitled")
-            )
+            title = enriched_data.get("enriched_title", item_data.get("title", "Untitled"))
             summary = enriched_data.get("enriched_summary", "")
             key_points = enriched_data.get("key_points", [])
             keywords = enriched_data.get("seo_keywords", [])
@@ -168,9 +164,7 @@ class IntelApprovalService:
 
         source = item_data.get("source_name", item_data.get("source", "Unknown"))
         source_url = item_data.get("source_url", item_data.get("url", ""))
-        detected_at = item_data.get(
-            "detected_at", datetime.now().strftime("%Y-%m-%d %H:%M")
-        )
+        detected_at = item_data.get("detected_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
         emoji_map = {"visa": "🛂", "news": "📰"}
         emoji = emoji_map.get(intel_type, "📋")
@@ -208,7 +202,7 @@ class IntelApprovalService:
 
     def _build_approval_keyboard(
         self, intel_type: Literal["visa", "news"], item_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Build inline keyboard for approval/rejection buttons.
 
@@ -238,9 +232,9 @@ class IntelApprovalService:
         self,
         item_id: str,
         intel_type: Literal["visa", "news"],
-        item_data: Dict[str, Any],
-        enriched_data: Optional[Dict[str, Any]],
-        image_path: Optional[str],
+        item_data: dict[str, Any],
+        enriched_data: dict[str, Any] | None,
+        image_path: str | None,
     ) -> None:
         """
         Save voting status to file.
@@ -254,10 +248,24 @@ class IntelApprovalService:
         """
         # #region agent log
         import json as json_module
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
-            log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:255","message":"_save_voting_status entry","data":{"item_id":item_id,"intel_type":intel_type},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+
+        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            log_file.write(
+                json_module.dumps(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "D",
+                        "location": "intel_approval_service.py:255",
+                        "message": "_save_voting_status entry",
+                        "data": {"item_id": item_id, "intel_type": intel_type},
+                        "timestamp": int(datetime.now().timestamp() * 1000),
+                    }
+                )
+                + "\n"
+            )
         # #endregion
-        
+
         voting_status = {
             "item_id": item_id,
             "intel_type": intel_type,
@@ -270,24 +278,73 @@ class IntelApprovalService:
         }
 
         status_file = self.pending_intel_path / f"{item_id}.json"
-        
+
         # #region agent log
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
-            log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:267","message":"Before voting status write","data":{"status_file":str(status_file),"path_exists":self.pending_intel_path.exists()},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            log_file.write(
+                json_module.dumps(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "D",
+                        "location": "intel_approval_service.py:267",
+                        "message": "Before voting status write",
+                        "data": {
+                            "status_file": str(status_file),
+                            "path_exists": self.pending_intel_path.exists(),
+                        },
+                        "timestamp": int(datetime.now().timestamp() * 1000),
+                    }
+                )
+                + "\n"
+            )
         # #endregion
-        
+
         try:
             status_file.write_text(json.dumps(voting_status, indent=2))
-            
+
             # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
-                log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:272","message":"_save_voting_status success","data":{"status_file":str(status_file),"file_exists":status_file.exists()},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+                log_file.write(
+                    json_module.dumps(
+                        {
+                            "sessionId": "debug-session",
+                            "runId": "run1",
+                            "hypothesisId": "D",
+                            "location": "intel_approval_service.py:272",
+                            "message": "_save_voting_status success",
+                            "data": {
+                                "status_file": str(status_file),
+                                "file_exists": status_file.exists(),
+                            },
+                            "timestamp": int(datetime.now().timestamp() * 1000),
+                        }
+                    )
+                    + "\n"
+                )
             # #endregion
-            
+
         except Exception as e:
             # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as log_file:
-                log_file.write(json_module.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"intel_approval_service.py:277","message":"_save_voting_status error","data":{"error":str(e),"error_type":type(e).__name__,"status_file":str(status_file)},"timestamp":int(datetime.now().timestamp()*1000)})+'\n')
+            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+                log_file.write(
+                    json_module.dumps(
+                        {
+                            "sessionId": "debug-session",
+                            "runId": "run1",
+                            "hypothesisId": "D",
+                            "location": "intel_approval_service.py:277",
+                            "message": "_save_voting_status error",
+                            "data": {
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                                "status_file": str(status_file),
+                            },
+                            "timestamp": int(datetime.now().timestamp() * 1000),
+                        }
+                    )
+                    + "\n"
+                )
             # #endregion
             logger.error(
                 f"Failed to save voting status for {item_id}: {e}",

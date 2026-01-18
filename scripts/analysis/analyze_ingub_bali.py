@@ -8,8 +8,7 @@ Identifica KBLI coinvolti, aree geografiche e crea mapping per Qdrant
 import os
 import re
 import json
-import sys
-from typing import Dict, List
+from typing import Dict
 
 try:
     import pypdf
@@ -27,7 +26,10 @@ except ImportError:
     class pypdf:  # type: ignore
         PdfReader = _Wrapper
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_compliance")
 
 PDF_INGUB = "/Users/antonellosiano/Desktop/INGUB-6-TAHUN-2025-PENGHENTIAN-SEMENTARA-PEMBERIAN-IZIN-TOKO-MODERN-BERJEJARING.pdf"
@@ -41,8 +43,8 @@ RETAIL_KBLI_PATTERNS = [
     r"4714",  # Perdagangan eceran peralatan rumah tangga dengan ruang penjualan tidak tetap
     r"4715",  # Perdagangan eceran barang lainnya dengan ruang penjualan tidak tetap
     r"4719",  # Perdagangan eceran lainnya dengan ruang penjualan tidak tetap
-    r"472",   # Perdagangan eceran dengan ruang penjualan tetap
-    r"477",   # Perdagangan eceran bukan makanan, minuman atau tembakau dengan ruang penjualan tidak tetap
+    r"472",  # Perdagangan eceran dengan ruang penjualan tetap
+    r"477",  # Perdagangan eceran bukan makanan, minuman atau tembakau dengan ruang penjualan tidak tetap
 ]
 
 
@@ -85,10 +87,14 @@ def analyze_ingub_pdf(pdf_path: str) -> Dict:
     result["full_text"] = full_text
 
     if not full_text.strip():
-        result["analysis_notes"].append("PDF potrebbe essere scansionato (OCR necessario)")
+        result["analysis_notes"].append(
+            "PDF potrebbe essere scansionato (OCR necessario)"
+        )
         # Usa KBLI patterns noti per retail
         result["kbli_patterns"] = RETAIL_KBLI_PATTERNS
-        result["analysis_notes"].append("Usati pattern KBLI noti per retail/franchising")
+        result["analysis_notes"].append(
+            "Usati pattern KBLI noti per retail/franchising"
+        )
         return result
 
     # Cerca KBLI espliciti
@@ -142,7 +148,7 @@ def analyze_ingub_pdf(pdf_path: str) -> Dict:
     if "berjejaring" in text_lower or "franchise" in text_lower:
         result["restrictions"]["applies_to"] = "toko_modern_berjejaring"
 
-    print(f"  ✅ Analisi completata:")
+    print("  ✅ Analisi completata:")
     print(f"     - KBLI espliciti: {len(result['kbli_codes'])}")
     print(f"     - Pattern KBLI: {len(result['kbli_patterns'])}")
     print(f"     - Aree identificate: {len(result['areas'])}")

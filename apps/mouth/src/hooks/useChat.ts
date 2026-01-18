@@ -82,7 +82,11 @@ export function useChat() {
         updateLastAssistantMessage({ content: fullResponse, sources, metadata, imageUrl });
         // Save conversation
         if (isMountedRef.current && !isAbortedRef.current) {
-          const allMessages = [...messages, userMessage, { ...assistantMessage, content: fullResponse, sources, metadata, imageUrl }];
+          const allMessages = [
+            ...messages,
+            userMessage,
+            { ...assistantMessage, content: fullResponse, sources, metadata, imageUrl },
+          ];
           const messagesToSave = allMessages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -99,7 +103,10 @@ export function useChat() {
         const err = error as ApiError;
         if (err.code === 'QUOTA_EXCEEDED' || error.message.includes('429')) {
           errorMessage = '⚠️ Usage limit reached. Please wait a moment before trying again.';
-        } else if (err.code === 'SERVICE_UNAVAILABLE' || error.message.includes('Database service temporarily unavailable')) {
+        } else if (
+          err.code === 'SERVICE_UNAVAILABLE' ||
+          error.message.includes('Database service temporarily unavailable')
+        ) {
           errorMessage = '⚠️ System is currently busy. Please try again in a few seconds.';
         }
         updateLastAssistantMessage({ content: errorMessage });
@@ -158,37 +165,40 @@ export function useChat() {
     setCurrentSessionId(null);
   }, [clearMessagesInternal]);
 
-  const loadConversation = useCallback(async (conversationId: number) => {
-    setIsStreaming(true);
-    try {
-      const response = await api.getConversation(conversationId);
-      if (!isMountedRef.current) return;
+  const loadConversation = useCallback(
+    async (conversationId: number) => {
+      setIsStreaming(true);
+      try {
+        const response = await api.getConversation(conversationId);
+        if (!isMountedRef.current) return;
 
-      if (response.success && response.messages) {
-        if (!isMountedRef.current || isAbortedRef.current) return;
+        if (response.success && response.messages) {
+          if (!isMountedRef.current || isAbortedRef.current) return;
 
-        const formattedMessages: Message[] = response.messages.map((msg, index) => ({
-          id: `conv-${conversationId}-${index}`,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          sources: msg.sources,
-          imageUrl: msg.imageUrl,
-          timestamp: new Date(response.created_at || Date.now()),
-        }));
-        setMessages(formattedMessages);
-        if (response.session_id && isMountedRef.current && !isAbortedRef.current) {
-          setCurrentSessionId(response.session_id);
+          const formattedMessages: Message[] = response.messages.map((msg, index) => ({
+            id: `conv-${conversationId}-${index}`,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            sources: msg.sources,
+            imageUrl: msg.imageUrl,
+            timestamp: new Date(response.created_at || Date.now()),
+          }));
+          setMessages(formattedMessages);
+          if (response.session_id && isMountedRef.current && !isAbortedRef.current) {
+            setCurrentSessionId(response.session_id);
+          }
+        }
+      } catch (error) {
+        if (!isMountedRef.current) return;
+        console.error('Failed to load conversation:', error);
+      } finally {
+        if (isMountedRef.current) {
+          setIsStreaming(false);
         }
       }
-    } catch (error) {
-      if (!isMountedRef.current) return;
-      console.error('Failed to load conversation:', error);
-    } finally {
-      if (isMountedRef.current) {
-        setIsStreaming(false);
-      }
-    }
-  }, [isMountedRef, isAbortedRef, setMessages, setIsStreaming]);
+    },
+    [isMountedRef, isAbortedRef, setMessages, setIsStreaming]
+  );
 
   const handleFileUpload = async (file: File) => {
     setIsStreaming(true);

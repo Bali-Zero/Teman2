@@ -5,7 +5,7 @@ Handles automatic creation of standardized folder structures for clients.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -34,7 +34,7 @@ async def create_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create standardized Google Drive folder structure for a client.
 
@@ -189,7 +189,7 @@ async def get_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get Google Drive folder information for a client.
 
@@ -258,7 +258,7 @@ async def unlink_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Unlink Google Drive folder from client (does NOT delete the folder).
 

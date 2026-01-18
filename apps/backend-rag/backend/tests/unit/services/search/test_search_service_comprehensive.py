@@ -562,7 +562,9 @@ class TestSearchService:
             mock_settings.bm25_k1 = 1.2
             mock_settings.bm25_b = 0.75
 
-            with patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")):
+            with patch(
+                "backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")
+            ):
                 # Reset state
                 search_service._bm25_enabled = False
                 search_service._bm25_vectorizer = None
@@ -1117,7 +1119,9 @@ class TestSearchServiceBM25Init:
             patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
             patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
             patch("backend.services.search.search_service.CollectionWarmupService"),
-            patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")),
+            patch(
+                "backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")
+            ),
         ):
             mock_embedder = MagicMock()
             mock_embedder.provider = "openai"
@@ -1137,7 +1141,10 @@ class TestSearchServiceBM25Init:
             patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
             patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
             patch("backend.services.search.search_service.CollectionWarmupService"),
-            patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=RuntimeError("Init error")),
+            patch(
+                "backend.core.bm25_vectorizer.BM25Vectorizer",
+                side_effect=RuntimeError("Init error"),
+            ),
         ):
             mock_embedder = MagicMock()
             mock_embedder.provider = "openai"

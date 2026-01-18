@@ -39,6 +39,7 @@ psql $DATABASE_URL -c "\dt zantara_*"
 ```
 
 **Output atteso:**
+
 ```
 zantara_content
 intel_signals
@@ -128,6 +129,7 @@ cd /Users/antonellosiano/Desktop/nuzantara
 ```
 
 **Output atteso:**
+
 ```
 ============================================
 NUZANTARA - Running All Tests
@@ -188,18 +190,21 @@ tmux kill-session -t nuzantara
 ### Opzione B: Manual (3 Terminali)
 
 **Terminal 1: Backend RAG**
+
 ```bash
 cd apps/backend-rag
 uvicorn backend.app.main:app --port 8080 --reload
 ```
 
 **Terminal 2: Bali Intel Scraper API**
+
 ```bash
 cd apps/bali-intel-scraper
 python -m uvicorn api.main:app --port 8002 --reload
 ```
 
 **Terminal 3: Zantara Media**
+
 ```bash
 cd apps/zantara-media/backend
 uvicorn app.main:app --port 8001 --reload
@@ -225,6 +230,7 @@ curl http://localhost:8001/api/automation/status | jq
 ```
 
 **Expected output:**
+
 ```json
 {
   "status": "healthy",
@@ -290,6 +296,7 @@ curl -X POST http://localhost:8001/api/automation/trigger
 ### Step 3: Monitor Progress
 
 **Watch logs in Zantara Media terminal:**
+
 ```
 INFO - BALI ZERO JOURNAL - Daily Content Pipeline Starting
 INFO - [Step 1] Fetching intel signals...
@@ -346,6 +353,7 @@ EOF
 ```
 
 **Expected output:**
+
 ```
                   id                  |            title             | status    | word_count |    ai_model
 --------------------------------------+------------------------------+-----------+------------+----------------
@@ -393,6 +401,7 @@ pytest tests/test_api.py -v
 **Solution 1:** Create test signals (see Step 1 above)
 
 **Solution 2:** Lower priority threshold
+
 ```python
 # Edit apps/zantara-media/backend/app/services/content_orchestrator.py
 self.min_priority = 1  # Was 7
@@ -401,6 +410,7 @@ self.min_priority = 1  # Was 7
 ### Problem: "AI generation failed"
 
 **Check API keys:**
+
 ```bash
 echo $OPENROUTER_API_KEY
 echo $GOOGLE_API_KEY
@@ -432,6 +442,7 @@ tail -f /var/log/postgresql/postgresql-15-main.log  # Linux
 Both services failed → Using placeholder is expected behavior.
 
 To fix:
+
 ```bash
 # Verify Google API key
 curl -X POST \

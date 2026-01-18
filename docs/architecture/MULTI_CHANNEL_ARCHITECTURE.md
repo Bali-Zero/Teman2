@@ -11,6 +11,7 @@
 Supportare Zantara su **multiple piattaforme** con **logica business centralizzata** e **UX ottimizzata per ogni canale**.
 
 **Canali Target:**
+
 - ✅ Web App (esistente)
 - ✅ Telegram (esistente)
 - 🔄 WhatsApp Business API
@@ -853,24 +854,28 @@ async def stream_query(
 ## 🔄 Migration Plan
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Create `channels/` directory structure
 - [ ] Implement `BaseChannel` abstract class
 - [ ] Implement `ChannelRouter`
 - [ ] Implement `ConversationEngine`
 
 ### Phase 2: Migrate Existing Channels (Week 2)
+
 - [ ] Migrate `TelegramChannelAdapter` from `routers/telegram.py`
 - [ ] Migrate `WebChannelAdapter` from `routers/agentic_rag.py`
 - [ ] Update routers to use `ChannelRouter`
 - [ ] Test existing functionality (Telegram + Web)
 
 ### Phase 3: Add New Channels (Week 3-4)
+
 - [ ] Implement `WhatsAppChannelAdapter`
 - [ ] WhatsApp Business API integration
 - [ ] Test WhatsApp end-to-end
 - [ ] Add Instagram, X adapters (if needed)
 
 ### Phase 4: Optimization (Week 5+)
+
 - [ ] Channel-specific performance tuning
 - [ ] Response caching per channel
 - [ ] Analytics per channel
@@ -880,14 +885,14 @@ async def stream_query(
 
 ## ✅ Benefits
 
-| Benefit | Description |
-|---------|-------------|
-| **DRY** | Orchestrator logic written once, used everywhere |
-| **Scalability** | Add new channel = write 1 adapter (200 lines) |
-| **Consistency** | Same AI behavior across all channels |
-| **Testing** | Mock channels for unit tests |
-| **Monitoring** | Unified metrics across channels |
-| **UX Optimization** | Channel-specific tuning (timeout, formatting) |
+| Benefit             | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| **DRY**             | Orchestrator logic written once, used everywhere |
+| **Scalability**     | Add new channel = write 1 adapter (200 lines)    |
+| **Consistency**     | Same AI behavior across all channels             |
+| **Testing**         | Mock channels for unit tests                     |
+| **Monitoring**      | Unified metrics across channels                  |
+| **UX Optimization** | Channel-specific tuning (timeout, formatting)    |
 
 ---
 
@@ -900,4 +905,4 @@ async def stream_query(
 
 ---
 
-*Documento creato 2026-01-16. Architecture proposal per multi-channel Zantara platform.*
+_Documento creato 2026-01-16. Architecture proposal per multi-channel Zantara platform._

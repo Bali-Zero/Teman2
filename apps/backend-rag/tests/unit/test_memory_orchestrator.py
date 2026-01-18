@@ -109,7 +109,9 @@ class TestMemoryOrchestratorInit:
         mock_pool.close = AsyncMock()
 
         # Mock the MemoryServicePostgres class
-        with patch("backend.services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+        with patch(
+            "backend.services.memory.orchestrator.MemoryServicePostgres"
+        ) as MockMemoryService:
             mock_service = MagicMock()
             mock_service.pool = mock_pool
             mock_service.use_postgres = True
@@ -141,7 +143,9 @@ class TestMemoryOrchestratorInit:
         mock_pool.close = AsyncMock()
 
         # Mock the MemoryServicePostgres class
-        with patch("backend.services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+        with patch(
+            "backend.services.memory.orchestrator.MemoryServicePostgres"
+        ) as MockMemoryService:
             mock_service = MagicMock()
             mock_service.pool = mock_pool
             mock_service.use_postgres = True
@@ -176,7 +180,9 @@ class TestMemoryOrchestratorInit:
         mock_pool.close = AsyncMock()
 
         # Mock the MemoryServicePostgres class
-        with patch("backend.services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+        with patch(
+            "backend.services.memory.orchestrator.MemoryServicePostgres"
+        ) as MockMemoryService:
             mock_service = MagicMock()
             mock_service.pool = mock_pool
             mock_service.use_postgres = True

@@ -174,7 +174,6 @@ class TestBlogAskRouterSimple:
 
             # Set global orchestrator
             mock_orchestrator = MagicMock()
-            import backend.app.routers.blog_ask
 
             app.routers.blog_ask._blog_orchestrator = mock_orchestrator
 

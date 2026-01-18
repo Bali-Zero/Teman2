@@ -9,6 +9,7 @@ File: backend/agents/agents/client_value_predictor.py
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
 

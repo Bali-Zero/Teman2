@@ -50,12 +50,12 @@
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/app/(blog)/[category]/[slug]/page.tsx` | Server component, data fetching |
-| `src/app/(blog)/[category]/[slug]/ArticleClient.tsx` | Client component, layout |
-| `src/components/insights/TableOfContents.tsx` | TOC component |
-| `src/components/insights/NewsletterSidebar.tsx` | Newsletter form |
+| File                                                 | Purpose                         |
+| ---------------------------------------------------- | ------------------------------- |
+| `src/app/(blog)/[category]/[slug]/page.tsx`          | Server component, data fetching |
+| `src/app/(blog)/[category]/[slug]/ArticleClient.tsx` | Client component, layout        |
+| `src/components/insights/TableOfContents.tsx`        | TOC component                   |
+| `src/components/insights/NewsletterSidebar.tsx`      | Newsletter form                 |
 
 ---
 
@@ -66,9 +66,7 @@
 ```tsx
 <div className="grid lg:grid-cols-12 gap-8">
   {/* Article - 8/12 columns */}
-  <article className="lg:col-span-8">
-    {/* Content */}
-  </article>
+  <article className="lg:col-span-8">{/* Content */}</article>
 
   {/* Sidebar - 4/12 columns */}
   <aside className="hidden lg:block lg:col-span-4">
@@ -99,14 +97,14 @@ The sidebar uses a combined sticky + scrollable approach:
 <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto space-y-8 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
 ```
 
-| Property | Value | Purpose |
-|----------|-------|---------|
-| `sticky` | - | Stays fixed during scroll |
-| `top-24` | 6rem | Offset from top (below header) |
-| `max-h-[calc(100vh-8rem)]` | viewport - 8rem | Limits height, enables scroll |
-| `overflow-y-auto` | - | Scrollbar when content overflows |
-| `space-y-8` | 2rem | Gap between TOC and Newsletter |
-| `scrollbar-thin` | - | Custom thin scrollbar (Tailwind plugin) |
+| Property                   | Value           | Purpose                                 |
+| -------------------------- | --------------- | --------------------------------------- |
+| `sticky`                   | -               | Stays fixed during scroll               |
+| `top-24`                   | 6rem            | Offset from top (below header)          |
+| `max-h-[calc(100vh-8rem)]` | viewport - 8rem | Limits height, enables scroll           |
+| `overflow-y-auto`          | -               | Scrollbar when content overflows        |
+| `space-y-8`                | 2rem            | Gap between TOC and Newsletter          |
+| `scrollbar-thin`           | -               | Custom thin scrollbar (Tailwind plugin) |
 
 ---
 
@@ -137,6 +135,7 @@ Extracts headings from MDX content and renders clickable links.
 ```
 
 Features:
+
 - Auto-extracts h2, h3 headings
 - Smooth scroll to sections
 - Active section highlighting
@@ -151,6 +150,7 @@ Email subscription form with topic selection.
 ```
 
 Features:
+
 - Name field (optional)
 - Email field (required)
 - Topic multi-select (pre-selected based on article category)
@@ -160,10 +160,10 @@ Features:
 
 ## Responsive Breakpoints
 
-| Breakpoint | Columns | Sidebar |
-|------------|---------|---------|
-| Mobile (< 1024px) | 1 | Hidden |
-| Desktop (lg+) | 12-grid | Visible |
+| Breakpoint        | Columns | Sidebar |
+| ----------------- | ------- | ------- |
+| Mobile (< 1024px) | 1       | Hidden  |
+| Desktop (lg+)     | 12-grid | Visible |
 
 ---
 

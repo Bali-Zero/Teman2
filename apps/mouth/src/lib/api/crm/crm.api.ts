@@ -70,12 +70,14 @@ export class CrmApi {
   /**
    * Get all practices with optional filtering
    */
-  async getPractices(params: {
-    status?: string;
-    assigned_to?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Practice[]> {
+  async getPractices(
+    params: {
+      status?: string;
+      assigned_to?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<Practice[]> {
     const queryParams = new URLSearchParams();
     if (params.status) queryParams.append('status', params.status);
     if (params.assigned_to) queryParams.append('assigned_to', params.assigned_to);
@@ -91,11 +93,13 @@ export class CrmApi {
   /**
    * Get interactions (e.g. WhatsApp messages)
    */
-  async getInteractions(params: {
-    interaction_type?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Interaction[]> {
+  async getInteractions(
+    params: {
+      interaction_type?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<Interaction[]> {
     const queryParams = new URLSearchParams();
     if (params.interaction_type) queryParams.append('interaction_type', params.interaction_type);
     if (params.limit) queryParams.append('limit', params.limit.toString());
@@ -148,9 +152,12 @@ export class CrmApi {
   /**
    * Mark multiple interactions as read (batch)
    */
-  async markInteractionsReadBatch(interactionIds: number[], readBy: string): Promise<BatchMarkReadResponse> {
+  async markInteractionsReadBatch(
+    interactionIds: number[],
+    readBy: string
+  ): Promise<BatchMarkReadResponse> {
     const queryParams = new URLSearchParams();
-    interactionIds.forEach(id => queryParams.append('interaction_ids', id.toString()));
+    interactionIds.forEach((id) => queryParams.append('interaction_ids', id.toString()));
     queryParams.append('read_by', readBy);
 
     return this.client.request<BatchMarkReadResponse>(
@@ -172,11 +179,13 @@ export class CrmApi {
   /**
    * Get all clients with optional search and filtering
    */
-  async getClients(params: {
-    search?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Client[]> {
+  async getClients(
+    params: {
+      search?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<Client[]> {
     const queryParams = new URLSearchParams();
     if (params.search) queryParams.append('search', params.search);
     if (params.limit) queryParams.append('limit', params.limit.toString());
@@ -272,7 +281,9 @@ export class CrmApi {
    */
   async getClientByEmail(email: string): Promise<Client | null> {
     try {
-      return await this.client.request<Client>(`/api/crm/clients/by-email/${encodeURIComponent(email)}`);
+      return await this.client.request<Client>(
+        `/api/crm/clients/by-email/${encodeURIComponent(email)}`
+      );
     } catch (error) {
       // 404 means client not found - return null instead of throwing
       if (error instanceof Error && error.message.includes('404')) {
@@ -331,13 +342,10 @@ export class CrmApi {
       company_name: string;
     }>
   ): Promise<{ success: boolean }> {
-    return this.client.request<{ success: boolean }>(
-      `/api/crm/clients/${clientId}/profile`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      }
-    );
+    return this.client.request<{ success: boolean }>(`/api/crm/clients/${clientId}/profile`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
   }
 
   // ============================================
@@ -354,7 +362,10 @@ export class CrmApi {
   /**
    * Add a family member
    */
-  async createFamilyMember(clientId: number, data: FamilyMemberCreate): Promise<{ id: number; success: boolean }> {
+  async createFamilyMember(
+    clientId: number,
+    data: FamilyMemberCreate
+  ): Promise<{ id: number; success: boolean }> {
     return this.client.request<{ id: number; success: boolean }>(
       `/api/crm/clients/${clientId}/family`,
       {
@@ -415,7 +426,10 @@ export class CrmApi {
   /**
    * Add a document
    */
-  async createDocument(clientId: number, data: DocumentCreate): Promise<{ id: number; success: boolean }> {
+  async createDocument(
+    clientId: number,
+    data: DocumentCreate
+  ): Promise<{ id: number; success: boolean }> {
     return this.client.request<{ id: number; success: boolean }>(
       `/api/crm/clients/${clientId}/documents`,
       {
@@ -480,9 +494,7 @@ export class CrmApi {
     if (params?.assignedTo) queryParams.append('assigned_to', params.assignedTo);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     const query = queryParams.toString();
-    return this.client.request<ExpiryAlert[]>(
-      `/api/crm/expiry-alerts${query ? `?${query}` : ''}`
-    );
+    return this.client.request<ExpiryAlert[]>(`/api/crm/expiry-alerts${query ? `?${query}` : ''}`);
   }
 
   /**
@@ -500,7 +512,10 @@ export class CrmApi {
    * Delete a client (soft delete - marks as inactive)
    * Only admins or authorized team members should call this
    */
-  async deleteClient(clientId: number, deletedBy: string): Promise<{ success: boolean; message: string }> {
+  async deleteClient(
+    clientId: number,
+    deletedBy: string
+  ): Promise<{ success: boolean; message: string }> {
     return this.client.request<{ success: boolean; message: string }>(
       `/api/crm/clients/${clientId}?deleted_by=${encodeURIComponent(deletedBy)}`,
       { method: 'DELETE' }
@@ -541,7 +556,10 @@ export class CrmApi {
    * Delete a practice/case (soft delete - marks as cancelled)
    * Only admins or the client's lead can delete practices
    */
-  async deletePractice(practiceId: number, deletedBy: string): Promise<{ success: boolean; message: string }> {
+  async deletePractice(
+    practiceId: number,
+    deletedBy: string
+  ): Promise<{ success: boolean; message: string }> {
     return this.client.request<{ success: boolean; message: string }>(
       `/api/crm/practices/${practiceId}?deleted_by=${encodeURIComponent(deletedBy)}`,
       { method: 'DELETE' }
@@ -560,16 +578,13 @@ export class CrmApi {
     direction?: 'inbound' | 'outbound';
     practice_id?: number;
   }): Promise<Interaction> {
-    return this.client.request<Interaction>(
-      '/api/crm/interactions/',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          ...data,
-          direction: data.direction || 'outbound',
-          channel: 'workspace',
-        }),
-      }
-    );
+    return this.client.request<Interaction>('/api/crm/interactions/', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        direction: data.direction || 'outbound',
+        channel: 'workspace',
+      }),
+    });
   }
 }

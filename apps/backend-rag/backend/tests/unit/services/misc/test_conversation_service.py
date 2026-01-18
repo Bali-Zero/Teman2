@@ -337,7 +337,8 @@ class TestConversationService:
     def test_get_auto_crm_general_error(self, conversation_service):
         """Test handling general error for Auto-CRM"""
         with patch(
-            "backend.services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")
+            "backend.services.crm.auto_crm_service.get_auto_crm_service",
+            side_effect=Exception("Error"),
         ):
             result = conversation_service._get_auto_crm()
 

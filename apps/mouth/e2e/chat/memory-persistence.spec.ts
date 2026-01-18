@@ -206,8 +206,7 @@ test.describe('Memory Persistence', () => {
     });
   });
 
-  test.describe('Memory Persistence Across Sessions', () => {
-  });
+  test.describe('Memory Persistence Across Sessions', () => {});
 
   test.describe('Memory Context Security', () => {
     test('should not fetch memory context for unauthenticated users', async ({ page }) => {

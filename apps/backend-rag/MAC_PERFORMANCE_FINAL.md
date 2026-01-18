@@ -8,6 +8,7 @@
 ## ✅ AZIONI ESEGUITE
 
 ### 1. Pulizia Cache ✅
+
 - CloudKit: 265 MB → 0B
 - Playwright: 127 MB → 0B
 - Zoom: 73 MB → 0B
@@ -37,10 +38,12 @@ sudo purge
 ### 1. Chiudere VM Non Necessarie 🔴
 
 **VM Attive Identificate:**
+
 - PID 2026: Runtime 179:34 (quasi 3 ore)
 - PID 48375: Runtime 19:19
 
 **Azione:**
+
 1. Apri **Activity Monitor** (Applicazioni > Utility)
 2. Cerca "VirtualMachine" nella barra di ricerca
 3. Seleziona VM non necessarie
@@ -49,6 +52,7 @@ sudo purge
 **Spazio Liberabile:** ~10 GB RAM
 
 **Alternativa Terminale (solo se sicuro):**
+
 ```bash
 # Verificare VM
 ps aux | grep VirtualMachine | grep -v grep
@@ -62,6 +66,7 @@ ps aux | grep VirtualMachine | grep -v grep
 ### 2. Eseguire Purge Memoria 🔴
 
 **Comando:**
+
 ```bash
 sudo purge
 ```
@@ -69,6 +74,7 @@ sudo purge
 **Effetto:** Libera memoria compressa e cache sistema
 
 **Verifica Dopo:**
+
 ```bash
 vm_stat | grep "Pages free"
 ```
@@ -79,12 +85,12 @@ vm_stat | grep "Pages free"
 
 Dopo aver chiuso le VM e eseguito purge:
 
-| Metrica | Attuale | Dopo Azioni Manuali |
-|---------|---------|---------------------|
-| RAM Libera | ~480 MB | 10+ GB |
-| CPU Idle | 38.4% | 50-60% |
-| Load Average | 5.39-6.79 | 2-3 |
-| Swap Attivo | Sì (~16 GB) | No |
+| Metrica      | Attuale     | Dopo Azioni Manuali |
+| ------------ | ----------- | ------------------- |
+| RAM Libera   | ~480 MB     | 10+ GB              |
+| CPU Idle     | 38.4%       | 50-60%              |
+| Load Average | 5.39-6.79   | 2-3                 |
+| Swap Attivo  | Sì (~16 GB) | No                  |
 
 ---
 
@@ -133,15 +139,18 @@ ps aux | grep VirtualMachine | grep -v grep | awk '{print "PID: " $2 " | CPU: " 
 **Ottimizzazioni Automatiche:** ✅ Completate
 
 **Miglioramenti Ottenuti:**
+
 - RAM libera: +382 MB
 - CPU idle: +34.8%
 - Cache pulite: ~580 MB
 
 **Azioni Manuali Rimaste:**
+
 - Chiudere VM non necessarie (~10 GB RAM)
 - Eseguire `sudo purge` (libera memoria compressa)
 
 **Risultato Finale Atteso:**
+
 - RAM libera: 10+ GB
 - CPU idle: 50-60%
 - Performance: Normale/Veloce

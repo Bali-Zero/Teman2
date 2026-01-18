@@ -2,11 +2,11 @@
 
 ## Current Architecture
 
-| Service | Platform | URL | Status |
-|---------|----------|-----|--------|
-| **Backend RAG** | Fly.io | https://nuzantara-rag.fly.dev | Active |
-| **Frontend** | Vercel | https://www.balizero.com | Active |
-| **Frontend (alt)** | Vercel | https://nuzantara-mouth.vercel.app | Active |
+| Service            | Platform | URL                                | Status |
+| ------------------ | -------- | ---------------------------------- | ------ |
+| **Backend RAG**    | Fly.io   | https://nuzantara-rag.fly.dev      | Active |
+| **Frontend**       | Vercel   | https://www.balizero.com           | Active |
+| **Frontend (alt)** | Vercel   | https://nuzantara-mouth.vercel.app | Active |
 
 ## Deployment Commands
 
@@ -44,6 +44,7 @@ curl -I https://www.balizero.com
 ## Recent Deployments (2026-01-10)
 
 ### Backend Optimization
+
 - **Port Binding**: Switched from `0.0.0.0` to `::` (IPv6/IPv4 dual stack) to fix Fly.io proxy warnings.
 - **Startup**: Removed `sh -c` wrapper in Dockerfile for faster signal handling and socket binding.
 - **Status**: Deployment verified, health checks passing immediately.
@@ -51,6 +52,7 @@ curl -I https://www.balizero.com
 ## Migration Notes (2026-01-10)
 
 Frontend successfully migrated from Fly.io to Vercel:
+
 - DNS migrated on Cloudflare
 - Fly.io app `nuzantara-mouth` stopped
 - See `docs/FRONTEND_VERCEL_MIGRATION.md` for full details

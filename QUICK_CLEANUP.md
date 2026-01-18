@@ -19,31 +19,37 @@ python3 cleanup.py
 ## ⚡ Comandi Rapidi
 
 ### Libera RAM (richiede password)
+
 ```bash
 sudo purge
 ```
 
 ### Verifica spazio disco
+
 ```bash
 df -h /
 ```
 
 ### Analizza Desktop (50GB)
+
 ```bash
 du -sh ~/Desktop/* | sort -h | tail -10
 ```
 
 ### Pulisci cache npm
+
 ```bash
 npm cache clean --force
 ```
 
 ### Pulisci cache pip
+
 ```bash
 pip cache purge
 ```
 
 ### Pulisci Homebrew
+
 ```bash
 brew cleanup --prune=all
 ```

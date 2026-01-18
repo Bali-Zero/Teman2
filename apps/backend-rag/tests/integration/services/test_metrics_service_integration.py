@@ -95,7 +95,9 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_measure_redis_latency_failure(self, metrics_collector):
         """Test measuring Redis latency when Redis fails"""
-        with patch("backend.app.metrics.get_cache_service", side_effect=Exception("Redis unavailable")):
+        with patch(
+            "backend.app.metrics.get_cache_service", side_effect=Exception("Redis unavailable")
+        ):
             latency = await metrics_collector.measure_redis_latency()
             assert latency == -1
 

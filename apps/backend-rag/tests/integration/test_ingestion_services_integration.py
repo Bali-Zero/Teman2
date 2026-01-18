@@ -195,8 +195,12 @@ class TestAutoIngestionOrchestratorIntegration:
     async def test_auto_ingestion_orchestrator_initialization(self, db_pool):
         """Test AutoIngestionOrchestrator initialization"""
         with (
-            patch("backend.services.auto_ingestion_orchestrator.IngestionService") as mock_ingestion,
-            patch("backend.services.auto_ingestion_orchestrator.LegalIngestionService") as mock_legal,
+            patch(
+                "backend.services.auto_ingestion_orchestrator.IngestionService"
+            ) as mock_ingestion,
+            patch(
+                "backend.services.auto_ingestion_orchestrator.LegalIngestionService"
+            ) as mock_legal,
         ):
             from backend.services.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 

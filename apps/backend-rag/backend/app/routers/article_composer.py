@@ -7,30 +7,32 @@ For marketing team to create articles manually with:
 - SEO optimization
 """
 
-import os
-import logging
 import json
-import asyncio
+import logging
+import os
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pathlib import Path
-
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from typing import Any
 
 import anthropic
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/articles", tags=["Article Composer"])
 logger = logging.getLogger(__name__)
 
 # --- PYDANTIC MODELS ---
 
+
 class ComposeRequest(BaseModel):
     """Request to compose/enrich an article"""
+
     title: str = Field(..., description="Article title")
     content: str = Field(..., description="Raw article content")
-    category: str = Field(default="business", description="Category: immigration|business|tax|property|lifestyle|tech|legal")
-    source_url: Optional[str] = Field(default=None, description="Original source URL if any")
+    category: str = Field(
+        default="business",
+        description="Category: immigration|business|tax|property|lifestyle|tech|legal",
+    )
+    source_url: str | None = Field(default=None, description="Original source URL if any")
     author: str = Field(default="Marketing Team", description="Author name")
 
 
@@ -49,12 +51,13 @@ class BaliZeroTake(BaseModel):
 
 
 class NextSteps(BaseModel):
-    expat: List[str]
-    investor: List[str]
+    expat: list[str]
+    investor: list[str]
 
 
 class EnrichedArticle(BaseModel):
     """Enriched article ready for publication"""
+
     title: str
     headline: str
     tldr: TLDRSection
@@ -65,20 +68,21 @@ class EnrichedArticle(BaseModel):
     priority: str
     relevance_score: int
     ai_summary: str
-    ai_tags: List[str]
-    suggested_components: List[str]
-    cover_image: Optional[str] = None
-    image_prompt: Optional[str] = None
+    ai_tags: list[str]
+    suggested_components: list[str]
+    cover_image: str | None = None
+    image_prompt: str | None = None
     source: str
-    source_url: Optional[str]
+    source_url: str | None
     enriched_at: str
 
 
 class ComposeResponse(BaseModel):
     """Response from compose endpoint"""
+
     success: bool
-    article: Optional[EnrichedArticle] = None
-    error: Optional[str] = None
+    article: EnrichedArticle | None = None
+    error: str | None = None
     api_cost_cents: float = 0
 
 
@@ -173,7 +177,8 @@ NOTES:
 
 # --- IMAGE GENERATION ---
 
-async def generate_cover_image(headline: str, category: str, summary: str) -> Dict[str, Any]:
+
+async def generate_cover_image(headline: str, category: str, summary: str) -> dict[str, Any]:
     """
     Generate cover image using available image generation service.
     Returns dict with image_path and prompt_used.
@@ -201,11 +206,12 @@ No text overlays. High quality, photorealistic."""
 
     return {
         "image_path": None,  # Frontend will generate
-        "prompt": image_prompt
+        "prompt": image_prompt,
     }
 
 
 # --- API ENDPOINTS ---
+
 
 @router.post("/compose", response_model=ComposeResponse)
 async def compose_article(request: ComposeRequest):
@@ -234,9 +240,7 @@ async def compose_article(request: ComposeRequest):
 
         # Build prompt
         prompt = build_enrichment_prompt(
-            title=request.title,
-            content=request.content,
-            category=request.category
+            title=request.title, content=request.content, category=request.category
         )
 
         # Call Claude
@@ -244,9 +248,7 @@ async def compose_article(request: ComposeRequest):
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}],
         )
 
         # Extract response text
@@ -269,35 +271,37 @@ async def compose_article(request: ComposeRequest):
         image_result = await generate_cover_image(
             headline=data.get("headline", request.title),
             category=data.get("category", request.category),
-            summary=data.get("ai_summary", "")
+            summary=data.get("ai_summary", ""),
         )
 
         # Calculate approximate cost (Claude Sonnet: $3/$15 per 1M tokens)
         input_tokens = message.usage.input_tokens
         output_tokens = message.usage.output_tokens
-        cost_cents = (input_tokens * 0.0003 + output_tokens * 0.0015)  # cents
+        cost_cents = input_tokens * 0.0003 + output_tokens * 0.0015  # cents
 
         # Build enriched article
         enriched = EnrichedArticle(
             title=request.title,
             headline=data.get("headline", request.title),
-            tldr=TLDRSection(**data.get("tldr", {
-                "should_worry": "Depends",
-                "what": "Article content",
-                "who": "Expats and investors",
-                "when": "Now",
-                "risk_level": "Medium"
-            })),
+            tldr=TLDRSection(
+                **data.get(
+                    "tldr",
+                    {
+                        "should_worry": "Depends",
+                        "what": "Article content",
+                        "who": "Expats and investors",
+                        "when": "Now",
+                        "risk_level": "Medium",
+                    },
+                )
+            ),
             facts=data.get("facts", request.content[:500]),
-            bali_zero_take=BaliZeroTake(**data.get("bali_zero_take", {
-                "hidden_insight": "",
-                "our_analysis": "",
-                "our_advice": ""
-            })),
-            next_steps=NextSteps(**data.get("next_steps", {
-                "expat": [],
-                "investor": []
-            })),
+            bali_zero_take=BaliZeroTake(
+                **data.get(
+                    "bali_zero_take", {"hidden_insight": "", "our_analysis": "", "our_advice": ""}
+                )
+            ),
+            next_steps=NextSteps(**data.get("next_steps", {"expat": [], "investor": []})),
             category=data.get("category", request.category),
             priority=data.get("priority", "medium"),
             relevance_score=data.get("relevance_score", 50),
@@ -308,37 +312,24 @@ async def compose_article(request: ComposeRequest):
             image_prompt=image_result.get("prompt"),
             source=request.author,
             source_url=request.source_url,
-            enriched_at=datetime.utcnow().isoformat()
+            enriched_at=datetime.utcnow().isoformat(),
         )
 
         logger.info(f"✅ Article enriched: {enriched.headline[:50]}...")
-        logger.info(f"   Cost: ${cost_cents/100:.4f} ({input_tokens} in, {output_tokens} out)")
+        logger.info(f"   Cost: ${cost_cents / 100:.4f} ({input_tokens} in, {output_tokens} out)")
 
-        return ComposeResponse(
-            success=True,
-            article=enriched,
-            api_cost_cents=round(cost_cents, 2)
-        )
+        return ComposeResponse(success=True, article=enriched, api_cost_cents=round(cost_cents, 2))
 
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e}")
         logger.debug(f"Raw response: {response_text[:500] if 'response_text' in dir() else 'N/A'}")
-        return ComposeResponse(
-            success=False,
-            error=f"Failed to parse Claude response: {str(e)}"
-        )
+        return ComposeResponse(success=False, error=f"Failed to parse Claude response: {str(e)}")
     except anthropic.APIError as e:
         logger.error(f"Anthropic API error: {e}")
-        return ComposeResponse(
-            success=False,
-            error=f"Claude API error: {str(e)}"
-        )
+        return ComposeResponse(success=False, error=f"Claude API error: {str(e)}")
     except Exception as e:
         logger.error(f"Enrichment failed: {e}")
-        return ComposeResponse(
-            success=False,
-            error=str(e)
-        )
+        return ComposeResponse(success=False, error=str(e))
 
 
 @router.get("/compose/status")
@@ -350,45 +341,55 @@ async def compose_status():
         "configured": bool(api_key),
         "api_key_set": bool(api_key),
         "model": "claude-sonnet-4-20250514",
-        "estimated_cost_per_article": "$0.02-0.05"
+        "estimated_cost_per_article": "$0.02-0.05",
     }
 
 
 # --- PUBLISHING MODELS ---
 
+
 class PublishRequest(BaseModel):
     """Request to publish an article to the site"""
+
     article: EnrichedArticle
-    cover_image_base64: Optional[str] = Field(default=None, description="Cover image as base64 encoded string")
-    cover_image_filename: Optional[str] = Field(default=None, description="Cover image filename (e.g., 'article-cover.jpg')")
+    cover_image_base64: str | None = Field(
+        default=None, description="Cover image as base64 encoded string"
+    )
+    cover_image_filename: str | None = Field(
+        default=None, description="Cover image filename (e.g., 'article-cover.jpg')"
+    )
     position: str = Field(default="normal", description="Position: main_featured|secondary|normal")
-    slug: Optional[str] = Field(default=None, description="Custom slug, auto-generated if not provided")
+    slug: str | None = Field(
+        default=None, description="Custom slug, auto-generated if not provided"
+    )
 
 
 class PublishResponse(BaseModel):
     """Response from publish endpoint"""
+
     success: bool
     message: str
-    article_url: Optional[str] = None
-    mdx_path: Optional[str] = None
-    image_path: Optional[str] = None
-    commit_sha: Optional[str] = None
-    error: Optional[str] = None
+    article_url: str | None = None
+    mdx_path: str | None = None
+    image_path: str | None = None
+    commit_sha: str | None = None
+    error: str | None = None
 
 
 def generate_slug(headline: str) -> str:
     """Generate URL-friendly slug from headline"""
     import re
+
     # Convert to lowercase and replace spaces with hyphens
     slug = headline.lower()
     # Remove special characters except hyphens
-    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
     # Replace spaces with hyphens
-    slug = re.sub(r'\s+', '-', slug)
+    slug = re.sub(r"\s+", "-", slug)
     # Remove multiple consecutive hyphens
-    slug = re.sub(r'-+', '-', slug)
+    slug = re.sub(r"-+", "-", slug)
     # Remove leading/trailing hyphens
-    slug = slug.strip('-')
+    slug = slug.strip("-")
     return slug[:60]  # Limit slug length
 
 
@@ -412,10 +413,10 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     reading_time = max(3, word_count // 200 + 1)
 
     # Build tags string
-    tags_str = ', '.join([f'"{tag}"' for tag in article.ai_tags])
+    tags_str = ", ".join([f'"{tag}"' for tag in article.ai_tags])
 
     # Cover image path
-    cover_img = cover_image_path or f'/static/news/{slug}.jpg'
+    cover_img = cover_image_path or f"/static/news/{slug}.jpg"
 
     mdx_content = f'''---
 title: "{article.headline}"
@@ -425,9 +426,9 @@ coverImage: "{cover_img}"
 coverImageAlt: "{article.headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
-publishedAt: "{datetime.utcnow().strftime('%Y-%m-%d')}"
+publishedAt: "{datetime.utcnow().strftime("%Y-%m-%d")}"
 author: "{article.source}"
-trending: {str(article.priority == 'high').lower()}
+trending: {str(article.priority == "high").lower()}
 featured: false
 readingTime: {reading_time}
 difficulty: "intermediate"
@@ -501,14 +502,17 @@ async def publish_article(request: PublishRequest):
     Creates MDX file and optionally uploads cover image via GitHub API.
     Triggers Vercel auto-deploy.
     """
-    from backend.services.integrations.github_publisher import github_publisher, GitHubPublisherError
+    from backend.services.integrations.github_publisher import (
+        GitHubPublisherError,
+        github_publisher,
+    )
 
     if not github_publisher.is_configured:
         logger.error("GitHub publisher not configured")
         return PublishResponse(
             success=False,
             message="GitHub API not configured",
-            error="Missing GITHUB_TOKEN environment variable"
+            error="Missing GITHUB_TOKEN environment variable",
         )
 
     try:
@@ -544,20 +548,14 @@ async def publish_article(request: PublishRequest):
             image_git_path = f"apps/mouth/public/static/news/{image_filename}"
             cover_image_path = f"/static/news/{image_filename}"
 
-            files_to_commit.append({
-                "path": image_git_path,
-                "content": image_data
-            })
+            files_to_commit.append({"path": image_git_path, "content": image_data})
             logger.info(f"Will upload cover image: {image_git_path}")
 
         # 2. Generate MDX content
         mdx_content = generate_mdx_content(request.article, slug, cover_image_path)
         mdx_git_path = f"apps/mouth/src/content/articles/{category_folder}/{slug}.mdx"
 
-        files_to_commit.append({
-            "path": mdx_git_path,
-            "content": mdx_content
-        })
+        files_to_commit.append({"path": mdx_git_path, "content": mdx_content})
 
         # 3. Commit files to GitHub
         commit_message = f"feat(article): Add article '{request.article.headline[:50]}...'\n\nCategory: {category_folder}\nPosition: {request.position}\n\n🤖 Published via Article Composer"
@@ -565,15 +563,12 @@ async def publish_article(request: PublishRequest):
         if len(files_to_commit) == 1:
             # Single file commit
             result = await github_publisher.upload_file(
-                path=mdx_git_path,
-                content=mdx_content,
-                message=commit_message
+                path=mdx_git_path, content=mdx_content, message=commit_message
             )
         else:
             # Atomic multi-file commit
             result = await github_publisher.create_commit_with_files(
-                files=files_to_commit,
-                message=commit_message
+                files=files_to_commit, message=commit_message
             )
 
         # Build article URL
@@ -584,39 +579,31 @@ async def publish_article(request: PublishRequest):
 
         return PublishResponse(
             success=True,
-            message=f"Article published successfully. Vercel will auto-deploy in ~1 minute.",
+            message="Article published successfully. Vercel will auto-deploy in ~1 minute.",
             article_url=article_url,
             mdx_path=mdx_git_path,
             image_path=cover_image_path,
-            commit_sha=result.get("commit_sha")
+            commit_sha=result.get("commit_sha"),
         )
 
     except GitHubPublisherError as e:
         logger.error(f"GitHub publish error: {e}")
-        return PublishResponse(
-            success=False,
-            message="Failed to publish to GitHub",
-            error=str(e)
-        )
+        return PublishResponse(success=False, message="Failed to publish to GitHub", error=str(e))
     except Exception as e:
         logger.error(f"Publish failed: {e}", exc_info=True)
-        return PublishResponse(
-            success=False,
-            message="Failed to publish article",
-            error=str(e)
-        )
+        return PublishResponse(success=False, message="Failed to publish article", error=str(e))
 
 
 @router.get("/publish/status")
 async def publish_status():
     """Check if article publishing is properly configured"""
-    from backend.services.integrations.github_publisher import github_publisher
     from backend.app.core.config import settings
+    from backend.services.integrations.github_publisher import github_publisher
 
     return {
         "configured": github_publisher.is_configured,
         "github_token_set": bool(settings.github_token),
         "github_owner": settings.github_owner,
         "github_repo": settings.github_repo,
-        "target_branch": "main"
+        "target_branch": "main",
     }

@@ -7,13 +7,13 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import asyncpg
-from backend.core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import cached
 
 logger = get_logger(__name__)
 

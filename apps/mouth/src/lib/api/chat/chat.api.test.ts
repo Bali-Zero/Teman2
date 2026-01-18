@@ -104,7 +104,9 @@ describe('ChatApi', () => {
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"metadata","data":{"execution_time":1.5}}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"metadata","data":{"execution_time":1.5}}\n'
+            ),
           })
           .mockResolvedValueOnce({
             done: false,
@@ -143,7 +145,10 @@ describe('ChatApi', () => {
       const mockReader = {
         read: vi.fn().mockImplementation(() => {
           abortController.abort();
-          return Promise.resolve({ done: false, value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n') });
+          return Promise.resolve({
+            done: false,
+            value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n'),
+          });
         }),
         cancel: vi.fn(),
       };
@@ -283,7 +288,10 @@ describe('ChatApi', () => {
           // Simulate slow stream that times out
           return new Promise((resolve) => {
             setTimeout(() => {
-              resolve({ done: false, value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n') });
+              resolve({
+                done: false,
+                value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n'),
+              });
             }, 100);
           });
         }),
@@ -331,7 +339,8 @@ describe('ChatApi', () => {
     it('should call onError with ABORTED code when user cancels', async () => {
       const abortController = new AbortController();
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n'),

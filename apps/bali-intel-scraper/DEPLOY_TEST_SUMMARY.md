@@ -8,11 +8,13 @@
 ## ✅ Deploy Completato
 
 ### 1. Backend (nuzantara-rag)
+
 - **Versione:** 1478
 - **Status:** ✅ Deployato e operativo
 - **Modifiche:** Aggiornati allowed origins (rimosso `nuzantara-mouth.fly.dev`, aggiunto `balizero.com`)
 
 ### 2. Intel Scraper (bali-intel-scraper)
+
 - **Versione:** 26
 - **Status:** ✅ Deployato e operativo
 - **Nuovi file deployati:**
@@ -23,6 +25,7 @@
   - `test_qdrant_connection.py` - Test connessione
 
 ### 3. Dipendenze
+
 - ✅ `qdrant-client>=1.12.0` aggiunto a `requirements.txt`
 - ✅ Secrets configurati:
   - `QDRANT_URL=https://nuzantara-qdrant.fly.dev`
@@ -35,12 +38,14 @@
 
 **Errore:** `[Errno 104] Connection reset by peer` durante TLS handshake
 
-**Impatto:** 
+**Impatto:**
+
 - ❌ Impossibile inizializzare collezione `balizero_news_history`
 - ❌ Impossibile eseguire test completo
 - ⚠️ Problema rilevato anche dal backend (non solo Intel Scraper)
 
 **Diagnosi:**
+
 - Il problema è con Qdrant stesso, non con le app Fly.io
 - Entrambe le app (backend e Intel Scraper) hanno lo stesso errore
 - Possibili cause:
@@ -53,11 +58,13 @@
 ## 📋 Test Completati
 
 ### ✅ Test Strutturale (Locale)
+
 - Import moduli OK
 - Configurazione corretta
 - Codice pronto
 
 ### ⏳ Test Completo (In attesa)
+
 - Richiede connessione funzionante a Qdrant
 - Da eseguire quando Qdrant sarà disponibile
 
@@ -66,6 +73,7 @@
 ## 🚀 Prossimi Passi
 
 ### 1. Verificare Status Qdrant
+
 ```bash
 # Verifica se Qdrant è raggiungibile
 curl -v https://nuzantara-qdrant.fly.dev/health
@@ -77,12 +85,14 @@ fly status -a nuzantara-qdrant
 ### 2. Quando Qdrant sarà disponibile, eseguire:
 
 **Inizializzazione Collezione:**
+
 ```bash
 fly ssh console -a bali-intel-scraper
 python3 /app/scripts/init_news_collection.py
 ```
 
 **Test Completo:**
+
 ```bash
 fly ssh console -a bali-intel-scraper
 python3 /app/scripts/run_complete_test.py

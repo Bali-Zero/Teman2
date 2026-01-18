@@ -12,6 +12,7 @@ from typing import Any
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
 from .oracle_config import oracle_config

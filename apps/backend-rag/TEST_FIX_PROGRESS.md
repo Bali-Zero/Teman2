@@ -8,16 +8,19 @@
 ## ✅ COMPLETATO
 
 ### 1. Analisi Completa
+
 - ✅ Verificati moduli principali (tutti esistono tranne 1 spostato)
 - ✅ Identificati 14 file di test non trovati (~70 test)
 - ✅ Verificate signature API per test critici (tutte corrette)
 - ✅ Identificati pattern di errore (mock obsoleti, API changes, test logic)
 
 ### 2. Fix Import Errati
+
 - ✅ Verificato che `backend.services.misc.cultural_rag_service` esiste
 - ✅ Test esistenti usano già import corretto
 
 ### 3. Fix Mock Obsoleti - LLM Gateway
+
 - ✅ Aggiornato `mock_genai_client` fixture
 - ✅ Fixato `is_available` da attributo a property (PropertyMock)
 - ✅ Aggiornato mock per `create_chat_session` → `ChatSession`
@@ -25,6 +28,7 @@
 - ✅ Aggiunto mock per `send_message_stream`
 
 **File Modificato:**
+
 - `tests/unit/rag/test_llm_gateway.py`
   - Aggiunto `PropertyMock` import
   - Aggiornato `mock_genai_client` fixture con commento di documentazione
@@ -34,6 +38,7 @@
 ## 🔄 IN PROGRESS
 
 ### Fix Test LLM Gateway (38 test)
+
 - ✅ Mock aggiornato
 - ⏳ Verificare altri mock necessari
 - ⏳ Fixare test che usano mock obsoleti
@@ -43,15 +48,18 @@
 ## ⏳ PENDING
 
 ### Fix Test CRM Router (54 test)
+
 - ⏳ Verificare mock database pool
 - ⏳ Verificare mock dependencies
 - ⏳ Fixare test endpoint
 
 ### Fix Test Identity Service (12 test)
+
 - ⏳ Verificare mock settings
 - ⏳ Fixare test authentication
 
 ### Skip Test File Non Trovati (~70 test)
+
 - ⏳ Verificare se file sono stati spostati
 - ⏳ Creare skip markers per file rimossi
 

@@ -114,6 +114,14 @@ class Settings(BaseSettings):
     zantara_ai_cost_output: float = 0.60  # Cost per 1M output tokens (GPT-4o-mini)
     openrouter_api_key: str | None = None  # Set via OPENROUTER_API_KEY env var (free AI fallback)
     deepseek_api_key: str | None = Field(default=None, description="DeepSeek API Key")
+    ollama_url: str = Field(
+        default="http://localhost:11434",
+        description="Ollama API URL - Set via OLLAMA_URL env var (default: localhost for local Ollama)",
+    )
+    ollama_model: str = Field(
+        default="qwen2.5:latest",
+        description="Ollama model name - Set via OLLAMA_MODEL env var (default: qwen2.5:latest)",
+    )
 
     # ========================================
     # QDRANT VECTOR DATABASE

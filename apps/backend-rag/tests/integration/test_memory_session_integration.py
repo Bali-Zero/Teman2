@@ -113,7 +113,9 @@ class TestMemorySessionIntegration:
             )
 
             # Extract facts (mock extraction)
-            with patch("backend.services.memory_fact_extractor.MemoryFactExtractor") as mock_extractor:
+            with patch(
+                "backend.services.memory_fact_extractor.MemoryFactExtractor"
+            ) as mock_extractor:
                 mock_extractor_instance = MagicMock()
                 mock_extractor_instance.extract_facts = AsyncMock(
                     return_value=[

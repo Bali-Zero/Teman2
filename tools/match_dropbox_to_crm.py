@@ -55,17 +55,17 @@ DROPBOX_FOLDERS = [
 
 # Folders that are likely CATEGORIES, not individual clients
 CATEGORY_FOLDERS = {
-    "DIRJEN",           # Government office
+    "DIRJEN",  # Government office
     "KANWIL - DIRJEN",  # Government office
-    "EXTEND VISA",      # Service type
-    "ONLINE EXTEND",    # Service type
-    "MUTASI",           # Document type (transfer)
-    "PEMEGANG KITAS",   # Category (KITAS holders)
+    "EXTEND VISA",  # Service type
+    "ONLINE EXTEND",  # Service type
+    "MUTASI",  # Document type (transfer)
+    "PEMEGANG KITAS",  # Category (KITAS holders)
     "Pembubaran PT ROSI MEDIA CONSULTING",  # Company dissolution docs
-    "Pak Ari atau Mas Oman File PAJAK",     # Tax files for specific people
-    "DATA ADI",         # Data folder for Adi
-    "DATA OM DIAN",     # Data folder for Dian
-    "FILE ARIF",        # Files for Arif
+    "Pak Ari atau Mas Oman File PAJAK",  # Tax files for specific people
+    "DATA ADI",  # Data folder for Adi
+    "DATA OM DIAN",  # Data folder for Dian
+    "FILE ARIF",  # Files for Arif
     "@selesei Cetak (2027)",  # Print project
 }
 
@@ -73,10 +73,15 @@ CATEGORY_FOLDERS = {
 def get_crm_clients():
     """Query CRM database via fly machine exec"""
     cmd = [
-        "fly", "machine", "exec",
-        "-a", "nuzantara-rag",
+        "fly",
+        "machine",
+        "exec",
+        "-a",
+        "nuzantara-rag",
         "7843e55cdd3ed8",  # Running machine ID
-        "python3", "-c", '''
+        "python3",
+        "-c",
+        '''
 import asyncio, asyncpg, os, json
 
 async def get_clients():
@@ -95,7 +100,7 @@ async def get_clients():
 
 clients = asyncio.run(get_clients())
 print(json.dumps(clients))
-'''
+''',
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -130,7 +135,11 @@ def fuzzy_match(folder_name: str, crm_clients: list, threshold: float = 0.6) -> 
         scores = [
             SequenceMatcher(None, folder_clean, client_name).ratio(),
             # Match first word
-            SequenceMatcher(None, folder_clean.split()[0], client_name.split()[0]).ratio() if folder_clean.split() and client_name.split() else 0,
+            SequenceMatcher(
+                None, folder_clean.split()[0], client_name.split()[0]
+            ).ratio()
+            if folder_clean.split() and client_name.split()
+            else 0,
         ]
 
         score = max(scores)
@@ -156,65 +165,82 @@ def main():
 
     for folder_name, category in DROPBOX_FOLDERS:
         if category == "UTILITY":
-            results.append({
-                "dropbox_folder": folder_name,
-                "category": "UTILITY",
-                "crm_client_id": "",
-                "crm_client_name": "",
-                "action": "SKIP",
-                "notes": "Utility folder - do not migrate",
-                "verified": "YES",
-                "match_score": ""
-            })
+            results.append(
+                {
+                    "dropbox_folder": folder_name,
+                    "category": "UTILITY",
+                    "crm_client_id": "",
+                    "crm_client_name": "",
+                    "action": "SKIP",
+                    "notes": "Utility folder - do not migrate",
+                    "verified": "YES",
+                    "match_score": "",
+                }
+            )
             continue
 
         # Check if it's a category folder
         if folder_name in CATEGORY_FOLDERS:
-            results.append({
-                "dropbox_folder": folder_name,
-                "category": "CATEGORY",
-                "crm_client_id": "",
-                "crm_client_name": "",
-                "action": "REVIEW",
-                "notes": "Category folder - review contents manually",
-                "verified": "NO",
-                "match_score": ""
-            })
+            results.append(
+                {
+                    "dropbox_folder": folder_name,
+                    "category": "CATEGORY",
+                    "crm_client_id": "",
+                    "crm_client_name": "",
+                    "action": "REVIEW",
+                    "notes": "Category folder - review contents manually",
+                    "verified": "NO",
+                    "match_score": "",
+                }
+            )
             continue
 
         # Try to match to CRM
         crm_id, crm_name, score = fuzzy_match(folder_name, crm_clients)
 
         if crm_id:
-            results.append({
-                "dropbox_folder": folder_name,
-                "category": "CLIENT",
-                "crm_client_id": crm_id,
-                "crm_client_name": crm_name,
-                "action": "MIGRATE",
-                "notes": f"Matched (score: {score:.2f})",
-                "verified": "YES" if score >= 0.9 else "VERIFY",
-                "match_score": f"{score:.2f}"
-            })
+            results.append(
+                {
+                    "dropbox_folder": folder_name,
+                    "category": "CLIENT",
+                    "crm_client_id": crm_id,
+                    "crm_client_name": crm_name,
+                    "action": "MIGRATE",
+                    "notes": f"Matched (score: {score:.2f})",
+                    "verified": "YES" if score >= 0.9 else "VERIFY",
+                    "match_score": f"{score:.2f}",
+                }
+            )
         else:
-            results.append({
-                "dropbox_folder": folder_name,
-                "category": "CLIENT",
-                "crm_client_id": "",
-                "crm_client_name": "",
-                "action": "MANUAL",
-                "notes": "No CRM match found - search manually",
-                "verified": "NO",
-                "match_score": ""
-            })
+            results.append(
+                {
+                    "dropbox_folder": folder_name,
+                    "category": "CLIENT",
+                    "crm_client_id": "",
+                    "crm_client_name": "",
+                    "action": "MANUAL",
+                    "notes": "No CRM match found - search manually",
+                    "verified": "NO",
+                    "match_score": "",
+                }
+            )
 
     # Write CSV
     output_path = Path(__file__).parent / "dropbox_crm_VERIFIED.csv"
     with open(output_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "dropbox_folder", "category", "crm_client_id", "crm_client_name",
-            "action", "notes", "verified", "match_score"
-        ])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "dropbox_folder",
+                "category",
+                "crm_client_id",
+                "crm_client_name",
+                "action",
+                "notes",
+                "verified",
+                "match_score",
+            ],
+        )
         writer.writeheader()
         writer.writerows(results)
 
@@ -226,7 +252,7 @@ def main():
     manual = sum(1 for r in results if r["action"] == "MANUAL")
     skip = sum(1 for r in results if r["action"] == "SKIP")
 
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   MIGRATE (matched): {matched}")
     print(f"   REVIEW (category): {review}")
     print(f"   MANUAL (no match): {manual}")

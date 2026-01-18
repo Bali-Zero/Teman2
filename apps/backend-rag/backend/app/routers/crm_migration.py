@@ -6,7 +6,7 @@ Real-time monitoring and statistics for bulk data migrations.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 async def get_migration_status(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get comprehensive migration status and statistics.
 
@@ -150,7 +150,7 @@ async def get_migration_status(
 async def get_clients_migration_summary(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get detailed summary of client migration status.
 
@@ -246,7 +246,7 @@ async def get_client_documents_summary(
     client_id: int,
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get detailed document summary for a specific client.
 

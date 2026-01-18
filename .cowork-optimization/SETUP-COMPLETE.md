@@ -8,9 +8,11 @@
 ## 📊 Cosa Hai Ottenuto
 
 ### 1️⃣ ESEMPIO PRATICO ✅
+
 **File:** `EXAMPLE-WORKFLOW.md`
 
 Dimostrato come:
+
 - Analizzare Downloads (1.4GB, 65+ files)
 - Organizzare automaticamente per tipo
 - Creare report dettagliati
@@ -28,10 +30,12 @@ Dimostrato come:
 ---
 
 ### 2️⃣ MEMORY MCP INTEGRATO ✅
+
 **Package:** `@pepk/mcp-memory-sqlite` (production-ready)
 **File:** `MEMORY-MCP-GUIDE.md`
 
 **Caratteristiche:**
+
 - 🧠 Memoria persistente tra sessioni
 - 🔒 SQLite WAL (thread-safe)
 - 📊 Knowledge graph
@@ -39,6 +43,7 @@ Dimostrato come:
 - 🚀 Database: `~/.cowork-optimization/memory-data/cowork-memory.db`
 
 **Benefici:**
+
 - ✅ Claude ti ricorda tra sessioni
 - ✅ Context progetto persistente
 - ✅ Preferenze memorizzate
@@ -46,6 +51,7 @@ Dimostrato come:
 - ✅ +50% efficienza
 
 **Use Cases:**
+
 1. "Ricorda le mie preferenze coding"
 2. "Memorizza il context nuzantara"
 3. "Salva workflow deployment"
@@ -104,10 +110,11 @@ Dimostrato come:
 ```
 
 **Totale:**
+
 - 📄 9 documentazione files
 - 🤖 4 automation scripts
 - 📝 5 prompt templates
-- ⚙️  4 config files
+- ⚙️ 4 config files
 - 💾 5 backup files
 - 🧠 1 memory database
 - 📊 5 log files
@@ -117,19 +124,21 @@ Dimostrato come:
 ## ⚙️ Configurazioni Applicate
 
 ### 1. Cartelle Cowork Espanse
+
 ```json
 {
   "allowed_directories": [
-    "/Users/antonellosiano/Desktop/nuzantara",    // ✅ Originale
-    "/Users/antonellosiano/Desktop/KB",           // ✅ NEW
-    "/Users/antonellosiano/Desktop/kbli",         // ✅ NEW
-    "/Users/antonellosiano/Downloads",            // ✅ NEW
-    "/Users/antonellosiano/Documents"             // ✅ NEW
+    "/Users/antonellosiano/Desktop/nuzantara", // ✅ Originale
+    "/Users/antonellosiano/Desktop/KB", // ✅ NEW
+    "/Users/antonellosiano/Desktop/kbli", // ✅ NEW
+    "/Users/antonellosiano/Downloads", // ✅ NEW
+    "/Users/antonellosiano/Documents" // ✅ NEW
   ]
 }
 ```
 
 ### 2. Memory MCP Server
+
 ```json
 {
   "mcpServers": {
@@ -144,6 +153,7 @@ Dimostrato come:
 ```
 
 ### 3. Security Settings
+
 - ✅ Whitelist: `.ssh`, `.aws`, `.config`
 - ✅ Protected: `*.key`, `*.pem`, `*.env`
 - ✅ Backup pre-delete/move/replace
@@ -154,20 +164,21 @@ Dimostrato come:
 
 ## 🎯 Performance Attese
 
-| Metrica | Miglioramento |
-|---------|---------------|
-| Velocità operazioni file | **+40-60%** |
-| Uso memoria | **-30%** |
-| Permission prompts | **-70%** |
-| Produttività task ripetitivi | **10x** |
-| Consistenza risultati | **100%** |
-| Continuità tra sessioni | **∞** (con Memory) |
+| Metrica                      | Miglioramento      |
+| ---------------------------- | ------------------ |
+| Velocità operazioni file     | **+40-60%**        |
+| Uso memoria                  | **-30%**           |
+| Permission prompts           | **-70%**           |
+| Produttività task ripetitivi | **10x**            |
+| Consistenza risultati        | **100%**           |
+| Continuità tra sessioni      | **∞** (con Memory) |
 
 ---
 
 ## ✅ Checklist Completamento
 
 ### Setup Base
+
 - [x] Backup configurazioni originali
 - [x] Espansione cartelle (1 → 5)
 - [x] Script automazioni creati (4)
@@ -176,18 +187,21 @@ Dimostrato come:
 - [x] Documentazione completa
 
 ### Memory MCP
+
 - [x] Package installato (`@pepk/mcp-memory-sqlite`)
 - [x] Config aggiunta a `claude_desktop_config.json`
 - [x] Database location configurata
 - [x] Guida completa scritta
 
 ### Testing
+
 - [x] Installer eseguito con successo
 - [x] Backup script testato (113MB)
 - [x] Cleanup script testato (34 sessioni)
 - [x] Directory structure verificata
 
 ### Todo Utente
+
 - [ ] **Riavviare Claude Desktop** (IMPORTANTE!)
 - [ ] Test accesso 5 cartelle in Cowork
 - [ ] Test Memory MCP (salva e recupera info)
@@ -199,19 +213,24 @@ Dimostrato come:
 ## 🚀 Prossimi Step IMMEDIATI
 
 ### Step 1: Riavvia Claude Desktop 🔄
+
 ```bash
 killall Claude && open /Applications/Claude.app
 ```
+
 **Perché:** Applicare nuove configurazioni (cartelle + Memory MCP)
 
 ### Step 2: Test Cartelle in Cowork 📁
+
 ```
 Cowork Prompt:
 "List all directories I have access to. Show me how many files are in each."
 ```
+
 **Atteso:** 5 cartelle accessibili
 
 ### Step 3: Test Memory MCP 🧠
+
 ```
 Chat Normale:
 Tu: "Salva nella memoria: mi chiamo Antonello e lavoro su nuzantara,
@@ -222,15 +241,18 @@ Tu: "Salva nella memoria: mi chiamo Antonello e lavoro su nuzantara,
 Tu: "Chi sono e cosa faccio?"
 Claude: "Sei Antonello e lavori su nuzantara..."
 ```
+
 **Atteso:** Claude ti ricorda!
 
 ### Step 4: Primo Task con Template 📝
+
 ```
 Cowork:
 "Work in ~/Downloads.
 [Copia template file-organization.md]
 Execute."
 ```
+
 **Atteso:** Downloads organizzati in <3 minuti
 
 ---
@@ -238,12 +260,14 @@ Execute."
 ## 💡 Quick Reference
 
 ### Documenti Chiave
+
 - **Setup generale:** `README.md`
 - **Inizia subito:** `QUICK-START.md`
 - **Esempio pratico:** `EXAMPLE-WORKFLOW.md`
 - **Memory guide:** `MEMORY-MCP-GUIDE.md`
 
 ### Script Utili
+
 ```bash
 # Backup ora
 ~/Desktop/nuzantara/.cowork-optimization/scripts/backup-cowork-sessions.sh
@@ -259,6 +283,7 @@ Execute."
 ```
 
 ### Templates Location
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/templates/
 ├── file-organization.md
@@ -269,11 +294,13 @@ Execute."
 ```
 
 ### Logs Location
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/logs/
 ```
 
 ### Memory Database
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/memory-data/cowork-memory.db
 ```
@@ -283,11 +310,13 @@ Execute."
 ## 🎓 Tips Finali
 
 ### 1. Inizia con Tasks Semplici
+
 - Prima: organizza Downloads
 - Poi: analizza documenti KB
 - Infine: workflow complessi
 
 ### 2. Popola Memoria Gradualmente
+
 ```
 Sessione 1: Info base (nome, progetto)
 Sessione 2: Tech stack
@@ -296,11 +325,13 @@ Sessione 4: Team info
 ```
 
 ### 3. Usa Templates come Base
+
 - Copia template
 - Adatta al tuo caso
 - Salva modifiche per riuso futuro
 
 ### 4. Monitor Performance
+
 ```bash
 # Check spazio
 du -sh ~/.cowork-optimization/
@@ -313,6 +344,7 @@ ls -lh ~/.cowork-optimization/backups/sessions/
 ```
 
 ### 5. Backup Periodico
+
 ```bash
 # Backup completo ogni settimana
 tar -czf ~/Desktop/cowork-backup-$(date +%Y%m%d).tar.gz \
@@ -324,16 +356,21 @@ tar -czf ~/Desktop/cowork-backup-$(date +%Y%m%d).tar.gz \
 ## 🆘 Support
 
 ### Problema: Cartelle non visibili
+
 **Fix:** Riavvia Claude Desktop
 
 ### Problema: Memory non funziona
+
 **Fix:**
+
 1. Check log: `tail ~/Library/Logs/Claude/mcp.log`
 2. Riavvia Claude
 3. Verifica config: `cat ~/Library/Application\ Support/Claude/claude_desktop_config.json`
 
 ### Problema: Script non eseguibili
+
 **Fix:**
+
 ```bash
 chmod +x ~/Desktop/nuzantara/.cowork-optimization/scripts/*.sh
 ```

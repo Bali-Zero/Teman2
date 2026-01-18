@@ -40,7 +40,10 @@ def mock_collaborator_service():
 def zantara_tools(mock_pricing_service, mock_collaborator_service):
     """Create ZantaraTools instance"""
     with (
-        patch("backend.services.misc.zantara_tools.get_pricing_service", return_value=mock_pricing_service),
+        patch(
+            "backend.services.misc.zantara_tools.get_pricing_service",
+            return_value=mock_pricing_service,
+        ),
         patch(
             "backend.services.misc.zantara_tools.CollaboratorService",
             return_value=mock_collaborator_service,

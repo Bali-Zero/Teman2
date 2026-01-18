@@ -106,7 +106,9 @@ test.describe('Intelligence Center - Complete Workflow', () => {
     await page.goto('/intelligence/visa-oracle');
   });
 
-  test('Tab Navigation: All tabs lead to correct pages and highlight correctly', async ({ page }) => {
+  test('Tab Navigation: All tabs lead to correct pages and highlight correctly', async ({
+    page,
+  }) => {
     // Test 1: Verify we're on Visa Oracle
     await expect(page).toHaveURL(/\/intelligence\/visa-oracle/);
 
@@ -174,7 +176,9 @@ test.describe('Intelligence Center - Complete Workflow', () => {
     await expect(page.getByText(/Visa Item 2/i)).toBeVisible({ timeout: 5000 });
   });
 
-  test('Visa Oracle: View Content button opens preview, Hide Preview closes it', async ({ page }) => {
+  test('Visa Oracle: View Content button opens preview, Hide Preview closes it', async ({
+    page,
+  }) => {
     // Wait for item to load
     await expect(page.getByText('Test Visa Regulation')).toBeVisible();
 
@@ -194,7 +198,9 @@ test.describe('Intelligence Center - Complete Workflow', () => {
     await expect(page.getByText('Content Preview')).not.toBeVisible();
   });
 
-  test('Visa Oracle: Approve button shows confirmation, then removes item on confirm', async ({ page }) => {
+  test('Visa Oracle: Approve button shows confirmation, then removes item on confirm', async ({
+    page,
+  }) => {
     await expect(page.getByText('Test Visa Regulation')).toBeVisible();
 
     // Mock the approve endpoint
@@ -227,7 +233,9 @@ test.describe('Intelligence Center - Complete Workflow', () => {
     await expect(page.getByText('All Caught Up!')).toBeVisible();
   });
 
-  test('Visa Oracle: Reject button shows confirmation, then removes item on confirm', async ({ page }) => {
+  test('Visa Oracle: Reject button shows confirmation, then removes item on confirm', async ({
+    page,
+  }) => {
     await expect(page.getByText('Test Visa Regulation')).toBeVisible();
 
     // Mock the reject endpoint
@@ -424,13 +432,18 @@ test.describe('Intelligence Center - Complete Workflow', () => {
     await expect(page.getByText('Agent Active')).toBeVisible();
   });
 
-  test('Complete User Journey: Navigate through all tabs, interact with all buttons', async ({ page }) => {
+  test('Complete User Journey: Navigate through all tabs, interact with all buttons', async ({
+    page,
+  }) => {
     // Start at Visa Oracle
     await expect(page).toHaveURL(/\/intelligence\/visa-oracle/);
     await expect(page.getByText('Test Visa Regulation')).toBeVisible();
 
     // Test preview flow
-    await page.getByRole('button', { name: /View Content/i }).first().click();
+    await page
+      .getByRole('button', { name: /View Content/i })
+      .first()
+      .click();
     await expect(page.getByText('Content Preview')).toBeVisible();
     await page.getByRole('button', { name: /Hide Preview/i }).click();
     await expect(page.getByText('Content Preview')).not.toBeVisible();

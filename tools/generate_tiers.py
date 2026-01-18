@@ -36,15 +36,17 @@ def load_crm_clients():
         return []
 
     crm_clients = []
-    with open(CRM_FILE, 'r') as f:
+    with open(CRM_FILE, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            crm_clients.append({
-                'id': row.get('id'),
-                'name': row.get('full_name', ''),
-                'email': row.get('email', ''),
-                'status': row.get('status', 'active'),
-            })
+            crm_clients.append(
+                {
+                    "id": row.get("id"),
+                    "name": row.get("full_name", ""),
+                    "email": row.get("email", ""),
+                    "status": row.get("status", "active"),
+                }
+            )
 
     return crm_clients
 
@@ -56,7 +58,7 @@ def load_age_analysis():
         print("   Run analyze_dropbox_dates.py first")
         return None
 
-    with open(AGE_ANALYSIS_FILE, 'r') as f:
+    with open(AGE_ANALYSIS_FILE, "r") as f:
         return json.load(f)
 
 
@@ -69,20 +71,22 @@ def match_crm_to_dropbox(crm_clients, dropbox_clients):
         best_score = 0
 
         for db_client in dropbox_clients:
-            score = similarity(crm['name'], db_client['name'])
+            score = similarity(crm["name"], db_client["name"])
 
             if score > best_score:
                 best_score = score
                 best_match = db_client
 
         if best_match and best_score > 0.6:  # 60% similarity threshold
-            matches.append({
-                **best_match,
-                'crm_id': crm['id'],
-                'crm_name': crm['name'],
-                'crm_email': crm['email'],
-                'match_score': best_score
-            })
+            matches.append(
+                {
+                    **best_match,
+                    "crm_id": crm["id"],
+                    "crm_name": crm["name"],
+                    "crm_email": crm["email"],
+                    "match_score": best_score,
+                }
+            )
 
     return matches
 
@@ -90,29 +94,29 @@ def match_crm_to_dropbox(crm_clients, dropbox_clients):
 def generate_tiers(crm_clients, age_analysis):
     """Generate stratified tier lists"""
 
-    all_clients = age_analysis['clients']
+    all_clients = age_analysis["clients"]
 
     # Tier 1: Active CRM clients
     tier1 = match_crm_to_dropbox(crm_clients, all_clients)
 
     # Remove Tier 1 from pool
-    tier1_names = {c['name'] for c in tier1}
-    remaining = [c for c in all_clients if c['name'] not in tier1_names]
+    tier1_names = {c["name"] for c in tier1}
+    remaining = [c for c in all_clients if c["name"] not in tier1_names]
 
     # Tier 2: Recent (last 12 months)
-    tier2 = [c for c in remaining if c['tier'] == 'tier2_recent']
+    tier2 = [c for c in remaining if c["tier"] == "tier2_recent"]
 
     # Tier 3: Historical (1-3 years)
-    tier3 = [c for c in remaining if c['tier'] == 'tier3_historical']
+    tier3 = [c for c in remaining if c["tier"] == "tier3_historical"]
 
     # Tier 4: Archive (3+ years)
-    tier4 = [c for c in remaining if c['tier'] == 'tier4_archive']
+    tier4 = [c for c in remaining if c["tier"] == "tier4_archive"]
 
     return {
-        'tier1': tier1,
-        'tier2': tier2,
-        'tier3': tier3,
-        'tier4': tier4,
+        "tier1": tier1,
+        "tier2": tier2,
+        "tier3": tier3,
+        "tier4": tier4,
     }
 
 
@@ -121,22 +125,22 @@ def save_tier(tier_name, clients, description):
     filename = OUTPUT_DIR / f"{tier_name}.json"
 
     output = {
-        'tier': tier_name,
-        'description': description,
-        'count': len(clients),
-        'clients': clients
+        "tier": tier_name,
+        "description": description,
+        "count": len(clients),
+        "clients": clients,
     }
 
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         json.dump(output, f, indent=2)
 
     print(f"✅ {tier_name:30} {len(clients):6,} clients → {filename.name}")
 
 
 def main():
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🎯 GENERATING TIER LISTS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Load data
     print("Loading data...")
@@ -155,33 +159,31 @@ def main():
 
     # Save each tier
     save_tier(
-        'tier1_active_crm',
-        tiers['tier1'],
-        'Active CRM clients - HIGHEST PRIORITY'
+        "tier1_active_crm", tiers["tier1"], "Active CRM clients - HIGHEST PRIORITY"
     )
 
     save_tier(
-        'tier2_recent_2024_2025',
-        tiers['tier2'],
-        'Recent clients (last 12 months) - HIGH PRIORITY'
+        "tier2_recent_2024_2025",
+        tiers["tier2"],
+        "Recent clients (last 12 months) - HIGH PRIORITY",
     )
 
     save_tier(
-        'tier3_historical_2022_2023',
-        tiers['tier3'],
-        'Historical clients (1-3 years) - MEDIUM PRIORITY'
+        "tier3_historical_2022_2023",
+        tiers["tier3"],
+        "Historical clients (1-3 years) - MEDIUM PRIORITY",
     )
 
     save_tier(
-        'tier4_archive_pre2022',
-        tiers['tier4'],
-        'Archive clients (3+ years) - LOW PRIORITY (consider skipping)'
+        "tier4_archive_pre2022",
+        tiers["tier4"],
+        "Archive clients (3+ years) - LOW PRIORITY (consider skipping)",
     )
 
     # Summary
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("📊 TIER SUMMARY")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     total = sum(len(t) for t in tiers.values())
 
@@ -193,39 +195,39 @@ def main():
     print(f"\n{'Total:':30} {total:6,} clients\n")
 
     # Recommendations
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("💡 MIGRATION RECOMMENDATIONS")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
-    tier1_count = len(tiers['tier1'])
-    tier2_count = len(tiers['tier2'])
-    tier3_count = len(tiers['tier3'])
-    tier4_count = len(tiers['tier4'])
+    tier1_count = len(tiers["tier1"])
+    tier2_count = len(tiers["tier2"])
+    tier3_count = len(tiers["tier3"])
+    tier4_count = len(tiers["tier4"])
 
     print("SCENARIO A - Full Migration (NOT RECOMMENDED)")
     print(f"  Migrate: All {total:,} clients")
-    print(f"  Time: 3-4 months")
-    print(f"  Cost: €40,000-50,000")
+    print("  Time: 3-4 months")
+    print("  Cost: €40,000-50,000")
     print()
 
     print("SCENARIO B - Smart Migration (RECOMMENDED) ✅")
     print(f"  Migrate: Tier 1 + Tier 2 = {tier1_count + tier2_count:,} clients")
     print(f"  Skip: Tier 4 = {tier4_count:,} clients")
     print(f"  Optional: Tier 3 = {tier3_count:,} clients (decide later)")
-    print(f"  Time: 4-6 weeks")
-    print(f"  Cost: €10,000-15,000")
+    print("  Time: 4-6 weeks")
+    print("  Cost: €10,000-15,000")
     print()
 
     print("SCENARIO C - Minimum Viable (FASTEST)")
     print(f"  Migrate: Tier 1 only = {tier1_count:,} clients")
-    print(f"  Time: 2-3 weeks")
-    print(f"  Cost: €5,000-7,500")
+    print("  Time: 2-3 weeks")
+    print("  Cost: €5,000-7,500")
     print()
 
     # Next steps
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("🚀 NEXT STEPS")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     print("1. Review tier lists (JSON files generated)")
     print("2. Decide migration scope (Scenario A/B/C)")
@@ -242,4 +244,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()

@@ -1,9 +1,6 @@
 import sys
 import types
-import importlib
 from pathlib import Path
-
-import pytest
 
 # Add backend to path
 backend_root = Path(__file__).parents[3] / "backend"
@@ -49,7 +46,7 @@ def test_llm_getattr_lazy_imports(monkeypatch):
         del sys.modules["llm"]
     if "backend.llm" in sys.modules:
         del sys.modules["backend.llm"]
-        
+
     import backend.llm as llm
 
     assert llm.PromptManager is PromptManager
@@ -61,6 +58,7 @@ def test_llm_getattr_lazy_imports(monkeypatch):
 
 def test_llm_getattr_unknown_raises():
     import backend.llm as llm
+
     try:
         _ = llm.UnknownThing
         assert False, "Expected AttributeError"
@@ -70,6 +68,7 @@ def test_llm_getattr_unknown_raises():
 
 def test_llm_all_exports():
     import backend.llm as llm
+
     required = {
         "LLMProvider",
         "LLMMessage",

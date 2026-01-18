@@ -10,14 +10,14 @@
 
 ### Stato Attuale
 
-| Metrica | Valore | Status |
-|---------|--------|--------|
-| **CPU Usage** | 63% user, 33% sys, 3.6% idle | ⚠️ ALTO |
-| **Load Average** | 5.79, 5.91, 7.30 | ⚠️ ALTO (su 10 core) |
-| **RAM Usata** | 11.2 GB / 11.3 GB (99%) | 🔴 CRITICO |
-| **RAM Libera** | 98 MB | 🔴 CRITICO |
-| **Compressor** | Attivo (~15.4 GB compressi!) | 🔴 CRITICO |
-| **Spazio Disco** | 10 GB disponibili (54% usato) | ✅ OK |
+| Metrica          | Valore                        | Status               |
+| ---------------- | ----------------------------- | -------------------- |
+| **CPU Usage**    | 63% user, 33% sys, 3.6% idle  | ⚠️ ALTO              |
+| **Load Average** | 5.79, 5.91, 7.30              | ⚠️ ALTO (su 10 core) |
+| **RAM Usata**    | 11.2 GB / 11.3 GB (99%)       | 🔴 CRITICO           |
+| **RAM Libera**   | 98 MB                         | 🔴 CRITICO           |
+| **Compressor**   | Attivo (~15.4 GB compressi!)  | 🔴 CRITICO           |
+| **Spazio Disco** | 10 GB disponibili (54% usato) | ✅ OK                |
 
 ---
 
@@ -26,11 +26,13 @@
 ### 1. RAM Critica (94% usata) 🔴
 
 **Problema:**
+
 - Solo 98 MB RAM libera (99% usata!)
 - ~15.4 GB compressi (swap massivo!)
 - Sistema in crisi di memoria
 
 **Processi che Consumano Più RAM:**
+
 - `com.apple.Virtualization.VirtualMachine` (PID 48375): ~4.1 GB + compressi
 - `com.apple.Virtualization.VirtualMachine` (PID 2026): ~6.5 GB
 - `Cursor Helper`: 709 MB
@@ -44,10 +46,12 @@
 ### 2. CPU Alta (96% utilizzata) ⚠️
 
 **Problema:**
+
 - Solo 3.6% CPU idle
 - Load average alto (5.79-7.30 su 10 core)
 
 **Top Processi CPU:**
+
 - `VirtualMachine` (PID 2026): 196% CPU
 - `npm` (PID 61132): 77.9% CPU
 - `npm` (PID 61144): 75.9% CPU
@@ -63,6 +67,7 @@
 ### 3. Processi npm Multipli ⚠️
 
 **Problema:**
+
 - **25 processi npm/node attivi!**
 - 3 processi npm principali consumano 70-80% CPU ciascuno
 - Probabilmente build/test in esecuzione o processi zombie
@@ -76,6 +81,7 @@
 ### 4. Virtual Machine Attive (2 VM) ⚠️
 
 **Problema:**
+
 - 2 VM attive contemporaneamente
 - Consumano ~10.6 GB RAM totale
 - Una VM "stuck" (PID 48375)
@@ -150,6 +156,7 @@ kill <PID>
 - `com.dropbox.DropboxUpdater.wake`
 
 **Raccomandazione:**
+
 - Disabilitare agent non critici se non necessari
 - Verificare frequenza di esecuzione
 
@@ -159,17 +166,18 @@ kill <PID>
 
 #### Cache da Pulire:
 
-| Cache | Dimensione | Azione |
-|-------|------------|--------|
-| CloudKit | 265 MB | Pulibile |
-| ms-playwright-go | 127 MB | Pulibile |
-| us.zoom.xos | 73 MB | Pulibile |
-| node-gyp | 64 MB | Pulibile |
-| Homebrew | 52 MB | Pulibile |
+| Cache            | Dimensione | Azione   |
+| ---------------- | ---------- | -------- |
+| CloudKit         | 265 MB     | Pulibile |
+| ms-playwright-go | 127 MB     | Pulibile |
+| us.zoom.xos      | 73 MB      | Pulibile |
+| node-gyp         | 64 MB      | Pulibile |
+| Homebrew         | 52 MB      | Pulibile |
 
 **Totale:** ~580 MB
 
 **Comando:**
+
 ```bash
 rm -rf ~/Library/Caches/CloudKit/*
 rm -rf ~/Library/Caches/ms-playwright-go/*
@@ -185,11 +193,13 @@ brew cleanup --prune=all
 #### A. Power Management
 
 **Stato Attuale:**
+
 - Sleep: 0 (prevenuto da Electron, nsurlsessiond, powerd)
 - Display Sleep: 30 minuti
 - Disk Sleep: 0
 
 **Raccomandazione:**
+
 - Verificare perché sleep è prevenuto
 - Considerare impostare sleep più aggressivo se non necessario
 
@@ -209,6 +219,7 @@ brew cleanup --prune=all
 4. ⏳ Eseguire `sudo purge` (richiede password)
 
 **Risultato Atteso:**
+
 - RAM libera: Da 403 MB a ~10+ GB
 - CPU idle: Da 3.6% a ~30-40%
 - Load average: Da 5.79 a ~2-3
@@ -222,6 +233,7 @@ brew cleanup --prune=all
 3. ⏳ Ottimizzare power management
 
 **Risultato Atteso:**
+
 - Cache ridotte
 - Meno processi in background
 - Migliore gestione batteria
@@ -295,13 +307,13 @@ kill -9 <PID>  # Force kill
 
 Dopo ottimizzazioni:
 
-| Metrica | Prima | Dopo (Atteso) |
-|---------|-------|---------------|
-| **RAM Libera** | 403 MB | 10+ GB |
-| **CPU Idle** | 3.6% | 30-40% |
-| **Load Average** | 5.79-7.30 | 2-3 |
-| **Swap Attivo** | Sì (4.1 GB) | No |
-| **Performance** | Lenta | Normale/Veloce |
+| Metrica          | Prima       | Dopo (Atteso)  |
+| ---------------- | ----------- | -------------- |
+| **RAM Libera**   | 403 MB      | 10+ GB         |
+| **CPU Idle**     | 3.6%        | 30-40%         |
+| **Load Average** | 5.79-7.30   | 2-3            |
+| **Swap Attivo**  | Sì (4.1 GB) | No             |
+| **Performance**  | Lenta       | Normale/Veloce |
 
 ---
 

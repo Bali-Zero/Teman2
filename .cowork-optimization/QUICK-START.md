@@ -27,6 +27,7 @@ Apri Cowork e verifica l'accesso a:
 ✅ `/Users/antonellosiano/Documents`
 
 ### Test Rapido
+
 ```
 Prompt in Cowork:
 "List all files in ~/Downloads and organize them by type.
@@ -44,12 +45,14 @@ crontab ~/Desktop/nuzantara/.cowork-optimization/cowork-crontab.txt
 ```
 
 Questo abilita:
+
 - 🔄 Auto-organize Downloads (ogni ora)
 - 💾 Backup sessioni (ogni 6 ore)
 - 📚 KB sync (ogni 2 ore)
 - 🧹 Cleanup (daily)
 
 ### Verifica Cron
+
 ```bash
 crontab -l
 ```
@@ -79,6 +82,7 @@ I template sono in: `~/Desktop/nuzantara/.cowork-optimization/templates/`
 ## 🔍 Step 5: Monitoring
 
 ### Check Logs
+
 ```bash
 # Tutti i log
 ls -lh ~/Desktop/nuzantara/.cowork-optimization/logs/
@@ -91,6 +95,7 @@ tail ~/Desktop/nuzantara/.cowork-optimization/logs/downloads-organize.log
 ```
 
 ### Check Backups
+
 ```bash
 ls -lh ~/Desktop/nuzantara/.cowork-optimization/backups/sessions/
 ```
@@ -100,6 +105,7 @@ ls -lh ~/Desktop/nuzantara/.cowork-optimization/backups/sessions/
 ## 💡 Esempi d'Uso
 
 ### Esempio 1: Organizza Downloads
+
 ```
 Prompt Cowork:
 "Work in folder ~/Downloads. Organize all files from the last week
@@ -108,6 +114,7 @@ subfolders. Give me a summary when done."
 ```
 
 ### Esempio 2: Analizza KB
+
 ```
 Prompt Cowork:
 "Work in folder ~/Desktop/KB. Read all markdown files and create
@@ -118,6 +125,7 @@ a master index document with:
 ```
 
 ### Esempio 3: Sync KB a Qdrant
+
 ```
 Prompt Cowork:
 "Use the KB Sync template. Process all files in ~/Desktop/KB and
@@ -125,6 +133,7 @@ Prompt Cowork:
 ```
 
 ### Esempio 4: Clean Nuzantara Project
+
 ```
 Prompt Cowork:
 "Work in folder ~/Desktop/nuzantara. Find and list:
@@ -140,21 +149,27 @@ Give me recommendations for cleanup."
 ## 🎓 Pro Tips
 
 ### 1. Batch Operations
+
 Raggruppa task simili in una singola sessione Cowork per massimizzare efficiency.
 
 ### 2. Clear Instructions
+
 Usa istruzioni chiare e specifiche per evitare ambiguità e migliorare risultati.
 
 ### 3. Safety First
+
 - Sempre richiedi summary prima di operazioni destructive
 - Usa "show me what you'll do first" per operazioni su molti file
 - Verifica backup prima di cleanup massivi
 
 ### 4. Template Customization
+
 Modifica i template per i tuoi use case specifici. Sono in `.cowork-optimization/templates/`
 
 ### 5. Monitor Resources
+
 Controlla periodicamente:
+
 ```bash
 # Spazio sessioni
 du -sh ~/Library/Application\ Support/Claude/local-agent-mode-sessions/
@@ -179,6 +194,7 @@ Dopo l'ottimizzazione dovresti vedere:
 ## 🆘 Problemi?
 
 ### Cartelle non visibili in Cowork
+
 ```bash
 # Verifica config
 cat ~/Library/Application\ Support/Claude/Claude\ Extensions\ Settings/ant.dir.ant.anthropic.filesystem.json
@@ -188,11 +204,13 @@ killall Claude && open /Applications/Claude.app
 ```
 
 ### Script non eseguibili
+
 ```bash
 chmod +x ~/Desktop/nuzantara/.cowork-optimization/scripts/*.sh
 ```
 
 ### Logs per debug
+
 ```bash
 tail -f ~/Desktop/nuzantara/.cowork-optimization/logs/*.log
 ```
@@ -202,6 +220,7 @@ tail -f ~/Desktop/nuzantara/.cowork-optimization/logs/*.log
 ## 📚 Documentazione Completa
 
 Leggi `README.md` nella stessa cartella per:
+
 - Dettagli configurazione
 - Troubleshooting avanzato
 - Performance tuning

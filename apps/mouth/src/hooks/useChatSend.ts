@@ -1,9 +1,9 @@
 /**
  * Custom hook for sending chat messages with streaming
- * 
+ *
  * Handles only the streaming logic, not message state management.
  * Message state should be managed by the component using useOptimistic.
- * 
+ *
  * @returns Send message handler and streaming state
  */
 
@@ -80,11 +80,11 @@ export function useChatSend({
           imageCount: imagesToSend.length,
         },
       });
-      
+
       // Track metrics
       const streamingStartTime = Date.now();
       chatMetrics.streamingStarted(sessionId);
-      
+
       setStreamingSteps([]);
       setCurrentStatus('');
       setIsStreaming(true);
@@ -103,7 +103,7 @@ export function useChatSend({
               onError(error);
             },
             onStep: (step) => {
-              setStreamingSteps(prev => [...prev, step]);
+              setStreamingSteps((prev) => [...prev, step]);
               if (step.type === 'status' && typeof step.data === 'string') {
                 setCurrentStatus(step.data);
               }
@@ -111,7 +111,7 @@ export function useChatSend({
             },
           },
           imagesToSend.length > 0
-            ? imagesToSend.map(img => ({
+            ? imagesToSend.map((img) => ({
                 base64: img.base64.replace(/^data:image\/[^;]+;base64,/, ''),
                 name: img.name,
               }))
@@ -134,7 +134,7 @@ export function useChatSend({
 
         const streamingDuration = (Date.now() - streamingStartTime) / 1000;
         chatMetrics.streamingError(sessionId, error instanceof Error ? error.name : 'Unknown');
-        
+
         setCurrentStatus('');
         setStreamingSteps([]);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -162,7 +162,7 @@ export function useChatSend({
   // Cleanup streaming steps to prevent memory leak
   useEffect(() => {
     if (!isStreaming && streamingSteps.length > 10) {
-      setStreamingSteps(prev => prev.slice(-10));
+      setStreamingSteps((prev) => prev.slice(-10));
     }
   }, [isStreaming, streamingSteps.length]);
 

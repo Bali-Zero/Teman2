@@ -37,7 +37,7 @@ import uuid
 import functools
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from loguru import logger
@@ -63,6 +63,7 @@ CONSOLE_FORMAT = (
     "<level>{message}</level>"
     "{extra[context]}"
 )
+
 
 # JSON format for production (machine parseable)
 def json_formatter(record: dict) -> str:
@@ -96,9 +97,15 @@ def json_formatter(record: dict) -> str:
     # Add exception info if present
     if record["exception"]:
         log_entry["exception"] = {
-            "type": record["exception"].type.__name__ if record["exception"].type else None,
-            "value": str(record["exception"].value) if record["exception"].value else None,
-            "traceback": record["exception"].traceback if record["exception"].traceback else None,
+            "type": record["exception"].type.__name__
+            if record["exception"].type
+            else None,
+            "value": str(record["exception"].value)
+            if record["exception"].value
+            else None,
+            "traceback": record["exception"].traceback
+            if record["exception"].traceback
+            else None,
         }
 
     return json.dumps(log_entry) + "\n"
@@ -241,7 +248,7 @@ def setup_logging(
     )
 
     logger.info(
-        f"Logging configured",
+        "Logging configured",
         environment=environment,
         level=level,
         json_logs=json_logs,
@@ -252,6 +259,7 @@ def setup_logging(
 # =============================================================================
 # LOGGER FACTORY
 # =============================================================================
+
 
 def get_logger(name: str = None) -> "logger":
     """
@@ -271,6 +279,7 @@ def get_logger(name: str = None) -> "logger":
 # =============================================================================
 # CONTEXT MANAGERS
 # =============================================================================
+
 
 @contextmanager
 def log_context(**kwargs):
@@ -313,6 +322,7 @@ def correlation_context(correlation_id: str = None):
 # DECORATORS
 # =============================================================================
 
+
 def log_operation(
     operation_name: str = None,
     log_args: bool = False,
@@ -326,6 +336,7 @@ def log_operation(
         log_args: Log function arguments
         log_result: Log function result
     """
+
     def decorator(func: Callable) -> Callable:
         name = operation_name or func.__name__
 
@@ -342,7 +353,9 @@ def log_operation(
 
             try:
                 result = func(*args, **kwargs)
-                duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                duration_ms = (
+                    datetime.now(timezone.utc) - start
+                ).total_seconds() * 1000
 
                 log_extra = {"duration_ms": f"{duration_ms:.1f}"}
                 if log_result and result is not None:
@@ -352,7 +365,9 @@ def log_operation(
                 return result
 
             except Exception as e:
-                duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                duration_ms = (
+                    datetime.now(timezone.utc) - start
+                ).total_seconds() * 1000
                 logger.error(
                     f"Failed {name}",
                     duration_ms=f"{duration_ms:.1f}",
@@ -373,7 +388,9 @@ def log_operation(
 
             try:
                 result = await func(*args, **kwargs)
-                duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                duration_ms = (
+                    datetime.now(timezone.utc) - start
+                ).total_seconds() * 1000
 
                 log_extra = {"duration_ms": f"{duration_ms:.1f}"}
                 if log_result and result is not None:
@@ -383,7 +400,9 @@ def log_operation(
                 return result
 
             except Exception as e:
-                duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                duration_ms = (
+                    datetime.now(timezone.utc) - start
+                ).total_seconds() * 1000
                 logger.error(
                     f"Failed {name}",
                     duration_ms=f"{duration_ms:.1f}",
@@ -392,6 +411,7 @@ def log_operation(
                 raise
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
@@ -406,12 +426,13 @@ def log_errors(reraise: bool = True):
     Args:
         reraise: Re-raise the exception after logging (default True)
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
+            except Exception:
                 logger.exception(
                     f"Exception in {func.__name__}",
                     function=func.__name__,
@@ -424,7 +445,7 @@ def log_errors(reraise: bool = True):
         async def async_wrapper(*args, **kwargs):
             try:
                 return await func(*args, **kwargs)
-            except Exception as e:
+            except Exception:
                 logger.exception(
                     f"Exception in {func.__name__}",
                     function=func.__name__,
@@ -434,6 +455,7 @@ def log_errors(reraise: bool = True):
                     raise
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
@@ -444,6 +466,7 @@ def log_errors(reraise: bool = True):
 # =============================================================================
 # PERFORMANCE LOGGING
 # =============================================================================
+
 
 class PerformanceLogger:
     """
@@ -524,6 +547,7 @@ class PerformanceLogger:
 # Auto-setup with default configuration if not already configured
 _initialized = False
 
+
 def ensure_initialized():
     """Ensure logging is initialized with defaults"""
     global _initialized
@@ -551,7 +575,7 @@ if __name__ == "__main__":
         log.error("Error with context")
 
     with correlation_context() as corr_id:
-        log.info(f"Correlated message", correlation_id=corr_id)
+        log.info("Correlated message", correlation_id=corr_id)
 
     @log_operation("test_operation", log_args=True, log_result=True)
     def sample_function(x, y):
@@ -564,6 +588,7 @@ if __name__ == "__main__":
 
     with perf.track("operation_a"):
         import time
+
         time.sleep(0.1)
 
     with perf.track("operation_b"):

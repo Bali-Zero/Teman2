@@ -278,8 +278,14 @@ async def update_visa_type(visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_
 
         # Fields that are JSONB and need serialization
         jsonb_fields = {
-            "cost_details", "requirements", "restrictions",
-            "allowed_activities", "benefits", "process_steps", "tips", "metadata"
+            "cost_details",
+            "requirements",
+            "restrictions",
+            "allowed_activities",
+            "benefits",
+            "process_steps",
+            "tips",
+            "metadata",
         }
 
         for field, value in visa.model_dump(exclude_unset=True).items():

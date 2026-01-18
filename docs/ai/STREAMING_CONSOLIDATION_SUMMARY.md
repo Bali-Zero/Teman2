@@ -23,15 +23,16 @@ Consolidare tutto lo streaming SSE su client-side (`chat.api.ts`) come **SOURCE 
 - ✅ Mantenuta backward compatibility (funzione ancora funzionante)
 
 **Codice:**
+
 ```typescript
 /**
  * @deprecated This server action is deprecated. Use client-side streaming via `api.sendMessageStreaming()` from `@/lib/api` instead.
- * 
+ *
  * Migration guide:
  * - Replace `sendMessageStream()` with `api.sendMessageStreaming()`
  * - Use `useChatStreaming` hook or call `api.sendMessageStreaming()` directly
  * - See `apps/mouth/src/lib/api/chat/chat.api.ts` for the active implementation
- * 
+ *
  * This function will be removed in a future version.
  */
 export async function sendMessageStream(...)
@@ -46,10 +47,11 @@ export async function sendMessageStream(...)
 - ✅ Mantenuta backward compatibility
 
 **Codice:**
+
 ```typescript
 /**
  * @deprecated This hook is deprecated. Use client-side streaming via `api.sendMessageStreaming()` from `@/lib/api` instead.
- * 
+ *
  * Migration guide:
  * - Replace `useOptimisticChat()` with direct calls to `api.sendMessageStreaming()`
  * - See `apps/mouth/src/app/chat/page.tsx` for an example of the active implementation
@@ -63,12 +65,14 @@ export function useOptimisticChat(...)
 **File:** `apps/mouth/src/lib/api/chat/chat.api.ts`
 
 #### A. Documentazione Completa
+
 - ✅ Aggiunto JSDoc completo con tutte le feature
 - ✅ Documentati tutti i parametri
 - ✅ Aggiunto esempio di utilizzo
 - ✅ Aggiornato commento `cleanImageResponse()` come SOURCE OF TRUTH
 
 #### B. Logging e Metriche
+
 - ✅ Aggiunto tracking metriche:
   - `totalDuration` - Durata totale stream
   - `timeToFirstChunk` - Tempo al primo chunk
@@ -85,6 +89,7 @@ export function useOptimisticChat(...)
   - Error: `[ChatApi] Stream error` con dettagli errore e metriche
 
 #### C. Feature Verificate
+
 - ✅ Gestione errori robusta (error codes: TIMEOUT, ABORTED)
 - ✅ Timeout configurabili (timeoutMs, idleTimeoutMs, maxTotalTimeMs)
 - ✅ Abort signal support completo
@@ -101,12 +106,14 @@ export function useOptimisticChat(...)
 ## 📊 STATO UTILIZZO
 
 ### Client-Side (`api.sendMessageStreaming`)
+
 - ✅ **ATTIVO** - Usato in `page.tsx` (linea 593)
 - ✅ **ATTIVO** - Usato in `useChatStreaming.ts` hook
 - ✅ **ATTIVO** - Wrapper in `api-client.ts`
 - ✅ **TESTATO** - 40+ test cases
 
 ### Server-Side (`sendMessageStream`)
+
 - ⚠️ **DEPRECATO** - Usato solo in `useOptimisticChat.ts` (hook non utilizzato)
 - ⚠️ **DEPRECATO** - Warning in development mode
 - ✅ **BACKWARD COMPATIBLE** - Funziona ancora per compatibilità
@@ -116,12 +123,15 @@ export function useOptimisticChat(...)
 ## 🔍 VERIFICA COMPATIBILITÀ
 
 ### File che Importano `sendMessageStream`:
+
 - `apps/mouth/src/hooks/useOptimisticChat.ts` - ⚠️ Deprecato, non utilizzato
 
 ### File che Importano `useOptimisticChat`:
+
 - Nessuno - Hook non utilizzato
 
 ### File che Usano Client-Side:
+
 - ✅ `apps/mouth/src/app/chat/page.tsx` - **ATTIVO**
 - ✅ `apps/mouth/src/hooks/useChatStreaming.ts` - **ATTIVO**
 - ✅ `apps/mouth/src/lib/api/api-client.ts` - **ATTIVO**
@@ -133,6 +143,7 @@ export function useOptimisticChat(...)
 ### Per Sviluppatori che Usano `sendMessageStream`:
 
 **Prima:**
+
 ```typescript
 import { sendMessageStream } from '@/app/chat/actions';
 
@@ -142,22 +153,32 @@ const reader = stream.getReader();
 ```
 
 **Dopo:**
+
 ```typescript
 import { api } from '@/lib/api';
 
 await api.sendMessageStreaming(
   message,
   sessionId,
-  (chunk) => { /* onChunk */ },
-  (full, sources, metadata) => { /* onDone */ },
-  (error) => { /* onError */ },
-  (step) => { /* onStep */ }
+  (chunk) => {
+    /* onChunk */
+  },
+  (full, sources, metadata) => {
+    /* onDone */
+  },
+  (error) => {
+    /* onError */
+  },
+  (step) => {
+    /* onStep */
+  }
 );
 ```
 
 ### Per Sviluppatori che Usano `useOptimisticChat`:
 
 **Prima:**
+
 ```typescript
 import { useOptimisticChat } from '@/hooks/useOptimisticChat';
 
@@ -165,6 +186,7 @@ const { send, messages } = useOptimisticChat({ userId, onError });
 ```
 
 **Dopo:**
+
 ```typescript
 import { api } from '@/lib/api';
 
@@ -177,12 +199,14 @@ await api.sendMessageStreaming(...);
 ## 🧪 TEST COVERAGE
 
 ### Test Esistenti:
+
 - ✅ `chat.api.test.ts` - 78+ test cases per `sendMessageStreaming`
 - ✅ `api-client.test.ts` - Test wrapper
 - ✅ `streaming.integration.test.ts` - Test integrazione
 - ✅ `conversation-flow.integration.test.ts` - Test flusso conversazione
 
 ### Test da Aggiungere (Opzionale):
+
 - [ ] Test deprecation warning
 - [ ] Test metriche logging
 - [ ] Test backward compatibility `sendMessageStream`
@@ -192,6 +216,7 @@ await api.sendMessageStreaming(...);
 ## 📈 METRICHE MONITORAGGIO
 
 ### Metriche Tracciate:
+
 1. **Performance:**
    - `totalDuration` - Durata totale richiesta
    - `timeToFirstChunk` - Tempo al primo byte (TTFB)
@@ -212,6 +237,7 @@ await api.sendMessageStreaming(...);
    - `duration` - Durata prima dell'errore
 
 ### Log Format:
+
 ```typescript
 // Success
 [ChatApi] Stream completed {

@@ -35,9 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect to success page
-    return NextResponse.redirect(
-      new URL('/insights?newsletter=confirmed', request.url)
-    );
+    return NextResponse.redirect(new URL('/insights?newsletter=confirmed', request.url));
   } catch (error) {
     console.error('Newsletter confirmation error:', error);
     return NextResponse.redirect(

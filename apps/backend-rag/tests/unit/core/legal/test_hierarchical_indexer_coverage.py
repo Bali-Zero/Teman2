@@ -32,11 +32,13 @@ def _load_module(monkeypatch):
         assess_document_quality=assess_document_quality,
         extract_ayat_numbers=extract_ayat_numbers,
         validate_ayat_sequence=validate_ayat_sequence,
-        redis_url='redis://localhost:6379'
+        redis_url="redis://localhost:6379",
     )
     monkeypatch.setitem(sys.modules, "backend.core.legal.quality_validators", quality_stub)
 
-    settings_stub = types.SimpleNamespace(database_url="postgres://test", redis_url='redis://localhost:6379')
+    settings_stub = types.SimpleNamespace(
+        database_url="postgres://test", redis_url="redis://localhost:6379"
+    )
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub
     config_mock.Settings = MagicMock()

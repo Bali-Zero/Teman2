@@ -70,7 +70,8 @@ def mock_auto_crm():
 def conversation_service(mock_db_pool, mock_memory_cache):
     """Create ConversationService with mocked dependencies"""
     with patch(
-        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache",
+        return_value=mock_memory_cache,
     ):
         service = ConversationService(db_pool=mock_db_pool)
         return service

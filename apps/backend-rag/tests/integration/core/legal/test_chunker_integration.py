@@ -34,7 +34,9 @@ class TestLegalChunkerIntegration:
     @pytest.fixture
     def chunker(self, mock_embedder):
         """Create LegalChunker instance"""
-        with patch("backend.core.legal.chunker.create_embeddings_generator", return_value=mock_embedder):
+        with patch(
+            "backend.core.legal.chunker.create_embeddings_generator", return_value=mock_embedder
+        ):
             from backend.core.legal.chunker import LegalChunker
 
             chunker = LegalChunker(max_pasal_tokens=1000)

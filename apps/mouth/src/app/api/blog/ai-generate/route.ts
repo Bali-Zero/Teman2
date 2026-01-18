@@ -36,10 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.topic || !body.category) {
-      return NextResponse.json(
-        { error: 'Topic and category are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Topic and category are required' }, { status: 400 });
     }
 
     // Call Zantara AI backend

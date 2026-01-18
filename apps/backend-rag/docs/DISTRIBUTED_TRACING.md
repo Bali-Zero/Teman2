@@ -139,54 +139,54 @@ except Exception as e:
 
 ### Orchestrator (`orchestrator.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
+| Span Name                    | Attributi                                                       |
+| ---------------------------- | --------------------------------------------------------------- |
 | `orchestrator.process_query` | `user_id`, `query_length`, `session_id`, `has_history`, `route` |
-| `context.load_user` | `user_id`, `facts_count` |
-| `cache.semantic_check` | `hit`, `similarity_score` |
-| `entity.extract` | `entities_count`, `entities` |
+| `context.load_user`          | `user_id`, `facts_count`                                        |
+| `cache.semantic_check`       | `hit`, `similarity_score`                                       |
+| `entity.extract`             | `entities_count`, `entities`                                    |
 
 ### ReAct Loop (`reasoning.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
-| `react.loop` | `max_steps`, `tools_available` |
-| `react.step.N` | `step_number`, `thought`, `action`, `has_observation` |
-| `react.final_answer` | `answer_length` |
+| Span Name            | Attributi                                             |
+| -------------------- | ----------------------------------------------------- |
+| `react.loop`         | `max_steps`, `tools_available`                        |
+| `react.step.N`       | `step_number`, `thought`, `action`, `has_observation` |
+| `react.final_answer` | `answer_length`                                       |
 
 ### LLM Gateway (`llm_gateway.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
+| Span Name          | Attributi                                                          |
+| ------------------ | ------------------------------------------------------------------ |
 | `llm.send_message` | `model`, `tier`, `prompt_tokens`, `completion_tokens`, `has_tools` |
-| `llm.fallback` | `from_model`, `to_model`, `reason` |
+| `llm.fallback`     | `from_model`, `to_model`, `reason`                                 |
 
 ### Tools (`tools.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
+| Span Name            | Attributi                                                           |
+| -------------------- | ------------------------------------------------------------------- |
 | `tool.vector_search` | `collection`, `query_length`, `limit`, `results_count`, `top_score` |
-| `tool.vision` | `image_size`, `analysis_type` |
-| `tool.pricing` | `category`, `item_count` |
-| `tool.team` | `query`, `results_count` |
+| `tool.vision`        | `image_size`, `analysis_type`                                       |
+| `tool.pricing`       | `category`, `item_count`                                            |
+| `tool.team`          | `query`, `results_count`                                            |
 
 ### Qdrant (`qdrant_db.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
-| `qdrant.search` | `collection`, `vector_size`, `limit`, `results_count`, `search_type` |
-| `qdrant.hybrid_search` | `collection`, `dense_weight`, `sparse_weight` |
+| Span Name              | Attributi                                                            |
+| ---------------------- | -------------------------------------------------------------------- |
+| `qdrant.search`        | `collection`, `vector_size`, `limit`, `results_count`, `search_type` |
+| `qdrant.hybrid_search` | `collection`, `dense_weight`, `sparse_weight`                        |
 
 ### Reranker (`reranker.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
+| Span Name            | Attributi                                                      |
+| -------------------- | -------------------------------------------------------------- |
 | `rerank.zeroentropy` | `documents_count`, `top_k`, `model`, `top_score`, `latency_ms` |
 
 ### Embeddings (`embeddings.py`)
 
-| Span Name | Attributi |
-|-----------|-----------|
+| Span Name            | Attributi                                        |
+| -------------------- | ------------------------------------------------ |
 | `embedding.generate` | `provider`, `model`, `text_length`, `dimensions` |
 
 ## Visualizzazione in Grafana Cloud Tempo
@@ -237,12 +237,14 @@ nuzantara-backend GET /api/agentic-rag/stream (1.2s)
 ### Traces non appaiono in Grafana
 
 1. **Verifica OTEL enabled**:
+
    ```bash
    fly ssh console -a nuzantara-rag
    python -c "from app.core.config import settings; print(settings.otel_enabled)"
    ```
 
 2. **Verifica endpoint e headers**:
+
    ```bash
    fly secrets list -a nuzantara-rag | grep OTEL
    ```

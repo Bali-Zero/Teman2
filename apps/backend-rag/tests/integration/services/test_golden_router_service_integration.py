@@ -47,7 +47,9 @@ class TestGoldenRouterServiceIntegration:
     @pytest_asyncio.fixture
     async def service(self, mock_embedder, mock_db_pool):
         """Create GoldenRouterService instance"""
-        with patch("backend.services.golden_router_service.asyncpg.create_pool", return_value=mock_db_pool):
+        with patch(
+            "backend.services.golden_router_service.asyncpg.create_pool", return_value=mock_db_pool
+        ):
             from backend.services.golden_router_service import GoldenRouterService
 
             service = GoldenRouterService(embeddings_generator=mock_embedder)

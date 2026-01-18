@@ -1,13 +1,15 @@
-<!-- 
+<!--
 This file contains instructions for best practices for developing parsers with pyparsing, and can be used by AI agents
 when generating Python code using pyparsing.
 -->
 
 ## Planning
+
 - If not provided or if target language definition is ambiguous, ask for examples of valid strings to be parsed
 - Before developing the pyparsing expressions, define a Backus-Naur Form definition and save this in docs/grammar.md. Update this document as changes are made in the parser.
 
 ## Implementing
+
 - Import pyparsing using `import pyparsing as pp`, and use that for all pyparsing references.
   - If referencing names from `pyparsing.common`, follow the pyparsing import with "ppc = pp.common" and use `ppc` as the namespace to access `pyparsing.common`.
   - If referencing names from `pyparsing.unicode`, follow the pyparsing import with "ppu = pp.unicode" and use `ppu` as the namespace to access `pyparsing.unicode`.
@@ -57,6 +59,7 @@ when generating Python code using pyparsing.
   - Use `...` in place of simple SkipTo(expression)
 
 ## Testing
+
 - Use the pyparsing `ParserElement.run_tests` method to run mini validation tests.
   - Pass a single multiline string to `run_tests` to test the parser on multiple test input strings, each line is a separate test.
   - You can add comments starting with "#" within the string passed to `run_tests` to document the individual test cases.
@@ -68,6 +71,7 @@ when generating Python code using pyparsing.
   - do not generate tests for invalid data
 
 ## Debugging
+
 - If troubleshooting parse actions, use pyparsing's `trace_parse_action` decorator to echo arguments and return value
 - During development, call `pp.autoname_elements()` to auto-assign names to unnamed expressions to improve `dump()` and error messages.
 - Sub-expressions can be tested in isolation using `ParserElement.matches()`

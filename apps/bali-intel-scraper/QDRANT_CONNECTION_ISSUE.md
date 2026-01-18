@@ -6,6 +6,7 @@
 ## Problema
 
 L'app `bali-intel-scraper` non riesce a connettersi a Qdrant (`https://nuzantara-qdrant.fly.dev`) con errore:
+
 ```
 [Errno 104] Connection reset by peer
 ```
@@ -33,6 +34,7 @@ L'errore si verifica durante il TLS handshake, suggerendo un problema di rete o 
 ### Soluzione 1: Verificare Restrizioni IP su Qdrant
 
 Se Qdrant Cloud ha restrizioni IP, aggiungere gli IP di Fly.io Singapore:
+
 ```bash
 # Verifica IP della macchina Intel Scraper
 fly ssh console -a bali-intel-scraper
@@ -44,6 +46,7 @@ Poi aggiungi l'IP alla whitelist su Qdrant Cloud dashboard.
 ### Soluzione 2: Usare gRPC invece di HTTP
 
 Modifica `semantic_deduplicator.py` e `init_news_collection.py`:
+
 ```python
 client = QdrantClient(
     url=QDRANT_URL,
@@ -56,12 +59,14 @@ client = QdrantClient(
 ### Soluzione 3: Usare Qdrant tramite Backend (Proxy)
 
 Invece di connettersi direttamente da Intel Scraper, usa il backend come proxy:
+
 - Intel Scraper → Backend API → Qdrant
 - Il backend ha già connessione funzionante a Qdrant
 
 ### Soluzione 4: Verificare Network Policy Fly.io
 
 Controlla se ci sono network policies che bloccano connessioni tra app:
+
 ```bash
 fly status -a bali-intel-scraper
 fly status -a nuzantara-qdrant
@@ -70,6 +75,7 @@ fly status -a nuzantara-qdrant
 ### Soluzione 5: Test da Backend (Verifica Funzionamento)
 
 Verifica che il backend possa connettersi a Qdrant:
+
 ```bash
 fly ssh console -a nuzantara-rag
 python3 -c "from qdrant_client import QdrantClient; import os; c = QdrantClient(url=os.getenv('QDRANT_URL'), api_key=os.getenv('QDRANT_API_KEY')); print('OK:', len(c.get_collections().collections))"

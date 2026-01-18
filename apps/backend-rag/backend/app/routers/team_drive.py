@@ -21,7 +21,10 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_super_admin
-from backend.services.integrations.team_drive_service import TeamDriveService, get_team_drive_service
+from backend.services.integrations.team_drive_service import (
+    TeamDriveService,
+    get_team_drive_service,
+)
 
 logger = logging.getLogger(__name__)
 

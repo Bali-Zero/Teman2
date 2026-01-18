@@ -118,8 +118,12 @@ async def test_ingest_documents_auto_create_collection(mock_search_service, samp
     mock_embedder = MagicMock()
     mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
 
-    with patch("backend.core.qdrant_db.QdrantClient", return_value=mock_qdrant_client) as mock_qdrant:
-        with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch(
+        "backend.core.qdrant_db.QdrantClient", return_value=mock_qdrant_client
+    ) as mock_qdrant:
+        with patch(
+            "backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder
+        ):
             response = await ingest_documents(sample_ingest_request, mock_search_service)
 
             # Verify QdrantClient was instantiated with correct collection name

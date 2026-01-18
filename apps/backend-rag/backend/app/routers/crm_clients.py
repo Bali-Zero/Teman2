@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from backend.core.cache import cached
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -21,6 +20,7 @@ from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_a
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.core.cache import cached
 
 logger = get_logger(__name__)
 
@@ -244,6 +244,7 @@ async def create_client(
         user_email = current_user.get("email", "").lower()
         # Add timeout for connection acquisition to prevent hanging
         import asyncio
+
         try:
             async with asyncio.timeout(10.0):
                 async with db_pool.acquire() as conn:
@@ -251,14 +252,18 @@ async def create_client(
                     passport_expiry = None
                     if client.passport_expiry:
                         try:
-                            passport_expiry = datetime.strptime(client.passport_expiry, "%Y-%m-%d").date()
+                            passport_expiry = datetime.strptime(
+                                client.passport_expiry, "%Y-%m-%d"
+                            ).date()
                         except ValueError:
                             passport_expiry = None
 
                     date_of_birth = None
                     if client.date_of_birth:
                         try:
-                            date_of_birth = datetime.strptime(client.date_of_birth, "%Y-%m-%d").date()
+                            date_of_birth = datetime.strptime(
+                                client.date_of_birth, "%Y-%m-%d"
+                            ).date()
                         except ValueError:
                             date_of_birth = None
 
@@ -303,7 +308,9 @@ async def create_client(
                         raise HTTPException(status_code=500, detail="Failed to create client")
 
                     new_client = dict(row)
-                    log_success(logger, f"Created client: {client.full_name}", client_id=new_client["id"])
+                    log_success(
+                        logger, f"Created client: {client.full_name}", client_id=new_client["id"]
+                    )
                     log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
 
                     # Track metrics (Legacy - keeping for backward metrics compatibility)
@@ -1028,12 +1035,14 @@ async def refresh_crm_metrics(
 
 class PassportExtractRequest(BaseModel):
     """Request model for passport data extraction"""
+
     client_id: int
     image_url: str
 
 
 class PassportExtractResponse(BaseModel):
     """Response model for extracted passport data"""
+
     success: bool
     passport_number: str | None = None
     passport_expiry: str | None = None
@@ -1051,31 +1060,27 @@ async def extract_passport_data(
     Updates the client record with extracted data.
     """
     import base64
+
     import httpx
 
     try:
         from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
         if not GENAI_AVAILABLE:
-            return PassportExtractResponse(
-                success=False,
-                message="Vision service not available"
-            )
+            return PassportExtractResponse(success=False, message="Vision service not available")
 
         # Initialize Gemini client
         genai_client = GenAIClient()
         if not genai_client.is_available:
-            return PassportExtractResponse(
-                success=False,
-                message="Gemini Vision not configured"
-            )
+            return PassportExtractResponse(success=False, message="Gemini Vision not configured")
 
         # Download image from Google Drive
         image_url = request.image_url
         if "/view" in image_url:
             # Convert view URL to direct download URL
             import re
-            match = re.search(r'/d/([^/]+)', image_url)
+
+            match = re.search(r"/d/([^/]+)", image_url)
             if match:
                 file_id = match.group(1)
                 image_url = f"https://drive.google.com/uc?export=download&id={file_id}"
@@ -1086,8 +1091,7 @@ async def extract_passport_data(
             response = await http_client.get(image_url, timeout=30.0)
             if response.status_code != 200:
                 return PassportExtractResponse(
-                    success=False,
-                    message=f"Failed to download image: HTTP {response.status_code}"
+                    success=False, message=f"Failed to download image: HTTP {response.status_code}"
                 )
             image_data = response.content
 
@@ -1096,9 +1100,9 @@ async def extract_passport_data(
 
         # Determine MIME type
         mime_type = "image/jpeg"
-        if image_data[:4] == b'\x89PNG':
+        if image_data[:4] == b"\x89PNG":
             mime_type = "image/png"
-        elif image_data[:4] == b'%PDF':
+        elif image_data[:4] == b"%PDF":
             mime_type = "application/pdf"
 
         # Build multimodal content for Gemini Vision
@@ -1134,22 +1138,16 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
         import re as regex
 
         # Extract JSON from response (handle markdown code blocks)
-        json_match = regex.search(r'\{[^}]+\}', response_text, regex.DOTALL)
+        json_match = regex.search(r"\{[^}]+\}", response_text, regex.DOTALL)
         if not json_match:
-            return PassportExtractResponse(
-                success=False,
-                message="Could not parse OCR response"
-            )
+            return PassportExtractResponse(success=False, message="Could not parse OCR response")
 
         extracted_data = json.loads(json_match.group())
         passport_number = extracted_data.get("passport_number")
         expiry_date = extracted_data.get("expiry_date")
 
         if not passport_number and not expiry_date:
-            return PassportExtractResponse(
-                success=False,
-                message="No passport data found in image"
-            )
+            return PassportExtractResponse(success=False, message="No passport data found in image")
 
         # Update client record
         async with db_pool.acquire() as conn:
@@ -1171,7 +1169,7 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
                 update_values.append(request.client_id)
                 await conn.execute(
                     f"UPDATE clients SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = ${param_num}",
-                    *update_values
+                    *update_values,
                 )
                 logger.info(f"Updated client {request.client_id} with extracted passport data")
 
@@ -1179,21 +1177,15 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
             success=True,
             passport_number=passport_number,
             passport_expiry=expiry_date,
-            message="Passport data extracted successfully"
+            message="Passport data extracted successfully",
         )
 
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse OCR JSON: {e}")
-        return PassportExtractResponse(
-            success=False,
-            message="Failed to parse extracted data"
-        )
+        return PassportExtractResponse(success=False, message="Failed to parse extracted data")
     except Exception as e:
         logger.error(f"Passport OCR extraction failed: {e}")
-        return PassportExtractResponse(
-            success=False,
-            message=str(e)
-        )
+        return PassportExtractResponse(success=False, message=str(e))
 
 
 # ================================================
@@ -1203,12 +1195,14 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
 
 class PassportEnhancedRequest(BaseModel):
     """Request model for enhanced passport OCR"""
+
     client_id: int
     file_id: str  # Google Drive file ID
 
 
 class PassportEnhancedResponse(BaseModel):
     """Response model for enhanced passport OCR"""
+
     success: bool
     passport_number: str | None = None
     expiry_date: str | None = None
@@ -1247,7 +1241,6 @@ async def extract_passport_enhanced(
     """
     import base64
     import json
-    import re as regex
     from difflib import SequenceMatcher
 
     from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
@@ -1255,28 +1248,20 @@ async def extract_passport_enhanced(
 
     try:
         if not GENAI_AVAILABLE:
-            return PassportEnhancedResponse(
-                success=False,
-                message="Vision service not available"
-            )
+            return PassportEnhancedResponse(success=False, message="Vision service not available")
 
         genai_client = GenAIClient()
         if not genai_client.is_available:
-            return PassportEnhancedResponse(
-                success=False,
-                message="Gemini Vision not configured"
-            )
+            return PassportEnhancedResponse(success=False, message="Gemini Vision not configured")
 
         # Get current client data for name verification
         async with db_pool.acquire() as conn:
             client = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1",
-                request.client_id
+                "SELECT full_name FROM clients WHERE id = $1", request.client_id
             )
             if not client:
                 return PassportEnhancedResponse(
-                    success=False,
-                    message=f"Client {request.client_id} not found"
+                    success=False, message=f"Client {request.client_id} not found"
                 )
             existing_name = client["full_name"]
 
@@ -1286,11 +1271,11 @@ async def extract_passport_enhanced(
 
         if not access_token:
             return PassportEnhancedResponse(
-                success=False,
-                message="Google Drive not connected. Please connect via Settings."
+                success=False, message="Google Drive not connected. Please connect via Settings."
             )
 
         import httpx
+
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             # Get file metadata
             meta_response = await http_client.get(
@@ -1301,7 +1286,7 @@ async def extract_passport_enhanced(
             if meta_response.status_code != 200:
                 return PassportEnhancedResponse(
                     success=False,
-                    message=f"Failed to get file metadata: {meta_response.status_code}"
+                    message=f"Failed to get file metadata: {meta_response.status_code}",
                 )
             metadata = meta_response.json()
             mime_type = metadata.get("mimeType", "image/jpeg")
@@ -1315,7 +1300,7 @@ async def extract_passport_enhanced(
             if download_response.status_code != 200:
                 return PassportEnhancedResponse(
                     success=False,
-                    message=f"Failed to download file: {download_response.status_code}"
+                    message=f"Failed to download file: {download_response.status_code}",
                 )
             image_data = download_response.content
 
@@ -1340,7 +1325,12 @@ Use null for unclear fields. Return ONLY JSON."""
         # Call Gemini Vision
         contents = [
             ocr_prompt,
-            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_data).decode(),
+                }
+            },
         ]
 
         result = await genai_client.generate_content(
@@ -1356,10 +1346,7 @@ Use null for unclear fields. Return ONLY JSON."""
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
             logger.error(f"OCR JSON parsing failed. Raw response: {response_text[:500]}")
-            return PassportEnhancedResponse(
-                success=False,
-                message="Could not parse OCR response"
-            )
+            return PassportEnhancedResponse(success=False, message="Could not parse OCR response")
 
         # Verify name match
         name_match = None
@@ -1369,7 +1356,7 @@ Use null for unclear fields. Return ONLY JSON."""
             ratio = SequenceMatcher(
                 None,
                 existing_name.upper().replace(",", " ").split(),
-                extracted_name.upper().replace(",", " ").split()
+                extracted_name.upper().replace(",", " ").split(),
             ).ratio()
             name_match = ratio >= 0.8
 
@@ -1429,7 +1416,7 @@ Use null for unclear fields. Return ONLY JSON."""
 
             params.append(request.client_id)
             update_sql = f"""
-                UPDATE clients SET {', '.join(update_parts)}, updated_at = NOW()
+                UPDATE clients SET {", ".join(update_parts)}, updated_at = NOW()
                 WHERE id = ${param_idx}
             """
             await conn.execute(update_sql, *params)
@@ -1448,18 +1435,12 @@ Use null for unclear fields. Return ONLY JSON."""
             mrz_line2=extracted.get("mrz_line2"),
             confidence=extracted.get("confidence", 0.0),
             name_match=name_match,
-            message="Passport data extracted and saved successfully"
+            message="Passport data extracted and saved successfully",
         )
 
     except json.JSONDecodeError as e:
         logger.warning(f"Enhanced OCR JSON parse error: {e}")
-        return PassportEnhancedResponse(
-            success=False,
-            message="Failed to parse OCR response"
-        )
+        return PassportEnhancedResponse(success=False, message="Failed to parse OCR response")
     except Exception as e:
         logger.error(f"Enhanced passport OCR failed: {e}")
-        return PassportEnhancedResponse(
-            success=False,
-            message=str(e)
-        )
+        return PassportEnhancedResponse(success=False, message=str(e))

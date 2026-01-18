@@ -168,9 +168,12 @@ describe('useChatTTS', () => {
     });
 
     // Wait for toast callback to be called (errors are handled asynchronously)
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(showToast).toHaveBeenCalled();
+      },
+      { timeout: 2000 }
+    );
 
     expect(showToast).toHaveBeenCalledWith('TTS generation failed. Please try again.', 'error');
     expect(result.current.ttsLoading).toBeNull();
@@ -206,9 +209,12 @@ describe('useChatTTS', () => {
     });
 
     // Wait for toast callback to be called (errors are handled asynchronously)
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(showToast).toHaveBeenCalled();
+      },
+      { timeout: 2000 }
+    );
 
     expect(showToast).toHaveBeenCalledWith('TTS generation timeout. Please try again.', 'error');
   });
@@ -242,9 +248,12 @@ describe('useChatTTS', () => {
     });
 
     // Wait for toast callback to be called (errors are handled asynchronously)
-    await waitFor(() => {
-      expect(showToast).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(showToast).toHaveBeenCalled();
+      },
+      { timeout: 2000 }
+    );
 
     expect(showToast).toHaveBeenCalledWith('Too many TTS requests. Please wait a moment.', 'error');
   });

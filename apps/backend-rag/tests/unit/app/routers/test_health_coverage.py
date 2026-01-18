@@ -2,7 +2,6 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -41,9 +40,7 @@ def _load_module(monkeypatch, settings_overrides=None):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
 
     settings_stub = types.SimpleNamespace(
-        qdrant_url="http://qdrant.local",
-        qdrant_api_key="",
-        redis_url='redis://localhost:6379'
+        qdrant_url="http://qdrant.local", qdrant_api_key="", redis_url="redis://localhost:6379"
     )
     if settings_overrides:
         for key, value in settings_overrides.items():
@@ -51,7 +48,7 @@ def _load_module(monkeypatch, settings_overrides=None):
 
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub
-    config_mock.Settings = types.SimpleNamespace() # Dummy Settings class
+    config_mock.Settings = types.SimpleNamespace()  # Dummy Settings class
     monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     app_pkg = types.ModuleType("app")
@@ -360,7 +357,9 @@ def test_qdrant_metrics_success(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "backend.core.qdrant_db",
-        types.SimpleNamespace(get_qdrant_metrics=lambda: {"search_count": 1}, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_qdrant_metrics=lambda: {"search_count": 1}, redis_url="redis://localhost:6379"
+        ),
     )
 
     response = client.get("/health/metrics/qdrant")
@@ -379,7 +378,9 @@ def test_qdrant_metrics_error(monkeypatch):
         raise RuntimeError("metrics fail")
 
     monkeypatch.setitem(
-        sys.modules, "backend.core.qdrant_db", types.SimpleNamespace(get_qdrant_metrics=_raise, redis_url='redis://localhost:6379')
+        sys.modules,
+        "backend.core.qdrant_db",
+        types.SimpleNamespace(get_qdrant_metrics=_raise, redis_url="redis://localhost:6379"),
     )
 
     response = client.get("/health/metrics/qdrant")

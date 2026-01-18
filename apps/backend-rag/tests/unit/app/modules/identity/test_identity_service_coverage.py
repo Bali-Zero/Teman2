@@ -32,7 +32,7 @@ class _DummyConn:
 
 def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jwt_alg="HS256"):
     """Create IdentityService instance with mocked settings.
-    
+
     Updated 2026-01-16: Enhanced to ensure jwt_secret meets minimum length requirement.
     """
     # Ensure jwt_secret is at least 32 characters (required by Settings validation)
@@ -49,7 +49,7 @@ def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jw
 
 def test_init_warns_on_default_secret(monkeypatch, caplog):
     """Test that IdentityService warns when using default JWT secret.
-    
+
     Updated 2026-01-16: Test verifies warning is logged for default secret.
     """
     mock_settings = create_mock_settings(
@@ -238,6 +238,7 @@ def test_create_access_token(monkeypatch):
     token = service.create_access_token(user, session_id="s1")
     # Get the actual secret from the mocked settings module
     from backend.app.modules.identity import service as identity_service
+
     actual_secret = identity_service.settings.jwt_secret_key
     payload = jwt.decode(token, actual_secret, algorithms=["HS256"])
 

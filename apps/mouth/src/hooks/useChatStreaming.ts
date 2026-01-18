@@ -5,11 +5,7 @@ import { useConversationMonitoring } from '@/lib/monitoring';
 
 export interface StreamingCallbacks {
   onChunk: (chunk: string) => void;
-  onComplete: (
-    fullResponse: string,
-    sources: Source[],
-    metadata?: Message['metadata']
-  ) => void;
+  onComplete: (fullResponse: string, sources: Source[], metadata?: Message['metadata']) => void;
   onError: (error: Error) => void;
   onStep: (step: AgentStep) => void;
 }
@@ -33,9 +29,7 @@ export interface UseChatStreamingReturn {
   monitoring: ReturnType<typeof useConversationMonitoring>;
 }
 
-export function useChatStreaming(
-  options: UseChatStreamingOptions
-): UseChatStreamingReturn {
+export function useChatStreaming(options: UseChatStreamingOptions): UseChatStreamingReturn {
   const { sessionId, isMountedRef, isAbortedRef } = options;
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);

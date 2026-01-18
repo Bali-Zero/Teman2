@@ -210,7 +210,9 @@ class ZohoOAuthService:
                     primary_email = (
                         str(first_item.get("mailId", ""))
                         if isinstance(first_item, dict)
-                        else str(first_item) if first_item else ""
+                        else str(first_item)
+                        if first_item
+                        else ""
                     )
                 elif isinstance(primary_email, dict):
                     primary_email = str(primary_email.get("mailId", ""))
@@ -456,7 +458,9 @@ class ZohoOAuthService:
             if row and row["refresh_token"]:
                 # Attempt to revoke token (optional, may fail)
                 try:
-                    async with httpx.AsyncClient(timeout=HttpTimeoutConstants.SHORT_TIMEOUT) as client:
+                    async with httpx.AsyncClient(
+                        timeout=HttpTimeoutConstants.SHORT_TIMEOUT
+                    ) as client:
                         await client.post(
                             f"{self.accounts_url}/oauth/v2/token/revoke",
                             params={"token": row["refresh_token"]},

@@ -47,6 +47,7 @@ service = SearchService()
 Perform semantic search with tier-based access control.
 
 **Parameters:**
+
 - `query` (str): Search query text
 - `user_level` (int): User access level (0-3)
 - `limit` (int): Maximum results (default: 5)
@@ -54,6 +55,7 @@ Perform semantic search with tier-based access control.
 - `collection_override` (str): Force specific collection (for testing)
 
 **Returns:**
+
 ```python
 {
     "query": str,
@@ -72,6 +74,7 @@ Perform semantic search with tier-based access control.
 ```
 
 **Example:**
+
 ```python
 result = await service.search(
     query="What is KITAS visa?",
@@ -85,10 +88,12 @@ result = await service.search(
 Enhanced search with conflict detection and resolution.
 
 **Parameters:**
+
 - Same as `search()` plus:
 - `enable_fallbacks` (bool): Use fallback collections (default: True)
 
 **Returns:**
+
 ```python
 {
     "query": str,
@@ -108,12 +113,14 @@ Enhanced search with conflict detection and resolution.
 Direct search on a specific collection.
 
 **Parameters:**
+
 - `query` (str): Search query
 - `collection_name` (str): Target collection
 - `limit` (int): Maximum results
 - `filter` (dict): Optional metadata filter
 
 **Returns:**
+
 ```python
 {
     "query": str,
@@ -127,6 +134,7 @@ Direct search on a specific collection.
 Add cultural insight to Qdrant (delegates to CulturalInsightsService).
 
 **Parameters:**
+
 - `text` (str): Cultural insight content
 - `metadata` (dict): Metadata with topic, language, when_to_use, etc.
 
@@ -137,6 +145,7 @@ Add cultural insight to Qdrant (delegates to CulturalInsightsService).
 Query cultural insights (delegates to CulturalInsightsService).
 
 **Parameters:**
+
 - `query` (str): Search query
 - `when_to_use` (str): Optional usage context filter
 - `limit` (int): Maximum results
@@ -154,6 +163,7 @@ Get conflict resolution statistics (delegates to ConflictResolver).
 Get health metrics for a specific collection.
 
 **Parameters:**
+
 - `collection_name` (str): Collection to check
 
 **Returns:** `dict` - Health metrics
@@ -184,11 +194,13 @@ manager = CollectionManager(qdrant_url="http://qdrant:6333")
 Get collection client with lazy initialization.
 
 **Parameters:**
+
 - `name` (str): Collection name
 
 **Returns:** `QdrantClient | None` - Collection client or None if not found
 
 **Example:**
+
 ```python
 client = manager.get_collection("visa_oracle")
 if client:
@@ -206,11 +218,13 @@ List all available collection names.
 Get collection metadata.
 
 **Parameters:**
+
 - `name` (str): Collection name
 
 **Returns:** `dict | None` - Collection info or None if not found
 
 **Example:**
+
 ```python
 info = manager.get_collection_info("visa_oracle")
 # Returns: {"priority": "high", "doc_count": 1612, "actual_name": "visa_oracle"}
@@ -244,11 +258,13 @@ resolver = ConflictResolver()
 Detect conflicts between results from different collections.
 
 **Parameters:**
+
 - `results_by_collection` (dict[str, list[dict]]): Results grouped by collection
 
 **Returns:** `list[dict]` - List of detected conflicts
 
 **Example:**
+
 ```python
 results = {
     "tax_knowledge": [...],
@@ -262,12 +278,14 @@ conflicts = resolver.detect_conflicts(results)
 Resolve conflicts using timestamp and relevance-based priority.
 
 **Parameters:**
+
 - `results_by_collection` (dict): Results grouped by collection
 - `conflicts` (list[dict]): Detected conflicts
 
 **Returns:** `tuple[list[dict], list[dict]]` - (resolved_results, conflict_reports)
 
 **Resolution Strategy:**
+
 1. Temporal priority: `*_updates` collections win over base collections
 2. Relevance: Higher scores win if timestamps equal
 3. Transparency: Losing results flagged as "outdated" or "alternate"
@@ -308,12 +326,14 @@ service = CulturalInsightsService(
 Add cultural insight to Qdrant.
 
 **Parameters:**
+
 - `text` (str): Cultural insight content
 - `metadata` (dict): Metadata with topic, language, when_to_use, tone, etc.
 
 **Returns:** `bool` - Success status
 
 **Example:**
+
 ```python
 success = await service.add_insight(
     text="Indonesians value indirect communication",
@@ -331,6 +351,7 @@ success = await service.add_insight(
 Query cultural insights using semantic search.
 
 **Parameters:**
+
 - `query` (str): Search query (user message)
 - `when_to_use` (str): Optional usage context filter
 - `limit` (int): Maximum results
@@ -338,6 +359,7 @@ Query cultural insights using semantic search.
 **Returns:** `list[dict]` - List of cultural insights
 
 **Example:**
+
 ```python
 insights = await service.query_insights(
     query="Hello, how are you?",
@@ -383,11 +405,13 @@ integration = QueryRouterIntegration(query_router=router)
 Detect if query is about pricing.
 
 **Parameters:**
+
 - `query` (str): User query text
 
 **Returns:** `bool` - True if pricing query detected
 
 **Example:**
+
 ```python
 if integration.is_pricing_query("What is the price?"):
     # Route to pricing collection
@@ -398,6 +422,7 @@ if integration.is_pricing_query("What is the price?"):
 Route query to appropriate collection(s).
 
 **Parameters:**
+
 - `query` (str): User query text
 - `collection_override` (str): Force specific collection
 - `enable_fallbacks` (bool): Return fallback collections
@@ -405,6 +430,7 @@ Route query to appropriate collection(s).
 **Returns:** `dict` - Routing information
 
 **Example:**
+
 ```python
 routing = integration.route_query(
     query="Tell me about visas",
@@ -474,6 +500,7 @@ insights = await cultural_insights.query_insights("hello")
 ## Error Handling
 
 All services raise exceptions on critical errors:
+
 - `ValueError`: Invalid parameters
 - `RuntimeError`: Service initialization failures
 - `ConnectionError`: Database/Qdrant connection failures
@@ -483,27 +510,10 @@ Services return `None` or empty lists for non-critical failures (e.g., collectio
 ## Testing
 
 See test files:
+
 - `tests/unit/test_collection_manager.py`
 - `tests/unit/test_conflict_resolver.py`
 - `tests/unit/test_cultural_insights_service.py`
 - `tests/unit/test_query_router_integration.py`
 - `tests/unit/test_search_service_refactored.py`
 - `tests/performance/test_search_service_benchmark.py`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

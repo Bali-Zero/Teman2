@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { FileItem, CreateFolderRequest, DocType, FileListResponse, BreadcrumbItem } from '@/lib/api/drive/drive.types';
+import type {
+  FileItem,
+  CreateFolderRequest,
+  DocType,
+  FileListResponse,
+  BreadcrumbItem,
+} from '@/lib/api/drive/drive.types';
 
 /** Type for drive file list query data */
 interface DriveFilesData {
@@ -46,7 +52,11 @@ export function useDriveMutations() {
 
   const createDoc = useMutation({
     mutationFn: (variable: { name: string; parentId: string | null; docType: DocType }) =>
-      api.drive.createDoc({ name: variable.name, parent_id: variable.parentId || 'root', doc_type: variable.docType }),
+      api.drive.createDoc({
+        name: variable.name,
+        parent_id: variable.parentId || 'root',
+        doc_type: variable.docType,
+      }),
     onSuccess: invalidateFiles,
   });
 
@@ -70,14 +80,14 @@ export function useDriveMutations() {
     onError: (err, fileId, context) => {
       // Rollback on error
       if (context?.previousData) {
-         context.previousData.forEach(([key, data]) => {
-            queryClient.setQueryData(key, data);
-         });
+        context.previousData.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
       }
     },
     onSettled: invalidateFiles,
   });
-  
+
   const renameFile = useMutation({
     mutationFn: (variable: { fileId: string; newName: string }) =>
       api.drive.renameFile(variable.fileId, variable.newName),
@@ -86,7 +96,10 @@ export function useDriveMutations() {
 
   const moveFiles = useMutation({
     mutationFn: (variable: { fileIds: string[]; targetFolderId: string }) =>
-       api.drive.moveFiles(variable.fileIds, variable.targetFolderId === 'root' ? '' : variable.targetFolderId),
+      api.drive.moveFiles(
+        variable.fileIds,
+        variable.targetFolderId === 'root' ? '' : variable.targetFolderId
+      ),
     onSuccess: invalidateFiles,
   });
 
@@ -95,6 +108,6 @@ export function useDriveMutations() {
     createDoc,
     deleteFile,
     renameFile,
-    moveFiles
+    moveFiles,
   };
 }

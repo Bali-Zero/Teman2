@@ -60,7 +60,9 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
                     logger.info(f"OCR extraction successful: {len(ocr_text)} characters")
                     return ocr_text
                 elif not full_text.strip():
-                    raise DocumentParseError(f"No text extracted from PDF (even with OCR/Vision): {file_path}")
+                    raise DocumentParseError(
+                        f"No text extracted from PDF (even with OCR/Vision): {file_path}"
+                    )
             except DocumentParseError:
                 raise
             except Exception as ocr_error:
@@ -124,8 +126,10 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                     # Last resort: try vision model (skip if already in async context)
                     logger.info("OCR failed, trying vision model as last resort...")
                     try:
-                        from backend.services.multimodal.pdf_vision_service import PDFVisionService
                         import asyncio
+
+                        from backend.services.multimodal.pdf_vision_service import PDFVisionService
+
                         vision_service = PDFVisionService()
                         with open(file_path, "rb") as f:
                             pdf_bytes = f.read()
@@ -138,12 +142,16 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                             # No running loop, safe to use asyncio.run()
                             vision_text = asyncio.run(vision_service.extract_text(pdf_bytes))
                             if vision_text and vision_text.strip():
-                                logger.info(f"Vision extraction successful: {len(vision_text)} characters")
+                                logger.info(
+                                    f"Vision extraction successful: {len(vision_text)} characters"
+                                )
                                 return vision_text
                     except Exception as vision_err:
                         logger.warning(f"Vision extraction failed: {vision_err}")
-                    
-                    raise DocumentParseError(f"No text extracted from PDF (even with OCR/Vision): {file_path}")
+
+                    raise DocumentParseError(
+                        f"No text extracted from PDF (even with OCR/Vision): {file_path}"
+                    )
             except DocumentParseError:
                 raise
             except Exception as ocr_error:
@@ -170,37 +178,35 @@ async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
     Processes each page individually for best OCR quality.
     """
     try:
-        from backend.services.multimodal.pdf_vision_service import PDFVisionService
         import fitz  # PyMuPDF
-        
+
+        from backend.services.multimodal.pdf_vision_service import PDFVisionService
+
         vision_service = PDFVisionService()
         if not vision_service._available:
             logger.warning("Vision service not available for OCR")
             return ""
-        
+
         # Open PDF and get page count
         doc = fitz.open(file_path)
         total_pages = len(doc)
         doc.close()
-        
+
         logger.info(f"Processing {total_pages} pages with Gemini Vision OCR...")
-        
+
         # OCR prompt optimized for text extraction
         ocr_prompt = """Extract all text from this page. 
 Preserve the original formatting, line breaks, paragraphs, and structure.
 Return only the extracted text, no descriptions or explanations.
 If the page contains tables, preserve the table structure.
 If the page is blank or contains no text, return an empty string."""
-        
+
         text_parts = []
         for page_num in range(1, total_pages + 1):
             try:
                 logger.info(f"OCR processing page {page_num}/{total_pages}...")
                 page_text = await vision_service.analyze_page(
-                    pdf_path=file_path,
-                    page_number=page_num,
-                    prompt=ocr_prompt,
-                    is_drive_file=False
+                    pdf_path=file_path, page_number=page_num, prompt=ocr_prompt, is_drive_file=False
                 )
                 if page_text and page_text.strip():
                     text_parts.append(page_text)
@@ -210,16 +216,18 @@ If the page is blank or contains no text, return an empty string."""
             except Exception as page_error:
                 logger.warning(f"Error processing page {page_num}: {page_error}")
                 continue
-        
+
         full_text = "\n\n".join(text_parts)
-        
+
         if full_text.strip():
-            logger.info(f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages")
+            logger.info(
+                f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages"
+            )
             return full_text
         else:
             logger.warning("No text extracted from any page")
             return ""
-            
+
     except Exception as e:
         logger.error(f"Vision OCR extraction failed: {e}")
         return ""
@@ -247,7 +255,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                 # Try OCR if available (requires PyMuPDF with OCR support)
                 # PyMuPDF can use Tesseract if available
                 text = page.get_text("text")
-                
+
                 # If no text, try OCR mode
                 if not text.strip():
                     # PyMuPDF OCR requires Tesseract
@@ -257,12 +265,14 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                         text = page.get_text("text", flags=11)  # OCR flag
                     except Exception:
                         # If OCR not available, try alternative extraction
-                        logger.warning(f"OCR not available for page {page_num}, trying alternative extraction")
+                        logger.warning(
+                            f"OCR not available for page {page_num}, trying alternative extraction"
+                        )
                         # Convert page to image and use vision model as fallback
                         pix = page.get_pixmap()
                         # For now, return empty - can be enhanced with vision model
                         text = ""
-                
+
                 if text:
                     text_parts.append(text)
             except Exception as e:

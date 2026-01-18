@@ -10,19 +10,23 @@
 ## 📋 Executive Summary
 
 **Problema Iniziale:**
+
 - 6 deployment consecutivi falliti su Vercel progetto "mouth"
 - Build errors causati da file eliminati per errore in commit cleanup
 
 **Root Cause:**
+
 - Commit `7d5f8bd0` eliminava file con implementazioni complete (270-303 righe)
 - Creati stub minimali (15-25 righe) insufficienti
 - Mancavano 10+ metodi richiesti dal codice
 
 **Soluzione:**
+
 - Ripristinati file originali completi da commit precedente
 - Tutti i deployment ora ✅ Ready
 
 **Impatto:**
+
 - Downtime: ~48 minuti
 - Deployment falliti: 6
 - Deployment riusciti finali: 2 (`1a727743` + `dba82171`)
@@ -33,24 +37,25 @@
 
 ### Timeline Eventi
 
-| Ora | Evento | Commit | Status |
-|-----|--------|--------|--------|
-| 21:19 | Commit cleanup | `7d5f8bd0` | Push |
-| 21:22 | Deploy #1 fallito | - | ❌ Error: enhanced-analytics |
-| 21:35 | Fix enhanced-analytics stub | `7e83f007` | ❌ Error: export missing |
-| 21:43 | Aggiunto export | `38a571cf` | ❌ Error: dashboard-metrics |
-| 21:47 | Fix dashboard-metrics stub | `e19d82df` | ❌ Error: email/index |
-| 21:53 | Fix ZohoConnectBanner | `b437fe20` | ❌ Error: QueryProvider |
-| 21:59 | Fix QueryProvider stub | `2201b207` | ❌ Error: No QueryClient |
-| **22:05** | **ANALISI 360° PROBLEMA** | - | 🔍 Investigation |
-| 22:10 | Ripristino file originali | `1a727743` | ✅ nuzantara Ready, ❌ mouth Error |
-| 22:15 | Ripristino QueryProvider completo | `dba82171` | ✅ **ENTRAMBI Ready** |
+| Ora       | Evento                            | Commit     | Status                             |
+| --------- | --------------------------------- | ---------- | ---------------------------------- |
+| 21:19     | Commit cleanup                    | `7d5f8bd0` | Push                               |
+| 21:22     | Deploy #1 fallito                 | -          | ❌ Error: enhanced-analytics       |
+| 21:35     | Fix enhanced-analytics stub       | `7e83f007` | ❌ Error: export missing           |
+| 21:43     | Aggiunto export                   | `38a571cf` | ❌ Error: dashboard-metrics        |
+| 21:47     | Fix dashboard-metrics stub        | `e19d82df` | ❌ Error: email/index              |
+| 21:53     | Fix ZohoConnectBanner             | `b437fe20` | ❌ Error: QueryProvider            |
+| 21:59     | Fix QueryProvider stub            | `2201b207` | ❌ Error: No QueryClient           |
+| **22:05** | **ANALISI 360° PROBLEMA**         | -          | 🔍 Investigation                   |
+| 22:10     | Ripristino file originali         | `1a727743` | ✅ nuzantara Ready, ❌ mouth Error |
+| 22:15     | Ripristino QueryProvider completo | `dba82171` | ✅ **ENTRAMBI Ready**              |
 
 ### File Problematici
 
 #### 1. enhanced-analytics.tsx
 
 **Originale Eliminato:**
+
 - 270 righe di codice
 - Classe `EnhancedAnalyticsService`
 - 12+ metodi pubblici
@@ -58,6 +63,7 @@
 - HOC `withEnhancedAnalytics`
 
 **Stub Creato (Fallito):**
+
 ```typescript
 // 23 righe - Solo 4 metodi base
 const analyticsStub = {
@@ -69,6 +75,7 @@ const analyticsStub = {
 ```
 
 **Errore:**
+
 ```
 Export 'trackDashboardLoad' doesn't exist
 Export 'trackWidgetInteraction' doesn't exist
@@ -77,6 +84,7 @@ Export 'trackEmailAction' doesn't exist
 ```
 
 **Fix:**
+
 ```bash
 git show 7d5f8bd0^:apps/mouth/src/lib/enhanced-analytics.tsx > \
   apps/mouth/src/lib/enhanced-analytics.tsx
@@ -85,6 +93,7 @@ git show 7d5f8bd0^:apps/mouth/src/lib/enhanced-analytics.tsx > \
 #### 2. dashboard-metrics.ts
 
 **Originale Eliminato:**
+
 - 303 righe di codice
 - Classe `DashboardMetricsCollector`
 - Sistema completo metriche
@@ -92,6 +101,7 @@ git show 7d5f8bd0^:apps/mouth/src/lib/enhanced-analytics.tsx > \
 - 15+ metodi
 
 **Stub Creato (Fallito):**
+
 ```typescript
 // 16 righe - Solo 2 metodi
 export const dashboardMetrics = {
@@ -101,6 +111,7 @@ export const dashboardMetrics = {
 ```
 
 **Errore:**
+
 ```
 Property 'startPerformanceMark' doesn't exist
 Property 'trackButtonClick' doesn't exist
@@ -108,6 +119,7 @@ Property 'trackButtonClick' doesn't exist
 ```
 
 **Fix:**
+
 ```bash
 git show 7d5f8bd0^:apps/mouth/src/lib/metrics/dashboard-metrics.ts > \
   apps/mouth/src/lib/metrics/dashboard-metrics.ts
@@ -116,12 +128,14 @@ git show 7d5f8bd0^:apps/mouth/src/lib/metrics/dashboard-metrics.ts > \
 #### 3. QueryProvider.tsx
 
 **Originale Eliminato:**
+
 - 65 righe di codice
 - Inizializzazione `QueryClient`
 - Configurazione enterprise React Query
 - Singleton pattern browser/server
 
 **Stub Creato (Fallito):**
+
 ```typescript
 // 18 righe - Solo wrapper vuoto
 export function QueryProvider({ children }) {
@@ -130,20 +144,22 @@ export function QueryProvider({ children }) {
 ```
 
 **Errore:**
+
 ```
 Error: No QueryClient set, use QueryClientProvider to set one
 Export encountered an error on /chat/page: /chat
 ```
 
 **Fix:**
+
 ```typescript
 // 65 righe - Implementazione completa
 function getQueryClient() {
   if (typeof window === 'undefined') {
-    return createQueryClient();  // Server
+    return createQueryClient(); // Server
   } else {
     if (!browserQueryClient) {
-      browserQueryClient = createQueryClient();  // Browser singleton
+      browserQueryClient = createQueryClient(); // Browser singleton
     }
     return browserQueryClient;
   }
@@ -153,9 +169,11 @@ function getQueryClient() {
 #### 4. ZohoConnectBanner.tsx
 
 **Originale Eliminato:**
+
 - Componente UI per connessione Zoho Mail
 
 **Stub Creato (OK):**
+
 ```typescript
 // 24 righe - Stub minimo sufficiente
 export function ZohoConnectBanner({ onConnect, isConnecting }) {
@@ -176,11 +194,13 @@ export function ZohoConnectBanner({ onConnect, isConnecting }) {
 ### Fase 1: Identificazione Pattern Fallimenti (21:22-22:00)
 
 Approccio iniziale: **Fixing incrementale** (INEFFICACE)
+
 - Fix un errore alla volta
 - Push → Wait deploy → Check logs → Fix next error
 - Risultato: 5 deployment falliti, 40 minuti persi
 
 **Errore metodologico:**
+
 - Non verificato scope completo del problema
 - Non testato build locale
 - Non analizzato contenuto file originali
@@ -190,6 +210,7 @@ Approccio iniziale: **Fixing incrementale** (INEFFICACE)
 Su richiesta user: **"fermati e indaga a 360 gradi"**
 
 Azioni investigative:
+
 ```bash
 # 1. Analisi git history
 git log --oneline --graph -10
@@ -207,6 +228,7 @@ diff <(git show 7d5f8bd0^:file) <(cat file)
 ```
 
 **Scoperta chiave:**
+
 - File originali: 270-303 righe (implementazioni complete)
 - Stub creati: 15-25 righe (solo 2-4 metodi)
 - **Gap: 10+ metodi mancanti per file**
@@ -214,6 +236,7 @@ diff <(git show 7d5f8bd0^:file) <(cat file)
 ### Fase 3: Ripristino Completo (22:10-22:15)
 
 Approccio corretto: **Ripristino originali**
+
 ```bash
 # Ripristino 3 file principali
 git show 7d5f8bd0^:apps/mouth/src/lib/enhanced-analytics.tsx > \
@@ -236,6 +259,7 @@ git push
 ```
 
 Risultato:
+
 - ✅ Build locale: 62/62 pagine OK
 - ✅ Deployment nuzantara: Ready
 - ✅ Deployment mouth: Ready (dopo secondo fix QueryProvider)
@@ -246,23 +270,25 @@ Risultato:
 
 ### Tempo Investito
 
-| Attività | Tempo | % |
-|----------|-------|---|
-| Fix incrementali (falliti) | 40 min | 44% |
-| Analisi 360° | 10 min | 11% |
-| Ripristino file + test | 5 min | 6% |
-| Deploy + verifica | 15 min | 17% |
-| Documentazione | 20 min | 22% |
-| **TOTALE** | **90 min** | **100%** |
+| Attività                   | Tempo      | %        |
+| -------------------------- | ---------- | -------- |
+| Fix incrementali (falliti) | 40 min     | 44%      |
+| Analisi 360°               | 10 min     | 11%      |
+| Ripristino file + test     | 5 min      | 6%       |
+| Deploy + verifica          | 15 min     | 17%      |
+| Documentazione             | 20 min     | 22%      |
+| **TOTALE**                 | **90 min** | **100%** |
 
 ### Efficienza
 
 **Approccio Incrementale (Fallito):**
+
 - 5 deployment × 3 min = 15 min
 - Debug tra deployment = 25 min
 - Totale: 40 min → 0 risultati
 
 **Approccio Analisi 360° (Riuscito):**
+
 - Analisi completa = 10 min
 - Ripristino + test = 5 min
 - Deploy = 3 min
@@ -273,11 +299,13 @@ Risultato:
 ### Commits
 
 **Falliti:** 5 commits
+
 ```
 7e83f007, 38a571cf, e19d82df, b437fe20, 2201b207
 ```
 
 **Riusciti:** 2 commits
+
 ```
 1a727743 - Ripristino enhanced-analytics e dashboard-metrics
 dba82171 - Ripristino QueryProvider completo
@@ -292,6 +320,7 @@ dba82171 - Ripristino QueryProvider completo
 ### 1. Non Creare Stub Senza Verificare Originale
 
 **Prima di eliminare un file:**
+
 ```bash
 # Verifica dimensione
 wc -l file.ts
@@ -308,6 +337,7 @@ git show HEAD:file.ts | grep "export\|function\|class"
 ### 2. Test Build Locale SEMPRE
 
 **Workflow corretto:**
+
 ```bash
 # 1. Modifiche
 vim apps/mouth/src/...
@@ -322,6 +352,7 @@ git push
 ```
 
 **Tempo risparmiato:**
+
 - Build locale: 2 min
 - Deploy fallito + debug: 30+ min
 - **Saving: 28 minuti**
@@ -329,6 +360,7 @@ git push
 ### 3. Verificare File Eliminati
 
 **Script di verifica pre-cleanup:**
+
 ```bash
 #!/bin/bash
 # verify-cleanup.sh
@@ -357,11 +389,13 @@ done
 ### 4. Monorepo - Deployment Separati
 
 **Setup Nuzantara:**
+
 - Root `nuzantara`: Solo workspace config, deployment non necessario
 - App `mouth`: Frontend principale → **deployment critico**
 - App `backend-rag`: Backend API → deployment separato
 
 **Verifica:**
+
 ```bash
 # Dopo push, controllare deployment GIUSTO:
 # ✅ mouth.vercel.app → Questo è importante
@@ -451,6 +485,7 @@ dba82171  fix: restore original QueryProvider with React Query client
 ### Vercel Deployment Status
 
 **Progetto "mouth" (principale):**
+
 - Deployment ID: Latest from `dba82171`
 - Status: ✅ Ready
 - URL: zantara.balizero.com
@@ -458,6 +493,7 @@ dba82171  fix: restore original QueryProvider with React Query client
 - Pages: 62/62 generated
 
 **Progetto "nuzantara" (root workspace):**
+
 - Status: ✅ Ready (ma non rilevante)
 - Nota: Solo configurazione, non applicazione deployabile
 
@@ -468,6 +504,7 @@ dba82171  fix: restore original QueryProvider with React Query client
 ### Immediate (Settimana 1)
 
 1. **Implementare pre-commit hook build test**
+
 ```bash
 # .husky/pre-commit
 if git diff --cached | grep -q "apps/mouth/src"; then
@@ -476,11 +513,13 @@ fi
 ```
 
 2. **Aggiungere script cleanup sicuro al repo**
+
 ```bash
 scripts/cleanup/verify-safe-delete.sh
 ```
 
 3. **Documentare deployment architecture**
+
 ```bash
 docs/architecture/DEPLOYMENT_ARCHITECTURE.md
 ```
@@ -529,12 +568,14 @@ docs/architecture/DEPLOYMENT_ARCHITECTURE.md
 **MTTR:** 48 minuti
 
 **Azioni Post-Incident:**
+
 - ✅ Documentazione creata
 - ✅ Lezioni apprese documentate
 - ✅ Process migliorati
 - ✅ Tools sviluppati
 
 **Follow-up:**
+
 - Implementare pre-commit hooks (Entro: 20 Gen)
 - CI/CD pipeline (Entro: 31 Gen)
 - Team training su guidelines (Entro: 15 Feb)
@@ -555,4 +596,4 @@ docs/architecture/DEPLOYMENT_ARCHITECTURE.md
 
 ---
 
-*Questo report documenta completamente l'incidente del 16 Gennaio 2026 e le azioni correttive implementate. Tutti i sistemi sono ora operativi e la documentazione è stata aggiornata per prevenire incidenti simili in futuro.*
+_Questo report documenta completamente l'incidente del 16 Gennaio 2026 e le azioni correttive implementate. Tutti i sistemi sono ora operativi e la documentazione è stata aggiornata per prevenire incidenti simili in futuro._

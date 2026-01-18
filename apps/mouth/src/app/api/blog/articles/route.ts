@@ -58,7 +58,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(_request: NextRequest) {
   return NextResponse.json(
-    { error: 'Article creation not supported via API. Create MDX file directly in src/content/articles/[category]/' },
+    {
+      error:
+        'Article creation not supported via API. Create MDX file directly in src/content/articles/[category]/',
+    },
     { status: 501 }
   );
 }
@@ -111,7 +114,8 @@ const MOCK_ARTICLES = [
     id: '3',
     slug: 'tax-deadlines-2026',
     title: 'Tax Deadlines 2026: What Every Expat Needs to Know',
-    excerpt: 'Key dates for personal and corporate tax filings. New Coretax system fully operational.',
+    excerpt:
+      'Key dates for personal and corporate tax filings. New Coretax system fully operational.',
     coverImage: '/static/blog/tax-calendar.jpg',
     category: 'tax-legal',
     author: {

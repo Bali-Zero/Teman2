@@ -31,10 +31,12 @@ class TestOracleServiceIntegration:
         with (
             patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_service,
             patch(
-                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile",
+                new_callable=AsyncMock,
             ) as mock_get_profile,
             patch(
-                "backend.app.routers.oracle_universal.personality_service.fast_chat", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.personality_service.fast_chat",
+                new_callable=AsyncMock,
             ) as mock_fast_chat,
         ):
             # Setup mocks
@@ -66,10 +68,12 @@ class TestOracleServiceIntegration:
         """Test Oracle feedback flow"""
         with (
             patch(
-                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile",
+                new_callable=AsyncMock,
             ) as mock_get_profile,
             patch(
-                "backend.app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.store_feedback",
+                new_callable=AsyncMock,
             ) as mock_store,
         ):
             mock_get_profile.return_value = {"id": 1, "email": "test@example.com"}

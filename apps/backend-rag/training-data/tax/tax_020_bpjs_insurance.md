@@ -17,9 +17,9 @@
 
 ## Bali Zero 2025 Prices
 
-| Service | Price | Notes |
-|---------|-------|-------|
-| BPJS Health Insurance Registration | **IDR 2.500.000** | Per company, minimum 2 people |
+| Service                                | Price             | Notes                         |
+| -------------------------------------- | ----------------- | ----------------------------- |
+| BPJS Health Insurance Registration     | **IDR 2.500.000** | Per company, minimum 2 people |
 | BPJS Employment Insurance Registration | **IDR 1.500.000** | Per company, minimum 2 people |
 
 ---
@@ -27,12 +27,14 @@
 ## Who Needs BPJS?
 
 ### Mandatory for:
+
 - All KITAS holders (6+ months validity)
 - All PT PMA companies with employees
 - Directors listed in company structure
 - Indonesian employees
 
 ### KITAS Holders:
+
 - **Cannot extend KITAS** without BPJS payment proof
 - Required from first month of KITAS validity
 - Monthly premium based on salary class
@@ -42,6 +44,7 @@
 ## BPJS Kesehatan (Health Insurance)
 
 ### Coverage:
+
 - Hospital inpatient care
 - Outpatient consultations
 - Emergency treatment
@@ -50,13 +53,15 @@
 - Specialist referrals
 
 ### Class System:
-| Class | Room Type | Monthly Premium |
-|-------|-----------|-----------------|
-| Class 1 | Private room | IDR 150,000 |
-| Class 2 | Shared (2 beds) | IDR 100,000 |
-| Class 3 | Shared (4+ beds) | IDR 42,000 |
+
+| Class   | Room Type        | Monthly Premium |
+| ------- | ---------------- | --------------- |
+| Class 1 | Private room     | IDR 150,000     |
+| Class 2 | Shared (2 beds)  | IDR 100,000     |
+| Class 3 | Shared (4+ beds) | IDR 42,000      |
 
 ### How to Use:
+
 1. Visit **Puskesmas** (public health center) as first level
 2. Get referral to **RS** (hospital) for specialist
 3. Show BPJS card at registration
@@ -110,14 +115,17 @@
 ## Important Warnings
 
 **BPJS Mandatory Rule:**
+
 - Companies with 10+ employees OR payroll > IDR 1M/month MUST enroll
 - Failure to enroll = fines + cannot obtain government services
 
 **KITAS Extension:**
+
 - Immigration requires **BPJS payment proof** for KITAS extension
 - Cannot extend permit without valid BPJS status
 
 **Penalty for Late Payment:**
+
 - 2% fine per month
 - Services suspended after 1 month non-payment
 

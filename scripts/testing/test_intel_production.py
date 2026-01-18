@@ -11,7 +11,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import requests
 
@@ -34,10 +34,10 @@ class IntelRouterTester:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.session = requests.Session()
-        
+
         if api_key:
             self.session.headers.update({"Authorization": f"Bearer {api_key}"})
-        
+
         self.results = []
 
     def test_health(self) -> Dict:
@@ -47,7 +47,7 @@ class IntelRouterTester:
             start_time = time.time()
             response = self.session.get(f"{self.base_url}/health", timeout=10)
             duration = time.time() - start_time
-            
+
             result = {
                 "endpoint": "/health",
                 "status": "PASS" if response.status_code == 200 else "FAIL",
@@ -55,14 +55,14 @@ class IntelRouterTester:
                 "duration_ms": round(duration * 1000, 2),
                 "response": response.json() if response.status_code == 200 else None,
             }
-            
+
             if result["status"] == "PASS":
                 print(f"  {GREEN}✅ PASS{RESET} ({result['duration_ms']}ms)")
             else:
                 print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
-            
+
             return result
-            
+
         except Exception as e:
             print(f"  {RED}❌ ERROR: {e}{RESET}")
             return {
@@ -76,9 +76,11 @@ class IntelRouterTester:
         print(f"{BLUE}Testing /api/intel/metrics...{RESET}")
         try:
             start_time = time.time()
-            response = self.session.get(f"{self.base_url}/api/intel/metrics", timeout=10)
+            response = self.session.get(
+                f"{self.base_url}/api/intel/metrics", timeout=10
+            )
             duration = time.time() - start_time
-            
+
             result = {
                 "endpoint": "/api/intel/metrics",
                 "status": "PASS" if response.status_code == 200 else "FAIL",
@@ -86,12 +88,14 @@ class IntelRouterTester:
                 "duration_ms": round(duration * 1000, 2),
                 "has_data": False,
             }
-            
+
             if response.status_code == 200:
                 data = response.json()
                 result["has_data"] = bool(data)
-                result["response_keys"] = list(data.keys()) if isinstance(data, dict) else []
-                
+                result["response_keys"] = (
+                    list(data.keys()) if isinstance(data, dict) else []
+                )
+
                 if result["status"] == "PASS":
                     print(f"  {GREEN}✅ PASS{RESET} ({result['duration_ms']}ms)")
                     print(f"    Keys: {', '.join(result['response_keys'][:5])}")
@@ -99,9 +103,9 @@ class IntelRouterTester:
                     print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
             else:
                 print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
-            
+
             return result
-            
+
         except Exception as e:
             print(f"  {RED}❌ ERROR: {e}{RESET}")
             return {
@@ -116,11 +120,10 @@ class IntelRouterTester:
         try:
             start_time = time.time()
             response = self.session.get(
-                f"{self.base_url}/api/intel/staging/pending?type=all",
-                timeout=10
+                f"{self.base_url}/api/intel/staging/pending?type=all", timeout=10
             )
             duration = time.time() - start_time
-            
+
             result = {
                 "endpoint": "/api/intel/staging/pending",
                 "status": "PASS" if response.status_code in [200, 401] else "FAIL",
@@ -128,7 +131,7 @@ class IntelRouterTester:
                 "duration_ms": round(duration * 1000, 2),
                 "requires_auth": response.status_code == 401,
             }
-            
+
             if response.status_code == 200:
                 data = response.json()
                 result["items_count"] = data.get("count", 0)
@@ -139,9 +142,9 @@ class IntelRouterTester:
                 print(f"  {YELLOW}⚠️  Requires authentication (expected){RESET}")
             else:
                 print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
-            
+
             return result
-            
+
         except Exception as e:
             print(f"  {RED}❌ ERROR: {e}{RESET}")
             return {
@@ -157,7 +160,7 @@ class IntelRouterTester:
             start_time = time.time()
             response = self.session.get(f"{self.base_url}/metrics", timeout=10)
             duration = time.time() - start_time
-            
+
             result = {
                 "endpoint": "/metrics",
                 "status": "PASS" if response.status_code == 200 else "FAIL",
@@ -165,7 +168,7 @@ class IntelRouterTester:
                 "duration_ms": round(duration * 1000, 2),
                 "intel_metrics_found": False,
             }
-            
+
             if response.status_code == 200:
                 metrics_text = response.text
                 intel_metrics = [
@@ -173,11 +176,11 @@ class IntelRouterTester:
                     "zantara_intel_classification",
                     "zantara_intel_scraper",
                 ]
-                
+
                 found_metrics = [m for m in intel_metrics if m in metrics_text]
                 result["intel_metrics_found"] = len(found_metrics) > 0
                 result["found_metrics"] = found_metrics
-                
+
                 if result["status"] == "PASS":
                     print(f"  {GREEN}✅ PASS{RESET} ({result['duration_ms']}ms)")
                     print(f"    Intel metrics found: {len(found_metrics)}")
@@ -185,9 +188,9 @@ class IntelRouterTester:
                     print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
             else:
                 print(f"  {RED}❌ FAIL{RESET} (Status: {result['status_code']})")
-            
+
             return result
-            
+
         except Exception as e:
             print(f"  {RED}❌ ERROR: {e}{RESET}")
             return {
@@ -198,9 +201,9 @@ class IntelRouterTester:
 
     def run_all_tests(self) -> Dict:
         """Run all tests."""
-        print(f"\n{BLUE}{'='*60}{RESET}")
+        print(f"\n{BLUE}{'=' * 60}{RESET}")
         print(f"{BLUE}Intel Router Production Tests{RESET}")
-        print(f"{BLUE}{'='*60}{RESET}")
+        print(f"{BLUE}{'=' * 60}{RESET}")
         print(f"Base URL: {self.base_url}")
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print()
@@ -226,9 +229,9 @@ class IntelRouterTester:
         failed = sum(1 for r in self.results if r.get("status") == "FAIL")
         errors = sum(1 for r in self.results if r.get("status") == "ERROR")
 
-        print(f"\n{BLUE}{'='*60}{RESET}")
+        print(f"\n{BLUE}{'=' * 60}{RESET}")
         print(f"{BLUE}Test Summary{RESET}")
-        print(f"{BLUE}{'='*60}{RESET}")
+        print(f"{BLUE}{'=' * 60}{RESET}")
         print(f"Total tests: {total_tests}")
         print(f"{GREEN}Passed: {passed}{RESET}")
         if failed > 0:
@@ -238,7 +241,9 @@ class IntelRouterTester:
         print()
 
         # Average response time
-        durations = [r.get("duration_ms", 0) for r in self.results if "duration_ms" in r]
+        durations = [
+            r.get("duration_ms", 0) for r in self.results if "duration_ms" in r
+        ]
         if durations:
             avg_duration = sum(durations) / len(durations)
             print(f"Average response time: {avg_duration:.2f}ms")
@@ -252,7 +257,9 @@ class IntelRouterTester:
                 "passed": passed,
                 "failed": failed,
                 "errors": errors,
-                "success_rate": round((passed / total_tests * 100), 2) if total_tests > 0 else 0,
+                "success_rate": round((passed / total_tests * 100), 2)
+                if total_tests > 0
+                else 0,
             },
             "results": self.results,
         }
@@ -263,22 +270,26 @@ class IntelRouterTester:
 def main():
     """Main test function."""
     import os
-    
+
     base_url = os.getenv("INTEL_API_URL", BASE_URL)
     api_key = os.getenv("INTEL_API_KEY", API_KEY)
-    
+
     tester = IntelRouterTester(base_url, api_key)
     report = tester.run_all_tests()
-    
+
     # Save report
-    report_file = Path(__file__).parent.parent / "monitoring" / "intel_production_test_report.json"
+    report_file = (
+        Path(__file__).parent.parent
+        / "monitoring"
+        / "intel_production_test_report.json"
+    )
     report_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(report_file, "w") as f:
         json.dump(report, f, indent=2)
-    
+
     print(f"{BLUE}Report saved to: {report_file}{RESET}\n")
-    
+
     # Exit code based on results
     if report["summary"]["failed"] > 0 or report["summary"]["errors"] > 0:
         return 1

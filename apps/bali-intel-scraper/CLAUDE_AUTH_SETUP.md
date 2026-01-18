@@ -19,6 +19,7 @@ claude setup-token
 ```
 
 Segui le istruzioni sullo schermo per completare l'autenticazione con:
+
 - Email: `antonellosiano@gmail.com`
 - Password: `Balizeroai1987`
 
@@ -27,12 +28,15 @@ Segui le istruzioni sullo schermo per completare l'autenticazione con:
 Se hai già autenticato il CLI localmente, puoi copiare la directory `~/.claude` su Fly.io:
 
 ### Step 1: Crea volume
+
 ```bash
 fly volumes create claude_config --size 1 --region sin -a bali-intel-scraper
 ```
 
 ### Step 2: Monta volume in fly.toml
+
 Aggiungi a `fly.toml`:
+
 ```toml
 [[mounts]]
   source = "claude_config"
@@ -40,6 +44,7 @@ Aggiungi a `fly.toml`:
 ```
 
 ### Step 3: Copia configurazione locale
+
 ```bash
 # Connettiti via SSH
 fly ssh console -a bali-intel-scraper

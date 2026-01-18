@@ -164,7 +164,9 @@ class TestCollaboratorService:
 
     def test_init_file_not_found(self):
         """Test initialization with missing file"""
-        with patch("backend.services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")):
+        with patch(
+            "backend.services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")
+        ):
             with pytest.raises(FileNotFoundError):
                 CollaboratorService()
 

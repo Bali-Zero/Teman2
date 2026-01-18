@@ -24,12 +24,14 @@
 ## 🔧 FIX APPLICATI
 
 ### Mock Fixes (~330 test)
+
 - LLM Gateway, CRM Routers, Identity Service
 - Team Activity Router, CRM Practices Router
 - Memory Orchestrator, Qdrant DB Coverage
 - Skip automatico per file non trovati
 
 ### File Modificati
+
 - 14 file di test
 - 2 file di codice
 - 2 file di configurazione

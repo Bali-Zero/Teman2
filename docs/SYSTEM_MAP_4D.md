@@ -1,6 +1,6 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2026-01-16 | Auto-generated Report**
+**Generated: 2026-01-18 | Auto-generated Report**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
@@ -11,32 +11,33 @@
 > **See full strategy:** [OMNICHANNEL_STRATEGY.md](../docs/architecture/OMNICHANNEL_STRATEGY.md)
 
 ### The Hydrated Frontend
+
 The interface is liquid; intelligence is solid.
 
-| Channel | Tech | Role |
-|---------|------|------|
-| **Web Command Deck** | Next.js 16 | Deep Work, Admin, Analytics |
-| **Telegram** | Bot API + Scraper | Notifications, Approvals, Quick Tasks |
-| **WhatsApp** | Business API | Client Communication, Docs |
-| **Voice** | ElevenLabs + VAPI | Concierge, Hands-free |
-| **Social** | Instagram/X APIs | Brand Presence, Listening |
+| Channel              | Tech              | Role                                  |
+| -------------------- | ----------------- | ------------------------------------- |
+| **Web Command Deck** | Next.js 16        | Deep Work, Admin, Analytics           |
+| **Telegram**         | Bot API + Scraper | Notifications, Approvals, Quick Tasks |
+| **WhatsApp**         | Business API      | Client Communication, Docs            |
+| **Voice**            | ElevenLabs + VAPI | Concierge, Hands-free                 |
+| **Social**           | Instagram/X APIs  | Brand Presence, Listening             |
 
 ---
 
 ## QUICK STATS (Numeri Reali Verificati)
 
-| Metrica | Valore | Note |
-|---------|--------|------|
-| **Documenti Qdrant** | **53,757** | 4 collezioni attive |
-| **API Endpoints** | **378** | 58 file router |
-| **Servizi Python** | **192** | /backend/services/ |
-| **File Test** | **404** | unit/api/integration |
-| **Test Cases** | **~6348+** | pytest coverage |
-| **Tabelle Database** | **66** | PostgreSQL |
-| **Migrazioni** | **32** | Applicate |
-| **Variabili Ambiente** | **63+** | Across all apps |
-| **File Documentazione** | **64+** | Markdown |
-| **Fonti Intel** | **630+** | 12 categorie |
+| Metrica                 | Valore     | Note                 |
+| ----------------------- | ---------- | -------------------- |
+| **Documenti Qdrant**    | **53,757** | 4 collezioni attive  |
+| **API Endpoints**       | **387**    | 60 file router       |
+| **Servizi Python**      | **200**    | /backend/services/   |
+| **File Test**           | **271**    | unit/api/integration |
+| **Test Cases**          | **~4170+** | pytest coverage      |
+| **Tabelle Database**    | **24**     | PostgreSQL           |
+| **Migrazioni**          | **49**     | Applicate            |
+| **Variabili Ambiente**  | **63+**    | Across all apps      |
+| **File Documentazione** | **89+**    | Markdown             |
+| **Fonti Intel**         | **630+**   | 12 categorie         |
 
 ---
 
@@ -47,14 +48,14 @@ nuzantara/
 ├── apps/
 │   ├── backend-rag/          ← CORE (Python FastAPI)
 │   │   ├── backend/
-│   │   │   ├── app/routers/  (58 files, 378+ endpoints)
-│   │   │   ├── services/     (192 Python files)
+│   │   │   ├── app/routers/  (60 files, 387+ endpoints)
+│   │   │   ├── services/     (200 Python files)
 │   │   │   ├── core/         (embeddings, chunking, cache)
 │   │   │   ├── middleware/   (auth, rate-limit, tracing)
 │   │   │   ├── llm/          (Gemini, OpenRouter, Jaksel)
 │   │   │   ├── agents/       (36 Tier-1 autonomous)
-│   │   │   └── migrations/   (32 migrations, 66 tables)
-│   │   └── tests/            (404 files, ~6348+ test cases)
+│   │   │   └── migrations/   (49 migrations, 24 tables)
+│   │   └── tests/            (271 files, ~4170+ test cases)
 │   │
 │   ├── mouth/                ← FRONTEND (Next.js 16 + React 19)
 │   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)
@@ -66,7 +67,7 @@ nuzantara/
 │   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)
 │   └── kb/                   ← SATELLITE: legal scraping utilities
 │
-├── docs/                     (64+ markdown files)
+├── docs/                     (89+ markdown files)
 ├── config/                   (prometheus, alertmanager)
 ├── scripts/                  (deploy, test, analysis tools)
 └── docker-compose.yml        (local dev stack)
@@ -74,27 +75,27 @@ nuzantara/
 
 ### Servizi Backend Principali
 
-| Categoria | File | Funzione |
-|-----------|------|----------|
-| **RAG** | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct |
-| **Search** | search_service.py | Hybrid search (dense + BM25) |
-| **Memory** | memory_orchestrator.py | Facts + Episodic + Collective |
-| **CRM** | auto_crm_service.py | Estrazione automatica entità |
-| **LLM** | llm_gateway.py | Multi-provider (Gemini, OpenRouter) |
-| **Sessions** | session_service.py | Gestione sessioni utente |
-| **Conversations** | conversation_service.py | Storico conversazioni |
+| Categoria         | File                        | Funzione                            |
+| ----------------- | --------------------------- | ----------------------------------- |
+| **RAG**           | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct  |
+| **Search**        | search_service.py           | Hybrid search (dense + BM25)        |
+| **Memory**        | memory_orchestrator.py      | Facts + Episodic + Collective       |
+| **CRM**           | auto_crm_service.py         | Estrazione automatica entità        |
+| **LLM**           | llm_gateway.py              | Multi-provider (Gemini, OpenRouter) |
+| **Sessions**      | session_service.py          | Gestione sessioni utente            |
+| **Conversations** | conversation_service.py     | Storico conversazioni               |
 
 ### Frontend Pages
 
-| Route | Componente | Funzione |
-|-------|------------|----------|
-| `/login` | LoginPage | Autenticazione |
-| `/chat` | ChatPage | Interfaccia conversazionale |
-| `/dashboard` | CommandDeck | Analytics e overview |
-| `/clienti` | ClientiPage | Gestione clienti CRM |
-| `/pratiche` | PratichePage | Gestione pratiche |
-| `/whatsapp` | WhatsAppPage | Integrazione WhatsApp |
-| `/knowledge` | KnowledgePage | Knowledge base browser |
+| Route        | Componente    | Funzione                    |
+| ------------ | ------------- | --------------------------- |
+| `/login`     | LoginPage     | Autenticazione              |
+| `/chat`      | ChatPage      | Interfaccia conversazionale |
+| `/dashboard` | CommandDeck   | Analytics e overview        |
+| `/clienti`   | ClientiPage   | Gestione clienti CRM        |
+| `/pratiche`  | PratichePage  | Gestione pratiche           |
+| `/whatsapp`  | WhatsAppPage  | Integrazione WhatsApp       |
+| `/knowledge` | KnowledgePage | Knowledge base browser      |
 
 ---
 
@@ -141,7 +142,7 @@ USER REQUEST
 │                     DATA LAYER                               │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
 │  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │
-│  │  66 tables│  │ 53,757 docs│  │   cache   │               │
+│  │  24 tables│  │ 53,757 docs│  │   cache   │               │
 │  └───────────┘  └───────────┘  └───────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -241,6 +242,7 @@ REQUEST
 ```
 
 **Public Endpoints (no auth):**
+
 - `/health`, `/health/ready`, `/health/live`
 - `/api/auth/login`, `/api/auth/team/login`
 - `/api/auth/csrf-token`
@@ -261,6 +263,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **Keyword Routing:**
+
 - **visa_oracle**: visa, immigration, imigrasi, passport, KITAS, stay permit
 - **legal_unified**: company, incorporation, notary, contract, pasal, ayat
 - **tax_genius**: tax, pajak, calculation, tarif, PPh, PPN
@@ -302,6 +305,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **CRM Endpoints (24 total):**
+
 - `/api/crm/clients/*` - CRUD clienti (8 endpoints)
 - `/api/crm/practices/*` - CRUD pratiche (8 endpoints)
 - `/api/crm/interactions/*` - Log interazioni (7 endpoints)
@@ -356,28 +360,30 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 ```
 
 **Embedding Config:**
+
 - Provider: OpenAI
 - Model: text-embedding-3-small
 - Dimensions: 1536
 - Distance: Cosine
 
 **BM25 Sparse Config:**
+
 - Vocab Size: 30,000
 - k1: 1.5 (term frequency saturation)
 - b: 0.75 (length normalization)
 - Hybrid Weights: Dense=0.7, Sparse=0.3
 
-### Database Tables (66)
+### Database Tables (24)
 
-| Categoria | Tabelle |
-|-----------|---------|
-| **CRM** | clients, practices, interactions, practice_documents |
-| **Memory** | memory_facts, collective_memories, episodic_memories |
-| **Knowledge Graph** | kg_entities, kg_edges |
-| **Sessions** | sessions, conversations, conversation_messages |
-| **Auth** | team_members, user_stats |
-| **RAG** | parent_documents, document_chunks, golden_answers |
-| **System** | migrations, query_clusters, cultural_knowledge |
+| Categoria           | Tabelle                                              |
+| ------------------- | ---------------------------------------------------- |
+| **CRM**             | clients, practices, interactions, practice_documents |
+| **Memory**          | memory_facts, collective_memories, episodic_memories |
+| **Knowledge Graph** | kg_entities, kg_edges                                |
+| **Sessions**        | sessions, conversations, conversation_messages       |
+| **Auth**            | team_members, user_stats                             |
+| **RAG**             | parent_documents, document_chunks, golden_answers    |
+| **System**          | migrations, query_clusters, cultural_knowledge       |
 
 ### Test Coverage
 
@@ -386,27 +392,27 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                    TEST PYRAMID                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  UNITTESTS (134 files)                                     │
+│  UNITTESTS (90 files)                                     │
 │  ├─ Services: RAG, Memory, CRM, Sessions                   │
 │  ├─ Core: Embeddings, Chunking, Cache, Plugins             │
 │  ├─ Middleware: Auth, Rate Limiting                        │
 │  └─ Coverage target: 95%                                   │
 │                                                             │
-│  API TESTS (134 files)                                      │
+│  API TESTS (90 files)                                      │
 │  ├─ Auth endpoints                                          │
 │  ├─ CRM endpoints                                           │
 │  ├─ Agentic RAG endpoints                                   │
 │  └─ TestClient with mocked services                        │
 │                                                             │
-│  INTEGRATION TESTS (134 files)                              │
+│  INTEGRATION TESTS (90 files)                              │
 │  ├─ Real PostgreSQL (testcontainers)                       │
 │  ├─ Real Qdrant                                            │
 │  ├─ Real Redis                                             │
 │  └─ End-to-end workflows                                   │
 │                                                             │
-│  Conftest Files: 4 (1,619 lines total)                     │
-│  Total Test Files: 404                                      │
-│  Total Test Cases: ~6348+                                  │
+│  Conftest Files: 1 (1,619 lines total)                     │
+│  Total Test Files: 271                                      │
+│  Total Test Cases: ~4170+                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -438,29 +444,29 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 
 ### Environment Variables (63+)
 
-| Categoria | Variabili Chiave |
-|-----------|------------------|
-| **Database** | DATABASE_URL, REDIS_URL, QDRANT_URL |
-| **AI** | OPENAI_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY |
-| **Auth** | JWT_SECRET_KEY, API_KEYS, ADMIN_API_KEY |
-| **Services** | RAG_BACKEND_URL, JAKSEL_API_URL |
-| **Features** | ENABLE_BM25, ENABLE_COLLECTIVE_MEMORY |
+| Categoria    | Variabili Chiave                                  |
+| ------------ | ------------------------------------------------- |
+| **Database** | DATABASE_URL, REDIS_URL, QDRANT_URL               |
+| **AI**       | OPENAI_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY |
+| **Auth**     | JWT_SECRET_KEY, API_KEYS, ADMIN_API_KEY           |
+| **Services** | RAG_BACKEND_URL, JAKSEL_API_URL                   |
+| **Features** | ENABLE_BM25, ENABLE_COLLECTIVE_MEMORY             |
 
 ---
 
 ## KEY INTEGRATION POINTS
 
-| From | To | Method | Purpose |
-|------|-----|--------|---------|
-| Frontend | Backend | REST API + SSE | Chat, CRM, Auth |
-| Backend | Qdrant | HTTP + gRPC | Vector search |
-| Backend | PostgreSQL | asyncpg | Metadata, CRM |
-| Backend | Redis | aioredis | Cache, sessions |
-| Backend | Gemini | REST API | LLM generation |
-| Backend | OpenRouter | REST API | LLM fallback |
-| Intel Scraper | Backend | REST API | Document indexing |
-| Zantara Media | Backend | REST API | Content sync |
-| Evaluator | Backend | REST API | RAG quality |
+| From          | To         | Method         | Purpose           |
+| ------------- | ---------- | -------------- | ----------------- |
+| Frontend      | Backend    | REST API + SSE | Chat, CRM, Auth   |
+| Backend       | Qdrant     | HTTP + gRPC    | Vector search     |
+| Backend       | PostgreSQL | asyncpg        | Metadata, CRM     |
+| Backend       | Redis      | aioredis       | Cache, sessions   |
+| Backend       | Gemini     | REST API       | LLM generation    |
+| Backend       | OpenRouter | REST API       | LLM fallback      |
+| Intel Scraper | Backend    | REST API       | Document indexing |
+| Zantara Media | Backend    | REST API       | Content sync      |
+| Evaluator     | Backend    | REST API       | RAG quality       |
 
 ---
 
@@ -497,19 +503,19 @@ python apps/core/scribe.py           # Regenerate docs
 
 ## FILE LOCATIONS
 
-| Cosa | Path |
-|------|------|
-| Backend entry | `apps/backend-rag/backend/app/main_cloud.py` |
-| Config | `apps/backend-rag/backend/app/core/config.py` |
-| Routers | `apps/backend-rag/backend/app/routers/` |
-| Services | `apps/backend-rag/backend/services/` |
-| Migrations | `apps/backend-rag/backend/migrations/` |
-| Frontend pages | `apps/mouth/src/app/` |
-| Frontend components | `apps/mouth/src/components/` |
-| Documentation | `docs/` |
-| Operations runbooks | `docs/operations/` |
+| Cosa                | Path                                          |
+| ------------------- | --------------------------------------------- |
+| Backend entry       | `apps/backend-rag/backend/app/main_cloud.py`  |
+| Config              | `apps/backend-rag/backend/app/core/config.py` |
+| Routers             | `apps/backend-rag/backend/app/routers/`       |
+| Services            | `apps/backend-rag/backend/services/`          |
+| Migrations          | `apps/backend-rag/backend/migrations/`        |
+| Frontend pages      | `apps/mouth/src/app/`                         |
+| Frontend components | `apps/mouth/src/components/`                  |
+| Documentation       | `docs/`                                       |
+| Operations runbooks | `docs/operations/`                            |
 
 ---
 
-*System Map Complete. 36 agents synthesized. 4 dimensions mapped.*
-*Generated: 2026-01-16*
+_System Map Complete. 36 agents synthesized. 4 dimensions mapped._
+_Generated: 2026-01-18_

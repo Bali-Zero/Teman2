@@ -36,7 +36,12 @@ export class KnowledgeActivityApi {
   /**
    * Log a page view
    */
-  logView(resourceType: string, resourceId?: string, resourceTitle?: string, resourceCategory?: string): void {
+  logView(
+    resourceType: string,
+    resourceId?: string,
+    resourceTitle?: string,
+    resourceCategory?: string
+  ): void {
     this.logActivity({
       action_type: 'view',
       resource_type: resourceType,
@@ -49,7 +54,12 @@ export class KnowledgeActivityApi {
   /**
    * Log a download
    */
-  logDownload(resourceType: string, resourceId?: string, resourceTitle?: string, resourceCategory?: string): void {
+  logDownload(
+    resourceType: string,
+    resourceId?: string,
+    resourceTitle?: string,
+    resourceCategory?: string
+  ): void {
     this.logActivity({
       action_type: 'download',
       resource_type: resourceType,

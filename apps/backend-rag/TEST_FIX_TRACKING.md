@@ -18,14 +18,17 @@
 ### FASE 1: Pulizia
 
 #### Test Obsoleti Identificati
+
 - [ ] `tests/unit/core/plugins/test_init_exports.py` - Verificare se modulo esiste ancora
 - [ ] `tests/unit/llm/test_zantara_ai_client_coverage.py` - Verificare se modulo esiste ancora
 - [ ] Altri da identificare...
 
 #### Test con API Cambiate
+
 - [ ] Da identificare...
 
 #### Test con Bug Evidenti
+
 - [ ] Da identificare...
 
 ---

@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -116,9 +106,7 @@
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.autoscalingPolicies.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The \"resource name\" of the region or location, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.create, the resource name has the following format: projects/{project_id}/regions/{region} For projects.locations.autoscalingPolicies.create, the resource name has the following format: projects/{project_id}/locations/{location}",
@@ -135,18 +123,14 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes an autoscaling policy. It is an error to delete an autoscaling policy that is in use by one or more clusters.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.locations.autoscalingPolicies.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.delete, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies.delete, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -160,18 +144,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Retrieves autoscaling policy.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.autoscalingPolicies.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.get, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies.get, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -185,18 +165,14 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.autoscalingPolicies.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -216,18 +192,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists autoscaling policies in the project.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.autoscalingPolicies.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "Optional. The maximum number of results to return in each response. Must be less than or equal to 1000. Defaults to 100.",
@@ -252,18 +224,14 @@
                   "response": {
                     "$ref": "ListAutoscalingPoliciesResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.autoscalingPolicies.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -280,18 +248,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.autoscalingPolicies.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -308,18 +272,14 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "update": {
                   "description": "Updates (replaces) autoscaling policy.Disabled check for update_mask, because all updates will be full replacements.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "PUT",
                   "id": "dataproc.projects.locations.autoscalingPolicies.update",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Output only. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -336,9 +296,7 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -349,9 +307,7 @@
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.workflowTemplates.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The resource name of the region or location, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates,create, the resource name of the region has the following format: projects/{project_id}/regions/{region} For projects.locations.workflowTemplates.create, the resource name of the location has the following format: projects/{project_id}/locations/{location}",
@@ -368,18 +324,14 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a workflow template. It does not cancel in-progress workflows.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.locations.workflowTemplates.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.delete, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -399,18 +351,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Retrieves the latest workflow template.Can retrieve previously instantiated template by specifying optional version parameter.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.workflowTemplates.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.get, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.get, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -430,18 +378,14 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.workflowTemplates.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -461,18 +405,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "instantiate": {
                   "description": "Instantiates a template and begins execution.The returned Operation can be used to track execution of workflow by polling operations.get. The Operation will complete when entire workflow is finished.The running workflow can be aborted via operations.cancel. This will cause any inflight jobs to be cancelled and workflow-owned clusters to be deleted.The Operation.metadata will be WorkflowMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1beta2#workflowmetadata). Also see Using WorkflowMetadata (https://cloud.google.com/dataproc/docs/concepts/workflows/debugging#using_workflowmetadata).On successful completion, Operation.response will be Empty.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}:instantiate",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.workflowTemplates.instantiate",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -489,18 +429,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "instantiateInline": {
                   "description": "Instantiates a template and begins execution.This method is equivalent to executing the sequence CreateWorkflowTemplate, InstantiateWorkflowTemplate, DeleteWorkflowTemplate.The returned Operation can be used to track execution of workflow by polling operations.get. The Operation will complete when entire workflow is finished.The running workflow can be aborted via operations.cancel. This will cause any inflight jobs to be cancelled and workflow-owned clusters to be deleted.The Operation.metadata will be WorkflowMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1#workflowmetadata). Also see Using WorkflowMetadata (https://cloud.google.com/dataproc/docs/concepts/workflows/debugging#using_workflowmetadata).On successful completion, Operation.response will be Empty.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates:instantiateInline",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.workflowTemplates.instantiateInline",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "instanceId": {
                       "description": "Deprecated. Please use request_id field instead.",
@@ -527,18 +463,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists workflows that match the specified filter in the request.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.locations.workflowTemplates.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "Optional. The maximum number of results to return in each response.",
@@ -563,18 +495,14 @@
                   "response": {
                     "$ref": "ListWorkflowTemplatesResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.workflowTemplates.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -591,18 +519,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.locations.workflowTemplates.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -619,18 +543,14 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "update": {
                   "description": "Updates (replaces) workflow template. The updated template must contain version that matches the current server version.",
                   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "PUT",
                   "id": "dataproc.projects.locations.workflowTemplates.update",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Output only. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -647,9 +567,7 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             }
@@ -664,9 +582,7 @@
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.autoscalingPolicies.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The \"resource name\" of the region or location, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.create, the resource name has the following format: projects/{project_id}/regions/{region} For projects.locations.autoscalingPolicies.create, the resource name has the following format: projects/{project_id}/locations/{location}",
@@ -683,18 +599,14 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes an autoscaling policy. It is an error to delete an autoscaling policy that is in use by one or more clusters.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.regions.autoscalingPolicies.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.delete, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies.delete, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -708,18 +620,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Retrieves autoscaling policy.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.autoscalingPolicies.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies.get, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies.get, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -733,18 +641,14 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.autoscalingPolicies.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -764,18 +668,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists autoscaling policies in the project.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.autoscalingPolicies.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "Optional. The maximum number of results to return in each response. Must be less than or equal to 1000. Defaults to 100.",
@@ -800,18 +700,14 @@
                   "response": {
                     "$ref": "ListAutoscalingPoliciesResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.autoscalingPolicies.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -828,18 +724,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.autoscalingPolicies.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -856,18 +748,14 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "update": {
                   "description": "Updates (replaces) autoscaling policy.Disabled check for update_mask, because all updates will be full replacements.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/autoscalingPolicies/{autoscalingPoliciesId}",
                   "httpMethod": "PUT",
                   "id": "dataproc.projects.regions.autoscalingPolicies.update",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Output only. The \"resource name\" of the autoscaling policy, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.autoscalingPolicies, the resource name of the policy has the following format: projects/{project_id}/regions/{region}/autoscalingPolicies/{policy_id} For projects.locations.autoscalingPolicies, the resource name of the policy has the following format: projects/{project_id}/locations/{location}/autoscalingPolicies/{policy_id}",
@@ -884,9 +772,7 @@
                   "response": {
                     "$ref": "AutoscalingPolicy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -897,10 +783,7 @@
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.create",
-                  "parameterOrder": [
-                    "projectId",
-                    "region"
-                  ],
+                  "parameterOrder": ["projectId", "region"],
                   "parameters": {
                     "projectId": {
                       "description": "Required. The ID of the Google Cloud Platform project that the cluster belongs to.",
@@ -927,20 +810,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a cluster in a project. The returned Operation.metadata will be ClusterOperationMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1beta2#clusteroperationmetadata).",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.regions.clusters.delete",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -975,20 +852,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "diagnose": {
                   "description": "Gets cluster diagnostic information. The returned Operation.metadata will be ClusterOperationMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1beta2#clusteroperationmetadata). After the operation completes, Operation.response contains Empty.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}:diagnose",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.diagnose",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -1016,20 +887,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Gets the resource representation for a cluster in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.clusters.get",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -1054,18 +919,14 @@
                   "response": {
                     "$ref": "Cluster"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/clusters/{clustersId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.clusters.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -1085,20 +946,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "injectCredentials": {
                   "description": "Inject encrypted credentials into all of the VMs in a cluster.The target cluster must be a personal auth cluster assigned to the user who is issuing the RPC.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/clusters/{clustersId}:injectCredentials",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.injectCredentials",
-                  "parameterOrder": [
-                    "project",
-                    "region",
-                    "cluster"
-                  ],
+                  "parameterOrder": ["project", "region", "cluster"],
                   "parameters": {
                     "cluster": {
                       "description": "Required. The cluster, in the form clusters/.",
@@ -1129,19 +984,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists all regions/{region}/clusters in a project alphabetically.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.clusters.list",
-                  "parameterOrder": [
-                    "projectId",
-                    "region"
-                  ],
+                  "parameterOrder": ["projectId", "region"],
                   "parameters": {
                     "filter": {
                       "description": "Optional. A filter constraining the clusters to list. Filters are case-sensitive and have the following syntax:field = value AND field = value ...where field is one of status.state, clusterName, or labels.[KEY], and [KEY] is a label key. value can be * to match all values. status.state can be one of the following: ACTIVE, INACTIVE, CREATING, RUNNING, ERROR, DELETING, or UPDATING. ACTIVE contains the CREATING, UPDATING, and RUNNING states. INACTIVE contains the DELETING and ERROR states. clusterName is the name of the cluster provided at creation time. Only the logical AND operator is supported; space-separated items are treated as having an implicit AND operator.Example filter:status.state = ACTIVE AND clusterName = mycluster AND labels.env = staging AND labels.starred = *",
@@ -1176,20 +1026,14 @@
                   "response": {
                     "$ref": "ListClustersResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "patch": {
                   "description": "Updates a cluster in a project. The returned Operation.metadata will be ClusterOperationMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1beta2#clusteroperationmetadata). The cluster must be in a RUNNING state or an error is returned.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}",
                   "httpMethod": "PATCH",
                   "id": "dataproc.projects.regions.clusters.patch",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -1234,18 +1078,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/clusters/{clustersId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -1262,20 +1102,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "start": {
                   "description": "Starts a cluster in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}:start",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.start",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -1303,20 +1137,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "stop": {
                   "description": "Stops a cluster in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/clusters/{clusterName}:stop",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.stop",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "clusterName"
-                  ],
+                  "parameterOrder": ["projectId", "region", "clusterName"],
                   "parameters": {
                     "clusterName": {
                       "description": "Required. The cluster name.",
@@ -1344,18 +1172,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/clusters/{clustersId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.clusters.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -1372,9 +1196,7 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -1385,11 +1207,7 @@
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs/{jobId}:cancel",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.jobs.cancel",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "jobId"
-                  ],
+                  "parameterOrder": ["projectId", "region", "jobId"],
                   "parameters": {
                     "jobId": {
                       "description": "Required. The job ID.",
@@ -1417,20 +1235,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes the job from the project. If the job is active, the delete fails, and the response returns FAILED_PRECONDITION.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs/{jobId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.regions.jobs.delete",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "jobId"
-                  ],
+                  "parameterOrder": ["projectId", "region", "jobId"],
                   "parameters": {
                     "jobId": {
                       "description": "Required. The job ID.",
@@ -1455,20 +1267,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Gets the resource representation for a job in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs/{jobId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.jobs.get",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "jobId"
-                  ],
+                  "parameterOrder": ["projectId", "region", "jobId"],
                   "parameters": {
                     "jobId": {
                       "description": "Required. The job ID.",
@@ -1493,18 +1299,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/jobs/{jobsId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.jobs.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -1524,19 +1326,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists regions/{region}/jobs in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.jobs.list",
-                  "parameterOrder": [
-                    "projectId",
-                    "region"
-                  ],
+                  "parameterOrder": ["projectId", "region"],
                   "parameters": {
                     "clusterName": {
                       "description": "Optional. If set, the returned jobs list includes only jobs that were submitted to the named cluster.",
@@ -1550,11 +1347,7 @@
                     },
                     "jobStateMatcher": {
                       "description": "Optional. Specifies enumerated categories of jobs to list. (default = match ALL jobs).If filter is provided, jobStateMatcher will be ignored.",
-                      "enum": [
-                        "ALL",
-                        "ACTIVE",
-                        "NON_ACTIVE"
-                      ],
+                      "enum": ["ALL", "ACTIVE", "NON_ACTIVE"],
                       "enumDescriptions": [
                         "Match all jobs, regardless of state.",
                         "Only match jobs in non-terminal states: PENDING, RUNNING, or CANCEL_PENDING.",
@@ -1591,20 +1384,14 @@
                   "response": {
                     "$ref": "ListJobsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "patch": {
                   "description": "Updates a job in a project.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs/{jobId}",
                   "httpMethod": "PATCH",
                   "id": "dataproc.projects.regions.jobs.patch",
-                  "parameterOrder": [
-                    "projectId",
-                    "region",
-                    "jobId"
-                  ],
+                  "parameterOrder": ["projectId", "region", "jobId"],
                   "parameters": {
                     "jobId": {
                       "description": "Required. The job ID.",
@@ -1638,18 +1425,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/jobs/{jobsId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.jobs.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -1666,19 +1449,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "submit": {
                   "description": "Submits a job to a cluster.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs:submit",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.jobs.submit",
-                  "parameterOrder": [
-                    "projectId",
-                    "region"
-                  ],
+                  "parameterOrder": ["projectId", "region"],
                   "parameters": {
                     "projectId": {
                       "description": "Required. The ID of the Google Cloud Platform project that the job belongs to.",
@@ -1700,19 +1478,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "submitAsOperation": {
                   "description": "Submits job to a cluster.",
                   "flatPath": "v1beta2/projects/{projectId}/regions/{region}/jobs:submitAsOperation",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.jobs.submitAsOperation",
-                  "parameterOrder": [
-                    "projectId",
-                    "region"
-                  ],
+                  "parameterOrder": ["projectId", "region"],
                   "parameters": {
                     "projectId": {
                       "description": "Required. The ID of the Google Cloud Platform project that the job belongs to.",
@@ -1734,18 +1507,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/jobs/{jobsId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.jobs.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -1762,9 +1531,7 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -1775,9 +1542,7 @@
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}:cancel",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.operations.cancel",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource to be cancelled.",
@@ -1791,18 +1556,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a long-running operation. This method indicates that the client is no longer interested in the operation result. It does not cancel the operation. If the server doesn't support this method, it returns google.rpc.Code.UNIMPLEMENTED.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.regions.operations.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource to be deleted.",
@@ -1816,18 +1577,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Gets the latest state of a long-running operation. Clients can use this method to poll the operation result at intervals as recommended by the API service.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.operations.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource.",
@@ -1841,18 +1598,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.operations.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -1872,18 +1625,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists operations that match the specified filter in the request. If the server doesn't support this method, it returns UNIMPLEMENTED.NOTE: the name binding allows API services to override the binding to use different resource name schemes, such as users/*/operations. To override the binding, API services can add a binding such as \"/v1/{name=users/*}/operations\" to their service configuration. For backwards compatibility, the default name includes the operations collection id, however overriding users must ensure the name binding is the parent resource, without the operations collection id.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.operations.list",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "filter": {
                       "description": "The standard list filter.",
@@ -1913,18 +1662,14 @@
                   "response": {
                     "$ref": "ListOperationsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.operations.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -1941,18 +1686,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/operations/{operationsId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.operations.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -1969,9 +1710,7 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -1982,9 +1721,7 @@
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.workflowTemplates.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The resource name of the region or location, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates,create, the resource name of the region has the following format: projects/{project_id}/regions/{region} For projects.locations.workflowTemplates.create, the resource name of the location has the following format: projects/{project_id}/locations/{location}",
@@ -2001,18 +1738,14 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a workflow template. It does not cancel in-progress workflows.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "DELETE",
                   "id": "dataproc.projects.regions.workflowTemplates.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.delete, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -2032,18 +1765,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Retrieves the latest workflow template.Can retrieve previously instantiated template by specifying optional version parameter.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.workflowTemplates.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.get, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.get, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -2063,18 +1792,14 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "getIamPolicy": {
                   "description": "Gets the access control policy for a resource. Returns an empty policy if the resource exists and does not have a policy set.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.workflowTemplates.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The policy format version to be returned.Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected.Requests for policies with any conditional bindings must specify version 3. Policies without any conditional bindings may specify any valid value or leave the field unset.To learn which resources support conditions in their IAM policies, see the IAM documentation (https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -2094,18 +1819,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "instantiate": {
                   "description": "Instantiates a template and begins execution.The returned Operation can be used to track execution of workflow by polling operations.get. The Operation will complete when entire workflow is finished.The running workflow can be aborted via operations.cancel. This will cause any inflight jobs to be cancelled and workflow-owned clusters to be deleted.The Operation.metadata will be WorkflowMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1beta2#workflowmetadata). Also see Using WorkflowMetadata (https://cloud.google.com/dataproc/docs/concepts/workflows/debugging#using_workflowmetadata).On successful completion, Operation.response will be Empty.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}:instantiate",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.workflowTemplates.instantiate",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates.instantiate, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -2122,18 +1843,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "instantiateInline": {
                   "description": "Instantiates a template and begins execution.This method is equivalent to executing the sequence CreateWorkflowTemplate, InstantiateWorkflowTemplate, DeleteWorkflowTemplate.The returned Operation can be used to track execution of workflow by polling operations.get. The Operation will complete when entire workflow is finished.The running workflow can be aborted via operations.cancel. This will cause any inflight jobs to be cancelled and workflow-owned clusters to be deleted.The Operation.metadata will be WorkflowMetadata (https://cloud.google.com/dataproc/docs/reference/rpc/google.cloud.dataproc.v1#workflowmetadata). Also see Using WorkflowMetadata (https://cloud.google.com/dataproc/docs/concepts/workflows/debugging#using_workflowmetadata).On successful completion, Operation.response will be Empty.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates:instantiateInline",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.workflowTemplates.instantiateInline",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "instanceId": {
                       "description": "Deprecated. Please use request_id field instead.",
@@ -2160,18 +1877,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists workflows that match the specified filter in the request.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates",
                   "httpMethod": "GET",
                   "id": "dataproc.projects.regions.workflowTemplates.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "Optional. The maximum number of results to return in each response.",
@@ -2196,18 +1909,14 @@
                   "response": {
                     "$ref": "ListWorkflowTemplatesResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy.Can return NOT_FOUND, INVALID_ARGUMENT, and PERMISSION_DENIED errors.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.workflowTemplates.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See the operation documentation for the appropriate value for this field.",
@@ -2224,18 +1933,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a NOT_FOUND error.Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "dataproc.projects.regions.workflowTemplates.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See the operation documentation for the appropriate value for this field.",
@@ -2252,18 +1957,14 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "update": {
                   "description": "Updates (replaces) workflow template. The updated template must contain version that matches the current server version.",
                   "flatPath": "v1beta2/projects/{projectsId}/regions/{regionsId}/workflowTemplates/{workflowTemplatesId}",
                   "httpMethod": "PUT",
                   "id": "dataproc.projects.regions.workflowTemplates.update",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Output only. The resource name of the workflow template, as described in https://cloud.google.com/apis/design/resource_names. For projects.regions.workflowTemplates, the resource name of the template has the following format: projects/{project_id}/regions/{region}/workflowTemplates/{template_id} For projects.locations.workflowTemplates, the resource name of the template has the following format: projects/{project_id}/locations/{location}/workflowTemplates/{template_id}",
@@ -2280,9 +1981,7 @@
                   "response": {
                     "$ref": "WorkflowTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             }
@@ -2650,12 +2349,7 @@
         },
         "state": {
           "description": "Output only. A message containing the operation state.",
-          "enum": [
-            "UNKNOWN",
-            "PENDING",
-            "RUNNING",
-            "DONE"
-          ],
+          "enum": ["UNKNOWN", "PENDING", "RUNNING", "DONE"],
           "enumDescriptions": [
             "Unused.",
             "The operation has been created.",
@@ -2736,11 +2430,7 @@
         },
         "substate": {
           "description": "Output only. Additional state information that includes status reported by the agent.",
-          "enum": [
-            "UNSPECIFIED",
-            "UNHEALTHY",
-            "STALE_STATUS"
-          ],
+          "enum": ["UNSPECIFIED", "UNHEALTHY", "STALE_STATUS"],
           "enumDescriptions": [
             "The cluster substate is unknown.",
             "The cluster is known to be in an unhealthy state (for example, critical daemons are not running or HDFS capacity is exhausted).Applies to RUNNING state.",
@@ -3151,11 +2841,7 @@
         },
         "preemptibility": {
           "description": "Optional. Specifies the preemptibility of the instance group.The default value for master and worker groups is NON_PREEMPTIBLE. This default cannot be changed.The default value for secondary instances is PREEMPTIBLE.",
-          "enum": [
-            "PREEMPTIBILITY_UNSPECIFIED",
-            "NON_PREEMPTIBLE",
-            "PREEMPTIBLE"
-          ],
+          "enum": ["PREEMPTIBILITY_UNSPECIFIED", "NON_PREEMPTIBLE", "PREEMPTIBLE"],
           "enumDescriptions": [
             "Preemptibility is unspecified, the system will choose the appropriate setting for each instance group.",
             "Instances are non-preemptible.This option is allowed for all instance groups and is the only valid value for Master and Worker instance groups.",
@@ -3445,12 +3131,7 @@
         },
         "substate": {
           "description": "Output only. Additional state information, which includes status reported by the agent.",
-          "enum": [
-            "UNSPECIFIED",
-            "SUBMITTED",
-            "QUEUED",
-            "STALE_STATUS"
-          ],
+          "enum": ["UNSPECIFIED", "SUBMITTED", "QUEUED", "STALE_STATUS"],
           "enumDescriptions": [
             "The job substate is unknown.",
             "The Job is submitted to the agent.Applies to RUNNING state.",
@@ -4095,12 +3776,7 @@
       "properties": {
         "consumeReservationType": {
           "description": "Optional. Type of reservation to consume",
-          "enum": [
-            "TYPE_UNSPECIFIED",
-            "NO_RESERVATION",
-            "ANY_RESERVATION",
-            "SPECIFIC_RESERVATION"
-          ],
+          "enum": ["TYPE_UNSPECIFIED", "NO_RESERVATION", "ANY_RESERVATION", "SPECIFIC_RESERVATION"],
           "enumDescriptions": [
             "",
             "Do not consume from any allocated capacity.",
@@ -4581,12 +4257,7 @@
         },
         "state": {
           "description": "Output only. The workflow state.",
-          "enum": [
-            "UNKNOWN",
-            "PENDING",
-            "RUNNING",
-            "DONE"
-          ],
+          "enum": ["UNKNOWN", "PENDING", "RUNNING", "DONE"],
           "enumDescriptions": [
             "Unused.",
             "The operation has been created.",

@@ -4,8 +4,9 @@ Unit tests for OrchestratorMetricsManager
 Test coverage target: >95%
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.orchestrator_metrics import OrchestratorMetricsManager
@@ -135,7 +136,9 @@ def test_record_rag_metrics(metrics_manager):
     state = MagicMock()
     state.evidence_score = 0.85
 
-    with patch("backend.services.rag.agentic.orchestrator_metrics.metrics_collector") as mock_metrics:
+    with patch(
+        "backend.services.rag.agentic.orchestrator_metrics.metrics_collector"
+    ) as mock_metrics:
         metrics_manager.record_rag_metrics(
             state=state,
             collections_used={"test_collection"},
@@ -157,7 +160,9 @@ def test_record_token_usage(metrics_manager):
     token_usage.total_tokens = 150
     token_usage.cost_usd = 0.001
 
-    with patch("backend.services.rag.agentic.orchestrator_metrics.metrics_collector") as mock_metrics:
+    with patch(
+        "backend.services.rag.agentic.orchestrator_metrics.metrics_collector"
+    ) as mock_metrics:
         metrics_manager.record_token_usage(
             model_used="gemini-flash", token_usage=token_usage, endpoint="chat"
         )

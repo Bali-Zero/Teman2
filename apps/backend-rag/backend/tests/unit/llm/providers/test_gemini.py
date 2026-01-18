@@ -5,6 +5,7 @@ Tests for GeminiProvider
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from backend.llm.base import LLMMessage
 from backend.llm.providers.gemini import GeminiProvider
 

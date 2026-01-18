@@ -4,8 +4,6 @@ Comprehensive tests for clean_image_generation_response
 Tests all patterns from frontend implementation to ensure parity.
 """
 
-import pytest
-
 from backend.app.routers.agentic_rag import clean_image_generation_response
 
 

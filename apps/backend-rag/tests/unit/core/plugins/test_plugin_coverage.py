@@ -1,4 +1,6 @@
 import pytest
+from pydantic import ValidationError
+
 from backend.core.plugins.plugin import (
     Plugin,
     PluginCategory,
@@ -6,7 +8,6 @@ from backend.core.plugins.plugin import (
     PluginMetadata,
     PluginOutput,
 )
-from pydantic import ValidationError
 
 
 class ExampleInput(PluginInput):

@@ -14,10 +14,13 @@ Questa guida documenta problemi comuni di deployment e le loro soluzioni, basata
 ## 🚨 Caso Studio: Build Failures dopo Cleanup (16 Gen 2026)
 
 ### **Problema**
+
 6 deployment consecutivi falliti su Vercel dopo commit di cleanup che eliminava file "legacy".
 
 ### **Root Cause**
+
 File eliminati contenevano **implementazioni complete** ancora utilizzate dal codice:
+
 - `enhanced-analytics.tsx` (270 righe)
 - `dashboard-metrics.ts` (303 righe)
 - `QueryProvider.tsx` (65 righe)
@@ -26,6 +29,7 @@ File eliminati contenevano **implementazioni complete** ancora utilizzate dal co
 ### **Errori Osservati**
 
 #### 1. Missing Module Exports
+
 ```
 Export enhancedAnalytics doesn't exist in target module
 Module not found: Can't resolve '@/lib/enhanced-analytics'
@@ -34,6 +38,7 @@ Module not found: Can't resolve '@/lib/enhanced-analytics'
 **Causa:** Stub creati con solo 2-4 metodi vs 12+ metodi richiesti nell'originale.
 
 #### 2. QueryClient Not Set
+
 ```
 Error: No QueryClient set, use QueryClientProvider to set one
 Export encountered an error on /chat/page
@@ -42,6 +47,7 @@ Export encountered an error on /chat/page
 **Causa:** QueryProvider stub vuoto senza inizializzazione di `QueryClient`.
 
 #### 3. Module Build Errors
+
 ```
 at <unknown> (./apps/mouth/src/components/email/index.ts:1:1)
 Module not found: Can't resolve './ZohoConnectBanner'
@@ -54,6 +60,7 @@ Module not found: Can't resolve './ZohoConnectBanner'
 ## ✅ Soluzioni Applicate
 
 ### 1. **Verifica Implementazione Originale**
+
 ```bash
 # Prima di creare stub, controllare contenuto originale
 git show HEAD^:path/to/file.ts | head -100
@@ -63,6 +70,7 @@ git show HEAD^:path/to/file.ts | grep "export"
 ```
 
 ### 2. **Ripristino File Completi**
+
 ```bash
 # Ripristinare file originale invece di stub
 git show HEAD^:path/to/file.ts > path/to/file.ts
@@ -71,6 +79,7 @@ git commit -m "fix: restore original implementation"
 ```
 
 ### 3. **Test Build Locale**
+
 ```bash
 # SEMPRE testare build prima di push
 cd apps/mouth
@@ -87,14 +96,16 @@ npm run build
 ### ⚠️ **REGOLA 1: Non Creare Stub Senza Verificare Originale**
 
 **MAI fare:**
+
 ```typescript
 // ❌ SBAGLIATO - stub minimo senza verificare originale
 export const analytics = {
-  track: () => {}
+  track: () => {},
 };
 ```
 
 **SEMPRE fare:**
+
 ```bash
 # ✅ CORRETTO - verificare implementazione originale prima
 git show HEAD^:apps/mouth/src/lib/analytics.ts | wc -l
@@ -113,6 +124,7 @@ git show HEAD^:apps/mouth/src/lib/analytics.ts | wc -l
 ```
 
 **Tempo perso senza test locale:**
+
 - 6 deployment falliti × 3 minuti = 18 minuti
 - Debug errori deployment = 30 minuti
 - **Totale: 48 minuti vs 2 minuti di test locale**
@@ -133,11 +145,13 @@ done
 ### ⚠️ **REGOLA 4: Monorepo - Controllare OGNI Progetto Vercel**
 
 **Setup Nuzantara:**
+
 - Root workspace: `nuzantara` (solo config, non deployabile)
 - App frontend: `mouth` (apps/mouth/) → **deployment principale**
 - App backend: `backend-rag` (apps/backend-rag/)
 
 **Verificare deployment:**
+
 ```bash
 # Ogni app ha deployment separato
 apps/mouth/.vercel/project.json          → Vercel project "mouth"
@@ -150,6 +164,7 @@ apps/backend-rag/.vercel/project.json    → Vercel project "backend-rag"
 ## 🔧 Workflow Deployment Corretto
 
 ### Pre-Push Checklist
+
 ```bash
 # 1. Test build locale
 cd apps/mouth && npm run build
@@ -165,6 +180,7 @@ git push origin main
 ```
 
 ### Monitoraggio Deployment
+
 ```
 1. Push su GitHub
    ↓
@@ -182,11 +198,13 @@ git push origin main
 ### Errore: Module Not Found
 
 **Sintomo:**
+
 ```
 Module not found: Can't resolve '@/lib/xxx'
 ```
 
 **Debug:**
+
 ```bash
 # 1. Verificare file esiste
 ls -la apps/mouth/src/lib/xxx.*
@@ -201,11 +219,13 @@ cat apps/mouth/src/lib/xxx.ts | grep export
 ### Errore: Missing Exports
 
 **Sintomo:**
+
 ```
 Export 'functionName' doesn't exist in target module
 ```
 
 **Debug:**
+
 ```bash
 # Confrontare exports stub vs originale
 git show HEAD^:path/file.ts | grep "export function"    # Originale
@@ -218,11 +238,13 @@ git show HEAD^:path/file.ts > path/file.ts
 ### Errore: QueryClient Not Set
 
 **Sintomo:**
+
 ```
 Error: No QueryClient set, use QueryClientProvider to set one
 ```
 
 **Soluzione:**
+
 ```typescript
 // QueryProvider DEVE inizializzare QueryClient
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -244,16 +266,19 @@ function getQueryClient() {
 ## 📊 Metriche Deployment
 
 ### Target
+
 - ✅ Build success rate: >95%
 - ✅ Deploy time: <3 minuti
 - ✅ Zero-downtime deployments
 
 ### Incidente 16 Gen 2026
+
 - ❌ 6 deployment falliti consecutivi
 - ⏱️ 48 minuti downtime
 - ✅ Risolto con ripristino file originali
 
 ### Miglioramenti Post-Incidente
+
 1. ✅ Pre-commit hook: test build locale
 2. ✅ Documentazione troubleshooting
 3. ✅ Checklist cleanup file
@@ -272,6 +297,7 @@ function getQueryClient() {
 ## 📞 Escalation
 
 **Se deployment continua a fallire dopo 2 tentativi:**
+
 1. Verificare Vercel status page
 2. Rollback all'ultimo commit funzionante
 3. Investigare in locale con `npm run build`

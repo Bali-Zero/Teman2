@@ -9,6 +9,7 @@
 **Problema originale**: Gemini CLI cercava di caricare tutto il PDF (6M+ tokens) → errore context window.
 
 **Soluzione**: Ogni patch processa **pagina per pagina**:
+
 - Estrae UNA pagina alla volta come immagine PNG
 - Invia SOLO quella singola immagine a Gemini CLI
 - NON carica mai tutto il PDF in memoria
@@ -71,11 +72,13 @@ resoconto_<pdf_name>_<timestamp>.json
 ## ⚙️ Configurazione Agenti
 
 Ogni patch usa:
+
 - **3 agenti paralleli** per PDF
 - **50 pagine minime** per agente
 - **2 secondi di delay** tra pagine
 
 Modifica le costanti all'inizio di ogni script se necessario:
+
 - `NUM_AGENTS = 3`
 - `MIN_PAGES_PER_AGENT = 50`
 - `DELAY_BETWEEN_PAGES = 2`
@@ -87,4 +90,3 @@ Modifica le costanti all'inizio di ogni script se necessario:
 3. ✅ **Processamento parallelo** - 3 agenti per PDF
 4. ✅ **Resoconti dettagliati** - JSON completo per ogni pagina
 5. ✅ **Indipendenti** - ogni patch può girare separatamente
-

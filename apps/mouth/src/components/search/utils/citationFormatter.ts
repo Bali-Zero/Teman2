@@ -22,4 +22,3 @@ export function buildSourcesBlock(results: KnowledgeSearchResult[]): string {
   });
   return lines.join('\n');
 }
-

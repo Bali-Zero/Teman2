@@ -6,8 +6,6 @@ Useful for bulk migration and automatic organization of client documents.
 """
 
 import re
-from typing import Dict, Optional
-
 
 # Comprehensive keyword mapping for document categorization
 CATEGORIZATION_RULES = {
@@ -63,7 +61,7 @@ CATEGORIZATION_RULES = {
 }
 
 
-def auto_categorize_document(filename: str) -> Dict[str, any]:
+def auto_categorize_document(filename: str) -> dict[str, any]:
     """
     Automatically categorize a document based on its filename.
 
@@ -166,7 +164,7 @@ def _calculate_confidence(filename: str, matched_keyword: str) -> float:
     return 0.6
 
 
-def _fallback_categorization() -> Dict[str, any]:
+def _fallback_categorization() -> dict[str, any]:
     """
     Return fallback categorization for unknown documents.
 
@@ -181,7 +179,7 @@ def _fallback_categorization() -> Dict[str, any]:
     }
 
 
-def extract_expiry_date(filename: str) -> Optional[str]:
+def extract_expiry_date(filename: str) -> str | None:
     """
     Extract expiry date from filename if present.
 
@@ -242,7 +240,7 @@ def extract_expiry_date(filename: str) -> Optional[str]:
     return None
 
 
-def extract_person_name(filename: str) -> Optional[str]:
+def extract_person_name(filename: str) -> str | None:
     """
     Extract person name from filename.
 
@@ -265,7 +263,9 @@ def extract_person_name(filename: str) -> Optional[str]:
         return None
 
     # Remove extension
-    name_without_ext = re.sub(r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE)
+    name_without_ext = re.sub(
+        r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE
+    )
 
     # Split by underscore
     parts = name_without_ext.split("_")
@@ -289,7 +289,7 @@ def extract_person_name(filename: str) -> Optional[str]:
 
 
 # Batch categorization for efficiency
-def auto_categorize_documents_batch(filenames: list[str]) -> list[Dict[str, any]]:
+def auto_categorize_documents_batch(filenames: list[str]) -> list[dict[str, any]]:
     """
     Batch categorize multiple documents.
 
@@ -306,7 +306,7 @@ def auto_categorize_documents_batch(filenames: list[str]) -> list[Dict[str, any]
 
 
 # Statistics helper
-def get_categorization_stats(categorizations: list[Dict[str, any]]) -> Dict[str, any]:
+def get_categorization_stats(categorizations: list[dict[str, any]]) -> dict[str, any]:
     """
     Get statistics about a batch of categorizations.
 

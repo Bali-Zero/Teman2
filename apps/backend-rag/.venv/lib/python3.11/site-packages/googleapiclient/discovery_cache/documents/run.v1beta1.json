@@ -37,12 +37,8 @@
                   "description": "The name of the CustomResourceDefinition being retrieved. If needed, replace {namespace_id} with the project ID."
                 }
               },
-              "parameterOrder": [
-                "name"
-              ],
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ],
+              "parameterOrder": ["name"],
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
               "response": {
                 "$ref": "CustomResourceDefinition"
               }
@@ -101,9 +97,7 @@
               "location": "query"
             }
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ],
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
           "response": {
             "$ref": "ListCustomResourceDefinitionsResponse"
           },
@@ -119,15 +113,11 @@
               "methods": {
                 "list": {
                   "path": "v1beta1/{+parent}/customresourcedefinitions",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/customresourcedefinitions",
                   "id": "run.projects.locations.customresourcedefinitions.list",
                   "description": "Rpc to list custom resource definitions.",
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ],
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
                   "httpMethod": "GET",
                   "response": {
                     "$ref": "ListCustomResourceDefinitionsResponse"
@@ -188,13 +178,9 @@
                     }
                   },
                   "path": "v1beta1/{+name}",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "description": "Rpc to get information about a CustomResourceDefinition.",
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ],
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
                   "response": {
                     "$ref": "CustomResourceDefinition"
                   },
@@ -237,14 +223,8 @@
     },
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -261,11 +241,7 @@
     "alt": {
       "default": "json",
       "location": "query",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "description": "Data format for response.",
       "enumDescriptions": [
         "Responses with Content-Type of application/json",

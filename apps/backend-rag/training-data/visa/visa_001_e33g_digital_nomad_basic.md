@@ -15,6 +15,7 @@ Halo, saya dengar ada visa khusus untuk digital nomad di Indonesia sekarang. Say
 Halo! Betul, Indonesia sudah punya **E33G Digital Nomad KITAS** sejak 2022.
 
 Visa ini perfect untuk kamu yang:
+
 - Kerja remote untuk perusahaan luar negeri
 - Gaji ditransfer ke rekening luar negeri
 - Tidak ada employer di Indonesia
@@ -29,6 +30,7 @@ Wah bagus! Syaratnya apa saja?
 Syarat E33G cukup simple:
 
 **Dokumen:**
+
 - Paspor valid min 18 bulan
 - Foto background merah 4x6
 - Proof of remote work (employment letter atau contract)
@@ -37,10 +39,12 @@ Syarat E33G cukup simple:
 - CV singkat
 
 **Financial:**
+
 - Income minimum **USD 5,000/bulan** (USD 60,000/tahun)
 - Atau tunjukkan bank balance yang cukup
 
 **Tidak perlu:**
+
 - Sponsor dari perusahaan Indonesia
 - IMTA/RPTKA work permit
 - Kantor di Indonesia
@@ -52,6 +56,7 @@ Income $5,000/bulan (USD 60,000/tahun) itu gross atau net?
 **Net** (setelah pajak).
 
 Bisa ditunjukkan lewat:
+
 - Bank statement 3 bulan (transfer salary rutin)
 - Employment contract dengan salary clause
 - Client invoices (kalau freelance)
@@ -63,6 +68,7 @@ Saya freelance, ada beberapa client. Gimana cara buktiin income?
 
 **Consultant:**
 Untuk freelancer, bisa pakai:
+
 - **Invoices + payment confirmations** dari semua client (total USD 5,000+/bulan)
 - **Bank statement** menunjukkan incoming transfers
 - **Upwork/Fiverr earnings** (screenshot + bank transfer proof)
@@ -75,17 +81,20 @@ Berapa biaya E33G?
 
 **Consultant:**
 **Harga E33G:**
+
 - **Offshore** (apply dari luar Indonesia): **Rp 7.500.000 - Rp 8.500.000**
 - **Onshore** (apply dari dalam Indonesia): **Rp 9.000.000 - Rp 10.000.000**
 - **Extension** (setelah 1 tahun): **Rp 10.000.000**
 
 Biaya termasuk:
+
 - VOA/Evisa processing
 - KITAS card
 - Immigration fees
 - Agent service
 
 **Timeline:**
+
 - Offshore: **7-14 hari kerja**
 - Onshore: **3-4 minggu**
 
@@ -111,6 +120,7 @@ Saya harus ke embassy dulu nggak?
 **Tidak perlu!**
 
 E33G fully online via **evisa system**. Tidak perlu:
+
 - ❌ Appointment ke Indonesian Embassy
 - ❌ Interview
 - ❌ Submit paspor fisik
@@ -124,6 +134,7 @@ Kalau sudah di Indonesia, saya bebas kerja remote kan?
 **Ya, 100% legal.**
 
 Dengan E33G, kamu boleh:
+
 - ✅ Kerja remote untuk client/employer luar negeri
 - ✅ Attend meeting online
 - ✅ Kerja dari cafe, coworking, rumah
@@ -131,6 +142,7 @@ Dengan E33G, kamu boleh:
 - ✅ Multiple entry (keluar masuk berkali-kali)
 
 **Tapi TIDAK boleh:**
+
 - ❌ Kerja untuk perusahaan Indonesia
 - ❌ Terima gaji dari Indonesian company
 - ❌ Buka kantor/recruit staff lokal
@@ -143,15 +155,18 @@ Kalau client saya ada yang dari Indonesia gimana?
 **Grey area.**
 
 Technically:
+
 - Invoice ke Indonesian client = providing services locally
 - Bisa dianggap "bekerja di Indonesia"
 - Seharusnya butuh business visa atau PT PMA + work permit
 
 **Praktisnya:**
+
 - Kalau client mayoritas luar + income transferred to foreign account = **low risk**
 - Kalau dominan client Indonesia = **better use C2 Business Visa** atau setup PT PMA
 
 **Rekomendasi:**
+
 - Maintain majority (70%+) of clients luar negeri
 - Invoice dari foreign entity (if possible)
 - Keep Indonesian clients minimal
@@ -163,6 +178,7 @@ Saya baca ada "30-day stay limit" — itu artinya apa?
 Ini **misconception** umum.
 
 **Correct info:**
+
 - E33G validity: **1 tahun** (extendable)
 - Multiple entry: **bebas keluar masuk**
 - **Tidak ada** batas 30 hari per stay
@@ -219,6 +235,7 @@ Kalau saya lupa SKTT reporting, ada sanksi?
 - **Risk deportasi** (extreme case, kalau bertahun-tahun ignore)
 
 **Rekomendasi:**
+
 - Set reminder setiap tahun
 - Report on time untuk avoid hassle
 
@@ -229,6 +246,7 @@ E33G bisa diperpanjang kan setelah 1 tahun?
 **Bisa!**
 
 **Extension Process:**
+
 - **30 hari sebelum** KITAS expire, start process
 - Submit dokumen baru:
   - Medical checkup (baru)
@@ -260,6 +278,7 @@ Kalau nanti saya mau switch ke visa lain gimana?
    - Apply for permanent stay
 
 **Conversion process:**
+
 - Submit new visa application
 - Cancel E33G (automatic saat approval baru)
 - No need to leave Indonesia
@@ -271,17 +290,20 @@ Soal pajak — saya nggak perlu bayar tax Indonesia kan?
 **Correct, mostly.**
 
 **Tax exemption** kalau:
+
 - ✅ Income dari **luar negeri**
 - ✅ Transferred ke **rekening luar negeri**
 - ✅ Tidak ada **employer Indonesia**
 - ✅ Tinggal di Indonesia **< 183 hari/tahun**
 
 **Tapi perlu tax resident** kalau:
+
 - ❌ Stay **> 183 hari** dalam 12 bulan
 - ❌ Establish "permanent home" di Indonesia
 - ❌ Ada income dari Indonesian sources
 
 **Rekomendasi:**
+
 - Track days in Indonesia
 - Consult tax advisor jika stay long-term (> 6 bulan/tahun)
 - Declare income di home country
@@ -295,11 +317,13 @@ Saya dari US, ada tax treaty US-Indonesia?
 **US-Indonesia Tax Treaty** exist, prevents double taxation.
 
 **Key points:**
+
 - US citizens taxed on worldwide income (di US)
 - Indonesia taxed if tax resident (183+ days)
 - Treaty allows **tax credit** → bayar di satu negara, credit di yang lain
 
 **Rekomendasi:**
+
 - File US taxes (FBAR, Form 2555 if applicable)
 - Track days in Indonesia
 - Consult CPA familiar with expat taxation
@@ -311,6 +335,7 @@ Kalau saya mau apply, apa langkah pertama?
 **Step-by-Step:**
 
 **1. Prepare Documents (2-3 hari):**
+
 - Scan paspor (full pages)
 - Foto 4x6 background merah
 - Employment letter/contract
@@ -319,20 +344,24 @@ Kalau saya mau apply, apa langkah pertama?
 - CV singkat
 
 **2. Submit ke Bali Zero (1 hari):**
+
 - Email docs@balizero.com atau WhatsApp
 - Kita review & confirm kelengkapan
 
 **3. Apply Evisa (7-14 hari):**
+
 - Kita submit ke sistem imigrasi
 - Track application status
 - Dapat approval (PDF)
 
 **4. Fly to Indonesia:**
+
 - Tunjukkan evisa di immigration counter
 - Fingerprint + photo
 - Masuk Indonesia
 
 **5. KITAS Delivery (~7-10 hari):**
+
 - Physical card dikirim ke alamat
 
 **Total time:** ~2-3 minggu dari mulai sampai landed di Indonesia.
@@ -344,12 +373,14 @@ Oke, biaya totalnya berapa dari awal sampai selesai?
 **Total Cost Breakdown:**
 
 **Mandatory:**
+
 - **E33G Offshore:** Rp 7.500.000 - 8.500.000
 - **Travel Insurance:** ~Rp 1.500.000/tahun
 - **Medical Checkup:** Rp 500.000 (kalau belum punya)
 - **Total:** ~**Rp 9.500.000 - 10.500.000**
 
 **Optional:**
+
 - **Coworking membership:** Rp 1.500.000 - 3.000.000/bulan (Canggu/Ubud)
 - **Accommodation:** Rp 5.000.000 - 15.000.000/bulan (villa long-term)
 
@@ -365,6 +396,7 @@ Kirim semua dokumen ke:
 **Subject:** E33G Digital Nomad Application - [Nama Kamu]
 
 **Attach:**
+
 1. Passport scan
 2. Photo 4x6 red background
 3. Employment letter/contract
@@ -387,6 +419,7 @@ Hi, I heard there's a special visa for digital nomads in Indonesia now. I work r
 Hi! Yes, Indonesia has the **E33G Digital Nomad KITAS** since 2022.
 
 This visa is perfect for those who:
+
 - Work remotely for foreign companies
 - Receive salary transferred to foreign accounts
 - Have no employer in Indonesia
@@ -401,6 +434,7 @@ Great! What are the requirements?
 E33G requirements are quite simple:
 
 **Documents:**
+
 - Valid passport (min 18 months)
 - Photo 4x6 red background
 - Proof of remote work (employment letter or contract)
@@ -409,10 +443,12 @@ E33G requirements are quite simple:
 - Brief CV
 
 **Financial:**
+
 - Minimum income **USD 5,000/month** (USD 60,000/year)
 - Or demonstrate sufficient bank balance
 
 **Not Required:**
+
 - Sponsorship from Indonesian company
 - IMTA/RPTKA work permit
 - Office in Indonesia
@@ -424,6 +460,7 @@ Is the $5,000/month (USD 60,000/year) income gross or net?
 **Net** (after tax).
 
 Can be shown through:
+
 - 3-month bank statements (regular salary transfers)
 - Employment contract with salary clause
 - Client invoices (if freelance)
@@ -435,6 +472,7 @@ I'm a freelancer with multiple clients. How do I prove income?
 
 **Consultant:**
 For freelancers, you can use:
+
 - **Invoices + payment confirmations** from all clients (total USD 5,000+/month (USD 60,000/year))
 - **Bank statements** showing incoming transfers
 - **Upwork/Fiverr earnings** (screenshots + bank transfer proof)
@@ -447,17 +485,20 @@ How much does E33G cost?
 
 **Consultant:**
 **E33G Pricing:**
+
 - **Offshore** (apply from outside Indonesia): **IDR 7,500,000 - 8,500,000**
 - **Onshore** (apply from within Indonesia): **IDR 9,000,000 - 10,000,000**
 - **Extension** (after 1 year): **IDR 10,000,000**
 
 Cost includes:
+
 - VOA/Evisa processing
 - KITAS card
 - Immigration fees
 - Agent service
 
 **Timeline:**
+
 - Offshore: **7-14 working days**
 - Onshore: **3-4 weeks**
 
@@ -483,6 +524,7 @@ Do I need to visit the embassy first?
 **No need!**
 
 E33G is fully online via **evisa system**. No need for:
+
 - ❌ Appointment at Indonesian Embassy
 - ❌ Interview
 - ❌ Submit physical passport
@@ -496,6 +538,7 @@ Once in Indonesia, I'm free to work remotely, right?
 **Yes, 100% legal.**
 
 With E33G, you can:
+
 - ✅ Work remotely for foreign clients/employers
 - ✅ Attend online meetings
 - ✅ Work from cafes, coworking, home
@@ -503,6 +546,7 @@ With E33G, you can:
 - ✅ Multiple entry (exit/enter multiple times)
 
 **But NOT allowed:**
+
 - ❌ Work for Indonesian companies
 - ❌ Receive salary from Indonesian companies
 - ❌ Open office/recruit local staff
@@ -515,15 +559,18 @@ What if some of my clients are from Indonesia?
 **Grey area.**
 
 Technically:
+
 - Invoicing Indonesian clients = providing services locally
 - Could be considered "working in Indonesia"
 - Should use business visa or PT PMA + work permit
 
 **In practice:**
+
 - If clients are mostly foreign + income transferred to foreign account = **low risk**
 - If predominantly Indonesian clients = **better use C2 Business Visa** or setup PT PMA
 
 **Recommendation:**
+
 - Maintain majority (70%+) of clients abroad
 - Invoice from foreign entity (if possible)
 - Keep Indonesian clients minimal
@@ -535,6 +582,7 @@ I read about a "30-day stay limit" — what does that mean?
 This is a **common misconception**.
 
 **Correct info:**
+
 - E33G validity: **1 year** (extendable)
 - Multiple entry: **free to exit/enter**
 - **No** 30-day limit per stay
@@ -591,6 +639,7 @@ If I forget SKTT reporting, are there penalties?
 - **Risk of deportation** (extreme case, if ignored for years)
 
 **Recommendation:**
+
 - Set annual reminder
 - Report on time to avoid hassle
 
@@ -601,6 +650,7 @@ E33G can be extended after 1 year, right?
 **Yes!**
 
 **Extension Process:**
+
 - **30 days before** KITAS expires, start process
 - Submit new documents:
   - Medical checkup (new)
@@ -632,6 +682,7 @@ If I want to switch to another visa later, how?
    - Apply for permanent stay
 
 **Conversion process:**
+
 - Submit new visa application
 - Cancel E33G (automatic upon new approval)
 - No need to leave Indonesia
@@ -643,17 +694,20 @@ About taxes — I don't need to pay Indonesian tax, right?
 **Correct, mostly.**
 
 **Tax exemption** if:
+
 - ✅ Income from **abroad**
 - ✅ Transferred to **foreign account**
 - ✅ No **Indonesian employer**
 - ✅ Stay in Indonesia **< 183 days/year**
 
 **But become tax resident** if:
+
 - ❌ Stay **> 183 days** within 12 months
 - ❌ Establish "permanent home" in Indonesia
 - ❌ Have income from Indonesian sources
 
 **Recommendation:**
+
 - Track days in Indonesia
 - Consult tax advisor if staying long-term (> 6 months/year)
 - Declare income in home country
@@ -667,11 +721,13 @@ I'm from the US, is there a US-Indonesia tax treaty?
 **US-Indonesia Tax Treaty** exists, prevents double taxation.
 
 **Key points:**
+
 - US citizens taxed on worldwide income (in US)
 - Indonesia taxes if tax resident (183+ days)
 - Treaty allows **tax credit** → pay in one country, credit in the other
 
 **Recommendation:**
+
 - File US taxes (FBAR, Form 2555 if applicable)
 - Track days in Indonesia
 - Consult CPA familiar with expat taxation
@@ -683,6 +739,7 @@ If I want to apply, what's the first step?
 **Step-by-Step:**
 
 **1. Prepare Documents (2-3 days):**
+
 - Scan passport (full pages)
 - Photo 4x6 red background
 - Employment letter/contract
@@ -691,20 +748,24 @@ If I want to apply, what's the first step?
 - Brief CV
 
 **2. Submit to Bali Zero (1 day):**
+
 - Email docs@balizero.com or WhatsApp
 - We review & confirm completeness
 
 **3. Apply Evisa (7-14 days):**
+
 - We submit to immigration system
 - Track application status
 - Receive approval (PDF)
 
 **4. Fly to Indonesia:**
+
 - Show evisa at immigration counter
 - Fingerprint + photo
 - Enter Indonesia
 
 **5. KITAS Delivery (~7-10 days):**
+
 - Physical card sent to address
 
 **Total time:** ~2-3 weeks from start to landed in Indonesia.
@@ -716,12 +777,14 @@ Okay, what's the total cost from start to finish?
 **Total Cost Breakdown:**
 
 **Mandatory:**
+
 - **E33G Offshore:** IDR 7,500,000 - 8,500,000
 - **Travel Insurance:** ~IDR 1,500,000/year
 - **Medical Checkup:** IDR 500,000 (if don't have)
 - **Total:** ~**IDR 9,500,000 - 10,500,000**
 
 **Optional:**
+
 - **Coworking membership:** IDR 1,500,000 - 3,000,000/month (Canggu/Ubud)
 - **Accommodation:** IDR 5,000,000 - 15,000,000/month (long-term villa)
 
@@ -737,6 +800,7 @@ Send all documents to:
 **Subject:** E33G Digital Nomad Application - [Your Name]
 
 **Attach:**
+
 1. Passport scan
 2. Photo 4x6 red background
 3. Employment letter/contract
@@ -759,6 +823,7 @@ Mas, aku krungu ono visa khusus kanggo digital nomad neng Indonesia saiki. Aku k
 Halo! Bener, Indonesia wis duwe **E33G Digital Nomad KITAS** wiwit 2022.
 
 Visa iki perfect kanggo sampeyan sing:
+
 - Kerjo remote kanggo perusahaan luar negeri
 - Gaji ditransfer neng rekening luar negeri
 - Ora ono employer neng Indonesia
@@ -773,6 +838,7 @@ Wah apik! Syarate opo wae?
 Syarat E33G cukup simple:
 
 **Dokumen:**
+
 - Paspor valid min 18 sasi
 - Foto background abang 4x6
 - Proof of remote work (employment letter utowo contract)
@@ -781,10 +847,12 @@ Syarat E33G cukup simple:
 - CV singkat
 
 **Financial:**
+
 - Income minimum **USD 5,000/sasi (USD 60,000/taun)**
 - Utowo tunjukke bank balance sing cukup
 
 **Ora butuh:**
+
 - Sponsor soko perusahaan Indonesia
 - IMTA/RPTKA work permit
 - Kantor neng Indonesia
@@ -796,6 +864,7 @@ Income $5,000/sasi iku gross utowo net?
 **Net** (sakwise pajak).
 
 Iso ditunjukke lewat:
+
 - Bank statement 3 sasi (transfer salary rutin)
 - Employment contract karo salary clause
 - Client invoices (nek freelance)
@@ -807,6 +876,7 @@ Aku freelance, ono sawetara client. Piye carane buktiin income?
 
 **Consultant:**
 Kanggo freelancer, iso nganggo:
+
 - **Invoices + payment confirmations** soko kabeh client (total USD 5,000+/sasi (USD 60,000/taun))
 - **Bank statement** nunjukke incoming transfers
 - **Upwork/Fiverr earnings** (screenshot + bank transfer proof)
@@ -819,17 +889,20 @@ Piro biaya E33G?
 
 **Consultant:**
 **Rego E33G:**
+
 - **Offshore** (apply soko njaba Indonesia): **Rp 7.500.000 - Rp 8.500.000**
 - **Onshore** (apply soko dalam Indonesia): **Rp 9.000.000 - Rp 10.000.000**
 - **Extension** (sakwise 1 taun): **Rp 10.000.000**
 
 Biaya termasuk:
+
 - VOA/Evisa processing
 - KITAS card
 - Immigration fees
 - Agent service
 
 **Timeline:**
+
 - Offshore: **7-14 dino kerjo**
 - Onshore: **3-4 minggu**
 
@@ -855,6 +928,7 @@ Aku kudu neng embassy dhisik ora?
 **Ora perlu!**
 
 E33G fully online lewat **evisa system**. Ora perlu:
+
 - ❌ Appointment neng Indonesian Embassy
 - ❌ Interview
 - ❌ Submit paspor fisik
@@ -868,6 +942,7 @@ Nek wis neng Indonesia, aku bebas kerjo remote kan?
 **Iyo, 100% legal.**
 
 Karo E33G, sampeyan oleh:
+
 - ✅ Kerjo remote kanggo client/employer luar negeri
 - ✅ Attend meeting online
 - ✅ Kerjo soko cafe, coworking, omah
@@ -875,6 +950,7 @@ Karo E33G, sampeyan oleh:
 - ✅ Multiple entry (metu mlebu pirang-pirang kali)
 
 **Tapi ORA oleh:**
+
 - ❌ Kerjo kanggo perusahaan Indonesia
 - ❌ Nompo gaji soko Indonesian company
 - ❌ Buka kantor/recruit staff lokal
@@ -887,15 +963,18 @@ Nek client ku ono sing soko Indonesia piye?
 **Grey area.**
 
 Technically:
+
 - Invoice neng Indonesian client = providing services locally
 - Iso dianggep "kerjo neng Indonesia"
 - Kuduné butuh business visa utowo PT PMA + work permit
 
 **Praktisne:**
+
 - Nek client mayoritas luar + income transferred to foreign account = **low risk**
 - Nek dominan client Indonesia = **better use C2 Business Visa** utowo setup PT PMA
 
 **Rekomendasi:**
+
 - Maintain majority (70%+) client luar negeri
 - Invoice soko foreign entity (nek iso)
 - Keep Indonesian clients minimal
@@ -907,6 +986,7 @@ Aku moco ono "30-day stay limit" — iku artine opo?
 Iki **misconception** umum.
 
 **Correct info:**
+
 - E33G validity: **1 taun**
 - Multiple entry: **bebas metu mlebu**
 - **Ora ono** batas 30 dino per stay
@@ -963,6 +1043,7 @@ Nek aku lali SKTT reporting, ono sanksi?
 - **Risk deportasi** (extreme case, nek bertahun-tahun ignore)
 
 **Rekomendasi:**
+
 - Set reminder saben taun
 - Report on time kanggo avoid hassle
 
@@ -973,6 +1054,7 @@ E33G iso diperpanjang kan sakwise 1 taun?
 **Iso!**
 
 **Extension Process:**
+
 - **30 dino sakdurunge** KITAS expire, mulai proses
 - Submit dokumen anyar:
   - Medical checkup (anyar)
@@ -1004,6 +1086,7 @@ Nek mengko aku arep switch neng visa liyo piye?
    - Apply for permanent stay
 
 **Conversion process:**
+
 - Submit new visa application
 - Cancel E33G (automatic naliko approval anyar)
 - Ora usah metu Indonesia
@@ -1015,17 +1098,20 @@ Soal pajak — aku ora usah bayar tax Indonesia kan?
 **Bener, mostly.**
 
 **Tax exemption** nek:
+
 - ✅ Income soko **luar negeri**
 - ✅ Transferred neng **rekening luar negeri**
 - ✅ Ora ono **employer Indonesia**
 - ✅ Tinggal neng Indonesia **< 183 dino/taun**
 
 **Tapi dadi tax resident** nek:
+
 - ❌ Stay **> 183 dino** dalam 12 sasi
 - ❌ Establish "permanent home" neng Indonesia
 - ❌ Ono income soko Indonesian sources
 
 **Rekomendasi:**
+
 - Track days in Indonesia
 - Consult tax advisor nek stay long-term (> 6 sasi/taun)
 - Declare income neng home country
@@ -1039,11 +1125,13 @@ Aku soko US, ono tax treaty US-Indonesia?
 **US-Indonesia Tax Treaty** exist, prevents double taxation.
 
 **Key points:**
+
 - US citizens taxed on worldwide income (neng US)
 - Indonesia taxed nek tax resident (183+ dino)
 - Treaty allows **tax credit** → bayar neng siji negara, credit neng sing liyo
 
 **Rekomendasi:**
+
 - File US taxes (FBAR, Form 2555 nek applicable)
 - Track days in Indonesia
 - Consult CPA familiar karo expat taxation
@@ -1055,6 +1143,7 @@ Nek aku arep apply, opo langkah pertama?
 **Step-by-Step:**
 
 **1. Prepare Documents (2-3 dino):**
+
 - Scan paspor (full pages)
 - Foto 4x6 background abang
 - Employment letter/contract
@@ -1063,20 +1152,24 @@ Nek aku arep apply, opo langkah pertama?
 - CV singkat
 
 **2. Submit neng Bali Zero (1 dino):**
+
 - Email docs@balizero.com utowo WhatsApp
 - Kito review & confirm kelengkapan
 
 **3. Apply Evisa (7-14 dino):**
+
 - Kito submit neng sistem imigrasi
 - Track application status
 - Entuk approval (PDF)
 
 **4. Fly to Indonesia:**
+
 - Tunjukke evisa neng immigration counter
 - Fingerprint + foto
 - Mlebu Indonesia
 
 **5. KITAS Delivery (~7-10 dino):**
+
 - Physical card dikirim neng alamat
 
 **Total time:** ~2-3 minggu soko mulai sampek landed neng Indonesia.
@@ -1088,12 +1181,14 @@ Oke, biaya totale piro soko awal sampek rampung?
 **Total Cost Breakdown:**
 
 **Mandatory:**
+
 - **E33G Offshore:** Rp 7.500.000 - 8.500.000
 - **Travel Insurance:** ~Rp 1.500.000/taun
 - **Medical Checkup:** Rp 500.000 (nek durung duwe)
 - **Total:** ~**Rp 9.500.000 - 10.500.000**
 
 **Optional:**
+
 - **Coworking membership:** Rp 1.500.000 - 3.000.000/sasi (Canggu/Ubud)
 - **Accommodation:** Rp 5.000.000 - 15.000.000/sasi (villa long-term)
 
@@ -1109,6 +1204,7 @@ Kirim kabeh dokumen neng:
 **Subject:** E33G Digital Nomad Application - [Jeneng Sampeyan]
 
 **Attach:**
+
 1. Passport scan
 2. Foto 4x6 red background
 3. Employment letter/contract
@@ -1124,24 +1220,24 @@ Welcome to Indonesia — ketemu neng Bali sesuk! 🌴
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **Visa Type** | E33G Digital Nomad KITAS |
-| **Validity** | 1 year, multiple entry (extendable) |
-| **Income Requirement** | USD 60,000/year (USD 5,000/month) minimum |
-| **Offshore Cost** | IDR 7,500,000 - 8,500,000 |
-| **Onshore Cost** | IDR 9,000,000 - 10,000,000 |
-| **Extension Cost** | IDR 10,000,000 (after 1 year) |
-| **Timeline Offshore** | 7-14 working days |
-| **Timeline Onshore** | 3-4 weeks |
-| **SKTT Reporting** | Annually, free |
-| **Tax Residency** | 183+ days/year triggers Indonesian tax |
-| **Work Permit** | Not required for remote work (foreign employer) |
-| **Embassy Visit** | Not required (fully online evisa) |
-| **Stay Limit** | No 30-day limit (can stay 365 days continuous) |
-| **Insurance** | Mandatory (~IDR 1,500,000/year) |
-| **Conversion** | Can switch to E28A, E26, KITAP without exiting |
+| Topic                  | Details                                         |
+| ---------------------- | ----------------------------------------------- |
+| **Visa Type**          | E33G Digital Nomad KITAS                        |
+| **Validity**           | 1 year, multiple entry (extendable)             |
+| **Income Requirement** | USD 60,000/year (USD 5,000/month) minimum       |
+| **Offshore Cost**      | IDR 7,500,000 - 8,500,000                       |
+| **Onshore Cost**       | IDR 9,000,000 - 10,000,000                      |
+| **Extension Cost**     | IDR 10,000,000 (after 1 year)                   |
+| **Timeline Offshore**  | 7-14 working days                               |
+| **Timeline Onshore**   | 3-4 weeks                                       |
+| **SKTT Reporting**     | Annually, free                                  |
+| **Tax Residency**      | 183+ days/year triggers Indonesian tax          |
+| **Work Permit**        | Not required for remote work (foreign employer) |
+| **Embassy Visit**      | Not required (fully online evisa)               |
+| **Stay Limit**         | No 30-day limit (can stay 365 days continuous)  |
+| **Insurance**          | Mandatory (~IDR 1,500,000/year)                 |
+| **Conversion**         | Can switch to E28A, E26, KITAP without exiting  |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data*
+_Generated by Nuzantara KB + Claude for Bali Zero training data_

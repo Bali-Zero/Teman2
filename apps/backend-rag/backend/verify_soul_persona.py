@@ -19,7 +19,6 @@ load_dotenv(override=True)
 sys.path.append(os.getcwd())
 
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-
 from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)

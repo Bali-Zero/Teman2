@@ -4,16 +4,15 @@ Tests the main streaming RAG endpoint that powers Zantara chat.
 """
 
 import json
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
 
 # Import router
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4] / "backend"
@@ -52,11 +51,7 @@ def mock_orchestrator():
 @pytest.fixture
 def mock_current_user():
     """Mock authenticated user"""
-    return {
-        "email": "test@example.com",
-        "user_id": "test-user-123",
-        "role": "user"
-    }
+    return {"email": "test@example.com", "user_id": "test-user-123", "role": "user"}
 
 
 @pytest.fixture
@@ -81,8 +76,12 @@ def mock_db_pool():
 @pytest.fixture
 def app_with_mocks(mock_orchestrator, mock_current_user, mock_db_pool):
     """Create FastAPI app with all dependencies mocked"""
+    from backend.app.dependencies import (
+        get_current_user,
+        get_optional_database_pool,
+        get_orchestrator,
+    )
     from backend.app.routers.agentic_rag import router
-    from backend.app.dependencies import get_current_user, get_orchestrator, get_optional_database_pool
 
     app = FastAPI()
     app.include_router(router)
@@ -155,10 +154,7 @@ class TestAgenticQueryEndpoint:
         """Successful query returns expected response structure"""
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/query",
-            json={"query": "What is PT PMA?"}
-        )
+        response = client.post("/api/agentic-rag/query", json={"query": "What is PT PMA?"})
 
         assert response.status_code == 200
         data = response.json()
@@ -177,9 +173,9 @@ class TestAgenticQueryEndpoint:
                 "query": "Tell me more about that",
                 "conversation_history": [
                     {"role": "user", "content": "What is PT PMA?"},
-                    {"role": "assistant", "content": "PT PMA is..."}
-                ]
-            }
+                    {"role": "assistant", "content": "PT PMA is..."},
+                ],
+            },
         )
 
         assert response.status_code == 200
@@ -189,11 +185,7 @@ class TestAgenticQueryEndpoint:
         client = TestClient(app_with_mocks)
 
         response = client.post(
-            "/api/agentic-rag/query",
-            json={
-                "query": "Test query",
-                "session_id": "session-123"
-            }
+            "/api/agentic-rag/query", json={"query": "Test query", "session_id": "session-123"}
         )
 
         assert response.status_code == 200
@@ -206,8 +198,8 @@ class TestAgenticQueryEndpoint:
             "/api/agentic-rag/query",
             json={
                 "query": "Test query",
-                "user_id": "spoofed-user-id"  # Should be ignored
-            }
+                "user_id": "spoofed-user-id",  # Should be ignored
+            },
         )
 
         assert response.status_code == 200
@@ -223,10 +215,7 @@ class TestStreamEndpoint:
         """Stream endpoint returns SSE content type"""
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/stream",
-            json={"query": "What is PT PMA?"}
-        )
+        response = client.post("/api/agentic-rag/stream", json={"query": "What is PT PMA?"})
 
         assert response.status_code == 200
         assert "text/event-stream" in response.headers.get("content-type", "")
@@ -237,7 +226,7 @@ class TestStreamEndpoint:
 
         response = client.post(
             "/api/agentic-rag/stream",
-            json={"query": "   "}  # Whitespace only
+            json={"query": "   "},  # Whitespace only
         )
 
         # The HTTPException inside trace_span gets converted to 500
@@ -248,10 +237,7 @@ class TestStreamEndpoint:
         """Stream should yield initial status event"""
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/stream",
-            json={"query": "Test query"}
-        )
+        response = client.post("/api/agentic-rag/stream", json={"query": "Test query"})
 
         assert response.status_code == 200
         content = response.text
@@ -269,10 +255,7 @@ class TestStreamEndpoint:
         """Stream should yield token or status events"""
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/stream",
-            json={"query": "Test query"}
-        )
+        response = client.post("/api/agentic-rag/stream", json={"query": "Test query"})
 
         assert response.status_code == 200
         content = response.text
@@ -302,9 +285,12 @@ class TestStreamEndpoint:
                 "query": "What is in this image?",
                 "enable_vision": True,
                 "images": [
-                    {"base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "name": "test.png"}
-                ]
-            }
+                    {
+                        "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                        "name": "test.png",
+                    }
+                ],
+            },
         )
 
         assert response.status_code == 200
@@ -313,10 +299,7 @@ class TestStreamEndpoint:
         """Stream should return X-Correlation-ID header"""
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/stream",
-            json={"query": "Test query"}
-        )
+        response = client.post("/api/agentic-rag/stream", json={"query": "Test query"})
 
         assert response.status_code == 200
         assert "X-Correlation-ID" in response.headers
@@ -331,10 +314,7 @@ class TestGetConversationHistoryForAgentic:
         from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=None
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=None
         )
 
         assert result == []
@@ -345,10 +325,7 @@ class TestGetConversationHistoryForAgentic:
         from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id=None,
-            db_pool=mock_db_pool
+            conversation_id=123, session_id=None, user_id=None, db_pool=mock_db_pool
         )
 
         assert result == []
@@ -361,7 +338,7 @@ class TestGetConversationHistoryForAgentic:
         # Setup mock to return conversation
         mock_messages = [
             {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi!"}
+            {"role": "assistant", "content": "Hi!"},
         ]
 
         conn = MagicMock()
@@ -373,10 +350,7 @@ class TestGetConversationHistoryForAgentic:
         mock_db_pool.acquire = MagicMock(return_value=async_cm)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db_pool
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=mock_db_pool
         )
 
         assert result == mock_messages
@@ -397,10 +371,7 @@ class TestGetConversationHistoryForAgentic:
         mock_db_pool.acquire = MagicMock(return_value=async_cm)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db_pool
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=mock_db_pool
         )
 
         assert result == mock_messages
@@ -411,14 +382,15 @@ class TestGetOptionalDatabasePool:
 
     def test_returns_none_when_503(self):
         """Should return None when database is unavailable (503)"""
-        from backend.app.dependencies import get_optional_database_pool
         from fastapi import HTTPException
+
+        from backend.app.dependencies import get_optional_database_pool
 
         # Mock request with no db_pool
         mock_request = MagicMock()
         mock_request.app.state = MagicMock(spec=[])  # No db_pool attribute
 
-        with patch('backend.app.dependencies.get_database_pool') as mock_get_db:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_db:
             mock_get_db.side_effect = HTTPException(status_code=503, detail="DB unavailable")
 
             result = get_optional_database_pool(mock_request)
@@ -455,10 +427,7 @@ class TestPydanticModels:
         """ImageInput validates correctly"""
         from backend.app.routers.agentic_rag import ImageInput
 
-        img = ImageInput(
-            base64="data:image/png;base64,abc123",
-            name="test.png"
-        )
+        img = ImageInput(base64="data:image/png;base64,abc123", name="test.png")
 
         assert img.base64 == "data:image/png;base64,abc123"
         assert img.name == "test.png"
@@ -469,16 +438,11 @@ class TestErrorHandling:
 
     def test_orchestrator_error_returns_500(self, app_with_mocks, mock_orchestrator):
         """Orchestrator errors should return 500"""
-        mock_orchestrator.process_query = AsyncMock(
-            side_effect=Exception("Orchestrator error")
-        )
+        mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Orchestrator error"))
 
         client = TestClient(app_with_mocks)
 
-        response = client.post(
-            "/api/agentic-rag/query",
-            json={"query": "Test query"}
-        )
+        response = client.post("/api/agentic-rag/query", json={"query": "Test query"})
 
         assert response.status_code == 500
         assert "Internal Server Error" in response.json()["detail"]

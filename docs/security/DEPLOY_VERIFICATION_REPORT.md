@@ -11,12 +11,12 @@
 
 ### Test: Verifica che gli endpoint TEMPORARY restituiscano 401
 
-| Endpoint | Expected | Actual | Status |
-|----------|----------|--------|--------|
-| `/api/fix/users-auth` | 401 | 401 | ✅ PASS |
-| `/api/fix/check-user/` | 401 | 401 | ✅ PASS |
-| `/api/fix/test-login` | 401 | 401 | ✅ PASS |
-| `/api/debug/migrate` | 401 | 401 | ✅ PASS |
+| Endpoint               | Expected | Actual | Status  |
+| ---------------------- | -------- | ------ | ------- |
+| `/api/fix/users-auth`  | 401      | 401    | ✅ PASS |
+| `/api/fix/check-user/` | 401      | 401    | ✅ PASS |
+| `/api/fix/test-login`  | 401      | 401    | ✅ PASS |
+| `/api/debug/migrate`   | 401      | 401    | ✅ PASS |
 
 **Risultato:** ✅ **TUTTI GLI ENDPOINT TEMPORARY SONO STATI RIMOSSI CORRETTAMENTE**
 
@@ -100,6 +100,7 @@ Machines:
 **Endpoint testato:** `/api/knowledge/visa` (endpoint pubblico)
 
 **Risultato atteso:** Log strutturato con:
+
 - `event_type: "public_endpoint_access"`
 - `endpoint: "/api/knowledge/visa"`
 - `method: "GET"`
@@ -116,16 +117,16 @@ Machines:
 
 ### Endpoint con Rate Limiting Aggiunto
 
-| Endpoint | Rate Limit | Status |
-|----------|------------|--------|
-| `/api/intel/scraper/submit` | 10/min | ✅ Configurato |
-| `/api/intel/staging/approve/` | 20/min | ✅ Configurato |
-| `/api/audio/` | 30/min | ✅ Configurato |
-| `/api/voice/elevenlabs` | 60/min | ✅ Configurato |
-| `/api/knowledge/visa` | 100/min | ✅ Configurato |
-| `/preview/` | 60/min | ✅ Configurato |
-| `/preview/upload` | 10/min | ✅ Configurato |
-| `/api/legal/parent-documents` | 20/min | ✅ Configurato |
+| Endpoint                      | Rate Limit | Status         |
+| ----------------------------- | ---------- | -------------- |
+| `/api/intel/scraper/submit`   | 10/min     | ✅ Configurato |
+| `/api/intel/staging/approve/` | 20/min     | ✅ Configurato |
+| `/api/audio/`                 | 30/min     | ✅ Configurato |
+| `/api/voice/elevenlabs`       | 60/min     | ✅ Configurato |
+| `/api/knowledge/visa`         | 100/min    | ✅ Configurato |
+| `/preview/`                   | 60/min     | ✅ Configurato |
+| `/preview/upload`             | 10/min     | ✅ Configurato |
+| `/api/legal/parent-documents` | 20/min     | ✅ Configurato |
 
 **Risultato:** ✅ **RATE LIMITING CONFIGURATO CORRETTAMENTE**
 
@@ -135,25 +136,27 @@ I limiti sono definiti in `rate_limiter.py` e verranno applicati automaticamente
 
 ## 🎯 Riepilogo Verifiche
 
-| Verifica | Status | Note |
-|----------|--------|------|
-| Endpoint TEMPORARY rimossi | ✅ PASS | Tutti restituiscono 401 |
-| Metriche Prometheus | ✅ PASS | Metriche funzionanti |
-| Health Check | ✅ PASS | App healthy |
-| Deploy Status | ✅ PASS | 2 machines attive |
-| Logging Strutturato | ⚠️ PENDING | Implementato, verificare log reali |
-| Rate Limiting | ✅ PASS | Configurato correttamente |
+| Verifica                   | Status     | Note                               |
+| -------------------------- | ---------- | ---------------------------------- |
+| Endpoint TEMPORARY rimossi | ✅ PASS    | Tutti restituiscono 401            |
+| Metriche Prometheus        | ✅ PASS    | Metriche funzionanti               |
+| Health Check               | ✅ PASS    | App healthy                        |
+| Deploy Status              | ✅ PASS    | 2 machines attive                  |
+| Logging Strutturato        | ⚠️ PENDING | Implementato, verificare log reali |
+| Rate Limiting              | ✅ PASS    | Configurato correttamente          |
 
 ---
 
 ## 📝 Raccomandazioni
 
 ### Immediate
+
 1. ✅ **Completato:** Endpoint TEMPORARY rimossi
 2. ✅ **Completato:** Metriche Prometheus funzionanti
 3. ⚠️ **Monitorare:** Logging strutturato nelle prossime 24h
 
 ### Prossimi Passi
+
 1. Monitorare i log per verificare formato JSON strutturato
 2. Configurare alert su Prometheus per accessi anomali agli endpoint pubblici
 3. Verificare rate limiting con test di carico

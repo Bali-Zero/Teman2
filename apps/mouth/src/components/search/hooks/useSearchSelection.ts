@@ -24,7 +24,11 @@ export function useSearchSelection(results: KnowledgeSearchResult[]) {
   }, []);
 
   const selectedResults = useMemo(
-    () => Array.from(selectedIds).sort((a, b) => a - b).map((i) => results[i]).filter(Boolean),
+    () =>
+      Array.from(selectedIds)
+        .sort((a, b) => a - b)
+        .map((i) => results[i])
+        .filter(Boolean),
     [results, selectedIds]
   );
 
@@ -42,4 +46,3 @@ export function useSearchSelection(results: KnowledgeSearchResult[]) {
     resetSelection,
   };
 }
-

@@ -15,17 +15,20 @@ Halo, saya punya masalah serius. Karyawan yang saya pecat 2 minggu lalu sekarang
 Halo! Ini situasi yang perlu ditangani dengan hati-hati. Mari kita analisis step by step.
 
 **Pertama, beberapa pertanyaan penting:**
+
 1. Apakah karyawan ini **PKWT (kontrak)** atau **PKWTT (permanent)**?
 2. Sudah berapa lama bekerja di perusahaan Anda?
 3. Apakah Anda sudah memberikan **Surat Peringatan (SP)** sebelum pemecatan?
 4. Apakah ada **bukti tertulis** tentang performance buruk (email, evaluasi, dll)?
 
 **Kenapa ini penting:**
+
 - **PKWT:** Jika kontrak belum habis dan Anda terminate → Anda **wajib bayar sisa kontrak**
 - **PKWTT:** Harus ada **prosedur yang benar** (SP 1, SP 2, SP 3) sebelum pemecatan
 - **Tanpa SP:** Karyawan bisa claim **unfair dismissal** dan minta pesangon penuh + ganti rugi
 
 **Hukum yang berlaku:**
+
 - **UU Cipta Kerja 2020** (menggantikan sebagian UU 13/2003)
 - **PP 35/2021** (aturan pelaksana tentang PHK)
 
@@ -40,29 +43,32 @@ Dia PKWTT (permanent), sudah 4 tahun kerja. Gaji terakhir IDR 8 juta per bulan. 
 **Ini masalah serius** — pemecatan tanpa SP 3 bisa dianggap **unfair dismissal**.
 
 **Prosedur yang benar menurut UU:**
+
 1. **SP 1:** Warning pertama (valid 6 bulan)
 2. **SP 2:** Warning kedua (valid 6 bulan)
 3. **SP 3:** Warning ketiga (valid 6 bulan)
 4. **PHK:** Baru boleh pecat setelah SP 3 tidak diperbaiki
 
 **Kondisi Anda:**
+
 - ✅ SP 1: Mei 2024 → Valid sampai November 2024
 - ✅ SP 2: Juli 2024 → Valid sampai Januari 2025
 - ❌ SP 3: **Belum diberikan**
 - ❌ PHK: November 2024 → **Prematur!**
 
 **Konsekuensi:**
+
 - Karyawan bisa claim PHK tidak sah
 - Jika Disnaker/PHI setuju → Anda **wajib bayar pesangon penuh** + **kompensasi**
 
 **Pesangon yang mungkin dituntut (4 tahun kerja):**
 
-| Komponen | Formula | Jumlah |
-|----------|---------|--------|
-| **Uang Pesangon (UP)** | 5 × gaji (masa kerja 4 tahun) | IDR 40 juta |
-| **Uang Penghargaan Masa Kerja (UPMK)** | 2 × gaji (3-6 tahun) | IDR 16 juta |
-| **Uang Penggantian Hak (UPH)** | 15% × (UP + UPMK) | IDR 8.4 juta |
-| **TOTAL** | | **IDR 64.4 juta** |
+| Komponen                               | Formula                       | Jumlah            |
+| -------------------------------------- | ----------------------------- | ----------------- |
+| **Uang Pesangon (UP)**                 | 5 × gaji (masa kerja 4 tahun) | IDR 40 juta       |
+| **Uang Penghargaan Masa Kerja (UPMK)** | 2 × gaji (3-6 tahun)          | IDR 16 juta       |
+| **Uang Penggantian Hak (UPH)**         | 15% × (UP + UPMK)             | IDR 8.4 juta      |
+| **TOTAL**                              |                               | **IDR 64.4 juta** |
 
 **Catatan:** Karyawan minta IDR 150 juta → ini **inflated**, tapi Anda tetap liable sekitar **IDR 64 juta** (minimum legal).
 
@@ -77,24 +83,29 @@ Ada email beberapa kali tentang target tidak tercapai, dan ada form evaluasi qua
 **YES, ini sangat membantu!** Evidence ini bisa memperkuat posisi Anda.
 
 **Bukti yang Anda punya:**
+
 - ✅ **Email target tidak tercapai** → Proof of performance issues
 - ✅ **Evaluasi quarterly yang ditandatangani** → Karyawan acknowledge performance gap
 - ✅ **SP 1 dan SP 2** → Proof of progressive discipline
 
 **Strategi defense:**
+
 1. **Argue bahwa PHK adalah "performance-based"** (bukan tanpa alasan)
 2. **Tunjukkan pattern:** 6 bulan performance buruk + 2× warning
 3. **Kekurangan:** SP 3 belum diberikan → ini weakness, tapi bisa di-mitigate
 
 **Realistic outcome:**
+
 - **Best case:** Mediasi berhasil, bayar **50-70%** dari pesangon legal (IDR 35-45 juta)
 - **Worst case:** PHI putuskan unfair dismissal, bayar **100% pesangon** + **12 bulan gaji** (upah proses) = **IDR 64.4 juta + IDR 96 juta = IDR 160 juta**
 
 **Upah Proses:**
+
 - Jika karyawan menang di PHI, Anda wajib bayar **gaji selama proses** (dari PHK sampai putusan)
 - Proses PHI bisa 3-12 bulan → upah proses bisa **IDR 24-96 juta** (3-12 × IDR 8 juta)
 
 **Rekomendasi saya:**
+
 - **JANGAN ke pengadilan** jika bisa di-avoid
 - **Negosiasi settlement** dengan karyawan → target IDR 50-70 juta (lebih murah dari worst case)
 
@@ -111,22 +122,26 @@ Masih tahap ancaman, belum resmi lapor. Kalau saya mau negosiasi settlement, pro
 **Proses Negosiasi Settlement:**
 
 **Step 1: Bipartite Negotiation (Wajib)**
+
 - **Apa:** Negosiasi langsung antara **employer vs employee** (tanpa pihak ketiga)
 - **Timeline:** Maksimal **30 hari** dari mulai negosiasi
 - **Dokumentasi:** Buat **Risalah Bipartit** (notulen negosiasi) yang ditandatangani kedua pihak
 - **Jika gagal:** Lanjut ke Tripartite (Disnaker)
 
 **Step 2: Persiapan Negosiasi**
+
 - **Hitung pesangon legal yang seharusnya:** IDR 64.4 juta
 - **Set target settlement:** IDR 50-70 juta (reasonable range)
 - **Siapkan offer awal:** IDR 45 juta (beri ruang untuk counter-offer)
 
 **Step 3: Meeting dengan Karyawan**
+
 - **Tempat:** Kantor atau lokasi netral
 - **Peserta:** Anda (atau HR) + karyawan + saksi (1 orang dari masing-masing pihak)
 - **Tone:** Profesional, tidak emotional, fokus pada solusi
 
 **Poin negosiasi:**
+
 1. **Acknowledge performance issues** (dengan bukti email + evaluasi)
 2. **Jelaskan bahwa SP 3 seharusnya diberikan** (tapi ada alasan bisnis urgent)
 3. **Offer pesangon yang fair** (IDR 50-60 juta)
@@ -137,22 +152,27 @@ Masih tahap ancaman, belum resmi lapor. Kalau saya mau negosiasi settlement, pro
 **Yang HARUS dihindari:**
 
 **❌ Jangan mengaku salah secara eksplisit:**
+
 - Jangan katakan "Saya tahu saya salah tidak kasih SP 3"
 - Lebih baik: "Proses memang accelerated karena kondisi bisnis"
 
 **❌ Jangan intimidasi atau ancam:**
+
 - Jangan katakan "Kalau Anda lapor Disnaker, saya akan buat susah Anda"
 - Ini bisa jadi bukti **unfair labor practice**
 
 **❌ Jangan buat janji yang tidak bisa ditepati:**
+
 - Jangan katakan "Saya bayar bulan depan" kalau tidak yakin
 - Jika settlement deal → bayar **langsung** atau dengan timeline jelas (maksimal 7-14 hari)
 
 **❌ Jangan diskusi tanpa saksi:**
+
 - Selalu ada saksi dari kedua pihak
 - Buat **Risalah Bipartit** tertulis
 
 **❌ Jangan tanda tangan apapun tanpa review:**
+
 - Jika karyawan bawa dokumen → minta waktu untuk review
 - Konsultasi lawyer sebelum tanda tangan apapun
 
@@ -169,26 +189,31 @@ Saya akan siapkan template settlement nanti. Sekarang jelaskan **proses Disnaker
 **Proses Disnaker (Tripartite Mediation):**
 
 **Step 1: Pengaduan ke Disnaker**
+
 - Karyawan **melapor** ke Disnaker setempat (sesuai lokasi perusahaan)
 - **Dokumen:** Form pengaduan, copy KTP, copy kontrak kerja, bukti PHK
 - **Timeline:** Disnaker **wajib proses** dalam 7 hari
 
 **Step 2: Panggilan Mediasi**
+
 - Disnaker kirim **surat panggilan** ke kedua pihak
 - **Jadwal mediasi:** 1-2 minggu setelah pengaduan
 - **Kehadiran:** Wajib hadir, jika tidak hadir → dianggap tidak kooperatif
 
 **Step 3: Mediasi Tripartite**
+
 - **Peserta:** Karyawan + Employer + **Mediator Disnaker**
 - **Lokasi:** Kantor Disnaker
 - **Durasi:** 1-3 jam per sesi, bisa multiple sessions
 - **Peran mediator:** Fasilitasi diskusi, bukan memutuskan
 
 **Step 4: Hasil Mediasi**
+
 - **Jika sepakat:** Buat **Perjanjian Bersama (PB)** yang ditandatangani semua pihak + mediator → **mengikat secara hukum** (seperti putusan pengadilan)
 - **Jika tidak sepakat:** Mediator keluarkan **Anjuran Tertulis** (recommendation)
 
 **Step 5: Anjuran Tertulis**
+
 - **Apa:** Rekomendasi Disnaker tentang penyelesaian (siapa yang benar, berapa pesangon)
 - **Timeline:** 10 hari setelah mediasi gagal
 - **Sifat:** **Tidak mengikat** (hanya recommendation)
@@ -198,25 +223,28 @@ Saya akan siapkan template settlement nanti. Sekarang jelaskan **proses Disnaker
 
 **Timeline Keseluruhan Disnaker:**
 
-| Tahap | Timeline |
-|-------|----------|
-| Pengaduan ke Disnaker | Day 0 |
-| Panggilan mediasi | Day 7-14 |
-| Mediasi (bisa 2-3× pertemuan) | Day 14-45 |
-| Anjuran tertulis (jika gagal) | Day 45-60 |
-| **TOTAL** | **30-60 hari** |
+| Tahap                         | Timeline       |
+| ----------------------------- | -------------- |
+| Pengaduan ke Disnaker         | Day 0          |
+| Panggilan mediasi             | Day 7-14       |
+| Mediasi (bisa 2-3× pertemuan) | Day 14-45      |
+| Anjuran tertulis (jika gagal) | Day 45-60      |
+| **TOTAL**                     | **30-60 hari** |
 
 **Setelah Disnaker, jika tetap gagal:**
+
 - **PHI (Pengadilan Hubungan Industrial):** Timeline 3-6 bulan
 - **Banding ke MA (Mahkamah Agung):** Timeline 6-12 bulan tambahan
 - **TOTAL jika sampai MA:** 12-24 bulan
 
 **Biaya jika sampai PHI:**
+
 - **Pendaftaran:** Gratis (PHI tidak ada biaya pendaftaran untuk buruh)
 - **Lawyer:** IDR 25-50 juta (retainer fee)
 - **Risiko kalah:** Pesangon penuh + upah proses (bisa IDR 150-200 juta)
 
 **Rekomendasi:**
+
 - **Settlement sebelum Disnaker** → Cheapest dan fastest option
 - **Jika sudah di Disnaker** → Coba settle di mediasi, jangan sampai PHI
 - **PHI adalah last resort** → Mahal, lama, uncertain
@@ -232,12 +260,14 @@ Sepertinya belum punya lawyer, dia masih contact langsung ke saya via WhatsApp. 
 **Pertanyaan bagus** — penggunaan lawyer di tahap awal perlu strategi.
 
 **Pro pakai lawyer di awal:**
+
 - ✅ **Komunikasi lebih profesional** (menghindari kesalahan verbal)
 - ✅ **Dokumen lebih solid** (settlement agreement yang proper)
 - ✅ **Posisi tawar lebih kuat** (karyawan tahu Anda serius)
 - ✅ **Perlindungan hukum** (semua tercatat dan legal)
 
 **Kontra pakai lawyer di awal:**
+
 - ⚠️ **Bisa terkesan confrontational** (karyawan merasa diserang)
 - ⚠️ **Bisa trigger karyawan cari lawyer juga** → eskalasi biaya kedua pihak
 - ⚠️ **Biaya lawyer** (IDR 10-25 juta untuk negosiasi fase awal)
@@ -246,17 +276,20 @@ Sepertinya belum punya lawyer, dia masih contact langsung ke saya via WhatsApp. 
 **Rekomendasi saya:**
 
 **Fase 1 (Sekarang): Negosiasi langsung TANPA lawyer**
+
 - Anda atau HR meeting langsung dengan karyawan
 - **Tone:** "Mari kita selesaikan secara kekeluargaan"
 - **Goal:** Reach settlement IDR 50-70 juta
 - **Jika berhasil:** Buat Perjanjian Settlement (saya bisa review sebelum tanda tangan)
 
 **Fase 2 (Jika gagal): Masukkan lawyer**
+
 - Jika karyawan lapor Disnaker → Anda **wajib pakai lawyer**
 - Lawyer akan handle mediasi di Disnaker
 - Budget: IDR 15-25 juta (mediasi saja)
 
 **Fase 3 (Jika sampai PHI): Full lawyer representation**
+
 - PHI memerlukan legal representation (bisa juga tanpa, tapi risky)
 - Budget: IDR 25-50 juta (full litigation)
 
@@ -265,12 +298,14 @@ Sepertinya belum punya lawyer, dia masih contact langsung ke saya via WhatsApp. 
 **Strategi WhatsApp Communication:**
 
 **✅ DO:**
+
 - Balas dengan sopan dan profesional
 - "Saya memahami situasi Anda, mari kita diskusikan bersama"
 - "Kapan Anda bisa meeting untuk bahas penyelesaian?"
 - Jangan bahas angka via WhatsApp (lebih baik face-to-face)
 
 **❌ DON'T:**
+
 - Jangan marah atau defensive
 - Jangan akui kesalahan secara eksplisit
 - Jangan buat janji konkret via chat (bisa jadi bukti)
@@ -281,6 +316,7 @@ Sepertinya belum punya lawyer, dia masih contact langsung ke saya via WhatsApp. 
 > "Pak/Bu [Nama], terima kasih sudah menghubungi. Saya paham ada hal yang perlu kita bahas terkait pengakhiran hubungan kerja. Saya mengusulkan kita bertemu minggu ini untuk berdiskusi dan mencari solusi terbaik untuk kedua pihak. Kapan waktu yang convenient untuk Anda?"
 
 **Jangan bahas:**
+
 - Angka pesangon (save untuk meeting)
 - Alasan pemecatan (sudah ada di SP)
 - Kesalahan prosedur (biarkan lawyer yang address)
@@ -400,27 +436,33 @@ SAKSI-SAKSI:
 **C. Klausul Penting yang WAJIB ada:**
 
 **1. Release and Discharge Clause (Pasal 3):**
+
 - ✅ Karyawan melepaskan **semua hak claim** di masa depan
 - ✅ Karyawan **tidak akan lapor Disnaker/PHI**
 - ✅ Karyawan **tidak akan gugat** di pengadilan
 
 **2. Full and Final Settlement:**
+
 - ✅ Pembayaran ini adalah **final** dan **complete**
 - ✅ Tidak ada kewajiban tambahan dari employer
 
 **3. Confidentiality:**
+
 - ✅ Kedua pihak **tidak boleh share** isi perjanjian ke pihak lain
 - ✅ Mencegah karyawan "pamer" settlement ke karyawan lain
 
 **4. Voluntary Agreement:**
+
 - ✅ Karyawan tanda tangan **tanpa paksaan**
 - ✅ Karyawan sudah diberi **kesempatan konsultasi lawyer**
 
 **5. Saksi:**
+
 - ✅ Minimal **2 saksi** (1 dari masing-masing pihak)
 - ✅ Saksi bukan family member
 
 **Materai:**
+
 - ✅ Gunakan **e-Materai IDR 10,000** (atau materai fisik)
 - ✅ Ditempel di halaman tanda tangan
 
@@ -437,18 +479,21 @@ Template-nya lengkap, terima kasih. Satu pertanyaan lagi: kalau karyawan menolak
 **A. Dokumen yang WAJIB disiapkan (bawa copy + original):**
 
 **1. Dokumen Perusahaan:**
+
 - ✅ Akta Pendirian PT + SK Kemenkumham
 - ✅ NIB (Nomor Induk Berusaha)
 - ✅ NPWP Perusahaan
 - ✅ Surat Kuasa (jika diwakilkan lawyer atau HR)
 
 **2. Dokumen Hubungan Kerja:**
+
 - ✅ **Perjanjian Kerja (kontrak kerja)** karyawan
 - ✅ **Peraturan Perusahaan** atau **PKB** (jika ada)
 - ✅ **Job Description** karyawan
 - ✅ **Surat Pengangkatan** (jika PKWTT)
 
 **3. Dokumen Performance:**
+
 - ✅ **Surat Peringatan 1 (SP 1)** — dengan bukti terima/tanda tangan
 - ✅ **Surat Peringatan 2 (SP 2)** — dengan bukti terima/tanda tangan
 - ✅ **Evaluasi performance** quarterly/annual
@@ -456,12 +501,14 @@ Template-nya lengkap, terima kasih. Satu pertanyaan lagi: kalau karyawan menolak
 - ✅ **KPI records** atau sales data (jika applicable)
 
 **4. Dokumen PHK:**
+
 - ✅ **Surat PHK** (surat pemberhentian)
 - ✅ **Bukti penerimaan** surat PHK oleh karyawan
 - ✅ **Slip gaji terakhir**
 - ✅ **Bukti pembayaran gaji terakhir** (transfer bank)
 
 **5. Bukti Negosiasi Bipartite:**
+
 - ✅ **Risalah Bipartite** (notulen negosiasi) — WAJIB ada
 - ✅ **Bukti undangan meeting** (WhatsApp/email)
 - ✅ **Bukti kehadiran** atau penolakan karyawan
@@ -519,6 +566,7 @@ _______________                  _______________
 ```
 
 **⚠️ PENTING:**
+
 - Risalah Bipartit adalah **syarat wajib** sebelum ke Disnaker
 - Jika tidak ada Risalah → Disnaker bisa **tolak** pengaduan
 - Buat Risalah meskipun karyawan **tidak hadir** (tulis "Pihak Pekerja tidak hadir tanpa alasan")
@@ -528,6 +576,7 @@ _______________                  _______________
 **C. Tips untuk Mediasi Disnaker:**
 
 **✅ DO:**
+
 - Datang **tepat waktu** (lebih baik 15 menit lebih awal)
 - Bawa **semua dokumen** (original + copy 3 rangkap)
 - Pakai **pakaian formal** (professional appearance matters)
@@ -536,6 +585,7 @@ _______________                  _______________
 - Tunjukkan **itikad baik** untuk menyelesaikan
 
 **❌ DON'T:**
+
 - Jangan **emosional** atau argumentatif
 - Jangan **menyerang personal** karyawan
 - Jangan **berbohong** atau menyembunyikan fakta
@@ -545,15 +595,18 @@ _______________                  _______________
 **D. Strategi di Mediasi:**
 
 **Opening statement:**
+
 > "Kami dari PT [Nama] hadir dengan itikad baik untuk mencari solusi. Kami telah melakukan PHK berdasarkan alasan performance yang didokumentasi melalui SP 1 dan SP 2. Kami menyadari prosedur tidak sempurna, dan siap memberikan kompensasi yang fair sesuai ketentuan hukum."
 
 **Key points to emphasize:**
+
 1. Performance issues **didokumentasi** (email, evaluasi)
 2. Progressive discipline **sudah dilakukan** (SP 1, SP 2)
 3. PHK **bukan tanpa alasan** (ada grounds, meskipun prosedur kurang)
 4. Anda **siap bayar kompensasi** yang reasonable
 
 **Settlement range di mediasi:**
+
 - **Offer awal:** 60-70% dari pesangon legal (IDR 40-45 juta)
 - **Target settle:** 70-85% dari pesangon legal (IDR 45-55 juta)
 - **Maximum:** 100% pesangon legal (IDR 64.4 juta) — better than PHI worst case
@@ -570,20 +623,21 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 
 **A. Timeline PHI:**
 
-| Tahap | Timeline | Keterangan |
-|-------|----------|------------|
-| **Gugatan didaftarkan** | Day 0 | Karyawan daftarkan gugatan ke PHI |
-| **Penetapan hakim** | Day 1-7 | PHI tunjuk majelis hakim |
-| **Panggilan sidang** | Day 7-14 | Surat panggilan ke kedua pihak |
-| **Sidang pertama** | Day 14-30 | Pembacaan gugatan |
-| **Jawaban tergugat** | Day 30-45 | Anda ajukan jawaban tertulis |
-| **Replik-Duplik** | Day 45-60 | Argumen balik kedua pihak |
-| **Pembuktian** | Day 60-90 | Present evidence, saksi |
-| **Kesimpulan** | Day 90-100 | Kedua pihak ajukan kesimpulan |
-| **Putusan** | Day 100-140 | Hakim bacakan putusan |
-| **TOTAL** | **3-5 bulan** | (Best case, tanpa banding) |
+| Tahap                   | Timeline      | Keterangan                        |
+| ----------------------- | ------------- | --------------------------------- |
+| **Gugatan didaftarkan** | Day 0         | Karyawan daftarkan gugatan ke PHI |
+| **Penetapan hakim**     | Day 1-7       | PHI tunjuk majelis hakim          |
+| **Panggilan sidang**    | Day 7-14      | Surat panggilan ke kedua pihak    |
+| **Sidang pertama**      | Day 14-30     | Pembacaan gugatan                 |
+| **Jawaban tergugat**    | Day 30-45     | Anda ajukan jawaban tertulis      |
+| **Replik-Duplik**       | Day 45-60     | Argumen balik kedua pihak         |
+| **Pembuktian**          | Day 60-90     | Present evidence, saksi           |
+| **Kesimpulan**          | Day 90-100    | Kedua pihak ajukan kesimpulan     |
+| **Putusan**             | Day 100-140   | Hakim bacakan putusan             |
+| **TOTAL**               | **3-5 bulan** | (Best case, tanpa banding)        |
 
 **Jika banding ke Mahkamah Agung:**
+
 - **Kasasi:** +6-12 bulan
 - **Peninjauan Kembali (PK):** +6-12 bulan (rare)
 - **Total jika sampai MA:** 12-24 bulan
@@ -593,10 +647,12 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 **B. Biaya PHI:**
 
 **Untuk Penggugat (Karyawan):**
+
 - **Pendaftaran gugatan:** **GRATIS** (PHI tidak ada biaya untuk buruh)
 - **Lawyer (jika pakai):** IDR 15-30 juta (tapi banyak yang tanpa lawyer)
 
 **Untuk Tergugat (Anda):**
+
 - **Lawyer retainer:** IDR 25-50 juta (highly recommended)
 - **Lawyer per sidang:** IDR 3-5 juta × 5-8 sidang = IDR 15-40 juta
 - **Expert witness (jika perlu):** IDR 10-20 juta
@@ -604,6 +660,7 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 - **TOTAL legal cost:** **IDR 50-100 juta**
 
 **Risiko finansial jika kalah:**
+
 - **Pesangon penuh:** IDR 64.4 juta
 - **Upah proses:** 5 bulan × IDR 8 juta = IDR 40 juta (gaji selama proses)
 - **TOTAL jika kalah:** **IDR 104.4 juta** + legal fees IDR 50-100 juta = **IDR 150-200 juta**
@@ -613,18 +670,21 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 **C. Possible Outcomes di PHI:**
 
 **Scenario 1: Anda Menang (Unlikely given SP 3 missing)**
+
 - PHI putuskan PHK sah
 - Anda tetap bayar pesangon sesuai UU (IDR 64.4 juta)
 - Tidak ada upah proses
 - **Total cost:** IDR 64.4 juta + legal fees
 
 **Scenario 2: Karyawan Menang (More Likely)**
+
 - PHI putuskan PHK tidak sah
 - **Opsi A:** Karyawan dipekerjakan kembali + upah proses (rare, biasanya karyawan tolak)
 - **Opsi B:** PHK sah tapi dengan kompensasi penuh + upah proses
 - **Total cost:** IDR 104.4 juta + legal fees
 
 **Scenario 3: Settlement di tengah proses (Most Common)**
+
 - Hakim biasanya encourage settlement
 - Settle di range **80-90% dari klaim**
 - **Total cost:** IDR 55-60 juta + partial legal fees
@@ -634,10 +694,12 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 **D. Upah Proses (Wages During Process):**
 
 **Aturan UU Cipta Kerja:**
+
 - **Upah proses maksimal 6 bulan** (PP 35/2021 Pasal 59)
 - **Sebelumnya (UU 13/2003):** Tidak ada batasan, bisa bertahun-tahun
 
 **Perhitungan:**
+
 - Proses PHI: 5 bulan
 - Upah proses: 5 × IDR 8 juta = **IDR 40 juta**
 - **Note:** Jika proses > 6 bulan, upah proses tetap maksimal 6 bulan
@@ -648,14 +710,15 @@ Saya punya HR Manager yang bisa dampingi. Kalau mediasi Disnaker gagal dan karya
 
 **Cost-Benefit Analysis:**
 
-| Option | Cost | Timeline | Risk Level |
-|--------|------|----------|------------|
-| **Settlement sekarang** | IDR 50-70 juta | 1-2 minggu | Low |
-| **Mediasi Disnaker** | IDR 55-70 juta | 1-2 bulan | Low-Medium |
-| **PHI** | IDR 150-200 juta | 3-5 bulan | High |
-| **PHI + MA** | IDR 200-300 juta | 12-24 bulan | Very High |
+| Option                  | Cost             | Timeline    | Risk Level |
+| ----------------------- | ---------------- | ----------- | ---------- |
+| **Settlement sekarang** | IDR 50-70 juta   | 1-2 minggu  | Low        |
+| **Mediasi Disnaker**    | IDR 55-70 juta   | 1-2 bulan   | Low-Medium |
+| **PHI**                 | IDR 150-200 juta | 3-5 bulan   | High       |
+| **PHI + MA**            | IDR 200-300 juta | 12-24 bulan | Very High  |
 
 **Verdict:**
+
 - **Settlement is ALWAYS cheaper** than litigation
 - Bahkan jika Anda "benar" secara substansi, **procedural error** (missing SP 3) makes your case weak
 - **Target:** Settle di IDR 60-70 juta (lebih murah dari PHI worst case IDR 200 juta)
@@ -673,17 +736,20 @@ Ya, saya siap negosiasi dengan target IDR 60 juta. Tapi kalau karyawan minta leb
 **Analisis Break-Even:**
 
 **Biaya jika ke PHI (Worst Case):**
+
 - Pesangon: IDR 64.4 juta
 - Upah proses (5 bulan): IDR 40 juta
 - Legal fees: IDR 50-80 juta
 - **TOTAL WORST CASE:** IDR 154-184 juta
 
 **Biaya jika settle sekarang:**
+
 - Settlement amount: ???
 - No legal fees (kecuali review dokumen IDR 2-5 juta)
 - **TOTAL:** Settlement + IDR 2-5 juta
 
 **Break-Even Point:**
+
 - Jika settlement < IDR 150 juta → **cheaper than PHI**
 - **Tapi** realistic settlement range: **IDR 50-100 juta**
 
@@ -693,31 +759,35 @@ Ya, saya siap negosiasi dengan target IDR 60 juta. Tapi kalau karyawan minta leb
 
 **Your Numbers:**
 
-| Level | Amount | Strategy |
-|-------|--------|----------|
-| **Offer Awal** | IDR 50 juta | "Based on our calculation, this is fair compensation" |
-| **Target** | IDR 60-65 juta | Where you'd be happy to settle |
-| **Maximum (Walk-Away)** | IDR 80 juta | Beyond this, you walk and go to Disnaker |
-| **Absolute Max** | IDR 100 juta | Only if very strong case from employee |
+| Level                   | Amount         | Strategy                                              |
+| ----------------------- | -------------- | ----------------------------------------------------- |
+| **Offer Awal**          | IDR 50 juta    | "Based on our calculation, this is fair compensation" |
+| **Target**              | IDR 60-65 juta | Where you'd be happy to settle                        |
+| **Maximum (Walk-Away)** | IDR 80 juta    | Beyond this, you walk and go to Disnaker              |
+| **Absolute Max**        | IDR 100 juta   | Only if very strong case from employee                |
 
 **Justification untuk tiap level:**
 
 **IDR 50 juta (Offer Awal):**
+
 - Pesangon legal: IDR 64.4 juta
 - Discount 22% karena: "Performance issues documented, SP 1 & 2 diberikan"
 - Position: "We have grounds for termination, just procedural gap"
 
 **IDR 60-65 juta (Target):**
+
 - Hampir sama dengan pesangon legal (IDR 64.4 juta)
 - "Kami recognize ada kekurangan prosedur, so we're willing to pay near-full amount"
 - Position: "This is fair for both sides"
 
 **IDR 80 juta (Walk-Away):**
+
 - Pesangon legal + buffer 25%
 - "This exceeds legal requirement, shows our good faith"
 - Beyond ini → risk goes to Disnaker/PHI
 
 **IDR 100 juta (Absolute Max):**
+
 - Pesangon + upah proses 4 bulan (IDR 32 juta)
 - Hanya jika karyawan punya **very strong case** atau **lawyer involved**
 - Beyond ini → definitely go to PHI (chance of winning some arguments)
@@ -749,12 +819,14 @@ Ya, saya siap negosiasi dengan target IDR 60 juta. Tapi kalau karyawan minta leb
 **Red Flags (Walk Away jika):**
 
 **❌ Karyawan minta:**
+
 - > IDR 100 juta tanpa justifikasi
 - Minta dipekerjakan kembali + compensation
 - Menolak tanda tangan Release Clause
 - Minta pembayaran ke rekening pihak ketiga
 
 **❌ Situasi berbahaya:**
+
 - Karyawan sudah punya lawyer yang agresif
 - Karyawan mengancam akan viralkan di media sosial
 - Karyawan membawa "massa" ke negosiasi
@@ -783,6 +855,7 @@ Karyawan minta IDR X juta
 ```
 
 **Bottom Line:**
+
 - **Target:** IDR 60-65 juta
 - **Maximum:** IDR 80-100 juta
 - **Walk away:** Anything above IDR 100 juta → go to Disnaker
@@ -837,11 +910,13 @@ PASAL 4B - MEDIA SOSIAL
 **B. Jika Sudah Terlanjur di-Post (Before Settlement):**
 
 **Step 1: Screenshot & Document**
+
 - ✅ Screenshot postingan (include timestamp, username, URL)
 - ✅ Screenshot comments dan shares
 - ✅ Simpan sebagai evidence
 
 **Step 2: Evaluate Content**
+
 - **Factual statements** (e.g., "I was fired") → Tidak bisa dituntut
 - **Opinion** (e.g., "Perusahaan ini tidak fair") → Grey area
 - **Defamation** (e.g., "Bos saya koruptor" tanpa bukti) → Bisa dituntut
@@ -849,16 +924,19 @@ PASAL 4B - MEDIA SOSIAL
 **Step 3: Options**
 
 **Option A: Ignore (Recommended untuk minor posts)**
+
 - Jika postingan tidak viral dan tidak defamatory
 - Engaging bisa malah memperbesar issue (Streisand Effect)
 - Focus on settlement negotiation
 
 **Option B: Request Takedown (Jika defamatory)**
+
 - Minta langsung ke karyawan (via lawyer letter)
 - Jadikan syarat settlement: "Delete all posts before signing"
 - Report ke platform (Instagram, Facebook punya reporting mechanism)
 
 **Option C: Legal Action (Last resort)**
+
 - **UU ITE Pasal 27 ayat 3:** Pencemaran nama baik online
 - **Hukuman:** Penjara max 4 tahun atau denda max IDR 750 juta
 - **Proses:** Lapor polisi → proses penyidikan → pengadilan pidana
@@ -874,15 +952,19 @@ PASAL 4B - MEDIA SOSIAL
 **Jika karyawan share ke rekan kerja:**
 
 **DO NOT:**
+
 - ❌ Jangan announce ke seluruh karyawan tentang case
 - ❌ Jangan criticize ex-employee di depan team
 - ❌ Jangan ancam karyawan lain yang bertanya
 
 **DO:**
+
 - ✅ Siapkan **standard response** untuk HR:
+
   > "[Nama] sudah tidak bekerja di perusahaan ini efektif tanggal [X]. Kami tidak bisa memberikan detail lebih lanjut terkait urusan pribadi karyawan."
 
 - ✅ Jika karyawan bertanya langsung:
+
   > "Ada perbedaan yang tidak bisa diselesaikan dan kami sepakat untuk berpisah secara damai. Saya tidak bisa share detail lebih lanjut."
 
 - ✅ Focus on **positive messaging**:
@@ -893,20 +975,24 @@ PASAL 4B - MEDIA SOSIAL
 **Jika Viral:**
 
 **Step 1 (0-24 jam):**
+
 - DO NOT respond publicly immediately
 - Gather facts internally
 - Consult lawyer/PR professional
 - Monitor reach and sentiment
 
 **Step 2 (24-48 jam):**
+
 - Prepare official statement (if needed)
 - Only release if asked by media/stakeholders
 - Keep statement neutral and factual
 
 **Sample Statement (if needed):**
+
 > "PT [Nama] tidak memberikan komentar terkait urusan internal karyawan. Perusahaan selalu berupaya menyelesaikan setiap perselisihan secara profesional dan sesuai ketentuan hukum yang berlaku."
 
 **Step 3 (Ongoing):**
+
 - Do NOT engage in social media war
 - Let the story die naturally (most do within 48-72 hours)
 - Focus on completing settlement
@@ -916,22 +1002,26 @@ PASAL 4B - MEDIA SOSIAL
 **E. Summary Checklist:**
 
 **In Settlement Agreement:**
+
 - ✅ Confidentiality clause
 - ✅ Non-disparagement clause
 - ✅ Social media clause
 - ✅ Penalty for breach (return of settlement)
 
 **Pre-Settlement (if posts exist):**
+
 - ✅ Document all posts
 - ✅ Request deletion as condition of settlement
 - ✅ Verify deletion before signing
 
 **Post-Settlement:**
+
 - ✅ Monitor for new posts (set Google Alert for company name)
 - ✅ If breach → send lawyer letter demanding return of settlement
 - ✅ If continued → consider legal action (UU ITE)
 
 **Internal:**
+
 - ✅ Brief HR on standard response
 - ✅ Do NOT discuss details with other employees
 - ✅ Maintain professional environment
@@ -953,6 +1043,7 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 ### **DAY 1-2 (Persiapan)**
 
 **Documentation:**
+
 - [ ] **Kumpulkan semua dokumen** terkait karyawan:
   - Kontrak kerja (PKWTT)
   - SP 1 (Mei 2024) + bukti terima
@@ -965,6 +1056,7 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 - [ ] **Buat folder** (fisik + digital) untuk semua dokumen
 
 **Financial:**
+
 - [ ] **Hitung pesangon legal:**
   - UP: 5 × IDR 8 juta = IDR 40 juta
   - UPMK: 2 × IDR 8 juta = IDR 16 juta
@@ -981,7 +1073,9 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 ### **DAY 2-3 (Contact Karyawan)**
 
 **WhatsApp Response:**
+
 - [ ] **Kirim response** (pakai template yang sudah dibuat):
+
   > "Yth. [Nama], terima kasih atas pesan Anda. Saya mengundang Anda untuk bertemu dan berdiskusi mencari penyelesaian. Waktu: [2 opsi]. Lokasi: [kantor/netral]. Mohon konfirmasi."
 
 - [ ] **Propose meeting** dalam 3-5 hari
@@ -992,12 +1086,14 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 ### **DAY 4-5 (Meeting)**
 
 **Preparation:**
+
 - [ ] **Print dokumen** (kontrak, SP, evaluasi) — 2 set
 - [ ] **Print template Perjanjian Settlement** — 2 set
 - [ ] **Bawa alat tulis** dan notebook untuk catat
 - [ ] **Siapkan calculator** (untuk negosiasi angka)
 
 **Meeting Strategy:**
+
 - [ ] **Opening:** "Mari kita selesaikan secara kekeluargaan"
 - [ ] **Offer awal:** IDR 50 juta
 - [ ] **Target:** IDR 60-65 juta
@@ -1010,12 +1106,14 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 ### **DAY 6-7 (Follow-Up)**
 
 **If Settlement Reached:**
+
 - [ ] **Transfer pembayaran** sesuai timeline di perjanjian (7-14 hari)
 - [ ] **Simpan bukti transfer**
 - [ ] **File semua dokumen** di arsip perusahaan
 - [ ] **Verify karyawan delete social media posts** (jika ada)
 
 **If Settlement NOT Reached:**
+
 - [ ] **Complete Risalah Bipartit**
 - [ ] **Konsultasi lawyer** untuk prepare mediasi Disnaker
 - [ ] **Budget:** IDR 15-25 juta untuk lawyer mediasi
@@ -1025,14 +1123,14 @@ Tidak ada concern spesifik. Terima kasih untuk semua informasinya. Bisa tolong s
 
 ## 📊 SUMMARY TABLE
 
-| Item | Amount | Status |
-|------|--------|--------|
-| **Pesangon Legal** | IDR 64.4 juta | (baseline) |
-| **Target Settlement** | IDR 60-65 juta | (optimal) |
-| **Maximum Settlement** | IDR 80 juta | (walk-away) |
-| **Budget Lawyer (Mediasi)** | IDR 15-25 juta | (if needed) |
-| **Budget Lawyer (PHI)** | IDR 50-100 juta | (worst case) |
-| **Worst Case Total** | IDR 200 juta | (PHI loss + fees) |
+| Item                        | Amount          | Status            |
+| --------------------------- | --------------- | ----------------- |
+| **Pesangon Legal**          | IDR 64.4 juta   | (baseline)        |
+| **Target Settlement**       | IDR 60-65 juta  | (optimal)         |
+| **Maximum Settlement**      | IDR 80 juta     | (walk-away)       |
+| **Budget Lawyer (Mediasi)** | IDR 15-25 juta  | (if needed)       |
+| **Budget Lawyer (PHI)**     | IDR 50-100 juta | (worst case)      |
+| **Worst Case Total**        | IDR 200 juta    | (PHI loss + fees) |
 
 ---
 
@@ -1062,11 +1160,13 @@ If PHI (Month 3-6):
 ## 🎯 KEY CONTACTS
 
 **Lawyer (jika diperlukan):**
+
 - Cari **labor law specialist** di Jakarta/wilayah Anda
 - Budget: IDR 15-50 juta (depending on stage)
 - Kami bisa referensikan jika mau
 
 **Disnaker:**
+
 - [Alamat Disnaker setempat]
 - [Nomor telepon]
 
@@ -1075,6 +1175,7 @@ If PHI (Month 3-6):
 ## ✅ SUCCESS METRICS
 
 **Settlement berhasil jika:**
+
 - ✅ Karyawan tanda tangan Perjanjian Settlement
 - ✅ Semua clause (Release, Confidentiality, Non-Disparagement) included
 - ✅ Pembayaran dalam 7-14 hari
@@ -1082,6 +1183,7 @@ If PHI (Month 3-6):
 - ✅ Tidak ada posting social media
 
 **Red flags yang trigger escalation:**
+
 - ❌ Karyawan minta > IDR 100 juta
 - ❌ Karyawan bawa lawyer agresif
 - ❌ Karyawan viral di social media
@@ -1104,17 +1206,20 @@ Hi, I have a serious problem. An employee I terminated 2 weeks ago is now demand
 Hello! This is a situation that needs careful handling. Let me analyze it step by step.
 
 **First, some important questions:**
+
 1. Is this employee **PKWT (fixed-term contract)** or **PKWTT (permanent)**?
 2. How long has he worked at your company?
 3. Did you issue **Warning Letters (SP)** before termination?
 4. Do you have **written evidence** of poor performance (emails, evaluations, etc.)?
 
 **Why this matters:**
+
 - **PKWT:** If contract not expired and you terminate → you **must pay remaining contract value**
 - **PKWTT:** Must follow **proper procedure** (SP 1, SP 2, SP 3) before termination
 - **Without proper SP sequence:** Employee can claim **unfair dismissal** and demand full severance + damages
 
 **Applicable law:**
+
 - **Job Creation Law 2020 (UU Cipta Kerja)** (replaced parts of Law 13/2003)
 - **PP 35/2021** (implementing regulation on termination)
 
@@ -1135,17 +1240,20 @@ Halo mas, aku duwe masalah serius iki. Karyawan sing tak pecat 2 minggu kepungku
 Halo! Iki situasi sing kudu ditangani ati-ati. Ayo dianalisis step by step.
 
 **Pertama, ono pertanyaan penting:**
+
 1. Karyawan iki **PKWT (kontrak)** opo **PKWTT (permanent)**?
 2. Wis piro suwe kerjo nang perusahaanmu?
 3. Opo sampeyan wis menehi **Surat Peringatan (SP)** sebelum dipecat?
 4. Ono **bukti tertulis** ora tentang performance elek (email, evaluasi, dll)?
 
 **Kenopo iki penting:**
+
 - **PKWT:** Nek kontrak durung habis trus sampeyan putus → sampeyan **wajib mbayar sisa kontrak**
 - **PKWTT:** Kudu ono **prosedur sing bener** (SP 1, SP 2, SP 3) sebelum dipecat
 - **Tanpa SP:** Karyawan iso claim **unfair dismissal** lan minta pesangon penuh + ganti rugi
 
 **Hukum sing berlaku:**
+
 - **UU Cipta Kerja 2020**
 - **PP 35/2021** (aturan pelaksana tentang PHK)
 
@@ -1159,26 +1267,26 @@ Iso dijlentrehno status karyawan lan kronologi pemecatan?
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **Severance Formula (PKWTT)** | UP (Pesangon) + UPMK (Penghargaan Masa Kerja) + UPH (Penggantian Hak 15%) |
-| **UP Calculation (4 years)** | 5 × monthly salary = 5 × IDR 8M = IDR 40M |
-| **UPMK Calculation (4 years)** | 2 × monthly salary = 2 × IDR 8M = IDR 16M |
-| **UPH Calculation** | 15% × (UP + UPMK) = 15% × IDR 56M = IDR 8.4M |
-| **Total Legal Severance** | IDR 64.4 million |
-| **Warning Letter Sequence** | SP 1 → SP 2 → SP 3 (each valid 6 months) → then termination allowed |
-| **Bipartite Negotiation** | Mandatory first step, max 30 days, must document in Risalah Bipartit |
-| **Tripartite Mediation (Disnaker)** | If bipartite fails, 30-60 days process, mediator facilitates |
-| **PHI (Industrial Court)** | 3-6 months timeline, free registration for employee, employer pays legal fees |
-| **Upah Proses (Wages During Process)** | Maximum 6 months under UU Cipta Kerja (PP 35/2021 Pasal 59) |
-| **Settlement Target Range** | 50-70% of legal severance for negotiation, 70-100% at Disnaker |
-| **Lawyer Cost (Mediation)** | IDR 15-25 million |
-| **Lawyer Cost (PHI Full)** | IDR 50-100 million |
-| **Worst Case Total (PHI Loss)** | IDR 150-200 million (severance + upah proses + legal fees) |
-| **UU ITE (Social Media)** | Pasal 27 ayat 3 - defamation online, max 4 years prison or IDR 750M fine |
-| **Non-Disparagement Clause** | Essential in settlement to prevent public criticism |
-| **Release and Discharge** | Clause where employee waives all future claims |
+| Topic                                  | Details                                                                       |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| **Severance Formula (PKWTT)**          | UP (Pesangon) + UPMK (Penghargaan Masa Kerja) + UPH (Penggantian Hak 15%)     |
+| **UP Calculation (4 years)**           | 5 × monthly salary = 5 × IDR 8M = IDR 40M                                     |
+| **UPMK Calculation (4 years)**         | 2 × monthly salary = 2 × IDR 8M = IDR 16M                                     |
+| **UPH Calculation**                    | 15% × (UP + UPMK) = 15% × IDR 56M = IDR 8.4M                                  |
+| **Total Legal Severance**              | IDR 64.4 million                                                              |
+| **Warning Letter Sequence**            | SP 1 → SP 2 → SP 3 (each valid 6 months) → then termination allowed           |
+| **Bipartite Negotiation**              | Mandatory first step, max 30 days, must document in Risalah Bipartit          |
+| **Tripartite Mediation (Disnaker)**    | If bipartite fails, 30-60 days process, mediator facilitates                  |
+| **PHI (Industrial Court)**             | 3-6 months timeline, free registration for employee, employer pays legal fees |
+| **Upah Proses (Wages During Process)** | Maximum 6 months under UU Cipta Kerja (PP 35/2021 Pasal 59)                   |
+| **Settlement Target Range**            | 50-70% of legal severance for negotiation, 70-100% at Disnaker                |
+| **Lawyer Cost (Mediation)**            | IDR 15-25 million                                                             |
+| **Lawyer Cost (PHI Full)**             | IDR 50-100 million                                                            |
+| **Worst Case Total (PHI Loss)**        | IDR 150-200 million (severance + upah proses + legal fees)                    |
+| **UU ITE (Social Media)**              | Pasal 27 ayat 3 - defamation online, max 4 years prison or IDR 750M fine      |
+| **Non-Disparagement Clause**           | Essential in settlement to prevent public criticism                           |
+| **Release and Discharge**              | Clause where employee waives all future claims                                |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data.*
+_Generated by Nuzantara KB + Claude for Bali Zero training data._

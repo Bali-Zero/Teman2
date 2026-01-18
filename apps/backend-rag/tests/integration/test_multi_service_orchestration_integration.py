@@ -63,7 +63,9 @@ class TestMultiServiceOrchestrationIntegration:
             with (
                 patch("backend.services.search_service.SearchService") as mock_search,
                 patch("backend.services.rag.agentic.create_agentic_rag") as mock_rag,
-                patch("backend.services.memory_service_postgres.MemoryServicePostgres") as mock_memory,
+                patch(
+                    "backend.services.memory_service_postgres.MemoryServicePostgres"
+                ) as mock_memory,
             ):
                 # Setup search service
                 mock_search_instance = MagicMock()

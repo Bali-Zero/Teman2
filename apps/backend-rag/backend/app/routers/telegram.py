@@ -27,7 +27,6 @@ from backend.services.integrations.messaging_identity_service import (
     get_messaging_identity_service,
 )
 from backend.services.integrations.telegram_bot_service import telegram_bot
-from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -331,13 +330,13 @@ async def send_telegram_message_with_fallback(
         # Convert markdown to HTML
         html_text = text
         # **bold** → <b>bold</b>
-        html_text = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', html_text)
+        html_text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", html_text)
         # *italic* → <i>italic</i>
-        html_text = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', html_text)
+        html_text = re.sub(r"\*([^*]+)\*", r"<i>\1</i>", html_text)
         # _italic_ → <i>italic</i>
-        html_text = re.sub(r'_([^_]+)_', r'<i>\1</i>', html_text)
+        html_text = re.sub(r"_([^_]+)_", r"<i>\1</i>", html_text)
         # [text](url) → <a href="url">text</a>
-        html_text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', html_text)
+        html_text = re.sub(r"\[([^\]]+)\]\(([^\)]+)\)", r'<a href="\2">\1</a>', html_text)
 
         await telegram_bot.send_message(
             chat_id=chat_id,
@@ -355,11 +354,11 @@ async def send_telegram_message_with_fallback(
     try:
         # Strip all markdown
         plain_text = text
-        plain_text = re.sub(r'^#{1,6}\s+', '', plain_text, flags=re.MULTILINE)  # Headers
-        plain_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', plain_text)  # **bold**
-        plain_text = re.sub(r'\*([^*]+)\*', r'\1', plain_text)  # *italic*
-        plain_text = re.sub(r'_([^_]+)_', r'\1', plain_text)  # _italic_
-        plain_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', plain_text)  # [text](url)
+        plain_text = re.sub(r"^#{1,6}\s+", "", plain_text, flags=re.MULTILINE)  # Headers
+        plain_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", plain_text)  # **bold**
+        plain_text = re.sub(r"\*([^*]+)\*", r"\1", plain_text)  # *italic*
+        plain_text = re.sub(r"_([^_]+)_", r"\1", plain_text)  # _italic_
+        plain_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", plain_text)  # [text](url)
 
         await telegram_bot.send_message(
             chat_id=chat_id,

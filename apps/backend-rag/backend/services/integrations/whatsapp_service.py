@@ -41,9 +41,7 @@ class WhatsAppService:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                timeout=HttpTimeoutConstants.EXTERNAL_API_TIMEOUT
-            )
+            self._client = httpx.AsyncClient(timeout=HttpTimeoutConstants.EXTERNAL_API_TIMEOUT)
         return self._client
 
     async def close(self):

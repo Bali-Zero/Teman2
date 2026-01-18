@@ -8,3 +8,4 @@ Genera un CSV semi-completato con:
 3. Istruzioni chiare per completare il matching manuale
 
 Obiettivo: ridurre il lavoro manuale al minimo
+"""

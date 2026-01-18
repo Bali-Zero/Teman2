@@ -5,7 +5,6 @@ Integrates with AutonomousScheduler for automatic incremental KG updates
 
 import asyncio
 import logging
-import os
 from typing import Any
 
 import asyncpg
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 class KGIncrementalBuilder:
     """
     Service for incremental knowledge graph building from Qdrant collections.
-    
+
     Features:
     - Tracks processed chunks via source_chunk_ids
     - Processes only new/modified chunks
@@ -42,7 +41,7 @@ class KGIncrementalBuilder:
     def __init__(self, db_pool: asyncpg.Pool | None = None):
         """
         Initialize KG Incremental Builder.
-        
+
         Args:
             db_pool: Database connection pool
         """
@@ -63,9 +62,7 @@ class KGIncrementalBuilder:
                 )
 
                 if not api_key:
-                    logger.warning(
-                        "⚠️ GOOGLE_API_KEY not set - KG extraction will be skipped"
-                    )
+                    logger.warning("⚠️ GOOGLE_API_KEY not set - KG extraction will be skipped")
                     return None
 
                 # Initialize with Google AI Studio API key
@@ -116,11 +113,11 @@ class KGIncrementalBuilder:
     ) -> dict[str, Any]:
         """
         Run incremental KG extraction from Qdrant collections.
-        
+
         Args:
             collections: List of collection names (defaults to HIGH_PRIORITY_COLLECTIONS)
             max_retries: Maximum retries per collection on error
-            
+
         Returns:
             Statistics dictionary
         """
@@ -132,8 +129,8 @@ class KGIncrementalBuilder:
 
         # Import incremental extractor
         try:
-            import sys
             import os
+            import sys
             from pathlib import Path
 
             # Add scripts directory to path
@@ -162,9 +159,7 @@ class KGIncrementalBuilder:
             # Ensure Qdrant settings are available
             qdrant_url = getattr(settings, "qdrant_url", None) or os.environ.get("QDRANT_URL")
             qdrant_api_key = (
-                getattr(settings, "qdrant_api_key", None)
-                or os.environ.get("QDRANT_API_KEY")
-                or ""
+                getattr(settings, "qdrant_api_key", None) or os.environ.get("QDRANT_API_KEY") or ""
             )
 
             if not qdrant_url:
@@ -220,9 +215,7 @@ class KGIncrementalBuilder:
                     total_stats["collections_processed"] += 1
                     total_stats["total_chunks"] += chunks_this_run
                     total_stats["total_entities"] += stats.get("entities_extracted", 0)
-                    total_stats["total_relationships"] += stats.get(
-                        "relationships_extracted", 0
-                    )
+                    total_stats["total_relationships"] += stats.get("relationships_extracted", 0)
                     max_chunks_remaining -= chunks_this_run
 
                     logger.info(
@@ -241,10 +234,12 @@ class KGIncrementalBuilder:
                         # Last attempt failed
                         total_stats["collections_failed"] += 1
                         total_stats["errors"].append(error_msg)
-                        logger.error(f"❌ Failed to process {collection} after {max_retries} attempts")
+                        logger.error(
+                            f"❌ Failed to process {collection} after {max_retries} attempts"
+                        )
                     else:
                         # Retry with exponential backoff
-                        wait_time = 2 ** attempt
+                        wait_time = 2**attempt
                         logger.info(f"⏳ Retrying {collection} in {wait_time}s...")
                         await asyncio.sleep(wait_time)
 
@@ -262,12 +257,12 @@ class KGIncrementalBuilder:
 async def run_knowledge_graph_incremental_build(db_pool: asyncpg.Pool) -> dict[str, Any]:
     """
     Main function for scheduled KG incremental build.
-    
+
     This function is called by AutonomousScheduler every 24 hours.
-    
+
     Args:
         db_pool: Database connection pool
-        
+
     Returns:
         Statistics dictionary
     """

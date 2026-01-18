@@ -105,14 +105,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/redoc",  # BUSINESS: Alternative API documentation UI (dev/staging only)
             "/metrics",  # BUSINESS: Prometheus metrics endpoint for observability (should be IP-restricted in production)
             "/metrics/",  # BUSINESS: Alternative metrics path
-            
             # ========================================================================
             # AUTHENTICATION ENDPOINTS (Must be public for initial login)
             # ========================================================================
             "/api/auth/team/login",  # BUSINESS: Team member login - must be public to allow initial authentication
             "/api/auth/login",  # BUSINESS: User login endpoint - must be public to allow initial authentication
             "/api/auth/csrf-token",  # BUSINESS: CSRF token generation - must be public for CSRF protection flow
-            
             # ========================================================================
             # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
             # ========================================================================
@@ -120,26 +118,22 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
             "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook - verified by TELEGRAM_WEBHOOK_SECRET header
             "/api/voice/elevenlabs",  # BUSINESS: ElevenLabs voice webhook - should add signature verification
-            
             # ========================================================================
             # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
             # ========================================================================
             "/api/integrations/zoho/callback",  # BUSINESS: Zoho OAuth callback - required by OAuth 2.0 flow
             "/api/integrations/google-drive/callback",  # BUSINESS: Google Drive OAuth callback - required by OAuth 2.0 flow
             "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
-            
             # ========================================================================
             # CLIENT PORTAL ENDPOINTS (Public for client self-service)
             # ========================================================================
             "/api/portal/invite/validate/",  # BUSINESS: Client invitation validation - token-based security
             "/api/portal/invite/complete",  # BUSINESS: Client registration completion - token-based security
-            
             # ========================================================================
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
-            
             # ========================================================================
             # BLOG & MARKETING ENDPOINTS (Public for website visitors)
             # ========================================================================
@@ -147,26 +141,22 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/blog/newsletter/confirm",  # BUSINESS: Newsletter confirmation - token-based verification
             "/api/blog/newsletter/unsubscribe",  # BUSINESS: Newsletter unsubscribe - token-based verification (legal requirement)
             "/api/blog/ask",  # BUSINESS: AskZantara widget on blog articles - public Q&A feature
-            
             # ========================================================================
             # PREVIEW ENDPOINTS (Public for content preview)
             # ========================================================================
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
-            
             # ========================================================================
-            # INTERNAL SERVICE ENDPOINTS (Should be protected with API keys/IP whitelist)
+            # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================
-            # SECURITY NOTE: These endpoints are public but should have additional protection:
-            # - Rate limiting (configured in rate_limiter.py)
-            # - API key authentication (recommended)
-            # - IP whitelisting (recommended for production)
-            "/api/intel/scraper/submit",  # BUSINESS: Scraper → Intelligence Center bridge - REVIEW: Add secret token verification
-            "/api/intel/staging/approve/",  # BUSINESS: Auto-approve staging items - REVIEW: Add authentication or secret token
-            "/api/legal/parent-documents",  # BUSINESS: Internal ingestion endpoint - REVIEW: Add API key or IP whitelist
-            "/api/audio/",  # BUSINESS: Audio TTS/STT endpoints - REVIEW: Add rate limiting + API key authentication
-            "/preview/upload",  # BUSINESS: Preview upload from local scraper - REVIEW: Add authentication or secret token
+            # SECURITY: These endpoints now require X-API-Key header authentication
+            # Protected via verify_internal_api_key dependency in routers:
+            # - /api/intel/scraper/submit - Requires API key (intel.py)
+            # - /api/intel/staging/approve/ - Requires API key (intel.py)
+            # - /api/legal/parent-documents - Requires API key (legal_ingest.py)
+            # - /api/audio/ - Requires API key (audio.py)
+            # - /preview/upload - Requires API key (preview.py)
         ]
-        
+
         # SECURITY: Removed TEMPORARY/FIX/DEBUG endpoints:
         # - "/api/fix/users-auth" - REMOVED: No router implementation found
         # - "/api/fix/check-user/" - REMOVED: No router implementation found
@@ -211,7 +201,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 correlation_id = _get_correlation_id(request)
                 client_ip = request.client.host if request.client else "unknown"
                 user_agent = request.headers.get("user-agent", "unknown")
-                
+
                 # Structured logging for public endpoint access
                 logger.info(
                     "Public endpoint accessed",
@@ -225,19 +215,19 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-                
+
                 # Record metrics for public endpoint access
                 try:
                     from backend.app.metrics import (
                         public_endpoint_access_by_ip,
                         public_endpoint_access_total,
                     )
-                    
+
                     # Record total access
                     public_endpoint_access_total.labels(
                         endpoint=request.url.path, method=request.method
                     ).inc()
-                    
+
                     # Record access by IP (for abuse detection)
                     public_endpoint_access_by_ip.labels(
                         endpoint=request.url.path, client_ip=client_ip
@@ -245,7 +235,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 except (ImportError, AttributeError):
                     # Metrics not available, continue without metrics
                     logger.debug("Metrics not available for public endpoint tracking")
-                
+
                 response = await call_next(request)
                 response.headers["X-Auth-Type"] = "public"
                 return response

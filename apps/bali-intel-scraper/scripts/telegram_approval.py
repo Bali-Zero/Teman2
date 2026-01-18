@@ -29,7 +29,7 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional, Dict, List
+from typing import Optional
 import aiohttp
 from loguru import logger
 
@@ -41,6 +41,7 @@ try:
         generate_article_id,
         create_preview_from_pipeline,
     )
+
     PREVIEW_GENERATOR_OK = True
 except ImportError:
     PREVIEW_GENERATOR_OK = False
@@ -740,8 +741,11 @@ _Article ID: `{article.article_id}`_"""
         return first_message_id
 
     async def submit_for_approval(
-        self, article: dict, seo_metadata: dict, enriched_content: str,
-        reviewed_by: str = None
+        self,
+        article: dict,
+        seo_metadata: dict,
+        enriched_content: str,
+        reviewed_by: str = None,
     ) -> PendingArticle:
         """
         Submit an article for approval.
@@ -771,7 +775,8 @@ _Article ID: `{article.article_id}`_"""
                 source=article.get("source", "Unknown"),
                 source_url=source_url,
                 cover_image=article.get("image_url", ""),
-                published_at=article.get("published_at") or datetime.now(timezone.utc).isoformat(),
+                published_at=article.get("published_at")
+                or datetime.now(timezone.utc).isoformat(),
                 reading_time=seo_metadata.get("reading_time_minutes", 5),
                 keywords=seo_metadata.get("keywords", []),
                 key_entities=seo_metadata.get("key_entities", []),
@@ -795,7 +800,9 @@ _Article ID: `{article.article_id}`_"""
         preview_path.write_text(html_preview, encoding="utf-8")
 
         # Upload HTML preview to scraper API (so link is ready for Telegram)
-        scraper_base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
+        scraper_base_url = os.getenv(
+            "SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev"
+        )
         uploaded_preview_url = await self.upload_preview_to_backend(
             article_id, html_preview, backend_url=scraper_base_url
         )

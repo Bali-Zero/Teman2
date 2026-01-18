@@ -8,8 +8,4 @@ export {
   WebsiteJsonLd,
 } from './JsonLd';
 
-export {
-  HomepageFAQSchema,
-  HomepageServicesSchema,
-  HomepageSEOSchemas,
-} from './HomepageFAQ';
+export { HomepageFAQSchema, HomepageServicesSchema, HomepageSEOSchemas } from './HomepageFAQ';

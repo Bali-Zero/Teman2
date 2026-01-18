@@ -68,26 +68,37 @@ def _load_module(monkeypatch):
         def error(self, *_args, **_kwargs):
             pass
 
-    monkeypatch.setitem(sys.modules, "backend.core.cache", types.SimpleNamespace(cached=cached, redis_url='redis://localhost:6379'))
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.core.cache",
+        types.SimpleNamespace(cached=cached, redis_url="redis://localhost:6379"),
+    )
     monkeypatch.setitem(
         sys.modules,
         "backend.app.utils.error_handlers",
-        types.SimpleNamespace(handle_database_error=handle_database_error, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            handle_database_error=handle_database_error, redis_url="redis://localhost:6379"
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_logger=lambda _name: _Logger(), redis_url="redis://localhost:6379"
+        ),
     )
+
     def get_current_user():
         return {"email": "test@example.com", "role": "admin"}
-    
+
     monkeypatch.setitem(
-        sys.modules, "backend.app.dependencies", types.SimpleNamespace(
+        sys.modules,
+        "backend.app.dependencies",
+        types.SimpleNamespace(
             get_database_pool=lambda: None,
             get_current_user=get_current_user,
-            redis_url='redis://localhost:6379'
-        )
+            redis_url="redis://localhost:6379",
+        ),
     )
 
     backend_path = Path(__file__).resolve().parents[4] / "backend"
@@ -114,26 +125,26 @@ def _load_module(monkeypatch):
 
 def _make_client(module, pool):
     """Create test client with mocked dependencies.
-    
+
     Updated 2026-01-16: Fixed dependency override to use get_database_pool
     from backend.app.dependencies instead of module.get_database_pool.
     """
-    from backend.app.dependencies import get_database_pool, get_current_user
-    
+    from backend.app.dependencies import get_current_user, get_database_pool
+
     app = FastAPI()
     app.include_router(module.router)
-    
+
     # Override get_database_pool from dependencies
     def get_db_pool_override(request=None):
         return pool
-    
+
     # Override get_current_user to return mock user
     def get_user_override(request=None, credentials=None):
         return {"email": "test@example.com", "role": "admin"}
-    
+
     app.dependency_overrides[get_database_pool] = get_db_pool_override
     app.dependency_overrides[get_current_user] = get_user_override
-    
+
     return TestClient(app)
 
 

@@ -593,7 +593,7 @@ async def get_source_stats():
 # PREVIEW & APPROVAL ENDPOINTS
 # ============================================================================
 
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 import json as json_module
 
 # Preview storage directory
@@ -603,12 +603,14 @@ PENDING_DIR = Path(__file__).parent.parent / "scripts" / "data" / "pending_artic
 
 class PreviewUploadRequest(BaseModel):
     """Request to upload a preview HTML."""
+
     article_id: str
     html_content: str
 
 
 class ApprovalAction(BaseModel):
     """Approval action with optional reason."""
+
     reason: Optional[str] = None
     reviewed_by: Optional[str] = None
 
@@ -629,8 +631,7 @@ async def get_preview(article_id: str):
 
     if not preview_path.exists():
         raise HTTPException(
-            status_code=404,
-            detail=f"Preview not found for article {article_id}"
+            status_code=404, detail=f"Preview not found for article {article_id}"
         )
 
     html_content = preview_path.read_text(encoding="utf-8")
@@ -680,7 +681,9 @@ async def list_pending_approvals():
             data = json_module.loads(path.read_text())
             if data.get("status") == "pending":
                 # Add preview URL
-                base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
+                base_url = os.getenv(
+                    "SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev"
+                )
                 data["preview_url"] = f"{base_url}/preview/{data.get('article_id')}"
                 pending.append(data)
         except Exception as e:
@@ -714,7 +717,11 @@ async def approve_article(article_id: str, action: ApprovalAction = None):
         data = json_module.loads(pending_path.read_text())
 
         if data.get("status") == "approved":
-            return {"success": True, "message": "Article already approved", "article_id": article_id}
+            return {
+                "success": True,
+                "message": "Article already approved",
+                "article_id": article_id,
+            }
 
         # Update status
         data["status"] = "approved"
@@ -770,7 +777,9 @@ async def reject_article(article_id: str, action: ApprovalAction = None):
 
         pending_path.write_text(json_module.dumps(data, indent=2, ensure_ascii=False))
 
-        logger.info(f"Article rejected: {article_id} - Reason: {action.reason if action else 'None'}")
+        logger.info(
+            f"Article rejected: {article_id} - Reason: {action.reason if action else 'None'}"
+        )
 
         return {
             "success": True,

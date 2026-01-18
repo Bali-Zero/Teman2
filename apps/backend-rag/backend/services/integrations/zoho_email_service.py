@@ -839,7 +839,9 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/{message_id}/attachments/{attachment_id}"
 
-        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT) as client:
+        async with httpx.AsyncClient(
+            timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT
+        ) as client:
             response = await client.get(url, headers=headers)
 
             if response.status_code != 200:
@@ -881,7 +883,9 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/attachments"
 
-        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT) as client:
+        async with httpx.AsyncClient(
+            timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT
+        ) as client:
             response = await client.post(
                 url,
                 headers={"Authorization": f"Zoho-oauthtoken {token}"},

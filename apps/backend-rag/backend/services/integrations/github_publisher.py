@@ -269,10 +269,13 @@ class GitHubPublisher:
 
         start_time = time.time()
         file_paths = [f["path"] for f in files]
-        total_size_kb = sum(
-            len(f["content"].encode("utf-8") if isinstance(f["content"], str) else f["content"])
-            for f in files
-        ) / 1024
+        total_size_kb = (
+            sum(
+                len(f["content"].encode("utf-8") if isinstance(f["content"], str) else f["content"])
+                for f in files
+            )
+            / 1024
+        )
 
         logger.info(
             f"Creating atomic commit with {len(files)} files ({total_size_kb:.1f} KB total)",
@@ -302,7 +305,9 @@ class GitHubPublisher:
 
             # Step 2: Get the current tree SHA
             logger.debug("Step 2/6: Getting current tree SHA")
-            commit_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits/{current_commit_sha}"
+            commit_url = (
+                f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits/{current_commit_sha}"
+            )
             commit_response = await client.get(
                 commit_url,
                 headers=self._get_headers(),
@@ -339,17 +344,21 @@ class GitHubPublisher:
 
                 if blob_response.status_code != 201:
                     logger.error(f"Failed to create blob for {path}: {blob_response.text}")
-                    raise GitHubPublisherError(f"Failed to create blob for {path}: {blob_response.text}")
+                    raise GitHubPublisherError(
+                        f"Failed to create blob for {path}: {blob_response.text}"
+                    )
 
                 blob_sha = blob_response.json()["sha"]
                 logger.debug(f"  Blob {idx + 1}/{len(files)}: {path} → {blob_sha[:7]}")
 
-                tree_items.append({
-                    "path": path,
-                    "mode": "100644",  # Regular file
-                    "type": "blob",
-                    "sha": blob_sha,
-                })
+                tree_items.append(
+                    {
+                        "path": path,
+                        "mode": "100644",  # Regular file
+                        "type": "blob",
+                        "sha": blob_sha,
+                    }
+                )
 
             # Step 4: Create new tree
             logger.debug("Step 4/6: Creating new tree")
@@ -384,7 +393,9 @@ class GitHubPublisher:
 
             if commit_create_response.status_code != 201:
                 logger.error(f"Failed to create commit: {commit_create_response.text}")
-                raise GitHubPublisherError(f"Failed to create commit: {commit_create_response.text}")
+                raise GitHubPublisherError(
+                    f"Failed to create commit: {commit_create_response.text}"
+                )
 
             new_commit_sha = commit_create_response.json()["sha"]
             logger.debug(f"New commit SHA: {new_commit_sha[:7]}")
@@ -400,7 +411,9 @@ class GitHubPublisher:
 
             if update_ref_response.status_code != 200:
                 logger.error(f"Failed to update branch ref: {update_ref_response.text}")
-                raise GitHubPublisherError(f"Failed to update branch ref: {update_ref_response.text}")
+                raise GitHubPublisherError(
+                    f"Failed to update branch ref: {update_ref_response.text}"
+                )
 
         elapsed_ms = (time.time() - start_time) * 1000
 

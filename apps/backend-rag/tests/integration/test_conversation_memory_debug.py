@@ -388,8 +388,12 @@ class TestConversationMemoryDebug:
                     "backend.app.routers.oracle_universal.reason_with_gemini",
                     side_effect=capture_reason_args,
                 ) as mock_reason,
-                patch("backend.app.routers.oracle_universal.get_memory_service") as mock_memory_service,
-                patch("backend.core.embeddings.create_embeddings_generator") as mock_create_embedder,
+                patch(
+                    "backend.app.routers.oracle_universal.get_memory_service"
+                ) as mock_memory_service,
+                patch(
+                    "backend.core.embeddings.create_embeddings_generator"
+                ) as mock_create_embedder,
             ):
                 # Mock user profile
                 mock_db_manager.get_user_profile = AsyncMock(

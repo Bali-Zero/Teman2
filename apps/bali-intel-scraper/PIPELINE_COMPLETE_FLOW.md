@@ -99,16 +99,16 @@ python run_intel_feed.py \
 
 ### Parameters
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--mode` | `full` | `massive` = unified_scraper + pipeline |
-| `--categories` | `all` | Filter: `immigration,tax-legal,business,property` |
-| `--tiers` | `all` | Source priority: `T1,T2,T3` |
-| `--limit-per-source` | `5` | Articles per source (max) |
-| `--min-score` | `40` | LLAMA score threshold (0-100) |
-| `--generate-images` | `False` | Enable Gemini image generation |
-| `--require-approval` | `True` | Send to Telegram for voting |
-| `--dry-run` | `False` | Skip Claude enrichment (fast test) |
+| Flag                 | Default | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| `--mode`             | `full`  | `massive` = unified_scraper + pipeline            |
+| `--categories`       | `all`   | Filter: `immigration,tax-legal,business,property` |
+| `--tiers`            | `all`   | Source priority: `T1,T2,T3`                       |
+| `--limit-per-source` | `5`     | Articles per source (max)                         |
+| `--min-score`        | `40`    | LLAMA score threshold (0-100)                     |
+| `--generate-images`  | `False` | Enable Gemini image generation                    |
+| `--require-approval` | `True`  | Send to Telegram for voting                       |
+| `--dry-run`          | `False` | Skip Claude enrichment (fast test)                |
 
 ---
 
@@ -150,6 +150,7 @@ apps/bali-intel-scraper/scripts/
 2. **Two-Layer Detection:**
 
    **Layer 1: Quick Keyword Check** (60% threshold)
+
    ```python
    # Fast local check before calling Claude
    title_words = {"indonesia", "extends", "digital", "nomad", "visa"}
@@ -158,6 +159,7 @@ apps/bali-intel-scraper/scripts/
    ```
 
    **Layer 2: Claude Semantic Analysis**
+
    ```
    Claude receives list of last 50 published articles:
    - [immigration] Indonesia Extends Digital Nomad Visa to 5 Years
@@ -169,6 +171,7 @@ apps/bali-intel-scraper/scripts/
    ```
 
 3. **Validation Output:**
+
    ```json
    {
      "approved": false,
@@ -248,14 +251,17 @@ validator.stats = {
 ### Source Tiers
 
 **T1 (Official):** 127 sources
+
 - Government sites (imigrasi.go.id, kemenkeu.go.id)
 - Embassies, official portals
 
 **T2 (Professional):** 361 sources
+
 - Jakarta Post, Antara News
 - Legal firms, consulting agencies
 
 **T3 (Community):** 302 sources
+
 - Facebook groups, Reddit
 - Expat blogs, forums
 
@@ -280,13 +286,13 @@ validator.stats = {
 
 ### Cost Breakdown (Local Execution)
 
-| Component | Provider | Cost |
-|-----------|----------|------|
-| LLAMA Scoring | Ollama (local) | **$0** |
-| Claude Validation | Claude Desktop CLI (Max subscription) | **$0** |
-| Claude Enrichment | Claude Desktop CLI | **$0** |
-| Image Generation | Gemini Imagen 3 (browser automation) | **$0** |
-| **TOTAL** | | **$0/month** |
+| Component         | Provider                              | Cost         |
+| ----------------- | ------------------------------------- | ------------ |
+| LLAMA Scoring     | Ollama (local)                        | **$0**       |
+| Claude Validation | Claude Desktop CLI (Max subscription) | **$0**       |
+| Claude Enrichment | Claude Desktop CLI                    | **$0**       |
+| Image Generation  | Gemini Imagen 3 (browser automation)  | **$0**       |
+| **TOTAL**         |                                       | **$0/month** |
 
 ### Performance
 
@@ -310,15 +316,19 @@ validator.stats = {
 ## 🚧 Known Issues & Fixes
 
 ### Issue 1: FileNotFoundError for config
+
 **Fixed:** Use absolute path `Path(__file__).parent.parent / "config"`
 
 ### Issue 2: KeyError 'selectors'
+
 **Fixed:** Add default selectors when source doesn't have selectors field
 
 ### Issue 3: timeout command not found (Mac)
+
 **Fixed:** Removed GNU timeout, use subprocess timeout parameter
 
 ### Issue 4: Duplicates being published
+
 **Fixed:** ✅ Anti-duplicate system implemented (validation + registry)
 
 ---

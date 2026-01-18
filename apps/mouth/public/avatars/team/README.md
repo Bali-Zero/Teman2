@@ -13,17 +13,20 @@ Foto profilo ottimizzate del team Bali Zero.
 ## Ottimizzazione
 
 Le immagini sono state ottimizzate automaticamente da 19-21MB a ~20-25KB usando sharp:
+
 - Ridimensionate a 200x200px
 - Compresse con PNG quality 80
 - Compression level 9
 
 Per aggiungere nuove foto:
+
 1. Copiare la foto in questa cartella
 2. Eseguire: `node scripts/optimize-avatars.js`
 
 ## Utilizzo
 
 Queste foto possono essere usate per:
+
 - Avatar team members in CRM
 - Foto profilo in dashboard
 - Badge team in chat/email

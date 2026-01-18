@@ -6,8 +6,6 @@ Analizza il codice del backend per estrarre informazioni sui clienti
 e costruisce una lista per il matching automatico.
 """
 
-import os
-import sys
 import json
 import re
 from pathlib import Path
@@ -18,9 +16,9 @@ BACKEND_DIR = Path.home() / "Desktop/nuzantara/apps/backend-rag/backend"
 def search_for_client_data():
     """Search backend code for client data, migrations, seeds, etc."""
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🔍 RICERCA DATI CLIENTI NEL CODICE BACKEND")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     client_data = []
 
@@ -47,8 +45,10 @@ def search_for_client_data():
                     data = json.load(f)
                     if isinstance(data, list):
                         for item in data:
-                            if isinstance(item, dict) and 'name' in item:
-                                print(f"   Found: {data_file.name} - {item.get('name')}")
+                            if isinstance(item, dict) and "name" in item:
+                                print(
+                                    f"   Found: {data_file.name} - {item.get('name')}"
+                                )
                                 client_data.append(item)
             except Exception:
                 pass
@@ -79,13 +79,13 @@ def main():
     client_data = search_for_client_data()
 
     if client_data:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print(f"✅ Trovati {len(client_data)} potenziali clienti")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         # Save to JSON
         output_file = "extracted_crm_clients.json"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(client_data, f, indent=2)
 
         print(f"💾 Salvato in: {output_file}\n")

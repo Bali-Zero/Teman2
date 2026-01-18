@@ -15,9 +15,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from backend.app.routers.memory_vector import (
+    get_memory_vector_db,
+    initialize_memory_vector_db,
+    router,
+)
 from backend.core.qdrant_db import QdrantClient
-
-from backend.app.routers.memory_vector import get_memory_vector_db, initialize_memory_vector_db, router
 
 
 @pytest.fixture

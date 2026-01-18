@@ -242,7 +242,9 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if auto_ingestion_enabled:
         try:
-            from backend.services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+            from backend.services.ingestion.auto_ingestion_orchestrator import (
+                AutoIngestionOrchestrator,
+            )
 
             orchestrator = AutoIngestionOrchestrator(
                 search_service=search_service,
@@ -380,6 +382,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if db_pool:
         try:
+
             async def seed_golden_routes_once():
                 """Seed golden_routes with common query patterns (one-time)."""
                 logger.info("🌟 Checking Golden Routes...")
@@ -472,6 +475,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if db_pool:
         try:
+
             async def run_renewal_alerts_checker():
                 """Check for upcoming practice expirations and create alerts."""
                 from datetime import datetime, timedelta
@@ -526,7 +530,9 @@ async def create_and_start_scheduler(
                                 today,
                                 p["assigned_to"],
                             )
-                            logger.info(f"   📌 Created {days}d alert for practice {p['id'][:8]}...")
+                            logger.info(
+                                f"   📌 Created {days}d alert for practice {p['id'][:8]}..."
+                            )
 
                     # Count pending alerts
                     pending = await conn.fetchval(

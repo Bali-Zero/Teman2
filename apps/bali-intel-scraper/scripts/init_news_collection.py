@@ -13,7 +13,6 @@ Sparse Model: BM25
 import asyncio
 import os
 import sys
-from pathlib import Path
 from loguru import logger
 from qdrant_client import QdrantClient, models
 
@@ -22,6 +21,7 @@ COLLECTION_NAME = "balizero_news_history"
 VECTOR_SIZE = 1536  # OpenAI text-embedding-3-small
 QDRANT_URL = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 
 async def init_collection():
     logger.info("=" * 60)
@@ -32,26 +32,26 @@ async def init_collection():
     try:
         # 1. Connessione a Qdrant (con timeout aumentato)
         client = QdrantClient(
-            url=QDRANT_URL, 
+            url=QDRANT_URL,
             api_key=QDRANT_API_KEY,
             timeout=30,
-            prefer_grpc=False  # Usa HTTP invece di gRPC per evitare problemi di connessione
+            prefer_grpc=False,  # Usa HTTP invece di gRPC per evitare problemi di connessione
         )
-        
+
         # 2. Check esistenza
         collections = client.get_collections().collections
         exists = any(c.name == COLLECTION_NAME for c in collections)
-        
+
         if exists:
             logger.warning(f"⚠️ La collezione '{COLLECTION_NAME}' esiste già.")
-            # Chiedi conferma per ricreare solo se lanciato interattivamente, 
+            # Chiedi conferma per ricreare solo se lanciato interattivamente,
             # altrimenti esci
             logger.info("Mantengo la collezione esistente.")
             return
 
         # 3. Creazione Collezione Ibrida (Dense + Sparse)
         logger.info("🛠️ Creazione collezione ibrida...")
-        
+
         client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config={
@@ -81,28 +81,28 @@ async def init_collection():
 
         # 4. Creazione Indici Payload (per filtri veloci)
         logger.info("📑 Creazione indici payload...")
-        
+
         # Indice per data (essenziale per filtrare news recenti)
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
             field_name="published_at",
             field_schema=models.PayloadSchemaType.DATETIME,
         )
-        
+
         # Indice per URL (deduplicazione esatta)
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
             field_name="source_url",
             field_schema=models.PayloadSchemaType.KEYWORD,
         )
-        
+
         # Indice per categoria
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
             field_name="category",
             field_schema=models.PayloadSchemaType.KEYWORD,
         )
-        
+
         # Indice per tier (T1/T2)
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
@@ -116,6 +116,7 @@ async def init_collection():
     except Exception as e:
         logger.error(f"❌ Errore durante l'inizializzazione: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(init_collection())

@@ -14,6 +14,7 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ## 🔍 ACCESSO ANALYTICS
 
 ### Dashboard:
+
 1. Accedere a: https://vercel.com/dashboard
 2. Selezionare progetto: `nuzantara-2026` o `mouth`
 3. Tab "Analytics" o "Speed Insights"
@@ -25,18 +26,21 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ### 1. Core Web Vitals
 
 #### Largest Contentful Paint (LCP):
+
 - **Target:** < 2.5s
 - **Warning:** 2.5s - 4.0s
 - **Critical:** > 4.0s
 - **Monitorare:** Trend settimanale
 
 #### First Input Delay (FID):
+
 - **Target:** < 100ms
 - **Warning:** 100ms - 300ms
 - **Critical:** > 300ms
 - **Monitorare:** Trend settimanale
 
 #### Cumulative Layout Shift (CLS):
+
 - **Target:** < 0.1
 - **Warning:** 0.1 - 0.25
 - **Critical:** > 0.25
@@ -45,16 +49,19 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ### 2. Performance Metrics
 
 #### Time to First Byte (TTFB):
+
 - **Target:** < 200ms
 - **Warning:** 200ms - 500ms
 - **Critical:** > 500ms
 
 #### First Contentful Paint (FCP):
+
 - **Target:** < 1.8s
 - **Warning:** 1.8s - 3.0s
 - **Critical:** > 3.0s
 
 #### Time to Interactive (TTI):
+
 - **Target:** < 3.8s
 - **Warning:** 3.8s - 7.3s
 - **Critical:** > 7.3s
@@ -62,15 +69,18 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ### 3. Traffic Metrics
 
 #### Page Views:
+
 - Monitorare trend giornaliero/settimanale
 - Identificare picchi anomali
 - Correlare con deployment
 
 #### Unique Visitors:
+
 - Monitorare crescita
 - Identificare pattern
 
 #### Bounce Rate:
+
 - **Target:** < 50%
 - **Warning:** 50% - 70%
 - **Critical:** > 70%
@@ -80,6 +90,7 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ## 📋 DAILY MONITORING CHECKLIST
 
 ### Ogni Giorno:
+
 - [ ] Verificare Core Web Vitals
 - [ ] Verificare error rate
 - [ ] Verificare response times
@@ -87,6 +98,7 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 - [ ] Identificare anomalie
 
 ### Cosa Cercare:
+
 - ❌ Degradazione performance
 - ❌ Errori aumentati
 - ❌ Traffico anomalo
@@ -97,6 +109,7 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
 ## 📊 WEEKLY REVIEW
 
 ### Analisi Trends:
+
 1. **Performance Trends:**
    - LCP trend (miglioramento/degradazione)
    - FID trend
@@ -114,6 +127,7 @@ Vercel Analytics fornisce metriche dettagliate su performance, traffico e Core W
    - Error pages
 
 ### Report Template:
+
 ```
 WEEKLY ANALYTICS REVIEW
 Date: [DATA]
@@ -148,6 +162,7 @@ Actions:
 ## 🚨 ALERTING
 
 ### Critical Alerts:
+
 - LCP > 4.0s
 - FID > 300ms
 - CLS > 0.25
@@ -155,6 +170,7 @@ Actions:
 - Uptime < 99%
 
 ### Warning Alerts:
+
 - LCP > 2.5s
 - FID > 100ms
 - CLS > 0.1
@@ -166,18 +182,21 @@ Actions:
 ## 🔧 OPTIMIZATION ACTIONS
 
 ### Se LCP Alto:
+
 - ✅ Ottimizzare immagini (WebP/AVIF)
 - ✅ Implementare lazy loading
 - ✅ Preload risorse critiche
 - ✅ Ottimizzare CSS/JS
 
 ### Se FID Alto:
+
 - ✅ Ridurre JavaScript execution time
 - ✅ Code splitting
 - ✅ Lazy load non-critical JS
 - ✅ Ottimizzare event handlers
 
 ### Se CLS Alto:
+
 - ✅ Specificare dimensioni immagini
 - ✅ Evitare inserimenti dinamici sopra viewport
 - ✅ Usare font-display: swap
@@ -188,12 +207,14 @@ Actions:
 ## 📝 DOCUMENTATION
 
 ### Logging:
+
 - Documentare metriche settimanali
 - Documentare regressioni
 - Documentare ottimizzazioni applicate
 - Documentare risultati
 
 ### Location:
+
 - `docs/ai/WEEKLY_REPORT_YYYYMMDD.md` - Include analytics
 - `docs/ai/PERFORMANCE_METRICS_YYYYMMDD.md` - Dettagli performance
 
@@ -211,16 +232,19 @@ Actions:
 ## ✅ SUCCESS CRITERIA
 
 ### Daily:
+
 - ✅ Core Web Vitals verificati
 - ✅ Nessuna regressione critica
 - ✅ Error rate stabile
 
 ### Weekly:
+
 - ✅ Trends analizzati
 - ✅ Regressioni identificate
 - ✅ Ottimizzazioni pianificate
 
 ### Monthly:
+
 - ✅ Performance migliorata o stabile
 - ✅ Error rate ridotto o stabile
 - ✅ User experience ottimizzata

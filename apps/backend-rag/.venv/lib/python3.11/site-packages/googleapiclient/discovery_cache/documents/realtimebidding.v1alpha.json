@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -114,9 +104,7 @@
               "flatPath": "v1alpha/bidders/{biddersId}/biddingFunctions/{biddingFunctionsId}:activate",
               "httpMethod": "POST",
               "id": "realtimebidding.bidders.biddingFunctions.activate",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Required. The name of the bidding function to activate. Format: `bidders/{bidder_account_id}/biddingFunction/{bidding_function_name}`",
@@ -133,18 +121,14 @@
               "response": {
                 "$ref": "BiddingFunction"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/realtime-bidding"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/realtime-bidding"]
             },
             "archive": {
               "description": "Archives an existing bidding function. An archived function will not be available for function invocation for the server-side TURTLEDOVE simulations unless it is activated.",
               "flatPath": "v1alpha/bidders/{biddersId}/biddingFunctions/{biddingFunctionsId}:archive",
               "httpMethod": "POST",
               "id": "realtimebidding.bidders.biddingFunctions.archive",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Required. The name of the bidding function to archive. Format: `bidders/{bidder_account_id}/biddingFunction/{bidding_function_name}`",
@@ -161,18 +145,14 @@
               "response": {
                 "$ref": "BiddingFunction"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/realtime-bidding"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/realtime-bidding"]
             },
             "create": {
               "description": "Creates a new bidding function.",
               "flatPath": "v1alpha/bidders/{biddersId}/biddingFunctions",
               "httpMethod": "POST",
               "id": "realtimebidding.bidders.biddingFunctions.create",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "parent": {
                   "description": "Required. The name of the bidder for which to create the bidding function. Format: `bidders/{bidderAccountId}`",
@@ -189,18 +169,14 @@
               "response": {
                 "$ref": "BiddingFunction"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/realtime-bidding"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/realtime-bidding"]
             },
             "list": {
               "description": "Lists the bidding functions that a bidder currently has registered.",
               "flatPath": "v1alpha/bidders/{biddersId}/biddingFunctions",
               "httpMethod": "GET",
               "id": "realtimebidding.bidders.biddingFunctions.list",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "pageSize": {
                   "description": "The maximum number of bidding functions to return.",
@@ -225,9 +201,7 @@
               "response": {
                 "$ref": "ListBiddingFunctionsResponse"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/realtime-bidding"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/realtime-bidding"]
             }
           }
         }
@@ -263,11 +237,7 @@
         },
         "state": {
           "description": "Output only. The state of the bidding function.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "ACTIVE",
-            "ARCHIVED"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "ACTIVE", "ARCHIVED"],
           "enumDescriptions": [
             "Default value that should not be used.",
             "An active function. Only `ACTIVE` bidding functions or ad scoring functions are made available for the server-side TURTLEDOVE simulations. Every account is limited to 10 active bidding functions per account.",

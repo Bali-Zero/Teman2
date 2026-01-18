@@ -7,10 +7,8 @@ Cliente/
   └── ...
 """
 
-import sys
 import shutil
 from pathlib import Path
-from collections import defaultdict
 
 # Paths
 DROPBOX_PATH = Path("/sessions/upbeat-laughing-volta/mnt/antonellosiano/Dropbox")
@@ -18,27 +16,46 @@ OUTPUT_PATH = Path.home() / "Desktop" / "CRM_PULITA"
 
 # Repository Dropbox
 REPOSITORIES = {
-    'YANTI': DROPBOX_PATH / 'YANTI',
-    'NOVI': DROPBOX_PATH / 'NOVI',
-    'ADITYA': DROPBOX_PATH / 'ADITYA',
-    'MEGI': DROPBOX_PATH / 'MEGI',
-    'ANGEL': DROPBOX_PATH / 'ANGEL'
+    "YANTI": DROPBOX_PATH / "YANTI",
+    "NOVI": DROPBOX_PATH / "NOVI",
+    "ADITYA": DROPBOX_PATH / "ADITYA",
+    "MEGI": DROPBOX_PATH / "MEGI",
+    "ANGEL": DROPBOX_PATH / "ANGEL",
 }
 
 # Filtri - cartelle da ESCLUDERE (non sono clienti)
 TEAM_FOLDERS = {
-    'MAS ADIT', 'OM YOYOK', 'Om Oman', 'MAS ADI', 'OM FIRDA',
-    'Titip Punya ARI FIRDA', 'FIRDA', 'ARI', 'MAS YOYOK',
-    'Titip Punya Rina', 'Titip Punya Vino', 'Titip Punya'
+    "MAS ADIT",
+    "OM YOYOK",
+    "Om Oman",
+    "MAS ADI",
+    "OM FIRDA",
+    "Titip Punya ARI FIRDA",
+    "FIRDA",
+    "ARI",
+    "MAS YOYOK",
+    "Titip Punya Rina",
+    "Titip Punya Vino",
+    "Titip Punya",
 }
 
 UTILITY_FOLDERS = {
-    'Bali Zero', 'Draft', 'Foto', 'BS', 'Backup', 'Archive',
-    'Template', 'Samples', 'Test', 'Old', 'Downloads', '.DS_Store'
+    "Bali Zero",
+    "Draft",
+    "Foto",
+    "BS",
+    "Backup",
+    "Archive",
+    "Template",
+    "Samples",
+    "Test",
+    "Old",
+    "Downloads",
+    ".DS_Store",
 }
 
-VISA_TYPES = {'ALTUS', 'ITAS', 'KITAP', 'KITAS', 'E-VISA', 'VOA'}
-STATUS_FOLDERS = {'Done', 'On Proses', 'Pending', 'Rejected', 'Cancelled'}
+VISA_TYPES = {"ALTUS", "ITAS", "KITAP", "KITAS", "E-VISA", "VOA"}
+STATUS_FOLDERS = {"Done", "On Proses", "Pending", "Rejected", "Cancelled"}
 
 
 def is_client_folder(path: Path, parent_path: str) -> bool:
@@ -50,7 +67,7 @@ def is_client_folder(path: Path, parent_path: str) -> bool:
         return False
 
     # Escludi se contiene "titip"
-    if 'titip' in name.lower():
+    if "titip" in name.lower():
         return False
 
     # Escludi utility
@@ -70,11 +87,11 @@ def is_client_folder(path: Path, parent_path: str) -> bool:
         return False
 
     # Escludi se parent contiene "titip"
-    if 'titip' in parent_path.lower():
+    if "titip" in parent_path.lower():
         return False
 
     # Se parent è status o visa type, PROBABILE cliente
-    parent_parts = parent_path.split('/')
+    parent_parts = parent_path.split("/")
     if any(part in STATUS_FOLDERS for part in parent_parts):
         return True
     if any(part in VISA_TYPES for part in parent_parts):
@@ -86,9 +103,9 @@ def is_client_folder(path: Path, parent_path: str) -> bool:
 
 def find_all_clients():
     """Trova TUTTI i clienti in tutti i repository"""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🔍 RICERCA CLIENTI IN DROPBOX")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     all_clients = {}
     total_found = 0
@@ -101,13 +118,13 @@ def find_all_clients():
         print(f"📂 Scansione {repo_name}...")
 
         # Scan ricorsivo
-        for item in repo_path.rglob('*'):
+        for item in repo_path.rglob("*"):
             if item.is_dir():
                 rel_path = str(item.relative_to(repo_path))
 
                 if is_client_folder(item, rel_path):
                     # Verifica che contenga file
-                    files = list(item.glob('*.*'))
+                    files = list(item.glob("*.*"))
                     if files:
                         client_name = item.name
 
@@ -117,16 +134,18 @@ def find_all_clients():
                             client_name = f"{client_name} ({repo_name})"
 
                         all_clients[client_name] = {
-                            'path': item,
-                            'repo': repo_name,
-                            'files': files
+                            "path": item,
+                            "repo": repo_name,
+                            "files": files,
                         }
                         total_found += 1
 
                         if total_found % 100 == 0:
                             print(f"   Trovati {total_found} clienti...")
 
-        print(f"   ✅ {repo_name}: {len([c for c in all_clients.values() if c['repo'] == repo_name])} clienti\n")
+        print(
+            f"   ✅ {repo_name}: {len([c for c in all_clients.values() if c['repo'] == repo_name])} clienti\n"
+        )
 
     print(f"🎯 TOTALE: {len(all_clients)} clienti trovati\n")
     return all_clients
@@ -134,13 +153,13 @@ def find_all_clients():
 
 def create_clean_structure(clients):
     """Crea struttura pulita locale"""
-    print("="*80)
+    print("=" * 80)
     print("📦 CREAZIONE STRUTTURA PULITA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Rimuovi output esistente
     if OUTPUT_PATH.exists():
-        print(f"🗑️  Rimuovo output precedente...")
+        print("🗑️  Rimuovo output precedente...")
         shutil.rmtree(OUTPUT_PATH)
 
     # Crea cartella principale
@@ -161,7 +180,7 @@ def create_clean_structure(clients):
 
         # Copia tutti i file
         files_copied = 0
-        for file_path in client_data['files']:
+        for file_path in client_data["files"]:
             try:
                 dest = client_folder / file_path.name
                 shutil.copy2(file_path, dest)
@@ -173,7 +192,7 @@ def create_clean_structure(clients):
         if i % 100 == 0:
             print(f"   [{i}/{len(sorted_clients)}] {client_name} - {files_copied} file")
 
-    print(f"\n✅ Completato!")
+    print("\n✅ Completato!")
     print(f"   Clienti: {len(sorted_clients)}")
     print(f"   File copiati: {total_files}")
 
@@ -188,9 +207,9 @@ def create_clean_structure(clients):
 
 def generate_report(clients, total_files, errors):
     """Genera report finale"""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 REPORT FINALE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Primi 30 clienti
     sorted_clients = sorted(clients.items(), key=lambda x: x[0].lower())
@@ -202,18 +221,18 @@ def generate_report(clients, total_files, errors):
     if len(sorted_clients) > 30:
         print(f"\n... e altri {len(sorted_clients) - 30} clienti")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("✅ PREPARAZIONE COMPLETATA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print(f"📂 Cartella output: {OUTPUT_PATH}")
     print(f"👥 Totale clienti: {len(clients)}")
     print(f"📄 Totale file: {total_files}")
     print(f"⚠️  Errori: {len(errors)}\n")
 
-    print("="*80)
+    print("=" * 80)
     print("🚀 PROSSIMO STEP")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print("1. ✅ Apri Finder:")
     print(f"     {OUTPUT_PATH}")
@@ -223,7 +242,9 @@ def generate_report(clients, total_files, errors):
     print("     - Tutti i file sono dentro")
     print()
     print("3. ✅ Upload su Google Drive:")
-    print("     - Apri https://drive.google.com/drive/folders/1je2YOEzBf2APKDbAdaXo2MGIu4N5nAEl")
+    print(
+        "     - Apri https://drive.google.com/drive/folders/1je2YOEzBf2APKDbAdaXo2MGIu4N5nAEl"
+    )
     print("     - Drag & drop TUTTE le cartelle clienti")
     print("     - Aspetta upload (2-4 ore)")
     print()
@@ -234,9 +255,9 @@ def generate_report(clients, total_files, errors):
 def main():
     """Main function"""
     try:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🚀 PREPARAZIONE COMPLETA CRM - STRUTTURA SEMPLICE")
-        print("="*80)
+        print("=" * 80)
 
         # Trova clienti
         clients = find_all_clients()
@@ -256,6 +277,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Errore: {e}")
         import traceback
+
         traceback.print_exc()
 
 

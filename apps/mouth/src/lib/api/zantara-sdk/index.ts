@@ -6,10 +6,3 @@
 export * from './types';
 export * from './client';
 export { createZantaraSDK, ZantaraSDK } from './client';
-
-
-
-
-
-
-

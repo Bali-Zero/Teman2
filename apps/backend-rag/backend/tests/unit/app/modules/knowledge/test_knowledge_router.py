@@ -126,7 +126,8 @@ class TestSemanticSearch:
         mock_request.app.state.search_service = mock_search_service
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(mock_search_query, mock_request)
 
@@ -162,7 +163,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=2, limit=5, tier_filter=[TierLevel.C])
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -180,7 +182,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5, collection="kb_indonesian")
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -204,7 +207,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -239,7 +243,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -257,7 +262,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await semantic_search(query, mock_request)
@@ -278,7 +284,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await semantic_search(query, mock_request)
@@ -308,7 +315,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -336,7 +344,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -364,7 +373,8 @@ class TestSemanticSearch:
         query = SearchQuery(query="test", level=0, limit=5)
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await semantic_search(query, mock_request)
 
@@ -382,7 +392,8 @@ class TestSearchHealth:
         mock_request.app.state.search_service = mock_search_service
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_search_service,
         ):
             response = await search_health(mock_request)
 
@@ -401,7 +412,8 @@ class TestSearchHealth:
         mock_knowledge_service = MagicMock()
 
         with patch(
-            "backend.app.modules.knowledge.router.get_search_service", return_value=mock_knowledge_service
+            "backend.app.modules.knowledge.router.get_search_service",
+            return_value=mock_knowledge_service,
         ):
             # Mock hasattr to return False (simulating SearchService not in app.state)
             with patch("builtins.hasattr", side_effect=lambda obj, attr: attr != "search_service"):

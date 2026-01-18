@@ -20,14 +20,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -39,11 +33,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -103,9 +93,7 @@
           "flatPath": "v1/featuretiles/{featuretilesId}",
           "httpMethod": "GET",
           "id": "vectortile.featuretiles.get",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "alwaysIncludeBuildingFootprints": {
               "description": "Flag indicating whether the returned tile will always contain 2.5D footprints for structures. If enabled_modeled_volumes is set, this will mean that structures will have both their 3D models and 2.5D footprints returned.",
@@ -234,9 +222,7 @@
           "flatPath": "v1/terraintiles/{terraintilesId}",
           "httpMethod": "GET",
           "id": "vectortile.terraintiles.get",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "altitudePrecisionCentimeters": {
               "description": "The precision of terrain altitudes in centimeters. Possible values: between 1 (cm level precision) and 1,000,000 (10-kilometer level precision).",
@@ -320,11 +306,7 @@
             },
             "terrainFormats": {
               "description": "Terrain formats that the client understands.",
-              "enum": [
-                "TERRAIN_FORMAT_UNKNOWN",
-                "FIRST_DERIVATIVE",
-                "SECOND_DERIVATIVE"
-              ],
+              "enum": ["TERRAIN_FORMAT_UNKNOWN", "FIRST_DERIVATIVE", "SECOND_DERIVATIVE"],
               "enumDescriptions": [
                 "An unknown or unspecified terrain format.",
                 "Terrain elevation data encoded as a FirstDerivativeElevationGrid. .",
@@ -384,11 +366,7 @@
         },
         "type": {
           "description": "The polygon encoding type used for this area.",
-          "enum": [
-            "TRIANGLE_FAN",
-            "INDEXED_TRIANGLES",
-            "TRIANGLE_STRIP"
-          ],
+          "enum": ["TRIANGLE_FAN", "INDEXED_TRIANGLES", "TRIANGLE_STRIP"],
           "enumDescriptions": [
             "The first vertex in vertex_offset is the center of a triangle fan. The other vertices are arranged around this vertex in a fan shape. The following diagram showes a triangle fan polygon with the vertices labelled with their indices in the vertex_offset list. Triangle fan polygons always have a single boundary loop. Vertices may be in either a clockwise or counterclockwise order. (1) / \\ / \\ / \\ (0)-----(2) / \\ / / \\ / / \\ / (4)-----(3)",
             "The polygon is a set of triangles with three vertex indices per triangle. The vertex indices can be found in the triangle_indices field. Indexed triangle polygons also contain information about boundary loops. These identify the loops at the boundary of the polygon and may be used in conjunction with the internal_edges field for styling. Boundary loops may represent either a hole or a disconnected component of the polygon. The following diagram shows an indexed triangle polygon with two boundary loops. (0) (4) / \\ / \\ / \\ / \\ (1)----(2) (3)----(5)",
@@ -575,10 +553,7 @@
         },
         "status": {
           "description": "Tile response status code to support tile caching.",
-          "enum": [
-            "STATUS_OK",
-            "STATUS_OK_DATA_UNCHANGED"
-          ],
+          "enum": ["STATUS_OK", "STATUS_OK_DATA_UNCHANGED"],
           "enumDescriptions": [
             "Everything worked out OK. The cache-control header determines how long this Tile response may be cached by the client. See also version_id and STATUS_OK_DATA_UNCHANGED.",
             "Indicates that the request was processed successfully and that the tile data that would have been returned are identical to the data already in the client's cache, as specified by the value of client_tile_version_id contained in GetFeatureTileRequest. In particular, the tile's features and providers will not be populated when the tile data is identical. However, the cache-control header and version_id can still change even when the tile contents itself does not, so clients should always use the most recent values returned by the API."
@@ -706,11 +681,7 @@
         },
         "relationType": {
           "description": "Relation type between the origin feature to the related feature.",
-          "enum": [
-            "RELATION_TYPE_UNSPECIFIED",
-            "OCCUPIES",
-            "PRIMARILY_OCCUPIED_BY"
-          ],
+          "enum": ["RELATION_TYPE_UNSPECIFIED", "OCCUPIES", "PRIMARILY_OCCUPIED_BY"],
           "enumDescriptions": [
             "Unspecified relation type. Should never happen.",
             "The origin feature occupies the related feature.",

@@ -84,7 +84,7 @@ def extract_json_from_llm_response(text: str) -> dict | None:
         return None
 
     # Method 1: Try to find JSON in code fence first (most common)
-    code_fence_match = re.search(r'```json?\s*([\s\S]*?)```', text, re.IGNORECASE)
+    code_fence_match = re.search(r"```json?\s*([\s\S]*?)```", text, re.IGNORECASE)
     if code_fence_match:
         try:
             return json.loads(code_fence_match.group(1).strip())
@@ -93,11 +93,11 @@ def extract_json_from_llm_response(text: str) -> dict | None:
 
     # Method 1b: Handle truncated code fence (no closing ```)
     # This happens when Gemini's response is cut off
-    truncated_fence_match = re.search(r'```json?\s*([\s\S]+)', text, re.IGNORECASE)
+    truncated_fence_match = re.search(r"```json?\s*([\s\S]+)", text, re.IGNORECASE)
     if truncated_fence_match:
         content = truncated_fence_match.group(1).strip()
         # Remove trailing ``` if partially present
-        content = re.sub(r'`+$', '', content)
+        content = re.sub(r"`+$", "", content)
         try:
             return json.loads(content)
         except json.JSONDecodeError:
@@ -105,7 +105,7 @@ def extract_json_from_llm_response(text: str) -> dict | None:
 
     # Method 2: Find JSON by matching balanced braces
     # This handles chain-of-thought text before/after the JSON
-    start_idx = text.find('{')
+    start_idx = text.find("{")
     while start_idx != -1:
         depth = 0
         in_string = False
@@ -116,7 +116,7 @@ def extract_json_from_llm_response(text: str) -> dict | None:
                 escape_next = False
                 continue
 
-            if char == '\\' and in_string:
+            if char == "\\" and in_string:
                 escape_next = True
                 continue
 
@@ -127,20 +127,20 @@ def extract_json_from_llm_response(text: str) -> dict | None:
             if in_string:
                 continue
 
-            if char == '{':
+            if char == "{":
                 depth += 1
-            elif char == '}':
+            elif char == "}":
                 depth -= 1
                 if depth == 0:
                     # Found a complete JSON object
                     try:
-                        candidate = text[start_idx:i + 1]
+                        candidate = text[start_idx : i + 1]
                         return json.loads(candidate)
                     except json.JSONDecodeError:
                         # Not valid JSON, try next { in text
                         break
 
         # Move to next { occurrence
-        start_idx = text.find('{', start_idx + 1)
+        start_idx = text.find("{", start_idx + 1)
 
     return None

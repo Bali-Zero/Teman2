@@ -6,28 +6,26 @@ Tests article composition, enrichment, and publishing endpoints.
 
 import base64
 import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi.testclient import TestClient
+import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from backend.app.routers.article_composer import (
-    router,
-    validate_slug,
-    slugify,
-    generate_mdx_content,
-    ComposeRequest,
-    EnrichedArticle,
-    TLDRSection,
     BaliZeroTake,
+    EnrichedArticle,
     NextSteps,
-    PublishRequest,
+    TLDRSection,
+    generate_mdx_content,
+    router,
+    slugify,
+    validate_slug,
 )
 
-
 # --- Test App Setup ---
+
 
 @pytest.fixture
 def app():
@@ -44,6 +42,7 @@ def client(app):
 
 
 # --- Slug Validation Tests ---
+
 
 class TestValidateSlug:
     """Tests for validate_slug function."""
@@ -123,6 +122,7 @@ class TestSlugify:
 
 
 # --- MDX Generation Tests ---
+
 
 class TestGenerateMdxContent:
     """Tests for generate_mdx_content function."""
@@ -233,6 +233,7 @@ class TestGenerateMdxContent:
 
 # --- Compose Endpoint Tests ---
 
+
 class TestComposeEndpoint:
     """Tests for POST /api/articles/compose endpoint."""
 
@@ -256,32 +257,38 @@ class TestComposeEndpoint:
     async def test_compose_calls_anthropic_api(self, client):
         """Test calls Anthropic API with correct parameters."""
         mock_message = MagicMock()
-        mock_message.content = [MagicMock(text=json.dumps({
-            "headline": "Test Headline",
-            "tldr": {
-                "should_worry": "No",
-                "what": "Test",
-                "who": "Everyone",
-                "when": "Now",
-                "risk_level": "Low",
-            },
-            "facts": "Facts here",
-            "bali_zero_take": {
-                "hidden_insight": "Insight",
-                "our_analysis": "Analysis",
-                "our_advice": "Advice",
-            },
-            "next_steps": {
-                "expat": ["Step 1"],
-                "investor": ["Step 2"],
-            },
-            "category": "business",
-            "priority": "medium",
-            "relevance_score": 50,
-            "ai_summary": "Summary",
-            "ai_tags": ["tag1"],
-            "suggested_components": [],
-        }))]
+        mock_message.content = [
+            MagicMock(
+                text=json.dumps(
+                    {
+                        "headline": "Test Headline",
+                        "tldr": {
+                            "should_worry": "No",
+                            "what": "Test",
+                            "who": "Everyone",
+                            "when": "Now",
+                            "risk_level": "Low",
+                        },
+                        "facts": "Facts here",
+                        "bali_zero_take": {
+                            "hidden_insight": "Insight",
+                            "our_analysis": "Analysis",
+                            "our_advice": "Advice",
+                        },
+                        "next_steps": {
+                            "expat": ["Step 1"],
+                            "investor": ["Step 2"],
+                        },
+                        "category": "business",
+                        "priority": "medium",
+                        "relevance_score": 50,
+                        "ai_summary": "Summary",
+                        "ai_tags": ["tag1"],
+                        "suggested_components": [],
+                    }
+                )
+            )
+        ]
         mock_message.usage = MagicMock(input_tokens=100, output_tokens=200)
 
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
@@ -335,6 +342,7 @@ class TestComposeEndpoint:
 
 # --- Compose Status Endpoint Tests ---
 
+
 class TestComposeStatusEndpoint:
     """Tests for GET /api/articles/compose/status endpoint."""
 
@@ -359,6 +367,7 @@ class TestComposeStatusEndpoint:
 
 
 # --- Publish Endpoint Tests ---
+
 
 class TestPublishEndpoint:
     """Tests for POST /api/articles/publish endpoint."""
@@ -466,10 +475,12 @@ class TestPublishEndpoint:
         with patch("backend.services.integrations.github_publisher.github_publisher") as mock_pub:
             mock_pub.is_configured = True
             mock_pub.check_file_exists = AsyncMock(return_value=False)
-            mock_pub.create_commit_with_files = AsyncMock(return_value={
-                "success": True,
-                "commit_sha": "abc123def456",
-            })
+            mock_pub.create_commit_with_files = AsyncMock(
+                return_value={
+                    "success": True,
+                    "commit_sha": "abc123def456",
+                }
+            )
 
             response = client.post(
                 "/api/articles/publish",
@@ -492,10 +503,12 @@ class TestPublishEndpoint:
         with patch("backend.services.integrations.github_publisher.github_publisher") as mock_pub:
             mock_pub.is_configured = True
             mock_pub.check_file_exists = AsyncMock(return_value=False)
-            mock_pub.create_commit_with_files = AsyncMock(return_value={
-                "success": True,
-                "commit_sha": "sha123",
-            })
+            mock_pub.create_commit_with_files = AsyncMock(
+                return_value={
+                    "success": True,
+                    "commit_sha": "sha123",
+                }
+            )
 
             response = client.post(
                 "/api/articles/publish",
@@ -508,6 +521,7 @@ class TestPublishEndpoint:
 
 
 # --- Publish Status Endpoint Tests ---
+
 
 class TestPublishStatusEndpoint:
     """Tests for GET /api/articles/publish/status endpoint."""

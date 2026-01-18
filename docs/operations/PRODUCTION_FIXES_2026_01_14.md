@@ -4,12 +4,12 @@
 
 This document describes 4 production bugs identified and fixed on 2026-01-14.
 
-| # | Bug | Severity | Status |
-|---|-----|----------|--------|
-| 1 | Clients page virtualization not rendering | High | Fixed |
-| 2 | WebSocket RealtimeService connection failures | High | Fixed |
-| 3 | AUTO CRM UUID serialization error | Medium | Fixed |
-| 4 | Pollinations.ai watermarks on article images | Low | Fixed |
+| #   | Bug                                           | Severity | Status |
+| --- | --------------------------------------------- | -------- | ------ |
+| 1   | Clients page virtualization not rendering     | High     | Fixed  |
+| 2   | WebSocket RealtimeService connection failures | High     | Fixed  |
+| 3   | AUTO CRM UUID serialization error             | Medium   | Fixed  |
+| 4   | Pollinations.ai watermarks on article images  | Low      | Fixed  |
 
 ---
 
@@ -57,6 +57,7 @@ useEffect(() => {
 ### Problem
 
 Browser console showed repeated WebSocket errors:
+
 ```
 WebSocket error
 Max reconnection attempts reached
@@ -102,6 +103,7 @@ this.ws = new WebSocket(wsUrl, [`bearer.${token}`]);
 ### Problem
 
 Backend error logs showed:
+
 ```
 TypeError: Object of type UUID is not JSON serializable
 ```
@@ -117,6 +119,7 @@ This occurred when the AI CRM Extractor tried to include existing client data (w
 **File:** `apps/backend-rag/backend/services/crm/ai_crm_extractor.py`
 
 Added `AsyncpgJSONEncoder` class that handles:
+
 - `uuid.UUID` → string
 - `datetime` → ISO format
 - `date` → ISO format
@@ -140,6 +143,7 @@ json.dumps(existing_client_data, indent=2, cls=AsyncpgJSONEncoder)
 **File:** `apps/backend-rag/tests/unit/services/crm/test_ai_crm_extractor.py`
 
 Tests include:
+
 - `test_encode_uuid` - UUID to string conversion
 - `test_encode_datetime` - datetime to ISO format
 - `test_encode_date` - date to ISO format
@@ -154,6 +158,7 @@ Tests include:
 ### Problem
 
 Article images generated via Pollinations.ai API showed watermarks:
+
 ```
 "NO RATE LIMITS! GET FREE DAILY CREDITS"
 ```
@@ -187,10 +192,10 @@ Visual verification only - UI component change.
 
 Both frontend and backend were deployed after fixes:
 
-| App | Deploy Method | Version |
-|-----|---------------|---------|
-| Backend | `fly deploy --now` | v1576 |
-| Frontend | Git push → Vercel | auto |
+| App      | Deploy Method      | Version |
+| -------- | ------------------ | ------- |
+| Backend  | `fly deploy --now` | v1576   |
+| Frontend | Git push → Vercel  | auto    |
 
 ### Verification Commands
 
@@ -206,13 +211,13 @@ curl -sI https://balizero.com | head -1
 
 ## Related Files Changed
 
-| File | Type | Description |
-|------|------|-------------|
-| `apps/mouth/src/app/(workspace)/clients/page.tsx` | MODIFIED | Virtualization fix |
-| `apps/mouth/src/lib/api/client.ts` | MODIFIED | getUserProfile sync + logging |
-| `apps/mouth/src/lib/realtime.tsx` | MODIFIED | WebSocket auth |
-| `apps/backend-rag/backend/services/crm/ai_crm_extractor.py` | MODIFIED | UUID encoder |
-| `apps/mouth/src/components/dashboard/FeaturedArticlesWidget.tsx` | MODIFIED | Static images |
+| File                                                             | Type     | Description                   |
+| ---------------------------------------------------------------- | -------- | ----------------------------- |
+| `apps/mouth/src/app/(workspace)/clients/page.tsx`                | MODIFIED | Virtualization fix            |
+| `apps/mouth/src/lib/api/client.ts`                               | MODIFIED | getUserProfile sync + logging |
+| `apps/mouth/src/lib/realtime.tsx`                                | MODIFIED | WebSocket auth                |
+| `apps/backend-rag/backend/services/crm/ai_crm_extractor.py`      | MODIFIED | UUID encoder                  |
+| `apps/mouth/src/components/dashboard/FeaturedArticlesWidget.tsx` | MODIFIED | Static images                 |
 
 ---
 

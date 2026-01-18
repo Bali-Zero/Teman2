@@ -4,9 +4,9 @@ Unit tests for GitHubPublisher service.
 Tests GitHub API interactions for article publishing workflow.
 """
 
-import base64
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.integrations.github_publisher import (
     GitHubPublisher,

@@ -9,22 +9,23 @@
 
 ### Confronto Prima/Dopo
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **RAM Libera** | 98 MB | ~60-80 MB | Variabile* |
-| **Memoria Compressa** | ~15 GB | ~10 GB | **-5 GB** ✅ |
-| **CPU Idle** | 3.6% | 34-39% | **+30-35%** ✅ |
-| **Load Average** | 5.79-7.30 | 4.04-5.35 | **Migliorato** ✅ |
-| **VM Attive** | 2 | 0-1 | **-1 a -2** ✅ |
-| **Cache Pulite** | - | ~580 MB | **+580 MB** ✅ |
+| Metrica               | Prima     | Dopo      | Miglioramento     |
+| --------------------- | --------- | --------- | ----------------- |
+| **RAM Libera**        | 98 MB     | ~60-80 MB | Variabile\*       |
+| **Memoria Compressa** | ~15 GB    | ~10 GB    | **-5 GB** ✅      |
+| **CPU Idle**          | 3.6%      | 34-39%    | **+30-35%** ✅    |
+| **Load Average**      | 5.79-7.30 | 4.04-5.35 | **Migliorato** ✅ |
+| **VM Attive**         | 2         | 0-1       | **-1 a -2** ✅    |
+| **Cache Pulite**      | -         | ~580 MB   | **+580 MB** ✅    |
 
-*Nota: RAM libera può variare in base all'uso del sistema. La memoria compressa ridotta indica che il sistema sta gestendo meglio la memoria.
+\*Nota: RAM libera può variare in base all'uso del sistema. La memoria compressa ridotta indica che il sistema sta gestendo meglio la memoria.
 
 ---
 
 ## ✅ AZIONI COMPLETATE
 
 ### 1. Pulizia Cache ✅
+
 - CloudKit: 265 MB → 0B
 - Playwright: 127 MB → 0B
 - Zoom: 73 MB → 0B
@@ -36,6 +37,7 @@
 ---
 
 ### 2. Terminazione VM ✅
+
 - PID 48375: Terminata
 - PID 2026: Terminata
 
@@ -50,6 +52,7 @@
 **Status:** Comando richiede password sudo
 
 **Istruzioni:**
+
 ```bash
 sudo purge
 ```
@@ -63,21 +66,25 @@ sudo purge
 ## 🎯 MIGLIORAMENTI OTTENUTI
 
 ### Memoria Compressa
+
 - **Prima:** ~15 GB
 - **Dopo:** ~10 GB
 - **Miglioramento:** **-5 GB** ✅
 
 ### CPU
+
 - **Prima:** 3.6% idle
 - **Dopo:** 34-39% idle
 - **Miglioramento:** **+30-35%** ✅
 
 ### Load Average
+
 - **Prima:** 5.79-7.30
 - **Dopo:** 4.04-5.35
 - **Miglioramento:** **Ridotto** ✅
 
 ### VM
+
 - **Prima:** 2 VM attive
 - **Dopo:** 0-1 VM
 - **Miglioramento:** **-1 a -2 VM** ✅
@@ -89,17 +96,20 @@ sudo purge
 ### Purge Memoria
 
 **Comando:**
+
 ```bash
 sudo purge
 ```
 
 **Eseguire nel terminale:**
+
 1. Apri Terminale
 2. Esegui: `sudo purge`
 3. Inserisci password quando richiesta
 4. Attendi completamento
 
 **Effetto Atteso:**
+
 - Memoria compressa: Da ~10 GB a <1 GB
 - RAM libera: Aumento significativo
 - Performance: Ulteriore miglioramento
@@ -133,6 +143,7 @@ ps aux | grep VirtualMachine | grep -v grep
 3. ⚠️ Purge memoria: Richiede password (eseguire manualmente)
 
 **Miglioramenti Ottenuti:**
+
 - Memoria compressa: -5 GB ✅
 - CPU idle: +30-35% ✅
 - Load average: Ridotto ✅
@@ -140,9 +151,11 @@ ps aux | grep VirtualMachine | grep -v grep
 - Cache pulite: ~580 MB ✅
 
 **Azione Finale:**
+
 - Eseguire `sudo purge` manualmente per risultati ottimali
 
 **Risultato:**
+
 - ✅ Mac più veloce e reattivo
 - ✅ CPU più disponibile
 - ✅ Sistema più stabile

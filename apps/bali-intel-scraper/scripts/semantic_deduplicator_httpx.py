@@ -10,22 +10,26 @@ Benefits:
 - Configurable timeouts and retry logic
 - More reliable connections to Fly.io hosted Qdrant
 """
+
 import os
 import hashlib
-import json
 import uuid
-import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 from loguru import logger
 import httpx
 from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 # Configuration - Optimized
 COLLECTION_NAME = "balizero_news_history"
 SIMILARITY_THRESHOLD = 0.88  # 88% similarity = definite duplicate
-SEARCH_WINDOW_DAYS = 5       # Only check recent news
+SEARCH_WINDOW_DAYS = 5  # Only check recent news
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSION = 1536
 
@@ -42,7 +46,9 @@ class SemanticDeduplicator:
     """
 
     def __init__(self):
-        self.qdrant_url = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev").rstrip("/")
+        self.qdrant_url = os.getenv(
+            "QDRANT_URL", "https://nuzantara-qdrant.fly.dev"
+        ).rstrip("/")
         self.qdrant_key = os.getenv("QDRANT_API_KEY")
         openai_key = os.getenv("OPENAI_API_KEY")
 
@@ -55,12 +61,15 @@ class SemanticDeduplicator:
         self._async_client: Optional[httpx.AsyncClient] = None
         # Sync HTTP client for backward compatibility
         self._sync_client: Optional[httpx.Client] = None
-        self._client_headers = {
-            "Content-Type": "application/json",
-            "api-key": self.qdrant_key
-        } if self.qdrant_key else {"Content-Type": "application/json"}
+        self._client_headers = (
+            {"Content-Type": "application/json", "api-key": self.qdrant_key}
+            if self.qdrant_key
+            else {"Content-Type": "application/json"}
+        )
 
-        logger.info(f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})")
+        logger.info(
+            f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})"
+        )
 
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client with connection pooling."""
@@ -77,9 +86,7 @@ class SemanticDeduplicator:
         """Get or create sync HTTP client (backward compatibility)."""
         if self._sync_client is None:
             self._sync_client = httpx.Client(
-                timeout=READ_TIMEOUT,
-                headers=self._client_headers,
-                http2=False
+                timeout=READ_TIMEOUT, headers=self._client_headers, http2=False
             )
         return self._sync_client
 
@@ -92,7 +99,7 @@ class SemanticDeduplicator:
         stop=stop_after_attempt(MAX_RETRIES),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
-        reraise=True
+        reraise=True,
     )
     async def _get_embedding(self, text: str) -> list[float]:
         """Generate embedding vector with retry logic."""
@@ -103,15 +110,16 @@ class SemanticDeduplicator:
         try:
             text = text[:8000]  # Truncate to avoid token limits
             response = await self.openai.embeddings.create(
-                input=text,
-                model=EMBEDDING_MODEL
+                input=text, model=EMBEDDING_MODEL
             )
             return response.data[0].embedding
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return []
 
-    async def is_duplicate(self, title: str, summary: str, url: str) -> Tuple[bool, str, float]:
+    async def is_duplicate(
+        self, title: str, summary: str, url: str
+    ) -> Tuple[bool, str, float]:
         """Verifica se la notizia esiste già semanticamente"""
         # 1. Check URL esatto
         try:
@@ -133,47 +141,44 @@ class SemanticDeduplicator:
         try:
             query_text = f"{title}\n{summary}"
             vector = await self._get_embedding(query_text)
-            
+
             if not vector:
                 return False, "", 0.0
 
-            cutoff_date = (datetime.utcnow() - timedelta(days=SEARCH_WINDOW_DAYS)).isoformat()
-            
+            cutoff_date = (
+                datetime.utcnow() - timedelta(days=SEARCH_WINDOW_DAYS)
+            ).isoformat()
+
             # Search usando API REST (specifica nome vettore per collezioni ibride)
             # Formato filtro corretto per Qdrant
             search_payload = {
                 "vector": {
                     "name": "default",  # Nome del vettore denso nella collezione ibrida
-                    "vector": vector
+                    "vector": vector,
                 },
                 "limit": 1,
                 "filter": {
-                    "must": [
-                        {
-                            "key": "published_at",
-                            "range": {
-                                "gte": cutoff_date
-                            }
-                        }
-                    ]
+                    "must": [{"key": "published_at", "range": {"gte": cutoff_date}}]
                 },
                 "with_payload": True,
-                "score_threshold": SIMILARITY_THRESHOLD  # Filtra risultati sotto threshold
+                "score_threshold": SIMILARITY_THRESHOLD,  # Filtra risultati sotto threshold
             }
-            
+
             client = self._get_client()
             response = client.post(
                 f"{self.qdrant_url}/collections/{COLLECTION_NAME}/points/search",
-                json=search_payload
+                json=search_payload,
             )
             response.raise_for_status()
-            
+
             results = response.json().get("result", [])
             if results:
                 best_match = results[0]
                 score = best_match.get("score", 0.0)
                 if score >= SIMILARITY_THRESHOLD:
-                    existing_title = best_match.get("payload", {}).get("title", "Unknown")
+                    existing_title = best_match.get("payload", {}).get(
+                        "title", "Unknown"
+                    )
                     logger.warning(
                         f"🧠 Duplicato SEMANTICO ({score:.2f}): "
                         f"'{title[:30]}...' ≈ '{existing_title[:30]}...'"
@@ -192,14 +197,14 @@ class SemanticDeduplicator:
             title = article.get("title", "")
             summary = article.get("summary", "") or article.get("content", "")[:500]
             url = article.get("sourceUrl") or article.get("url", "")
-            
+
             if not url or not title:
                 return
 
             doc_id = self._generate_id(url)
             text_to_embed = f"{title}\n{summary}"
             vector = await self._get_embedding(text_to_embed)
-            
+
             if not vector:
                 return
 
@@ -209,9 +214,10 @@ class SemanticDeduplicator:
                 "source_url": url,
                 "source": article.get("source", "Unknown"),
                 "category": article.get("category", "general"),
-                "published_at": article.get("publishedAt") or datetime.utcnow().isoformat(),
+                "published_at": article.get("publishedAt")
+                or datetime.utcnow().isoformat(),
                 "tier": "T2",
-                "ingested_at": datetime.utcnow().isoformat()
+                "ingested_at": datetime.utcnow().isoformat(),
             }
 
             # Upsert usando API REST
@@ -223,25 +229,29 @@ class SemanticDeduplicator:
                         "vector": {
                             "default": vector  # Specifica nome vettore per collezione ibrida
                         },
-                        "payload": payload
+                        "payload": payload,
                     }
                 ]
             }
-            
+
             # Upsert con wait=true per assicurare che sia completato
             client = self._get_client()
             response = client.put(
                 f"{self.qdrant_url}/collections/{COLLECTION_NAME}/points",
                 json=upsert_payload,
-                params={"wait": "true"}  # Attendi completamento indicizzazione
+                params={"wait": "true"},  # Attendi completamento indicizzazione
             )
-            
+
             if response.status_code != 200:
-                error_text = response.text[:200] if hasattr(response, 'text') else str(response)
-                logger.error(f"Errore upsert Qdrant {response.status_code}: {error_text}")
+                error_text = (
+                    response.text[:200] if hasattr(response, "text") else str(response)
+                )
+                logger.error(
+                    f"Errore upsert Qdrant {response.status_code}: {error_text}"
+                )
                 # Non sollevare eccezione, permette alla pipeline di continuare
                 return
-            
+
             response.raise_for_status()
             logger.info(f"💾 Salvato in memoria news: {title[:50]}...")
 

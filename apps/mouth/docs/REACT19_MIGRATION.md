@@ -31,6 +31,7 @@ This document describes the modernization of the Chat component from legacy Reac
 ```
 
 **Issues:**
+
 - 437 lines of code in single component
 - Manual loading state management (4 separate `isLoading` states)
 - useEffect for data fetching (waterfall requests)
@@ -76,6 +77,7 @@ This document describes the modernization of the Chat component from legacy Reac
 ### 1. Optimistic Updates with `useOptimistic`
 
 **Before:**
+
 ```tsx
 // User sends message → waits for server → sees loading → message appears
 const handleSend = async () => {
@@ -90,6 +92,7 @@ const handleSend = async () => {
 ```
 
 **After:**
+
 ```tsx
 // User sends message → message appears INSTANTLY → streams in background
 const [optimisticMessages, addOptimisticMessage] = useOptimistic(
@@ -116,6 +119,7 @@ const handleSend = async () => {
 ### 2. Server Actions for Mutations
 
 **Before:**
+
 ```tsx
 // Complex client-side fetch with auth handling
 const sendMessage = async () => {
@@ -129,6 +133,7 @@ const sendMessage = async () => {
 ```
 
 **After:**
+
 ```tsx
 // Server Action with automatic auth
 'use server';
@@ -147,6 +152,7 @@ export async function sendMessage(messages, sessionId) {
 ```
 
 **Result:**
+
 - Secure (tokens never exposed to client)
 - Simpler (no proxy needed)
 - Type-safe (end-to-end)
@@ -154,6 +160,7 @@ export async function sendMessage(messages, sessionId) {
 ### 3. AI SDK RSC for Streaming
 
 **Before (manual SSE parsing):**
+
 ```tsx
 const reader = response.body?.getReader();
 const decoder = new TextDecoder();
@@ -175,6 +182,7 @@ while (true) {
 ```
 
 **After (AI SDK RSC):**
+
 ```tsx
 import { readStreamableValue } from 'ai/rsc';
 
@@ -188,6 +196,7 @@ for await (const chunk of readStreamableValue(messageStream)) {
 ### 4. Eliminated useEffect for Data Fetching
 
 **Before:**
+
 ```tsx
 useEffect(() => {
   const loadData = async () => {
@@ -202,17 +211,14 @@ useEffect(() => {
 ```
 
 **After (with React 19 `use` or RSC):**
+
 ```tsx
 // Server Component (parent)
 async function ChatLayout({ children }) {
   const conversations = await loadConversations();
   const clockStatus = await getClockStatus();
 
-  return (
-    <ChatProvider initialData={{ conversations, clockStatus }}>
-      {children}
-    </ChatProvider>
-  );
+  return <ChatProvider initialData={{ conversations, clockStatus }}>{children}</ChatProvider>;
 }
 ```
 
@@ -220,31 +226,35 @@ async function ChatLayout({ children }) {
 
 ## Performance Metrics (Expected)
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| TTI (Time to Interactive) | ~2.5s | ~1.2s | **52% faster** |
-| Perceived latency (send) | ~300ms | ~0ms | **Instant** |
-| JS Bundle (chat page) | ~85KB | ~45KB | **47% smaller** |
-| Loading states | 4 | 1 | **Simplified** |
+| Metric                    | Before | After | Improvement     |
+| ------------------------- | ------ | ----- | --------------- |
+| TTI (Time to Interactive) | ~2.5s  | ~1.2s | **52% faster**  |
+| Perceived latency (send)  | ~300ms | ~0ms  | **Instant**     |
+| JS Bundle (chat page)     | ~85KB  | ~45KB | **47% smaller** |
+| Loading states            | 4      | 1     | **Simplified**  |
 
 ## Migration Path
 
 ### Phase 1: Server Actions (✅ Done)
+
 - Created `actions.ts` with all mutations
 - Uses `cookies()` for secure auth
 - Returns `StreamableValue` for responses
 
 ### Phase 2: Optimistic Hook (✅ Done)
+
 - Created `useOptimisticChat` hook
 - Encapsulates `useOptimistic` + `useTransition`
 - Consumes streams with `readStreamableValue`
 
 ### Phase 3: Component Refactor (✅ Done)
+
 - Created `chat-v2/page.tsx` as new implementation
 - Created `StreamingMessageList` component
 - Reduced complexity significantly
 
 ### Phase 4: Testing & Rollout (✅ COMPLETED)
+
 - [x] Manual testing of new chat flow
 - [x] Full migration (replaced old chat page)
 - [x] Production deployment (2025-12-28)
@@ -252,6 +262,7 @@ async function ChatLayout({ children }) {
 - [ ] Monitor error rates and performance
 
 ### Phase 5: Production Deployment (✅ COMPLETED - 2025-12-28)
+
 - [x] Build verification passed
 - [x] Deployed to https://www.balizero.com/ (now on Vercel)
 - [x] 2/2 machines healthy
@@ -291,7 +302,9 @@ apps/mouth/src/
 ## Notes
 
 ### Why Not Full RSC?
+
 The chat component needs:
+
 - Real-time streaming updates
 - User input handling
 - WebSocket connections
@@ -299,6 +312,7 @@ The chat component needs:
 These require client-side interactivity. The hybrid approach (Server Actions + Client Components) gives us the best of both worlds.
 
 ### Native Web Streams (Not AI SDK RSC)
+
 During implementation, we discovered AI SDK v6 removed the `ai/rsc` module. Instead, we use native Web Streams API:
 
 ```tsx
@@ -307,7 +321,7 @@ return new ReadableStream<StreamEvent>({
   async start(controller) {
     // Process SSE and enqueue typed events
     controller.enqueue({ type: 'token', data: content });
-  }
+  },
 });
 
 // Client consumes with async iteration

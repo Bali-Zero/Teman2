@@ -1,13 +1,15 @@
 # BaliZero Style Guide
+
 ## "L'Insider Intelligente" - Editorial Standards for Intel Feed
 
-> *"Chi legge le leggi noiose al posto tuo e ti dice solo cosa conta davvero."*
+> _"Chi legge le leggi noiose al posto tuo e ti dice solo cosa conta davvero."_
 
 ---
 
 ## 📌 BRAND POSITIONING
 
 ### Chi Siamo
+
 BaliZero è il **Senior Consultant digitale** per expat e investitori in Indonesia. Non siamo un chatbot generico, né un aggregatore di news. Siamo l'insider che:
 
 - Legge la burocrazia incomprensibile
@@ -15,21 +17,24 @@ BaliZero è il **Senior Consultant digitale** per expat e investitori in Indones
 - Ti dice cosa fare (e cosa evitare)
 
 ### La Nostra Voce
+
 **"Autorevolezza Rilassata"** — Come un avvocato esperto che ti parla davanti a un caffè.
 
-| Siamo | Non Siamo |
-|-------|-----------|
-| L'amico avvocato che spiega | Il burocrate che complica |
+| Siamo                       | Non Siamo                  |
+| --------------------------- | -------------------------- |
+| L'amico avvocato che spiega | Il burocrate che complica  |
 | Il consulente che rassicura | Il giornalista che allarmA |
-| L'insider che anticipa | L'aggregatore che copia |
-| Precisi ma accessibili | Tecnici e freddi |
+| L'insider che anticipa      | L'aggregatore che copia    |
+| Precisi ma accessibili      | Tecnici e freddi           |
 
 ---
 
 ## 🎯 TARGET AUDIENCE
 
 ### Profilo Primario
+
 **L'Expat-Investitore Impegnato**
+
 - 35-55 anni
 - Imprenditore, freelancer, o pensionato attivo
 - Vive a Bali o sta pianificando il trasferimento
@@ -37,23 +42,25 @@ BaliZero è il **Senior Consultant digitale** per expat e investitori in Indones
 - Vuole sapere "cosa significa per ME"
 
 ### Context-Aware Adaptation
+
 Il tono si adatta automaticamente alla categoria:
 
-| Categoria | Audience | Tono | Focus |
-|-----------|----------|------|-------|
-| `immigration` | Expat | Empatico, rassicurante | Qualità della vita, compliance |
-| `business` | Investitore | Numerico, strategico | ROI, rischi, opportunità |
-| `tax` | Investitore/Expat | Preciso, pratico | Compliance, ottimizzazione |
-| `property` | Investitore | Analitico, cauto | Due diligence, rischi legali |
-| `tech` | Innovatore | Entusiasta ma critico | Opportunità, trend |
-| `lifestyle` | Expat | Friendly, insider | Tips pratici |
+| Categoria     | Audience          | Tono                   | Focus                          |
+| ------------- | ----------------- | ---------------------- | ------------------------------ |
+| `immigration` | Expat             | Empatico, rassicurante | Qualità della vita, compliance |
+| `business`    | Investitore       | Numerico, strategico   | ROI, rischi, opportunità       |
+| `tax`         | Investitore/Expat | Preciso, pratico       | Compliance, ottimizzazione     |
+| `property`    | Investitore       | Analitico, cauto       | Due diligence, rischi legali   |
+| `tech`        | Innovatore        | Entusiasta ma critico  | Opportunità, trend             |
+| `lifestyle`   | Expat             | Friendly, insider      | Tips pratici                   |
 
 ---
 
 ## ✍️ PRINCIPI DI SCRITTURA
 
 ### 1. Clarity First (The Economist)
-> *"Clear writing is the key to clear thinking."*
+
+> _"Clear writing is the key to clear thinking."_
 
 ```
 ❌ "In the context of the current regulatory landscape pertaining to..."
@@ -64,7 +71,8 @@ Il tono si adatta automaticamente alla categoria:
 ```
 
 ### 2. Show, Don't Tell (Bloomberg)
-> *"Impress with the quality of information, not the intricacy of prose."*
+
+> _"Impress with the quality of information, not the intricacy of prose."_
 
 ```
 ❌ "Il mercato immobiliare è in forte crescita"
@@ -75,17 +83,19 @@ Il tono si adatta automaticamente alla categoria:
 ```
 
 ### 3. Respect Their Time (Morning Brew + Finimize)
-> *"5 minuti. Non uno di più."*
 
-| Sezione | Parole Max | Tempo Lettura |
-|---------|------------|---------------|
-| TL;DR | 80 | 20 sec |
-| Body | 400 | 2 min |
-| Analysis | 200 | 1 min |
-| Action Items | 100 | 30 sec |
-| **TOTALE** | **~800** | **~5 min** |
+> _"5 minuti. Non uno di più."_
+
+| Sezione      | Parole Max | Tempo Lettura |
+| ------------ | ---------- | ------------- |
+| TL;DR        | 80         | 20 sec        |
+| Body         | 400        | 2 min         |
+| Analysis     | 200        | 1 min         |
+| Action Items | 100        | 30 sec        |
+| **TOTALE**   | **~800**   | **~5 min**    |
 
 ### 4. No Jargon, Link Instead (Finimize)
+
 Se devi usare un termine tecnico, linkalo a una spiegazione.
 
 ```
@@ -94,7 +104,8 @@ Se devi usare un termine tecnico, linkalo a una spiegazione.
 ```
 
 ### 5. Be Honest About Uncertainty
-> *"If a law is confusing, say so."*
+
+> _"If a law is confusing, say so."_
 
 ```
 ✅ "Questo punto è attualmente poco chiaro. La nostra interpretazione migliore è..."
@@ -110,6 +121,7 @@ Se devi usare un termine tecnico, linkalo a una spiegazione.
 
 ```markdown
 # 📰 HEADLINE
+
 [Benefit/Risk-driven, max 12 parole]
 "Nuove Tasse Import: Cosa Cambia per il Tuo Business a Bali dal 2025"
 
@@ -132,13 +144,15 @@ Se devi usare un termine tecnico, linkalo a una spiegazione.
 Nessuna opinione. 200-300 parole max.]
 
 ### Dettagli Chiave
-| Aspetto | Dettaglio |
-|---------|-----------|
-| Regolamento | PP 28/2024 |
+
+| Aspetto        | Dettaglio      |
+| -------------- | -------------- |
+| Regolamento    | PP 28/2024     |
 | Data Effettiva | 1 Gennaio 2025 |
-| Autorità | Kemenkeu |
+| Autorità       | Kemenkeu       |
 
 ### Timeline
+
 - **15 Nov 2024**: Annuncio draft
 - **20 Dic 2024**: Pubblicazione ufficiale
 - **1 Gen 2025**: Entrata in vigore
@@ -147,7 +161,7 @@ Nessuna opinione. 200-300 parole max.]
 
 ## 🧠 THE BALI ZERO TAKE
 
-> *"Cosa non dicono i giornali..."*
+> _"Cosa non dicono i giornali..."_
 
 [Qui entra il Senior Consultant. Non riassumere, INTERPRETA.
 150-200 parole. Prima persona plurale ("Noi di BaliZero...")]
@@ -163,11 +177,13 @@ Nessuna opinione. 200-300 parole max.]
 ## 🚀 NEXT STEPS
 
 ### Se sei [Profilo A]:
+
 1. ✅ [Azione immediata]
 2. 📋 [Azione a medio termine]
 3. 🔔 [Cosa monitorare]
 
 ### Se sei [Profilo B]:
+
 1. ✅ [Azione diversa]
 2. ...
 
@@ -302,8 +318,8 @@ Nessuna opinione. 200-300 parole max.]
 <div class="bz-expert-quote">
   <div class="bz-quote-icon">💡</div>
   <blockquote>
-    "La nostra esperienza con 500+ clienti suggerisce di non aspettare
-    l'ultimo momento per il rinnovo KITAS."
+    "La nostra esperienza con 500+ clienti suggerisce di non aspettare l'ultimo momento per il
+    rinnovo KITAS."
   </blockquote>
   <cite>— Team Bali Zero</cite>
 </div>
@@ -339,12 +355,8 @@ Nessuna opinione. 200-300 parole max.]
 
 ```html
 <div class="bz-cta-group">
-  <a href="/contact" class="bz-cta bz-cta-primary">
-    💬 Prenota Consultazione
-  </a>
-  <a href="/guides/kitas" class="bz-cta bz-cta-secondary">
-    📄 Scarica Guida Completa
-  </a>
+  <a href="/contact" class="bz-cta bz-cta-primary"> 💬 Prenota Consultazione </a>
+  <a href="/guides/kitas" class="bz-cta bz-cta-secondary"> 📄 Scarica Guida Completa </a>
 </div>
 ```
 
@@ -359,6 +371,7 @@ Nessuna opinione. 200-300 parole max.]
 ```
 
 **Badge types:**
+
 - `bz-source-official` - Governo/Enti ufficiali
 - `bz-source-verified` - Media verificati
 - `bz-source-expert` - Esperti di settore
@@ -388,14 +401,14 @@ Nessuna opinione. 200-300 parole max.]
 
 ### Formule che Funzionano
 
-| Pattern | Esempio |
-|---------|---------|
-| **[Benefit/Risk]: [Cosa] per [Chi]** | "Risparmio 40%: Nuove Deduzioni Fiscali per Expat con PT PMA" |
-| **[Numero] cose da sapere su [Topic]** | "5 cose da sapere sul nuovo Golden Visa" |
-| **[Topic]: Cosa cambia [Quando]** | "KITAS Business: Cosa cambia dal 2025" |
-| **Perché [Fatto controintuitivo]** | "Perché il KITAP potrebbe costarti di più del KITAS" |
-| **[Domanda che tutti si fanno]** | "Posso ancora comprare villa a Bali? Ecco la verità" |
-| **[Breaking]: [Impatto immediato]** | "Breaking: Indonesia blocca VOA per 40 nazionalità" |
+| Pattern                                | Esempio                                                       |
+| -------------------------------------- | ------------------------------------------------------------- |
+| **[Benefit/Risk]: [Cosa] per [Chi]**   | "Risparmio 40%: Nuove Deduzioni Fiscali per Expat con PT PMA" |
+| **[Numero] cose da sapere su [Topic]** | "5 cose da sapere sul nuovo Golden Visa"                      |
+| **[Topic]: Cosa cambia [Quando]**      | "KITAS Business: Cosa cambia dal 2025"                        |
+| **Perché [Fatto controintuitivo]**     | "Perché il KITAP potrebbe costarti di più del KITAS"          |
+| **[Domanda che tutti si fanno]**       | "Posso ancora comprare villa a Bali? Ecco la verità"          |
+| **[Breaking]: [Impatto immediato]**    | "Breaking: Indonesia blocca VOA per 40 nazionalità"           |
 
 ### Headline Don'ts
 
@@ -412,15 +425,15 @@ Nessuna opinione. 200-300 parole max.]
 
 ### Filler da Eliminare
 
-| Vietato | Alternativa |
-|---------|-------------|
-| "In today's rapidly changing world..." | [Elimina, vai al punto] |
-| "It's important to note that..." | [Elimina, scrivi direttamente] |
-| "At the end of the day..." | "In sintesi:" |
-| "Going forward..." | "Dal [data]:" |
-| "Leverage", "synergy", "ecosystem" | [Usa parole normali] |
-| "Delve into", "landscape", "tapestry" | [Elimina] |
-| "Game-changer", "revolutionary" | [Sii specifico] |
+| Vietato                                | Alternativa                    |
+| -------------------------------------- | ------------------------------ |
+| "In today's rapidly changing world..." | [Elimina, vai al punto]        |
+| "It's important to note that..."       | [Elimina, scrivi direttamente] |
+| "At the end of the day..."             | "In sintesi:"                  |
+| "Going forward..."                     | "Dal [data]:"                  |
+| "Leverage", "synergy", "ecosystem"     | [Usa parole normali]           |
+| "Delve into", "landscape", "tapestry"  | [Elimina]                      |
+| "Game-changer", "revolutionary"        | [Sii specifico]                |
 
 ### AI-isms da Evitare
 
@@ -434,13 +447,13 @@ Nessuna opinione. 200-300 parole max.]
 
 ### Legalese da Semplificare
 
-| Burocratese | BaliZero Style |
-|-------------|----------------|
-| "pursuant to" | "secondo" |
-| "notwithstanding" | "anche se" |
-| "hereinafter referred to as" | [elimina] |
-| "shall be required to" | "deve" |
-| "in accordance with" | "come da" |
+| Burocratese                  | BaliZero Style |
+| ---------------------------- | -------------- |
+| "pursuant to"                | "secondo"      |
+| "notwithstanding"            | "anche se"     |
+| "hereinafter referred to as" | [elimina]      |
+| "shall be required to"       | "deve"         |
+| "in accordance with"         | "come da"      |
 
 ---
 
@@ -448,17 +461,19 @@ Nessuna opinione. 200-300 parole max.]
 
 ### Strategia EN/IT
 
-| Lingua | Uso | Note |
-|--------|-----|------|
-| **English** | Principale | Termini legali ID spesso discussi in EN |
-| **Italiano** | Premium/Target specifico | Per mercato italiano Bali Zero |
+| Lingua       | Uso                      | Note                                    |
+| ------------ | ------------------------ | --------------------------------------- |
+| **English**  | Principale               | Termini legali ID spesso discussi in EN |
+| **Italiano** | Premium/Target specifico | Per mercato italiano Bali Zero          |
 
 ### Workflow
+
 1. AI genera in **English** (più accurato su temi tecnici)
 2. Passaggio di **traduzione/adattamento** per IT
 3. Mantenere **termini tecnici indonesiani** in originale (KITAS, NPWP, PT PMA)
 
 ### Termini da NON Tradurre
+
 - KITAS, KITAP, VITAS
 - NPWP, PPh, SPT
 - PT PMA, NIB, OSS
@@ -534,6 +549,7 @@ OUTPUT FORMAT:
 Prima di pubblicare, verifica:
 
 ### Content
+
 - [ ] Headline contiene benefit/risk, non solo topic
 - [ ] TL;DR risponde a "Devo preoccuparmi?"
 - [ ] Fatti separati da opinioni
@@ -542,6 +558,7 @@ Prima di pubblicare, verifica:
 - [ ] Fonti citate con link
 
 ### Style
+
 - [ ] Nessun filler phrase
 - [ ] Nessun AI-ism ("delve", "landscape")
 - [ ] Numeri specifici invece di aggettivi vaghi
@@ -549,11 +566,13 @@ Prima di pubblicare, verifica:
 - [ ] Sotto 800 parole totali
 
 ### Interactive
+
 - [ ] Almeno 1 componente interattivo
 - [ ] CTA appropriata (consultazione/guida/etc)
 - [ ] Related content suggerito
 
 ### Meta
+
 - [ ] Categoria corretta
 - [ ] Priority assegnata
 - [ ] Tags rilevanti
@@ -612,11 +631,13 @@ Noi di Bali Zero consigliamo di [azione specifica] prima del 15 gennaio.
 ## 🚀 NEXT STEPS
 
 ### Se hai un KITAS/KITAP attivo:
+
 1. ✅ Nessuna azione immediata richiesta
 2. 📋 Verifica validità permesso re-entry
 3. 🔔 Monitora aggiornamenti
 
 ### Se sei su VOA o pianifichi viaggio:
+
 1. ✅ Controlla se la tua nazionalità è nella lista
 2. 📋 Richiedi visto presso ambasciata PRIMA del viaggio
 3. 💬 Contattaci per supporto urgente
@@ -637,11 +658,11 @@ Noi di Bali Zero consigliamo di [azione specifica] prima del 15 gennaio.
 
 ## 🔄 VERSION HISTORY
 
-| Versione | Data | Modifiche |
-|----------|------|-----------|
-| 1.0 | 2025-01-04 | Initial release |
+| Versione | Data       | Modifiche       |
+| -------- | ---------- | --------------- |
+| 1.0      | 2025-01-04 | Initial release |
 
 ---
 
-*"Non scriviamo news. Scriviamo intelligence."*
+_"Non scriviamo news. Scriviamo intelligence."_
 — Team Bali Zero

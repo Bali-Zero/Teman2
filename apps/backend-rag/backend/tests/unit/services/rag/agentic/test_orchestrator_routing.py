@@ -4,8 +4,9 @@ Unit tests for OrchestratorRoutingManager
 Test coverage target: >95%
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.services.rag.agentic.orchestrator_routing import OrchestratorRoutingManager
 from backend.services.tools.definitions import AgentState

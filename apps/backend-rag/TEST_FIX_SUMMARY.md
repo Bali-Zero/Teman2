@@ -10,6 +10,7 @@
 ### Verifica Moduli Principali
 
 ✅ **Moduli Esistenti (NON Obsoleti):**
+
 - `backend.app.routers.crm_clients` ✅
 - `backend.app.modules.identity.service` ✅
 - `backend.services.rag.agentic.llm_gateway` ✅
@@ -21,9 +22,11 @@
 - `backend.plugins.team.list_members_plugin` ✅
 
 ❌ **Moduli NON Trovati:**
+
 - `backend.services.cultural_rag` → Trovato: `backend.services.misc.cultural_rag_service`
 
 **Conclusione:** La maggior parte dei moduli esiste ancora. I test falliscono probabilmente per:
+
 1. API cambiate (signature, parametri)
 2. Mock obsoleti
 3. Setup incompleto
@@ -36,6 +39,7 @@
 ### Approccio
 
 Dato che la maggior parte dei moduli esiste ancora, il problema principale è:
+
 1. **API Changes** (40-50%): Signature cambiate, parametri diversi
 2. **Mock Obsoleti** (30-40%): Mock non corrispondono alle nuove API
 3. **Test Logic** (10-20%): Assertion o setup errati
@@ -43,18 +47,21 @@ Dato che la maggior parte dei moduli esiste ancora, il problema principale è:
 ### Piano di Azione
 
 **FASE 1: Pulizia (1-2 giorni)**
+
 1. ✅ Identificare test che testano moduli spostati/rinominati
 2. ⏳ Fixare test con import errati (es. cultural_rag → cultural_rag_service)
 3. ⏳ Aggiornare test con API cambiate (verificare signature attuali)
 4. ⏳ Fixare mock obsoleti (aggiornare per nuove API)
 
 **FASE 2: Fix Critici (3-5 giorni)**
+
 1. ⏳ Eseguire test critici per vedere errori reali
 2. ⏳ Fixare test LLM Gateway (38 test)
 3. ⏳ Fixare test CRM Router (54 test)
 4. ⏳ Fixare test Identity Service (12 test)
 
 **FASE 3: Automazione (1 giorno)**
+
 1. ⏳ Setup CI per eseguire test
 2. ⏳ Bloccare merge su test critici falliti
 3. ⏳ Generare report automatico

@@ -202,63 +202,90 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_critical_very_stale(self, service):
         """Test health status critical for very stale"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.9, 0.9, StalenessSeverity.VERY_STALE, 100)
         assert result == HealthStatus.CRITICAL
 
     def test_calculate_health_status_critical_low_hit_rate(self, service):
         """Test health status critical for low hit rate"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.3, 0.9, StalenessSeverity.FRESH, 100)
         assert result == HealthStatus.CRITICAL
 
     def test_calculate_health_status_critical_low_confidence(self, service):
         """Test health status critical for low confidence"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.9, 0.2, StalenessSeverity.FRESH, 100)
         assert result == HealthStatus.CRITICAL
 
     def test_calculate_health_status_warning_stale(self, service):
         """Test health status warning for stale"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.9, 0.9, StalenessSeverity.STALE, 100)
         assert result == HealthStatus.WARNING
 
     def test_calculate_health_status_warning_medium_hit_rate(self, service):
         """Test health status warning for medium hit rate"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.5, 0.9, StalenessSeverity.FRESH, 100)
         assert result == HealthStatus.WARNING
 
     def test_calculate_health_status_warning_medium_confidence(self, service):
         """Test health status warning for medium confidence"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.9, 0.4, StalenessSeverity.FRESH, 100)
         assert result == HealthStatus.WARNING
 
     def test_calculate_health_status_excellent(self, service):
         """Test health status excellent"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.9, 0.8, StalenessSeverity.FRESH, 100)
         assert result == HealthStatus.EXCELLENT
 
     def test_calculate_health_status_good_default(self, service):
         """Test health status good as default"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         result = service.calculate_health_status(0.7, 0.6, StalenessSeverity.AGING, 3)
         assert result == HealthStatus.GOOD
 
     def test_generate_recommendations_very_stale(self, service):
         """Test recommendations for very stale collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.CRITICAL, StalenessSeverity.VERY_STALE, 0.5, 0.5, 10
@@ -269,7 +296,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_stale(self, service):
         """Test recommendations for stale collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.WARNING, StalenessSeverity.STALE, 0.5, 0.5, 10
@@ -279,7 +309,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_aging(self, service):
         """Test recommendations for aging collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.GOOD, StalenessSeverity.AGING, 0.8, 0.8, 10
@@ -289,7 +322,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_hit_rate(self, service):
         """Test recommendations for low hit rate"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.CRITICAL, StalenessSeverity.FRESH, 0.3, 0.8, 20
@@ -299,7 +335,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_medium_hit_rate(self, service):
         """Test recommendations for medium hit rate"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.WARNING, StalenessSeverity.FRESH, 0.5, 0.8, 20
@@ -309,7 +348,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_confidence(self, service):
         """Test recommendations for low confidence"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.CRITICAL, StalenessSeverity.FRESH, 0.8, 0.2, 20
@@ -319,7 +361,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_medium_confidence(self, service):
         """Test recommendations for medium confidence"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.WARNING, StalenessSeverity.FRESH, 0.8, 0.4, 20
@@ -329,7 +374,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_no_queries(self, service):
         """Test recommendations for no queries"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.GOOD, StalenessSeverity.FRESH, 0.0, 0.0, 0
@@ -339,7 +387,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_usage(self, service):
         """Test recommendations for low usage"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.GOOD, StalenessSeverity.FRESH, 0.8, 0.8, 3
@@ -349,7 +400,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_updates_collection(self, service):
         """Test recommendations for updates collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "tax_updates", HealthStatus.WARNING, StalenessSeverity.STALE, 0.8, 0.8, 10
@@ -359,7 +413,10 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_healthy(self, service):
         """Test recommendations for healthy collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         recs = service.generate_recommendations(
             "visa_oracle", HealthStatus.EXCELLENT, StalenessSeverity.FRESH, 0.9, 0.9, 100
@@ -369,7 +426,10 @@ class TestCollectionHealthService:
 
     def test_get_collection_health_unknown(self, service):
         """Test getting health for unknown collection"""
-        from backend.services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
+        from backend.services.ingestion.collection_health_service import (
+            HealthStatus,
+            StalenessSeverity,
+        )
 
         health = service.get_collection_health("unknown_collection")
 

@@ -4,8 +4,9 @@ Unit tests for OrchestratorCore
 Test coverage target: >90% (complex integration)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
@@ -31,9 +32,7 @@ def mock_reasoning_engine():
     state.verification_score = 0.9
     state.sources = []
 
-    engine.execute_react_loop = AsyncMock(
-        return_value=(state, "gemini-flash", [], TokenUsage())
-    )
+    engine.execute_react_loop = AsyncMock(return_value=(state, "gemini-flash", [], TokenUsage()))
     return engine
 
 
@@ -117,9 +116,7 @@ def orchestrator_core(
 @pytest.mark.asyncio
 async def test_check_semantic_cache_hit(orchestrator_core, mock_semantic_cache):
     """Test semantic cache hit"""
-    cached_result = {
-        "result": {"answer": "Cached answer", "sources": [{"doc": "content"}]}
-    }
+    cached_result = {"result": {"answer": "Cached answer", "sources": [{"doc": "content"}]}}
     mock_semantic_cache.get_cached_result = AsyncMock(return_value=cached_result)
 
     result = await orchestrator_core.check_semantic_cache(
@@ -226,30 +223,31 @@ async def test_process_query_core_full_flow(orchestrator_core):
     orchestrator_core.query_gates.run_all_gates.return_value = MagicMock(triggered=False)
     orchestrator_core.semantic_cache.get_cached_result = AsyncMock(return_value=None)
 
-    with patch.object(
-        orchestrator_core.context_manager, "get_full_context", new_callable=AsyncMock
-    ) as mock_context, patch.object(
-        orchestrator_core, "extract_entities_and_kg_context", new_callable=AsyncMock
-    ) as mock_extract, patch.object(
-        orchestrator_core, "execute_react_loop", new_callable=AsyncMock
-    ) as mock_react, patch.object(
-        orchestrator_core.metrics_manager, "extract_timings_from_state"
-    ) as mock_timings, patch.object(
-        orchestrator_core.metrics_manager, "extract_collections_from_state"
-    ) as mock_collections, patch.object(
-        orchestrator_core.metrics_manager, "extract_sources_from_state"
-    ) as mock_sources, patch.object(
-        orchestrator_core.metrics_manager, "calculate_context_used"
-    ) as mock_context_used, patch.object(
-        orchestrator_core.metrics_manager, "record_rag_metrics"
-    ), patch.object(
-        orchestrator_core.metrics_manager, "record_token_usage"
-    ), patch.object(
-        orchestrator_core.metrics_manager, "log_query_completion"
-    ), patch.object(
-        orchestrator_core.response_builder, "build_core_result"
-    ) as mock_build:
-
+    with (
+        patch.object(
+            orchestrator_core.context_manager, "get_full_context", new_callable=AsyncMock
+        ) as mock_context,
+        patch.object(
+            orchestrator_core, "extract_entities_and_kg_context", new_callable=AsyncMock
+        ) as mock_extract,
+        patch.object(orchestrator_core, "execute_react_loop", new_callable=AsyncMock) as mock_react,
+        patch.object(
+            orchestrator_core.metrics_manager, "extract_timings_from_state"
+        ) as mock_timings,
+        patch.object(
+            orchestrator_core.metrics_manager, "extract_collections_from_state"
+        ) as mock_collections,
+        patch.object(
+            orchestrator_core.metrics_manager, "extract_sources_from_state"
+        ) as mock_sources,
+        patch.object(
+            orchestrator_core.metrics_manager, "calculate_context_used"
+        ) as mock_context_used,
+        patch.object(orchestrator_core.metrics_manager, "record_rag_metrics"),
+        patch.object(orchestrator_core.metrics_manager, "record_token_usage"),
+        patch.object(orchestrator_core.metrics_manager, "log_query_completion"),
+        patch.object(orchestrator_core.response_builder, "build_core_result") as mock_build,
+    ):
         mock_context.return_value = ({}, [])
         mock_extract.return_value = ({}, "")
         state = MagicMock(spec=AgentState)

@@ -3,6 +3,7 @@ import types
 from unittest.mock import patch
 
 import pytest
+
 from backend.llm.base import LLMMessage
 from backend.llm.providers.vertex import VertexProvider
 
@@ -13,7 +14,7 @@ class DummyModel:
 
     def generate_content(self, prompt):
         self.last_prompt = prompt
-        return types.SimpleNamespace(text="ok", redis_url='redis://localhost:6379')
+        return types.SimpleNamespace(text="ok", redis_url="redis://localhost:6379")
 
 
 class DummyVertexService:

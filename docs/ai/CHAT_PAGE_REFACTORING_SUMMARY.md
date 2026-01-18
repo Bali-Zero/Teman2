@@ -5,6 +5,7 @@
 ### 1. Custom Hooks Created
 
 #### ✅ `useChatInput` (`apps/mouth/src/hooks/useChatInput.ts`)
+
 - **Purpose**: Manages chat input state and image attachments
 - **Features**:
   - Text input state management
@@ -16,6 +17,7 @@
 - **Status**: ✅ Complete, tested, no linter errors
 
 #### ✅ `useChatTTS` (`apps/mouth/src/hooks/useChatTTS.ts`)
+
 - **Purpose**: Manages Text-to-Speech functionality
 - **Features**:
   - TTS generation and playback
@@ -27,6 +29,7 @@
 - **Status**: ✅ Complete, tested, no linter errors
 
 #### ✅ `useChatSidebar` (`apps/mouth/src/hooks/useChatSidebar.ts`)
+
 - **Purpose**: Manages sidebar state
 - **Features**:
   - Sidebar open/close state
@@ -36,6 +39,7 @@
 - **Status**: ✅ Complete, tested, no linter errors
 
 #### ✅ `useChatStreaming` (Already existed, enhanced)
+
 - **Purpose**: Manages SSE streaming connection
 - **Enhancements**:
   - Added support for image attachments parameter
@@ -43,19 +47,22 @@
 - **Status**: ✅ Enhanced, no linter errors
 
 #### ✅ `useChatMessages` (Already existed)
+
 - **Purpose**: Manages message state
 - **Status**: ✅ Already complete
 
 #### ⚠️ `useChatSend` (`apps/mouth/src/hooks/useChatSend.ts`)
+
 - **Purpose**: Composes useChatMessages and useChatStreaming for complete send flow
 - **Status**: ⚠️ Created but needs refinement
-- **Issues**: 
+- **Issues**:
   - Uses `useOptimistic` which conflicts with `useChatMessages` state management
   - Needs to be simplified or refactored to work better with page.tsx
 
 ### 2. Components (Already Exist)
 
 All required components already exist:
+
 - ✅ `ChatHeader` - Header with user info, settings
 - ✅ `ChatSidebar` - Sidebar with conversations list
 - ✅ `ChatMessageList` - Rendering messages with virtualizzazione
@@ -67,6 +74,7 @@ All required components already exist:
 ### 3. Refactored Page.tsx
 
 #### Status: ⚠️ Partial
+
 - Created `page.refactored.tsx` as a reference implementation
 - **Current**: Original `page.tsx` has 1938 lines
 - **Target**: 200-300 lines as orchestrator
@@ -112,6 +120,7 @@ All required components already exist:
 ## 🎯 Next Steps
 
 1. **Fix `useChatSend`**:
+
    ```typescript
    // Option 1: Remove useOptimistic from hook, use in page.tsx
    // Option 2: Simplify hook to only handle streaming, not state
@@ -123,6 +132,7 @@ All required components already exist:
    - Keep only layout and orchestration logic
 
 3. **Add Tests**:
+
    ```bash
    # Create test files
    apps/mouth/src/hooks/__tests__/useChatInput.test.ts

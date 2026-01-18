@@ -46,20 +46,20 @@ Dopo il login, esegui nella Console del browser (F12 → Console):
 console.log('Cookies:', document.cookie);
 
 // Test API call con cookie
-fetch('/api/crm/clients', { 
+fetch('/api/crm/clients', {
   credentials: 'include',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 })
-  .then(r => {
+  .then((r) => {
     console.log('Status:', r.status);
     return r.json();
   })
-  .then(d => {
+  .then((d) => {
     console.log('✅ API Response:', d);
   })
-  .catch(e => {
+  .catch((e) => {
     console.error('❌ API Error:', e);
   });
 ```
@@ -75,6 +75,7 @@ fetch('/api/crm/clients', {
 ### 4. Verifica Redirect Dopo Login
 
 Dopo login riuscito, dovresti essere reindirizzato a:
+
 - `/dashboard` (se admin/team member)
 - `/portal` (se client)
 
@@ -85,16 +86,19 @@ Se il redirect non avviene o va in loop, c'è un problema con la logica di routi
 ### Cookie Non Impostati
 
 **Sintomi:**
+
 - Login sembra funzionare ma cookie non appaiono in DevTools
 - Redirect avviene ma poi errore "Failed to load client data"
 
 **Possibili Cause:**
+
 1. Backend non imposta cookie correttamente (`/api/auth/login`)
 2. Cookie sono `HttpOnly` ma dominio non corrisponde
 3. Browser blocca cookie di terze parti
 4. HTTPS non configurato correttamente
 
 **Soluzione:**
+
 - Verifica backend `/api/auth/login` response headers
 - Controlla che `Set-Cookie` header sia presente
 - Verifica dominio cookie corrisponde al dominio frontend
@@ -102,16 +106,19 @@ Se il redirect non avviene o va in loop, c'è un problema con la logica di routi
 ### Cookie Presenti ma API Fallisce
 
 **Sintomi:**
+
 - Cookie visibili in DevTools
 - API calls restituiscono 401/403
 
 **Possibili Cause:**
+
 1. Cookie scaduti (check `Expires` o `Max-Age`)
 2. Cookie non forwardati correttamente dal proxy
 3. Backend non legge cookie correttamente
 4. CORS non permette cookie
 
 **Soluzione:**
+
 - Verifica proxy forward cookie (`apps/mouth/src/app/api/[...path]/route.ts`)
 - Controlla backend middleware auth legge cookie
 - Verifica CORS `Access-Control-Allow-Credentials: true`
@@ -119,14 +126,17 @@ Se il redirect non avviene o va in loop, c'è un problema con la logica di routi
 ### Redirect Loop
 
 **Sintomi:**
+
 - Login → Redirect → Login → Redirect...
 
 **Possibili Cause:**
+
 1. Cookie non persistono tra redirect
 2. Middleware auth non riconosce cookie
 3. Redirect logic errata
 
 **Soluzione:**
+
 - Verifica cookie `Path` e `Domain` sono corretti
 - Controlla middleware non forza redirect se già autenticato
 
@@ -170,11 +180,13 @@ curl https://zantara.balizero.com/api/crm/clients \
 ## Prossimi Passi
 
 Se tutti i test passano:
+
 - ✅ Autenticazione funziona correttamente
 - ✅ Il problema è probabilmente nella configurazione Vercel o CORS
 - ✅ Procedi con verifica CORS backend
 
 Se i test falliscono:
+
 - ❌ Problema nell'autenticazione backend
 - ❌ Verifica `/api/auth/login` endpoint
 - ❌ Controlla backend middleware auth

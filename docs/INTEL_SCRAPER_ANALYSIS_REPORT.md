@@ -53,19 +53,19 @@ apps/bali-intel-scraper/
 
 ### Stack Tecnologico
 
-| Componente | Tecnologia | Versione | Scopo |
-|------------|-----------|----------|-------|
-| **Language** | Python | 3.11+ | Core processing |
-| **Web Scraping** | trafilatura, newspaper3k | Latest | Estrazione contenuto |
-| **RSS Parsing** | feedparser | 6.0+ | Parse feed RSS |
-| **AI Scoring** | Ollama (locale) | llama3.2:3b | Enhancement scoring |
-| **AI Validation** | Claude CLI | Latest | Validazione qualità |
-| **AI Enrichment** | Claude Max CLI | Latest | Riscrittura completa |
-| **Image Gen** | Gemini (browser) | Latest | Generazione cover |
-| **SEO** | Local processing | - | Schema.org, meta tags |
-| **Telegram** | python-telegram-bot | Latest | Notifiche approvazione |
-| **HTTP Client** | httpx | 0.28+ | API calls async |
-| **Logging** | loguru | 0.7+ | Structured logging |
+| Componente        | Tecnologia               | Versione    | Scopo                  |
+| ----------------- | ------------------------ | ----------- | ---------------------- |
+| **Language**      | Python                   | 3.11+       | Core processing        |
+| **Web Scraping**  | trafilatura, newspaper3k | Latest      | Estrazione contenuto   |
+| **RSS Parsing**   | feedparser               | 6.0+        | Parse feed RSS         |
+| **AI Scoring**    | Ollama (locale)          | llama3.2:3b | Enhancement scoring    |
+| **AI Validation** | Claude CLI               | Latest      | Validazione qualità    |
+| **AI Enrichment** | Claude Max CLI           | Latest      | Riscrittura completa   |
+| **Image Gen**     | Gemini (browser)         | Latest      | Generazione cover      |
+| **SEO**           | Local processing         | -           | Schema.org, meta tags  |
+| **Telegram**      | python-telegram-bot      | Latest      | Notifiche approvazione |
+| **HTTP Client**   | httpx                    | 0.28+       | API calls async        |
+| **Logging**       | loguru                   | 0.7+        | Structured logging     |
 
 ---
 
@@ -159,6 +159,7 @@ apps/bali-intel-scraper/
 **Scopo:** Fetch articoli da Google News RSS feeds
 
 **Topics Monitorati (12):**
+
 - **Immigration:** Indonesia visa KITAS, Bali visa, golden visa, digital nomad visa
 - **Business:** PT PMA, foreign investment, BKPM, KBLI OSS
 - **Tax:** Indonesia tax regulation, NPWP, corporate tax PPh
@@ -167,12 +168,14 @@ apps/bali-intel-scraper/
 - **Lifestyle:** Bali expat news, digital nomad
 
 **Funzionalità:**
+
 - Multi-topic fetching con deduplicazione
 - Professional scoring integrato (5 dimensioni)
 - Filtro per max_age_days (default: 7 giorni)
 - Rate limiting tra requests
 
 **Output:**
+
 ```python
 {
     "title": str,
@@ -196,9 +199,10 @@ apps/bali-intel-scraper/
 **Scopo:** Scoring multi-dimensionale basato su keyword matching
 
 **Formula Finale:**
+
 ```
-FINAL = (Relevance × 0.30) + (Authority × 0.20) + 
-        (Recency × 0.20) + (Accuracy × 0.15) + 
+FINAL = (Relevance × 0.30) + (Authority × 0.20) +
+        (Recency × 0.20) + (Accuracy × 0.15) +
         (Geographic × 0.15)
 ```
 
@@ -236,12 +240,14 @@ FINAL = (Relevance × 0.30) + (Authority × 0.20) +
    - No match: 25 punti
 
 **Priority Levels:**
+
 - Score >= 75: `high`
 - Score >= 50: `medium`
 - Score >= 35: `low`
 - Score < 35: `filtered` (scartato)
 
 **Ollama Enhancement:**
+
 - Solo per score 40-60 (edge cases)
 - Adjustment: -10 a +10 punti
 - Model: `llama3.2:3b` (locale, gratuito)
@@ -253,11 +259,13 @@ FINAL = (Relevance × 0.30) + (Authority × 0.20) +
 **Scopo:** Intelligent gate prima dell'enrichment costoso
 
 **Decision Logic:**
+
 - **Score >= 75:** Auto-approve (con duplicate check veloce)
 - **Score < 40:** Auto-reject
 - **Score 40-75:** Claude validation richiesta
 
 **Validazione Include:**
+
 1. **Duplicate Check:** Confronta con `published_articles.json` (ultimi 500)
 2. **Relevance Check:** È rilevante per expat/investor?
 3. **Fact Check:** Legittima news o clickbait?
@@ -265,6 +273,7 @@ FINAL = (Relevance × 0.30) + (Authority × 0.20) +
 5. **Priority Override:** Può cambiare priorità
 
 **Output:**
+
 ```python
 ValidationResult(
     approved: bool,
@@ -279,11 +288,13 @@ ValidationResult(
 ```
 
 **Duplicate Detection:**
+
 - Keyword overlap > 60% → likely duplicate
 - Confronta con ultimi 100 articoli pubblicati
 - Quick check locale prima di Claude
 
 **Stats Tracking:**
+
 - `auto_approved`, `auto_rejected`
 - `validated_approved`, `validated_rejected`
 - `duplicate_rejected`, `validation_errors`
@@ -308,6 +319,7 @@ ValidationResult(
    - No jargon senza spiegazione
 
 3. **Output Structure:**
+
 ```python
 EnrichedArticle(
     title: str,                    # Original title
@@ -332,6 +344,7 @@ EnrichedArticle(
 ```
 
 **TL;DR Structure:**
+
 ```python
 {
     "should_worry": "Yes|No|Depends",
@@ -343,6 +356,7 @@ EnrichedArticle(
 ```
 
 **Bali Zero Take Structure:**
+
 ```python
 {
     "hidden_insight": "What they don't tell you - 2-3 sentences",
@@ -352,10 +366,12 @@ EnrichedArticle(
 ```
 
 **Suggested Components:**
+
 - `timeline`, `comparison-table`, `decision-tree`, `checklist`
 - `risk-meter`, `alert-box`, `expert-quote`
 
 **Forbidden Phrases:**
+
 - "Delve into", "landscape", "tapestry", "paradigm shift"
 - "It's important to note that...", "At the end of the day..."
 - "Game-changer", "revolutionary"
@@ -379,24 +395,28 @@ EnrichedArticle(
 **Category Guidelines (non shot predefiniti):**
 
 **Immigration:**
+
 - Typical themes: visa problems, new policies, service locations
 - Emotional: frustration → relief, confusion → clarity
 - Settings: immigration office, service counter, digital kiosk
 - Forbidden: passport stamps, airports, suitcases, flags
 
 **Tax:**
+
 - Typical themes: system problems, new regulations, NPWP issues
 - Emotional: confusion → understanding, frustration → resolution
 - Settings: laptop with tax portal, tax office (KPP), consultation
 - Forbidden: money piles, coins, calculators alone
 
 **Business:**
+
 - Typical themes: starting business, regulations, PT setup
 - Emotional: opportunity → action, confusion → clarity
 - Settings: coworking space, office setup, document signing
 - Forbidden: abstract growth charts, handshakes, generic offices
 
 **Process:**
+
 1. Claude legge articolo completo
 2. Risponde alle 5 domande reasoning
 3. Decide scena specifica
@@ -404,6 +424,7 @@ EnrichedArticle(
 5. Browser automation genera immagine
 
 **Browser Automation:**
+
 - Usa Playwright per aprire Gemini Image Generator
 - Inserisce prompt personalizzato
 - Salva immagine in `data/images/`
@@ -444,6 +465,7 @@ EnrichedArticle(
    - Reading time calculation
 
 **Output:**
+
 ```python
 {
     "title": "Optimized Title | BaliZero",
@@ -464,6 +486,7 @@ EnrichedArticle(
 ```
 
 **Category Topics Mapping:**
+
 - Pre-populated keywords per categoria
 - Geographic entities (Indonesia, Bali, Jakarta, etc.)
 - Brand signals (BaliZero, sameAs links)
@@ -475,7 +498,8 @@ EnrichedArticle(
 **Scopo:** Sistema approvazione manuale con preview HTML
 
 **Deployment Note:**
-- Preview URLs possono essere serviti dal backend (`https://nuzantara-rag.fly.dev/preview`) 
+
+- Preview URLs possono essere serviti dal backend (`https://nuzantara-rag.fly.dev/preview`)
 - Oppure dal frontend Vercel (`https://nuzantara-mouth.vercel.app/preview`)
 - Default: backend (configurabile via `PREVIEW_BASE_URL` env var)
 - Il frontend è deployato su **Vercel** (non più su Fly.io)
@@ -509,6 +533,7 @@ EnrichedArticle(
    - Preview: `data/previews/{article_id}.html`
 
 **Message Format:**
+
 ```
 📰 New Article Ready for Review
 
@@ -530,11 +555,13 @@ Article ID: 65708874ed4d
 ```
 
 **Current Approvers:**
+
 - Zero (Chat ID: 8290313965)
 - Dea (Chat ID: 6217157548)
 - Damar (Chat ID: 1813875994)
 
 **Configuration:**
+
 ```bash
 # Fly.io Secrets
 TELEGRAM_BOT_TOKEN=your_bot_token
@@ -548,16 +575,19 @@ TELEGRAM_APPROVAL_CHAT_ID="8290313965,6217157548,1813875994"
 **Scopo:** Pubblicazione finale su API backend
 
 **Endpoint:**
+
 ```
 POST /api/intel/scraper/submit
 ```
 
-**Note:** 
+**Note:**
+
 - Il **backend** resta su **Fly.io** (`https://nuzantara-rag.fly.dev`)
 - Il **frontend** è deployato su **Vercel** (`https://nuzantara-mouth.vercel.app`)
 - I domini custom (`zantara.balizero.com`, `balizero.com`) puntano al frontend Vercel tramite DNS
 
 **Payload:**
+
 ```python
 {
     "title": str,              # Enriched headline
@@ -576,6 +606,7 @@ POST /api/intel/scraper/submit
 ```
 
 **Post-Publish:**
+
 - Auto-registrazione in `published_articles.json`
 - Tracking per duplicate detection futuro
 - Mantiene ultimi 500 articoli (rolling window)
@@ -584,20 +615,21 @@ POST /api/intel/scraper/submit
 
 ## 💰 COST BREAKDOWN
 
-| Step | Cost | Provider | Note |
-|------|------|----------|------|
-| **RSS Fetching** | $0 | Google News RSS | Gratuito |
-| **LLAMA Scoring** | $0 | Local Ollama | Locale, nessun costo |
-| **Claude Validation** | ~$0.01 | Anthropic | Solo per score 40-75 |
-| **Claude Max Enrichment** | ~$0.05 | Anthropic | Via CLI subscription |
-| **Gemini Image** | $0 | Google One AI Premium | Incluso in subscription |
-| **SEO/AEO Optimization** | $0 | Local processing | Nessun costo |
-| **Telegram Notification** | $0 | Telegram Bot API | Gratuito |
-| **API Publish** | $0 | Backend Nuzantara | Nessun costo |
+| Step                      | Cost   | Provider              | Note                    |
+| ------------------------- | ------ | --------------------- | ----------------------- |
+| **RSS Fetching**          | $0     | Google News RSS       | Gratuito                |
+| **LLAMA Scoring**         | $0     | Local Ollama          | Locale, nessun costo    |
+| **Claude Validation**     | ~$0.01 | Anthropic             | Solo per score 40-75    |
+| **Claude Max Enrichment** | ~$0.05 | Anthropic             | Via CLI subscription    |
+| **Gemini Image**          | $0     | Google One AI Premium | Incluso in subscription |
+| **SEO/AEO Optimization**  | $0     | Local processing      | Nessun costo            |
+| **Telegram Notification** | $0     | Telegram Bot API      | Gratuito                |
+| **API Publish**           | $0     | Backend Nuzantara     | Nessun costo            |
 
 **Total Cost per Article:** ~$0.06
 
 **Note:**
+
 - Claude Max usa CLI subscription (non API), quindi costo variabile
 - Gemini Image incluso in Google One AI Premium
 - Ollama scoring completamente locale

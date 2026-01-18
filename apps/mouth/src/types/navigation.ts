@@ -60,9 +60,7 @@ export const navigation: NavSection[] = [
   },
   {
     title: 'System',
-    items: [
-      { title: 'Settings', href: '/settings', icon: 'Settings' },
-    ],
+    items: [{ title: 'Settings', href: '/settings', icon: 'Settings' }],
   },
 ];
 

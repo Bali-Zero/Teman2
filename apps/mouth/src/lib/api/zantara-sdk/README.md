@@ -164,50 +164,61 @@ function PricingPage() {
 ### SDK Methods
 
 #### Agentic RAG (Zantara AI)
+
 - `queryAgenticRAG(request: AgenticRAGQueryRequest): Promise<AgenticRAGQueryResponse>`
 
 #### Memory
+
 - `getUserMemory(userId: string): Promise<UserMemory>`
 - `addUserFact(userId: string, fact: string): Promise<{ success: boolean }>`
 - `getCollectiveMemory(category?: string, limit?: number): Promise<CollectiveMemory[]>`
 - `getEpisodicTimeline(request: EpisodicTimelineRequest): Promise<EpisodicEvent[]>`
 
 #### Audio
+
 - `transcribeAudio(request: TranscribeRequest): Promise<TranscribeResponse>`
 - `generateSpeech(request: SpeechRequest): Promise<Blob>`
 
 #### Journeys
+
 - `createJourney(request: CreateJourneyRequest): Promise<ClientJourney>`
 - `getJourney(journeyId: string): Promise<ClientJourney>`
 - `getJourneyProgress(journeyId: string): Promise<JourneyProgress>`
 - `completeStep(journeyId: string, stepId: string, notes?: string): Promise<{ success: boolean }>`
 
 #### Compliance
+
 - `getComplianceDeadlines(request?: ComplianceDeadlinesRequest): Promise<ComplianceItem[]>`
 - `getComplianceAlerts(clientId?: string, status?: string): Promise<ComplianceAlert[]>`
 - `acknowledgeAlert(alertId: string): Promise<{ success: boolean }>`
 
 #### Pricing
+
 - `calculatePricing(scenario: string, userLevel?: number): Promise<PricingResult>`
 
 #### Team Analytics
+
 - `getBurnoutSignals(userEmail?: string): Promise<BurnoutSignal[]>`
 - `getTeamInsights(): Promise<TeamInsights>`
 
 #### Knowledge Graph
+
 - `addGraphEntity(entity: GraphEntity): Promise<{ id: string }>`
 - `addGraphRelation(relation: GraphRelation): Promise<{ id: number }>`
 - `getGraphNeighbors(entityId: string, relationType?: string): Promise<Array<...>>`
 - `traverseGraph(startId: string, maxDepth?: number): Promise<GraphTraversalResult>`
 
 #### Image Generation
+
 - `generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse>`
 
 ## React Hooks
 
 ### `useAgenticRAGStream(baseUrl, apiKey)`
+
 The primary hook for streaming Zantara AI responses.
 Returns:
+
 - `stream(request)` - Start streaming query
 - `stop()` - Stop streaming
 - `reset()` - Reset state
@@ -218,7 +229,9 @@ Returns:
 - `error` - Error message
 
 ### `useWebSocket()`
+
 Returns:
+
 - `isConnected` - Connection status
 - `connect()` - Connect to WebSocket
 - `disconnect()` - Disconnect
@@ -228,20 +241,25 @@ Returns:
 ## Components
 
 ### Memory Components
+
 - `UserFactsDisplay` - Display and manage user profile facts
 - `EpisodicTimeline` - Visualize user events over time
 - `MemoryContext` - Combined memory view with tabs
 
 ### Journey Components
+
 - `JourneyProgressTracker` - Complete journey visualization with step tracking
 
 ### Compliance Components
+
 - `ComplianceCalendar` - Deadline calendar with alerts
 
 ### Voice Components
+
 - `VoiceChat` - Speech-to-text and text-to-speech interface
 
 ### Pricing Components
+
 - `DynamicPricingWidget` - Scenario-based pricing calculator
 
 ## Type Definitions
@@ -259,5 +277,3 @@ All types are exported from `@/lib/api/zantara-sdk/types`. Key types include:
 ## Examples
 
 See the component files for complete implementation examples. All components are fully typed and ready to use.
-
-

@@ -678,7 +678,8 @@ async def test_login_with_minimum_pin_length(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service",
+        return_value=mock_identity_service,
     ):
         from backend.app.modules.identity.router import team_login
 
@@ -701,7 +702,8 @@ async def test_login_with_maximum_pin_length(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service",
+        return_value=mock_identity_service,
     ):
         from backend.app.modules.identity.router import team_login
 
@@ -725,7 +727,8 @@ async def test_login_user_without_personalized_response(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service",
+        return_value=mock_identity_service,
     ):
         from backend.app.modules.identity.router import team_login
 
@@ -749,7 +752,8 @@ async def test_login_user_with_none_language(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service",
+        return_value=mock_identity_service,
     ):
         from backend.app.modules.identity.router import team_login
 

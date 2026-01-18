@@ -17,14 +17,14 @@ import asyncio
 import logging
 from typing import Any
 
+from backend.app.core.config import settings
+
 # Import helper modules
 from backend.llm.fallback_messages import get_fallback_message
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from backend.llm.prompt_manager import PromptManager
 from backend.llm.retry_handler import RetryHandler
 from backend.llm.token_estimator import TokenEstimator
-
-from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

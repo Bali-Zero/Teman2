@@ -3,6 +3,7 @@
 ## Test Coverage Overview
 
 ### Total Test Files: 8
+
 1. `test_orchestrator_error_handling.py` - AgenticRAGOrchestrator tests
 2. `test_search_service_error_handling.py` - SearchService tests
 3. `test_memory_orchestrator_error_handling.py` - MemoryOrchestrator tests
@@ -18,6 +19,7 @@
 ### By Area
 
 #### AREA 1: AgenticRAGOrchestrator
+
 - **Tests**: 7
 - **Coverage**: Stream event validation, None handling, error events
 - **Key Tests**:
@@ -28,6 +30,7 @@
   - Error event structure
 
 #### AREA 2: SearchService
+
 - **Tests**: 5
 - **Coverage**: BM25 retry, hybrid fallback, dense-only fallback
 - **Key Tests**:
@@ -37,6 +40,7 @@
   - Metrics incrementation
 
 #### AREA 3: MemoryOrchestrator
+
 - **Tests**: 6
 - **Coverage**: Status transitions, degraded mode, graceful degradation
 - **Key Tests**:
@@ -47,6 +51,7 @@
   - Error handling in get_user_context
 
 #### AREA 4: LLM Gateway
+
 - **Tests**: 8
 - **Coverage**: Circuit breaker, cost tracking, depth limits
 - **Key Tests**:
@@ -58,6 +63,7 @@
   - Fallback chain generation
 
 #### AREA 5: Database Pool
+
 - **Tests**: 5
 - **Coverage**: Retry logic, error classification, health checks
 - **Key Tests**:
@@ -67,6 +73,7 @@
   - Pool validation
 
 #### AREA 6: Qdrant Client
+
 - **Tests**: 7
 - **Coverage**: Error classification, retryable vs non-retryable
 - **Key Tests**:
@@ -78,6 +85,7 @@
   - All non-retryable codes
 
 #### AREA 7: Reasoning Engine
+
 - **Tests**: 7
 - **Coverage**: Context quality validation, scoring algorithm
 - **Key Tests**:
@@ -89,6 +97,7 @@
   - Quality threshold enforcement
 
 #### AREA 8: Streaming Endpoints
+
 - **Tests**: 6
 - **Coverage**: Error propagation, event structure, status events
 - **Key Tests**:
@@ -100,6 +109,7 @@
   - Final status event
 
 ### Integration Tests
+
 - **Tests**: 3
 - **Coverage**: Cross-component scenarios
 - **Key Tests**:
@@ -108,6 +118,7 @@
   - Graceful degradation chain
 
 ### Performance Tests
+
 - **Tests**: 2
 - **Coverage**: Error handling overhead
 - **Key Tests**:
@@ -115,6 +126,7 @@
   - Circuit breaker performance
 
 ### Edge Cases
+
 - **Tests**: 4
 - **Coverage**: Boundary conditions
 - **Key Tests**:
@@ -160,11 +172,3 @@ pytest tests/unit/error_handling/ --cov=backend/services/rag/agentic/orchestrato
 - ✅ **Isolated**: Each test is independent
 - ✅ **Maintainable**: Clear test structure and naming
 - ✅ **Documented**: README and inline comments
-
-
-
-
-
-
-
-

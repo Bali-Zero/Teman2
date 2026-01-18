@@ -32,11 +32,13 @@
 ## 📊 Stato Attuale
 
 ### Memoria RAM
+
 - **RAM Libera**: ~61MB
 - **RAM Inattiva**: ~3GB (recuperabile con `sudo purge`)
 - **RAM Attiva**: ~3.2GB
 
 ### Spazio Disco
+
 - **Stato**: Da verificare manualmente con `df -h /`
 - **Desktop**: Occupa 50GB (richiede analisi)
 
@@ -50,38 +52,46 @@ Sono stati creati due script per continuare la pulizia:
 ## 📝 Comandi da Eseguire Manualmente
 
 ### 1. Liberare Memoria RAM
+
 ```bash
 sudo purge
 ```
+
 Richiede password amministratore. Libera la memoria inattiva.
 
 ### 2. Verificare Spazio Disco
+
 ```bash
 df -h /
 ```
 
 ### 3. Analizzare Desktop (50GB)
+
 ```bash
 du -sh ~/Desktop/* | sort -h | tail -10
 ```
 
 ### 4. Analizzare Downloads
+
 ```bash
 du -sh ~/Downloads/* | sort -h | tail -10
 ```
 
 ### 5. Analizzare node_modules
+
 ```bash
 find . -name node_modules -type d -prune -exec du -sh {} \; | sort -h
 ```
 
 ### 6. Eseguire Script di Pulizia
+
 ```bash
 chmod +x cleanup_complete.sh
 ./cleanup_complete.sh
 ```
 
 Oppure:
+
 ```bash
 python3 cleanup.py
 ```

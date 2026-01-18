@@ -645,13 +645,13 @@ async def publish_articles(articles: List[Dict], dry_run: bool = False):
                 response = await client.post(
                     f"{API_URL}/api/news",
                     json=payload,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
                 )
 
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("duplicate"):
-                        print(f"  ⏭️ Duplicate (already exists)")
+                        print("  ⏭️ Duplicate (already exists)")
                         results["duplicates"] += 1
                     else:
                         slug = data.get("data", {}).get("slug", "unknown")
@@ -675,7 +675,9 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Publish Perfect Storm articles")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without publishing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without publishing"
+    )
     args = parser.parse_args()
 
     print("=" * 60)

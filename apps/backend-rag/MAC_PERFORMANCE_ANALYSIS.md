@@ -30,14 +30,17 @@ Analisi in corso...
 ## ⚙️ OTTIMIZZAZIONI
 
 ### 1. Pulizia Cache
+
 - Cache applicazioni
 - Cache sistema
 
 ### 2. Gestione Processi
+
 - Processi in background
 - Launch Agents
 
 ### 3. Ottimizzazioni Sistema
+
 - Power management
 - File system
 

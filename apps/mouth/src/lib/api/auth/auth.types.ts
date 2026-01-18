@@ -19,4 +19,3 @@ export interface LoginResponse {
   token_type: string;
   user: UserProfile;
 }
-

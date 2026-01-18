@@ -70,7 +70,8 @@ class TestNurturingMessageService:
         with (
             patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction",
+                return_value="Italian",
             ),
         ):
             message = await service.generate_message(client_data)
@@ -103,7 +104,8 @@ class TestNurturingMessageService:
         with (
             patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction",
+                return_value="Italian",
             ),
         ):
             message = await service.generate_message(client_data, timeout=0.1)
@@ -122,7 +124,8 @@ class TestNurturingMessageService:
         with (
             patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction",
+                return_value="Italian",
             ),
         ):
             message = await service.generate_message(client_data)
@@ -148,7 +151,8 @@ class TestNurturingMessageService:
         with (
             patch("backend.agents.services.nurturing_message.detect_language", return_value="it"),
             patch(
-                "backend.agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+                "backend.agents.services.nurturing_message.get_language_instruction",
+                return_value="Italian",
             ),
         ):
             prompt = service._build_prompt(client_data)

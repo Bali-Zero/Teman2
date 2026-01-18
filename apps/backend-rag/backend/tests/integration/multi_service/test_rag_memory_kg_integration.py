@@ -100,7 +100,9 @@ class TestRAGMemoryKGIntegration:
         user_id = "marco@example.com"
 
         # Create orchestrator with memory
-        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+        with patch(
+            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
+        ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
@@ -211,7 +213,9 @@ class TestRAGMemoryKGIntegration:
         )
 
         # Create orchestrator
-        with patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
+        with patch(
+            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
+        ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query

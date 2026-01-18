@@ -3,9 +3,11 @@
 ## ✅ HAI DUE INTEGRAZIONI CHROME ATTIVE!
 
 ### 1️⃣ **Control Chrome MCP** ✅ ATTIVO
+
 **Cosa fa:** Controlla Chrome dall'esterno (API-based)
 
 **Capabilities:**
+
 - ✅ `open_url` - Apre URL in Chrome
 - ✅ `get_current_tab` - Info tab corrente
 - ✅ `list_tabs` - Lista tutti i tab
@@ -20,6 +22,7 @@
 **Log:** `~/Library/Logs/Claude/mcp-server-Control Chrome.log`
 
 **Test:**
+
 ```
 Claude chat: "Open https://google.com in Chrome"
 ```
@@ -31,6 +34,7 @@ Claude chat: "Open https://google.com in Chrome"
 **Cosa fa:** Estensione browser che permette a Claude di interagire CON le pagine aperte
 
 **Capabilities disponibili in questa sessione:**
+
 - ✅ `javascript_tool` - Esegui JS nel contesto pagina
 - ✅ `read_page` - Leggi accessibility tree
 - ✅ `find` - Trova elementi con NLP
@@ -52,6 +56,7 @@ Claude chat: "Open https://google.com in Chrome"
 **Status:** ✅ Tools disponibili (visti all'inizio sessione)
 
 **Test:**
+
 ```
 1. Apri Chrome
 2. Vai su una pagina web
@@ -63,24 +68,28 @@ Claude chat: "Open https://google.com in Chrome"
 ## 🔍 DIFFERENZA TRA I DUE
 
 ### Control Chrome MCP (Esterno)
+
 ```
 Claude → MCP Server → Chrome API → Apre tab
 [Controlla Chrome dall'esterno]
 ```
 
 **Use cases:**
+
 - Apri URL automaticamente
 - Gestisci tab (chiudi, switcha)
 - Esegui JS in tab esistenti
 - Naviga history
 
 ### Claude in Chrome Extension (Interno)
+
 ```
 Chrome → Estensione → Claude → Vede contenuto pagina
 [Opera DENTRO Chrome, vede quello che vedi tu]
 ```
 
 **Use cases:**
+
 - Compila form automaticamente
 - Clicca elementi sulla pagina
 - Scrappa dati da pagine web
@@ -122,6 +131,7 @@ Chrome → Salva dati su file → Cowork legge file
 ## 💡 Esempi Pratici
 
 ### Esempio 1: Control Chrome MCP (Claude Code)
+
 ```python
 # Prompt in Claude Code:
 "Open https://github.com/anthropics/claude-code in Chrome,
@@ -133,6 +143,7 @@ Chrome → Salva dati su file → Cowork legge file
 ```
 
 ### Esempio 2: Claude in Chrome Extension
+
 ```python
 # Requisiti: Chrome aperto su una pagina
 # Prompt in Claude Code:
@@ -145,6 +156,7 @@ Chrome → Salva dati su file → Cowork legge file
 ```
 
 ### Esempio 3: Browser Automation
+
 ```python
 # Prompt in Claude Code:
 "Go to google.com in Chrome, search for 'Claude AI',
@@ -164,6 +176,7 @@ Chrome → Salva dati su file → Cowork legge file
 ## 🚀 Come Testare
 
 ### Test 1: Control Chrome (Semplice)
+
 ```bash
 # In questa chat Claude Code:
 "List all Chrome tabs I have open right now"
@@ -172,6 +185,7 @@ Chrome → Salva dati su file → Cowork legge file
 **Atteso:** Lista tab aperti
 
 ### Test 2: Claude in Chrome (Medio)
+
 ```bash
 # 1. Apri Chrome su https://example.com
 # 2. In questa chat:
@@ -181,6 +195,7 @@ Chrome → Salva dati su file → Cowork legge file
 **Atteso:** Summary della pagina
 
 ### Test 3: Browser Automation (Avanzato)
+
 ```bash
 # In questa chat:
 "Open https://github.com in Chrome, take a screenshot,
@@ -194,6 +209,7 @@ Chrome → Salva dati su file → Cowork legge file
 ## 📊 Status Check
 
 ### Check Control Chrome
+
 ```bash
 # Log MCP server
 tail -f ~/Library/Logs/Claude/mcp-server-Control\ Chrome.log
@@ -203,6 +219,7 @@ ps aux | grep claude-in-chrome
 ```
 
 ### Check Estensione
+
 ```bash
 # Apri Chrome
 # Vai su chrome://extensions
@@ -216,6 +233,7 @@ Se vedi l'estensione → ✅ Installata
 ## 🔧 Configurazione Attuale
 
 ### MCP Servers Attivi
+
 ```json
 {
   "Control Chrome": "✅ Active",
@@ -233,15 +251,19 @@ Se vedi l'estensione → ✅ Installata
 ## 💡 Pro Tips
 
 ### 1. Per Web Scraping
+
 Usa **Claude in Chrome Extension** - vede esattamente quello che vedi tu, include elementi dinamici
 
 ### 2. Per Aprire Link
+
 Usa **Control Chrome MCP** - più veloce per operazioni semplici
 
 ### 3. Per Form Automation
+
 Usa **Claude in Chrome Extension** - può compilare form complessi con validazione
 
 ### 4. Per Debug
+
 ```bash
 # Console messages
 "Read Chrome console messages from the current tab"
@@ -255,6 +277,7 @@ Usa **Claude in Chrome Extension** - può compilare form complessi con validazio
 ## 🎓 Use Cases Reali
 
 ### Use Case 1: Research Automation
+
 ```
 "Open these 5 URLs in Chrome tabs, summarize each page,
  and create a markdown report:
@@ -266,18 +289,21 @@ Usa **Claude in Chrome Extension** - può compilare form complessi con validazio
 ```
 
 ### Use Case 2: Form Fill Automation
+
 ```
 "Go to this signup form, fill it with test data,
  take a screenshot before submitting"
 ```
 
 ### Use Case 3: Data Extraction
+
 ```
 "Extract all product prices from amazon.com search results
  for 'laptop', save to CSV"
 ```
 
 ### Use Case 4: Monitoring
+
 ```
 "Check if https://nuzantara.com is up,
  verify the title is correct,
@@ -289,11 +315,13 @@ Usa **Claude in Chrome Extension** - può compilare form complessi con validazio
 ## ⚠️ Limitazioni
 
 ### Control Chrome MCP
+
 - ❌ Non vede contenuto dinamico caricato con JS
 - ❌ Non può interagire con elementi complessi
 - ✅ Ottimo per operazioni semplici
 
 ### Claude in Chrome Extension
+
 - ❌ Richiede Chrome aperto
 - ❌ Richiede permessi per ogni dominio (prima volta)
 - ✅ Vede tutto come un utente reale
@@ -311,12 +339,14 @@ Usa **Claude in Chrome Extension** - può compilare form complessi con validazio
 ## ✅ Summary
 
 **HAI:**
+
 - ✅ Control Chrome MCP attivo e funzionante
 - ✅ Claude in Chrome Extension disponibile
 - ✅ 15+ browser automation tools
 - ✅ Tutto configurato e pronto
 
 **PUOI:**
+
 - ✅ Automatizzare browser da Claude Code
 - ✅ Scrappare dati da pagine web
 - ✅ Compilare form automaticamente
@@ -324,6 +354,7 @@ Usa **Claude in Chrome Extension** - può compilare form complessi con validazio
 - ✅ Eseguire JS in pagine
 
 **NON PUOI (ancora):**
+
 - ❌ Usare Chrome tools direttamente in Cowork
 - ❌ (Ma puoi creare script bridge se serve)
 

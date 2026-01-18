@@ -5,9 +5,11 @@ Preview Router - Serve HTML previews for Telegram approval articles
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
+
+from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,10 @@ class PreviewUpload(BaseModel):
 
 
 @router.post("/upload")
-async def upload_preview(payload: PreviewUpload):
+async def upload_preview(
+    payload: PreviewUpload,
+    api_key_verified=Depends(verify_internal_api_key),
+):
     """
     Upload HTML preview from scraper (running locally on Mac).
 

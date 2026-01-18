@@ -16,7 +16,7 @@ export async function sendMessageStream(
   userId: string
 ): Promise<ReadableStream<StreamEvent>> {
   // Get the last user message
-  const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+  const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
   if (!lastUserMessage) {
     throw new Error('No user message found');
   }
@@ -24,12 +24,12 @@ export async function sendMessageStream(
   // Convert messages to conversation history format
   // Filter out any messages that might be pending/streaming (check for optional properties)
   const conversationHistory = messages
-    .filter(m => {
+    .filter((m) => {
       // Check if message has isStreaming/isPending (from OptimisticMessage) and skip if true
       const optimisticMsg = m as ChatMessage & { isStreaming?: boolean; isPending?: boolean };
       return !optimisticMsg.isStreaming && !optimisticMsg.isPending;
     })
-    .map(m => ({
+    .map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -58,7 +58,7 @@ export async function sendMessageStream(
             finalSources: Array<{ title?: string; content?: string }>,
             metadata?: unknown
           ) => {
-            sources = finalSources.map(s => ({
+            sources = finalSources.map((s) => ({
               title: s.title || '',
               content: s.content,
               url: undefined,
@@ -107,7 +107,7 @@ export async function sendMessageStream(
           // maxTotalTimeMs
           600000,
           // images
-          lastUserMessage.images?.map(img => ({
+          lastUserMessage.images?.map((img) => ({
             base64: img.base64.replace(/^data:image\/[^;]+;base64,/, ''),
             name: img.name,
           }))
