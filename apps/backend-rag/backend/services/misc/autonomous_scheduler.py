@@ -595,9 +595,9 @@ async def create_and_start_scheduler(
                 name="knowledge_graph_builder",
                 task_func=run_knowledge_graph_builder,
                 interval_seconds=86400,  # 24 hours
-                enabled=True,
+                enabled=False,  # ❌ DISABLED: Caused 3.9M Rp in Gemini API costs (37M calls in Jan 2026)
             )
-            logger.info("✅ Knowledge Graph Builder Agent registered (24h interval - incremental)")
+            logger.info("⏸️ Knowledge Graph Builder Agent registered (DISABLED - too expensive)")
         except Exception as e:
             logger.error(f"❌ Failed to register Knowledge Graph Builder: {e}")
 
