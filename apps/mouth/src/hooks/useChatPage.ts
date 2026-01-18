@@ -137,7 +137,8 @@ export function useChatPage(): UseChatPageReturn {
   useEffect(() => {
     chatInput.setShowToast(showToast);
     chatTTS.setShowToast(showToast);
-  }, [chatInput, chatTTS, showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Run only once on mount to avoid infinite loop
 
   // Optimistic messages
   const [optimisticMessages, addOptimisticMessage] = useOptimistic<
@@ -335,7 +336,8 @@ export function useChatPage(): UseChatPageReturn {
     try {
       const storedProfile = api.getUserProfile();
       if (storedProfile && isMountedRef.current) {
-        const name = storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
+        const name =
+          storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
         setUserName(name);
         if (storedProfile.avatar) setUserAvatar(storedProfile.avatar);
         return;
@@ -413,7 +415,8 @@ export function useChatPage(): UseChatPageReturn {
       }
     };
     loadInitialData();
-  }, [router, conversations, teamStatus, loadUserProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Run only once on mount to avoid infinite loop
 
   // Load avatar from localStorage
   useEffect(() => {
