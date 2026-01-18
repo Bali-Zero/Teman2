@@ -345,7 +345,6 @@ async def get_conversation_history(
     messages = []
     session_id_result = session_id
     total_messages = 0
-    source = "db"
 
     # Try DB first
     if db_pool:
@@ -395,7 +394,6 @@ async def get_conversation_history(
             mem_cache = get_memory_cache()
             messages = mem_cache.get_messages(session_id, limit=limit)
             if messages:
-                source = "memory"
                 log_success(
                     logger,
                     "Retrieved conversation history from Memory Cache",
@@ -576,14 +574,14 @@ async def list_conversations(
                 title = "New Conversation"
                 preview = ""
                 for msg in messages:
-                    if msg.get("role") == "user":
+                    if isinstance(msg, dict) and msg.get("role") == "user":
                         content = msg.get("content", "")
                         title = content[:50] + "..." if len(content) > 50 else content
                         break
 
                 # Extract preview from last assistant message
                 for msg in reversed(messages):
-                    if msg.get("role") == "assistant":
+                    if isinstance(msg, dict) and msg.get("role") == "assistant":
                         content = msg.get("content", "")
                         preview = content[:100] + "..." if len(content) > 100 else content
                         break
