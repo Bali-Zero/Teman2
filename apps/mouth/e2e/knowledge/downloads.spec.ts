@@ -118,11 +118,10 @@ test.describe('Knowledge Base Downloads', () => {
     let navigatedToGoogleDrive = false;
     
     context.on('page', (newPage) => {
-      newPage.url().then((url) => {
-        if (url.includes('drive.google.com')) {
-          navigatedToGoogleDrive = true;
-        }
-      });
+      const url = newPage.url();
+      if (url.includes('drive.google.com')) {
+        navigatedToGoogleDrive = true;
+      }
     });
 
     // Navigate to blueprints page

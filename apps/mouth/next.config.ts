@@ -8,10 +8,6 @@ const nextConfig: NextConfig = {
     // Allow build to complete despite pre-existing TypeScript errors
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Allow build to complete despite ESLint errors
-    ignoreDuringBuilds: true,
-  },
   images: {
     // 🖼️ Image Optimization - Auto AVIF/WebP conversion
     formats: ['image/avif', 'image/webp'], // Modern formats (70% smaller)

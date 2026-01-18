@@ -59,7 +59,15 @@ test.describe('Knowledge Base Main Page', () => {
       
       // Return mock results based on query
       const queryLower = query.toLowerCase();
-      let mockResults = [];
+      let mockResults: Array<{
+        content: string;
+        metadata: {
+          document_id: string;
+          title: string;
+          collection: string;
+        };
+        score: number;
+      }> = [];
       
       if (queryLower.includes('xyzabc123nonexistent') || queryLower.includes('nonexistent')) {
         // Return empty results for non-existent queries

@@ -156,7 +156,7 @@ export default function CaseDetailPage() {
 
     try {
       const user = await api.getProfile();
-      const updates: Partial<Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price'>> = {};
+      const updates: Partial<Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price'>> = {};
 
       if (editForm.status && editForm.status !== practice.status) updates.status = editForm.status;
       if (editForm.priority && editForm.priority !== practice.priority) updates.priority = editForm.priority;

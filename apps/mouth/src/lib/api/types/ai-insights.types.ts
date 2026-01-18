@@ -13,6 +13,10 @@ export interface HistoricalData {
   interactions?: InteractionData[];
   practices?: PracticeData[];
   metrics?: MetricData[];
+  efficiency?: number[];
+  errorRate?: number[];
+  responseTime?: number[];
+  currentWorkload?: number;
 }
 
 /**

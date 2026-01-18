@@ -14,7 +14,8 @@ function createQueryClient() {
         gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
         retry: (failureCount, error: unknown) => {
           // Retry on network errors but not on 4xx errors
-          if (error?.status >= 400 && error?.status < 500) return false;
+          const err = error as { status?: number };
+          if (err?.status && err.status >= 400 && err.status < 500) return false;
           return failureCount < 3;
         },
         retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
