@@ -2,12 +2,12 @@
 
 import { useState, useOptimistic, useTransition, useCallback, useRef } from 'react';
 import {
-  sendMessageStream,
   saveConversation,
   type ChatMessage,
   type Source,
   type StreamEvent,
 } from '@/app/chat/actions';
+import { sendMessageStream } from '@/app/chat/stream-helper';
 
 /**
  * Optimistic Chat Hook

@@ -43,6 +43,7 @@ import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { saveConversation } from './actions';
 import type { ChatMessage } from './actions';
+import type { Message, AgentStep } from '@/types';
 
 /**
  * Type guard for conversation message from API
@@ -57,6 +58,18 @@ interface ApiConversationMessage {
   steps?: Array<{ type: string; data: unknown; timestamp: Date }>;
   metadata?: unknown;
   imageUrl?: string;
+}
+
+/**
+ * Type guard to check if a message is from API
+ */
+function isApiConversationMessage(msg: unknown): msg is ApiConversationMessage {
+  return (
+    typeof msg === 'object' &&
+    msg !== null &&
+    'role' in msg &&
+    typeof (msg as ApiConversationMessage).role === 'string'
+  );
 }
 
 // Types
@@ -335,26 +348,31 @@ export default function ChatPage() {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
           setMessages(
-            conv.messages
-              .filter(isApiConversationMessage)
-              .map((m): ChatMessage => {
-                // Validate and convert role
-                const role: 'user' | 'assistant' = 
-                  m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant';
-                
-                // Convert timestamp
-                const timestamp = m.timestamp 
-                  ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date)
-                  : new Date();
+            conv.messages.map((m, index): Message => {
+              // Validate and convert role
+              const role: 'user' | 'assistant' = 
+                m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant';
+              
+              // Generate timestamp (messages from API don't have timestamp, use index-based approximation)
+              const timestamp = new Date(Date.now() - (conv.messages.length - index) * 60000);
 
-                return {
-                  id: m.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-                  role,
-                  content: m.content || '',
-                  timestamp,
-                  sources: m.sources,
-                };
-              })
+              // Convert sources to Source[] format
+              const sources = m.sources?.map((s: { title?: string; content?: string }) => ({
+                title: s.title || '',
+                content: s.content,
+                url: undefined,
+                score: undefined,
+              })) || [];
+
+              return {
+                id: `msg_${id}_${index}_${Date.now()}`,
+                role,
+                content: m.content || '',
+                timestamp,
+                sources,
+                imageUrl: m.imageUrl,
+              };
+            })
           );
           if (conv.session_id) {
             setSessionId(conv.session_id);
@@ -643,7 +661,7 @@ export default function ChatPage() {
             action: 'searchDocsInsert',
             metadata: { textLength: text.length },
           });
-          chatInput.setInput((prev) => (prev ? `${prev}\n${text}` : text));
+          chatInput.setInput(chatInput.input ? `${chatInput.input}\n${text}` : text);
         }}
         initialQuery={chatInput.input}
       />
@@ -703,7 +721,7 @@ export default function ChatPage() {
           setShowAttachMenu={() => {}}
           attachMenuRef={chatInput.imageInputRef}
           fileInputRef={chatInput.imageInputRef}
-          onFileChange={chatInput.handleImageAttach}
+          onFileChange={async (e) => { chatInput.handleImageAttach(e); }}
           isRecording={isRecording}
           recordingTime={recordingTime}
           onStartRecording={startRecording}

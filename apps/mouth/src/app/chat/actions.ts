@@ -42,6 +42,16 @@ export interface MessageMetadata {
   followup_questions?: string[];
 }
 
+/**
+ * Stream event types for useOptimisticChat hook
+ */
+export type StreamEvent =
+  | { type: 'token'; data: string }
+  | { type: 'status'; data: string }
+  | { type: 'sources'; data: Source[] }
+  | { type: 'error'; data: string }
+  | { type: 'done' };
+
 // Backend API URL
 const BACKEND_URL = process.env.BACKEND_RAG_URL || 'https://nuzantara-rag.fly.dev';
 
