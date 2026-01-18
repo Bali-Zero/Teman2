@@ -281,6 +281,24 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Authentication failed") from e
 
 
+def get_current_user_email(
+    user: Annotated[dict, Depends(get_current_user)]
+) -> str:
+    """
+    Extract email from authenticated user.
+
+    This is a convenience dependency that returns only the email string
+    from the full user dict returned by get_current_user.
+
+    Args:
+        user: User dict from get_current_user dependency
+
+    Returns:
+        str: User's email address
+    """
+    return user["email"]
+
+
 def get_cache(request: Request) -> CacheService:
     """
     Dependency injection for CacheService.
