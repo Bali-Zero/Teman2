@@ -12,8 +12,14 @@ REFACTORED 2025-12-07 (Phase 2):
 - Removed own connection pool creation
 - Uses centralized pool from get_database_pool() dependency
 - Better integration with FastAPI dependency injection
+
+REFACTORED 2026-01-18:
+- Added Lead Assignment Agent integration
+- Automatically assigns new clients to team members
+- Sends Telegram notifications to assigned leads
 """
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -22,6 +28,7 @@ import asyncpg
 from backend.app.core.constants import CRMConstants
 
 from .ai_crm_extractor import get_extractor
+from .lead_assignment_agent import trigger_lead_assignment
 
 logger = logging.getLogger(__name__)
 
@@ -39,16 +46,23 @@ class AutoCRMService:
     CLIENT_CONFIDENCE_THRESHOLD_UPDATE = CRMConstants.CLIENT_CONFIDENCE_THRESHOLD_UPDATE
     SUMMARY_MAX_LENGTH = CRMConstants.SUMMARY_MAX_LENGTH
 
-    def __init__(self, ai_client=None, db_pool: asyncpg.Pool | None = None):
+    def __init__(
+        self,
+        ai_client=None,
+        db_pool: asyncpg.Pool | None = None,
+        telegram_service=None,
+    ):
         """
         Initialize service
 
         Args:
             ai_client: Optional AI client for extraction
             db_pool: Optional database pool (if None, will use dependency injection in methods)
+            telegram_service: Optional TelegramBotService for lead notifications
         """
         self.extractor = get_extractor(ai_client=ai_client)
         self.pool: asyncpg.Pool | None = db_pool
+        self.telegram_service = telegram_service
 
     async def connect(self):
         """
@@ -224,6 +238,31 @@ class AutoCRMService:
                             )
                             client_created = True
                             logger.info(f"✅ Created new client {client_id} from conversation")
+
+                            # NEW: Trigger Lead Assignment Agent (async, non-blocking)
+                            if self.telegram_service and pool:
+                                asyncio.create_task(
+                                    self._trigger_lead_assignment_async(
+                                        client_id=client_id,
+                                        client_data={
+                                            "email": extracted["client"]["email"] or check_email,
+                                            "phone": extracted["client"]["phone"],
+                                            "full_name": extracted["client"]["full_name"]
+                                            or (
+                                                check_email.split("@")[0]
+                                                if check_email
+                                                else "Unknown"
+                                            ),
+                                            "practice_type_code": extracted["practice_intent"].get(
+                                                "practice_type_code"
+                                            ),
+                                        },
+                                        db_pool=pool,
+                                    )
+                                )
+                                logger.info(
+                                    f"🎯 Lead assignment agent triggered for client {client_id}"
+                                )
 
                     # Step 4: Create practice if intent detected
                     practice_id = None
@@ -421,6 +460,44 @@ class AutoCRMService:
         except Exception as e:
             logger.error(f"❌ Email processing failed: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
+
+    async def _trigger_lead_assignment_async(
+        self,
+        client_id: int,
+        client_data: dict,
+        db_pool: asyncpg.Pool,
+    ) -> None:
+        """
+        Async helper to trigger lead assignment workflow (non-blocking)
+
+        Args:
+            client_id: ID of newly created client
+            client_data: {email, phone, full_name, practice_type_code}
+            db_pool: Database pool
+        """
+        try:
+            result = await trigger_lead_assignment(
+                client_id=client_id,
+                client_data=client_data,
+                db_pool=db_pool,
+                telegram_service=self.telegram_service,
+            )
+
+            if result.get("success"):
+                logger.info(
+                    f"✅ Lead assignment successful: client #{client_id} → {result.get('assigned_lead')}, "
+                    f"notified={result.get('notification_sent')}"
+                )
+            else:
+                logger.warning(
+                    f"⚠️ Lead assignment completed with errors for client #{client_id}: {result.get('errors')}"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"❌ Lead assignment workflow failed for client #{client_id}: {e}",
+                exc_info=True,
+            )
 
 
 # Singleton instance

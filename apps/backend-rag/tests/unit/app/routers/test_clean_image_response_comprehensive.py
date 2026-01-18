@@ -4,6 +4,58 @@ Comprehensive tests for clean_image_generation_response
 Tests all patterns from frontend implementation to ensure parity.
 """
 
+import sys
+import types
+from unittest.mock import AsyncMock, MagicMock, patch
+from pathlib import Path
+
+import pytest
+
+# Ensure backend is in path
+backend_path = Path(__file__).resolve().parents[4] / "backend"
+if str(backend_path) not in sys.path:
+    sys.path.insert(0, str(backend_path))
+
+# Aggressively mock problematic modules before any backend imports
+def mock_problematic_modules():
+    # Mock NumPy and PIL
+    numpy_mock = types.ModuleType("numpy")
+    numpy_mock.__version__ = "1.26.4"
+    numpy_mock.__path__ = []
+    sys.modules["numpy"] = numpy_mock
+    sys.modules["numpy.typing"] = MagicMock()
+    sys.modules["numpy._typing"] = MagicMock()
+    sys.modules["numpy._typing._char_codes"] = MagicMock()
+
+    for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
+        mock = types.ModuleType(m)
+        if m == "PIL":
+            mock.__version__ = "10.0.0"
+            mock.Image = types.ModuleType("PIL.Image")
+            mock.Image.Image = MagicMock
+        sys.modules[m] = mock
+
+    # Mock backend services to avoid cascade
+    for m in ["backend.services.oracle", "backend.services.search", 
+              "backend.services.rag", "backend.services.rag.agentic", 
+              "backend.services.ingestion", "backend.services.analytics",
+              "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
+              "qdrant_client"]:
+        sys.modules[m] = MagicMock()
+
+    # Special handling for misc to allow submodule imports
+    misc_mock = types.ModuleType("backend.services.misc")
+    misc_mock.__path__ = []
+    sys.modules["backend.services.misc"] = misc_mock
+    
+    # Special handling for routing to allow submodule imports
+    routing_mock = types.ModuleType("backend.services.routing")
+    routing_mock.__path__ = []
+    sys.modules["backend.services.routing"] = routing_mock
+    sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
+
+mock_problematic_modules()
+
 from backend.app.routers.agentic_rag import clean_image_generation_response
 
 
