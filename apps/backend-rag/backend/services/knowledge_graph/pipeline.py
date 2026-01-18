@@ -193,7 +193,7 @@ class KGPipeline:
             # Stage 2: Coreference resolution and deduplication
             if self.config.use_coreference and result.entities:
                 # Resolve references
-                resolutions = await self.coreference.resolve_all_references(text, result.entities)
+                await self.coreference.resolve_all_references(text, result.entities)
 
                 # Deduplicate entities
                 original_count = len(result.entities)

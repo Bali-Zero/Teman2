@@ -57,6 +57,7 @@ const ACCESS_RULES = {
 };
 
 function getVisibleClients(clients: Client[], currentUserEmail: string): Client[] {
+  if (!currentUserEmail) return [];
   const emailLower = currentUserEmail.toLowerCase();
   const userName = emailLower.split('@')[0];
 

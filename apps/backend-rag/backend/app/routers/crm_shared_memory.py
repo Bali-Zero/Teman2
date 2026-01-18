@@ -74,8 +74,8 @@ async def search_shared_memory(
 
     Returns relevant results from clients, practices, and interactions
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
+    current_user.get("email", "").lower()
+    is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             query_lower = q.lower()
@@ -339,8 +339,8 @@ async def get_upcoming_renewals(
 
     Performance: Cached for 10 minutes to reduce database load.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
+    current_user.get("email", "").lower()
+    is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(

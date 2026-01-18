@@ -85,7 +85,7 @@ class ErrorClassifier:
         Returns:
             Tuple of (ErrorCategory, ErrorSeverity)
         """
-        error_type = type(error).__name__
+        type(error).__name__
         error_msg = str(error).lower()
 
         # Database errors

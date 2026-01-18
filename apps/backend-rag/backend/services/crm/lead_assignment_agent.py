@@ -57,12 +57,17 @@ async def check_duplicates(
     Matches on:
     - Email (exact match, case-insensitive)
     - Phone (normalized match, removes spaces/dashes)
+    - Telegram chat_id (via messaging_users.client_id)
+    - WhatsApp number (via messaging_users.client_id)
     """
+    from backend.services.crm.client_identity_resolver import ClientIdentityResolver
+
     client_data = state["client_data"]
     client_id = state["client_id"]
+    resolver = ClientIdentityResolver(db_pool)
 
     async with db_pool.acquire() as conn:
-        # Check email exact match (case-insensitive)
+        # 1. Check email exact match (case-insensitive)
         if email := client_data.get("email"):
             existing = await conn.fetchrow(
                 "SELECT id, assigned_to FROM clients WHERE LOWER(email) = LOWER($1) AND id != $2",
@@ -78,7 +83,7 @@ async def check_duplicates(
                 )
                 return state
 
-        # Check phone exact match (normalized - remove spaces, dashes, + prefix)
+        # 2. Check phone exact match (normalized - remove spaces, dashes, + prefix)
         if phone := client_data.get("phone"):
             phone_clean = phone.replace(" ", "").replace("-", "").lstrip("+")
             existing = await conn.fetchrow(
@@ -98,6 +103,40 @@ async def check_duplicates(
                     f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (phone)"
                 )
                 return state
+
+        # 3. Check Telegram cross-channel (if source is telegram)
+        if telegram_chat_id := client_data.get("telegram_chat_id"):
+            existing_client_id = await resolver.find_client_by_telegram(telegram_chat_id)
+            if existing_client_id and existing_client_id != client_id:
+                existing = await conn.fetchrow(
+                    "SELECT id, assigned_to FROM clients WHERE id = $1",
+                    existing_client_id,
+                )
+                if existing:
+                    state["is_duplicate"] = True
+                    state["matched_client_id"] = existing["id"]
+                    state["assigned_lead"] = existing["assigned_to"]
+                    logger.info(
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (telegram)"
+                    )
+                    return state
+
+        # 4. Check WhatsApp cross-channel (if source is whatsapp)
+        if whatsapp := client_data.get("whatsapp"):
+            existing_client_id = await resolver.find_client_by_whatsapp(whatsapp)
+            if existing_client_id and existing_client_id != client_id:
+                existing = await conn.fetchrow(
+                    "SELECT id, assigned_to FROM clients WHERE id = $1",
+                    existing_client_id,
+                )
+                if existing:
+                    state["is_duplicate"] = True
+                    state["matched_client_id"] = existing["id"]
+                    state["assigned_lead"] = existing["assigned_to"]
+                    logger.info(
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (whatsapp)"
+                    )
+                    return state
 
     state["is_duplicate"] = False
     state["matched_client_id"] = None

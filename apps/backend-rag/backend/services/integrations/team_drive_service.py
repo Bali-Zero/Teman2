@@ -827,7 +827,7 @@ class TeamDriveService:
             # 1. The new owner is in the same domain (for Workspace)
             # 2. OR the file allows ownership transfer to anyone (personal accounts)
             # IMPORTANT: Google REQUIRES sendNotificationEmail=True for ownership transfers
-            permission = (
+            (
                 service.permissions()
                 .create(
                     fileId=file_id,

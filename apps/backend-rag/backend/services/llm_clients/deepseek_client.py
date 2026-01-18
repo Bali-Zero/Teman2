@@ -153,7 +153,7 @@ class DeepSeekClient:
             ) as response,
         ):
             if response.status_code != 200:
-                error_text = await response.aread()
+                await response.aread()
                 logger.error(f"DeepSeek streaming error: {response.status_code}")
                 raise RuntimeError(f"DeepSeek API error: {response.status_code}")
 

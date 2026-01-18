@@ -320,7 +320,6 @@ class AgenticRAGOrchestrator:
     ) -> AsyncGenerator[dict, None]:
         """Stream query with comprehensive error handling. Supports vision with images."""
         correlation_id = str(uuid.uuid4())
-        event_error_count = 0
 
         # Security: Validate user_id format
         if user_id and user_id != "anonymous":

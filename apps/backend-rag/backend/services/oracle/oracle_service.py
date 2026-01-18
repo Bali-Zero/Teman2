@@ -365,11 +365,11 @@ class OracleService:
                 "personality_type", "professional"
             )
             user_memory_facts = user_context_data["memory_facts"]
-            user_name = user_context_data["user_name"]
-            user_role = user_context_data["user_role"]
+            user_context_data["user_name"]
+            user_context_data["user_role"]
 
             # 2. Context & Intent (delegated to LanguageDetectionService)
-            detected_language = self.language_detector.detect_language(request_query)
+            self.language_detector.detect_language(request_query)
             target_language = self.language_detector.get_target_language(
                 request_query,
                 language_override=request_language_override,

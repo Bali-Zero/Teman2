@@ -779,7 +779,7 @@ async def list_permissions(
     All authenticated users can view who has access.
     Zero is hidden from other users (invisible admin).
     """
-    user_email = current_user.get("email", "")
+    current_user.get("email", "")
 
     try:
         permissions = await drive.list_permissions(file_id)

@@ -113,7 +113,7 @@ def calculate_evidence_score(
 
     # Check if context contains query keywords
     if context_gathered:
-        query_lower = query.lower()
+        query.lower()
         # Extract meaningful keywords (words longer than 3 chars, excluding common words)
         stop_words = {
             "the",

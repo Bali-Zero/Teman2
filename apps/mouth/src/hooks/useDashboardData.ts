@@ -16,8 +16,15 @@ export function useDashboardData() {
   } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: async () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:18',message:'getDashboardSummary entry',data:{endpoint:'/api/dashboard/summary'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       try {
-        return await dashboardApi.getDashboardSummary();
+        const result = await dashboardApi.getDashboardSummary();
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:21',message:'getDashboardSummary success',data:{hasData:!!result,hasStats:!!result?.stats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        return result;
       } catch (err) {
         // Detailed error logging for debugging
         const errorDetails = {
@@ -27,6 +34,9 @@ export function useDashboardData() {
           timestamp: new Date().toISOString(),
           endpoint: '/api/dashboard/summary',
         };
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:30',message:'getDashboardSummary error',data:errorDetails,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
 
         // Log to console with full details
         console.error('[Dashboard] Failed to load dashboard data:', errorDetails);
@@ -34,12 +44,24 @@ export function useDashboardData() {
         // Check for specific error types
         if (err instanceof Error) {
           if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:37',message:'401 auth error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
             console.error('[Dashboard] Authentication error - user may need to login again');
           } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:39',message:'403 forbidden error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
             console.error('[Dashboard] Authorization error - user may not have permission');
           } else if (err.message.includes('Network') || err.message.includes('fetch')) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:41',message:'network error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             console.error('[Dashboard] Network error - backend may be unreachable');
           } else if (err.message.includes('CORS')) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useDashboardData.ts:43',message:'CORS error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             console.error('[Dashboard] CORS error - backend CORS configuration may be incorrect');
           }
         }

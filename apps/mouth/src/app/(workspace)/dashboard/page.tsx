@@ -27,6 +27,9 @@ import { logger } from '@/lib/logger';
 import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
 
 export default function DashboardPage() {
+  // #region agent log
+  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.tsx:29',message:'DashboardPage render entry',data:{pathname:window.location.pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
   const {
     user,
     stats,
@@ -41,6 +44,9 @@ export default function DashboardPage() {
     totalUnread,
     isHealthy,
   } = useDashboardData();
+  // #region agent log
+  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.tsx:45',message:'useDashboardData result',data:{isLoading,isError:!!error,hasUser:!!user,hasStats:!!stats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
 
   // Analytics and A/B testing hooks
   const {
@@ -65,12 +71,12 @@ export default function DashboardPage() {
 
   // Initialize all advanced features
   React.useEffect(() => {
-    if (user.email && !isLoading) {
+    if (user?.email && !isLoading) {
       // Initialize enhanced analytics
       enhancedAnalytics.initialize(user.email, {
-        role: user.role,
+        role: user.role || 'Member',
         email: user.email,
-        isAdmin: user.is_admin,
+        isAdmin: user.is_admin || false,
       });
 
       // Initialize A/B testing
@@ -103,11 +109,11 @@ export default function DashboardPage() {
         trackUserInteraction('mobile_access', 'dashboard', mobile.breakpoint);
       }
     }
-  }, [user.email, isLoading]);
+  }, [user?.email, isLoading]);
 
   // Track performance metrics
   React.useEffect(() => {
-    if (!isLoading && user.email) {
+    if (!isLoading && user?.email) {
       const loadTime = performance.now() - startTime.current;
       trackPerformance({ 
         loadTime,
@@ -130,7 +136,7 @@ export default function DashboardPage() {
 
   // Log dashboard metrics
   React.useEffect(() => {
-    if (!isLoading && user.email) {
+    if (!isLoading && user?.email) {
       const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', user.email);
       dashboardMetrics.trackPageView(user.email);
       
@@ -141,7 +147,7 @@ export default function DashboardPage() {
         metadata: { loadTime, systemStatus },
       });
     }
-  }, [isLoading, user.email, systemStatus]);
+  }, [isLoading, user?.email, systemStatus]);
 
   // Handle loading state
   if (isLoading) {
@@ -334,10 +340,10 @@ export default function DashboardPage() {
           onDelete={async (id) => {
             try {
               trackWidgetInteraction('whatsapp_preview', `message_${id}`);
-              await api.crm.deleteInteraction(Number.parseInt(id, 10), user.email);
+              await api.crm.deleteInteraction(Number.parseInt(id, 10), user?.email || '');
               trackUserInteraction('delete_message', 'whatsapp', id);
               // Track funnel step completion
-              funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
+              if (user?.email) funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
               // Send real-time update
               realtime.sendDashboardUpdate('delete', 'case', id);
               // Note: In a real implementation, you'd want to refetch the data
@@ -345,11 +351,11 @@ export default function DashboardPage() {
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : String(error);
               trackError(error instanceof Error ? error : new Error(String(error)), 'delete_interaction');
-              funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', false, errorMessage);
+              if (user?.email) funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', false, errorMessage);
               logger.error('Failed to delete interaction', {
                 component: 'DashboardPage',
                 action: 'deleteInteraction',
-                user: user.email,
+                user: user?.email || 'unknown',
                 metadata: { interactionId: id },
               }, error instanceof Error ? error : new Error(String(error)));
             }
