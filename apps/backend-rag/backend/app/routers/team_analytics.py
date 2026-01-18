@@ -52,7 +52,7 @@ async def get_productivity_scores(
         return {"success": True, "scores": scores}
     except Exception as e:
         logger.error(f"Failed to calculate productivity scores: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/burnout")
