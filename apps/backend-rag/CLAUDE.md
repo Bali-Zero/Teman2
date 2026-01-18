@@ -1,1658 +1,374 @@
 # Claude Memory - Backend RAG
 
-## Session Update (2026-01-14 - Asyncpg JSONB Best Practices)
+## Session Update (2026-01-18 - Knowledge Graph Value Assessment + Pricing Policy Verification)
 
-### Bug Fix: Process Update 503 Error - COMPLETED
+### Knowledge Graph Analysis - COMPLETED
 
-**Problem:** PATCH `/api/crm/practices/{id}` restituiva 503 "Database service temporarily unavailable" quando si aggiornava lo status di un process.
+**Obiettivo:** Analizzare il Knowledge Graph creato da 37M chiamate Gemini API (3.9M Rp / €230 EUR) per capire se l'investimento è stato utile.
 
-**Root Cause:** asyncpg non può serializzare automaticamente Python dict contenenti `Decimal`, `datetime`, o `date` per colonne JSONB. Il codice passava `updates.dict(exclude_unset=True)` direttamente a PostgreSQL.
+**Risultati Chiave:**
+- **Nodi**: 34,606 entità estratte
+- **Relazioni**: 30,628 edges
+- **ROI**: POSITIVO (~13,000 relazioni utili per €230)
+- **Status**: ✅ ATTIVO in produzione come Tool #4 in Zantara
+- **Estrazione continua**: ❌ DISABILITATA (troppo costosa)
 
-**Fix applicato in `crm_practices.py`:**
+---
+
+### Distribuzioni Entità e Relazioni
+
+**Top Entity Types:**
+| Tipo | Count | % | Descrizione |
+|------|-------|---|-------------|
+| kbli | 6,932 | 20.0% | Codici classificazione business |
+| biaya | 6,060 | 17.5% | Informazioni costi/fee |
+| pasal | 3,954 | 11.4% | Riferimenti articoli legali |
+| dokumen | 3,674 | 10.6% | Tipi di documenti |
+| undang_undang | 2,800 | 8.1% | Leggi (UU) |
+
+**Top Relationship Types:**
+| Tipo | Count | % | Valore | Esempi |
+|------|-------|---|--------|---------|
+| REQUIRES | 8,218 | 26.8% | 🟢 HIGH | "PT PMA REQUIRES NPWP" |
+| PART_OF | 7,595 | 24.8% | 🟡 LOW | "Pasal 286 PART_OF Ayat 1" (strutturale) |
+| REFERENCES | 4,593 | 15.0% | 🟡 MEDIUM | "UU 6/2023 REFERENCES PP 28/2025" |
+| HAS_FEE | ~1,500 | 4.9% | 🟢 HIGH | ⚠️ **CRITICAL** - Vedi sotto |
+| HAS_DURATION | ~1,200 | 3.9% | 🟢 HIGH | "Work Permit HAS_DURATION 1 tahun" |
+
+---
+
+### ⚠️ CRITICAL DISCOVERY: HAS_FEE ≠ Prezzi Bali Zero
+
+**Problema Identificato dall'utente:**
+> "HAS_FEE (~1,500): Costi ufficiali - quali? attenzione gli unici costi che possiamo dire al cliente finale sono i nostri prezzi"
+
+**Analisi Completata:**
+
+#### Cosa Contengono le Relazioni HAS_FEE:
+
+1. **Fee Governative PNBP** (da script `ingest_visa_kg.py`)
+   - Fonte: Dump ufficiale imigrasi.go.id
+   - Esempio: "Visa E28A biaya PNBP: Rp 3.500.000" (fee governativa)
+   - Estratte via regex dalla sezione "biaya" dei documenti ufficiali
+
+2. **Costi da Regolamenti Legali** (da script `kg_incremental_extraction.py`)
+   - Fonte: Documenti legali (UU, PP, Permen) processati da Gemini
+   - Esempio: "Pendaftaran PT sebesar Rp 500.000" (da regolamento)
+   - Estratte via LLM con prompt che identifica entity type "biaya"
+
+#### Cosa NON Contengono:
+
+❌ **Prezzi Bali Zero** - CONFERMATO al 100%
+
+I prezzi Bali Zero sono **SOLO** in:
+- File: `backend/data/bali_zero_official_prices_2025.json`
+- Tool: `PricingTool` (Tool #2 nell'orchestrator)
+- Caricati da `PricingService._load_prices()`
+
+**Verifica Codice:**
 ```python
-import json
-from decimal import Decimal
-from datetime import datetime, date
-
-def json_serializer(obj):
-    """Custom JSON serializer for asyncpg JSONB compatibility."""
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return str(obj)
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-# Uso corretto:
-changes_json = json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
-await conn.execute(
-    "INSERT INTO activity_log (..., changes) VALUES (..., $6::jsonb)",
-    ..., changes_json
-)
+# pricing_service.py:26-28
+json_path = Path(__file__).parent.parent.parent / "data" / "bali_zero_official_prices_2025.json"
+with open(json_path, encoding="utf-8") as f:
+    self.prices = json.load(f)
 ```
 
----
-
-### ⚠️ CRITICAL: Asyncpg + JSONB Development Guidelines
-
-**SEMPRE seguire queste regole quando si lavora con asyncpg e colonne JSONB:**
-
-#### 1. Mai passare dict Python direttamente a JSONB
-```python
-# ❌ SBAGLIATO - causerà errore se dict contiene Decimal/datetime
-await conn.execute("INSERT INTO t (data) VALUES ($1)", my_dict)
-
-# ✅ CORRETTO - serializza esplicitamente con custom serializer
-await conn.execute("INSERT INTO t (data) VALUES ($1::jsonb)", json.dumps(my_dict, default=json_serializer))
-```
-
-#### 2. Usare sempre il cast esplicito `::jsonb`
-```python
-# ❌ SBAGLIATO - comportamento imprevedibile
-"VALUES ($1)"
-
-# ✅ CORRETTO - esplicito
-"VALUES ($1::jsonb)"
-```
-
-#### 3. Definire un json_serializer centralizzato
-Creare in `backend/app/utils/json_utils.py`:
-```python
-from decimal import Decimal
-from datetime import datetime, date
-import json
-
-def json_serializer(obj):
-    """Custom serializer for asyncpg JSONB compatibility."""
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return str(obj)
-    if hasattr(obj, '__dict__'):
-        return obj.__dict__
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-def to_jsonb(data: dict) -> str:
-    """Serialize dict to JSONB-compatible string."""
-    return json.dumps(data, default=json_serializer)
-```
-
-#### 4. Pydantic `.dict()` produce tipi non serializzabili
-```python
-# ❌ ATTENZIONE - .dict() può contenere Decimal, datetime, UUID
-updates.dict(exclude_unset=True)  # → {'amount': Decimal('100.00'), 'date': datetime(...)}
-
-# ✅ SEMPRE serializzare prima di INSERT
-json.dumps(updates.dict(exclude_unset=True), default=json_serializer)
-```
-
-#### 5. Testing JSONB INSERT
-**Ogni endpoint che fa INSERT/UPDATE su colonne JSONB deve avere test con:**
-- datetime objects
-- Decimal values
-- UUID objects
-- Nested dicts
+Gli script KG (`ingest_visa_kg.py`, `kg_incremental_extraction.py`) **non importano né accedono** al file prezzi Bali Zero.
 
 ---
 
-### Files che usano JSONB (verificati)
+### Protezioni Sistema Contro Uso Fee KG Come Prezzi
 
-| File | Pattern | Status |
-|------|---------|--------|
-| `crm_practices.py` | `activity_log.changes` | ✅ FIXED |
-| `crm_clients.py` | `activity_log` (no changes col) | ✅ OK |
-| `crm_clients.py:1389` | `passport_ocr_data` | ✅ FIXED (to_jsonb) |
-| `crm_enhanced.py:164` | `passport_ocr_data` | ✅ FIXED (to_jsonb) |
-| `legal_ingest.py:333` | `metadata` | ✅ FIXED (to_jsonb) |
-| `crm_interactions.py:200-201` | `extracted_entities`, `action_items` | ✅ FIXED (to_jsonb) |
-| `conversations.py:226-227` | `messages`, `metadata` | ✅ FIXED (to_jsonb) |
-| `knowledge_visa.py` INSERT | 8 JSONB fields | ✅ FIXED (to_jsonb) |
-| `knowledge_visa.py` UPDATE | dynamic JSONB fields | ✅ FIXED (to_jsonb) |
-
----
-
-### Checklist per nuovi endpoint JSONB
-
-- [ ] Usare `json.dumps()` con `default=json_serializer`
-- [ ] Usare cast esplicito `::jsonb` nella query
-- [ ] Testare con dati contenenti Decimal/datetime
-- [ ] Non passare mai `.dict()` direttamente a asyncpg
-
----
-
-## Session Update (2026-01-14 13:30-14:00 UTC)
-
-### Test Coverage, Logging & Documentation for 4 Production Fixes - COMPLETED
-
-**Obiettivo:** Aggiungere test coverage, logging e documentazione mancanti per i 4 fix di produzione fatti nella sessione precedente.
-
----
-
-### 1. Test Coverage Aggiunto
-
-| File Test | Tests | Status |
-|-----------|-------|--------|
-| `tests/unit/services/crm/test_ai_crm_extractor.py` | 22 tests (AsyncpgJSONEncoder + AICRMExtractor) | ✅ Pass |
-| `apps/mouth/src/lib/api/client.test.ts` | +3 tests (getUserProfile sync) | ✅ Pass |
-| `apps/mouth/src/lib/realtime.test.ts` | 14 tests (WebSocket auth) | ✅ Pass |
-
-**Tests totali aggiunti:** 39
-
----
-
-### 2. Logging Aggiunto
-
-**File:** `apps/mouth/src/lib/api/client.ts`
-
-- `getUserProfile()`: debug log quando profilo sincronizzato da localStorage
-- `getUserProfile()`: warn log quando parsing fallisce
-
----
-
-### 3. Documentazione Creata
-
-**File:** `docs/operations/PRODUCTION_FIXES_2026_01_14.md`
-
-Documentazione completa dei 4 fix:
-1. Clients page virtualization (`contain: strict` + min-height)
-2. WebSocket auth (JWT via subprotocol)
-3. UUID serialization (AsyncpgJSONEncoder)
-4. Pollinations watermarks (static images)
-
----
-
-### 4. Files Creati/Modificati
-
-| File | Tipo |
-|------|------|
-| `tests/unit/services/crm/test_ai_crm_extractor.py` | NEW |
-| `apps/mouth/src/lib/realtime.test.ts` | NEW |
-| `apps/mouth/src/lib/api/client.test.ts` | MODIFIED |
-| `apps/mouth/src/lib/api/client.ts` | MODIFIED |
-| `docs/operations/PRODUCTION_FIXES_2026_01_14.md` | NEW |
-
----
-
-## Session Update (2026-01-14 03:00-04:30 UTC)
-
-### Visa Oracle Expansion + Knowledge Graph Integration - COMPLETED
-
-**Obiettivo:** Ingestire 33 visa mancanti dal dump ufficiale imigrasi.go.id e creare relazioni KG (visa → KBLI → tax).
-
----
-
-### 1. Analisi Gap
-
-**Fonte:** File ufficiale `tutti_visti_indonesia_2026-01-13.txt` (110 visa types)
-
-**Gap identificato:**
-- Esistenti in Qdrant: 82 codici (94 chunks)
-- Nel file ufficiale: 110 codici
-- **Mancanti: 33 visa**
-
----
-
-### 2. Script Ingestion Creato
-
-**File:** `scripts/ingestion/ingest_visa_kg.py` (734 righe)
-
-**Funzionalità:**
-- Parsing dump Imigrasi (gestisce `\n` letterali)
-- Confronto con Qdrant esistente
-- Embedding OpenAI (text-embedding-3-small)
-- Named vectors (`dense`) per Qdrant
-- Estrazione entità KG (visa_kunjungan, visa_tinggal, etc.)
-- Creazione relazioni KG (LINKED_KBLI, REQUIRES_TAX)
-
----
-
-### 3. Visa Ingestiti (33 nuovi)
-
-| Categoria | Codici |
-|-----------|--------|
-| Work Visas | E23, E23A, E23U, E23V, E23X, **E23Y (Digital Expert)** |
-| Executive | E25A-F (Commissioner, Director, Manager, Supervisor) |
-| Investor | E28, E28E (KEK) |
-| Education | E30, E30E, E30F (Student Exchange) |
-| Family | E31 |
-| Global Citizen | E32, E32E-H |
-| Second Home | E33D (Tokoh Dunia) |
-| Medical | E34 |
-| Working Holiday | E35A (Australia) |
-| Content Creator | **C5A** |
-| Sports | C8, D4, D8 |
-
----
-
-### 4. Knowledge Graph Relationships
-
-**Entità create:** 33 (visa nodes)
-**Relazioni create:** 106
-
-| Tipo Relazione | Esempio |
-|----------------|---------|
-| `LINKED_KBLI` | E23 → KBLI 62, 63, 70, 71, 72 |
-| `REQUIRES_TAX` | All E-series → NPWP registration |
-
----
-
-### 5. Risultati Finali
-
-| Metrica | Prima | Dopo |
-|---------|-------|------|
-| visa_oracle (Qdrant) | 94 docs | **127 docs** |
-| KG Nodes (totale) | ~24,917 | **34,322** |
-| KG Edges (totale) | ~23,234 | **30,342** |
-| Visa KG Nodes | 170 | **203** |
-| Visa KG Edges | 282 | **388** |
-
----
-
-### 6. Test su Zantara
-
-| Query | Risultato |
-|-------|-----------|
-| "What is E23Y Digital Expert visa?" | ✅ Risposta con KBLI codes + `[KNOWLEDGE GRAPH]` tag |
-| "Tell me about C5A Content Creator" | ✅ 4 sources, dettagli USD 2,000, 60-90 days |
-
----
-
-### Commit
-
-`2033579e` - feat(ingestion): add visa KG ingestion script for official Imigrasi data
-
----
-
-### Uso Script
-
-```bash
-# Dry-run
-python scripts/ingestion/ingest_visa_kg.py --file "visa_dump.txt" --dry-run
-
-# Produzione
-QDRANT_API_KEY=xxx OPENAI_API_KEY=xxx DATABASE_URL=xxx \
-python scripts/ingestion/ingest_visa_kg.py --file "visa_dump.txt"
-```
-
----
-
-## Session Update (2026-01-13 21:30-22:00 UTC)
-
-### Agentic RAG Improvements + Pricing Fix - COMPLETED
-
-**Obiettivo:** Deploy miglioramenti Gemini 3 chat session e fix prezzi inventati.
-
----
-
-### 1. Gemini 3 Chat Session History
-
-**Problema:** Context si perdeva tra i passi del ReAct loop.
-
-**Soluzione:** Aggiunto supporto ChatSession history per Gemini 3.
-
-**Files Modified:**
-- `llm_gateway.py` - `create_chat_with_history()` con `system_instruction`
-- `orchestrator.py` - Passaggio system_instruction alla chat session
-- `reasoning.py` - Original query context nelle continuazioni ReAct
-
----
-
-### 2. Pricing Tool Enforcement
-
-**Problema:** AI inventava prezzi (es. "Akta Perubahan costa 5-10M").
-
-**Soluzione:** Regole più rigide nel prompt:
+**Il sistema HA GIÀ protezioni attive** in `prompt_builder.py:47-66`:
 
 ```
+**🚨 CRITICAL: PRICING - ABSOLUTE RULES**
+
 RULE 1: ONLY USE PRICES FROM get_pricing TOOL
+- For Bali Zero services → CALL get_pricing tool → Use EXACT price from response
+- NEVER invent, estimate, or guess ANY price
+
 RULE 2: IF PRICE NOT IN TOOL, SAY "DA VERIFICARE"
+- If get_pricing doesn't have a specific price → Say "Questo costo specifico è da verificare con il team"
+
 RULE 3: ONLY STATE FACTS YOU CAN VERIFY
+- ✅ CORRECT: "PT PMA costa Rp 20.000.000 [dal tool get_pricing]"
+- ❌ WRONG: "Cambiare l'atto costa tra i 5 e i 10 milioni" (INVENTED!)
 ```
 
-**File Modified:** `prompt_builder.py` - Sezione `<tool_usage_policy>`
+**PricingTool Description** (`tools.py:309-313`):
+```python
+"🚨 MANDATORY for ALL Bali Zero service price questions. "
+"Get OFFICIAL pricing from Bali Zero database (NO AI generation, NO memory). "
+"NEVER guess prices - ALWAYS call this tool first for price questions."
+```
 
 ---
 
-### 3. Test Results (Chrome Browser)
+### Documentazione Creata
 
-| Test | Risultato |
-|------|-----------|
-| Pricing Tool | ✅ Usa `get_pricing` per "Quanto costa PT PMA?" |
-| Context Preservation | ✅ "Come mai?" capisce riferimento a 20M |
-| No Prezzi Inventati | ✅ Solo prezzi con citazioni [1][2][3] |
+**File:** `docs/KG_VALUE_ASSESSMENT_2026_01_18.md` (318 righe)
 
----
+**Sezioni Aggiunte:**
 
-### Commits
-
-- `b3ec8535` - feat(agentic): improve Gemini 3 chat session and pricing enforcement
-- `3ececc8d` - feat(admin): add Team Activity Dashboard
-
----
-
-### Deploy
-
-- **Release:** v1555
-- **Health:** https://nuzantara-rag.fly.dev/health ✅
-- **Machines:** 2/2 healthy
+1. **Executive Summary** - ROI assessment con caveat
+2. **Current Status** - ✅ Tool #4 attivo, ❌ estrazione disabilitata
+3. **Data Quality Analysis** - Distribuzioni nodi/relazioni
+4. **⚠️ CRITICAL: Pricing Policy** - HAS_FEE ≠ Bali Zero prices
+   - Cosa contengono le HAS_FEE (PNBP governative + fee legali)
+   - Perché NON comunicarle ai clienti (non verificate, obsolete, single source)
+   - UNICA fonte verità: PricingTool
+   - Esempi di uso corretto/sbagliato
+5. **API Authentication** - Perché 401 errors (JWT required)
+6. **Recommendations** - Miglioramenti futuri (confidence scoring, re-enable extraction con controlli)
 
 ---
 
-## Session Update (2026-01-10 11:00-12:00 UTC)
+### Files Modificati
 
-### Database Activation + Scheduler Tasks - COMPLETED
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `docs/KG_VALUE_ASSESSMENT_2026_01_18.md` | NEW | Analisi completa valore KG + pricing policy |
 
-**Obiettivo:** Attivare funzionalità database esistenti ma vuote (revenue, renewal_alerts, golden_routes).
+**Commit:** `bd60e049` - "docs: clarify HAS_FEE relationships are NOT Bali Zero prices"
 
 ---
 
-### 1. Revenue Data Population
+### Test Tentati (Non Completati per Auth)
 
-**Problema:** Dashboard mostrava `revenue: 0` perché `actual_price` era NULL.
+**Obiettivo:** Verificare al 100% che LLM usa SOLO prezzi Bali Zero.
 
-**Soluzione:** Popolato `actual_price = quoted_price` per pratiche completate.
+**Script Creati:**
+1. `/tmp/test_pricing_policy.py` - Test HTTP con autenticazione
+2. `/tmp/test_pricing_real.py` - Test diretto orchestrator
+3. `/tmp/verify_pricing_config.py` - Verifica statica configurazione
+4. `/tmp/MANUAL_PRICING_TESTS.md` - Guida test manuali
 
+**Problema Incontrato:**
+- Test HTTP richiedono JWT token (endpoint `/api/agentic/query` protetto)
+- Test diretti falliscono per import errors (dipendenze mancanti in ambiente locale)
+- Background processes killati (exit code 137)
+
+**Stato:** ⚠️ **TEST REALI NON ESEGUITI**
+
+---
+
+### ⚠️ COSA NON È CHIARO / DA VERIFICARE
+
+#### 1. Comportamento Reale LLM con Pricing
+
+**Domanda:** L'LLM rispetta davvero le regole nel 100% dei casi?
+
+**Cosa sappiamo:**
+- ✅ Prompt ha regole esplicite (RULE 1, 2, 3)
+- ✅ PricingTool ha description "MANDATORY"
+- ✅ HAS_FEE non contiene prezzi Bali Zero (verificato codice sorgente)
+
+**Cosa NON sappiamo (manca test reale):**
+- ❓ L'LLM chiama sempre `get_pricing` per domande sui prezzi?
+- ❓ L'LLM dice sempre "da verificare" quando prezzo non trovato?
+- ❓ L'LLM inventa mai range tipo "5-10 milioni"?
+- ❓ L'LLM usa mai HAS_FEE come prezzi cliente?
+
+**Come Verificare:**
+- Opzione A: Test manuale via browser su https://www.balizero.com/chat
+- Opzione B: Script curl con JWT token (richiede login prima)
+- Opzione C: Analisi conversation logs produzione (se disponibili)
+
+#### 2. Quale Provider LLM È Attivo?
+
+**Discovery:** Fly.io secrets mostrano **3 provider configurati**:
+```
+OPENAI_API_KEY ✅
+ANTHROPIC_API_KEY ✅
+GOOGLE_API_KEY (Gemini) ✅
+```
+
+**Domanda:** Quale viene usato di default per Zantara chat?
+
+**Non abbiamo verificato:**
+- File `llm_gateway.py` (tentativo di lettura fallito - file vuoto?)
+- Configurazione default provider in `config.py`
+- Logica di fallback tra provider
+
+**Possibile che:**
+- Usa OpenAI di default (più affidabile)
+- Gemini solo per KG extraction (batch job)
+- Fallback ad Anthropic se OpenAI down
+
+**Come Verificare:**
+```bash
+grep -r "default.*provider\|DEFAULT_MODEL\|LLM_PROVIDER" apps/backend-rag/backend/
+```
+
+#### 3. Confidence Score nel KG
+
+**Problema Noto (da documentazione):**
+- Tutti i nodi hanno `confidence = 0.9` HARDCODED
+- Non riflette vera qualità (source singola vs multipla)
+
+**Domanda:** Questo impatta il ranking dei risultati KG tool?
+
+**Non sappiamo:**
+- Il KnowledgeGraphTool usa confidence per ranking?
+- Entità single-source (77%) vengono filtrate?
+- Rischio hallucination per single-source entities?
+
+**File da analizzare:**
+```
+apps/backend-rag/backend/services/tools/knowledge_graph_tool.py
+apps/backend-rag/backend/services/knowledge_graph/kg_builder.py
+```
+
+#### 4. Coverage KG per Collection
+
+**Dalla documentazione:**
+| Collection | Estimated Entities |
+|------------|-------------------|
+| legal_unified_hybrid | ~15,000 |
+| visa_oracle | ~8,000 |
+| tax_genius_hybrid | ~6,000 |
+| kbli_atlas | ~3,500 |
+| training_conversations | ~2,000 |
+
+**Domanda:** Queste percentuali sono accurate?
+
+**Non abbiamo verificato:**
+- Query SQL diretta al database per contare per collection
+- Overlap tra collections (stessa entity in più collections?)
+
+**Come Verificare:**
 ```sql
-UPDATE practices
-SET actual_price = quoted_price, payment_status = 'paid', paid_amount = quoted_price
-WHERE status = 'completed' AND actual_price IS NULL
--- Result: 3 practices updated, total revenue = 6,000
+SELECT source_collection, COUNT(*)
+FROM kg_nodes
+GROUP BY source_collection;
 ```
 
----
+#### 5. Orphan Nodes
 
-### 2. Renewal Alerts Scheduler (Task #6)
+**Dalla documentazione:**
+- ~5,000 nodi (14.5%) senza relazioni
+- "Provide no graph traversal value"
 
-**Funzionalità:** Controlla pratiche con scadenza imminente e crea alert automatici.
+**Domanda:** Questi dovrebbero essere puliti?
 
-**Logica:**
-- Esegue ogni 12 ore
-- Crea alert a 90, 60, 30 giorni prima della scadenza
-- Evita duplicati (controlla `alert_type` esistente)
-- Notifica team member assegnato
-
-**Tabella:** `renewal_alerts` (già esistente, ora popolata automaticamente)
-
----
-
-### 3. Golden Routes Seeder (Task #5)
-
-**Funzionalità:** Pre-popola `golden_routes` con query comuni all'avvio.
-
-**Query Seed (8 patterns):**
-- PT PMA requirements
-- KITAS work permit cost
-- Minimum capital for foreign investment
-- KITAS processing time
-- Company registration documents
-- Tax obligations for foreign companies
-- KITAS extension process
-- Retirement visa age requirement
+**Non sappiamo:**
+- Impattano performance query KG?
+- Causano falsi positivi in ricerche?
+- Vale la pena fare cleanup?
 
 ---
 
-### Files Modified
+### Raccomandazioni Next Steps
 
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `backend/services/misc/autonomous_scheduler.py` | MODIFIED | +Task #5 Golden Routes Seeder, +Task #6 Renewal Alerts |
+**Priorità Alta:**
+1. ✅ **Test Reali Pricing Policy** (manuale o automatico)
+   - Eseguire i 7 test case in `/tmp/MANUAL_PRICING_TESTS.md`
+   - Documentare risultati in KG_VALUE_ASSESSMENT
 
----
+2. 🔍 **Identificare LLM Provider Default**
+   - Analizzare `llm_gateway.py` (file sembra corrotto?)
+   - Verificare quale API viene usata per chat Zantara
 
-### Scheduler Status (7 tasks)
+**Priorità Media:**
+3. 📊 **Analisi KG Coverage Reale**
+   - Query SQL per distribution per collection
+   - Verificare accuracy delle stime nella documentazione
 
-| # | Task | Interval | Status |
-|---|------|----------|--------|
-| 1 | Auto-Ingestion | 24h | ✅ |
-| 2 | Self-Healing | 5min | ✅ |
-| 3 | Conversation Trainer | 6h | ✅ |
-| 4 | Client Value Predictor | 12h | ✅ |
-| 5 | Golden Routes Seeder | one-time | ✅ NEW |
-| 6 | Renewal Alerts Checker | 12h | ✅ NEW |
-| 7 | Knowledge Graph Builder | 4h | ✅ |
+4. 🧹 **Cleanup Orphan Nodes** (se impattano performance)
+   - Script per identificare orphan nodes
+   - Analisi se causano falsi positivi
 
----
-
-### Commit
-
-`26ffc915` - feat(scheduler): add golden_routes seeder and renewal_alerts checker
-
----
-
-### Verification
-
-```
-✅ Health: https://nuzantara-rag.fly.dev/health (58K docs)
-✅ Scheduler: 6 tasks registered and running
-✅ Revenue: 3 practices with actual_price populated
-```
+**Priorità Bassa:**
+5. ⚙️ **Implementare Dynamic Confidence Scoring**
+   - Già documentato in KG_VALUE_ASSESSMENT come improvement
+   - Basare confidence su numero sources (multi-source boost)
 
 ---
 
-## Session Update (2026-01-10 04:00-05:30 UTC)
+### LLM Provider Status
 
-### Frontend Images Fix + Vercel Migration Cleanup - COMPLETED
-
-**Problema:** Tutte le immagini scomparse dal sito web.
-
----
-
-### Root Cause Analysis (3 problemi concatenati)
-
-| # | Problema | Dettaglio |
-|---|----------|-----------|
-| 1 | `.gitignore` bloccava immagini | Regole `*.JPG` e `*.PNG` (case-insensitive su macOS) |
-| 2 | 176 immagini mai committate | `/public/static/` esisteva localmente ma non su git |
-| 3 | Path errati nel codice | 390 riferimenti usavano `/images/` invece di `/static/` |
-
----
-
-### Fix Applicati
-
-1. **Gitignore con negation patterns** (commit `31ac84a6`)
-   ```gitignore
-   # Ignore images globally (AI context pollution)
-   *.jpg
-   *.png
-   ...
-   # BUT allow frontend public folder
-   !apps/mouth/public/**/*.jpg
-   !apps/mouth/public/**/*.png
-   ```
-
-2. **Aggiunte 176 immagini** a git (commit `40287795`)
-   - `/static/team/` - foto team
-   - `/static/news/` - cover articoli news
-   - `/static/blog/` - cover articoli blog
-   - `/static/insights/` - immagini categorie
-   - `/avatars/team/` - avatar team members
-
-3. **Sostituiti 390 path** in 117 file
-   - `/images/` → `/static/`
-
-4. **Route guard migliorata** (`[category]/[slug]/page.tsx`)
-   - Aggiunto `images, avatars, blueprints, videos` a `STATIC_PATHS`
-
----
-
-### Vercel Migration Cleanup
-
-- Rimosso `nuzantara-mouth.fly.dev` da CORS backend (già migrato)
-- Aggiornati URL storici in documentazione
-- Backend redeployato (v1479) con CORS pulito
-
----
-
-### Verification
-
-```
-✅ 117 pagine sitemap → 200 OK
-✅ 13 immagini chiave → 200 OK
-✅ Pagine principali → 29-93KB contenuto
-✅ Backend API → healthy, 58K docs
-```
-
----
-
-### Files Modified
-
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `.gitignore` | MODIFIED | Negation patterns per public/ |
-| `apps/mouth/public/static/**` | ADDED | 176 immagini |
-| `apps/mouth/src/**/*.tsx` | MODIFIED | Path /images/ → /static/ |
-| `apps/mouth/src/content/**/*.mdx` | MODIFIED | Path /images/ → /static/ |
-| `apps/backend-rag/fly.toml` | MODIFIED | CORS cleanup |
-| `apps/backend-rag/backend/app/setup/cors_config.py` | MODIFIED | CORS cleanup |
-
----
-
-## Session Update (2026-01-09 21:00-22:00 UTC)
-
-### P0-P1-P2 Code Quality Refactoring - COMPLETED
-
-**Obiettivo:** Sistema i problemi P0, P1, P2 identificati nell'analisi code quality.
-
----
-
-### Summary
-
-| Priority | Tasks | Status |
-|----------|-------|--------|
-| **P0** | Bare except, debug logging, any types | 3/3 DONE |
-| **P1** | Orchestrator split, chat split, exceptions, tests | 4/4 DONE |
-| **P2** | DI pattern, state management, dead code, logging | 4/4 DONE |
-
----
-
-### P2.1: Standardize Dependency Injection
-
-**Files Modified:**
-- `backend/app/routers/agentic_rag.py` - Use centralized `get_orchestrator()`
-- `backend/app/routers/telegram.py` - Use centralized `get_orchestrator()`
-- `tests/unit/app/routers/test_agentic_rag_coverage.py` - Fix imports
-
-**Pattern:** All routers now use centralized dependencies from `app/dependencies.py`
-
----
-
-### P2.2: Consolidate Frontend State Management
-
-**Files Created:**
-- `apps/mouth/src/hooks/useIsMounted.ts` - Safe async state updates
-
-**Files Modified:**
-- `apps/mouth/src/hooks/useConversations.ts` - Migrated to React Query
-- `apps/mouth/src/lib/api/intelligence.api.ts` - Fix TypeScript error
-
-**Pattern:** React Query for data fetching with optimistic updates
-
----
-
-### P2.3: Clean Dead Code
-
-**Files Deleted:**
-- `backend/services/rag/agent/diagnostics_tool.py` - Never instantiated
-- `backend/services/rag/agent/mcp_tool.py` - Never instantiated
-- `backend/services/intelligence/__init__.py` - Empty directory
-
-**Files Modified:**
-- `backend/services/rag/agentic/__init__.py` - Remove unused imports
-
----
-
-### P2.4: Add Structured Logging
-
-**Files Created:**
-- `backend/app/setup/logging_config.py` - JSON/dev formatters
-
-**Features:**
-- `StructuredFormatter` - JSON output for production (log aggregation)
-- `DevelopmentFormatter` - Colored output for local dev
-- `ContextFilter` - Correlation ID propagation
-- Log rotation (50MB, 5 backups)
-- `log_operation()` context manager
-- `log_function_call()` decorator
-
-**Files Modified:**
-- `backend/app/setup/app_factory.py` - Call `configure_logging()` at startup
-- `backend/app/utils/logging_utils.py` - Enhanced with structured context
-
-**Output Format:**
-
-Development:
-```
-21:37:05 [INFO    ] zantara.backend: Logging configured
-    context: {"level": "INFO", "environment": "development"}
-```
-
-Production (JSON):
-```json
-{"timestamp": "2026-01-09T21:37:05Z", "level": "INFO", "logger": "zantara.backend", "message": "Logging configured", "service": "nuzantara-backend"}
-```
-
----
-
-### Deploy
-
-| App | Version | Status |
-|-----|---------|--------|
-| nuzantara-rag | v1475 | 2/2 healthy |
-| nuzantara-mouth | deployed | 2/2 healthy |
-
-**Commit:** `453fa4e2 feat(observability): add structured JSON logging + cleanup dead code`
-
----
-
-## Session Update (2026-01-09 03:30-04:45 UTC)
-
-### GitHub Repo Sync + Test Cleanup - COMPLETED
-
-**Obiettivo:** Sincronizzare repo locale con remote GitHub e pulire test duplicati.
-
----
-
-### 1. Merge Remote → Local
-
-**Branch:** `auto/prompt-improvement-20260109-0411`
-
-| Fase | Commit | Descrizione |
-|------|--------|-------------|
-| Backup | - | `nuzantara-backup-20260109-0342.zip` (2.1GB) |
-| Fase 1 | `a0cb9cc1` | 70 files: docs, tests, lampiran PDFs |
-| Fase 2-6 | `fed6af3d` | Merge origin/main (1 file nuovo) |
-| Fix | `a4081bc2` | Local dev compatibility |
-| Cleanup | `287566d4` | Remove 30 duplicate tests |
-
-**File nuovo dal merge:**
-- `scripts/run_kg_extraction_all_collections.py` (+405 linee)
-
----
-
-### 2. Fix Applicati
-
-| File | Fix |
-|------|-----|
-| `backend/app/routers/intel.py` | Staging dir fallback `/data` → `/tmp` per local dev |
-| `tests/api/test_complete_api_coverage.py` | Import `app.main` → `app.main_cloud` |
-
----
-
-### 3. Test Cleanup
-
-**Rimossi 30 file test duplicati/debug:**
-- 19 duplicati (`*_95.py`, `*_100.py` con versione base)
-- 8 verify/debug (`test_verify_*.py`)
-- 3 con errori import permanenti
-
-**Risultato:**
-| Metrica | Prima | Dopo |
-|---------|-------|------|
-| Failed | 891 | 780 |
-| Errors | 142 | 101 |
-| Pass rate | 87.2% | 87.8% |
-
----
-
-### 4. Lista 300 Test per Fix
-
-**File:** `apps/backend-rag/300_failing_tests.txt`
-
-Distribuzione:
-- CRM Routers: ~80 (27%)
-- LLM Gateway: ~40 (13%)
-- Team Activity: ~35 (12%)
-- Memory: ~30 (10%)
-- Identity/Auth: ~25 (8%)
-- Reasoning: ~15 (5%)
-- Altri: ~75 (25%)
-
-**Causa comune:** Mock incompleti (Pydantic Settings, AsyncMock transaction, redis_url)
-
----
-
-### 5. Comandi Utili
-
+**Verificato via Fly.io secrets:**
 ```bash
-# Run tests
-PYTHONPATH=backend pytest tests/unit/ -q --tb=no
-
-# Run single test file
-PYTHONPATH=backend pytest tests/unit/rag/test_reasoning.py -v
-
-# Count failures
-PYTHONPATH=backend pytest tests/unit/ -q --tb=no 2>&1 | tail -3
+fly secrets list -a nuzantara-rag
 ```
 
----
+**Secrets Attivi:**
+- `OPENAI_API_KEY` ✅
+- `ANTHROPIC_API_KEY` ✅
+- `GOOGLE_API_KEY` / `GOOGLEAISTUDIO_API_KEY` ✅
+- `GOOGLE_CREDENTIALS_JSON` ✅ (Vertex AI)
 
-## Session Update (2026-01-04 21:00-21:30 UTC)
-
-### Telegram Article Approval - Majority Voting System - COMPLETED
-
-**Obiettivo:** Implementare sistema di votazione 2/3 per approvazione articoli via Telegram.
-
-**Team:** Zero, Dea, Damar (3 persone)
-
----
-
-### 1. Problema Originale
-
-Il sistema precedente era "first wins" - la prima persona che cliccava decideva tutto. Serviva un sistema democratico.
-
----
-
-### 2. Sistema Implementato
-
-**Logica Majority Voting:**
-- Servono **2 voti su 3** per approvare o rifiutare
-- Ogni persona può votare **una sola volta**
-- Il messaggio si aggiorna in tempo reale con il conteggio
-- Protezioni: "Hai già votato!", "Votazione già chiusa"
-
-**Storage:** `/tmp/pending_articles/{article_id}.json`
-
-```json
-{
-  "article_id": "xyz",
-  "status": "voting",
-  "votes": {
-    "approve": [{"user_id": 123, "user_name": "Zero", "voted_at": "..."}],
-    "reject": []
-  },
-  "feedback": []
-}
-```
-
----
-
-### 3. Flow Visuale
-
-```
-┌─────────────────────────────────────────┐
-│ 📊 VOTAZIONE IN CORSO                   │
-│                                          │
-│ [Titolo articolo...]                    │
-│ ━━━━━━━━━━━━━━━━━━━━━━                  │
-│ Voti: ✅ 1/2 | ❌ 0/2                    │
-│                                          │
-│ Chi ha votato:                           │
-│   Zero ✅                                │
-│ ━━━━━━━━━━━━━━━━━━━━━━                  │
-│ Servono 2 voti per decidere             │
-│                                          │
-│ [✅ APPROVE] [❌ REJECT]                 │
-│ [✏️ REQUEST CHANGES]                    │
-└─────────────────────────────────────────┘
-        │
-        │ Seconda persona clicca APPROVE
-        ▼
-┌─────────────────────────────────────────┐
-│ ✅ APPROVATO (2/3)                      │
-│                                          │
-│ Articolo {id}                           │
-│                                          │
-│ Approvato da: Zero, Dea                 │
-│                                          │
-│ L'articolo sarà pubblicato a breve.    │
-└─────────────────────────────────────────┘
-```
-
----
-
-### 4. Fix Precedenti (stessa sessione)
-
-**Problema:** Buttons non funzionavano - 403 "Invalid secret token"
-
-**Root Cause:** Due router Telegram con stesso prefix:
-- `telegram.py` (originale - con validazione secret)
-- `telegram_webhook.py` (duplicato - senza validazione)
-
-**Soluzione:**
-1. Rimosso `telegram_webhook.py`
-2. Aggiunto callback_query handling a `telegram.py`
-3. Re-set webhook con `allowed_updates=["message", "edited_message", "callback_query"]`
-
----
-
-### 5. Files Modificati
-
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `backend/app/routers/telegram.py` | MODIFIED | Majority voting + callback handling |
-| `backend/services/integrations/telegram_bot_service.py` | MODIFIED | answer_callback_query, edit_message_text |
-| `backend/app/setup/app_factory.py` | MODIFIED | Rimosso import duplicato |
-| `backend/app/routers/telegram_webhook.py` | DELETED | Router duplicato rimosso |
-
----
-
-### 6. Configurazione
-
-```python
-REQUIRED_VOTES = 2  # Cambiare per modificare soglia
-```
-
-**Fly.io Secrets necessari:**
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_WEBHOOK_SECRET`
-
----
-
-## Session Update (2026-01-04 19:00-20:30 UTC)
-
-### Google Drive OAuth 2.0 Implementation - COMPLETED
-
-**Obiettivo:** Sostituire il Service Account (15GB quota) con OAuth user `antonellosiano@gmail.com` (30TB Google One) per evitare errori `storageQuotaExceeded`.
-
----
-
-### 1. Problema Originale
-
-Il Service Account aveva solo 15GB di quota, causando errori quando il team caricava documenti su Google Drive:
-```
-Error: storageQuotaExceeded - The user's Drive storage quota has been exceeded
-```
-
-**Soluzione:** Usare OAuth 2.0 con l'account `antonellosiano@gmail.com` che ha Google One 30TB.
-
----
-
-### 2. Router OAuth Creato
-
-**File:** `backend/app/routers/google_drive.py`
-
-**Endpoints implementati:**
-| Endpoint | Metodo | Descrizione |
-|----------|--------|-------------|
-| `/api/integrations/google-drive/status` | GET | Status connessione utente |
-| `/api/integrations/google-drive/auth/url` | GET | Ottieni URL OAuth per utente |
-| `/api/integrations/google-drive/callback` | GET | Callback OAuth (riceve code) |
-| `/api/integrations/google-drive/disconnect` | POST | Disconnetti utente |
-| `/api/integrations/google-drive/system/status` | GET | Status OAuth SYSTEM (pubblico) |
-| `/api/integrations/google-drive/system/authorize` | GET | URL OAuth SYSTEM (solo admin) |
-| `/api/integrations/google-drive/system/disconnect` | POST | Disconnetti SYSTEM (solo admin) |
-
-**Admin emails autorizzati:**
-```python
-ADMIN_EMAILS = ["zero@balizero.com", "antonellosiano@gmail.com"]
-```
-
----
-
-### 3. Fix Router Prefix
-
-**Problema:** Il router aveva prefix `/integrations/google-drive` ma l'auth middleware funziona solo con `/api/` prefix.
-
-**Fix applicato:**
-```python
-# Prima
-router = APIRouter(prefix="/integrations/google-drive", tags=["Google Drive"])
-
-# Dopo
-router = APIRouter(prefix="/api/integrations/google-drive", tags=["Google Drive"])
-```
-
-**File modificati:**
-- `backend/app/routers/google_drive.py` - router prefix
-- `backend/app/core/config.py` - redirect_uri
-- `backend/middleware/hybrid_auth.py` - public endpoints
-
----
-
-### 4. Configurazione Google Cloud Console
-
-**Redirect URI aggiunto:**
-```
-https://nuzantara-rag.fly.dev/api/integrations/google-drive/callback
-```
-
-**Test User aggiunto (app in Testing mode):**
-```
-antonellosiano@gmail.com
-```
-
-**Posizione:** Google Cloud Console → APIs & Services → OAuth consent screen → Audience → Test users
-
----
-
-### 5. OAuth Flow Completato
-
-**Passaggi eseguiti:**
-1. Login a Zantara come `zero@balizero.com` (admin)
-2. Chiamata API `/system/authorize` per ottenere OAuth URL
-3. Redirect a Google → Account chooser
-4. Selezionato `antonellosiano@gmail.com`
-5. Accettato warning "Google hasn't verified this app"
-6. Autorizzato scope `https://www.googleapis.com/auth/drive` (full access)
-7. Callback ricevuto → Token salvato in `google_drive_tokens` con `user_id = 'SYSTEM'`
-
----
-
-### 6. Verifica Finale
-
-```bash
-curl -s "https://nuzantara-rag.fly.dev/api/integrations/google-drive/system/status" | jq
-```
+**Domanda Utente:**
+> "ma se abbiamo fermato tutte le api key di google come sta rispondendo LLM?"
 
 **Risposta:**
-```json
-{
-  "oauth_connected": true,
-  "configured": true,
-  "connected_as": "antonellosiano@gmail.com",
-  "root_folder_id": "1hkOeV03YM5-sHbQhswYz809jsrnwC0At"
-}
-```
+Le API key Google NON sono state fermate - sono ancora configurate in Fly.io. Inoltre, il sistema ha **3 provider disponibili** (OpenAI, Anthropic, Gemini), quindi anche se uno fallisce, può usare gli altri.
+
+**Da chiarire:** Quale provider è default per Zantara chat?
 
 ---
 
-### 7. Architettura Token SYSTEM
+### Comandi Utili
 
-Il token OAuth è condiviso da tutto il team usando `user_id = 'SYSTEM'`:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    google_drive_tokens                       │
-├──────────────┬──────────────────────┬───────────────────────┤
-│ user_id      │ access_token         │ refresh_token         │
-├──────────────┼──────────────────────┼───────────────────────┤
-│ SYSTEM       │ ya29.xxxxx           │ 1//0gxxxxx            │
-└──────────────┴──────────────────────┴───────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│ GoogleDriveService.get_valid_token("SYSTEM")                │
-│ → Tutti i team members usano questo token                   │
-│ → Quota 30TB di antonellosiano@gmail.com                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-### 8. Files Modificati
-
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `backend/app/routers/google_drive.py` | MODIFIED | Prefix `/api` aggiunto |
-| `backend/app/core/config.py` | MODIFIED | redirect_uri con `/api` |
-| `backend/middleware/hybrid_auth.py` | MODIFIED | Public endpoints aggiornati |
-
----
-
-### 9. Secrets Fly.io (già configurati)
-
-```
-GOOGLE_DRIVE_CLIENT_ID=930328104463-d39fpretk5t0lucunkovu7o0g6id5eu2.apps.googleusercontent.com
-GOOGLE_DRIVE_CLIENT_SECRET=GOCSPX-xxxxx
-GOOGLE_DRIVE_ROOT_FOLDER_ID=1hkOeV03YM5-sHbQhswYz809jsrnwC0At
-```
-
----
-
-### 10. Come Ri-autorizzare (se necessario)
-
-1. Login a Zantara come admin (`zero@balizero.com` o `antonellosiano@gmail.com`)
-2. Vai su `/settings/integrations` (o chiamata diretta API)
-3. Chiama `GET /api/integrations/google-drive/system/authorize` con JWT token
-4. Segui OAuth flow con `antonellosiano@gmail.com`
-5. Verifica con `GET /api/integrations/google-drive/system/status`
-
----
-
-## Session Update (2026-01-04 15:20-18:50 UTC)
-
-### Complete Session: Tax Article + News Page Redesign - COMPLETED
-
----
-
-### 1. New Article: Indonesia 0% Tax on Foreign Income (PMK 18/2021)
-
-**Obiettivo:** Creare articolo in stile Bali Zero sul sistema fiscale territoriale indonesiano.
-
-**Articolo Creato:** `apps/mouth/src/content/articles/tax/indonesia-zero-tax-foreign-income-2026.mdx`
-
-**Contenuto:**
-- Spiegazione PMK 18/2021 e UU HPP 2021 (territorial tax system)
-- Tabella income sources: quali sono tassati e quali no
-- Chi qualifica (183+ giorni, NPWP, income foreign-sourced)
-- Esempio pratico: Marco, freelancer italiano a Ubud
-- Step-by-step: come strutturare correttamente
-- Fine print: 3-year holding period per remittance
-- Componenti interattivi: `<InfoCard>`, `<AskZantara>`
-
-**Frontmatter:**
-```yaml
-title: "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know"
-slug: "indonesia-zero-tax-foreign-income-2026"
-category: "tax-legal"
-tags: [territorial tax, PMK 18/2021, foreign income, expat tax]
-publishedAt: "2026-01-04"
-trending: true
-readingTime: 6
-difficulty: "intermediate"
-```
-
----
-
-### 2. News Page Integration
-
-**Aggiunto articolo come Main News 3** (`apps/mouth/src/app/(blog)/news/page.tsx`):
-
-```tsx
-// Added to MOCK_ARTICLES array
-{
-  id: '19',
-  slug: 'indonesia-zero-tax-foreign-income-2026',
-  title: "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know",
-  excerpt: "Living in Indonesia while earning abroad? Under PMK 18/2021, your foreign income may be taxed at 0%.",
-  coverImage: '/images/news/indonesia-zero-tax-expat.jpg',
-  category: 'tax-legal',
-  ...
-}
-
-// Updated mainNews3 reference
-const mainNews3 = articles.find(a => a.slug === 'indonesia-zero-tax-foreign-income-2026');
-```
-
----
-
-### 3. Cover Image Generation (Gemini AI)
-
-**Prompt usato:**
-```
-Digital nomad paradise, sleek MacBook on bamboo desk overlooking
-Bali rice terraces at golden hour. Professional expat working remotely,
-Indonesian tax documents visible on screen. Warm tropical lighting,
-palm trees, infinity pool in background. Photorealistic, editorial style.
-```
-
-**Output:** `/apps/mouth/public/images/news/indonesia-zero-tax-expat.jpg`
-
----
-
-### 4. Headline Styling Changes
-
-**Modifiche richieste:**
-- "Thrive" in colore rosso
-- Rimuovere punto finale
-
-**Prima:**
-```tsx
-<h1>Decode Indonesia. <span className="text-[#e85c41]">Thrive</span> here.</h1>
-```
-
-**Dopo:**
-```tsx
-<h1>Decode Indonesia. <span className="text-red-500">Thrive</span> here</h1>
-```
-
----
-
-### 5. Indonesian Flag Drape (Multiple Iterations)
-
-**Richiesta:** Drappeggio trasparente bandiera indonesiana dietro headline.
-
-**Iterazione 1 - CSS Gradient (REJECTED):**
-- Gradient rosso→bianco con opacity 8%
-- User: "non si vede"
-
-**Iterazione 2 - Increased Opacity:**
-- Opacity aumentata a 20%, poi 50%
-- User: "ma cosa è? io ho chiesto il drappeggio di bandiera indonesiana"
-
-**Iterazione 3 - SVG con Wave Filter (REJECTED):**
-```tsx
-<svg>
-  <filter id="wave">
-    <feTurbulence type="fractalNoise" baseFrequency="0.015"/>
-    <feDisplacementMap scale="25"/>
-  </filter>
-  <rect fill="url(#flagGradient)" filter="url(#wave)"/>
-</svg>
-```
-- Effetto fabric non convincente
-
-**Iterazione 4 - Gemini Image Generation (ACCEPTED):**
-
-**Prompt:**
-```
-Indonesian flag (red and white bicolor) draped elegantly like silk fabric
-flowing diagonally from top-left to bottom-right. Soft fabric folds and waves
-creating depth. Against pure black background (#000000). Photorealistic silk
-texture with subtle shadows. 16:9 landscape format. No text, no other elements.
-```
-
-**Implementazione finale:**
-```tsx
-{/* Indonesian Flag Drape - Actual Image */}
-<div className="absolute inset-0 pointer-events-none overflow-hidden">
-  <Image
-    src="/images/indonesian-flag-drape.jpg"
-    alt=""
-    fill
-    className="object-cover opacity-30"
-    style={{
-      mixBlendMode: 'screen',
-      transform: 'scale(1.3) rotate(-5deg)',
-      transformOrigin: 'center center'
-    }}
-    priority
-  />
-</div>
-```
-
-**File:** `/apps/mouth/public/images/indonesian-flag-drape.jpg`
-
----
-
-### 6. News Cards Spacing
-
-**Problema:** Cards troppo vicine (`gap-1` = 4px)
-
-**Soluzione:** Aumentato a `gap-3` (12px)
-
-**Modifiche:**
-- Main grid: `gap-1` → `gap-3`
-- Left/Middle/Right columns: `gap-1` → `gap-3`
-
----
-
-### Files Modified (Summary)
-
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `apps/mouth/src/content/articles/tax/indonesia-zero-tax-foreign-income-2026.mdx` | NEW | Articolo PMK 18/2021 |
-| `apps/mouth/src/app/(blog)/news/page.tsx` | MODIFIED | Main News 3, headline, flag drape, spacing |
-| `apps/mouth/public/images/news/indonesia-zero-tax-expat.jpg` | NEW | Cover image articolo |
-| `apps/mouth/public/images/indonesian-flag-drape.jpg` | NEW | Flag drape background |
-
----
-
-### Deploys
-
-1. **Deploy 1:** Articolo + cover image + Main News 3 integration
-2. **Deploy 2:** Headline rosso "Thrive" + punto rimosso
-3. **Deploy 3:** SVG flag drape attempt
-4. **Deploy 4:** Gemini-generated flag image
-5. **Deploy 5:** Increased spacing (gap-3)
-
-**Final URL:** https://www.balizero.com/news
-
----
-
-## Session Update (2026-01-02 20:20 UTC)
-
-### Greeting & Closing Repetition Fix - COMPLETED
-
-**Problema 1:** Zantara diceva "Ciao Zero!" ad ogni turno, anche dopo 30 messaggi.
-**Problema 2:** Zantara usava sempre la stessa frase di chiusura ("fammi un fischio 🌴🕺🏾").
-
-**Soluzione Implementata:**
-
-1. **Anti-Greeting Repetition** (`backend/services/rag/agentic/prompt_builder.py`)
-   - Aggiunta sezione `<greeting_rules>` nel system prompt con istruzioni esplicite
-   - Creata funzione `has_already_greeted()` che scansiona la conversation history
-   - Aggiunta lista `GREETING_PATTERNS` per rilevare saluti precedenti
-   - Quando rileva un saluto precedente, inietta warning nel prompt
-   - Modificato `build_system_prompt()` per accettare `conversation_history` parameter
-
-2. **Orchestrator Update** (`backend/services/rag/agentic/orchestrator.py`)
-   - Passato `conversation_history=history_to_use` a `build_system_prompt()` (2 chiamate: sync e stream)
-
-3. **Closing Phrases Variety** (`backend/services/rag/agentic/prompt_builder.py`)
-   - Aggiunta sezione `<closing_phrases>` con 55+ frasi in 9 lingue:
-     - Italiano (10), English (10), Indonesian/Jaksel (10)
-     - Українська (5), Русский (5), Español (5)
-     - Français (5), Deutsch (5), Português (5)
-   - Istruzione esplicita: "NEVER use the same closing twice"
-
-**Deploy:** v20260102-0150 - 2 machines healthy
-**Backup:** `/Users/antonellosiano/Desktop/nuzantara-backup-20260102-0150.zip` (417 MB)
-
----
-
-## Session Update (2026-01-02 02:30 UTC)
-
-### Test Coverage Analysis & Fixes - COMPLETED
-
-**Obiettivo:** Raggiungere >95% test coverage
-**Risultato:** 96.76% test pass rate (5813/6008 tests), 68.03% line coverage
-
-**Fix Applicati (32 test riparati):**
-
-1. **Pricing Service Tests** - Aggiornati mock keys (`company_services`, `urgent_services`)
-2. **Communication Utils Tests** - Fix language detection e ZANTARA branding
-3. **Embeddings Tests** - Default provider `openai` invece di `sentence-transformers`
-4. **Gemini Service Tests** - Default model `gemini-3-flash-preview`
-5. **Collection Health Tests** - Fix timezone handling e attributo `health_status`
-6. **Alert/Audit Tests** - Fix imports da `services.monitoring.*`
-
-**Piano Coverage >95% Creato:** `docs/TEST_COVERAGE_PLAN.md`
-- ~50 nuovi file test necessari
-- ~7,879 linee da coprire
-- Effort stimato: 90-110 ore
-
-**Top 5 File con Piu Linee Mancanti:**
-1. `orchestrator.py` - 419 linee
-2. `pipeline.py` (KG) - 214 linee
-3. `extractor.py` (KG) - 178 linee
-4. `streaming.py` - 175 linee
-5. `zoho_email.py` - 173 linee
-
----
-
-## Session Update (2026-01-01 21:00 UTC)
-
-### Unit Test Maintenance - COMPLETED
-
-**Progress:** 174 → 161 failed tests (13 tests fixed)
-
-**Fixes Applied:**
-
-1. **test_dependencies.py** - Fixed `get_database_pool` assertion (detail is string, not dict)
-
-2. **test_dependency_injection.py** - Fixed 2 tests:
-   - Added `get_current_user` override for auth bypass
-   - Fixed mock result with proper attributes (`.answer`, `.sources`, `.timings`)
-
-3. **test_episodic_memory.py** - Fixed RESOLUTION detection test (avoid "problema" keyword matching PROBLEM first)
-
-4. **test_emotional_attunement_comprehensive.py** - Fixed 2 tests:
-   - STRESSED: Use keywords without exclamation marks that boost EXCITED
-   - FRUSTRATED: Use exact keyword "frustrated" instead of "frustrating"
-
-5. **test_collective_memory.py** - Fixed 3 tests:
-   - Added `mock_transaction()` async context manager helper
-   - Fixed `conn.transaction()` mock setup
-
-**Common Patterns Fixed:**
-- AsyncMock for `conn.transaction()` requires proper `__aenter__`/`__aexit__`
-- Test phrases must match exact keywords in implementation
-- Dependency override tests need auth bypass
-
----
-
-## Session Update (2026-01-01 20:30 UTC)
-
-### Proactive Follow-up Questions - COMPLETED
-
-**Feature:** After each Zantara response, show 3-4 suggested follow-up questions to help users continue the conversation.
-
-**Changes Made:**
-
-1. **Orchestrator** (`backend/services/rag/agentic/orchestrator.py`)
-   - Added followup generation after response is accumulated
-   - Calls `FollowupService.get_followups()` with `use_ai=True`
-   - Emits metadata SSE event with `followup_questions` array
-
-2. **FollowupService** (`backend/services/misc/followup_service.py`)
-   - Fixed multilingual prompt in `_build_followup_generation_prompt()`
-   - Now generates questions in the SAME language as user's query (any language)
-   - Removed hardcoded EN/IT/ID language instructions
-
-3. **Chat Page** (`apps/mouth/src/app/chat/page.tsx`)
-   - Added extraction of `followup_questions` from metadata in `onDone` callback
-   - Added UI section "Domande suggerite" with clickable buttons
-   - Buttons auto-fill input and trigger send on click
-
-**Visual Result:**
-```
-┌─────────────────────────────────────────────────────┐
-│ [Zantara response about PT PMA...]                  │
-│                                                     │
-│ ✨ Domande suggerite                                │
-│ ┌──────────────────┐ ┌────────────────────────────┐ │
-│ │ Quanto costa?    │ │ Quali documenti servono?   │ │
-│ └──────────────────┘ └────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
-```
-
-### Login Logo Update - COMPLETED
-
-**Change:** Replaced Zantara logo with Bali Zero logo on login page.
-
-**File:** `apps/mouth/src/app/login/page.tsx:133`
-- Before: `/assets/login/zantara-logo-classic.png`
-- After: `/images/balizero-logo.png`
-
-**Deployed:** Frontend nuzantara-mouth
-
----
-
-## Session Update (2026-01-01 19:30 UTC)
-
-### Retirement Visa Corrections (E33E/E33F) - COMPLETED
-
-**Problem:** E33E was incorrectly documented as requiring age 60+ (Silver Hair). Official imigrasi.go.id confirms both E33E and E33F require **55+ years old**.
-
-**Source Verified:** https://www.imigrasi.go.id E33E page states "berusia 55 (lima puluh lima) tahun"
-
-**Changes Made:**
-
-1. **Database API** (visa_types table)
-   - E33E (ID 25): Age 60 → **55**, name "Silver Hair" → "Retirement KITAS (Lanjut Usia 55+)"
-   - E33E price: IDR 13M → **IDR 18M** (Bali Zero price)
-   - E33F (ID 31): Verified at 55+, IDR 14M
-
-2. **Training Data** (`training-data/visa/visa_006_retirement_visas_e33e_e33f.md`)
-   - All E33E references updated from "Silver Hair 60+" to "Retirement KITAS 55+"
-
-3. **Blog Article** (`apps/mouth/src/content/articles/immigration/retirement-visa-indonesia.mdx`)
-   - SEO, comparison tables updated for both 55+ age
-
-4. **PDF Cards** - Regenerated with correct age and Bali Zero prices
-
-### Visa KB File Cleanup - COMPLETED
-
-**Location:** `/Users/antonellosiano/Desktop/KB/nuzantara_laws/apps/scraper/data/raw_laws_targeted/`
-
-**Cleaned 83 visa files:**
-- Removed navigation menu header (80+ lines)
-- Fixed `TITLE: Unknown Visa` → actual visa code
-- Removed footer (accessibility notice, copyright)
-
----
-
-## Session Update (2026-01-01 18:00 UTC)
-
-### Reasoning UX Improvements - COMPLETED
-
-**Problem:** Users waiting 40-60 seconds during complex reasoning with no visibility into progress.
-
-**Solution:** Enhanced ThinkingIndicator with real-time status and progress bar.
-
-**Changes Made:**
-
-1. **ThinkingIndicator** (`apps/mouth/src/components/chat/ThinkingIndicator.tsx`)
-   - Added **dynamic status messages** based on actual tool arguments:
-     - `Cerco "KITAS investor" in documenti visti...` (instead of generic "Searching...")
-     - `Esploro connessioni per "PT PMA"...` (for knowledge_graph_search)
-     - `Calcolo: 500000000 * 0.11...` (for calculator)
-   - Added **Step X/3 progress bar** showing ReAct loop progress
-   - Added collection name mapping for user-friendly display
-   - New icons: Network (KG), DollarSign (pricing), Brain (processing)
-
-2. **Types** (`apps/mouth/src/types/index.ts`)
-   - Added `thinking`, `tool_call`, `observation` step types
-
-3. **Chat API** (`apps/mouth/src/lib/api/chat/chat.api.ts`)
-   - Added handlers for `thinking`, `tool_call`, `observation` events
-   - Events now properly passed to ThinkingIndicator
-
-4. **Chat Page** (`apps/mouth/src/app/chat/page.tsx`)
-   - Added `streamingSteps` state to track all step events
-   - Pass steps to ThinkingIndicator for real-time visualization
-
-**Visual Result:**
-```
-┌─────────────────────────────────────────┐
-│ Zantara sta ragionando...  [Step 2/3] 15s │
-│ ████████░░░░░░░░░░░░░░░░ 66%           │
-│                                          │
-│ ✓ Cerco "KITAS" in documenti visti...   │
-│ ● Esploro connessioni per "PT PMA"...   │
-│                                          │
-│ 💬 Ditunggu sebentar...                 │
-└─────────────────────────────────────────┘
-```
-
-**Deployed:** Frontend v (nuzantara-mouth)
-
-**Test Results (2026-01-01 01:32 AM):**
-- ✅ Progress bar animation: Working (30% → 70% → 100%)
-- ✅ Dynamic messages rotation: Working ("Consulting Indonesian regulations...", "Analyzing your question...", "Building your answer...")
-- ✅ Indonesian patience phrases: Working ("Sabar ya, Pak/Bu...", "Mohon tunggu ya...", "Bentar lagi siap...")
-- ✅ Responses with sources: Working (4 sources cited)
-- ⚠️ Step X/3 badge: Only visible for multi-tool queries (Early Exit skips for simple queries)
-
-**Event Flow Verified:**
-```
-reasoning.py:794 → yield {"type": "tool_call", ...}
-orchestrator.py:1274 → yield event (passthrough)
-chat.api.ts:391 → onStep({ type: 'tool_call', ... })
-ThinkingIndicator.tsx:179 → getDynamicToolMessage()
-```
-
----
-
-## Session Update (2026-01-01 16:45 UTC)
-
-### Intent-Based Early Exit Fix - COMPLETED
-
-**Problem:** `knowledge_graph_search` tool was NEVER called due to aggressive Early Exit optimization.
-
-**Root Cause:** In `reasoning.py:464-473`, the ReAct loop would exit immediately after `vector_search` returned >500 chars. Complex queries that need relationship traversal (via KG tool) never got the chance.
-
-**Solution (Option D: Intent-Based Early Exit):**
-
-1. **AgentState** (`backend/services/tools/definitions.py:106`)
-   - Added `intent_type: str = "simple"` field
-
-2. **Orchestrator** (`backend/services/rag/agentic/orchestrator.py`)
-   - Stream method: Pass `intent_category` to state (line 1142-1143)
-   - Non-stream: Default to `"business_complex"` to allow multi-tool reasoning
-
-3. **Reasoning Engine** (`backend/services/rag/agentic/reasoning.py`)
-   - Modified Early Exit at lines 464-480 (non-streaming)
-   - Modified Early Exit at lines 879-893 (streaming)
-   - Added `complex_intents = {"business_complex", "business_strategic", "devai_code"}`
-   - Early Exit only triggers if `not is_complex_query`
-
-**Behavior:**
-- Simple queries (greeting, casual, business_simple) → Early Exit enabled (fast)
-- Complex queries (business_complex, business_strategic) → Allow multi-tool reasoning (KG tool can be called)
-
-**Deploy:** Deployed successfully.
-
----
-
-## Session Update (2026-01-01 02:00 UTC)
-
-### Zantara Chat 50-Turn Stress Test - COMPLETED
-
-**Test:** Multi-language conversation test (Italian/English/Indonesian) - 49 turns (98 messages).
-
-**Results:**
-- **Overall Score:** 8/10
-- **Business Queries:** 9/10 - PT PMA, KBLI, visa costs answered with sources
-- **ABSTAIN Policy:** Working correctly - refuses when no verified data
-- **Multi-language:** Working well (IT/EN/ID)
-- **Reliability:** 8/10 - ~8% transient errors from Fly.io autostop
-
-**Root Cause Analysis:**
-- Transient errors caused by Fly.io autostop configuration
-- 1 machine running (shy-wind-827), 1 stopped (blue-sky-2077)
-- Load balancer occasionally routes to stopped machine during spin-up
-- Self-healing behavior - not a code issue
-
-**System Health (verified):**
-- Qdrant: 54,154 documents across 7 collections
-- Knowledge Graph: 24,917 nodes, 23,234 edges
-- All services healthy
-
----
-
-## Session Update (2026-01-01 01:00 UTC)
-
-### Language Detection + Team Updates - COMPLETED
-
-**Problem 1:** Ruslana (Ukrainian) received responses in Italian instead of Ukrainian.
-
-**Root Cause:** `language_detector.py` only supported it/en/id - no Cyrillic languages.
-
-**Solution:** Added Ukrainian and Russian support with proper Cyrillic handling:
-
-**Changes Made:**
-1. **Language Detector** (`backend/services/communication/language_detector.py`)
-   - Added Ukrainian markers: привіт, як, справи, добре, дякую...
-   - Added Russian markers: привет, как, дела, хорошо, спасибо...
-   - Fixed Cyrillic matching (word boundaries `\b` don't work for Cyrillic)
-   - Added `use_word_boundary=False` for Cyrillic scripts
-   - Added language instructions for `uk`, `ua`, `ru`
-
-2. **Team Member Updates** (PostgreSQL direct + `team_members.json`)
-   - Fixed 8 users with wrong PIN hashes
-   - Fixed krisna email: `krishna@` → `krisna@balizero.com`
-   - Updated `consulting@` → `adit@balizero.com`
-   - Updated `tax@` → `veronika.tax@balizero.com`
-   - **Amanda terminated**: Account deactivated with notes (professional misconduct)
-
-**Deployed:** v1210
-
-**Result:** Ukrainian/Russian users now receive responses in their language.
-
----
-
-## Session Update (2026-01-01 00:30 UTC)
-
-### Database Coherence & visa_types Fix - COMPLETED
-
-**Problem 1:** SQL queries in agent services referenced non-existent tables (`crm_clients`, `crm_interactions`, `crm_practices`).
-
-**Solution:** Fixed table names in:
-- `backend/agents/services/client_scoring.py` - 2 SQL queries
-- `backend/agents/agents/client_value_predictor.py` - 3 SQL queries
-
-**Changes:**
-```sql
--- OLD (wrong)
-FROM crm_clients c
-LEFT JOIN crm_interactions i ON c.id = i.client_id
-LEFT JOIN crm_practices p ON c.id = p.client_id
-
--- NEW (correct)
-FROM clients c
-LEFT JOIN interactions i ON c.id = i.client_id
-LEFT JOIN practices p ON c.id = p.client_id
-```
-
-**Problem 2:** `visa_types` table had COMPLETELY WRONG codes (KITAS-312, KITAS-313 - invented).
-
-**Solution:** Rewrote `backend/migrations/seed_visa_types.py` with official Indonesian immigration codes:
-- E28A = Investor KITAS (PT PMA Director)
-- E28C = Investor KITAS (Portfolio USD 350k)
-- E33G = Digital Nomad KITAS
-- E33E = Retirement Visa (Lanjut Usia)
-- E35 = Second Home Visa (USD 130k)
-- D1 = Tourism Multiple Entry
-- D12 = Business Investigation
-- C1 = Tourism Single Entry (60 days)
-- VOA = Visa on Arrival
-
-**Migrations Applied:**
-- Migration 022 (dedup_constraints) - parent_documents columns
-- Migration 026 (review_queue) - review_queue table
-- Created `golden_answers` table
-
-**Deploy:** v1218 - All health checks passed.
-
----
-
-## Session Update (2025-12-31 23:50 UTC)
-
-### RAG Tool Usage Order - FIXED
-
-**Problem:** Agent was calling `knowledge_graph_search` ONLY (without vector_search first).
-This resulted in Evidence Score = 0.00 → ABSTAIN response.
-
-**Root Cause:** System prompt didn't explicitly state that KG must come AFTER vector_search.
-
-**Solution:** Updated orchestrator system prompt (`orchestrator.py`):
-```
-🛠️ TOOL USAGE INSTRUCTION:
-→ ALWAYS use vector_search FIRST to retrieve verified documents.
-→ For relationship questions, use knowledge_graph_search AFTER vector_search (not instead).
-→ WRONG: knowledge_graph_search only → Evidence=0 → ABSTAIN
-→ RIGHT: vector_search → (optional) knowledge_graph → Answer with citations
-```
-
-**Result:** Relationship queries now work correctly with proper citations.
-
----
-
-## Session Update (2025-12-31 20:15 UTC)
-
-### Federated Search + Knowledge Graph Improvements - COMPLETED
-
-**Problem:** Vector search was always selecting ONE collection instead of searching ALL.
-
-**Root Cause:** VectorSearchTool description said "You MUST specify a collection" which forced LLM to pick one.
-
-**Solution:** Updated tool descriptions to encourage federated search as default:
-
-1. **VectorSearchTool** (`backend/services/rag/agentic/tools.py`)
-   - Changed from "You MUST specify" to "**DEFAULT: FEDERATED SEARCH**"
-   - Omitting 'collection' now searches ALL 6 collections at once
-   - Single collection only for focused mono-topic queries
-
-2. **KnowledgeGraphTool** (`backend/services/tools/knowledge_graph_tool.py`)
-   - Added tip: "Use AFTER vector_search for deeper insights"
-   - Clarified: "vector_search finds documents → knowledge_graph finds entity connections"
-
-3. **Hybrid Collection Migration** (migration_031)
-   - Migrated `tax_genius` → `tax_genius_hybrid` (332 docs)
-   - Migrated `training_conversations` → `training_conversations_hybrid` (2898 docs)
-   - Both now have BM25 sparse vectors for better keyword matching
-
-4. **Collection Manager** (`collection_manager.py`)
-   - Added `legal_unified_hybrid`, `tax_genius_hybrid`, `training_conversations_hybrid` to definitions
-
-**Result:** Complex queries like "PT PMA requirements" now search legal + visa + tax collections together.
-
----
-
-## Session Update (2025-12-31 19:30 UTC)
-
-### Image Generation URL Cleaning - COMPLETED
-Fixed ugly pollinations.ai URLs appearing in chat when generating images.
-
-**Problem:** AI was generating multiple image versions with raw URLs visible to users.
-
-**Solution:** Added `cleanImageResponse()` function in the correct API file.
-
-**Changes Made:**
-1. **Chat API** (`apps/mouth/src/lib/api/chat/chat.api.ts`)
-   - Added `cleanImageResponse()` function to filter pollinations URLs
-   - Applied to streaming token handler (accumulated content)
-   - Applied to final `onDone` callback
-   - Filters: URLs, "Versione 1/2", intro/outro lines
-
-2. **UI Updates** (`apps/mouth/src/app/chat/page.tsx`)
-   - Sparkles icon (✨) opens "Genera Immagine" modal
-   - Paperclip now handles both file attachment and image upload
-
-**Result:** Clean response "Ecco l'immagine che hai richiesto! 🎨" without ugly URLs.
-
----
-
-## Session Update (2025-12-31 18:40 UTC)
-
-### Audio Integration - COMPLETED
-Integrated full audio (TTS/STT) support using hybrid provider strategy.
-
-**Changes Made:**
-1. **Backend Audio Service** (`backend/app/services/audio_service.py`)
-   - Hybrid TTS: Pollinations.ai (FREE) → OpenAI fallback
-   - STT: OpenAI Whisper (reliable)
-   - Voice options: alloy, echo, fable, onyx, nova, shimmer
-
-2. **Frontend Proxy Fix** (`apps/mouth/src/app/api/[...path]/route.ts`)
-   - Fixed multipart/form-data boundary mismatch
-   - Delete Content-Type header for FormData to let fetch set correct boundary
-
-3. **Chat TTS Button** (`apps/mouth/src/app/chat/page.tsx`)
-   - Added speaker button (Volume2) to assistant messages
-   - Shows loading spinner, stop icon when playing
-   - Emerald highlight for active state
-
-4. **Auth Middleware** (`backend/middleware/hybrid_auth.py`)
-   - Added `/api/audio/` to public endpoints
-
-**Status:**
-- STT: Working (tested via curl + browser)
-- TTS: Working (tested via curl + browser)
-- Frontend integration: Complete
-
----
-
-## Active Background Processes
-
-### KG Extraction (Started 2025-12-31 08:30 UTC)
-- **Status**: RUNNING
-- **Machine**: nuzantara-rag (Fly.io) - PID 754
-- **Command**: `python scripts/kg_incremental_extraction.py --limit 10000`
-- **Log file**: `/tmp/kg_extraction.log`
-- **Model**: `gemini-2.0-flash` (Vertex AI)
-- **Rate**: ~24 chunks/min
-- **Expected duration**: ~7 hours
-
-**Monitor commands:**
+**Verificare provider LLM:**
 ```bash
-# Check log
-fly ssh console -a nuzantara-rag -C "tail -50 /tmp/kg_extraction.log"
-
-# Check KG stats
-fly ssh console -a nuzantara-rag -C "python -c \"
-import asyncio, asyncpg, os
-async def check():
-    conn = await asyncpg.connect(os.environ['DATABASE_URL'])
-    nodes = await conn.fetchval('SELECT COUNT(*) FROM kg_nodes')
-    edges = await conn.fetchval('SELECT COUNT(*) FROM kg_edges')
-    print(f'Nodes: {nodes:,} | Edges: {edges:,}')
-asyncio.run(check())
-\""
+grep -r "DEFAULT_MODEL\|LLM_PROVIDER" apps/backend-rag/backend/app/core/
 ```
 
-## KG Stats Snapshot (2025-12-31)
-- Nodes: ~21,000
-- Edges: ~17,000
-- Coverage: 63.9%
-- Target: 53,822 chunks
+**Query KG stats:**
+```sql
+-- Nodes per collection
+SELECT source_collection, COUNT(*) as nodes
+FROM kg_nodes
+GROUP BY source_collection
+ORDER BY nodes DESC;
 
-## Key Files
-- **Image Gen Cleaning**: `apps/mouth/src/lib/api/chat/chat.api.ts` (cleanImageResponse)
-- **Chat Page**: `apps/mouth/src/app/chat/page.tsx` (UI with sparkles modal)
-- Audio Service: `backend/app/services/audio_service.py`
-- Audio Router: `backend/app/routers/audio.py`
-- Extraction script: `scripts/kg_incremental_extraction.py`
-- KG Enhanced Retrieval: `backend/services/rag/kg_enhanced_retrieval.py`
-- KG Builder: `backend/services/autonomous_agents/knowledge_graph_builder.py`
+-- Orphan nodes
+SELECT COUNT(*)
+FROM kg_nodes n
+WHERE NOT EXISTS (
+  SELECT 1 FROM kg_edges e
+  WHERE e.source_entity_id = n.entity_id
+     OR e.target_entity_id = n.entity_id
+);
+```
+
+**Test pricing via browser:**
+1. Open https://www.balizero.com/chat
+2. Login as zero@balizero.com
+3. Ask: "Quanto costa aprire una PT PMA?"
+4. Check DevTools Network tab for `get_pricing` tool call
+
+---
+
+### Key Learnings
+
+1. **Knowledge Graph = Investimento Valido**
+   - 34K nodi utilizzabili in produzione
+   - ~13K relazioni semanticamente utili
+   - €0.018 per relazione utile (ragionevole)
+
+2. **HAS_FEE ≠ Prezzi Cliente**
+   - Contiene SOLO fee governative (PNBP) e legali
+   - Mai comunicare al cliente (non verificate, obsolete)
+   - Bali Zero prices isolati in PricingTool
+
+3. **Sistema Ben Protetto (in teoria)**
+   - Prompt rules esplicite contro invenzione prezzi
+   - PricingTool MANDATORY per pricing queries
+   - Architettura separa dati legali da pricing commerciale
+
+4. **Test Reali Mancanti**
+   - Protezioni verificate solo a livello codice
+   - Comportamento LLM reale non testato
+   - Serve validazione empirica
+
+---
+
+**Preparato da:** Claude Sonnet 4.5
+**Data Sessione:** 2026-01-18
+**Status KG:** ✅ Active in Production (Tool #4)
+**Status Pricing Policy:** ⚠️ Needs Real Testing
+**Files Created:** 1 documentation + 4 test scripts (non eseguiti)
+**Commits:** 1 (bd60e049)
