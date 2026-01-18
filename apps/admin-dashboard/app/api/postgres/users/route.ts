@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   try {
     const client = await pool.connect();
     try {
+      if (userId) {
         // Note: In production, users are stored in 'team_members' or 'clients'
         // 'user_facts' likely references these via UUID.
         const factsQuery = `SELECT * FROM user_facts WHERE user_id = $1 ORDER BY learned_at DESC`;
