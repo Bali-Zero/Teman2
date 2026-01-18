@@ -94,9 +94,7 @@ def _load_module(
         "intel_user_actions_total",
     ]:
         mock_metric = types.SimpleNamespace(
-            labels=lambda **kwargs: types.SimpleNamespace(
-                inc=lambda: None, observe=lambda x: None
-            )
+            labels=lambda **kwargs: types.SimpleNamespace(inc=lambda: None, observe=lambda x: None)
         )
         setattr(metrics_mock, metric, mock_metric)
     monkeypatch.setitem(sys.modules, "backend.app.metrics", metrics_mock)
@@ -108,26 +106,49 @@ def _load_module(
 
     # Mock Services
     services_intel_mock = types.ModuleType("backend.services.intel")
-    
+
     class MockService:
-        def __init__(self, *args, **kwargs): pass
-        def classify_intel_type(self, *args): return "news"
-        def generate_item_id(self, *args): return "test_id"
-        def check_duplicate(self, *args): return None
-        def save_staging_item(self, *args): return Path("/tmp/test.json")
-        def update_staging_queue_metrics(self): pass
-        def list_pending_items(self, *args): return {"items": [], "total": 0}
-        def load_staging_item(self, *args): return {"title": "Test", "content": "Content"}
-        def archive_item(self, *args): return Path("/tmp/archived.json")
-        async def send_approval_notification(self, *args): return True
-        def get_staging_dir(self, *args): return Path("/tmp")
-        def get_intelligence_analytics(self, *args): return {}
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def classify_intel_type(self, *args):
+            return "news"
+
+        def generate_item_id(self, *args):
+            return "test_id"
+
+        def check_duplicate(self, *args):
+            return None
+
+        def save_staging_item(self, *args):
+            return Path("/tmp/test.json")
+
+        def update_staging_queue_metrics(self):
+            pass
+
+        def list_pending_items(self, *args):
+            return {"items": [], "total": 0}
+
+        def load_staging_item(self, *args):
+            return {"title": "Test", "content": "Content"}
+
+        def archive_item(self, *args):
+            return Path("/tmp/archived.json")
+
+        async def send_approval_notification(self, *args):
+            return True
+
+        def get_staging_dir(self, *args):
+            return Path("/tmp")
+
+        def get_intelligence_analytics(self, *args):
+            return {}
 
     services_intel_mock.IntelClassificationService = MockService
     services_intel_mock.IntelStagingService = MockService
     services_intel_mock.IntelApprovalService = MockService
     services_intel_mock.IntelAnalyticsService = MockService
-    
+
     # Mock Dependencies
     deps_mock = types.ModuleType("backend.app.dependencies")
     deps_mock.get_current_user = lambda: {"email": "test@example.com", "role": "admin"}

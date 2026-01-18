@@ -715,7 +715,12 @@ async def main():
     parser = argparse.ArgumentParser(description="Test Maintainer Agent")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--no-git", action="store_true", help="Don't check git, scan all files")
-    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
+    parser.add_argument(
+        "--provider",
+        default="local",
+        choices=["local", "mock"],
+        help="LLM Provider (local=Qwen, mock=Mock)",
+    )
 
     args = parser.parse_args()
 
@@ -731,12 +736,12 @@ async def main():
         result = await agent.scan_and_maintain(check_git=not args.no_git)
 
         # Print summary
-        print("\n🔧 Test Maintenance Summary:")
-        print(f"Files analyzed: {result['files_analyzed']}")
-        print(f"Tests updated: {agent.stats['tests_updated']}")
-        print(f"Tests fixed: {agent.stats['tests_fixed']}")
-        print(f"Breaking changes: {agent.stats['breaking_changes']}")
-        print(f"Duration: {result['duration']:.2f}s")
+        logger.info("\n🔧 Test Maintenance Summary:")
+        logger.info(f"Files analyzed: {result['files_analyzed']}")
+        logger.info(f"Tests updated: {agent.stats['tests_updated']}")
+        logger.info(f"Tests fixed: {agent.stats['tests_fixed']}")
+        logger.info(f"Breaking changes: {agent.stats['breaking_changes']}")
+        logger.info(f"Duration: {result['duration']:.2f}s")
 
         # Save metrics if available
         if agent.metrics_collector:

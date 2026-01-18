@@ -11,11 +11,13 @@
 ## 📚 DOCUMENTAZIONE
 
 ### **Ollama Official:**
+
 - **Sito web:** https://ollama.ai
 - **GitHub:** https://github.com/ollama/ollama
 - **Documentazione:** https://github.com/ollama/ollama/blob/main/docs/README.md
 
 ### **Qwen Models:**
+
 - **Hugging Face:** https://huggingface.co/Qwen
 - **Ollama Library:** https://ollama.com/library/qwen2.5
 
@@ -24,11 +26,13 @@
 ## 🖥️ COMANDI BASE OLLAMA
 
 ### **1. Vedere modelli installati:**
+
 ```bash
 ollama list
 ```
 
 ### **2. Scaricare un modello:**
+
 ```bash
 ollama pull qwen2.5:latest
 ollama pull qwen2.5:3b      # Versione più piccola
@@ -36,11 +40,13 @@ ollama pull qwen2.5:7b      # Versione media
 ```
 
 ### **3. Eseguire prompt direttamente:**
+
 ```bash
 ollama run qwen2.5:latest "Scrivi una funzione Python per calcolare il fattoriale"
 ```
 
 ### **4. Chat interattiva:**
+
 ```bash
 ollama run qwen2.5:latest
 # Poi scrivi i tuoi prompt direttamente
@@ -51,6 +57,7 @@ ollama run qwen2.5:latest
 ## 🌐 API HTTP (Come Usa il Sistema)
 
 ### **1. Test semplice:**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",
@@ -60,6 +67,7 @@ curl http://localhost:11434/api/generate -d '{
 ```
 
 ### **2. Con parametri avanzati:**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",
@@ -71,6 +79,7 @@ curl http://localhost:11434/api/generate -d '{
 ```
 
 ### **3. Stream (risposta in tempo reale):**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",
@@ -84,6 +93,7 @@ curl http://localhost:11434/api/generate -d '{
 ## 🐍 USO DA PYTHON
 
 ### **Esempio semplice:**
+
 ```python
 import httpx
 import json
@@ -103,6 +113,7 @@ print(data["response"])
 ```
 
 ### **Esempio con parametri:**
+
 ```python
 import httpx
 
@@ -124,12 +135,14 @@ response = httpx.post(
 ## 🎨 PARAMETRI IMPORTANTI
 
 ### **num_predict (max_tokens):**
+
 - **Cosa fa:** Limita lunghezza risposta
 - **Range:** 1-200000
 - **Default:** 128
 - **Uso:** `2000` per test lunghi
 
 ### **temperature:**
+
 - **Cosa fa:** Controlla creatività/randomness
 - **Range:** 0.0-1.0
 - **0.0:** Deterministico, ripetibile
@@ -138,12 +151,14 @@ response = httpx.post(
 - **Uso:** `0.2` per codice/test (preciso)
 
 ### **top_p:**
+
 - **Cosa fa:** Nucleus sampling
 - **Range:** 0.0-1.0
 - **Default:** 0.9
 - **Uso:** `0.9` per varietà controllata
 
 ### **repeat_penalty:**
+
 - **Cosa fa:** Penalizza ripetizioni
 - **Range:** 0.0-2.0
 - **Default:** 1.1
@@ -169,11 +184,13 @@ response = await llm_adapter.generate(request)
 ```
 
 **URL chiamato:**
+
 ```
 POST http://localhost:11434/api/generate
 ```
 
 **Payload:**
+
 ```json
 {
   "model": "qwen2.5:latest",
@@ -189,11 +206,13 @@ POST http://localhost:11434/api/generate
 ## 🧪 TEST PROMPT DIRETTAMENTE
 
 ### **1. Via Terminale:**
+
 ```bash
 ollama run qwen2.5:latest "Scrivi test pytest per questa funzione Python: def multiply(a, b): return a * b"
 ```
 
 ### **2. Via HTTP:**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",
@@ -203,6 +222,7 @@ curl http://localhost:11434/api/generate -d '{
 ```
 
 ### **3. Via Python Script:**
+
 ```python
 # test_qwen.py
 import httpx
@@ -237,6 +257,7 @@ print(data["response"])
 ```
 
 Esegui:
+
 ```bash
 python3 test_qwen.py
 ```
@@ -246,17 +267,20 @@ python3 test_qwen.py
 ## 📊 MODELLI QWEN DISPONIBILI
 
 ### **Dimensioni:**
+
 - **qwen2.5:3b** - 3B parametri (più veloce, meno preciso)
 - **qwen2.5:7b** - 7B parametri (bilanciato) ⭐
 - **qwen2.5:latest** - 7B Q4_K_M (default)
 
 ### **Scaricare versione diversa:**
+
 ```bash
 ollama pull qwen2.5:3b
 ollama pull qwen2.5:7b
 ```
 
 ### **Usare modello diverso:**
+
 ```bash
 # Nel sistema, modifica:
 export OLLAMA_MODEL="qwen2.5:3b"  # Più veloce
@@ -267,6 +291,7 @@ export OLLAMA_MODEL="qwen2.5:3b"  # Più veloce
 ## 🎯 ESEMPI PROMPT PER TEST GENERATION
 
 ### **Esempio 1: Test Unitario Semplice**
+
 ```
 Genera test pytest per questa funzione Python:
 
@@ -280,6 +305,7 @@ Requisiti:
 ```
 
 ### **Esempio 2: Test con Mock**
+
 ```
 Genera test pytest per questa funzione che usa requests:
 
@@ -295,6 +321,7 @@ Requisiti:
 ```
 
 ### **Esempio 3: Test Async**
+
 ```
 Genera test pytest per questa funzione async:
 
@@ -314,21 +341,25 @@ Requisiti:
 ## 🔍 DEBUGGING
 
 ### **Verificare Ollama funziona:**
+
 ```bash
 curl http://localhost:11434/api/tags
 ```
 
 ### **Verificare modello disponibile:**
+
 ```bash
 ollama list
 ```
 
 ### **Test generazione semplice:**
+
 ```bash
 ollama run qwen2.5:latest "Ciao, funzioni?"
 ```
 
 ### **Vedere log Ollama:**
+
 ```bash
 # Ollama log su macOS
 tail -f ~/Library/Logs/ollama/ollama.log

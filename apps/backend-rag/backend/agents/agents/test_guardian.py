@@ -118,10 +118,9 @@ class TestGuardian:
     - Self-healing with retry logic
     """
 
-    def __init__(
-        self, provider: str = "local", local_model: str = None
-    ):
+    def __init__(self, provider: str = "local", local_model: str = None):
         import os
+
         # Use environment variable or default
         if local_model is None:
             local_model = os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
@@ -129,7 +128,7 @@ class TestGuardian:
         if provider not in ["local", "mock"]:
             logger.warning(f"⚠️ Provider '{provider}' not supported. Using 'local' (Qwen)")
             provider = "local"
-        
+
         self.provider = provider
         self.local_model = local_model
 
@@ -534,7 +533,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="TestGuardian Agent")
     parser.add_argument(
-        "--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)"
+        "--provider",
+        default="local",
+        choices=["local", "mock"],
+        help="LLM Provider (local=Qwen, mock=Mock)",
     )
     args = parser.parse_args()
 

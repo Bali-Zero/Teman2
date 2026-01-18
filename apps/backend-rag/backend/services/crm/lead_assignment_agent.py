@@ -11,7 +11,6 @@ Flow:
 3. Telegram Notification - Send notification with inline keyboard buttons
 """
 
-import asyncio
 import logging
 from typing import TypedDict
 
@@ -46,7 +45,9 @@ class LeadAssignmentState(TypedDict):
     errors: list[str]
 
 
-async def check_duplicates(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> LeadAssignmentState:
+async def check_duplicates(
+    state: LeadAssignmentState, db_pool: asyncpg.Pool
+) -> LeadAssignmentState:
     """
     Step 1: Entity resolution - check for duplicate clients
 
@@ -116,7 +117,9 @@ async def assign_lead(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> Lead
     if state["is_duplicate"]:
         # Use existing assignment from matched client
         if state["assigned_lead"]:
-            state["assignment_reason"] = f"Duplicate client - using existing assignment from client #{state['matched_client_id']}"
+            state["assignment_reason"] = (
+                f"Duplicate client - using existing assignment from client #{state['matched_client_id']}"
+            )
             logger.info(f"🔗 Using existing assignment: {state['assigned_lead']}")
             return state
 
@@ -156,9 +159,9 @@ async def assign_lead(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> Lead
         if lead:
             state["assigned_lead"] = lead["email"]
             state["assigned_lead_name"] = lead["full_name"]
-            state[
-                "assignment_reason"
-            ] = f"Specialty: {practice_type_code}, Current workload: {lead['active_practices']} practices"
+            state["assignment_reason"] = (
+                f"Specialty: {practice_type_code}, Current workload: {lead['active_practices']} practices"
+            )
 
             # UPDATE client.assigned_to
             await conn.execute(
@@ -193,10 +196,14 @@ async def assign_lead(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> Lead
                     lead["email"],
                     state["client_id"],
                 )
-                logger.info(f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']}")
+                logger.info(
+                    f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']}"
+                )
             else:
                 state["errors"].append("No active team members available for assignment")
-                logger.warning(f"❌ No team members available to assign client #{state['client_id']}")
+                logger.warning(
+                    f"❌ No team members available to assign client #{state['client_id']}"
+                )
 
     return state
 
@@ -248,19 +255,19 @@ async def send_telegram_notification(
 
     # Build notification message
     client_data = state["client_data"]
-    practice_type_display = client_data.get("practice_type_code", "General inquiry").replace(
-        "_", " "
-    ).title()
+    practice_type_display = (
+        client_data.get("practice_type_code", "General inquiry").replace("_", " ").title()
+    )
 
     message = f"""
 🆕 *Nuovo Lead Assegnato*
 
-👤 *Cliente:* {client_data.get('full_name', 'Unknown')}
-📧 *Email:* {client_data.get('email', 'N/A')}
-📞 *Phone:* {client_data.get('phone', 'N/A')}
+👤 *Cliente:* {client_data.get("full_name", "Unknown")}
+📧 *Email:* {client_data.get("email", "N/A")}
+📞 *Phone:* {client_data.get("phone", "N/A")}
 🎯 *Pratica:* {practice_type_display}
 
-📊 *Assegnazione:* {state['assignment_reason']}
+📊 *Assegnazione:* {state["assignment_reason"]}
     """.strip()
 
     # Inline keyboard with action buttons
@@ -303,9 +310,7 @@ async def send_telegram_notification(
     return state
 
 
-def create_lead_assignment_workflow(
-    db_pool: asyncpg.Pool, telegram_service
-) -> StateGraph:
+def create_lead_assignment_workflow(db_pool: asyncpg.Pool, telegram_service) -> StateGraph:
     """
     Create LangGraph workflow for lead assignment
 
@@ -391,7 +396,9 @@ async def trigger_lead_assignment(
         return final_state
 
     except Exception as e:
-        logger.error(f"❌ Lead assignment workflow failed for client #{client_id}: {e}", exc_info=True)
+        logger.error(
+            f"❌ Lead assignment workflow failed for client #{client_id}: {e}", exc_info=True
+        )
         return {
             "client_id": client_id,
             "success": False,

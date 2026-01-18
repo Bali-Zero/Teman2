@@ -9,6 +9,7 @@ Ho preparato e scritto system prompt completi e dettagliati per Qwen che si occu
 ## 📝 SYSTEM PROMPT CREATO
 
 ### **File:**
+
 ```
 apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ```
@@ -39,18 +40,21 @@ apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ## 🎯 CARATTERISTICHE SYSTEM PROMPT
 
 ### **Molto Dettagliato:**
+
 - ✅ Istruzioni passo-passo
 - ✅ Esempi concreti di codice
 - ✅ Pattern comuni da seguire
 - ✅ Casi edge da testare sempre
 
 ### **Chiaro e Specifico:**
+
 - ✅ Regole obbligatorie ben definite
 - ✅ Output richiesto esplicito
 - ✅ Nessuna ambiguità
 - ✅ Focus su qualità e coverage
 
 ### **Pratico:**
+
 - ✅ Esempi di codice reali
 - ✅ Mocking patterns pronti all'uso
 - ✅ Struttura test standardizzata
@@ -87,11 +91,13 @@ Con questi system prompt, Qwen:
 ## 🔧 COME FUNZIONA
 
 ### **Il sistema usa automaticamente:**
+
 - Backend Python → `TEST_GENERATION_SYSTEM_PROMPT_BACKEND`
 - Frontend TypeScript → `TEST_GENERATION_SYSTEM_PROMPT_FRONTEND`
 - Altri task → `DEFAULT_SYSTEM_PROMPT`
 
 ### **Qwen riceve:**
+
 ```json
 {
   "system": "Sei un esperto sviluppatore Python...",
@@ -106,6 +112,7 @@ Con questi system prompt, Qwen:
 **Qwen ora ha istruzioni complete e dettagliate per generare test di alta qualità per il sistema Nuzantara!**
 
 Il system prompt:
+
 - ✅ È stato scritto e preparato
 - ✅ È molto dettagliato e specifico
 - ✅ Include esempi e pattern
@@ -119,6 +126,7 @@ Il system prompt:
 Il sistema userà automaticamente questi system prompt quando genera test.
 
 **Puoi:**
+
 1. Modificare i prompt se vuoi aggiungere regole specifiche
 2. Testare direttamente con Ollama
 3. Lasciare che il sistema li usi automaticamente

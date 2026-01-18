@@ -124,17 +124,17 @@ def mock_memory_orchestrator():
 @pytest.fixture
 def orchestrator(mock_search_service, mock_db_pool, mock_memory_orchestrator):
     """Create AgenticRAGOrchestrator with mocked dependencies"""
-    with patch("backend.services.rag.agentic.create_agentic_rag") as mock_create:
-        with patch(
-            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
-        ):
-            orchestrator = AgenticRAGOrchestrator(
-                retriever=mock_search_service,
-                db_pool=mock_db_pool,
-                semantic_cache=None,
-                clarification_service=None,
-            )
-            return orchestrator
+    with (
+        patch("backend.services.rag.agentic.create_agentic_rag") as mock_create,
+        patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator),
+    ):
+        orchestrator = AgenticRAGOrchestrator(
+            retriever=mock_search_service,
+            db_pool=mock_db_pool,
+            semantic_cache=None,
+            clarification_service=None,
+        )
+        return orchestrator
 
 
 class TestE2ERAGFlow:

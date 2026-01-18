@@ -22,6 +22,7 @@ backend_path = Path(__file__).resolve().parents[4] / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
     # Mock NumPy and PIL
@@ -46,11 +47,18 @@ def mock_problematic_modules():
     svc_mock.__path__ = []
     sys.modules["backend.services"] = svc_mock
 
-    for m in ["backend.services.oracle", "backend.services.search",
-              "backend.services.rag", "backend.services.rag.agentic",
-              "backend.services.ingestion", "backend.services.analytics",
-              "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
-              "qdrant_client"]:
+    for m in [
+        "backend.services.oracle",
+        "backend.services.search",
+        "backend.services.rag",
+        "backend.services.rag.agentic",
+        "backend.services.ingestion",
+        "backend.services.analytics",
+        "backend.services.llm_clients",
+        "backend.services.monitoring",
+        "backend.services.pricing",
+        "qdrant_client",
+    ]:
         sys.modules[m] = MagicMock()
 
     # Special handling for integrations (needed by other tests if this runs first)
@@ -181,6 +189,7 @@ def mock_problematic_modules():
 
     sys.modules["backend.services.routing"] = routing_mock
     sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
+
 
 mock_problematic_modules()
 
@@ -586,7 +595,9 @@ class TestPublishStatusEndpoint:
     def test_status_when_not_configured(self, client):
         """Test returns correct status when not configured."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("backend.services.integrations.github_publisher.github_publisher") as mock_pub:
+            with patch(
+                "backend.services.integrations.github_publisher.github_publisher"
+            ) as mock_pub:
                 mock_pub.is_configured = False
                 mock_pub.owner = None
                 mock_pub.repo = None

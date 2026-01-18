@@ -15,6 +15,7 @@ feat: Unified Test Force System with Qwen System Prompts
 ## 📋 Dettagli
 
 ### **Nuove Features:**
+
 - ✅ Unified Coverage Collector (Backend + Frontend + Integration)
 - ✅ Differential Coverage Analyzer (delta vs baseline)
 - ✅ Unified Test Force Orchestrator (complete system testing)
@@ -22,6 +23,7 @@ feat: Unified Test Force System with Qwen System Prompts
 - ✅ System prompt support in LLM Adapter
 
 ### **Miglioramenti:**
+
 - ✅ Circuit breaker threshold: 5 → 10 failures
 - ✅ Recovery timeout: 60s → 30s
 - ✅ HTTP timeout: 3min → 10min
@@ -30,6 +32,7 @@ feat: Unified Test Force System with Qwen System Prompts
 - ✅ Better error handling and partial results
 
 ### **File Creati:**
+
 - `apps/backend-rag/backend/agents/services/unified_coverage_collector.py`
 - `apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py`
 - `apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py`
@@ -38,6 +41,7 @@ feat: Unified Test Force System with Qwen System Prompts
 - `scripts/show_unified_results.sh`
 
 ### **Documentazione:**
+
 - `UNIFIED_TEST_SYSTEM.md`
 - `COME_USARE_QWEN.md`
 - `COME_MODIFICARE_SYSTEM_PROMPT.md`
@@ -49,6 +53,7 @@ feat: Unified Test Force System with Qwen System Prompts
 ## 🚀 Deploy Necessario?
 
 **NO** - Il sistema è completamente locale:
+
 - ✅ Ollama/Qwen locale
 - ✅ Nessun servizio esterno
 - ✅ Nessuna configurazione cloud

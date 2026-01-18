@@ -15,6 +15,7 @@ backend_path = Path(__file__).resolve().parents[2] / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
     # Mock NumPy and PIL
@@ -40,12 +41,22 @@ def mock_problematic_modules():
     sys.modules["backend.services"] = svc_mock
 
     # Also mock problematic sister-modules
-    for m in ["backend.services.oracle", "backend.services.search", "backend.services.routing",
-              "backend.services.rag", "backend.services.rag.agentic", "backend.services.misc",
-              "backend.services.ingestion", "backend.services.analytics",
-              "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
-              "qdrant_client"]:
+    for m in [
+        "backend.services.oracle",
+        "backend.services.search",
+        "backend.services.routing",
+        "backend.services.rag",
+        "backend.services.rag.agentic",
+        "backend.services.misc",
+        "backend.services.ingestion",
+        "backend.services.analytics",
+        "backend.services.llm_clients",
+        "backend.services.monitoring",
+        "backend.services.pricing",
+        "qdrant_client",
+    ]:
         sys.modules[m] = MagicMock()
+
 
 mock_problematic_modules()
 

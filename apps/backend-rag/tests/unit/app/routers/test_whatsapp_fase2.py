@@ -45,7 +45,9 @@ class TestWhatsAppStatusUpdates:
 
         # Mock identity service
         mock_identity_service = MagicMock()
-        mock_identity_service.get_user_by_phone = AsyncMock(return_value={"user_id": 123, "verified": True})
+        mock_identity_service.get_user_by_phone = AsyncMock(
+            return_value={"user_id": 123, "verified": True}
+        )
         mock_identity_service.update_last_message = AsyncMock()
 
         # Mock whatsapp service methods
@@ -67,7 +69,7 @@ class TestWhatsAppStatusUpdates:
                 ):
                     with patch(
                         "backend.app.routers.whatsapp_chat.get_messaging_identity_service",
-                        return_value=mock_identity_service
+                        return_value=mock_identity_service,
                     ):
                         mock_request = MagicMock()
                         mock_request.app.state.database_pool = MagicMock()
