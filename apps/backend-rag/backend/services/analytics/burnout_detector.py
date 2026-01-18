@@ -7,8 +7,10 @@ import logging
 import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class BurnoutDetectorService:
     Responsibility: Detect early warning signs of burnout.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def detect_burnout_signals(self, user_email: str | None = None) -> list[dict]:

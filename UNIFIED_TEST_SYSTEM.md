@@ -1,208 +1,196 @@
-# 🌐 UNIFIED TEST FORCE SYSTEM - Best Practice 2026
+# 🌐 UNIFIED TEST SYSTEM - Documentazione Completa
 
-**Data:** 2026-01-18  
-**Status:** ✅ IMPLEMENTATO
+## 🎯 OBIETTIVO
 
----
+Sistema completo per testare **TUTTO** il sistema Nuzantara:
 
-## 🎯 SISTEMA COMPLETO IMPLEMENTATO
+- Backend (Python/FastAPI)
+- Frontend (TypeScript/React/Next.js)
+- Integration (E2E, API)
+- WhatsApp/Telegram
 
-### **Cosa Testa:**
-
-1. ✅ **Backend Services:**
-   - `apps/backend-rag/` - Python/FastAPI (pytest)
-   - `apps/zantara-media/backend/` - Python/FastAPI (pytest)
-   - `apps/bali-intel-scraper/` - Python (pytest)
-
-2. ✅ **Frontend Applications:**
-   - `apps/mouth/` - React/Next.js (Vitest)
-   - `apps/admin-dashboard/` - Next.js/TypeScript
-   - `apps/zantara-media/dashboard/` - Next.js/TypeScript
-
-3. ✅ **Integration:**
-   - E2E tests
-   - API contracts
-   - Cross-service tests
+Calcola coverage complessivo e differenziale.  
+Genera, salva ed esegue test automaticamente per aumentare la coverage.
 
 ---
 
-## 📊 FEATURES IMPLEMENTATE
+## 🚀 COME FUNZIONA
 
-### **1. Unified Coverage Collection**
+### **Workflow Completo:**
 
-- ✅ Raccoglie coverage da TUTTI i componenti
-- ✅ Supporta Python/pytest (JSON)
-- ✅ Supporta TypeScript/JS (LCOV, Vitest JSON)
-- ✅ Normalizza formati diversi
-- ✅ Aggrega risultati
+1. **Step 1: Raccolta Coverage**
+   - Raccoglie coverage da tutti i componenti
+   - Backend: Python/pytest
+   - Frontend: TypeScript/Vitest
+   - Genera report unificato
 
-### **2. Differential Coverage Analysis**
+2. **Step 2: Analisi Differenziale**
+   - Confronta con baseline salvata
+   - Identifica regressioni e miglioramenti
+   - Calcola delta coverage
 
-- ✅ Baseline tracking (snapshot-based)
-- ✅ Delta calculation (vs baseline)
-- ✅ Regression detection (>1% decrease)
-- ✅ Improvement tracking (>1% increase)
-- ✅ Critical regression detection (>5% decrease)
+3. **Step 3: Identificazione Gap Critici**
+   - Identifica file con coverage bassa
+   - Priorità: coverage più bassa prima
+   - Limita a top N gap per componente
 
-### **3. Multi-Component Test Generation**
+4. **Step 4: Generazione Test** ⭐
+   - Genera test con Qwen (Ollama)
+   - **Salva test in file** (`apps/{component}/tests/unit/test_*.py`)
+   - **Esegue test** per verificare che funzionino
+   - Conta test passati/falliti
 
-- ✅ Genera test per Backend (Python/pytest)
-- ✅ Genera test per Frontend (TypeScript/Vitest)
-- ✅ Usa Qwen con context completo sistema
-- ✅ Prioritizza gap critici
-
-### **4. Unified Reporting**
-
-- ✅ Report JSON completo
-- ✅ Coverage per componente
-- ✅ Coverage per tipo (backend/frontend)
-- ✅ Differential report
-- ✅ Critical gaps identification
+5. **Step 5: Ricalcolo Coverage** ⭐
+   - Ricalcola coverage dopo i test generati
+   - Mostra aumento coverage
+   - Aggiorna report finale
 
 ---
 
-## 🚀 USO
+## 📊 RISULTATI
 
-### **Comando Principale:**
+### **Report JSON:**
+
+```json
+{
+  "coverage_report": {
+    "overall_coverage": 44.5,
+    "components": {...}
+  },
+  "test_generation": {
+    "tests_generated": 15,
+    "tests_passed": 12,
+    "tests_failed": 3,
+    "tests_by_component": {...}
+  },
+  "coverage_after_tests": {
+    "overall_coverage": 45.2,
+    "components": {...}
+  }
+}
+```
+
+### **Log Output:**
+
+```
+✅ Test salvato: apps/bali-intel-scraper/tests/unit/test_article_deep_enricher.py
+✅ Test passato: test_article_deep_enricher.py
+📊 Step 5: Ricalcolo coverage dopo test generati...
+✅ Coverage aggiornata: 45.2% (era 44.5%)
+```
+
+---
+
+## 🔧 COME USARE
+
+### **Esecuzione Completa:**
 
 ```bash
 ./scripts/unified_test_force.sh
 ```
 
-### **Opzioni Avanzate:**
+### **Monitoraggio Live:**
 
 ```bash
-cd apps/backend-rag
-python3 -m backend.agents.agents.unified_test_force_orchestrator \
-    --project-root=/path/to/nuzantara \
-    --provider=local \
-    --save-baseline \          # Salva come baseline
-    --generate-tests \          # Genera test con Qwen
-    --max-tests=5 \            # Max test per componente
-    --output=report.json       # Salva report JSON
+tail -f logs/unified_test_force.log | grep --line-buffered -E "Step [1-5]|Generating test|salvato|passato|Coverage aggiornata"
 ```
 
----
-
-## 📈 COVERAGE DIFFERENTIAL
-
-### **Come Funziona:**
-
-1. **Prima Esecuzione:**
-
-   ```bash
-   ./scripts/unified_test_force.sh --save-baseline
-   ```
-
-   - Raccoglie coverage da tutti i componenti
-   - Salva come baseline
-
-2. **Esecuzioni Successive:**
-
-   ```bash
-   ./scripts/unified_test_force.sh
-   ```
-
-   - Raccoglie coverage corrente
-   - Calcola delta vs baseline
-   - Identifica regressioni
-   - Identifica miglioramenti
-
-### **Report Differential Include:**
-
-- Overall delta (%)
-- Per-component delta
-- Regressioni (>1% decrease)
-- Miglioramenti (>1% increase)
-- Critical regressions (>5% decrease)
-
----
-
-## 📊 METRICHE
-
-### **Coverage Report Include:**
-
-```json
-{
-  "overall_coverage": 85.3,
-  "coverage_by_type": {
-    "backend": 87.2,
-    "frontend": 82.1
-  },
-  "components": {
-    "backend-rag": {
-      "coverage": 89.5,
-      "files": 450,
-      "gaps": 23
-    },
-    "mouth-frontend": {
-      "coverage": 78.3,
-      "files": 320,
-      "gaps": 45
-    }
-  },
-  "critical_gaps": 12
-}
-```
-
-### **Differential Report Include:**
-
-```json
-{
-  "overall_delta": +2.3,
-  "overall_delta_percent": +2.7,
-  "regressions": 2,
-  "improvements": 5,
-  "critical_regressions": 0,
-  "component_deltas": {
-    "backend-rag": {
-      "delta": +1.2,
-      "regression": false,
-      "improvement": true
-    }
-  }
-}
-```
-
----
-
-## 🔧 CONFIGURAZIONE CRON
-
-### **Aggiorna Cron per Unified System:**
+### **Vedi Risultati:**
 
 ```bash
-# Nel setup_all_automation.sh, sostituisci:
-15 2 * * * $PROJECT_ROOT/scripts/auto_test_force.sh
-
-# Con:
-15 2 * * * $PROJECT_ROOT/scripts/unified_test_force.sh
+./scripts/show_unified_results.sh
 ```
 
 ---
 
-## 🎯 BEST PRACTICE 2026 IMPLEMENTATE
+## 📁 FILE GENERATI
 
-1. ✅ **Multi-Component Coverage** - Coverage da tutti i componenti
-2. ✅ **Differential Analysis** - Delta vs baseline
-3. ✅ **Context-Aware Generation** - Qwen con context completo
-4. ✅ **Unified Reporting** - Report unificato sistema
-5. ✅ **Regression Detection** - Identifica regressioni automaticamente
-6. ✅ **Priority-Based** - Priorità gap critici
+### **Test Salvati:**
 
----
+- Backend: `apps/{component}/tests/unit/test_{file}.py`
+- Frontend: `apps/{component}/tests/{file}.test.ts`
 
-## 📝 FILE CREATI
+### **Report:**
 
-1. ✅ `backend/agents/services/unified_coverage_collector.py`
-2. ✅ `backend/agents/services/differential_coverage_analyzer.py`
-3. ✅ `backend/agents/agents/unified_test_force_orchestrator.py`
-4. ✅ `scripts/unified_test_force.sh`
+- `logs/unified_coverage_report.json` - Report completo JSON
+- `logs/unified_test_force.log` - Log dettagliati
 
 ---
 
-## ✅ PROSSIMI PASSI
+## ⚙️ CONFIGURAZIONE
 
-1. Testare sistema completo
-2. Generare baseline iniziale
-3. Configurare cron per unified system
-4. Monitorare coverage trends
+### **System Prompts:**
+
+- Backend: `apps/backend-rag/backend/agents/config/qwen_system_prompts.py`
+- Frontend: `TEST_GENERATION_SYSTEM_PROMPT_FRONTEND`
+
+### **Parametri:**
+
+- `--max-tests=5` - Max test per componente
+- `--generate-tests` - Abilita generazione test
+- `--save-baseline` - Salva baseline per confronti futuri
+
+---
+
+## 🎯 FEATURES
+
+### **✅ Implementato:**
+
+- ✅ Raccolta coverage unificata (Backend + Frontend)
+- ✅ Analisi differenziale vs baseline
+- ✅ Generazione test con Qwen
+- ✅ **Salvataggio test in file** ⭐
+- ✅ **Esecuzione test automatica** ⭐
+- ✅ **Ricalcolo coverage dopo test** ⭐
+- ✅ Report JSON completo
+- ✅ System prompts configurabili
+- ✅ Circuit breaker e retry logic
+- ✅ Fallback a mock se Qwen non disponibile
+
+### **🔄 In Sviluppo:**
+
+- 🔄 Integrazione Multi-AI (Claude Max per analisi)
+- 🔄 Dashboard monitoring
+- 🔄 Notifiche quando coverage aumenta
+
+---
+
+## 📊 COVERAGE TARGET
+
+- **Backend:** 80%+ coverage
+- **Frontend:** 70%+ coverage
+- **Overall:** 75%+ coverage
+
+---
+
+## 🔍 TROUBLESHOOTING
+
+### **Test non vengono salvati:**
+
+- Verifica permessi scrittura in `apps/{component}/tests/`
+- Controlla log per errori: `grep "salvato" logs/unified_test_force.log`
+
+### **Test falliscono:**
+
+- Verifica dipendenze installate
+- Controlla import nel codice generato
+- Vedi log dettagliati: `tail -100 logs/unified_test_force.log`
+
+### **Coverage non aumenta:**
+
+- Verifica che test vengano eseguiti: `grep "passato\|fallito" logs/unified_test_force.log`
+- Controlla che test coprano codice mancante
+- Verifica report: `cat logs/unified_coverage_report.json | python3 -m json.tool`
+
+---
+
+## 📚 DOCUMENTAZIONE CORRELATA
+
+- `COMANDI_LIVE.md` - Comandi per monitoraggio live
+- `VERIFICA_PIU_TARDI.md` - Comandi per verifica post-esecuzione
+- `FIX_TEST_SALVATI_ESEGUITI.md` - Dettagli implementazione
+- `CONFIGURAZIONE_CLAUDE_MAX.md` - Configurazione AI principale
+
+---
+
+**Sistema completo e funzionante!** 🚀

@@ -6,8 +6,10 @@ Responsibility: Optimal hours identification
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class OptimalHoursService:
     Responsibility: Identify most productive time windows.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def identify_optimal_hours(self, user_email: str | None = None, days: int = 30) -> dict:

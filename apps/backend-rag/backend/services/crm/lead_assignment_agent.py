@@ -14,7 +14,10 @@ Flow:
 import logging
 from typing import TypedDict
 
-import asyncpg
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import asyncpg
 from langgraph.graph import END, StateGraph
 
 logger = logging.getLogger(__name__)
@@ -46,7 +49,7 @@ class LeadAssignmentState(TypedDict):
 
 
 async def check_duplicates(
-    state: LeadAssignmentState, db_pool: asyncpg.Pool
+    state: LeadAssignmentState, db_pool: "asyncpg.Pool"
 ) -> LeadAssignmentState:
     """
     Step 1: Entity resolution - check for duplicate clients
@@ -102,7 +105,7 @@ async def check_duplicates(
     return state
 
 
-async def assign_lead(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> LeadAssignmentState:
+async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> LeadAssignmentState:
     """
     Step 2: Auto-assign lead to team member
 
@@ -209,7 +212,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: asyncpg.Pool) -> Lead
 
 
 async def send_telegram_notification(
-    state: LeadAssignmentState, db_pool: asyncpg.Pool, telegram_service
+    state: LeadAssignmentState, db_pool: "asyncpg.Pool", telegram_service
 ) -> LeadAssignmentState:
     """
     Step 3: Send Telegram notification to assigned lead
@@ -310,7 +313,7 @@ async def send_telegram_notification(
     return state
 
 
-def create_lead_assignment_workflow(db_pool: asyncpg.Pool, telegram_service) -> StateGraph:
+def create_lead_assignment_workflow(db_pool: "asyncpg.Pool", telegram_service) -> StateGraph:
     """
     Create LangGraph workflow for lead assignment
 
@@ -350,7 +353,7 @@ def create_lead_assignment_workflow(db_pool: asyncpg.Pool, telegram_service) -> 
 async def trigger_lead_assignment(
     client_id: int,
     client_data: dict,
-    db_pool: asyncpg.Pool,
+    db_pool: "asyncpg.Pool",
     telegram_service,
 ) -> dict:
     """

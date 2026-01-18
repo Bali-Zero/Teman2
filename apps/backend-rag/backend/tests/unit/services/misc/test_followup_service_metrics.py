@@ -3,12 +3,21 @@ Unit tests for FollowupService Metrics and Logging
 Tests the new metrics and logging functionality added in 2026-01-19
 """
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from prometheus_client import REGISTRY
+
+# Set minimal environment variables before imports
+os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
+os.environ.setdefault("API_KEYS", "test_api_key_1,test_api_key_2")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test")
+os.environ.setdefault("GOOGLE_API_KEY", "test-google-key")
+os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
+os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
+os.environ.setdefault("ENVIRONMENT", "test")
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:

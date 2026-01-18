@@ -378,13 +378,15 @@ fly ssh console -a nuzantara-rag
 
 ## 📚 ESSENTIAL DOCUMENTATION
 
-| Document                 | Path                                                     | When to Read               |
-| ------------------------ | -------------------------------------------------------- | -------------------------- |
-| **AI Handover Protocol** | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (this is the brain) |
-| **System Map 4D**        | `docs/SYSTEM_MAP_4D.md`                                  | To understand architecture |
-| **Observability Guide**  | `docs/operations/OBSERVABILITY_GUIDE.md`                 | For debugging/monitoring   |
-| **Deploy Checklist**     | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying           |
-| **Intel Pipeline**       | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | For news scraper           |
+| Document                 | Path                                                     | When to Read                        |
+| ------------------------ | -------------------------------------------------------- | ----------------------------------- |
+| **AI Handover Protocol** | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (this is the brain)          |
+| **System Map 4D**        | `docs/SYSTEM_MAP_4D.md`                                  | To understand architecture          |
+| **Observability Guide**  | `docs/operations/OBSERVABILITY_GUIDE.md`                 | For debugging/monitoring            |
+| **Deploy Checklist**     | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                    |
+| **Intel Pipeline**       | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | For news scraper                    |
+| **ZANTARA Fluidity**     | `docs/ZANTARA_FLUIDITY_AND_STRENGTH.md`                  | Miglioramenti fluidità (2026-01-19) |
+| **Test Best Practices**  | `docs/TEST_CONFIGURATION_BEST_PRACTICES.md`              | Configurazione test (2026-01-19)    |
 
 ---
 
@@ -593,4 +595,21 @@ A: Check: 1) Virtualenv activated (`which python` shows `.venv/bin/python`), 2) 
 
 **Remember:** This is a production system. Be careful, test thoroughly, and use the observability tools to verify your changes.
 
-**Last Updated:** 2026-01-18
+---
+
+## 📚 RECENT UPDATES (2026-01-19)
+
+### Nuovi Documenti
+
+- **`docs/ZANTARA_FLUIDITY_AND_STRENGTH.md`** - Documentazione completa miglioramenti fluidità e proattività
+- **`docs/TEST_CONFIGURATION_BEST_PRACTICES.md`** - Best practices per configurazione test e gestione secrets
+
+### Miglioramenti Documentati
+
+- ✅ Threshold ABSTAIN: 0.3 → 0.2 (maggiore fluidità)
+- ✅ Messaggio ABSTAIN proattivo (suggerisce alternative)
+- ✅ Proattività nel prompt (suggerisce sempre prossimi passi)
+- ✅ FollowupService con logging e metriche complete
+- ✅ 57+ test per verificare fluidità e forza
+
+**Last Updated:** 2026-01-19
