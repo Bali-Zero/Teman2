@@ -96,9 +96,10 @@ Based on production queries:
 - Licensing dependencies
 
 **HAS_FEE relationships** (~1,500):
-- Official government fees
-- Service costs
-- Notarial charges
+- ⚠️ Government fees from legal documents (NOT Bali Zero prices)
+- Official tax/registration costs from regulations
+- Bureaucratic fees (informational only)
+- **CRITICAL**: These are NOT customer-facing prices - only get_pricing tool has official Bali Zero prices
 
 **HAS_DURATION relationships** (~1,200):
 - Processing times
@@ -159,6 +160,42 @@ Based on extraction logs:
 | `kbli_atlas` | ~3,500 | KBLI codes |
 | `training_conversations` | ~2,000 | User queries |
 | **TOTAL** | **~34,500** | |
+
+---
+
+## ⚠️ CRITICAL: Pricing Policy
+
+### Knowledge Graph HAS_FEE ≠ Bali Zero Prices
+
+**What HAS_FEE relationships contain**:
+- Government fees extracted from Indonesian regulations (e.g., "PT registration fee = 500K IDR" from PP/UU)
+- Official tax rates from fiscal laws
+- Bureaucratic costs mentioned in legal documents
+
+**Why these should NOT be communicated to clients**:
+1. **Not Bali Zero prices** - These are government/legal fees, not service pricing
+2. **May be outdated** - Legal documents may reference old fee structures
+3. **Not verified** - Extracted by LLM, not validated by humans
+4. **Single source risk** - Most have only 1 source chunk (77% of KG nodes)
+
+### The ONLY Source of Truth for Pricing
+
+**PricingTool (Tool #2)** is the ONLY authorized source:
+- Uses official Bali Zero pricing database
+- Updated and verified by team
+- Mandatory for all price questions
+
+**System Protection** (`prompt_builder.py:47-66`):
+```
+RULE 1: ONLY USE PRICES FROM get_pricing TOOL
+RULE 2: IF PRICE NOT IN TOOL, SAY "DA VERIFICARE"
+RULE 3: NEVER invent, estimate, or guess ANY price
+```
+
+**Example**:
+- ❌ WRONG: "Cambiare KBLI costa 5-10M" (from KG or memory)
+- ✅ CORRECT: Call get_pricing → "PT PMA costa Rp 20.000.000 [exact from pricing DB]"
+- ✅ CORRECT: "Il costo per modifiche successive è da verificare con il team" (if not in pricing DB)
 
 ---
 
