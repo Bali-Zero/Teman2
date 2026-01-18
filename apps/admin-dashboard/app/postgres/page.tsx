@@ -43,7 +43,7 @@ export default function PostgresPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredTables = tables.filter(t => t.table_name.toLowerCase().includes(search.toLowerCase()));
+  const filteredTables = tables.filter(t => (t.table_name || '').toLowerCase().includes(search.toLowerCase()));
 
   // Group tables
   const grouped: Record<string, typeof tables> = {
