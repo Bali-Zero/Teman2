@@ -11160,7 +11160,7 @@ yoctocolors-cjs@^2.1.3:
     clsx "^2.1.1"
     date-fns "^4.1.0"
     lucide-react "^0.556.0"
-    next "16.0.8"
+    next "^16.1.3"
     react "19.2.1"
     react-dom "19.2.1"
     react-markdown "^10.1.0"
