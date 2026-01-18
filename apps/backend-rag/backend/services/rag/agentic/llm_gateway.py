@@ -693,8 +693,30 @@ class LLMGateway:
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
 
-        # All models failed
-        raise RuntimeError("All models in fallback chain failed")
+        # All Gemini models failed - try OpenRouter as final fallback
+        logger.warning("⚠️ LLMGateway: All Gemini models failed, attempting OpenRouter fallback")
+        try:
+            # Extract user query from message for OpenRouter
+            # Build messages list for OpenRouter (it expects role/content format)
+            openrouter_messages = []
+            if conversation_messages:
+                openrouter_messages = conversation_messages
+            else:
+                # Fallback: create message from current query
+                openrouter_messages = [{"role": "user", "content": message}]
+
+            openrouter_response = await self._call_openrouter(openrouter_messages, system_prompt)
+            # Return OpenRouter response with mock token usage
+            token_usage = create_token_usage(
+                prompt_tokens=0,  # OpenRouter tracks this internally
+                completion_tokens=0,
+                model="openrouter",
+            )
+            return (openrouter_response, "openrouter", None, token_usage)
+        except Exception as openrouter_error:
+            logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
+            # All fallbacks exhausted
+            raise RuntimeError("All models in fallback chain failed (including OpenRouter)")
 
     async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> str:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
