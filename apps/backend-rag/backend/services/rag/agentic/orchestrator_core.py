@@ -499,3 +499,25 @@ class OrchestratorCore:
         )
 
         return model_tier, deep_think_mode, state, system_prompt
+
+    async def prepare_react_execution(
+        self,
+        query: str,
+        user_context: dict[str, Any],
+        history: list[dict],
+        extracted_entities: dict[str, Any],
+        deep_think_mode: bool = False,
+    ) -> tuple[str, bool, AgentState, str]:
+        """
+        Prepare ReAct execution (alias for _prepare_react_loop for streaming compatibility).
+
+        Returns:
+            Tuple of (model_tier, deep_think_mode, state, system_prompt)
+        """
+        return await self._prepare_react_loop(
+            query=query,
+            user_context=user_context,
+            history=history,
+            extracted_entities=extracted_entities,
+            deep_think_mode=deep_think_mode,
+        )
