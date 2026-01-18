@@ -1,0 +1,508 @@
+{
+  "health_check": {
+    "status": "healthy",
+    "response_time": 0.17891192436218262,
+    "database": {
+      "status": "connected",
+      "type": "qdrant",
+      "collections": 8,
+      "total_documents": 60491
+    },
+    "embeddings": {
+      "status": "operational",
+      "provider": "openai",
+      "model": "text-embedding-3-small",
+      "dimensions": 1536
+    },
+    "timestamp": "2026-01-19T03:35:41.659783"
+  },
+  "performance_metrics": {
+    "total_checks": 28,
+    "healthy_checks": 28,
+    "success_rate": 1.0,
+    "avg_response_time": 0.1777107289859227,
+    "min_response_time": 0.1594710350036621,
+    "max_response_time": 0.26475071907043457,
+    "median_response_time": 0.17239201068878174,
+    "measurements": [
+      {
+        "status": "healthy",
+        "response_time": 0.1643228530883789,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:41.825401"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18299007415771484,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:44.014372"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18744587898254395,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:46.206505"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.1739790439605713,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:48.385280"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.26475071907043457,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:50.651896"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.20495009422302246,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:52.862621"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17101120948791504,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:55.035805"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16854405403137207,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:57.211180"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17260408401489258,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:35:59.388312"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17304396629333496,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:01.565313"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18573284149169922,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:03.757218"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.1594710350036621,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:05.921385"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17473506927490234,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:08.102056"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18625879287719727,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:10.294487"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16740107536315918,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:12.467896"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.1658179759979248,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:14.636746"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18056201934814453,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:16.819432"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17073607444763184,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:18.992621"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16567778587341309,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:21.164707"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17159795761108398,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:23.342431"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.18437504768371582,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:25.533620"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17751407623291016,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:27.717087"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16964364051818848,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:29.890472"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17509722709655762,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:32.068212"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16655182838439941,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:34.240871"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.1721799373626709,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:36.417297"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.16775894165039062,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:38.591204"
+      },
+      {
+        "status": "healthy",
+        "response_time": 0.17114710807800293,
+        "database": {
+          "status": "connected",
+          "type": "qdrant",
+          "collections": 8,
+          "total_documents": 60491
+        },
+        "embeddings": {
+          "status": "operational",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dimensions": 1536
+        },
+        "timestamp": "2026-01-19T03:36:40.764758"
+      }
+    ]
+  },
+  "dashboard_report": "\ud83d\ude80 Nuzantara Performance Dashboard\n==================================================\n\ud83d\udcc5 Generated: 2026-01-19 03:36:42\n\ud83c\udf10 System: https://nuzantara-rag.fly.dev\n\n\ud83d\udcca System Status: \ud83d\udfe2 Excellent\n\u2705 Success Rate: 100.0%\n\u26a1 Avg Response Time: 0.178s\n\ud83d\udcc8 Min/Max: 0.159s / 0.265s\n\n\ud83c\udf89 Performance: PERFECT - 100% uptime!\n\n\ud83d\udcbc Business Impact: EXCELLENT user experience",
+  "timestamp": "2026-01-19T03:36:42.768518"
+}
