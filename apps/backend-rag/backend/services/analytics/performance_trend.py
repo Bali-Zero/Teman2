@@ -6,8 +6,10 @@ Responsibility: Performance trend analysis
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class PerformanceTrendService:
     Responsibility: Analyze performance trends over time.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def analyze_performance_trends(self, user_email: str, weeks: int = 4) -> dict:

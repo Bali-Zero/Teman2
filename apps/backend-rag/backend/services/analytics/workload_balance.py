@@ -6,8 +6,10 @@ Responsibility: Workload distribution analysis
 import logging
 import statistics
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class WorkloadBalanceService:
     Responsibility: Analyze workload distribution across team.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def analyze_workload_balance(self, days: int = 7) -> dict:

@@ -22,8 +22,10 @@ REFACTORED: Uses sub-services following Single Responsibility Principle
 """
 
 import logging
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 from .burnout_detector import BurnoutDetectorService
 from .optimal_hours import OptimalHoursService
@@ -44,7 +46,7 @@ class TeamAnalyticsService:
     REFACTORED: Delegates to specialized sub-services.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
         # Initialize sub-services

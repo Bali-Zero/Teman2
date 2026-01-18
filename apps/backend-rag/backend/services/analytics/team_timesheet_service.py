@@ -9,10 +9,11 @@ import contextlib
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class TeamTimesheetService:
     - Admin-only dashboard data
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
         self.auto_logout_task: asyncio.Task | None = None
         self.running = False
@@ -438,7 +439,7 @@ class TeamTimesheetService:
         return "\n".join(csv_lines)
 
     async def _get_user_current_status(
-        self, conn: asyncpg.Connection, user_id: str
+        self, conn: "asyncpg.Connection", user_id: str
     ) -> dict[str, Any] | None:
         """Get user's current online/offline status"""
         row = await conn.fetchrow("SELECT * FROM team_online_status WHERE user_id = $1", user_id)
@@ -464,7 +465,7 @@ def get_timesheet_service() -> TeamTimesheetService | None:
     return _timesheet_service
 
 
-def init_timesheet_service(db_pool: asyncpg.Pool) -> TeamTimesheetService:
+def init_timesheet_service(db_pool: "asyncpg.Pool") -> TeamTimesheetService:
     """Initialize the global TeamTimesheetService instance"""
     global _timesheet_service
     _timesheet_service = TeamTimesheetService(db_pool)

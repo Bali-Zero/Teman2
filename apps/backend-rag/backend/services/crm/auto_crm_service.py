@@ -22,8 +22,10 @@ REFACTORED 2026-01-18:
 import asyncio
 import logging
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 from backend.app.core.constants import CRMConstants
 
@@ -49,7 +51,7 @@ class AutoCRMService:
     def __init__(
         self,
         ai_client=None,
-        db_pool: asyncpg.Pool | None = None,
+        db_pool: "asyncpg.Pool | None" = None,
         telegram_service=None,
     ):
         """
@@ -61,7 +63,7 @@ class AutoCRMService:
             telegram_service: Optional TelegramBotService for lead notifications
         """
         self.extractor = get_extractor(ai_client=ai_client)
-        self.pool: asyncpg.Pool | None = db_pool
+        self.pool: "asyncpg.Pool | None" = db_pool
         self.telegram_service = telegram_service
 
     async def connect(self):
@@ -92,7 +94,7 @@ class AutoCRMService:
         messages: list[dict],
         user_email: str | None = None,
         team_member: str = "system",
-        db_pool: asyncpg.Pool | None = None,
+        db_pool: "asyncpg.Pool | None" = None,
     ) -> dict:
         """
         Process a conversation and auto-populate CRM
@@ -395,7 +397,7 @@ class AutoCRMService:
         self,
         email_data: dict,
         team_member: str = "system",
-        db_pool: asyncpg.Pool | None = None,
+        db_pool: "asyncpg.Pool | None" = None,
     ) -> dict:
         """
         Process an incoming email and auto-populate CRM
@@ -457,7 +459,7 @@ class AutoCRMService:
         self,
         client_id: int,
         client_data: dict,
-        db_pool: asyncpg.Pool,
+        db_pool: "asyncpg.Pool",
     ) -> None:
         """
         Async helper to trigger lead assignment workflow (non-blocking)
@@ -498,7 +500,7 @@ _auto_crm_instance: AutoCRMService | None = None
 
 def get_auto_crm_service(
     ai_client=None,
-    db_pool: asyncpg.Pool | None = None,
+    db_pool: "asyncpg.Pool | None" = None,
     telegram_service=None,
 ) -> AutoCRMService:
     """

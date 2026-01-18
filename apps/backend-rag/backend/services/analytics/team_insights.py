@@ -6,8 +6,10 @@ Responsibility: Team collaboration insights
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class TeamInsightsService:
     Responsibility: Generate comprehensive team collaboration insights.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def generate_team_insights(self, days: int = 7) -> dict:

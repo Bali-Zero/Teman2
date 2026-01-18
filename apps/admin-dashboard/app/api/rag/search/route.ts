@@ -5,15 +5,6 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const qdrant = new QdrantClient({
-  url: process.env.QDRANT_URL,
-  apiKey: process.env.QDRANT_API_KEY,
-});
-
 export async function POST(request: Request) {
   try {
     const { query, collection = 'knowledge_base', limit = 5 } = await request.json();
@@ -21,6 +12,16 @@ export async function POST(request: Request) {
     if (!query) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
+
+    // Initialize clients lazily to prevent build-time errors when secrets are missing
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const qdrant = new QdrantClient({
+      url: process.env.QDRANT_URL,
+      apiKey: process.env.QDRANT_API_KEY,
+    });
 
     // 1. Generate Embedding
     const embeddingResponse = await openai.embeddings.create({

@@ -76,6 +76,7 @@ deep-analysis-results/
 !.env.example
 !.env.sample
 !.env.template
+!.env.test
 .envrc
 
 # IDE

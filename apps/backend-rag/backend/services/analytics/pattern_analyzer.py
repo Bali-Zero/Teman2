@@ -7,8 +7,10 @@ import logging
 import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class PatternAnalyzerService:
     Responsibility: Analyze work hour patterns and habits.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def analyze_work_patterns(self, user_email: str | None = None, days: int = 30) -> dict:

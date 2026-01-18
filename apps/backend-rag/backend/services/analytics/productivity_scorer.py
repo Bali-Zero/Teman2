@@ -5,8 +5,10 @@ Responsibility: Productivity scoring
 
 import logging
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class ProductivityScorerService:
     Responsibility: Calculate productivity score for each team member.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: "asyncpg.Pool"):
         self.pool = db_pool
 
     async def calculate_productivity_scores(self, days: int = 7) -> list[dict]:
