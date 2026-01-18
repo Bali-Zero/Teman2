@@ -129,38 +129,124 @@ class TestForceOrchestrator:
         }
 
         try:
-            # Phase 1: Coverage analysis (TestGuardian)
-            logger.info("📊 Phase 1: Coverage analysis...")
-            if "guardian" in self.agents and options.get("run_guardian", True):
-                coverage_gaps = self.agents["guardian"].analyze_coverage()
-                results["agent_results"]["guardian"] = {
-                    "coverage_gaps": coverage_gaps,
-                    "gaps_found": len(coverage_gaps),
-                }
+            # Determine execution mode
+            parallel_execution = options.get("parallel", True)  # Default to parallel
+            max_concurrent = options.get("max_concurrent", 3)  # Max concurrent agents
 
-            # Phase 2: Create tests for new code (TestCreator)
-            logger.info("🎯 Phase 2: Test creation...")
-            if "creator" in self.agents and options.get("run_creator", True):
-                creator_result = await self.agents["creator"].scan_and_generate(
-                    max_files=options.get("max_files", 10)
-                )
-                results["agent_results"]["creator"] = creator_result
+            if parallel_execution:
+                logger.info(f"🚀 Running agents in PARALLEL mode (max {max_concurrent} concurrent)")
+                # Phase 1: Coverage analysis (runs first, needed by others)
+                coverage_gaps = []
+                if "guardian" in self.agents and options.get("run_guardian", True):
+                    logger.info("📊 Phase 1: Coverage analysis...")
+                    coverage_gaps = self.agents["guardian"].analyze_coverage()
+                    results["agent_results"]["guardian"] = {
+                        "coverage_gaps": coverage_gaps,
+                        "gaps_found": len(coverage_gaps),
+                    }
 
-            # Phase 3: Maintain existing tests (TestMaintainer)
-            logger.info("🔧 Phase 3: Test maintenance...")
-            if "maintainer" in self.agents and options.get("run_maintainer", True):
-                maintainer_result = await self.agents["maintainer"].scan_and_maintain(
-                    check_git=options.get("check_git", True)
-                )
-                results["agent_results"]["maintainer"] = maintainer_result
+                # Phase 2-4: Run in parallel with semaphore
+                semaphore = asyncio.Semaphore(max_concurrent)
+                tasks = []
 
-            # Phase 4: Clean up problematic tests (TestCleaner)
-            logger.info("🧹 Phase 4: Test cleanup...")
-            if "cleaner" in self.agents and options.get("run_cleaner", True):
-                cleaner_result = await self.agents["cleaner"].scan_and_clean(
-                    aggressive=options.get("aggressive_cleanup", False)
-                )
-                results["agent_results"]["cleaner"] = cleaner_result
+                async def run_with_semaphore(agent_name: str, coro):
+                    """Run coroutine with semaphore for concurrency control"""
+                    async with semaphore:
+                        return await coro
+
+                # Phase 2: Create tests for new code (TestCreator)
+                if "creator" in self.agents and options.get("run_creator", True):
+                    logger.info("🎯 Phase 2: Test creation (parallel)...")
+                    tasks.append(
+                        (
+                            "creator",
+                            run_with_semaphore(
+                                "creator",
+                                self.agents["creator"].scan_and_generate(
+                                    max_files=options.get("max_files", 10)
+                                ),
+                            ),
+                        )
+                    )
+
+                # Phase 3: Maintain existing tests (TestMaintainer)
+                if "maintainer" in self.agents and options.get("run_maintainer", True):
+                    logger.info("🔧 Phase 3: Test maintenance (parallel)...")
+                    tasks.append(
+                        (
+                            "maintainer",
+                            run_with_semaphore(
+                                "maintainer",
+                                self.agents["maintainer"].scan_and_maintain(
+                                    check_git=options.get("check_git", True)
+                                ),
+                            ),
+                        )
+                    )
+
+                # Phase 4: Clean up problematic tests (TestCleaner)
+                if "cleaner" in self.agents and options.get("run_cleaner", True):
+                    logger.info("🧹 Phase 4: Test cleanup (parallel)...")
+                    tasks.append(
+                        (
+                            "cleaner",
+                            run_with_semaphore(
+                                "cleaner",
+                                self.agents["cleaner"].scan_and_clean(
+                                    aggressive=options.get("aggressive_cleanup", False)
+                                ),
+                            ),
+                        )
+                    )
+
+                # Execute all tasks in parallel
+                if tasks:
+                    task_results = await asyncio.gather(*[task[1] for task in tasks], return_exceptions=True)
+                    for (agent_name, _), result in zip(tasks, task_results):
+                        if isinstance(result, Exception):
+                            logger.error(f"❌ {agent_name} failed: {result}")
+                            results["agent_results"][agent_name] = {
+                                "success": False,
+                                "error": str(result),
+                            }
+                        else:
+                            results["agent_results"][agent_name] = result
+
+            else:
+                # Sequential execution (fallback)
+                logger.info("🔄 Running agents in SEQUENTIAL mode")
+                # Phase 1: Coverage analysis (TestGuardian)
+                logger.info("📊 Phase 1: Coverage analysis...")
+                if "guardian" in self.agents and options.get("run_guardian", True):
+                    coverage_gaps = self.agents["guardian"].analyze_coverage()
+                    results["agent_results"]["guardian"] = {
+                        "coverage_gaps": coverage_gaps,
+                        "gaps_found": len(coverage_gaps),
+                    }
+
+                # Phase 2: Create tests for new code (TestCreator)
+                logger.info("🎯 Phase 2: Test creation...")
+                if "creator" in self.agents and options.get("run_creator", True):
+                    creator_result = await self.agents["creator"].scan_and_generate(
+                        max_files=options.get("max_files", 10)
+                    )
+                    results["agent_results"]["creator"] = creator_result
+
+                # Phase 3: Maintain existing tests (TestMaintainer)
+                logger.info("🔧 Phase 3: Test maintenance...")
+                if "maintainer" in self.agents and options.get("run_maintainer", True):
+                    maintainer_result = await self.agents["maintainer"].scan_and_maintain(
+                        check_git=options.get("check_git", True)
+                    )
+                    results["agent_results"]["maintainer"] = maintainer_result
+
+                # Phase 4: Clean up problematic tests (TestCleaner)
+                logger.info("🧹 Phase 4: Test cleanup...")
+                if "cleaner" in self.agents and options.get("run_cleaner", True):
+                    cleaner_result = await self.agents["cleaner"].scan_and_clean(
+                        aggressive=options.get("aggressive_cleanup", False)
+                    )
+                    results["agent_results"]["cleaner"] = cleaner_result
 
             # Generate summary
             duration = time.time() - start_time
@@ -411,7 +497,7 @@ async def main():
 
     parser = argparse.ArgumentParser(description="Test Force Orchestrator")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
-    parser.add_argument("--provider", default="local", choices=["local", "gemini", "mock"])
+    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
     parser.add_argument(
         "--coverage-target", type=float, default=99.0, help="Coverage target percentage"
     )
@@ -433,6 +519,16 @@ async def main():
     parser.add_argument("--no-git", action="store_true", help="Don't check git for changes")
     parser.add_argument("--aggressive-cleanup", action="store_true", help="Aggressive cleanup mode")
     parser.add_argument("--no-dry-run", action="store_true", help="Perform actual cleanup")
+    # Parallel execution options
+    parser.add_argument(
+        "--no-parallel", action="store_true", help="Disable parallel execution (use sequential)"
+    )
+    parser.add_argument(
+        "--max-concurrent",
+        type=int,
+        default=3,
+        help="Max concurrent agents in parallel mode (default: 3)",
+    )
 
     # Watch mode
     parser.add_argument("--interval", type=int, default=300, help="Watch mode interval in seconds")
@@ -467,6 +563,8 @@ async def main():
                 "max_files": args.max_files,
                 "check_git": not args.no_git,
                 "aggressive_cleanup": args.aggressive_cleanup,
+                "parallel": not args.no_parallel,  # Enable parallel by default
+                "max_concurrent": args.max_concurrent,
             }
             result = await orchestrator.run_full_scan(options)
 

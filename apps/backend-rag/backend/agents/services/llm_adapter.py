@@ -1,18 +1,24 @@
 """
-🧠 LLM Adapter - Unificato per Test Force
+🧠 LLM Adapter - Qwen-First per Test Force (Enhanced 2026)
 
-Supporta:
-1. Ollama (Qwen 2.5) - Locale, veloce, privato
-2. Gemini API - Cloud fallback
-3. Mock Mode - Testing senza LLM
+SOLO OLLAMA (Qwen) o MOCK - Niente fallback a Gemini!
+- Ollama (Qwen 2.5) - Locale, veloce, privato - PRIMARY
+- Mock Mode - Solo se Ollama completamente non disponibile
+
+ENHANCED FEATURES (Best Practice 2026):
+- Circuit Breaker Pattern: Evita chiamate quando Ollama è down
+- Error Classification: Retry intelligente (transient vs permanent)
+- Retry con Jitter: Evita thundering herd problem
+- Auto-start Ollama: Tenta di avviare Ollama se non disponibile
 
 Metriche e logging integrati.
 """
 
 import asyncio
 import logging
+import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
@@ -22,11 +28,45 @@ logger = logging.getLogger(__name__)
 
 
 class LLMProvider(Enum):
-    """LLM provider types"""
+    """LLM provider types - SOLO OLLAMA o MOCK"""
 
     OLLAMA = "ollama"
-    GEMINI = "gemini"
     MOCK = "mock"
+
+
+class ErrorType(Enum):
+    """Error classification for intelligent retry"""
+
+    TRANSIENT = "transient"  # Retryable: timeout, connection error, service unavailable
+    PERMANENT = "permanent"  # Not retryable: invalid prompt, auth error, model not found
+    RATE_LIMIT = "rate_limit"  # Special: retry with longer backoff
+
+
+class CircuitState(Enum):
+    """Circuit Breaker states"""
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, reject requests immediately
+    HALF_OPEN = "half_open"  # Testing if service recovered
+
+
+@dataclass
+class CircuitBreakerState:
+    """Circuit Breaker state tracking"""
+
+    state: CircuitState = CircuitState.CLOSED
+    failure_count: int = 0
+    success_count: int = 0
+    last_failure_time: float = 0.0
+    opened_at: float = 0.0
+
+    def reset(self):
+        """Reset circuit breaker to closed state"""
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.success_count = 0
+        self.last_failure_time = 0.0
+        self.opened_at = 0.0
 
 
 @dataclass
@@ -39,6 +79,8 @@ class LLMMetrics:
     total_tokens: int = 0
     total_response_time: float = 0.0
     cache_hits: int = 0
+    circuit_breaker_trips: int = 0  # Times circuit breaker opened
+    permanent_errors: int = 0  # Errors that don't benefit from retry
 
     @property
     def success_rate(self) -> float:
@@ -81,10 +123,16 @@ class LLMResponse:
 
 class LLMAdapter:
     """
-    Unified LLM adapter for Test Force agents.
+    Qwen-First LLM adapter for Test Force agents.
+    
+    AGGRESSIVE QWEN MODE:
+    - Prova Ollama/Qwen fino a 10 volte con backoff esponenziale
+    - Auto-start Ollama se non disponibile
+    - Solo Mock come ultimo fallback (NON Gemini!)
 
     Features:
-    - Automatic fallback (Ollama → Gemini → Mock)
+    - Aggressive retry for Qwen (up to 10 attempts)
+    - Auto-start Ollama if not running
     - Request/response caching
     - Comprehensive metrics
     - Structured logging
@@ -95,16 +143,32 @@ class LLMAdapter:
         self,
         primary_provider: LLMProvider = LLMProvider.OLLAMA,
         ollama_url: str = "http://localhost:11434",
-        ollama_model: str = "qwen2.5-coder:7b-instruct-q4_K_M",
-        gemini_api_key: str | None = None,
+        ollama_model: str = "qwen2.5:latest",  # Default Qwen model - can be overridden via env
         enable_cache: bool = True,
         cache_size: int = 100,
         rate_limit: int = 10,  # requests per minute
+        max_retries: int = 10,  # Aggressive retry for Qwen
+        retry_backoff_base: float = 1.5,  # Exponential backoff
+        retry_jitter: float = 0.5,  # Jitter range (seconds) to avoid thundering herd
+        auto_start_ollama: bool = True,  # Try to start Ollama if down
+        # Circuit Breaker settings
+        circuit_breaker_failure_threshold: int = 5,  # Failures before opening circuit
+        circuit_breaker_timeout: float = 60.0,  # Seconds before trying half-open
+        circuit_breaker_success_threshold: int = 2,  # Successes to close circuit
     ):
         self.primary_provider = primary_provider
         self.ollama_url = ollama_url
         self.ollama_model = ollama_model
-        self.gemini_api_key = gemini_api_key
+        self.max_retries = max_retries
+        self.retry_backoff_base = retry_backoff_base
+        self.retry_jitter = retry_jitter
+        self.auto_start_ollama = auto_start_ollama
+
+        # Circuit Breaker
+        self.circuit_breaker = CircuitBreakerState()
+        self.circuit_breaker_failure_threshold = circuit_breaker_failure_threshold
+        self.circuit_breaker_timeout = circuit_breaker_timeout
+        self.circuit_breaker_success_threshold = circuit_breaker_success_threshold
 
         # Caching
         self.enable_cache = enable_cache
@@ -114,20 +178,122 @@ class LLMAdapter:
         # Metrics
         self.metrics = LLMMetrics()
         self.request_times: list[float] = []
+        self.retry_count = 0  # Track retries
 
         # Rate limiting
         self.rate_limit = rate_limit
         self.request_count = 0
         self.last_reset = time.time()
 
-        # HTTP client
-        self.client = httpx.AsyncClient(timeout=120.0)
+        # HTTP client with longer timeout for retries
+        self.client = httpx.AsyncClient(timeout=180.0)
 
-        logger.info(f"🧠 LLM Adapter initialized with {primary_provider.value} as primary")
+        logger.info(f"🔥 LLM Adapter initialized - QWEN-FIRST MODE (Enhanced)")
+        logger.info(f"   Primary: {primary_provider.value}")
+        logger.info(f"   Model: {ollama_model}")
+        logger.info(f"   Max Retries: {max_retries}")
+        logger.info(f"   Retry Jitter: {retry_jitter}s")
+        logger.info(f"   Circuit Breaker: {circuit_breaker_failure_threshold} failures → OPEN")
+        logger.info(f"   Auto-start Ollama: {auto_start_ollama}")
+
+    def _classify_error(self, error: Exception) -> ErrorType:
+        """Classify error type for intelligent retry decision"""
+        error_str = str(error).lower()
+        error_type = type(error).__name__
+
+        # Permanent errors - don't retry
+        if "model not found" in error_str or "invalid model" in error_str:
+            return ErrorType.PERMANENT
+        if "authentication" in error_str or "unauthorized" in error_str:
+            return ErrorType.PERMANENT
+        if "invalid prompt" in error_str or "malformed" in error_str:
+            return ErrorType.PERMANENT
+
+        # Rate limit errors - special handling
+        if "rate limit" in error_str or "429" in error_str:
+            return ErrorType.RATE_LIMIT
+
+        # Transient errors - retryable
+        if isinstance(error, (httpx.TimeoutException, httpx.ConnectError, httpx.NetworkError)):
+            return ErrorType.TRANSIENT
+        if "timeout" in error_str or "connection" in error_str:
+            return ErrorType.TRANSIENT
+        if "service unavailable" in error_str or "503" in error_str:
+            return ErrorType.TRANSIENT
+        if "502" in error_str or "504" in error_str:  # Bad Gateway, Gateway Timeout
+            return ErrorType.TRANSIENT
+
+        # Default to transient (safer to retry)
+        return ErrorType.TRANSIENT
+
+    def _check_circuit_breaker(self) -> bool:
+        """Check if circuit breaker allows request"""
+        current_time = time.time()
+
+        # Check if we should transition from OPEN to HALF_OPEN
+        if self.circuit_breaker.state == CircuitState.OPEN:
+            if current_time - self.circuit_breaker.opened_at >= self.circuit_breaker_timeout:
+                logger.info("🔄 Circuit breaker: OPEN → HALF_OPEN (testing recovery)")
+                self.circuit_breaker.state = CircuitState.HALF_OPEN
+                self.circuit_breaker.success_count = 0
+                return True
+            else:
+                logger.debug(
+                    f"🚫 Circuit breaker OPEN - rejecting request "
+                    f"({self.circuit_breaker_timeout - (current_time - self.circuit_breaker.opened_at):.1f}s remaining)"
+                )
+                return False
+
+        # CLOSED or HALF_OPEN - allow request
+        return True
+
+    def _record_circuit_breaker_success(self):
+        """Record successful request for circuit breaker"""
+        if self.circuit_breaker.state == CircuitState.HALF_OPEN:
+            self.circuit_breaker.success_count += 1
+            if self.circuit_breaker.success_count >= self.circuit_breaker_success_threshold:
+                logger.info("✅ Circuit breaker: HALF_OPEN → CLOSED (service recovered)")
+                self.circuit_breaker.reset()
+        elif self.circuit_breaker.state == CircuitState.CLOSED:
+            # Reset failure count on success
+            if self.circuit_breaker.failure_count > 0:
+                self.circuit_breaker.failure_count = max(0, self.circuit_breaker.failure_count - 1)
+
+    def _record_circuit_breaker_failure(self, error_type: ErrorType):
+        """Record failed request for circuit breaker"""
+        # Only count transient errors for circuit breaker
+        if error_type == ErrorType.TRANSIENT:
+            self.circuit_breaker.failure_count += 1
+            self.circuit_breaker.last_failure_time = time.time()
+
+            if self.circuit_breaker.state == CircuitState.HALF_OPEN:
+                # Failed during half-open - go back to OPEN
+                logger.warning("❌ Circuit breaker: HALF_OPEN → OPEN (recovery failed)")
+                self.circuit_breaker.state = CircuitState.OPEN
+                self.circuit_breaker.opened_at = time.time()
+            elif (
+                self.circuit_breaker.state == CircuitState.CLOSED
+                and self.circuit_breaker.failure_count >= self.circuit_breaker_failure_threshold
+            ):
+                # Too many failures - open circuit
+                logger.warning(
+                    f"🚨 Circuit breaker: CLOSED → OPEN "
+                    f"({self.circuit_breaker.failure_count} failures)"
+                )
+                self.circuit_breaker.state = CircuitState.OPEN
+                self.circuit_breaker.opened_at = time.time()
+                self.metrics.circuit_breaker_trips += 1
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         """
-        Generate text using LLM with automatic fallback.
+        Generate text using Qwen with ENHANCED retry and circuit breaker.
+        
+        STRATEGY:
+        1. Check cache first
+        2. Check circuit breaker
+        3. Try Qwen with intelligent retry (based on error type)
+        4. If Ollama not available, try to start it
+        5. Only use Mock if ALL retries fail or circuit breaker is OPEN
 
         Args:
             request: LLM request with prompt and parameters
@@ -148,114 +314,214 @@ class LLMAdapter:
             logger.debug(f"🎯 Cache hit for request: {request.prompt[:50]}...")
             return cached_response
 
-        # Try providers in order
-        providers = self._get_provider_order(request.provider or self.primary_provider)
+        # Determine provider (force OLLAMA unless explicitly MOCK)
+        provider = request.provider or self.primary_provider
+        if provider == LLMProvider.MOCK:
+            return await self._call_mock(request)
 
-        for provider in providers:
+        # Check circuit breaker
+        if not self._check_circuit_breaker():
+            # Circuit breaker is OPEN - return mock immediately
+            logger.warning("🚫 Circuit breaker OPEN - returning mock response")
+            self.metrics.total_requests += 1
+            self.metrics.failed_requests += 1
+            return LLMResponse(
+                text="# Mock response - Circuit breaker OPEN (Ollama unavailable)",
+                provider=LLMProvider.MOCK,
+                response_time=time.time() - start_time,
+            )
+
+        # ENHANCED QWEN MODE: Intelligent retry based on error type
+        last_error = None
+        last_error_type = None
+
+        for attempt in range(1, self.max_retries + 1):
             try:
-                response = await self._call_provider(provider, request)
+                # Check Ollama health before retry (after first failure)
+                if attempt > 1:
+                    await self._ensure_ollama_available()
 
-                # Update metrics
+                response = await self._call_ollama(request)
+
+                # Success! Update metrics and circuit breaker
                 self.metrics.total_requests += 1
                 self.metrics.successful_requests += 1
                 self.metrics.total_tokens += response.tokens_used
                 self.metrics.total_response_time += response.response_time
+                self.retry_count = attempt - 1
+                self._record_circuit_breaker_success()
 
                 # Cache response
                 if self.enable_cache:
                     self._cache_response(cache_key, response)
 
-                logger.info(
-                    f"✅ {provider.value} response: {len(response.text)} chars, "
-                    f"{response.response_time:.2f}s, {response.tokens_used} tokens"
-                )
+                if attempt > 1:
+                    logger.info(
+                        f"✅ Qwen succeeded after {attempt} attempts: {len(response.text)} chars, "
+                        f"{response.response_time:.2f}s, {response.tokens_used} tokens"
+                    )
+                else:
+                    logger.info(
+                        f"✅ Qwen response: {len(response.text)} chars, "
+                        f"{response.response_time:.2f}s, {response.tokens_used} tokens"
+                    )
 
                 return response
 
             except Exception as e:
-                logger.warning(f"❌ {provider.value} failed: {e}")
+                last_error = e
+                last_error_type = self._classify_error(e)
                 self.metrics.failed_requests += 1
-                continue
 
-        # All providers failed - return mock response
-        logger.error("🚨 All LLM providers failed, returning mock response")
+                # Record circuit breaker failure
+                self._record_circuit_breaker_failure(last_error_type)
+
+                # Permanent errors - don't retry
+                if last_error_type == ErrorType.PERMANENT:
+                    self.metrics.permanent_errors += 1
+                    logger.error(
+                        f"❌ Permanent error (no retry): {e}. "
+                        f"Returning mock response."
+                    )
+                    break  # Exit retry loop immediately
+
+                # Check circuit breaker again (might have opened during retries)
+                if not self._check_circuit_breaker():
+                    logger.warning("🚫 Circuit breaker opened during retries")
+                    break
+
+                if attempt < self.max_retries:
+                    # Calculate backoff with jitter
+                    base_wait = self.retry_backoff_base ** (attempt - 1)
+                    jitter = random.uniform(0, self.retry_jitter)
+                    wait_time = base_wait + jitter
+
+                    # Longer backoff for rate limits
+                    if last_error_type == ErrorType.RATE_LIMIT:
+                        wait_time *= 2
+
+                    logger.warning(
+                        f"🔄 Qwen attempt {attempt}/{self.max_retries} failed ({last_error_type.value}): {e}. "
+                        f"Retrying in {wait_time:.1f}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"❌ Qwen failed after {self.max_retries} attempts: {e}")
+
+        # All retries failed - return mock response
+        logger.error(
+            f"🚨 Qwen failed after {self.max_retries} attempts. "
+            f"Last error ({last_error_type.value if last_error_type else 'unknown'}): {last_error}. "
+            f"Returning mock response."
+        )
         self.metrics.total_requests += 1
-        self.metrics.failed_requests += 1
 
         return LLMResponse(
-            text="# Mock response - all LLM providers failed",
+            text="# Mock response - Qwen unavailable after all retries",
             provider=LLMProvider.MOCK,
             response_time=time.time() - start_time,
         )
 
-    async def _call_provider(self, provider: LLMProvider, request: LLMRequest) -> LLMResponse:
-        """Call specific LLM provider"""
-        if provider == LLMProvider.OLLAMA:
-            return await self._call_ollama(request)
-        elif provider == LLMProvider.GEMINI:
-            return await self._call_gemini(request)
-        elif provider == LLMProvider.MOCK:
-            return await self._call_mock(request)
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
+    async def _ensure_ollama_available(self):
+        """Ensure Ollama is running - try to start it if needed"""
+        if not self.auto_start_ollama:
+            return
+
+        try:
+            # Quick health check
+            response = await self.client.get(f"{self.ollama_url}/api/tags", timeout=2.0)
+            if response.status_code == 200:
+                # Check if model is available
+                models = response.json().get("models", [])
+                model_names = [m.get("name", "") for m in models]
+                if any(self.ollama_model in name or name in self.ollama_model for name in model_names):
+                    logger.debug("✅ Ollama is running and model available")
+                    return
+                else:
+                    logger.warning(f"⚠️ Ollama running but model {self.ollama_model} not found")
+        except Exception:
+            pass  # Ollama not responding
+
+        # Try to start Ollama
+        logger.info("🚀 Attempting to start Ollama...")
+        try:
+            import subprocess
+            import shutil
+
+            # Check if ollama command exists
+            ollama_cmd = shutil.which("ollama")
+            if not ollama_cmd:
+                logger.warning("⚠️ Ollama command not found in PATH")
+                return
+
+            # Try to start Ollama (non-blocking)
+            # Note: This is a best-effort attempt
+            try:
+                subprocess.Popen(
+                    [ollama_cmd, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                logger.info("🚀 Ollama start command issued, waiting 5s...")
+                await asyncio.sleep(5)  # Give it time to start
+
+                # Verify it started
+                response = await self.client.get(f"{self.ollama_url}/api/tags", timeout=2.0)
+                if response.status_code == 200:
+                    logger.info("✅ Ollama started successfully!")
+                else:
+                    logger.warning("⚠️ Ollama start command issued but not responding yet")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not start Ollama: {e}")
+
+        except Exception as e:
+            logger.warning(f"⚠️ Error checking/starting Ollama: {e}")
 
     async def _call_ollama(self, request: LLMRequest) -> LLMResponse:
-        """Call Ollama API"""
+        """Call Ollama API (Qwen) - Direct call, no retry logic here (handled in generate)"""
         start_time = time.time()
 
         payload = {
             "model": self.ollama_model,
             "prompt": request.prompt,
             "stream": False,
-            "options": {"temperature": request.temperature, "num_predict": request.max_tokens},
+            "options": {
+                "temperature": request.temperature,
+                "num_predict": request.max_tokens,
+            },
         }
 
-        response = await self.client.post(f"{self.ollama_url}/api/generate", json=payload)
-        response.raise_for_status()
-
-        data = response.json()
-        text = data.get("response", "")
-
-        # Estimate tokens (rough approximation: 1 token ≈ 4 chars for code)
-        tokens_used = len(text) // 4
-
-        return LLMResponse(
-            text=text,
-            tokens_used=tokens_used,
-            response_time=time.time() - start_time,
-            provider=LLMProvider.OLLAMA,
-        )
-
-    async def _call_gemini(self, request: LLMRequest) -> LLMResponse:
-        """Call Gemini API (fallback)"""
-        if not self.gemini_api_key:
-            raise ValueError("Gemini API key not configured")
-
-        start_time = time.time()
-
-        # Use existing ZantaraAIClient for Gemini
         try:
-            from backend.llm.zantara_ai_client import ZantaraAIClient
-
-            client = ZantaraAIClient()
-            response = await client.chat_async(
-                messages=[{"role": "user", "content": request.prompt}],
-                max_tokens=request.max_tokens,
-                temperature=request.temperature,
+            response = await self.client.post(
+                f"{self.ollama_url}/api/generate",
+                json=payload,
+                timeout=180.0,  # Long timeout for large generations
             )
+            response.raise_for_status()
 
-            text = response.get("text", "")
-            tokens_used = response.get("tokens_used", len(text) // 4)
+            data = response.json()
+            text = data.get("response", "")
+            
+            if not text:
+                raise ValueError("Empty response from Ollama")
+
+            # Estimate tokens (rough approximation: 1 token ≈ 4 chars for code)
+            tokens_used = len(text) // 4
 
             return LLMResponse(
                 text=text,
                 tokens_used=tokens_used,
                 response_time=time.time() - start_time,
-                provider=LLMProvider.GEMINI,
+                provider=LLMProvider.OLLAMA,
             )
+        except httpx.TimeoutException as e:
+            raise RuntimeError(f"Ollama timeout: {e}")
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(f"Ollama HTTP error {e.response.status_code}: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Ollama call failed: {e}")
 
-        except ImportError:
-            raise ValueError("ZantaraAIClient not available")
 
     async def _call_mock(self, request: LLMRequest) -> LLMResponse:
         """Mock response for testing"""
@@ -276,14 +542,6 @@ class LLMAdapter:
             provider=LLMProvider.MOCK,
         )
 
-    def _get_provider_order(self, primary: LLMProvider) -> list[LLMProvider]:
-        """Get provider fallback order"""
-        if primary == LLMProvider.OLLAMA:
-            return [LLMProvider.OLLAMA, LLMProvider.GEMINI, LLMProvider.MOCK]
-        elif primary == LLMProvider.GEMINI:
-            return [LLMProvider.GEMINI, LLMProvider.OLLAMA, LLMProvider.MOCK]
-        else:
-            return [LLMProvider.MOCK]
 
     def _get_cache_key(self, request: LLMRequest) -> str:
         """Generate cache key for request"""
@@ -334,6 +592,11 @@ class LLMAdapter:
             else 0,
             "cache_size": len(self.cache),
             "rate_limit_used": f"{self.request_count}/{self.rate_limit}/min",
+            # Circuit Breaker metrics
+            "circuit_breaker_state": self.circuit_breaker.state.value,
+            "circuit_breaker_failures": self.circuit_breaker.failure_count,
+            "circuit_breaker_trips": self.metrics.circuit_breaker_trips,
+            "permanent_errors": self.metrics.permanent_errors,
         }
 
     def reset_metrics(self):
@@ -344,29 +607,27 @@ class LLMAdapter:
         logger.info("📊 LLM Adapter metrics reset")
 
     async def health_check(self) -> dict[str, bool]:
-        """Check health of all providers"""
+        """Check health of providers (Ollama and Mock only)"""
         health = {}
 
         # Check Ollama
         try:
-            response = await self.client.get(f"{self.ollama_url}/api/tags")
-            health["ollama"] = response.status_code == 200
+            response = await self.client.get(f"{self.ollama_url}/api/tags", timeout=5.0)
+            if response.status_code == 200:
+                # Also check if model is available
+                models = response.json().get("models", [])
+                model_names = [m.get("name", "") for m in models]
+                health["ollama"] = any(
+                    self.ollama_model in name or name in self.ollama_model
+                    for name in model_names
+                )
+                if not health["ollama"]:
+                    logger.warning(f"⚠️ Ollama running but model {self.ollama_model} not found")
+            else:
+                health["ollama"] = False
         except Exception as e:
             logger.warning(f"Ollama health check failed: {e}")
             health["ollama"] = False
-
-        # Check Gemini
-        try:
-            if self.gemini_api_key:
-                from backend.llm.zantara_ai_client import ZantaraAIClient
-
-                client = ZantaraAIClient()
-                # Simple health check - just try to import
-                health["gemini"] = True
-            else:
-                health["gemini"] = False
-        except Exception:
-            health["gemini"] = False
 
         health["mock"] = True  # Always available
 
@@ -384,9 +645,17 @@ _llm_adapter: LLMAdapter | None = None
 
 def get_llm_adapter() -> LLMAdapter:
     """Get singleton LLM adapter instance"""
+    import os
     global _llm_adapter
     if _llm_adapter is None:
-        _llm_adapter = LLMAdapter()
+        # Read from environment if available
+        ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        _llm_adapter = LLMAdapter(
+            ollama_model=ollama_model,
+            ollama_url=ollama_url,
+        )
+        logger.info(f"🔥 LLM Adapter singleton created with model: {ollama_model}")
     return _llm_adapter
 
 

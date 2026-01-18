@@ -613,9 +613,9 @@ Return ONLY the complete updated Python test code. No explanations, no markdown 
 
         try:
             if self.llm_adapter:
+                # SOLO OLLAMA (Qwen) o MOCK - NO GEMINI!
                 provider_map = {
                     "local": LLMProvider.OLLAMA,
-                    "gemini": LLMProvider.GEMINI,
                     "mock": LLMProvider.MOCK,
                 }
 
@@ -715,7 +715,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Test Maintainer Agent")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--no-git", action="store_true", help="Don't check git, scan all files")
-    parser.add_argument("--provider", default="local", choices=["local", "gemini", "mock"])
+    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
 
     args = parser.parse_args()
 

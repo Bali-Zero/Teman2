@@ -445,9 +445,9 @@ Return ONLY the complete Python test code. No explanations, no markdown formatti
 
         try:
             if self.llm_adapter:
+                # SOLO OLLAMA (Qwen) o MOCK - NO GEMINI!
                 provider_map = {
                     "local": LLMProvider.OLLAMA,
-                    "gemini": LLMProvider.GEMINI,
                     "mock": LLMProvider.MOCK,
                 }
 
@@ -619,7 +619,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Test Creator Agent")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--max-files", type=int, default=10, help="Maximum files to process")
-    parser.add_argument("--provider", default="local", choices=["local", "gemini", "mock"])
+    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
     parser.add_argument(
         "--coverage-target", type=float, default=99.0, help="Coverage target percentage"
     )
