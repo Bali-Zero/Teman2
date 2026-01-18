@@ -137,8 +137,7 @@ class AutoCRMService:
             }
 
         try:
-            async with pool.acquire() as conn:
-                async with conn.transaction():
+            async with pool.acquire() as conn, conn.transaction():
                     # Step 1: Batch query - Check client and get practice type in parallel
                     # Use extracted email if not provided (will be set after extraction)
                     check_email = user_email
@@ -504,7 +503,11 @@ class AutoCRMService:
 _auto_crm_instance: AutoCRMService | None = None
 
 
-def get_auto_crm_service(ai_client=None, db_pool: asyncpg.Pool | None = None) -> AutoCRMService:
+def get_auto_crm_service(
+    ai_client=None,
+    db_pool: asyncpg.Pool | None = None,
+    telegram_service=None,
+) -> AutoCRMService:
     """
     Get or create singleton auto-CRM service instance
 
@@ -513,6 +516,7 @@ def get_auto_crm_service(ai_client=None, db_pool: asyncpg.Pool | None = None) ->
     Args:
         ai_client: Optional AI client for extraction
         db_pool: Optional database pool (if None, will use dependency injection in methods)
+        telegram_service: Optional TelegramBotService for lead notifications
 
     Returns:
         AutoCRMService instance
@@ -521,7 +525,11 @@ def get_auto_crm_service(ai_client=None, db_pool: asyncpg.Pool | None = None) ->
 
     if _auto_crm_instance is None:
         try:
-            _auto_crm_instance = AutoCRMService(ai_client=ai_client, db_pool=db_pool)
+            _auto_crm_instance = AutoCRMService(
+                ai_client=ai_client,
+                db_pool=db_pool,
+                telegram_service=telegram_service,
+            )
             logger.info("✅ Auto-CRM Service initialized")
         except Exception as e:
             logger.warning(f"⚠️  Auto-CRM Service not available: {e}")

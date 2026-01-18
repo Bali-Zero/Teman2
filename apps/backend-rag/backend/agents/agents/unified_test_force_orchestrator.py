@@ -239,7 +239,7 @@ Generate complete test file."""
 
         request = LLMRequest(
             prompt=prompt,
-            max_tokens=4000,
+            max_tokens=2000,  # Reduced to avoid timeouts - can generate multiple smaller requests if needed
             temperature=0.2,
             provider=LLMProvider.OLLAMA,
         )

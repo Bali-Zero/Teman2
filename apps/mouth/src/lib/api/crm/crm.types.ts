@@ -42,6 +42,7 @@ export interface Interaction {
   read_receipt?: boolean; // [NEW] Real read receipt status
   read_at?: string; // [NEW] When interaction was marked as read
   read_by?: string; // [NEW] Who marked it as read
+  extracted_entities?: Record<string, any>; // [NEW] AI extracted entities
 }
 
 export interface PracticeStats {

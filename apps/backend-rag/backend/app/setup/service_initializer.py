@@ -25,6 +25,7 @@ from backend.app.routers.websocket import redis_listener
 from backend.llm.zantara_ai_client import ZantaraAIClient
 from backend.services.crm.auto_crm_service import get_auto_crm_service
 from backend.services.crm.collaborator_service import CollaboratorService
+from backend.services.integrations.telegram_bot_service import TelegramBotService
 from backend.services.memory import MemoryServicePostgres
 from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
 from backend.services.misc.autonomous_research_service import AutonomousResearchService
@@ -199,6 +200,8 @@ async def _init_rag_components(app: FastAPI, search_service: SearchService) -> Q
     else:
         # Fallback to search_service for backward compatibility
         cultural_rag_service = CulturalRAGService(search_service=search_service)
+
+    app.state.cultural_rag = cultural_rag_service
     query_router = QueryRouter()
     service_registry.register("rag", ServiceStatus.HEALTHY, critical=False)
 
@@ -208,7 +211,7 @@ async def _init_rag_components(app: FastAPI, search_service: SearchService) -> Q
 
 
 async def _init_specialized_agents(
-    app: FastAPI,
+    _app: FastAPI,
     search_service: SearchService,
     ai_client: ZantaraAIClient,
     query_router: QueryRouter,
@@ -528,17 +531,28 @@ async def initialize_crm_and_memory_services(
         db_pool: Database pool instance (may be None)
     """
     try:
-        # Initialize AutoCRMService with centralized database pool
+        # Initialize TelegramBotService for lead notifications
+        telegram_service = TelegramBotService()
+        logger.info("✅ TelegramBotService initialized for lead notifications")
+
+        # Initialize AutoCRMService with centralized database pool and Telegram service
         if db_pool:
-            auto_crm_service = get_auto_crm_service(ai_client=ai_client, db_pool=db_pool)
+            auto_crm_service = get_auto_crm_service(
+                ai_client=ai_client,
+                db_pool=db_pool,
+                telegram_service=telegram_service,
+            )
             await auto_crm_service.connect()  # No-op, but kept for compatibility
             app.state.auto_crm_service = auto_crm_service
-            logger.info("✅ AutoCRMService initialized with centralized database pool")
+            logger.info("✅ AutoCRMService initialized with centralized database pool + Telegram")
         else:
             logger.warning(
                 "⚠️ Database pool not available, AutoCRMService will use dependency injection"
             )
-            auto_crm_service = get_auto_crm_service(ai_client=ai_client)
+            auto_crm_service = get_auto_crm_service(
+                ai_client=ai_client,
+                telegram_service=telegram_service,
+            )
             await auto_crm_service.connect()
             app.state.auto_crm_service = auto_crm_service
 

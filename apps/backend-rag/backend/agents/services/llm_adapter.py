@@ -17,8 +17,10 @@ Metriche e logging integrati.
 import asyncio
 import logging
 import random
+import shutil
+import subprocess
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -124,7 +126,7 @@ class LLMResponse:
 class LLMAdapter:
     """
     Qwen-First LLM adapter for Test Force agents.
-    
+
     AGGRESSIVE QWEN MODE:
     - Prova Ollama/Qwen fino a 10 volte con backoff esponenziale
     - Auto-start Ollama se non disponibile
@@ -185,10 +187,10 @@ class LLMAdapter:
         self.request_count = 0
         self.last_reset = time.time()
 
-        # HTTP client with longer timeout for retries
-        self.client = httpx.AsyncClient(timeout=180.0)
+        # HTTP client with longer timeout for large test generations (10 minutes)
+        self.client = httpx.AsyncClient(timeout=600.0)
 
-        logger.info(f"🔥 LLM Adapter initialized - QWEN-FIRST MODE (Enhanced)")
+        logger.info("🔥 LLM Adapter initialized - QWEN-FIRST MODE (Enhanced)")
         logger.info(f"   Primary: {primary_provider.value}")
         logger.info(f"   Model: {ollama_model}")
         logger.info(f"   Max Retries: {max_retries}")
@@ -199,7 +201,7 @@ class LLMAdapter:
     def _classify_error(self, error: Exception) -> ErrorType:
         """Classify error type for intelligent retry decision"""
         error_str = str(error).lower()
-        error_type = type(error).__name__
+        # error_type was unused
 
         # Permanent errors - don't retry
         if "model not found" in error_str or "invalid model" in error_str:
@@ -287,7 +289,7 @@ class LLMAdapter:
     async def generate(self, request: LLMRequest) -> LLMResponse:
         """
         Generate text using Qwen with ENHANCED retry and circuit breaker.
-        
+
         STRATEGY:
         1. Check cache first
         2. Check circuit breaker
@@ -445,9 +447,6 @@ class LLMAdapter:
         # Try to start Ollama
         logger.info("🚀 Attempting to start Ollama...")
         try:
-            import subprocess
-            import shutil
-
             # Check if ollama command exists
             ollama_cmd = shutil.which("ollama")
             if not ollama_cmd:
@@ -496,13 +495,13 @@ class LLMAdapter:
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
                 json=payload,
-                timeout=180.0,  # Long timeout for large generations
+                timeout=600.0,  # Very long timeout for large test generations (10 min)
             )
             response.raise_for_status()
 
             data = response.json()
             text = data.get("response", "")
-            
+
             if not text:
                 raise ValueError("Empty response from Ollama")
 
@@ -516,11 +515,11 @@ class LLMAdapter:
                 provider=LLMProvider.OLLAMA,
             )
         except httpx.TimeoutException as e:
-            raise RuntimeError(f"Ollama timeout: {e}")
+            raise RuntimeError(f"Ollama timeout: {e}") from e
         except httpx.HTTPStatusError as e:
-            raise RuntimeError(f"Ollama HTTP error {e.response.status_code}: {e}")
+            raise RuntimeError(f"Ollama HTTP error {e.response.status_code}: {e}") from e
         except Exception as e:
-            raise RuntimeError(f"Ollama call failed: {e}")
+            raise RuntimeError(f"Ollama call failed: {e}") from e
 
 
     async def _call_mock(self, request: LLMRequest) -> LLMResponse:

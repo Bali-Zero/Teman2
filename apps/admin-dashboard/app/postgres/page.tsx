@@ -55,7 +55,7 @@ export default function PostgresPage() {
   };
 
   filteredTables.forEach(table => {
-    const name = table.table_name.toLowerCase();
+    const name = (table.table_name || '').toLowerCase();
     if (CATEGORIES.crm.match(name)) grouped.crm.push(table);
     else if (CATEGORIES.ops.match(name)) grouped.ops.push(table);
     else if (CATEGORIES.knowledge.match(name)) grouped.knowledge.push(table);
