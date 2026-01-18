@@ -197,7 +197,7 @@ async def get_auth_url(
         auth_url = oauth_service.get_authorization_url(state)
         return {"auth_url": auth_url, "state": state_token}
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/callback")
@@ -301,7 +301,7 @@ async def disconnect_account(
         return {"success": True, "message": "Zoho account disconnected"}
     except Exception as e:
         logger.error(f"Failed to disconnect: {e}")
-        raise HTTPException(status_code=500, detail="Failed to disconnect account")
+        raise HTTPException(status_code=500, detail="Failed to disconnect account") from e
 
 
 # ================================================
@@ -325,10 +325,10 @@ async def list_folders(
         folders = await email_service.list_folders(user_id)
         return {"folders": folders}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to list folders: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch folders")
+        raise HTTPException(status_code=500, detail="Failed to fetch folders") from e
 
 
 # ================================================
@@ -364,10 +364,10 @@ async def list_emails(
             is_unread=is_unread,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to list emails: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch emails")
+        raise HTTPException(status_code=500, detail="Failed to fetch emails") from e
 
 
 @router.get("/emails/{message_id}")
@@ -388,10 +388,10 @@ async def get_email(
         email_service = _get_email_service(db_pool)
         return await email_service.get_email(user_id, message_id, folder_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to get email: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch email")
+        raise HTTPException(status_code=500, detail="Failed to fetch email") from e
 
 
 @router.post("/emails")
@@ -422,10 +422,10 @@ async def send_email(
             is_html=request.is_html,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send email")
+        raise HTTPException(status_code=500, detail="Failed to send email") from e
 
 
 @router.get("/emails/search")
@@ -445,10 +445,10 @@ async def search_emails(
         email_service = _get_email_service(db_pool)
         return await email_service.search_emails(user_id, query, limit)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to search emails: {e}")
-        raise HTTPException(status_code=500, detail="Failed to search emails")
+        raise HTTPException(status_code=500, detail="Failed to search emails") from e
 
 
 @router.post("/emails/{message_id}/reply")
@@ -474,10 +474,10 @@ async def reply_email(
             reply_all=request.reply_all,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to reply to email: {e}")
-        raise HTTPException(status_code=500, detail="Failed to reply to email")
+        raise HTTPException(status_code=500, detail="Failed to reply to email") from e
 
 
 @router.post("/emails/{message_id}/forward")
@@ -503,10 +503,10 @@ async def forward_email(
             content=request.content,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to forward email: {e}")
-        raise HTTPException(status_code=500, detail="Failed to forward email")
+        raise HTTPException(status_code=500, detail="Failed to forward email") from e
 
 
 @router.patch("/emails/mark-read")
@@ -531,10 +531,10 @@ async def mark_emails_read(
         )
         return {"success": success}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to mark emails: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update emails")
+        raise HTTPException(status_code=500, detail="Failed to update emails") from e
 
 
 @router.patch("/emails/{message_id}/flag")
@@ -558,10 +558,10 @@ async def toggle_flag(
         )
         return {"success": success}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to toggle flag: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update email")
+        raise HTTPException(status_code=500, detail="Failed to update email") from e
 
 
 @router.delete("/emails")
@@ -585,10 +585,10 @@ async def delete_emails(
         )
         return {"success": success}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to delete emails: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete emails")
+        raise HTTPException(status_code=500, detail="Failed to delete emails") from e
 
 
 @router.post("/emails/delete")
@@ -612,10 +612,10 @@ async def delete_emails_post(
         )
         return {"success": success}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to delete emails: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete emails")
+        raise HTTPException(status_code=500, detail="Failed to delete emails") from e
 
 
 # ================================================
@@ -659,10 +659,10 @@ async def save_draft(
             else None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to save draft: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save draft")
+        raise HTTPException(status_code=500, detail="Failed to save draft") from e
 
 
 # ================================================
@@ -701,10 +701,10 @@ async def upload_attachment(
 
         return attachment_result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to upload attachment: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload attachment")
+        raise HTTPException(status_code=500, detail="Failed to upload attachment") from e
 
 
 @router.get("/emails/{message_id}/attachments/{attachment_id}")
@@ -735,10 +735,10 @@ async def download_attachment(
             headers={"Content-Disposition": f"attachment; filename={attachment_id}"},
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to download attachment: {e}")
-        raise HTTPException(status_code=500, detail="Failed to download attachment")
+        raise HTTPException(status_code=500, detail="Failed to download attachment") from e
 
 
 # ================================================

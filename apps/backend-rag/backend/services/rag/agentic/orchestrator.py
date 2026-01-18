@@ -584,6 +584,17 @@ Respond in the SAME language the user is using."""
             followup_questions = []
             if full_answer and len(full_answer) > 50:  # Only for substantial answers
                 try:
+                    # Generate follow-up questions with logging
+                    logger.debug(
+                        "💡 [Orchestrator] Generating follow-up questions",
+                        extra={
+                            "component": "AgenticRAGOrchestrator",
+                            "action": "generate_followups",
+                            "user_id": user_id,
+                            "query_length": len(query),
+                            "response_length": len(result.answer) if hasattr(result, "answer") else 0,
+                        },
+                    )
                     followup_questions = await self.followup_service.get_followups(
                         query=query,
                         response=full_answer[:500],  # Use first 500 chars for efficiency

@@ -97,18 +97,18 @@ class TestAuthenticationAndAuthorization:
 
         # Test successful authentication
         result = authenticate_user("admin", "admin123")
-        assert result["success"] == True
+        assert result["success"]
         assert "session_id" in result
         assert result["role"] == "admin"
 
         # Test failed authentication
         result = authenticate_user("admin", "wrongpassword")
-        assert result["success"] == False
+        assert not result["success"]
         assert gateway.auth_system["failed_attempts"]["admin"] == 1
 
         # Test non-existent user
         result = authenticate_user("nonexistent", "password")
-        assert result["success"] == False
+        assert not result["success"]
 
     def test_role_based_access_control(self, auth_gateway):
         """Test role-based access control (RBAC)."""
@@ -147,16 +147,16 @@ class TestAuthenticationAndAuthorization:
             sessions[role] = session_id
 
         # Test permissions
-        assert check_permission(sessions["admin"], "delete") == True
-        assert check_permission(sessions["admin"], "configure") == True
-        assert check_permission(sessions["developer"], "configure") == True
-        assert check_permission(sessions["developer"], "delete") == False
-        assert check_permission(sessions["user"], "write") == True
-        assert check_permission(sessions["user"], "delete") == False
-        assert check_permission(sessions["readonly"], "read") == True
-        assert check_permission(sessions["readonly"], "write") == False
-        assert check_permission(sessions["guest"], "read_public") == True
-        assert check_permission(sessions["guest"], "read") == False
+        assert check_permission(sessions["admin"], "delete")
+        assert check_permission(sessions["admin"], "configure")
+        assert check_permission(sessions["developer"], "configure")
+        assert not check_permission(sessions["developer"], "delete")
+        assert check_permission(sessions["user"], "write")
+        assert not check_permission(sessions["user"], "delete")
+        assert check_permission(sessions["readonly"], "read")
+        assert not check_permission(sessions["readonly"], "write")
+        assert check_permission(sessions["guest"], "read_public")
+        assert not check_permission(sessions["guest"], "read")
 
     def test_session_management(self, auth_gateway):
         """Test session management and security."""
@@ -192,13 +192,13 @@ class TestAuthenticationAndAuthorization:
         # Test session creation
         session_id = create_session("testuser", "user")
         assert session_id in gateway.auth_system["sessions"]
-        assert is_session_valid(session_id) == True
+        assert is_session_valid(session_id)
 
         # Test session invalidation
         result = invalidate_session(session_id)
-        assert result == True
+        assert result
         assert session_id not in gateway.auth_system["sessions"]
-        assert is_session_valid(session_id) == False
+        assert not is_session_valid(session_id)
 
         # Test session expiration
         expired_session_id = create_session("expireduser", "user")
@@ -206,7 +206,7 @@ class TestAuthenticationAndAuthorization:
         gateway.auth_system["sessions"][expired_session_id]["expires_at"] = (
             datetime.now() - timedelta(hours=1)
         )
-        assert is_session_valid(expired_session_id) == False
+        assert not is_session_valid(expired_session_id)
 
 
 class TestDataEncryptionAndPrivacy:
@@ -480,13 +480,13 @@ class TestSecurityVulnerabilityAssessment:
         session_token = generate_csrf_token()
 
         # Valid token
-        assert validate_csrf_token(session_token, session_token) == True
+        assert validate_csrf_token(session_token, session_token)
 
         # Invalid token
-        assert validate_csrf_token(session_token, "invalid_token") == False
+        assert not validate_csrf_token(session_token, "invalid_token")
 
         # Missing token
-        assert validate_csrf_token(session_token, "") == False
+        assert not validate_csrf_token(session_token, "")
 
     def test_security_headers_implementation(self, vuln_gateway):
         """Test security headers implementation."""
@@ -561,16 +561,16 @@ class TestRegulatoryCompliance:
             return compliance_percentage >= 90.0  # 90% threshold for GDPR
 
         # Test GDPR compliance
-        assert check_gdpr_compliance() == True
+        assert check_gdpr_compliance()
 
         # Test with missing requirement
         gdpr_requirements["user_rights"] = False
-        assert check_gdpr_compliance() == True  # Still above 90%
+        assert check_gdpr_compliance()  # Still above 90%
 
         # Test with multiple missing requirements
         gdpr_requirements["data_minimization"] = False
         gdpr_requirements["security_measures"] = False
-        assert check_gdpr_compliance() == False  # Below 90%
+        assert not check_gdpr_compliance()  # Below 90%
 
     def test_hipaa_compliance(self, compliance_gateway):
         """Test HIPAA compliance validation."""

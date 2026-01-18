@@ -28,28 +28,28 @@ def mock_app():
 async def test_is_transient_error_connection():
     """Test that connection errors are transient."""
     error = ConnectionError("Connection timeout")
-    assert _is_transient_error(error) == True
+    assert _is_transient_error(error)
 
 
 @pytest.mark.asyncio
 async def test_is_transient_error_timeout():
     """Test that timeout errors are transient."""
     error = Exception("timeout occurred")
-    assert _is_transient_error(error) == True
+    assert _is_transient_error(error)
 
 
 @pytest.mark.asyncio
 async def test_is_transient_error_too_many_connections():
     """Test that 'too many connections' errors are transient."""
     error = Exception("too many connections")
-    assert _is_transient_error(error) == True
+    assert _is_transient_error(error)
 
 
 @pytest.mark.asyncio
 async def test_is_transient_error_permanent():
     """Test that permanent errors are not transient."""
     error = ValueError("Invalid configuration")
-    assert _is_transient_error(error) == False
+    assert not _is_transient_error(error)
 
 
 @pytest.mark.asyncio

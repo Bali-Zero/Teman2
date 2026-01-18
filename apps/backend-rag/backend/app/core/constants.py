@@ -84,7 +84,7 @@ class EvidenceScoreConstants:
     """Constants for evidence score calculation in reasoning.py"""
 
     # Thresholds
-    ABSTAIN_THRESHOLD = 0.3  # Below this score, system abstains from answering
+    ABSTAIN_THRESHOLD = 0.2  # Below this score, system abstains from answering (lowered for fluidity)
     HIGH_QUALITY_SOURCE_THRESHOLD = 0.3  # Minimum score for a source to be considered high-quality
     MIN_SOURCES_FOR_BONUS = 3  # Minimum number of sources to get bonus score
     KEYWORD_MATCH_THRESHOLD = 0.3  # Minimum keyword match ratio (30%) to add score

@@ -1,0 +1,83 @@
+# 🔒 CURSOR AI DEVELOPMENT RULES
+# Auto-loaded on every Cursor session
+
+## 📋 MANDATORY FIRST READ
+**BEFORE STARTING ANY WORK, ALWAYS READ:**
+- `/Users/antonellosiano/SAFE_DEPLOYMENT_WORKFLOW.md` - Complete 18-step deployment pipeline
+
+This workflow is NON-NEGOTIABLE. Every step must pass its safety check before proceeding.
+
+## 🛡️ SAFETY GATES REMINDER
+Each workflow step must pass its safety check before proceeding:
+1. ✅ START → Clean working directory
+2. ✅ SYNC → No merge conflicts
+3. ✅ TEST → All tests passing
+4. ✅ WORK → Follow coding standards
+5. ✅ UNIT TEST → 80% coverage minimum
+6. ✅ LINT & FORMAT → No errors
+7. ✅ INTEGRATION TEST → All integrations working
+8. ✅ CODE REVIEW → PR approved
+9. ✅ BUILD → Build successful
+10. ✅ STAGING DEPLOY → Environment stable
+11. ✅ UAT → Stakeholder approval
+12. ✅ PERFORMANCE TEST → Metrics met
+13. ✅ SECURITY SCAN → No critical vulnerabilities
+14. ✅ PRE-DEPLOY CHECKLIST → All items checked
+15. ✅ PRODUCTION DEPLOY → Deployment successful
+16. ✅ VERIFY → All verifications passing
+17. ✅ MONITOR → No anomalies detected
+18. ✅ ROLLBACK → Available if needed
+
+**If ANY check fails:**
+1. STOP the workflow
+2. FIX the issue
+3. RESTART from the failed step
+
+## 🎯 PROJECT-SPECIFIC RULES
+
+### NUZANTARA/ZANTARA Projects
+**Context Files (Read for full system understanding):**
+- `/Users/antonellosiano/CLAUDE.md` - Complete system architecture & status
+
+**Key Technologies:**
+- Backend: Python FastAPI (Fly.io)
+- Frontend: Vanilla JS + HTML/CSS (GitHub Pages)
+- Database: ChromaDB, PostgreSQL, Redis
+- AI: Llama 4 Scout (primary) + Claude Haiku 4.5 (fallback)
+
+### Code Quality Standards
+- **TypeScript**: Strict mode enabled, no `any` types
+- **Testing**: Minimum 80% coverage
+- **Linting**: ESLint + Prettier configured
+- **Commits**: Conventional commits format
+- **Documentation**: Update docs with code changes
+
+### Security Requirements
+- ❌ NEVER commit `.env` files
+- ❌ NEVER commit API keys or secrets
+- ✅ ALWAYS use environment variables
+- ✅ ALWAYS run security audit before deploy
+- ✅ ALWAYS validate user inputs
+
+### Git Workflow
+- **Branch naming**: `feature/`, `fix/`, `refactor/`, `docs/`
+- **Commits**: Use conventional commits (feat:, fix:, docs:, etc.)
+- **PRs**: Required before merging to main
+- **Reviews**: Minimum 1 approval required
+
+## 📚 Reference Documentation
+- **Deployment Workflow**: ~/SAFE_DEPLOYMENT_WORKFLOW.md (⭐ MUST READ FIRST)
+- **System Status**: ~/CLAUDE.md
+- **Local Setup**: ~/Desktop/COOKING-LAB/SETUP_SAFE_WORKFLOW.md
+
+## 🚨 EMERGENCY PROCEDURES
+If production issues occur:
+1. Check health endpoints immediately
+2. Review recent deployments
+3. Check error logs
+4. Execute rollback if critical (see Step 18 in workflow)
+5. Document incident
+
+---
+**Last Updated**: 2025-11-15
+**Version**: 1.0

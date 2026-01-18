@@ -239,7 +239,7 @@ async def create_client(
     - **avatar_url**: URL to client avatar image
     - **tags**: Array of tags (e.g., ['vip', 'urgent'])
     """
-    start_time = time.time()
+    time.time()
     try:
         user_email = current_user.get("email", "").lower()
         # Add timeout for connection acquisition to prevent hanging
@@ -328,7 +328,7 @@ async def create_client(
             raise HTTPException(
                 status_code=503,
                 detail="Database connection timeout. Please try again.",
-            )
+            ) from None
 
     except asyncpg.UniqueViolationError as e:
         logger.warning(f"Integrity error creating client: {e}")
@@ -338,7 +338,7 @@ async def create_client(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/", response_model=list[ClientResponse])
@@ -372,7 +372,7 @@ async def list_clients(
     try:
         # Get current user from dependency
         current_user_email = current_user.get("email", "") if current_user else ""
-        current_user_name = current_user_email.lower().split("@")[0] if current_user_email else ""
+        current_user_email.lower().split("@")[0] if current_user_email else ""
 
         # SECURITY: Require authentication for client list
         if not current_user_email:
@@ -395,7 +395,7 @@ async def list_clients(
             # Build query dynamically with explicit columns + sentiment/summary from interactions
             query_parts = [
                 """
-                SELECT 
+                SELECT
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                     c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                     c.tags, c.created_at, c.updated_at,
@@ -465,7 +465,7 @@ async def list_clients(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/{client_id}", response_model=ClientResponse)
@@ -482,8 +482,8 @@ async def get_client(
     - Team members: Can only view clients assigned to them
     """
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
+        current_user.get("email", "").lower()
+        is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -501,7 +501,7 @@ async def get_client(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/by-email/{email}", response_model=ClientResponse)
@@ -541,7 +541,7 @@ async def get_client_by_email(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)
@@ -561,7 +561,7 @@ async def update_client(
     - Admin users: Can update any client
     - Team members: Can only update clients assigned to them
     """
-    start_time = time.time()
+    time.time()
     try:
         user_is_admin = is_crm_admin(current_user)
         user_email = current_user.get("email", "").lower()
@@ -681,7 +681,7 @@ async def update_client(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.delete("/{client_id}")
@@ -700,7 +700,7 @@ async def delete_client(
     - Admin users: Can delete any client
     - Team members: Can only delete clients assigned to them
     """
-    start_time = time.time()
+    time.time()
     try:
         user_email = current_user.get("email", "").lower()
         user_is_admin = is_crm_admin(current_user)
@@ -762,7 +762,7 @@ async def delete_client(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/{client_id}/summary")
@@ -862,7 +862,7 @@ async def get_client_summary(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/stats/overview")
@@ -925,7 +925,7 @@ async def get_clients_stats(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/{client_id}/audit-trail")
@@ -976,7 +976,7 @@ async def get_client_audit_trail(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.get("/metrics/summary")
@@ -998,7 +998,7 @@ async def get_crm_metrics_summary(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 @router.post("/metrics/refresh")
@@ -1025,7 +1025,7 @@ async def refresh_crm_metrics(
     except HTTPException:
         raise
     except Exception as e:
-        raise handle_database_error(e)
+        raise handle_database_error(e) from e
 
 
 # ================================================

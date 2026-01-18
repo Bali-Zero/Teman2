@@ -411,9 +411,9 @@ class TestComplianceAndAudit:
         for i in range(12):  # Exceed limit of 10
             allowed = check_rate_limit(user_id)
             if i < 10:
-                assert allowed == True
+                assert allowed
             else:
-                assert allowed == False
+                assert not allowed
 
     def test_retention_policy_compliance(self, compliance_gateway):
         """Test data retention policy compliance."""

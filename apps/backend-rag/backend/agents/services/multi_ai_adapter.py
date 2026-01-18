@@ -4,8 +4,11 @@
 Integra:
 - Qwen (Ollama) - Locale, test generation, privacy
 - Gemini CLI - Code analysis, documentation, refactoring
-- Claude Code (Anthropic) - Architecture, complex reasoning
+- Claude Max (Opus) - Primary AI, architecture, complex reasoning
 - Cursor - IDE integration, code editing
+- Windsurf - IDE integration, AI-powered editing
+- Google Colab - Jupyter notebook cloud
+- Google Cloud Shell Editor - Cloud-based editor
 
 Routes tasks to the best AI based on task type and requirements.
 """
@@ -16,6 +19,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -28,6 +32,9 @@ class AITool(Enum):
     GEMINI = "gemini"  # Gemini CLI
     CLAUDE = "claude"  # Anthropic Claude API
     CURSOR = "cursor"  # Cursor IDE
+    WINDSURF = "windsurf"  # Windsurf IDE
+    GOOGLE_COLAB = "google_colab"  # Google Colab
+    GOOGLE_CLOUD_SHELL = "google_cloud_shell"  # Google Cloud Shell Editor
 
 
 class TaskType(Enum):
@@ -67,7 +74,11 @@ class AIResponse:
 
 
 class GeminiAdapter:
-    """Adapter for Gemini CLI"""
+    """Adapter for Gemini CLI
+    
+    Usa Gemini CLI che gestisce automaticamente l'autenticazione Google.
+    Non serve API key separata se hai abbonamento/configurazione Google.
+    """
 
     def __init__(self, model: str = "gemini-2.0-flash-exp"):
         self.model = model
@@ -115,36 +126,58 @@ class GeminiAdapter:
 
 
 class ClaudeAdapter:
-    """Adapter for Anthropic Claude API"""
+    """Adapter for Anthropic Claude API - Claude Max (Opus)
+    
+    Usa abbonamento Claude invece di API key separata.
+    L'API key può essere collegata all'account con abbonamento.
+    """
 
-    def __init__(self, api_key: str | None = None, model: str = "claude-3-5-sonnet-20241022"):
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+    def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229"):
+        # Prova prima API key esplicita, poi env var, poi cerca in configurazioni comuni
+        self.api_key = (
+            api_key 
+            or os.getenv("ANTHROPIC_API_KEY")
+            or os.getenv("CLAUDE_API_KEY")
+        )
         self.model = model
         self.client = None
 
-        if self.api_key:
-            try:
-                import anthropic
+        # Prova a inizializzare anche senza API key esplicita
+        # (potrebbe essere gestita dall'abbonamento)
+        try:
+            import anthropic
 
+            if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
-            except ImportError:
-                logger.warning("⚠️ anthropic package not installed. Install with: pip install anthropic")
-            except Exception as e:
-                logger.warning(f"⚠️ Claude client initialization failed: {e}")
+                logger.info("✅ Claude Max configurato con API key")
+            else:
+                # Prova senza API key (potrebbe usare credenziali di sistema/abbonamento)
+                try:
+                    self.client = anthropic.Anthropic()
+                    logger.info("✅ Claude Max configurato con abbonamento/credenziali di sistema")
+                except Exception:
+                    logger.info("ℹ️ Claude Max: configura ANTHROPIC_API_KEY o usa abbonamento")
+        except ImportError:
+            logger.warning("⚠️ anthropic package not installed. Install with: pip install anthropic")
+        except Exception as e:
+            logger.debug(f"Claude initialization: {e}")
 
     async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> AIResponse:
-        """Generate using Claude API"""
+        """Generate using Claude API (con abbonamento)"""
         import time
 
         if not self.client:
-            raise RuntimeError("Claude client not initialized. Set ANTHROPIC_API_KEY")
+            raise RuntimeError(
+                "Claude client not initialized. "
+                "Configura ANTHROPIC_API_KEY o usa abbonamento Claude."
+            )
 
         start_time = time.time()
 
         try:
             message = self.client.messages.create(
                 model=self.model,
-                max_tokens=4000,
+                max_tokens=8192,  # Claude Max supports up to 8192 tokens
                 messages=[{"role": "user", "content": prompt}],
             )
 
@@ -204,14 +237,14 @@ class MultiAIAdapter:
     """
     Multi-AI Adapter - Routes tasks to best AI
     
-    Strategy:
-    - Qwen: Test generation, simple tasks, privacy-sensitive
-    - Gemini: Code analysis, documentation, refactoring
-    - Claude: Architecture, complex reasoning, design patterns
+    Strategy (Claude Max Primary):
+    - Claude Max (Opus): Primary for most tasks (code analysis, documentation, refactoring, architecture, code review)
+    - Qwen: Test generation, privacy-sensitive tasks (local, fast)
+    - Gemini: Fallback for code analysis/documentation if Claude unavailable
     - Cursor: Code editing (IDE-based)
     """
 
-    def __init__(self, qwen_adapter=None):
+    def __init__(self, qwen_adapter=None, project_root: Path | None = None):
         # Import Qwen adapter (existing)
         if qwen_adapter:
             self.qwen = qwen_adapter
@@ -223,20 +256,55 @@ class MultiAIAdapter:
 
         # Initialize other adapters
         self.gemini = GeminiAdapter()
-        self.claude = ClaudeAdapter()
-        self.cursor = CursorAdapter()
+        # Claude Max (Opus) - Primary AI tool
+        self.claude = ClaudeAdapter(model="claude-3-opus-20240229")
+
+        # Cursor adapter (IDE integration)
+        try:
+            from backend.agents.services.cursor_adapter import get_cursor_adapter
+            self.cursor = get_cursor_adapter(project_root)
+        except Exception as e:
+            logger.warning(f"⚠️ Cursor adapter not available: {e}")
+            self.cursor = None
+
+        # Windsurf adapter (IDE integration)
+        try:
+            from backend.agents.services.windsurf_adapter import get_windsurf_adapter
+            self.windsurf = get_windsurf_adapter()
+            if self.windsurf.is_available():
+                logger.info("✅ Windsurf disponibile")
+        except Exception as e:
+            logger.warning(f"⚠️ Windsurf adapter not available: {e}")
+            self.windsurf = None
+
+        # Google Colab adapter
+        try:
+            from backend.agents.services.google_colab_adapter import get_colab_adapter
+            self.google_colab = get_colab_adapter()
+        except Exception as e:
+            logger.warning(f"⚠️ Google Colab adapter not available: {e}")
+            self.google_colab = None
+
+        # Google Cloud Shell Editor adapter
+        try:
+            from backend.agents.services.google_cloud_shell_adapter import get_cloud_shell_adapter
+            self.google_cloud_shell = get_cloud_shell_adapter()
+        except Exception as e:
+            logger.warning(f"⚠️ Google Cloud Shell adapter not available: {e}")
+            self.google_cloud_shell = None
 
         # Routing map: task_type -> preferred AI
+        # Claude Max (Opus) is primary for most tasks
         self.routing_map = {
-            TaskType.TEST_GENERATION: AITool.QWEN,
-            TaskType.SIMPLE_TASK: AITool.QWEN,
-            TaskType.PRIVACY_SENSITIVE: AITool.QWEN,
-            TaskType.CODE_ANALYSIS: AITool.GEMINI,
-            TaskType.DOCUMENTATION: AITool.GEMINI,
-            TaskType.REFACTORING: AITool.GEMINI,
-            TaskType.CODE_REVIEW: AITool.GEMINI,
-            TaskType.ARCHITECTURE: AITool.CLAUDE,
-            TaskType.CODE_EDITING: AITool.CURSOR,
+            TaskType.TEST_GENERATION: AITool.QWEN,  # Keep Qwen for test generation (local, fast)
+            TaskType.SIMPLE_TASK: AITool.CLAUDE,  # Claude Max for simple tasks
+            TaskType.PRIVACY_SENSITIVE: AITool.QWEN,  # Keep Qwen for privacy-sensitive
+            TaskType.CODE_ANALYSIS: AITool.CLAUDE,  # Claude Max for code analysis
+            TaskType.DOCUMENTATION: AITool.CLAUDE,  # Claude Max for documentation
+            TaskType.REFACTORING: AITool.CLAUDE,  # Claude Max for refactoring
+            TaskType.CODE_REVIEW: AITool.CLAUDE,  # Claude Max for code review
+            TaskType.ARCHITECTURE: AITool.CLAUDE,  # Claude Max for architecture
+            TaskType.CODE_EDITING: AITool.CURSOR,  # Cursor for IDE-based editing
         }
 
         logger.info("🤖 Multi-AI Adapter initialized")
@@ -247,14 +315,18 @@ class MultiAIAdapter:
         if request.preferred_tool:
             tool = request.preferred_tool
         else:
-            tool = self.routing_map.get(request.task_type, AITool.QWEN)
+            # Default to Claude Max for most tasks, fallback to Qwen
+            tool = self.routing_map.get(request.task_type, AITool.CLAUDE)
 
         # Get adapter
         adapters = {
             AITool.QWEN: self.qwen,
             AITool.GEMINI: self.gemini,
             AITool.CLAUDE: self.claude,
-            AITool.CURSOR: self.cursor,
+            AITool.CURSOR: self.cursor if self.cursor else None,
+            AITool.WINDSURF: self.windsurf if self.windsurf and self.windsurf.is_available() else None,
+            AITool.GOOGLE_COLAB: self.google_colab if self.google_colab and self.google_colab.is_available() else None,
+            AITool.GOOGLE_CLOUD_SHELL: self.google_cloud_shell if self.google_cloud_shell and self.google_cloud_shell.is_available() else None,
         }
 
         adapter = adapters.get(tool)
@@ -293,10 +365,46 @@ class MultiAIAdapter:
                 return await adapter.generate(request.prompt, request.context)
 
             elif tool == AITool.CLAUDE:
+                # Claude Max (Opus) - primary AI
                 return await adapter.generate(request.prompt, request.context)
 
             elif tool == AITool.CURSOR:
-                return await adapter.generate(request.prompt, request.files)
+                if adapter:
+                    # Cursor is IDE-based, open file if provided
+                    if request.files:
+                        adapter.open_file(request.files[0])
+                    return AIResponse(
+                        text="File opened in Cursor IDE. Use Cursor IDE for AI-powered editing.",
+                        tool_used=AITool.CURSOR,
+                        metadata={"note": "IDE-based tool"},
+                    )
+                else:
+                    raise RuntimeError("Cursor adapter not available")
+
+            elif tool == AITool.WINDSURF:
+                if adapter:
+                    # Windsurf is IDE-based, open file if provided
+                    if request.files:
+                        adapter.open_file(request.files[0])
+                    return AIResponse(
+                        text="File opened in Windsurf IDE. Use Windsurf IDE for AI-powered editing.",
+                        tool_used=AITool.WINDSURF,
+                        metadata={"note": "IDE-based tool"},
+                    )
+                else:
+                    raise RuntimeError("Windsurf adapter not available")
+
+            elif tool == AITool.GOOGLE_COLAB:
+                if adapter:
+                    return await adapter.generate(request.prompt, request.context)
+                else:
+                    raise RuntimeError("Google Colab adapter not available")
+
+            elif tool == AITool.GOOGLE_CLOUD_SHELL:
+                if adapter:
+                    return await adapter.generate(request.prompt, request.context)
+                else:
+                    raise RuntimeError("Google Cloud Shell adapter not available")
 
             else:
                 raise ValueError(f"Unknown tool: {tool}")
@@ -343,6 +451,18 @@ class MultiAIAdapter:
         # Check Claude API
         if self.claude.client:
             available.append(AITool.CLAUDE)
+
+        # Check Windsurf
+        if self.windsurf and self.windsurf.is_available():
+            available.append(AITool.WINDSURF)
+
+        # Check Google Colab
+        if self.google_colab and self.google_colab.is_available():
+            available.append(AITool.GOOGLE_COLAB)
+
+        # Check Google Cloud Shell
+        if self.google_cloud_shell and self.google_cloud_shell.is_available():
+            available.append(AITool.GOOGLE_CLOUD_SHELL)
 
         # Check Cursor
         try:

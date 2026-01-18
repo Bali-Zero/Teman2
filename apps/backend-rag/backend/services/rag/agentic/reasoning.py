@@ -711,14 +711,19 @@ class ReasoningEngine:
             logger.warning(
                 f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
+            # Proactive message: Suggest alternatives
             state.final_answer = (
-                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                "Posso aiutarti con altro?"
+                "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                "Posso aiutarti con:\n"
+                "• Informazioni su visti e KITAS\n"
+                "• Setup aziendale (PT PMA)\n"
+                "• Questioni fiscali e legali\n"
+                "• Procedure e documentazione\n\n"
+                "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
             )
-        elif state.skip_rag and evidence_score < 0.3:
+        elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
-        elif trusted_tools_used and evidence_score < 0.3:
+        elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🧮 [Trusted Tool] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
@@ -727,26 +732,31 @@ class ReasoningEngine:
             # POLICY ENFORCEMENT: Check evidence score before generating answer
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
-            if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
-                # ABSTAIN: Skip LLM generation, return uncertainty message
+            if evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD and not state.skip_rag and not trusted_tools_used:
+                # ABSTAIN: Skip LLM generation, return proactive uncertainty message
                 logger.warning(f"🛡️ [Uncertainty] Triggered ABSTAIN (Score: {evidence_score:.2f})")
+                # Proactive message: Suggest alternatives instead of just asking "altro?"
                 state.final_answer = (
-                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                    "Posso aiutarti con altro?"
+                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                    "Posso aiutarti con:\n"
+                    "• Informazioni su visti e KITAS\n"
+                    "• Setup aziendale (PT PMA)\n"
+                    "• Questioni fiscali e legali\n"
+                    "• Procedure e documentazione\n\n"
+                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
                 )
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
-                if evidence_score >= 0.3 and evidence_score < 0.6:
+                if evidence_score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD and evidence_score < 0.5:
                     warning_note = (
-                        "\n\nWARNING: Evidence is weak. Use precautionary language "
-                        "(e.g., 'Based on limited information...', 'It appears that...'). "
-                        "Do NOT be definitive."
+                        "\n\nWARNING: Evidence is moderate. Use precautionary language "
+                        "(e.g., 'Based on available information...', 'It appears that...'). "
+                        "Still provide a helpful answer, but acknowledge limitations if needed."
                     )
                     logger.info(
-                        f"🛡️ [Uncertainty] Weak evidence detected (Score: {evidence_score:.2f}), adding warning"
+                        f"🛡️ [Uncertainty] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning"
                     )
 
                 final_prompt = f"""
@@ -755,6 +765,10 @@ Based on the information gathered:
 {warning_note}
 
 Provide a final, comprehensive answer to: {query}
+
+IMPORTANT: After your answer, naturally suggest 1-2 related topics or next steps that might be helpful.
+Examples: "Vuoi sapere anche quanto costa?" / "Ti interessa anche il processo completo?" / "Posso spiegarti anche i requisiti documentali"
+Make it feel natural and helpful, not forced.
 """
                 try:
                     (
@@ -1173,9 +1187,9 @@ Do not invent information. If the context is insufficient, admit it.
                 "nei documenti ufficiali per rispondere alla tua domanda specifica. "
                 "Posso aiutarti con altro?"
             )
-        elif state.skip_rag and evidence_score < 0.3:
+        elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
-        elif trusted_tools_used and evidence_score < 0.3:
+        elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info(
                 "🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)"
             )
@@ -1185,28 +1199,33 @@ Do not invent information. If the context is insufficient, admit it.
             # POLICY ENFORCEMENT: Check evidence score before generating answer
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
-            if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
-                # ABSTAIN: Skip LLM generation, return uncertainty message
+            if evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD and not state.skip_rag and not trusted_tools_used:
+                # ABSTAIN: Skip LLM generation, return proactive uncertainty message
                 logger.warning(
                     f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})"
                 )
+                # Proactive message: Suggest alternatives
                 state.final_answer = (
-                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                    "Posso aiutarti con altro?"
+                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                    "Posso aiutarti con:\n"
+                    "• Informazioni su visti e KITAS\n"
+                    "• Setup aziendale (PT PMA)\n"
+                    "• Questioni fiscali e legali\n"
+                    "• Procedure e documentazione\n\n"
+                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
                 )
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
                 warning_note = ""
-                if evidence_score >= 0.3 and evidence_score < 0.6:
+                if evidence_score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD and evidence_score < 0.5:
                     warning_note = (
-                        "\n\nWARNING: Evidence is weak. Use precautionary language "
-                        "(e.g., 'Based on limited information...', 'It appears that...'). "
-                        "Do NOT be definitive."
+                        "\n\nWARNING: Evidence is moderate. Use precautionary language "
+                        "(e.g., 'Based on available information...', 'It appears that...'). "
+                        "Still provide a helpful answer, but acknowledge limitations if needed."
                     )
                     logger.info(
-                        f"🛡️ [Uncertainty Stream] Weak evidence detected (Score: {evidence_score:.2f}), adding warning"
+                        f"🛡️ [Uncertainty Stream] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning"
                     )
 
                 final_prompt = f"""
@@ -1215,6 +1234,10 @@ Based on the information gathered:
 {warning_note}
 
 Provide a final, comprehensive answer to: {query}
+
+IMPORTANT: After your answer, naturally suggest 1-2 related topics or next steps that might be helpful.
+Examples: "Vuoi sapere anche quanto costa?" / "Ti interessa anche il processo completo?" / "Posso spiegarti anche i requisiti documentali"
+Make it feel natural and helpful, not forced.
 """
                 try:
                     state.final_answer, _, _, _ = await llm_gateway.send_message(
