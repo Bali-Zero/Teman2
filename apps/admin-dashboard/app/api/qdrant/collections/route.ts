@@ -29,7 +29,7 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ collections: response.result });
+    return NextResponse.json({ collections: collectionsWithStats });
   } catch (error: any) {
     logger.error('Qdrant Collections Error:', error);
     return NextResponse.json(
