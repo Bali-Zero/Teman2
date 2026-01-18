@@ -79,7 +79,9 @@ class UnifiedCoverageCollector:
         self.project_root = project_root
         self.components = {}
 
-    def collect_backend_coverage(self, component_path: Path, component_name: str) -> ComponentCoverage | None:
+    def collect_backend_coverage(
+        self, component_path: Path, component_name: str
+    ) -> ComponentCoverage | None:
         """Collect coverage from Python/pytest backend"""
         try:
             logger.info(f"🔍 Collecting backend coverage: {component_name}")
@@ -200,9 +202,9 @@ class UnifiedCoverageCollector:
                 if package_json.exists():
                     with open(package_json) as f:
                         pkg = json.load(f)
-                        test_script = pkg.get("scripts", {}).get("test:coverage") or pkg.get("scripts", {}).get(
-                            "test:ci"
-                        )
+                        test_script = pkg.get("scripts", {}).get("test:coverage") or pkg.get(
+                            "scripts", {}
+                        ).get("test:ci")
                         if test_script:
                             # Longer timeout for large frontend projects (20 minutes)
                             timeout = 1200.0 if component_name == "mouth-frontend" else 600.0
@@ -238,7 +240,9 @@ class UnifiedCoverageCollector:
             logger.error(f"❌ Error collecting frontend coverage for {component_name}: {e}")
             return None
 
-    def _parse_lcov(self, lcov_file: Path, component_name: str, _component_path: Path) -> ComponentCoverage:
+    def _parse_lcov(
+        self, lcov_file: Path, component_name: str, _component_path: Path
+    ) -> ComponentCoverage:
         """Parse LCOV format"""
         total_lines = 0
         hit_lines = 0
@@ -278,7 +282,9 @@ class UnifiedCoverageCollector:
                 if file_coverage < 99.0:
                     files_below_threshold += 1
                     missing_lines = [
-                        line_num for line_num, hit_count in file_data["lines"].items() if hit_count == 0
+                        line_num
+                        for line_num, hit_count in file_data["lines"].items()
+                        if hit_count == 0
                     ]
                     gaps.append(
                         {
@@ -395,7 +401,9 @@ class UnifiedCoverageCollector:
         # Calculate overall coverage
         total_lines_all = sum(c.total_lines for c in components.values())
         covered_lines_all = sum(c.covered_lines for c in components.values())
-        overall_coverage = (covered_lines_all / total_lines_all * 100) if total_lines_all > 0 else 0.0
+        overall_coverage = (
+            (covered_lines_all / total_lines_all * 100) if total_lines_all > 0 else 0.0
+        )
 
         # Coverage by type
         coverage_by_type = {}

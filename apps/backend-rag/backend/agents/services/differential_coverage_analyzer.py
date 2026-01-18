@@ -153,8 +153,12 @@ class DifferentialCoverageAnalyzer:
                     delta_percent=delta_percent,
                     regression=regression,
                     improvement=improvement,
-                    files_added=max(0, current_comp.files_analyzed - baseline_comp.get("files_analyzed", 0)),
-                    files_removed=max(0, baseline_comp.get("files_analyzed", 0) - current_comp.files_analyzed),
+                    files_added=max(
+                        0, current_comp.files_analyzed - baseline_comp.get("files_analyzed", 0)
+                    ),
+                    files_removed=max(
+                        0, baseline_comp.get("files_analyzed", 0) - current_comp.files_analyzed
+                    ),
                 )
 
                 component_deltas[comp_name] = comp_delta
