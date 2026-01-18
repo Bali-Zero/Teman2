@@ -46,7 +46,55 @@ def mock_problematic_modules():
     # Special handling for misc to allow submodule imports
     misc_mock = types.ModuleType("backend.services.misc")
     misc_mock.__path__ = []
+    
+    # Add commonly imported classes from misc
+    misc_mock.AdvancedContextWindowManager = MagicMock()
+    misc_mock.AutonomousResearchService = MagicMock()
+    misc_mock.AutonomousScheduler = MagicMock()
+    misc_mock.ClarificationService = MagicMock()
+    misc_mock.ClientJourneyOrchestrator = MagicMock()
+    misc_mock.ContextSuggestionService = MagicMock()
+    misc_mock.ConversationService = MagicMock()
+    misc_mock.CulturalInsightsService = MagicMock()
+    misc_mock.CulturalRAGService = MagicMock()
+    misc_mock.EmotionalAttunementService = MagicMock()
+    misc_mock.FollowupService = MagicMock()
+    misc_mock.GoldenAnswerService = MagicMock()
+    misc_mock.GraphExtractor = MagicMock()
+    misc_mock.GraphService = MagicMock()
+    misc_mock.ImageGenerationService = MagicMock()
+    misc_mock.KnowledgeGraphBuilder = MagicMock()
+    misc_mock.MCPClientService = MagicMock()
+    misc_mock.MigrationRunner = MagicMock()
+    misc_mock.PerformanceMonitor = MagicMock()
+    misc_mock.PersonalityService = MagicMock()
+    misc_mock.ProactiveComplianceMonitor = MagicMock()
+    misc_mock.SessionService = MagicMock()
+    misc_mock.ToolExecutor = MagicMock()
+    misc_mock.WorkSessionService = MagicMock()
+    misc_mock.ZantaraTools = MagicMock()
+    misc_mock.format_search_results = MagicMock()
+    misc_mock.get_context_suggestion_service = MagicMock()
+    misc_mock.get_zantara_tools = MagicMock()
+    misc_mock.Entity = MagicMock()
+    misc_mock.EntityType = MagicMock()
+    misc_mock.Relationship = MagicMock()
+    misc_mock.RelationType = MagicMock()
+    
     sys.modules["backend.services.misc"] = misc_mock
+    
+    # Special handling for search to allow submodule imports
+    search_mock = types.ModuleType("backend.services.search")
+    search_mock.__path__ = []
+    search_mock.CitationService = MagicMock()
+    search_mock.build_search_filter = MagicMock()
+    search_mock.SemanticCache = MagicMock()
+    search_mock.SearchService = MagicMock()
+    sys.modules["backend.services.search"] = search_mock
+    sys.modules["backend.services.search.citation_service"] = MagicMock()
+    sys.modules["backend.services.search.search_filters"] = MagicMock()
+    sys.modules["backend.services.search.search_service"] = MagicMock()
+    sys.modules["backend.services.search.semantic_cache"] = MagicMock()
     
     # Special handling for routing to allow submodule imports
     routing_mock = types.ModuleType("backend.services.routing")
