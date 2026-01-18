@@ -11,6 +11,7 @@
 
 When starting a new session, verify you understand:
 
+- [ ] **Virtualenv:** `.venv` created and activated (`source .venv/bin/activate`)
 - [ ] **Project Structure:** Monorepo with `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
 - [ ] **Golden Rules:** No root execution, absolute imports, async-first, type hints required
 - [ ] **Critical Files:** `reasoning.py` (evidence scoring), `llm_gateway.py` (LLM routing)
@@ -118,6 +119,82 @@ if not api_key:
 - **Business Logic** → `backend/services/`
 - **Never** hardcode data in code
 
+### 8. PRODUCTION-READY STANDARD (MANDATORY)
+
+**⚠️ CRITICAL:** Every implementation MUST follow the Production-Ready Standard.
+
+This is NOT optional - it's the baseline for enterprise code quality:
+
+```
+Code that works ✅
+Code testable ✅
+Code debuggable ✅
+Code documented ✅
+Code maintainable ✅
+```
+
+**The 5 Pillars:**
+
+| Pillar | Requirement | Why |
+|--------|-------------|-----|
+| **1. Test Coverage** | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
+| **2. Structured Logging** | INFO/WARNING/ERROR logs at key steps | Debuggability in production |
+| **3. Metrics & KPIs** | Track performance + success rates | Measurability, optimization |
+| **4. Complete Documentation** | Code comments + Technical docs + Session notes | Maintainability for future team |
+| **5. Error Handling** | Try/except + graceful degradation | Resilience, no silent failures |
+
+**Example: Lead Assignment Agent (2026-01-18)**
+
+When implementing the Lead Assignment Agent, the complete deliverable included:
+
+- ✅ **340 lines** of production code (`lead_assignment_agent.py`)
+- ✅ **345 lines** of tests (7 unit + 1 integration test)
+- ✅ **450 lines** of technical documentation
+- ✅ **Structured logging** at every workflow step
+- ✅ **Performance metrics** defined (assignment time, notification rate, etc.)
+- ✅ **Error handling** with graceful degradation
+
+**Total: 1,500+ lines for a feature that could be "done" in 150 lines.**
+
+**This 10x effort multiplier is THE STANDARD for Nuzantara.**
+
+**Note:** For simpler features (e.g., a single API endpoint), you might have:
+- 50 lines of code
+- 80 lines of tests
+- 100 lines of documentation
+- **Total: 230 lines** (still ~4x multiplier, but more manageable)
+
+The key is: **every feature should be testable, debuggable, documented, and maintainable** - the exact multiplier depends on complexity.
+
+#### When to Apply Production-Ready Standard:
+
+**ALWAYS apply for:**
+- New features (workflows, services, agents)
+- Production systems (CRM, RAG, Auth)
+- Multi-team code (will be maintained by others)
+- Critical paths (client data, payments, compliance)
+
+**Can skip for:**
+- Quick debugging scripts (one-time use)
+- Prototypes explicitly marked as "experimental"
+- Trivial helper functions (<10 lines)
+
+#### Production-Ready Checklist:
+
+Before marking a feature "complete":
+
+- [ ] **Tests written** - Unit tests for each function, integration test for full flow
+- [ ] **Logging added** - INFO logs for success paths, WARNING for edge cases, ERROR for failures
+- [ ] **Metrics defined** - Performance KPIs, success rates, error rates
+- [ ] **Documentation created**:
+  - [ ] Code docstrings with examples
+  - [ ] Technical doc in `docs/` with architecture, deployment, troubleshooting
+  - [ ] Session notes in `CLAUDE.md` or relevant memory file
+- [ ] **Error handling** - Try/except blocks, graceful fallbacks, clear error messages
+- [ ] **Type safety** - Type hints on all functions, TypedDict for complex state
+
+**Remember:** "Leave it better than you found it" is not just philosophy - it's project policy.
+
 ---
 
 ## 🏗️ PROJECT STRUCTURE
@@ -158,18 +235,21 @@ nuzantara/
 ### Sentinel (Quality Control)
 
 ```bash
-# From project root
+# IMPORTANT: Ensure virtualenv is activated first
+cd apps/backend-rag
+source .venv/bin/activate  # MUST activate venv
+cd ../..  # Back to project root
 ./sentinel
 
 # What it does:
 # 1. Auto-healing (Ruff check + fix)
-# 2. Testing (Pytest with coverage)
+# 2. Testing (Pytest with coverage) - requires venv
 # 3. Health checks (Qdrant, DB)
 
 # Output: sentinel-results/sentinel-run-TIMESTAMP.log
 ```
 
-**RULE:** Always run Sentinel before asking for review.
+**RULE:** Always run Sentinel before asking for review. **Virtualenv MUST be activated** for tests to run correctly.
 
 ### Scribe (Documentation Generator)
 
@@ -265,8 +345,13 @@ fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
 
 ```bash
 # Error: ImportError: attempted relative import with no known parent package
-# Solution: Run with PYTHONPATH=.
+# Solution:
+# 1. First check virtualenv is activated
+which python  # Should show .../apps/backend-rag/.venv/bin/python
+# 2. If not, activate it
 cd apps/backend-rag
+source .venv/bin/activate
+# 3. Run with PYTHONPATH=.
 PYTHONPATH=. python -m backend.scripts.script_name
 ```
 
@@ -427,14 +512,24 @@ fly secrets list -a nuzantara-rag
 
 Before asking for review:
 
+### Basic Requirements
 - [ ] **Virtualenv activated** (`source .venv/bin/activate`)
 - [ ] Ran `./sentinel` and it passed
 - [ ] All new functions have type hints
 - [ ] No hardcoded secrets or URLs
 - [ ] Used async/await (no blocking calls)
 - [ ] Absolute imports only
-- [ ] Tests added/updated (run with venv active)
-- [ ] Documentation updated (if needed)
+
+### Production-Ready Standard (for non-trivial features)
+- [ ] **Tests written** - Unit tests for each function, integration test for full flow
+- [ ] **Logging added** - INFO logs for success paths, WARNING for edge cases, ERROR for failures
+- [ ] **Metrics defined** - Performance KPIs, success rates, error rates documented
+- [ ] **Documentation created**:
+  - [ ] Code docstrings with examples
+  - [ ] Technical doc in `docs/` (if new system/feature)
+  - [ ] Session notes in `CLAUDE.md` or relevant memory file
+- [ ] **Error handling** - Try/except blocks, graceful fallbacks, clear error messages
+- [ ] **Type safety** - Type hints on all functions, TypedDict for complex state
 
 ---
 
@@ -475,7 +570,7 @@ A: `docker compose up -d` for services, then `cd apps/backend-rag && source .ven
 A: See `docs/operations/DEPLOY_CHECKLIST.md`
 
 **Q: Why is my import failing?**  
-A: Make sure you're using absolute imports and running from `apps/backend-rag` with `PYTHONPATH=.`
+A: Check: 1) Virtualenv activated (`which python` shows `.venv/bin/python`), 2) Using absolute imports, 3) Running from `apps/backend-rag` with `PYTHONPATH=.`
 
 ---
 
