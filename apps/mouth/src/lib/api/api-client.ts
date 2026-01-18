@@ -13,6 +13,9 @@ import { DriveApi } from './drive/drive.api';
 import { EmailApi } from './email/email.api';
 import { PortalApi } from './portal/portal.api';
 import { WhatsAppApi } from './whatsapp/whatsapp.api';
+import { TelegramApi } from './telegram/telegram.api';
+import { InstagramApi } from './instagram/instagram.api';
+import { TwitterApi } from './twitter/twitter.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
 import { KnowledgeActivityApi } from './knowledge-activity.api';
@@ -51,6 +54,9 @@ export class ApiClient extends ApiClientBase {
   private emailApi: EmailApi;
   private portalApi: PortalApi;
   private whatsappApi: WhatsAppApi;
+  private telegramApi: TelegramApi;
+  private instagramApi: InstagramApi;
+  private twitterApi: TwitterApi;
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
   private kbActivityApi: KnowledgeActivityApi;
@@ -71,6 +77,9 @@ export class ApiClient extends ApiClientBase {
     this.emailApi = new EmailApi(this);
     this.portalApi = new PortalApi(this);
     this.whatsappApi = new WhatsAppApi(this);
+    this.telegramApi = new TelegramApi(this);
+    this.instagramApi = new InstagramApi(this);
+    this.twitterApi = new TwitterApi(this);
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
     this.kbActivityApi = new KnowledgeActivityApi(this);
@@ -135,6 +144,30 @@ export class ApiClient extends ApiClientBase {
 
   public get whatsapp(): WhatsAppApi {
     return this.whatsappApi;
+  }
+
+  // ============================================================================
+  // Telegram (Business messaging)
+  // ============================================================================
+
+  public get telegram(): TelegramApi {
+    return this.telegramApi;
+  }
+
+  // ============================================================================
+  // Instagram (Business messaging)
+  // ============================================================================
+
+  public get instagram(): InstagramApi {
+    return this.instagramApi;
+  }
+
+  // ============================================================================
+  // Twitter/X (Business messaging)
+  // ============================================================================
+
+  public get twitter(): TwitterApi {
+    return this.twitterApi;
   }
 
   // ============================================================================
