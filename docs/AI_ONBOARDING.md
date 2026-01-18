@@ -586,4 +586,4 @@ A: Check: 1) Virtualenv activated (`which python` shows `.venv/bin/python`), 2) 
 
 **Remember:** This is a production system. Be careful, test thoroughly, and use the observability tools to verify your changes.
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-18
