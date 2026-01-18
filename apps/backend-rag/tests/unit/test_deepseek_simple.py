@@ -139,7 +139,9 @@ class TestDeepSeekProviderSimple:
         """Test provider with mocked DeepSeekClient"""
         try:
             # Mock the DeepSeekClient before importing the provider
-            with patch("backend.services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
+            with patch(
+                "backend.services.llm_clients.deepseek_client.DeepSeekClient"
+            ) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = True
                 mock_client_class.return_value = mock_client
@@ -159,7 +161,9 @@ class TestDeepSeekProviderSimple:
     def test_provider_with_unavailable_client(self):
         """Test provider with unavailable DeepSeekClient"""
         try:
-            with patch("backend.services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
+            with patch(
+                "backend.services.llm_clients.deepseek_client.DeepSeekClient"
+            ) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = False
                 mock_client_class.return_value = mock_client
@@ -192,7 +196,9 @@ class TestDeepSeekProviderSimple:
     def test_provider_generate_with_mock(self):
         """Test generate method with mocked client"""
         try:
-            with patch("backend.services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
+            with patch(
+                "backend.services.llm_clients.deepseek_client.DeepSeekClient"
+            ) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = True
 
@@ -231,7 +237,9 @@ class TestDeepSeekProviderSimple:
     def test_provider_stream_with_mock(self):
         """Test stream method with mocked client"""
         try:
-            with patch("backend.services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
+            with patch(
+                "backend.services.llm_clients.deepseek_client.DeepSeekClient"
+            ) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = True
 

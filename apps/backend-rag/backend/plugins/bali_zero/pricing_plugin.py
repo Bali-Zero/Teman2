@@ -6,9 +6,9 @@ Migrated from: backend/services/zantara_tools.py -> _get_pricing
 
 import logging
 
-from backend.core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from pydantic import Field
 
+from backend.core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from backend.services.pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)

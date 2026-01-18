@@ -17,7 +17,11 @@ import { AnalyticsApi } from './analytics/analytics.api';
 import { KnowledgeActivityApi } from './knowledge-activity.api';
 import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
 import type { LoginResponse } from './auth/auth.types';
-import type { KnowledgeSearchResponse, KnowledgeSearchResult, TierLevel } from './knowledge/knowledge.types';
+import type {
+  KnowledgeSearchResponse,
+  KnowledgeSearchResult,
+  TierLevel,
+} from './knowledge/knowledge.types';
 import type {
   ConversationHistoryResponse,
   ConversationListItem,
@@ -381,7 +385,11 @@ export class ApiClient extends ApiClientBase {
     return this.adminApi.getPostgresTables();
   }
 
-  async getTableData(table: string, limit = 50, offset = 0): Promise<import('./admin/admin.types').TableDataResponse> {
+  async getTableData(
+    table: string,
+    limit = 50,
+    offset = 0
+  ): Promise<import('./admin/admin.types').TableDataResponse> {
     return this.adminApi.getTableData(table, limit, offset);
   }
 
@@ -389,7 +397,11 @@ export class ApiClient extends ApiClientBase {
     return this.adminApi.getQdrantCollections();
   }
 
-  async getQdrantPoints(collection: string, limit = 20, offset?: string): Promise<import('./admin/admin.types').QdrantPointsResponse> {
+  async getQdrantPoints(
+    collection: string,
+    limit = 20,
+    offset?: string
+  ): Promise<import('./admin/admin.types').QdrantPointsResponse> {
     return this.adminApi.getQdrantPoints(collection, limit, offset);
   }
 

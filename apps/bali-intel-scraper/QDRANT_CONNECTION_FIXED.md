@@ -12,6 +12,7 @@
 **Errore:** `[Errno 104] Connection reset by peer` durante TLS handshake con `qdrant-client`
 
 **Causa Root:**
+
 - `qdrant-client` Python SDK ha problemi con connessioni TLS da Fly.io a Qdrant Cloud
 - httpx diretto funziona perfettamente
 - Il backend usa httpx direttamente (non qdrant-client) e funziona
@@ -39,6 +40,7 @@ Creati nuovi moduli che usano httpx direttamente invece di qdrant-client:
 **Problema:** Collezione usa vettori nominati ("default"), richiede formato specifico
 
 **Soluzione:**
+
 ```python
 # Upsert
 {

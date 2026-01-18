@@ -585,7 +585,10 @@ class TestZohoEmailRouterSimple:
             mock_oauth_service = AsyncMock()
 
             with (
-                patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
+                patch(
+                    "backend.app.routers.zoho_email._get_oauth_service",
+                    return_value=mock_oauth_service,
+                ),
                 patch("backend.app.routers.zoho_email.settings") as mock_settings,
             ):
                 mock_settings.frontend_url = "https://example.com"

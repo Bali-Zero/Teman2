@@ -94,16 +94,19 @@ flyctl status --app nuzantara-rag
 ## 🔧 Common Fixes
 
 ### Restart Service
+
 ```bash
 flyctl apps restart nuzantara-rag
 ```
 
 ### Update Secrets
+
 ```bash
 flyctl secrets set KEY=value --app nuzantara-rag
 ```
 
 ### Scale Resources
+
 ```bash
 # Scale memory
 flyctl scale memory 2048 --app nuzantara-rag
@@ -113,6 +116,7 @@ flyctl scale count 2 --app nuzantara-rag
 ```
 
 ### View Configuration
+
 ```bash
 flyctl config show --app nuzantara-rag
 ```
@@ -160,6 +164,7 @@ NEXT_PUBLIC_API_URL
 ## 🆘 Emergency Procedures
 
 ### Service Down
+
 ```bash
 # 1. Check status
 flyctl status --app nuzantara-rag
@@ -175,6 +180,7 @@ flyctl releases rollback --app nuzantara-rag -y
 ```
 
 ### High Latency
+
 ```bash
 # Scale up resources
 flyctl scale memory 2048 --app nuzantara-rag
@@ -182,6 +188,7 @@ flyctl scale count 2 --app nuzantara-rag
 ```
 
 ### Database Issues
+
 ```bash
 # Check DATABASE_URL
 flyctl secrets list --app nuzantara-rag

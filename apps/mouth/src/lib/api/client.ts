@@ -49,10 +49,13 @@ export class ApiClientBase implements IApiClient {
     if (typeof window !== 'undefined') {
       const success = safeStorage.setItem('auth_token', token);
       if (!success) {
-        logger.warn('localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.', {
-          component: 'ApiClient',
-          action: 'set_token_fallback',
-        });
+        logger.warn(
+          'localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.',
+          {
+            component: 'ApiClient',
+            action: 'set_token_fallback',
+          }
+        );
       }
     }
   }
@@ -259,10 +262,12 @@ export class ApiClientBase implements IApiClient {
 
         // Handle FastAPI 422 validation errors (detail is array of validation errors)
         if (response.status === 422 && Array.isArray(error.detail)) {
-          const validationErrors = (error.detail as FastAPIValidationError[]).map((err) => {
-            const field = err.loc ? err.loc.join('.') : 'unknown';
-            return `${field}: ${err.msg}`;
-          }).join(', ');
+          const validationErrors = (error.detail as FastAPIValidationError[])
+            .map((err) => {
+              const field = err.loc ? err.loc.join('.') : 'unknown';
+              return `${field}: ${err.msg}`;
+            })
+            .join(', ');
           throw new Error(`Validation error: ${validationErrors}`);
         }
 

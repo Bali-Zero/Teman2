@@ -151,7 +151,9 @@ KITAS, KITAP, NPWP, PPh, PT PMA, NIB, OSS, HGB, SHM, BKPM, Imigrasi, Kemenkeu, D
                 self.image_generator = GeminiImageGenerator()
                 logger.info("✅ Browser Image Generator loaded (fallback)")
             except ImportError:
-                logger.warning("gemini_image_generator not found - browser fallback disabled")
+                logger.warning(
+                    "gemini_image_generator not found - browser fallback disabled"
+                )
 
         # Load style bible if available
         style_bible_path = Path(__file__).parent.parent / "config" / "style_bible.txt"
@@ -356,7 +358,7 @@ NOTES:
         """
         try:
             logger.info("🤖 Calling Claude Max (via CLI)...")
-            
+
             # Prepare environment with OAuth token if available
             env = os.environ.copy()
             oauth_token = os.getenv("CLAUDE_CODE_OAUTH_TOKEN")
@@ -376,8 +378,14 @@ NOTES:
                 error_msg = result.stderr.strip() if result.stderr else "Unknown error"
                 logger.error(f"Claude CLI error: {error_msg}")
                 # Check if authentication is needed
-                if "auth" in error_msg.lower() or "login" in error_msg.lower() or "unauthorized" in error_msg.lower():
-                    logger.error("Claude CLI authentication required. Set CLAUDE_API_KEY or run: claude auth login")
+                if (
+                    "auth" in error_msg.lower()
+                    or "login" in error_msg.lower()
+                    or "unauthorized" in error_msg.lower()
+                ):
+                    logger.error(
+                        "Claude CLI authentication required. Set CLAUDE_API_KEY or run: claude auth login"
+                    )
                 return None
 
             response = result.stdout.strip()
@@ -399,12 +407,13 @@ NOTES:
             logger.error("Claude CLI timeout")
             return None
         except FileNotFoundError:
-            logger.error("Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code")
+            logger.error(
+                "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
+            )
             return None
         except Exception as e:
             logger.error(f"Claude CLI error: {e}")
             return None
-
 
     async def enrich_article(
         self,
@@ -546,13 +555,19 @@ NOTES:
                     )
                     if image_result and image_result.get("image_path"):
                         enriched.cover_image = image_result.get("image_path")
-                        enriched.image_prompt = image_result.get("prompt", "BROWSER_AUTOMATION")
-                        logger.success(f"   ✅ Browser image generated: {enriched.cover_image}")
+                        enriched.image_prompt = image_result.get(
+                            "prompt", "BROWSER_AUTOMATION"
+                        )
+                        logger.success(
+                            f"   ✅ Browser image generated: {enriched.cover_image}"
+                        )
                         image_generated = True
                         break
                 except Exception as e:
                     if attempt < max_retries:
-                        logger.warning(f"   ⚠️ Browser attempt {attempt} failed: {e}, retrying...")
+                        logger.warning(
+                            f"   ⚠️ Browser attempt {attempt} failed: {e}, retrying..."
+                        )
                         await asyncio.sleep(2)
                     else:
                         logger.warning(f"   ⚠️ Browser automation failed: {e}")
@@ -564,16 +579,20 @@ NOTES:
                 fallback_image = await self.fetch_image_from_internet(
                     title=enriched.headline,
                     category=enriched.category,
-                    summary=enriched.ai_summary
+                    summary=enriched.ai_summary,
                 )
                 if fallback_image:
                     enriched.cover_image = fallback_image
-                    enriched.image_prompt = f"Fallback image from internet for: {enriched.headline}"
-                    logger.success(f"   ✅ Fallback image found: {enriched.cover_image}")
+                    enriched.image_prompt = (
+                        f"Fallback image from internet for: {enriched.headline}"
+                    )
+                    logger.success(
+                        f"   ✅ Fallback image found: {enriched.cover_image}"
+                    )
                     image_generated = True
             except Exception as fallback_error:
                 logger.error(f"   ❌ Internet fallback also failed: {fallback_error}")
-        
+
         if not enriched.cover_image:
             raise RuntimeError("Cover image is mandatory but was not generated")
 
@@ -584,46 +603,55 @@ NOTES:
     ) -> Optional[str]:
         """
         Fallback: Fetch a relevant image from internet using Pexels API.
-        
+
         Uses Pexels API (free, no API key needed for basic usage) to find relevant images.
         Falls back to Unsplash Source API if Pexels fails.
         """
         try:
             import httpx
-            
+
             # Build search query from title and category
             # Extract key terms for better image search
             search_terms = []
             if category:
                 search_terms.append(category)
             # Extract key words from title (remove common words)
-            title_words = [w for w in title.split() if len(w) > 4 and w.lower() not in ['the', 'this', 'that', 'with', 'from', 'about']]
+            title_words = [
+                w
+                for w in title.split()
+                if len(w) > 4
+                and w.lower() not in ["the", "this", "that", "with", "from", "about"]
+            ]
             search_terms.extend(title_words[:3])  # Take first 3 meaningful words
-            
+
             search_query = " ".join(search_terms).strip()[:50]  # Limit query length
-            
+
             logger.info(f"   🔍 Searching internet for image: {search_query}...")
-            
+
             # Try Pexels API first (free, reliable)
             # Using Pexels via their public API endpoint
             # Note: For production, you might want to use Pexels API key for better rate limits
             # But for fallback, we can use a simple approach
-            
+
             # Option 1: Use Unsplash Source API (simple, no auth)
-            unsplash_url = f"https://source.unsplash.com/1200x630/?{httpx.quote(search_query)}"
-            
+            unsplash_url = (
+                f"https://source.unsplash.com/1200x630/?{httpx.quote(search_query)}"
+            )
+
             # Verify the URL is accessible
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.head(unsplash_url)
                 if response.status_code == 200:
-                    logger.success(f"   ✅ Found fallback image from Unsplash: {search_query}")
+                    logger.success(
+                        f"   ✅ Found fallback image from Unsplash: {search_query}"
+                    )
                     return unsplash_url
-            
+
             # Option 2: Try Pexels (if we had API key, we'd use their search API)
             # For now, use Unsplash Source which works without API key
             logger.info(f"   📷 Using Unsplash Source API for: {search_query}")
             return unsplash_url
-            
+
         except Exception as e:
             logger.warning(f"   ⚠️ Internet image search failed: {e}")
             # Last resort: return a generic placeholder URL

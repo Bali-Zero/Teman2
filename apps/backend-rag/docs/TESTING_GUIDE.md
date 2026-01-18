@@ -7,6 +7,7 @@ This guide documents the testing procedures for verifying that all endpoints and
 ## Prerequisites
 
 1. **Environment Setup**
+
    ```bash
    cd apps/backend-rag
    # Ensure all dependencies are installed
@@ -14,6 +15,7 @@ This guide documents the testing procedures for verifying that all endpoints and
    ```
 
 2. **Start the Development Server**
+
    ```bash
    npm run dev
    # OR
@@ -34,11 +36,13 @@ This guide documents the testing procedures for verifying that all endpoints and
 **Location**: `scripts/test_endpoints.py`
 
 **Usage**:
+
 ```bash
 python scripts/test_endpoints.py [base_url] [api_key]
 ```
 
 **Example**:
+
 ```bash
 # Test against local server
 python scripts/test_endpoints.py http://localhost:8000
@@ -48,6 +52,7 @@ python scripts/test_endpoints.py http://localhost:8000 your_api_key
 ```
 
 **What it tests**:
+
 - ✅ Configuration validation
 - ✅ Health endpoint (`/health`)
 - ✅ Detailed health endpoint (`/health/detailed`)
@@ -60,11 +65,13 @@ python scripts/test_endpoints.py http://localhost:8000 your_api_key
 **Location**: `scripts/health_check.py`
 
 **Usage**:
+
 ```bash
 python scripts/health_check.py
 ```
 
 **What it tests**:
+
 - Database connectivity
 - Qdrant connectivity
 - Service initialization
@@ -75,21 +82,27 @@ python scripts/health_check.py
 ### Health Endpoints
 
 1. **Basic Health Check**
+
    ```bash
    curl http://localhost:8000/health
    ```
+
    Expected: `200 OK` with `status: "healthy"` or `"initializing"`
 
 2. **Detailed Health**
+
    ```bash
    curl http://localhost:8000/health/detailed
    ```
+
    Expected: `200 OK` with detailed service status
 
 3. **Readiness Probe**
+
    ```bash
    curl http://localhost:8000/health/ready
    ```
+
    Expected: `200 OK` if ready, `503` if not ready
 
 4. **Liveness Probe**
@@ -101,12 +114,14 @@ python scripts/health_check.py
 ### Agent Endpoints
 
 1. **Conversation Trainer**
+
    ```bash
    curl -X POST http://localhost:8000/api/autonomous-agents/conversation-trainer/run \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer YOUR_API_KEY" \
      -d '{"days_back": 7}'
    ```
+
    Expected: `200 OK` or `202 Accepted` with execution ID
 
 2. **Knowledge Graph Builder**
@@ -163,12 +178,14 @@ tail -f logs/app.log | grep -i "async\|await\|pool"
 
 ### Issue: Database connection errors
 
-**Cause**: 
+**Cause**:
+
 - `DATABASE_URL` not set or incorrect
 - Database not accessible
 - Connection pool exhausted
 
 **Solution**:
+
 - Verify `DATABASE_URL` environment variable
 - Check database connectivity
 - Review connection pool configuration
@@ -177,7 +194,8 @@ tail -f logs/app.log | grep -i "async\|await\|pool"
 
 **Cause**: Python path not configured correctly
 
-**Solution**: 
+**Solution**:
+
 - Ensure `PYTHONPATH` includes backend directory
 - Run from project root or use `python -m` syntax
 
@@ -212,34 +230,3 @@ After the cleanup refactoring, you should see:
 - [Cleanup Implementation Summary](../CLEANUP_IMPLEMENTATION_SUMMARY.md)
 - [Architecture Documentation](../ARCHITECTURE.md)
 - [Config Documentation](../app/core/config.py)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

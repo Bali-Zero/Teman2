@@ -59,9 +59,7 @@ class ZantaraResponseValidator:
         was_modified = original != validated
 
         if self.dry_run and was_modified:
-            logger.info(
-                f"[Validator Dry-Run] Would modify response. Violations: {self.violations}"
-            )
+            logger.info(f"[Validator Dry-Run] Would modify response. Violations: {self.violations}")
             # In dry run, return original but report violations
             return ValidationResult(
                 original=original,

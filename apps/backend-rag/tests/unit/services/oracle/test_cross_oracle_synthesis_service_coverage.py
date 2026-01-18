@@ -2,7 +2,6 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -172,8 +171,6 @@ async def test_synthesize_full_flow_updates_stats():
     assert result.synthesis
     stats = service.get_synthesis_stats()
     assert stats["total_syntheses"] == 1
-
-
 
 
 @pytest.mark.asyncio

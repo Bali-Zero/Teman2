@@ -5,13 +5,12 @@ Tracks all state changes with user attribution and timestamps
 
 import functools
 import json
-import logging
 from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock
 
 import asyncpg
-from backend.app.dependencies import get_database_pool
+
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -33,7 +32,9 @@ class CRMAuditLogger:
         if not self.pool:
             # Try to get it from backend.app.state if we can't find it
             # But in a service, it should be initialized
-            raise RuntimeError("CRMAuditLogger not initialized with pool. Call .initialize(pool) first.")
+            raise RuntimeError(
+                "CRMAuditLogger not initialized with pool. Call .initialize(pool) first."
+            )
         return self.pool
 
     async def log_state_change(
@@ -302,7 +303,9 @@ def audit_change(entity_type: str, change_type: str = "update"):
                     pool = kwargs.get("db_pool") or audit_logger.pool
                     if pool:
                         async with pool.acquire() as conn:
-                            row = await conn.fetchrow("SELECT * FROM clients WHERE id = $1", entity_id)
+                            row = await conn.fetchrow(
+                                "SELECT * FROM clients WHERE id = $1", entity_id
+                            )
                             if row and hasattr(row, "items"):
                                 old_state = dict(row)
                             elif row and not isinstance(row, MagicMock):
@@ -346,7 +349,7 @@ async def create_audit_log_table(pool: asyncpg.Pool | None = None):
     """Create the CRM audit log table"""
     if not pool:
         pool = audit_logger.pool
-    
+
     if not pool:
         logger.error("❌ Cannot create audit log table: no database pool available")
         return

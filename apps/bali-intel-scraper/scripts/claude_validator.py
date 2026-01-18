@@ -313,6 +313,7 @@ DECISION GUIDELINES:
 
             # Prepare environment with OAuth token if available
             import os
+
             env = os.environ.copy()
             oauth_token = os.getenv("CLAUDE_CODE_OAUTH_TOKEN")
             if oauth_token:
@@ -457,7 +458,7 @@ DECISION GUIDELINES:
             similar_to = data.get("similar_to")
 
             reason = data.get("reason", "No reason provided")
-            
+
             if is_duplicate:
                 self.stats["duplicate_rejected"] += 1
                 logger.warning(f"🔄 DUPLICATE rejected: {title[:50]}...")

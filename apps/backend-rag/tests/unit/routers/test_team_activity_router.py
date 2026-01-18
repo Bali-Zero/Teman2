@@ -82,7 +82,7 @@ def mock_user_data():
 @pytest.fixture
 def test_app(mock_timesheet_service, mock_user_data):
     """Create FastAPI test app with router.
-    
+
     Updated 2026-01-16: Fixed dependency overrides to match actual API.
     - get_current_user accepts Request parameter
     - get_admin_user accepts current_user parameter (from get_current_user)
@@ -110,13 +110,14 @@ def test_app(mock_timesheet_service, mock_user_data):
         if user is None:
             raise HTTPException(status_code=401, detail="Not authenticated")
         from backend.app.utils.crm_utils import is_crm_admin
+
         if not is_crm_admin(user):
             raise HTTPException(status_code=403, detail="Admin access required")
         return user
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_admin_user] = override_get_admin_user
-    
+
     # Set default values
     app.state.current_user = mock_user_data
     app.state.admin_user = mock_user_data
@@ -240,7 +241,8 @@ class TestClockInEndpoint:
     def test_clock_in_service_unavailable(self, client):
         """Test clock-in when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.post(
                 "/api/team/clock-in",
@@ -358,7 +360,8 @@ class TestClockOutEndpoint:
     def test_clock_out_service_unavailable(self, client):
         """Test clock-out when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.post(
                 "/api/team/clock-out",
@@ -459,7 +462,8 @@ class TestMyStatusEndpoint:
     def test_get_my_status_service_unavailable(self, client):
         """Test status when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get("/api/team/my-status?user_id=user_123")
 
@@ -548,7 +552,8 @@ class TestTeamStatusEndpoint:
     def test_get_team_status_service_unavailable(self, client):
         """Test team status when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get(
                 "/api/team/status",
@@ -656,7 +661,8 @@ class TestDailyHoursEndpoint:
     def test_get_daily_hours_service_unavailable(self, client):
         """Test daily hours when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get(
                 "/api/team/hours",
@@ -761,7 +767,8 @@ class TestWeeklySummaryEndpoint:
     def test_get_weekly_summary_service_unavailable(self, client):
         """Test weekly summary when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get(
                 "/api/team/activity/weekly",
@@ -866,7 +873,8 @@ class TestMonthlySummaryEndpoint:
     def test_get_monthly_summary_service_unavailable(self, client):
         """Test monthly summary when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get(
                 "/api/team/activity/monthly",
@@ -991,7 +999,8 @@ class TestExportTimesheetEndpoint:
     def test_export_timesheet_service_unavailable(self, client):
         """Test export when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23",
@@ -1044,7 +1053,8 @@ class TestHealthCheckEndpoint:
     def test_health_check_unavailable(self, client):
         """Test health check when service is unavailable"""
         with patch(
-            "backend.services.analytics.team_timesheet_service.get_timesheet_service", return_value=None
+            "backend.services.analytics.team_timesheet_service.get_timesheet_service",
+            return_value=None,
         ):
             response = client.get("/api/team/health")
 

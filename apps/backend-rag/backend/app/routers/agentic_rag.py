@@ -15,9 +15,8 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import (
     get_current_user,
-    get_database_pool,
-    get_orchestrator,
     get_optional_database_pool,
+    get_orchestrator,
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
 from backend.services.rag.agentic import AgenticRAGOrchestrator
@@ -29,24 +28,24 @@ def clean_image_generation_response(text: str) -> str:
     """
     Post-process AI response to remove ugly URLs from image generation.
     Uses line-by-line filtering for robustness.
-    
+
     This is the SINGLE SOURCE OF TRUTH for image response cleaning.
     Removes pollinations URLs, markdown images, version numbers, and other artifacts
     from AI-generated image responses.
-    
+
     Features:
     - Removes pollinations.ai URLs and subdomains
     - Filters markdown image syntax
     - Removes version numbers and intro/outro lines
     - Handles URL-encoded content
     - Provides fallback message if too much content is removed
-    
+
     Note: Processes text only if it contains "pollinations" OR has image-related patterns
     to avoid unnecessary processing of normal text.
     """
     if not text:
         return text
-    
+
     # Early exit: if no pollinations and no image-related patterns, return unchanged
     text_lower = text.lower()
     has_pollinations = "pollinations" in text_lower
@@ -57,7 +56,7 @@ def clean_image_generation_response(text: str) -> str:
         or re.search(r"versione\s*\d", text_lower)
         or re.search(r"^\s*\d+\.\s*\*{0,2}(versione|prima|seconda|opzione)", text_lower)
     )
-    
+
     if not has_pollinations and not has_image_patterns:
         return text
 
@@ -70,52 +69,35 @@ def clean_image_generation_response(text: str) -> str:
         should_skip = False
 
         # Skip lines with pollinations URLs (any subdomain)
-        if "pollinations" in line_lower:
-            should_skip = True
-        # Skip lines with image.pollinations or any pollinations subdomain
-        elif "image" in line_lower and "http" in line_lower:
-            should_skip = True
-        # Skip markdown image syntax ![...](...)
-        elif re.search(r"!\[.*?\]\(.*?\)", line, re.IGNORECASE):
-            should_skip = True
-        # Skip lines that look like broken markdown images (start with ![ or contain](http)
-        elif "![" in line or "](" in line and "http" in line:
-            should_skip = True
-        # Skip [Visualizza Immagine] lines
-        elif line.strip().startswith("[Visualizza"):
-            should_skip = True
-        # Skip numbered version lines like "1. **Versione..." or "1. Versione..."
-        elif re.search(r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE):
-            should_skip = True
-        # Skip bullet version lines like "* Versione..." or "- Versione..."
-        elif re.search(r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE):
-            should_skip = True
-        # Skip lines that are just "Versione X" headers
-        elif re.search(r"^\s*\*{0,2}Versione\s*\d", line, re.IGNORECASE):
-            should_skip = True
-        # Skip intro lines that mention "opzioni" or "varianti" for images
-        elif re.search(
-            r"ecco le (opzioni|immagini)|ho (elaborato|generato|creato) (due|le)|ti propongo|due varianti|ecco i risultati|queste versioni",
-            line_lower,
+        if (
+            "pollinations" in line_lower
+            or "image" in line_lower
+            and "http" in line_lower
+            or re.search(r"!\[.*?\]\(.*?\)", line, re.IGNORECASE)
+            or "![" in line
+            or "](" in line
+            and "http" in line
+            or line.strip().startswith("[Visualizza")
+            or re.search(
+                r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE
+            )
+            or re.search(
+                r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE
+            )
+            or re.search(r"^\s*\*{0,2}Versione\s*\d", line, re.IGNORECASE)
+            or re.search(
+                r"ecco le (opzioni|immagini)|ho (elaborato|generato|creato) (due|le)|ti propongo|due varianti|ecco i risultati|queste versioni",
+                line_lower,
+            )
+            or re.search(
+                r"spero che queste|se hai bisogno di|vadano bene per|sembra che queste",
+                line_lower,
+            )
+            or line.strip().startswith("(http")
+            or re.search(r"^https?://", line.strip(), re.IGNORECASE)
+            or re.search(r"%20.*%20.*%20", line)
+            or re.search(r"alta risoluzione|atmosfera tradizionale|luce dorata", line_lower)
         ):
-            should_skip = True
-        # Skip "Spero che queste opzioni" outro lines
-        elif re.search(
-            r"spero che queste|se hai bisogno di|vadano bene per|sembra che queste",
-            line_lower,
-        ):
-            should_skip = True
-        # Skip lines starting with (http...
-        elif line.strip().startswith("(http"):
-            should_skip = True
-        # Skip lines that are just URLs
-        elif re.search(r"^https?://", line.strip(), re.IGNORECASE):
-            should_skip = True
-        # Skip lines that contain URL-encoded content (long %20 sequences)
-        elif re.search(r"%20.*%20.*%20", line):
-            should_skip = True
-        # Skip lines mentioning "alta risoluzione" or "atmosfera" for image descriptions
-        elif re.search(r"alta risoluzione|atmosfera tradizionale|luce dorata", line_lower):
             should_skip = True
 
         if not should_skip:

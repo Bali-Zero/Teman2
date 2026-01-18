@@ -31,12 +31,8 @@
     "alt": {
       "default": "json",
       "description": "Data format for the response.",
-      "enum": [
-        "json"
-      ],
-      "enumDescriptions": [
-        "Responses with Content-Type of application/json"
-      ],
+      "enum": ["json"],
+      "enumDescriptions": ["Responses with Content-Type of application/json"],
       "location": "query",
       "type": "string"
     },
@@ -80,9 +76,7 @@
           "description": "Query your data with filters and parameters that you define. Returns zero or more rows grouped by the row keys that you define. You must define a date range of one or more days.\n\nWhen date is one of the group by values, any days without data are omitted from the result list. If you need to know which days have data, issue a broad date range query grouped by date for any metric, and see which day rows are returned.",
           "httpMethod": "POST",
           "id": "webmasters.searchanalytics.query",
-          "parameterOrder": [
-            "siteUrl"
-          ],
+          "parameterOrder": ["siteUrl"],
           "parameters": {
             "siteUrl": {
               "description": "The site's URL, including protocol. For example: http://www.example.com/",
@@ -111,10 +105,7 @@
           "description": "Deletes a sitemap from this site.",
           "httpMethod": "DELETE",
           "id": "webmasters.sitemaps.delete",
-          "parameterOrder": [
-            "siteUrl",
-            "feedpath"
-          ],
+          "parameterOrder": ["siteUrl", "feedpath"],
           "parameters": {
             "feedpath": {
               "description": "The URL of the actual sitemap. For example: http://www.example.com/sitemap.xml",
@@ -130,18 +121,13 @@
             }
           },
           "path": "sites/{siteUrl}/sitemaps/{feedpath}",
-          "scopes": [
-            "https://www.googleapis.com/auth/webmasters"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/webmasters"]
         },
         "get": {
           "description": "Retrieves information about a specific sitemap.",
           "httpMethod": "GET",
           "id": "webmasters.sitemaps.get",
-          "parameterOrder": [
-            "siteUrl",
-            "feedpath"
-          ],
+          "parameterOrder": ["siteUrl", "feedpath"],
           "parameters": {
             "feedpath": {
               "description": "The URL of the actual sitemap. For example: http://www.example.com/sitemap.xml",
@@ -169,9 +155,7 @@
           "description": "Lists the sitemaps-entries submitted for this site, or included in the sitemap index file (if sitemapIndex is specified in the request).",
           "httpMethod": "GET",
           "id": "webmasters.sitemaps.list",
-          "parameterOrder": [
-            "siteUrl"
-          ],
+          "parameterOrder": ["siteUrl"],
           "parameters": {
             "siteUrl": {
               "description": "The site's URL, including protocol. For example: http://www.example.com/",
@@ -198,10 +182,7 @@
           "description": "Submits a sitemap for a site.",
           "httpMethod": "PUT",
           "id": "webmasters.sitemaps.submit",
-          "parameterOrder": [
-            "siteUrl",
-            "feedpath"
-          ],
+          "parameterOrder": ["siteUrl", "feedpath"],
           "parameters": {
             "feedpath": {
               "description": "The URL of the sitemap to add. For example: http://www.example.com/sitemap.xml",
@@ -217,9 +198,7 @@
             }
           },
           "path": "sites/{siteUrl}/sitemaps/{feedpath}",
-          "scopes": [
-            "https://www.googleapis.com/auth/webmasters"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/webmasters"]
         }
       }
     },
@@ -229,9 +208,7 @@
           "description": "Adds a site to the set of the user's sites in Search Console.",
           "httpMethod": "PUT",
           "id": "webmasters.sites.add",
-          "parameterOrder": [
-            "siteUrl"
-          ],
+          "parameterOrder": ["siteUrl"],
           "parameters": {
             "siteUrl": {
               "description": "The URL of the site to add.",
@@ -241,17 +218,13 @@
             }
           },
           "path": "sites/{siteUrl}",
-          "scopes": [
-            "https://www.googleapis.com/auth/webmasters"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/webmasters"]
         },
         "delete": {
           "description": "Removes a site from the set of the user's Search Console sites.",
           "httpMethod": "DELETE",
           "id": "webmasters.sites.delete",
-          "parameterOrder": [
-            "siteUrl"
-          ],
+          "parameterOrder": ["siteUrl"],
           "parameters": {
             "siteUrl": {
               "description": "The URI of the property as defined in Search Console. Examples: http://www.example.com/ or android-app://com.example/ Note: for property-sets, use the URI that starts with sc-set: which is used in Search Console URLs.",
@@ -261,17 +234,13 @@
             }
           },
           "path": "sites/{siteUrl}",
-          "scopes": [
-            "https://www.googleapis.com/auth/webmasters"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/webmasters"]
         },
         "get": {
           "description": "Retrieves information about specific site.",
           "httpMethod": "GET",
           "id": "webmasters.sites.get",
-          "parameterOrder": [
-            "siteUrl"
-          ],
+          "parameterOrder": ["siteUrl"],
           "parameters": {
             "siteUrl": {
               "description": "The URI of the property as defined in Search Console. Examples: http://www.example.com/ or android-app://com.example/ Note: for property-sets, use the URI that starts with sc-set: which is used in Search Console URLs.",

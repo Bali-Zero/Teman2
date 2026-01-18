@@ -2,9 +2,16 @@
 """
 THE SCRIBE: Automated Documentation Generator
 Scans codebase, extracts docstrings and API routes, generates LIVING_ARCHITECTURE.md
+
+Enhanced Features:
+- Accurate test file counting (backend/tests/)
+- Accurate migration counting (excludes scripts/)
+- Accurate API endpoint counting
+- Auto-runs via cron job (see scripts/scribe_cron.sh)
 """
 
 import ast
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 from datetime import datetime
@@ -178,7 +185,24 @@ class Scribe:
 
     def _count_test_files_and_cases(self) -> Tuple[int, int]:
         """Counts test files and estimates test cases."""
-        test_files = list((self.backend_dir.parent / "tests").rglob("test_*.py"))
+        # Search in backend/tests (correct location, not tests/)
+        test_dir = self.backend_dir / "tests"
+
+        # Find both test_*.py and *_test.py patterns
+        test_files_pattern1 = (
+            list(test_dir.rglob("test_*.py")) if test_dir.exists() else []
+        )
+        test_files_pattern2 = (
+            list(test_dir.rglob("*_test.py")) if test_dir.exists() else []
+        )
+
+        # Combine and deduplicate
+        test_files_set = set(test_files_pattern1 + test_files_pattern2)
+        test_files = list(test_files_set)
+
+        # Exclude __init__.py and other non-test files
+        test_files = [f for f in test_files if "__init__" not in f.name]
+
         total_test_cases = 0
         for file_path in test_files:
             try:
@@ -194,11 +218,23 @@ class Scribe:
 
     def _count_db_tables_and_migrations(self) -> Tuple[int, int]:
         """Counts database tables from migrations and actual migration files."""
-        migrations_dir = self.backend_dir / "db" / "migrations"
+        # Count migrations from backend/migrations (exclude scripts/)
+        migrations_dir = self.backend_dir / "migrations"
         table_count = set()
-        migration_files = list(migrations_dir.rglob("*.py")) + list(
-            migrations_dir.rglob("*.sql")
-        )
+
+        # Only count migration_*.py and apply_migration_*.py files (exclude scripts/)
+        migration_files = []
+        if migrations_dir.exists():
+            for f in migrations_dir.rglob("*.py"):
+                # Exclude scripts directory and utility files
+                if "scripts" in str(f):
+                    continue
+                # Include only migration files (migration_*.py or apply_migration_*.py)
+                if "migration_" in f.name or "apply_migration" in f.name:
+                    migration_files.append(f)
+
+            # Also include SQL migration files
+            migration_files += list(migrations_dir.rglob("*.sql"))
 
         for file_path in migration_files:
             try:
@@ -283,18 +319,24 @@ class Scribe:
         # Directories to scan for router files
         router_search_paths = []
         router_search_paths.append(self.backend_dir / "app" / "routers")
-        for module_dir in (self.backend_dir / "app" / "modules").iterdir():
-            if module_dir.is_dir():
-                router_search_paths.append(
-                    module_dir
-                )  # Add module directories to search
+        # Check if modules directory exists before iterating
+        modules_dir = self.backend_dir / "app" / "modules"
+        if modules_dir.exists():
+            for module_dir in modules_dir.iterdir():
+                if module_dir.is_dir():
+                    router_search_paths.append(module_dir)
 
         print(
             f"Debug: Starting API endpoint count. Initial endpoints: {api_endpoints}, router files: {len(router_files_set)}"
         )
 
         for search_path in router_search_paths:
+            if not search_path.exists():
+                continue
             for file_path in search_path.rglob("*.py"):
+                # Skip __init__.py and non-router files
+                if file_path.name == "__init__.py":
+                    continue
                 try:
                     content = file_path.read_text(encoding="utf-8")
 
@@ -537,6 +579,8 @@ class Scribe:
         modules: Dict,
         classes: Dict,
         functions: Dict,
+        api_endpoints: int = None,
+        router_files_set: set = None,
     ) -> str:
         """Generate SYSTEM_OVERVIEW.md - concise summary"""
         lines = []
@@ -555,22 +599,30 @@ class Scribe:
         lines.append("---")
         lines.append("")
 
-        # Quick Stats
+        # Quick Stats - Use accurate counts
+        test_files, test_cases = self._count_test_files_and_cases()
+        db_tables, migrations = self._count_db_tables_and_migrations()
+        doc_files = self._count_doc_files()
+        python_services = self._count_python_files_in_dir(self.backend_dir / "services")
+
+        # Use provided api_endpoints if available, otherwise count from routes
+        if api_endpoints is None:
+            api_endpoints = len(routes)
+
         lines.append("## Quick Statistics")
         lines.append("")
-        lines.append(f"- **Total API Routes:** {len(routes)}")
+        lines.append(f"- **Total API Routes:** {api_endpoints}")
+        if router_files_set:
+            lines.append(f"- **Router Files:** {len(router_files_set)}")
         lines.append(f"- **Modules:** {len(modules)}")
+        lines.append(f"- **Services:** {python_services}")
         lines.append(
-            f"- **Services:** {len([k for k in classes.keys() if 'service' in k.lower()])}"
+            f"- **Agents:** {len([f for f in self.backend_dir.rglob('agents/**/*.py') if '__pycache__' not in str(f)])}"
         )
-        agent_count = len(
-            [
-                f
-                for f in self.backend_dir.rglob("*agent*.py")
-                if "__pycache__" not in str(f)
-            ]
-        )
-        lines.append(f"- **Agents:** {agent_count}")
+        lines.append(f"- **Test Files:** {test_files}")
+        lines.append(f"- **Test Cases:** ~{test_cases}")
+        lines.append(f"- **Migrations:** {migrations}")
+        lines.append(f"- **Database Tables:** {db_tables}")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -693,15 +745,21 @@ class Scribe:
 
         lines.append("## DIMENSION 0: STRATEGIA (Omnichannel)")
         lines.append("")
-        lines.append("> **See full strategy:** [OMNICHANNEL_STRATEGY.md](../docs/architecture/OMNICHANNEL_STRATEGY.md)")
+        lines.append(
+            "> **See full strategy:** [OMNICHANNEL_STRATEGY.md](../docs/architecture/OMNICHANNEL_STRATEGY.md)"
+        )
         lines.append("")
         lines.append("### The Hydrated Frontend")
         lines.append("The interface is liquid; intelligence is solid.")
         lines.append("")
         lines.append("| Channel | Tech | Role |")
         lines.append("|---------|------|------|")
-        lines.append("| **Web Command Deck** | Next.js 16 | Deep Work, Admin, Analytics |")
-        lines.append("| **Telegram** | Bot API + Scraper | Notifications, Approvals, Quick Tasks |")
+        lines.append(
+            "| **Web Command Deck** | Next.js 16 | Deep Work, Admin, Analytics |"
+        )
+        lines.append(
+            "| **Telegram** | Bot API + Scraper | Notifications, Approvals, Quick Tasks |"
+        )
         lines.append("| **WhatsApp** | Business API | Client Communication, Docs |")
         lines.append("| **Voice** | ElevenLabs + VAPI | Concierge, Hands-free |")
         lines.append("| **Social** | Instagram/X APIs | Brand Presence, Listening |")
@@ -1162,7 +1220,10 @@ class Scribe:
         lines.append("│  ├─ Real Redis                                             │")
         lines.append("│  └─ End-to-end workflows                                   │")
         lines.append("│                                                             │")
-        lines.append("│  Conftest Files: 4 (1,619 lines total)                     │")
+        conftest_files = len(list((self.backend_dir / "tests").rglob("conftest.py")))
+        lines.append(
+            f"│  Conftest Files: {conftest_files} (1,619 lines total)                     │"
+        )
         lines.append(
             f"│  Total Test Files: {test_files}                                      │"
         )
@@ -1306,6 +1367,10 @@ class Scribe:
         print("╚════════════════════════════════════════╝")
         print(f"{Colors.ENDC}")
 
+        # Log execution info
+        execution_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{Colors.OKCYAN}🕐 Execution started: {execution_time}{Colors.ENDC}")
+
         if not self.backend_dir.exists():
             print(
                 f"{Colors.FAIL}✘ Backend directory not found: {self.backend_dir}{Colors.ENDC}"
@@ -1328,7 +1393,7 @@ class Scribe:
         # Generate markdown
         markdown_content = self.generate_markdown(routes, modules, classes, functions)
         system_overview_content = self.generate_system_overview(
-            routes, modules, classes, functions
+            routes, modules, classes, functions, api_endpoints, router_files_set
         )
 
         # Generate and write SYSTEM_MAP_4D.md
@@ -1351,12 +1416,18 @@ class Scribe:
             f"{Colors.OKGREEN}✔ SYSTEM_MAP_4D.md written to {self.system_map_4d_file}{Colors.ENDC}"
         )
 
+        # Execution summary
+        execution_time_end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(
+            f"{Colors.OKCYAN}🕐 Execution completed: {execution_time_end}{Colors.ENDC}"
+        )
+        print(f"{Colors.OKGREEN}✅ The Scribe completed successfully!{Colors.ENDC}")
+
         return True
 
 
 def main():
     """Main entry point"""
-    import sys
     from pathlib import Path
 
     # Determine paths

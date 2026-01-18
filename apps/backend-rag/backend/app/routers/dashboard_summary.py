@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from backend.core.qdrant_db import QdrantClient
 from fastapi import APIRouter, Depends
 
 from backend.app.core.config import settings
@@ -19,6 +18,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.crm_interactions import get_interactions_stats, list_interactions
 from backend.app.routers.crm_practices import get_practices_stats, list_practices
 from backend.app.utils.logging_utils import get_logger
+from backend.core.qdrant_db import QdrantClient
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 from backend.services.memory.collective_memory_service import CollectiveMemoryService

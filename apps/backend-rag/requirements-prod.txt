@@ -1,11 +1,10 @@
 # ZANTARA RAG Backend - PRODUCTION DEPENDENCIES (Optimized for <8GB)
 # Removes heavy ML packages that aren't used in production (OpenAI API for embeddings)
-# Last updated: 2026-01-01 15:10 - Added sentry-sdk for error monitoring
+# Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
 
 # Core Framework
-# Core Framework
-fastapi>=0.110.0
-uvicorn[standard]>=0.30.0
+fastapi>=0.128.0  # Upgraded for starlette 0.50+ compatibility and security fixes
+uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 pydantic>=2.12.0
 pydantic-settings>=2.5.2
 python-multipart>=0.0.9
@@ -18,7 +17,7 @@ anyio>=4.5.0
 qdrant-client>=1.12.0
 
 # AI API Clients (optimized for resolution speed)
-openai>=1.55.0  # Pin to recent version to avoid resolving against 1.0.0+
+openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.75.0  # Updated for httpx 0.28+ compatibility
 google-genai>=1.56.0  # Unified SDK (replaces google-generativeai)
 google-api-python-client>=2.100.0
@@ -43,12 +42,12 @@ python-docx>=1.1.0
 
 # HTTP/Network
 httpx>=0.28.1,<1.0.0
-requests==2.31.0
+requests>=2.32.0  # Security updates in 2.32.x
 aiohttp>=3.10.0
 urllib3>=2.0.0
 
 # Authentication
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
 bcrypt==4.0.1
 passlib[bcrypt]==1.7.4
 

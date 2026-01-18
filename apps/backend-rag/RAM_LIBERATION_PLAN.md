@@ -17,15 +17,15 @@
 
 ## 📊 TOP CONSUMATORI RAM
 
-| Processo | RAM | % MEM | Azione |
-|----------|-----|-------|--------|
-| **VirtualMachine** (PID 64538) | ~3 GB | 7.0% | 🔴 Chiudere |
-| **cursor-agent** (PID 5437) | ~709 MB | 3.4% | ⚠️ Se non necessario |
-| **Claude** (PID 48324, 60792) | ~600 MB | 3.3% | ⚠️ Se non necessario |
-| **Chrome** (vari processi) | ~700 MB | - | ⚠️ Chiudere tab |
-| **Documents** (PID 69012) | ~418 MB | 2.4% | ⚠️ Se non necessario |
-| **iTerm2** (PID 625) | ~426 MB | 2.2% | ✅ Mantenere |
-| **Finder** (PID 751) | ~521 MB | - | ✅ Sistema |
+| Processo                       | RAM     | % MEM | Azione               |
+| ------------------------------ | ------- | ----- | -------------------- |
+| **VirtualMachine** (PID 64538) | ~3 GB   | 7.0%  | 🔴 Chiudere          |
+| **cursor-agent** (PID 5437)    | ~709 MB | 3.4%  | ⚠️ Se non necessario |
+| **Claude** (PID 48324, 60792)  | ~600 MB | 3.3%  | ⚠️ Se non necessario |
+| **Chrome** (vari processi)     | ~700 MB | -     | ⚠️ Chiudere tab      |
+| **Documents** (PID 69012)      | ~418 MB | 2.4%  | ⚠️ Se non necessario |
+| **iTerm2** (PID 625)           | ~426 MB | 2.2%  | ✅ Mantenere         |
+| **Finder** (PID 751)           | ~521 MB | -     | ✅ Sistema           |
 
 **Totale Consumato dai Top Processi:** ~6 GB
 
@@ -40,6 +40,7 @@
 **Problema:** VM attiva consuma ~3 GB RAM
 
 **Azione:**
+
 ```bash
 # Metodo 1: Activity Monitor
 # 1. Apri Activity Monitor
@@ -62,6 +63,7 @@ kill -9 64538
 **Problema:** Claude consuma ~600 MB RAM
 
 **Azione:**
+
 - Chiudere app Claude se non in uso
 
 **Spazio Liberabile:** ~600 MB
@@ -73,6 +75,7 @@ kill -9 64538
 **Problema:** Chrome con molte tab aperte consuma ~700 MB
 
 **Azione:**
+
 - Chiudere tab Chrome non necessarie
 - Oppure chiudere Chrome completamente se non necessario
 
@@ -85,6 +88,7 @@ kill -9 64538
 **Problema:** Documents consuma ~418 MB RAM
 
 **Azione:**
+
 - Chiudere app Documents se non in uso
 
 **Spazio Liberabile:** ~400 MB
@@ -96,6 +100,7 @@ kill -9 64538
 #### 5. Eseguire Purge Memoria
 
 **Comando:**
+
 ```bash
 sudo purge
 ```
@@ -118,19 +123,19 @@ sudo purge
 
 ### Dopo Azioni Priorità Alta
 
-| Metrica | Attuale | Dopo Azioni | Miglioramento |
-|---------|---------|-------------|---------------|
-| RAM Libera | ~73 MB | ~4 GB | +3.9 GB |
-| Memoria Compressa | ~8.7 GB | ~5 GB | -3.7 GB |
-| RAM Usata | 99.5% | ~75% | -24.5% |
+| Metrica           | Attuale | Dopo Azioni | Miglioramento |
+| ----------------- | ------- | ----------- | ------------- |
+| RAM Libera        | ~73 MB  | ~4 GB       | +3.9 GB       |
+| Memoria Compressa | ~8.7 GB | ~5 GB       | -3.7 GB       |
+| RAM Usata         | 99.5%   | ~75%        | -24.5%        |
 
 ### Dopo Purge Memoria
 
-| Metrica | Dopo Azioni | Dopo Purge | Miglioramento |
-|---------|-------------|------------|---------------|
-| RAM Libera | ~4 GB | ~12 GB | +8 GB |
-| Memoria Compressa | ~5 GB | <1 GB | -4 GB |
-| RAM Usata | ~75% | ~25% | -50% |
+| Metrica           | Dopo Azioni | Dopo Purge | Miglioramento |
+| ----------------- | ----------- | ---------- | ------------- |
+| RAM Libera        | ~4 GB       | ~12 GB     | +8 GB         |
+| Memoria Compressa | ~5 GB       | <1 GB      | -4 GB         |
+| RAM Usata         | ~75%        | ~25%       | -50%          |
 
 ---
 

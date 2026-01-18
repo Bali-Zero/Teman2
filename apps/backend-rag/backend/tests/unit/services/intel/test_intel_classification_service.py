@@ -32,7 +32,9 @@ class TestIntelClassificationService:
     def test_classify_visa_by_keywords(self, service):
         """Test classification by visa keywords."""
         result = service.classify_intel_type(
-            "news", "KITAS Application Guide", "This article discusses visa and immigration requirements"
+            "news",
+            "KITAS Application Guide",
+            "This article discusses visa and immigration requirements",
         )
         assert result == "visa"
 
@@ -51,7 +53,7 @@ class TestIntelClassificationService:
     def test_metrics_tracking(self, mock_total, mock_duration, service):
         """Test that metrics are tracked correctly."""
         service.classify_intel_type("visa", "Test", "Content")
-        
+
         # Verify metrics were called
         mock_duration.observe.assert_called_once()
         mock_total.labels.assert_called_once()

@@ -19,11 +19,21 @@ from pathlib import Path
 # Config
 DROPBOX_PATH = Path("/sessions/upbeat-laughing-volta/mnt/antonellosiano/Dropbox")
 OUTPUT_DIR = Path.home() / "Desktop" / "GDRIVE_READY"
-TEST_CLIENTS_FILE = Path(__file__).parent / 'test_100_clients.json'
+TEST_CLIENTS_FILE = Path(__file__).parent / "test_100_clients.json"
 
 # Keywords
-PASSPORT_KEYWORDS = ['passport', 'paspor', 'pp', 'pasaporte']
-COMPANY_KEYWORDS = ['pt', 'pma', 'cv', 'company', 'perusahaan', 'npwp', 'nib', 'akta', 'deed']
+PASSPORT_KEYWORDS = ["passport", "paspor", "pp", "pasaporte"]
+COMPANY_KEYWORDS = [
+    "pt",
+    "pma",
+    "cv",
+    "company",
+    "perusahaan",
+    "npwp",
+    "nib",
+    "akta",
+    "deed",
+]
 
 
 def categorize_file(filename):
@@ -31,16 +41,16 @@ def categorize_file(filename):
     filename_lower = filename.lower()
 
     if any(kw in filename_lower for kw in PASSPORT_KEYWORDS):
-        return '01_Passport'
+        return "01_Passport"
     if any(kw in filename_lower for kw in COMPANY_KEYWORDS):
-        return '02_Company'
-    return '03_Other_Documents'
+        return "02_Company"
+    return "03_Other_Documents"
 
 
 def prepare_client(client, output_dir):
     """Prepare one client"""
-    client_name = client['name']
-    print(f"📁 {client_name}", end=' ')
+    client_name = client["name"]
+    print(f"📁 {client_name}", end=" ")
 
     try:
         # Create client folder
@@ -48,18 +58,18 @@ def prepare_client(client, output_dir):
         client_dir.mkdir(parents=True, exist_ok=True)
 
         # Create category folders
-        (client_dir / '01_Passport').mkdir(exist_ok=True)
-        (client_dir / '02_Company').mkdir(exist_ok=True)
-        (client_dir / '03_Other_Documents').mkdir(exist_ok=True)
+        (client_dir / "01_Passport").mkdir(exist_ok=True)
+        (client_dir / "02_Company").mkdir(exist_ok=True)
+        (client_dir / "03_Other_Documents").mkdir(exist_ok=True)
 
         # Get files from Dropbox
-        client_path = DROPBOX_PATH / client['full_path']
+        client_path = DROPBOX_PATH / client["full_path"]
         if not client_path.exists():
-            print(f"❌ Path not found")
+            print("❌ Path not found")
             return 0
 
-        files = list(client_path.rglob('*'))
-        files = [f for f in files if f.is_file() and not f.name.startswith('.')]
+        files = list(client_path.rglob("*"))
+        files = [f for f in files if f.is_file() and not f.name.startswith(".")]
 
         # Copy files
         for file_path in files:
@@ -76,22 +86,22 @@ def prepare_client(client, output_dir):
 
 
 def main():
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📦 PREPARAZIONE LOCALE - 100 CLIENTI")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Clean output dir
     if OUTPUT_DIR.exists():
-        print(f"🗑️  Cleaning old output...")
+        print("🗑️  Cleaning old output...")
         shutil.rmtree(OUTPUT_DIR)
 
     OUTPUT_DIR.mkdir(parents=True)
     print(f"📂 Output: {OUTPUT_DIR}\n")
 
     # Load clients
-    with open(TEST_CLIENTS_FILE, 'r') as f:
+    with open(TEST_CLIENTS_FILE, "r") as f:
         data = json.load(f)
-        clients = data['clients']
+        clients = data["clients"]
 
     print(f"Processing {len(clients)} clients...\n")
 
@@ -99,15 +109,15 @@ def main():
     success = 0
 
     for i, client in enumerate(clients, 1):
-        print(f"[{i:3}/{len(clients)}] ", end='')
+        print(f"[{i:3}/{len(clients)}] ", end="")
         files = prepare_client(client, OUTPUT_DIR)
         if files > 0:
             success += 1
             total_files += files
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("✅ COMPLETE!")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
     print(f"Clients prepared: {success}/{len(clients)}")
     print(f"Total files:      {total_files}")
     print(f"\nOutput folder: {OUTPUT_DIR}")

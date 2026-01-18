@@ -42,7 +42,8 @@ class TestGoldenAnswerService:
         mock_pool = MagicMock()
 
         with patch(
-            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool",
+            new_callable=AsyncMock,
         ) as mock:
             mock.return_value = mock_pool
             await service.connect()
@@ -53,7 +54,8 @@ class TestGoldenAnswerService:
     async def test_connect_failure(self, service):
         """Test database connection failure"""
         with patch(
-            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool",
+            new_callable=AsyncMock,
         ) as mock:
             mock.side_effect = Exception("Connection failed")
 
@@ -101,7 +103,8 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool",
+            new_callable=AsyncMock,
         ) as mock:
             mock.return_value = mock_pool
 
@@ -344,7 +347,8 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool",
+            new_callable=AsyncMock,
         ) as mock:
             mock.return_value = mock_pool
 
@@ -405,7 +409,8 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool",
+            new_callable=AsyncMock,
         ) as mock:
             mock.return_value = mock_pool
 

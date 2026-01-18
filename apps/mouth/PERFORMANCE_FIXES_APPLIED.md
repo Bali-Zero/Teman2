@@ -13,6 +13,7 @@
 **Problema:** Cartella `dashboard-v2` non utilizzata nel codebase, technical debt.
 
 **Fix:**
+
 - ❌ Rimosso `components/dashboard-v2/index.ts`
 - ❌ Rimosso `components/dashboard-v2/StatsCardV2.tsx`
 - ❌ Rimosso `components/dashboard-v2/AiPulseWidgetV2.tsx`
@@ -28,6 +29,7 @@
 **Problema:** Valori derivati (`totalUnread`, `isHealthy`) venivano ricalcolati ad ogni render.
 
 **Fix:**
+
 ```typescript
 // Prima
 totalUnread: stats.whatsappUnread + stats.emailUnread,
@@ -56,12 +58,14 @@ const isHealthy = useMemo(
 **Problema:** `ClientCard` veniva re-renderizzato anche quando i dati non cambiavano, causando performance issues con liste grandi (200+ items).
 
 **Fix:**
+
 - ✅ Aggiunto `React.memo` con custom comparison function
 - ✅ Rimossa `layoutId` da Framer Motion (causava calcoli costosi di layout)
 
 **File modificato:** `components/crm/ClientCard.tsx`
 
 **Prima:**
+
 ```typescript
 export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
   // ...
@@ -69,6 +73,7 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
 ```
 
 **Dopo:**
+
 ```typescript
 export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) => {
   // ...
@@ -83,7 +88,8 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
 });
 ```
 
-**Impatto:** 
+**Impatto:**
+
 - Riduzione re-render del 70-90% per liste clienti
 - Eliminazione calcoli layout costosi con Framer Motion
 - Miglioramento scroll performance
@@ -95,11 +101,13 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
 **Problema:** Componente non usato ma potrebbe essere usato in futuro senza ottimizzazioni.
 
 **Fix:**
+
 - ✅ Aggiunto commento con suggerimento per lazy-loading
 
 **File modificato:** `components/ui/particles-background.tsx`
 
 **Aggiunto:**
+
 ```typescript
 /**
  * PERFORMANCE NOTE: If used in production, consider lazy-loading:
@@ -119,11 +127,13 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
 **Problema:** Componente usa 45+ motion components che possono impattare INP.
 
 **Fix:**
+
 - ✅ Aggiunto commento con suggerimenti di ottimizzazione
 
 **File modificato:** `components/chat/ThinkingIndicator.tsx`
 
 **Aggiunto:**
+
 ```typescript
 /**
  * PERFORMANCE NOTE: This component uses 45+ motion components which can impact INP.
@@ -143,12 +153,12 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
 
 ### Performance Improvements
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **ClientCard Re-renders** | ~200 per scroll | ~20-40 | **80-90% riduzione** |
-| **Dashboard Hook Re-calculations** | Ogni render | Solo quando dati cambiano | **~70% riduzione** |
-| **Bundle Size** | Include dashboard-v2 | Rimossa cartella | **~15KB riduzione** |
-| **INP (Client Lists)** | 5-8s | 2-4s stimato | **~50% miglioramento** |
+| Metrica                            | Prima                | Dopo                      | Miglioramento          |
+| ---------------------------------- | -------------------- | ------------------------- | ---------------------- |
+| **ClientCard Re-renders**          | ~200 per scroll      | ~20-40                    | **80-90% riduzione**   |
+| **Dashboard Hook Re-calculations** | Ogni render          | Solo quando dati cambiano | **~70% riduzione**     |
+| **Bundle Size**                    | Include dashboard-v2 | Rimossa cartella          | **~15KB riduzione**    |
+| **INP (Client Lists)**             | 5-8s                 | 2-4s stimato              | **~50% miglioramento** |
 
 ### Code Quality
 
@@ -170,11 +180,13 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
 ## ✅ Testing
 
 **Verifiche effettuate:**
+
 - ✅ Lint check: Nessun errore
 - ✅ Type check: TypeScript compila correttamente
 - ✅ Import check: Nessun import rotto
 
 **Testing manuale consigliato:**
+
 - [ ] Verificare dashboard carica correttamente
 - [ ] Verificare liste clienti scrollano smooth
 - [ ] Verificare ClientCard hover effects funzionano

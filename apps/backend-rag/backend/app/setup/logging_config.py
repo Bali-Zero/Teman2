@@ -14,7 +14,6 @@ Features:
 
 import logging
 import logging.handlers
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -86,10 +85,10 @@ class DevelopmentFormatter(logging.Formatter):
     """
 
     COLORS = {
-        "DEBUG": "\033[36m",     # Cyan
-        "INFO": "\033[32m",      # Green
-        "WARNING": "\033[33m",   # Yellow
-        "ERROR": "\033[31m",     # Red
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
         "CRITICAL": "\033[35m",  # Magenta
     }
     RESET = "\033[0m"
@@ -110,6 +109,7 @@ class DevelopmentFormatter(logging.Formatter):
         # Add context if present
         if hasattr(record, "context") and record.context:
             import json
+
             context_str = json.dumps(record.context, default=str)
             if len(context_str) > 100:
                 context_str = context_str[:100] + "..."
@@ -134,6 +134,7 @@ class ContextFilter(logging.Filter):
         # Try to get correlation ID from contextvars
         try:
             from contextvars import ContextVar
+
             correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
             correlation_id = correlation_id_var.get()
             if correlation_id:

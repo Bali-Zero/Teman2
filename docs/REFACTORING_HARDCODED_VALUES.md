@@ -18,6 +18,7 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 **Aggiunta classe:** `EvidenceScoreConstants`
 
 **Valori spostati da `reasoning.py`:**
+
 - `ABSTAIN_THRESHOLD = 0.3` (sostituisce `0.3` hardcoded)
 - `HIGH_QUALITY_SOURCE_THRESHOLD = 0.3`
 - `HIGH_QUALITY_SOURCE_BONUS = 0.5`
@@ -32,6 +33,7 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 - `MAX_SCORE = 1.0`
 
 **File aggiornati:**
+
 - ✅ `services/rag/agentic/reasoning.py` - Tutti i valori hardcoded sostituiti con constants
 
 ---
@@ -41,6 +43,7 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 **Aggiunta classe:** `IntelConstants`
 
 **Valori spostati da `intel.py`:**
+
 - `COLLECTIONS` - Mapping collezioni Qdrant per intel
 - `VISA_CATEGORIES` - Categorie per classificazione visa
 - `VISA_KEYWORDS` - Keywords per classificazione visa
@@ -49,6 +52,7 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 - `DEFAULT_TIER = "T2"`
 
 **File aggiornati:**
+
 - ✅ `app/routers/intel.py` - Collezioni, keywords e default values sostituiti
 
 ---
@@ -58,12 +62,14 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 **Aggiunta classe:** `HttpTimeoutConstants`
 
 **Valori standardizzati:**
+
 - `DEFAULT_TIMEOUT = 30.0`
 - `SHORT_TIMEOUT = 10.0`
 - `MEDIUM_TIMEOUT = 60.0`
 - `LONG_TIMEOUT = 120.0`
 
 **Timeout service-specific:**
+
 - `ZOHO_OAUTH_TIMEOUT = 30.0`
 - `ZOHO_EMAIL_TIMEOUT = 60.0`
 - `ZOHO_EMAIL_LONG_TIMEOUT = 120.0`
@@ -88,6 +94,7 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 - `MEMORY_LOCK_TIMEOUT = 5.0`
 
 **File aggiornati:**
+
 - ✅ `app/routers/intel.py` - Timeout HTTP sostituito
 - ✅ `services/integrations/zoho_oauth_service.py` - Tutti i timeout sostituiti
 - ✅ `services/integrations/zoho_email_service.py` - Tutti i timeout sostituiti
@@ -104,10 +111,12 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 - `intel_pending_path` - Path per pending Intel approval (configurabile via env var)
 
 **Metodi helper:**
+
 - `get_intel_staging_base_dir` - Ritorna `/data/staging` in produzione, `/tmp/staging` in dev
 - `get_intel_pending_path` - Ritorna path configurato o `/tmp/pending_intel` di default
 
 **File aggiornati:**
+
 - ✅ `app/routers/intel.py` - Path hardcoded sostituiti con `settings.get_intel_staging_base_dir` e `settings.get_intel_pending_path`
 
 ---

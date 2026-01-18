@@ -10,7 +10,6 @@ from decimal import Decimal
 from typing import Any
 
 import asyncpg
-from backend.core.cache import cached
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
@@ -19,6 +18,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
+from backend.core.cache import cached
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ def resolve_query_param(value, default=None):
     When endpoint functions are called directly (not via HTTP),
     Query(None) remains an object instead of becoming None.
     """
-    if hasattr(value, 'default'):
+    if hasattr(value, "default"):
         return value.default
     return value if value is not None else default
 

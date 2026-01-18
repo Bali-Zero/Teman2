@@ -55,7 +55,9 @@ class TestHealthRouterIntegration:
     @pytest.mark.asyncio
     async def test_health_check_with_service(self, client):
         """Test health check with search service available"""
-        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+        with patch(
+            "backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock
+        ) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             # Mock app.state.search_service

@@ -9,13 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import asyncpg
+
+from backend.app.core.config import settings
 from backend.core.legal.quality_validators import (
     assess_document_quality,
     extract_ayat_numbers,
     validate_ayat_sequence,
 )
-
-from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -330,7 +330,9 @@ class HierarchicalIndexer:
         """
         pool = await self._get_db_pool()
         if not pool:
-            logger.warning(f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents")
+            logger.warning(
+                f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents"
+            )
             return
 
         try:
@@ -375,7 +377,9 @@ class HierarchicalIndexer:
                     except Exception as e:
                         # Fall back to basic INSERT without quality columns
                         if "does not exist" in str(e):
-                            logger.warning(f"Quality columns not yet migrated, using basic INSERT: {e}")
+                            logger.warning(
+                                f"Quality columns not yet migrated, using basic INSERT: {e}"
+                            )
                             await conn.execute(
                                 """
                                 INSERT INTO parent_documents (

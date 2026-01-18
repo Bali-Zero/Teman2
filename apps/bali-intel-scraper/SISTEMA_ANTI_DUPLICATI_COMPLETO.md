@@ -6,26 +6,26 @@
 
 Il sistema anti-duplicati è **100% funzionante** e pronto per l'uso.
 
-| Componente | Status | File | Dettagli |
-|------------|--------|------|----------|
-| Registry File | ✅ | `data/published_articles.json` | Auto-creazione, rolling window 500 articoli |
-| Loading System | ✅ | `claude_validator.py:74-88` | Carica al boot del validator |
-| Quick Check | ✅ | `claude_validator.py:143-178` | 60% keyword overlap threshold |
-| Claude Semantic | ✅ | `claude_validator.py:180-290` | Lista ultimi 50 articoli nel prompt |
-| Auto-Approve Override | ✅ | `claude_validator.py:307-329` | Anche score ≥75 controllati |
-| Stats Tracking | ✅ | `claude_validator.py:70` | `duplicate_rejected` counter |
-| Static Register Method | ✅ | `claude_validator.py:90-128` | `add_published_article()` |
-| Validation Fields | ✅ | `claude_validator.py:33-45` | `is_duplicate`, `similar_to` |
-| Test Suite | ✅ | `scripts/test_duplicate_detection.py` | Quick + Claude tests |
+| Componente             | Status | File                                  | Dettagli                                    |
+| ---------------------- | ------ | ------------------------------------- | ------------------------------------------- |
+| Registry File          | ✅     | `data/published_articles.json`        | Auto-creazione, rolling window 500 articoli |
+| Loading System         | ✅     | `claude_validator.py:74-88`           | Carica al boot del validator                |
+| Quick Check            | ✅     | `claude_validator.py:143-178`         | 60% keyword overlap threshold               |
+| Claude Semantic        | ✅     | `claude_validator.py:180-290`         | Lista ultimi 50 articoli nel prompt         |
+| Auto-Approve Override  | ✅     | `claude_validator.py:307-329`         | Anche score ≥75 controllati                 |
+| Stats Tracking         | ✅     | `claude_validator.py:70`              | `duplicate_rejected` counter                |
+| Static Register Method | ✅     | `claude_validator.py:90-128`          | `add_published_article()`                   |
+| Validation Fields      | ✅     | `claude_validator.py:33-45`           | `is_duplicate`, `similar_to`                |
+| Test Suite             | ✅     | `scripts/test_duplicate_detection.py` | Quick + Claude tests                        |
 
 ### ⏳ DA COMPLETARE (Publish Integration)
 
-| Task | Priorità | Effort | File |
-|------|----------|--------|------|
-| Backend Publish Endpoint | 🔴 Alta | 2-3h | `backend/app/routers/intel.py` |
-| News Room Publish Button | 🔴 Alta | 1-2h | `apps/mouth/.../news-room/page.tsx` |
-| Publish → Registry Call | 🔴 Alta | 30min | Endpoint + UI |
-| E2E Test | 🟡 Media | 1h | Integration test |
+| Task                     | Priorità | Effort | File                                |
+| ------------------------ | -------- | ------ | ----------------------------------- |
+| Backend Publish Endpoint | 🔴 Alta  | 2-3h   | `backend/app/routers/intel.py`      |
+| News Room Publish Button | 🔴 Alta  | 1-2h   | `apps/mouth/.../news-room/page.tsx` |
+| Publish → Registry Call  | 🔴 Alta  | 30min  | Endpoint + UI                       |
+| E2E Test                 | 🟡 Media | 1h     | Integration test                    |
 
 ---
 
@@ -51,6 +51,7 @@ def _load_published_articles(self) -> List[Dict]:
 **Quando:** Al momento della creazione del `ClaudeValidator` (prima della validazione)
 
 **Cosa fa:**
+
 - Crea cartella `data/` se non esiste
 - Carica `published_articles.json` se presente
 - Ritorna lista vuota se file non esiste (prima run)
@@ -99,6 +100,7 @@ def _quick_duplicate_check(self, title: str) -> Optional[str]:
 **Quando:** Prima di chiamare Claude (risparmia API calls costose)
 
 **Esempio:**
+
 ```
 Articolo nuovo: "Indonesia Extends Digital Nomad Visa to 5 Years"
 Pubblicato già: "Indonesian Digital Nomad Visa Extended to Five Years"
@@ -120,11 +122,13 @@ Similarity: 3/5 = 60% → DUPLICATE! ✅
 ```
 
 **Vantaggi:**
+
 - ⚡ Velocissimo (< 1ms)
 - 💰 Gratis (no API calls)
 - 🎯 Cattura duplicati ovvii (stesso titolo con leggere variazioni)
 
 **Limiti:**
+
 - ❌ Non capisce sinonimi ("extend" vs "prolong")
 - ❌ Non capisce semantica (stessa notizia con parole diverse)
 
@@ -195,6 +199,7 @@ DECISION GUIDELINES:
 **Quando:** Dopo quick check fallisce (non trova duplicati ovvii)
 
 **Esempio Risposta Claude:**
+
 ```json
 {
   "approved": false,
@@ -208,11 +213,13 @@ DECISION GUIDELINES:
 ```
 
 **Vantaggi:**
+
 - 🧠 Capisce semantica (stessa notizia con parole diverse)
 - 🌐 Multilingue (riconosce duplicati in lingue diverse)
 - 📊 Context-aware (confronta categoria + contenuto + fonte)
 
 **Limiti:**
+
 - 🐌 Lento (~5-8 sec per articolo)
 - 💸 Costoso (se non usassimo Claude Desktop CLI gratis)
 
@@ -252,11 +259,13 @@ if llama_score >= self.AUTO_APPROVE_THRESHOLD:  # ≥75
 ```
 
 **Problema che risolve:**
+
 - Senza questo, articoli con score ≥75 byppassavano la validazione
 - Stesso news pubblicato da 2 fonti diverse (es. Jakarta Post + Antara News)
 - Entrambi score alto → entrambi auto-approved → DUPLICATO PUBBLICATO ❌
 
 **Con override:**
+
 - Score ≥75 → Quick check
 - Se duplicato → REJECT (anche se score alto)
 - Se non duplicato → Auto-approve ✅
@@ -312,6 +321,7 @@ def add_published_article(title: str, url: str, category: str, published_at: str
 **Dove integrare:** Vedi `ANTI_DUPLICATE_INTEGRATION.md` per 3 opzioni
 
 **Rolling Window:**
+
 - Mantiene ultimi 500 articoli
 - Più vecchi vengono automaticamente rimossi
 - File non cresce all'infinito
@@ -329,6 +339,7 @@ python test_duplicate_detection.py --skip-claude
 ```
 
 **Output atteso:**
+
 ```
 🧪 ANTI-DUPLICATE DETECTION TEST
 ═══════════════════════════════════════════════════════════════════════════════
@@ -382,22 +393,22 @@ python test_duplicate_detection.py
 
 ### Nuovi File
 
-| File | Scopo |
-|------|-------|
-| `SISTEMA_ANTI_DUPLICATI_COMPLETO.md` | ✅ Questo documento |
-| `ANTI_DUPLICATE_INTEGRATION.md` | ✅ Guida integrazione publish |
-| `PIPELINE_COMPLETE_FLOW.md` | ✅ Documentazione completa pipeline |
-| `scripts/test_duplicate_detection.py` | ✅ Test suite |
-| `data/published_articles.json` | ⚠️ Auto-creato al primo run |
+| File                                  | Scopo                               |
+| ------------------------------------- | ----------------------------------- |
+| `SISTEMA_ANTI_DUPLICATI_COMPLETO.md`  | ✅ Questo documento                 |
+| `ANTI_DUPLICATE_INTEGRATION.md`       | ✅ Guida integrazione publish       |
+| `PIPELINE_COMPLETE_FLOW.md`           | ✅ Documentazione completa pipeline |
+| `scripts/test_duplicate_detection.py` | ✅ Test suite                       |
+| `data/published_articles.json`        | ⚠️ Auto-creato al primo run         |
 
 ### File Modificati
 
-| File | Modifiche | Linee |
-|------|-----------|-------|
-| `scripts/claude_validator.py` | Sistema completo anti-duplicati | 74-390 |
-| `scripts/intel_pipeline.py` | News Room integration (Step 6) | 219-522 |
-| `scripts/run_intel_feed.py` | Massive mode connection | 227-386 |
-| `scripts/unified_scraper.py` | Fix KeyError 'selectors' | 502 |
+| File                          | Modifiche                       | Linee   |
+| ----------------------------- | ------------------------------- | ------- |
+| `scripts/claude_validator.py` | Sistema completo anti-duplicati | 74-390  |
+| `scripts/intel_pipeline.py`   | News Room integration (Step 6)  | 219-522 |
+| `scripts/run_intel_feed.py`   | Massive mode connection         | 227-386 |
+| `scripts/unified_scraper.py`  | Fix KeyError 'selectors'        | 502     |
 
 ---
 
@@ -546,12 +557,14 @@ SUCCESS  | ✅ Validated & approved: New Coretax System Causing NPWP Delays...
 **Default:** 60% keyword overlap
 
 **Se troppi falsi positivi** (articoli unici marcati come duplicati):
+
 ```python
 # In claude_validator.py:175
 if similarity > 0.7:  # Aumenta a 70%
 ```
 
 **Se troppi falsi negativi** (duplicati che passano):
+
 ```python
 if similarity > 0.5:  # Abbassa a 50%
 ```
@@ -561,12 +574,14 @@ if similarity > 0.5:  # Abbassa a 50%
 **Default:** 500 articoli (circa 6 mesi di pubblicazioni)
 
 **Per siti ad alta frequenza:**
+
 ```python
 # In claude_validator.py:120
 articles = articles[-1000:]  # Ultimi 1000
 ```
 
 **Per siti a bassa frequenza:**
+
 ```python
 articles = articles[-200:]  # Ultimi 200
 ```
@@ -576,6 +591,7 @@ articles = articles[-200:]  # Ultimi 200
 **Default:** Ultimi 50 articoli nel prompt
 
 **Se prompt troppo lungo:**
+
 ```python
 # In _build_validation_prompt:
 published_list = self._get_published_titles_for_prompt(limit=30)
@@ -600,17 +616,22 @@ for pub in self.published_articles[-100:]:
 ## ❓ FAQ
 
 ### Q: Il sistema funziona senza articoli pubblicati?
+
 **A:** ✅ Sì! Se `published_articles.json` non esiste o è vuoto, il sistema:
+
 - Ritorna `is_duplicate = False` per tutti gli articoli
 - Permette pubblicazione normalmente
 - Si auto-popola man mano che articoli vengono pubblicati
 
 ### Q: Quanto è affidabile il quick check?
+
 **A:** 🎯 **75-85% accuracy** per duplicati ovvii (stesso titolo con variazioni minori)
+
 - Non sostituisce Claude semantic check
 - Serve a risparmiare API calls per casi evidenti
 
 ### Q: Posso disabilitare il duplicate check?
+
 **A:** Sì, ma NON raccomandato:
 
 ```python
@@ -621,11 +642,14 @@ if disable_duplicate_check:
 ```
 
 ### Q: Come gestire articoli in lingue diverse (IT/EN/ID)?
+
 **A:** Claude semantic check funziona già cross-language!
+
 - Quick check: NO (solo keyword matching, stessa lingua)
 - Claude check: ✅ SÌ (capisce semantica cross-language)
 
 Esempio:
+
 ```
 Published (EN): "Indonesia Extends Digital Nomad Visa to 5 Years"
 New (IT): "Indonesia Estende Visto Nomadi Digitali a 5 Anni"
@@ -633,6 +657,7 @@ New (IT): "Indonesia Estende Visto Nomadi Digitali a 5 Anni"
 ```
 
 ### Q: Come testare senza chiamare Claude API?
+
 **A:** Usa `--skip-claude` flag:
 
 ```bash
@@ -656,6 +681,7 @@ Testa solo quick check (veloce, gratis).
 ## 📞 Support
 
 Per domande o problemi:
+
 1. Leggi `ANTI_DUPLICATE_INTEGRATION.md` per integration
 2. Leggi `PIPELINE_COMPLETE_FLOW.md` per architettura completa
 3. Run `python test_duplicate_detection.py` per verificare setup

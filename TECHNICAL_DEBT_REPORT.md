@@ -2,21 +2,23 @@
 
 ## 📊 Summary
 
-| Metric | Count |
-|--------|-------|
-| Total Items | 37 |
-| P0 (Critical) | 0 |
-| P1 (High) | 1 |
-| P2 (Medium) | 0 |
-| P3 (Low) | 36 |
+| Metric        | Count |
+| ------------- | ----- |
+| Total Items   | 37    |
+| P0 (Critical) | 0     |
+| P1 (High)     | 1     |
+| P2 (Medium)   | 0     |
+| P3 (Low)      | 36    |
 
 ### By Type
+
 - TODO: 36
 - FIXME: 0
 - HACK: 0
 - BUG: 1
 
 ### By Component
+
 - backend: 16
 - frontend: 10
 - scraper: 1
@@ -39,6 +41,7 @@
 **Component:** backend
 
 **Content:**
+
 ```
 # BUG: Returns 500 due to validation error (tier="Unknown")
             assert response.status_code == 500
@@ -445,7 +448,6 @@ class TestEdgeCases:
 
 ---
 
-
 ---
 
 ## 📝 P2 - Medium Priority
@@ -463,6 +465,7 @@ class TestEdgeCases:
 **Component:** backend
 
 **Content:**
+
 ```
 // TODO: Replace with real API call when backend endpoint is ready
     setTimeout(() => {
@@ -731,6 +734,7 @@ class TestEdgeCases:
 **Assignee:** @router
 
 **Content:**
+
 ```
 # TODO: Get from scheduler if available
             "success_rate": round(success_rate, 1) if success_rate is not None else None,
@@ -913,6 +917,7 @@ async def disable_scheduler_task(task_name: str):
 **Assignee:** @router
 
 **Content:**
+
 ```
 # TODO: Add revenue growth when implemented
                     asyncio.sleep(0),  # Placeholder for revenue growth
@@ -1120,6 +1125,7 @@ async def get_neural_pulse(
 **Assignee:** @router
 
 **Content:**
+
 ```
 # TODO: Integrate with actual logging service
     return {
@@ -2019,6 +2025,7 @@ async def sentry_test_error(
 **Component:** backend
 
 **Content:**
+
 ```
 # TODO: Add admin authentication check
         # For now, this is a mock endpoint
@@ -2082,6 +2089,7 @@ async def sentry_test_error(
 **Assignee:** @router
 
 **Content:**
+
 ```
 # TODO: Send confirmation email via Zoho
         # await send_confirmation_email(request.email, subscriber_id, confirmation_token)
@@ -2325,6 +2333,7 @@ async def log_newsletter_send(
 **Assignee:** @router
 
 **Content:**
+
 ```
 # TODO: Trigger publish to BaliZero API
 
@@ -2585,6 +2594,7 @@ async def get_bot_info():
 **Assignee:** @balizero
 
 **Content:**
+
 ```
 # TODO: Move to database or environment variables in the future
 CRM_ADMIN_EMAILS: set[str] = {
@@ -2649,6 +2659,7 @@ def is_super_admin(user: dict) -> bool:
 **Component:** backend
 
 **Content:**
+
 ```
 # TODO: Implement page-aware chunking
         # For now, use semantic chunking
@@ -2681,6 +2692,7 @@ def semantic_chunk(text: str, max_tokens: int = 500, overlap: int = 50) -> list[
 **Component:** backend
 
 **Content:**
+
 ```
 # TODO: Usare NER più sofisticato
     common_names = ["antonello", "maria", "giovanni", "luca", "sara"]

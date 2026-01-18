@@ -4,7 +4,6 @@ CONTA CLIENTI SU GOOGLE DRIVE
 Conta quanti clienti REALI hai già in DATA BS (escludendo cartelle lavoratori)
 """
 
-import sys
 from pathlib import Path
 
 # Aggiungi path per Dropbox locale (per usare stesso filtro)
@@ -12,20 +11,37 @@ DROPBOX_PATH = Path("/sessions/upbeat-laughing-volta/mnt/antonellosiano/Dropbox"
 
 # Cartelle lavoratori da escludere
 TEAM_FOLDERS = {
-    'MAS ADIT', 'OM YOYOK', 'Om Oman', 'MAS ADI', 'OM FIRDA',
-    'Titip Punya ARI FIRDA', 'FIRDA', 'ARI', 'MAS YOYOK',
-    'Team Member', 'Staff', 'Employee'
+    "MAS ADIT",
+    "OM YOYOK",
+    "Om Oman",
+    "MAS ADI",
+    "OM FIRDA",
+    "Titip Punya ARI FIRDA",
+    "FIRDA",
+    "ARI",
+    "MAS YOYOK",
+    "Team Member",
+    "Staff",
+    "Employee",
 }
 
 # Cartelle utility da escludere
 UTILITY_FOLDERS = {
-    'Bali Zero', 'Draft', 'Foto', 'BS', 'Backup', 'Archive',
-    'Template', 'Samples', 'Test', 'Old'
+    "Bali Zero",
+    "Draft",
+    "Foto",
+    "BS",
+    "Backup",
+    "Archive",
+    "Template",
+    "Samples",
+    "Test",
+    "Old",
 }
 
 # Visa types e status (non sono clienti)
-VISA_TYPES = {'ALTUS', 'ITAS', 'KITAP', 'KITAS', 'E-VISA', 'VOA'}
-STATUS_FOLDERS = {'Done', 'On Proses', 'Pending', 'Rejected', 'Cancelled'}
+VISA_TYPES = {"ALTUS", "ITAS", "KITAP", "KITAS", "E-VISA", "VOA"}
+STATUS_FOLDERS = {"Done", "On Proses", "Pending", "Rejected", "Cancelled"}
 
 
 def is_client_folder(folder_name, parent_path_str):
@@ -49,7 +65,7 @@ def is_client_folder(folder_name, parent_path_str):
         return False
 
     # Se il parent è un lavoratore, skip
-    parent_parts = parent_path_str.split('/')
+    parent_parts = parent_path_str.split("/")
     if any(part in TEAM_FOLDERS for part in parent_parts):
         return False
 
@@ -67,16 +83,16 @@ def count_dropbox_clients():
     """
     Conta clienti nei repository Dropbox locali
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 CONTA CLIENTI - DROPBOX vs GOOGLE DRIVE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     repositories = {
-        'YANTI': DROPBOX_PATH / 'BaliZero Repository' / 'YANTI',
-        'NOVI': DROPBOX_PATH / 'BaliZero Repository' / 'NOVI',
-        'ADITYA': DROPBOX_PATH / 'BaliZero Repository' / 'ADITYA',
-        'MEGI': DROPBOX_PATH / 'BaliZero Repository' / 'MEGI',
-        'ANGEL': DROPBOX_PATH / 'BaliZero Repository' / 'ANGEL'
+        "YANTI": DROPBOX_PATH / "BaliZero Repository" / "YANTI",
+        "NOVI": DROPBOX_PATH / "BaliZero Repository" / "NOVI",
+        "ADITYA": DROPBOX_PATH / "BaliZero Repository" / "ADITYA",
+        "MEGI": DROPBOX_PATH / "BaliZero Repository" / "MEGI",
+        "ANGEL": DROPBOX_PATH / "BaliZero Repository" / "ANGEL",
     }
 
     total_clients = 0
@@ -92,14 +108,18 @@ def count_dropbox_clients():
         client_count = 0
 
         # Esplora ricorsivamente
-        for item in repo_path.rglob('*'):
+        for item in repo_path.rglob("*"):
             if item.is_dir():
                 # Ottieni path relativo
                 rel_path = str(item.relative_to(repo_path))
 
                 if is_client_folder(item.name, rel_path):
                     # Verifica che contenga file (non sia cartella vuota)
-                    has_files = any(f.is_file() for f in item.iterdir()) if item.exists() else False
+                    has_files = (
+                        any(f.is_file() for f in item.iterdir())
+                        if item.exists()
+                        else False
+                    )
                     if has_files:
                         client_count += 1
 
@@ -145,9 +165,9 @@ def main():
         # Stima Drive
         estimate_gdrive_clients()
 
-        print("="*80)
+        print("=" * 80)
         print("💡 RACCOMANDAZIONI")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         print("📋 Opzione A: Riorganizza Google Drive")
         print("   - Se hai GIA' >50% dei clienti su Drive (>8,700)")
@@ -167,9 +187,9 @@ def main():
         print("   - Se <50%: Upload completo da Dropbox")
         print()
 
-        print("="*80)
+        print("=" * 80)
         print("🎯 PROSSIMO STEP")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         print("Per decidere la strategia migliore, devo:")
         print("1. ✅ Autenticarti con OAuth2 (browser)")
@@ -183,6 +203,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Errore: {e}")
         import traceback
+
         traceback.print_exc()
 
 

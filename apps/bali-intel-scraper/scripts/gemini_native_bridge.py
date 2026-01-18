@@ -16,19 +16,17 @@ Invia comandi AppleScript a Chrome per navigare e interagire con il DOM tramite 
 
 import subprocess
 import time
-import sys
 import argparse
 import json
 from loguru import logger
+
 
 class ChromeBridge:
     def run_applescript(self, script):
         """Esegue AppleScript grezzo"""
         try:
             result = subprocess.run(
-                ['osascript', '-e', script], 
-                capture_output=True, 
-                text=True
+                ["osascript", "-e", script], capture_output=True, text=True
             )
             if result.returncode != 0:
                 logger.error(f"AppleScript Error: {result.stderr}")
@@ -42,7 +40,7 @@ class ChromeBridge:
         """Esegue JS nella tab attiva di Chrome"""
         # Escape quotes for AppleScript
         js_escaped = javascript.replace('"', '\\"').replace("'", "\\'")
-        
+
         script = f'''
         tell application "Google Chrome"
             if (count of windows) is 0 then
@@ -58,7 +56,7 @@ class ChromeBridge:
     def open_gemini(self):
         """Apre o focalizza Gemini"""
         logger.info("🌍 Apertura Gemini su Chrome...")
-        script = '''
+        script = """
         tell application "Google Chrome"
             activate
             set found to false
@@ -78,17 +76,17 @@ class ChromeBridge:
                 open location "https://gemini.google.com/app"
             end if
         end tell
-        '''
+        """
         self.run_applescript(script)
-        time.sleep(3) # Attesa caricamento
+        time.sleep(3)  # Attesa caricamento
 
     def insert_prompt(self, prompt):
         """Inserisce il prompt nella chat box"""
         logger.info("✍️ Scrittura prompt...")
-        
+
         # JS per trovare la box e scrivere
         # Gemini usa un contenteditable div. Cerchiamo classi comuni o attributi.
-        js = f'''
+        js = f"""
         (function() {{
             // Cerca input area (rich-textarea o contenteditable)
             const input = document.querySelector("div[contenteditable='true']") || 
@@ -112,19 +110,19 @@ class ChromeBridge:
             }}
             return "NOT_FOUND";
         }})();
-        '''
+        """
         return self.execute_js(js)
 
     def wait_and_get_image(self):
         """Attende e recupera URL ultima immagine"""
         logger.info("🎨 Attesa generazione...")
-        
-        for i in range(20): # 20 tentativi (circa 40s)
-            logger.debug(f"Check {i+1}/20...")
+
+        for i in range(20):  # 20 tentativi (circa 40s)
+            logger.debug(f"Check {i + 1}/20...")
             time.sleep(2)
-            
+
             # JS per trovare l'ultima immagine generata
-            js = '''
+            js = """
             (function() {
                 const images = Array.from(document.querySelectorAll("img"));
                 // Filtra immagini grandi che sembrano generate
@@ -139,31 +137,32 @@ class ChromeBridge:
                 }
                 return null;
             })();
-            '''
+            """
             result = self.execute_js(js)
-            
+
             if result and result != "null":
                 logger.success(f"📸 Immagine trovata: {result[:50]}...")
                 return result
-        
+
         return None
+
 
 def run_automation(prompt):
     bridge = ChromeBridge()
-    
+
     # 1. Apri Gemini
     bridge.open_gemini()
-    
+
     # 2. Inserisci prompt
     status = bridge.insert_prompt(prompt)
     if status == "NOT_FOUND":
         logger.error("❌ Impossibile trovare la casella di input su Gemini.")
         logger.info("Assicurati di essere loggato e che la pagina sia caricata.")
         return
-    
+
     # 3. Attendi immagine
     img_url = bridge.wait_and_get_image()
-    
+
     if img_url:
         logger.info("⬇️ Per scaricare, Claude dovrebbe ora usare curl sull'URL trovato.")
         # Nota: AppleScript non può scaricare facilmente file binari su disco senza curl
@@ -172,16 +171,17 @@ def run_automation(prompt):
     else:
         logger.error("❌ Nessuna immagine rilevata dopo il timeout.")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", default="Bali sunset cinematic photo")
     parser.add_argument("--context", help="Context file path")
     args = parser.parse_args()
-    
+
     prompt = args.prompt
     if args.context and os.path.exists(args.context):
         with open(args.context) as f:
             data = json.load(f)
             prompt = data.get("final_image_prompt", prompt)
-            
+
     run_automation(prompt)

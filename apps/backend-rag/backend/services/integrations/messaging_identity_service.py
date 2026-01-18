@@ -66,7 +66,9 @@ class MessagingIdentityService:
                 )
 
                 if row:
-                    logger.info(f"Found user mapping for phone {normalized_phone}: {row['user_id']}")
+                    logger.info(
+                        f"Found user mapping for phone {normalized_phone}: {row['user_id']}"
+                    )
                     return dict(row)
 
                 return None
@@ -170,16 +172,12 @@ class MessagingIdentityService:
                 )
 
                 logger.info(
-                    f"Created mapping: {channel} "
-                    f"({phone or telegram_chat_id}) → user {user_id}"
+                    f"Created mapping: {channel} ({phone or telegram_chat_id}) → user {user_id}"
                 )
                 return True
 
         except asyncpg.UniqueViolationError:
-            logger.warning(
-                f"Mapping already exists for {channel} "
-                f"({phone or telegram_chat_id})"
-            )
+            logger.warning(f"Mapping already exists for {channel} ({phone or telegram_chat_id})")
             return False
         except asyncpg.PostgresError as e:
             logger.error(f"Database error creating mapping: {e}")

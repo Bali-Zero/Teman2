@@ -16,6 +16,7 @@ Hai 4 use cases perfetti per Cowork basati sul tuo lavoro reale:
 4. **Nuzantara Docs/Reports** - Project documentation automation
 
 **Ogni use case sotto include:**
+
 - ✅ Perché è perfetto per Cowork
 - ✅ Workflow step-by-step
 - ✅ Prompt esatti da usare
@@ -30,6 +31,7 @@ Hai 4 use cases perfetti per Cowork basati sul tuo lavoro reale:
 ### Perché Questo Use Case?
 
 **Problema attuale:**
+
 - Downloads si riempie ogni settimana (PDF, immagini, video, archives)
 - Mix di: legal docs, Bali research, media, code files, random stuff
 - **Tempo manuale:** 15-20 minuti/settimana
@@ -43,6 +45,7 @@ Hai 4 use cases perfetti per Cowork basati sul tuo lavoro reale:
 ### Workflow Step-by-Step
 
 #### Step 1: Apri Cowork
+
 ```
 1. Apri Claude Desktop
 2. Click "Cowork" (in alto)
@@ -50,9 +53,11 @@ Hai 4 use cases perfetti per Cowork basati sul tuo lavoro reale:
 ```
 
 #### Step 2: Usa Template
+
 **Hai già il template:** `file-organization.md`
 
 **Prompt esatto:**
+
 ```
 Work in ~/Downloads.
 
@@ -97,7 +102,9 @@ When done, create report:
 ```
 
 #### Step 3: Review & Confirm
+
 Cowork mostrerà:
+
 ```
 📊 Analysis Complete
 
@@ -118,13 +125,16 @@ Proceed with organization? (yes/no)
 Tu: **"yes"**
 
 #### Step 4: Execution
+
 Cowork:
+
 - Crea struttura cartelle
 - Sposta files
 - Mantiene log
 - Genera report
 
 **Output:**
+
 ```
 ✅ Downloads Organized
 
@@ -142,6 +152,7 @@ Report saved: ~/Downloads/_Organization-Report-2026-01-16.md
 ### Advanced: Automation Weekly
 
 **Opzione A: Manual Trigger (raccomandato inizialmente)**
+
 ```
 Ogni venerdì mattina:
 1. Apri Cowork
@@ -155,12 +166,14 @@ Ogni venerdì mattina:
 Usa script già creato: `auto-organize-downloads.sh`
 
 **Cron setup:**
+
 ```bash
 # Ogni venerdì alle 9am
 0 9 * * 5 ~/Desktop/nuzantara/.cowork-optimization/scripts/auto-organize-downloads.sh
 ```
 
 **Differenza:**
+
 - Manual: Tu approvi ogni settimana
 - Scheduled: Auto-run, tu review report dopo
 
@@ -169,12 +182,14 @@ Usa script già creato: `auto-organize-downloads.sh`
 ### Integration Con Tuo Setup
 
 **Dopo organization:**
+
 1. **Legal docs** → Ready per KB sync
 2. **Bali research** → Ready per knowledge base
 3. **Media** → Ready per blog posts
 4. **Log** → Track patterns (cosa scarichi più spesso)
 
 **Memory MCP integration:**
+
 ```
 Prima run, dì a Claude:
 "Ricorda: quando organizzo Downloads, uso questa struttura:
@@ -189,6 +204,7 @@ Dopo 2-3 runs, Claude sa già cosa fare!
 ### Metrics Tracking
 
 **Week 1:**
+
 ```
 Manual time: 20 min
 Cowork time: 5 min (first time, learning)
@@ -196,6 +212,7 @@ Saving: 75%
 ```
 
 **Week 4:**
+
 ```
 Manual time: 20 min
 Cowork time: 2 min (optimized workflow)
@@ -203,6 +220,7 @@ Saving: 90%
 ```
 
 **ROI mensile:**
+
 - Time saved: ~70 minuti/mese
 - Value ($50/ora): ~$58/mese
 - Solo questo use case: 30-60% del costo Max plan coperto
@@ -214,6 +232,7 @@ Saving: 90%
 ### Perché Questo Use Case?
 
 **Context tuo progetto:**
+
 - Hai `~/Desktop/KB/` con documenti per nuzantara RAG
 - Documenti devono essere ingested in Qdrant
 - **Serve:** Metadata extraction, chunking info, quality check
@@ -222,6 +241,7 @@ Saving: 90%
 - **Saving:** 90%+
 
 **Nuzantara stack:**
+
 ```
 KB docs → Metadata extraction → Qdrant ingestion → RAG ready
          ↑ Cowork fa questo ↑
@@ -234,6 +254,7 @@ KB docs → Metadata extraction → Qdrant ingestion → RAG ready
 #### Step 1: Preparation
 
 **Prompt di setup (usa Memory MCP):**
+
 ```
 Memorizza questo context per future KB analysis:
 
@@ -291,6 +312,7 @@ Show me preview of first 3 documents before processing all.
 #### Step 3: Review Preview
 
 Cowork analizza primi 3 docs, mostra:
+
 ```
 📄 Document 1: PP_28_2025_Lampiran_IA.pdf
 ├── Title: "Peraturan Pemerintah Nomor 28 Tahun 2025 - Lampiran I.A"
@@ -314,6 +336,7 @@ Tu: **"yes"**
 #### Step 4: Batch Processing
 
 Cowork processa tutti docs (10-15 minuti per ~50 docs):
+
 ```
 Processing: [========================================] 47/47
 
@@ -338,6 +361,7 @@ Time: 12 min 45 sec
 #### Step 5: Qdrant Ingestion
 
 **Ora hai file ready! Usa script esistente:**
+
 ```bash
 # Script già creato: sync-kb-to-qdrant.sh
 ~/Desktop/nuzantara/.cowork-optimization/scripts/sync-kb-to-qdrant.sh
@@ -354,6 +378,7 @@ python -m scripts.ingestion.ingest_kb_batch \
 ### Advanced: Smart Chunking
 
 **Per RAG ottimale, chiedi a Cowork:**
+
 ```
 Before creating ready_for_ingestion.jsonl:
 
@@ -409,11 +434,13 @@ for line in kb_data.read_text().split("\n"):
 ### Metrics
 
 **Senza Cowork:**
+
 - 1 documento = 8-10 min (read, extract, translate, tag, quality check)
 - 50 documenti = 400-500 minuti (~8 ore)
 - Error rate: 10-15% (manual typos, missed fields)
 
 **Con Cowork:**
+
 - Setup iniziale: 5 min (prompt)
 - 50 documenti: 12-15 min (batch)
 - Error rate: <2% (consistent AI processing)
@@ -427,12 +454,14 @@ for line in kb_data.read_text().split("\n"):
 ### Perché Questo Use Case?
 
 **Context:**
+
 - Hai `~/Desktop/kbli/` con classificazioni business Indonesia
 - KBLI = Klasifikasi Baku Lapangan Usaha Indonesia
 - **Needed per:** nuzantara business licensing recommendations
 - **Data format:** Complex, nested, needs structuring
 
 **Tuo scenario specifico:**
+
 ```
 Input: PDF/Excel KBLI tables (10,000+ entries)
 Output: Structured JSON per Qdrant ingestion
@@ -497,6 +526,7 @@ Show me sample of 5 entries from different categories first.
 #### Step 2: Review Sample
 
 Cowork parse structure, shows:
+
 ```
 📊 KBLI Structure Detected
 
@@ -536,6 +566,7 @@ Tu: **"yes"**
 #### Step 3: Full Processing
 
 Cowork processa tutto KBLI (25-30 min):
+
 ```
 Processing KBLI Database...
 
@@ -597,6 +628,7 @@ Recommendation: KBLI 56101 if serving food, 47711 if retail only
 ### Integration Con Nuzantara
 
 **Backend endpoint example:**
+
 ```python
 # apps/backend-rag/app/routers/kbli_lookup.py
 
@@ -624,21 +656,22 @@ async def recommend_kbli(
 ```
 
 **Frontend (Next.js):**
+
 ```typescript
 // apps/mouth/src/app/api/kbli/route.ts
 export async function POST(req: Request) {
-  const { businessType } = await req.json()
+  const { businessType } = await req.json();
 
-  const recommendations = await fetch(
-    `${BACKEND_URL}/api/kbli/recommend`,
-    { method: 'POST', body: JSON.stringify({
+  const recommendations = await fetch(`${BACKEND_URL}/api/kbli/recommend`, {
+    method: 'POST',
+    body: JSON.stringify({
       business_description: businessType,
       location: 'Bali',
-      foreign_investor: true
-    })}
-  )
+      foreign_investor: true,
+    }),
+  });
 
-  return Response.json(await recommendations.json())
+  return Response.json(await recommendations.json());
 }
 ```
 
@@ -675,12 +708,14 @@ Output: kbli_update_script.py (executable)
 ### Metrics
 
 **Senza Cowork:**
+
 - Parse 1,790 entries manualmente: 40-60 ore
 - Error rate: 15-20% (typos, missed fields)
 - English translation: Hire translator ($500-1000)
 - Bali relevance scoring: Manual research (20+ ore)
 
 **Con Cowork:**
+
 - Setup: 5 min
 - Processing: 28 min
 - Error rate: <2%
@@ -697,6 +732,7 @@ Output: kbli_update_script.py (executable)
 ### Perché Questo Use Case?
 
 **Scenario:**
+
 - Nuzantara è progetto complesso: Next.js + FastAPI + PostgreSQL + Qdrant
 - **Servono:** Technical docs, status reports, API documentation
 - **Manuale:** 2-3 ore per comprehensive report
@@ -704,6 +740,7 @@ Output: kbli_update_script.py (executable)
 - **Saving:** 85-90%
 
 **Output needed:**
+
 1. Project status reports (weekly/monthly)
 2. Technical documentation (features, architecture)
 3. API documentation (endpoints, schemas)
@@ -766,6 +803,7 @@ Output: reports/weekly/status_2026-01-16.md
 ```
 
 **Cowork execution:**
+
 ```
 Analyzing nuzantara repository...
 
@@ -791,7 +829,7 @@ Preview:
 
 **Quando aggiungi nuovi endpoints:**
 
-```
+````
 Work in ~/Desktop/nuzantara/apps/backend-rag/
 
 Generate comprehensive API documentation for all FastAPI endpoints.
@@ -824,9 +862,10 @@ Example curl:
 curl -X POST https://api.nuzantara.com/api/chat \
   -H "Authorization: Bearer TOKEN" \
   -d '{"message": "What permits needed for restaurant?"}'
-```
+````
 
 Example Python:
+
 ```python
 import requests
 response = requests.post(
@@ -839,16 +878,20 @@ response = requests.post(
 [Continue for all endpoints...]
 
 Output:
+
 1. docs/api/openapi.json (machine-readable)
 2. docs/api/API_DOCS.md (human-readable)
 3. docs/api/QUICK_START.md (tutorial)
+
 ```
 
 **Risultato:**
 ```
+
 ✅ API Documentation Generated
 
 Found endpoints:
+
 - 23 routes across 6 routers
 - All schemas documented
 - Examples generated for each
@@ -861,6 +904,7 @@ Output:
 📄 docs/api/POSTMAN_COLLECTION.json (import ready)
 
 Time: 8 min 15 sec
+
 ```
 
 **Bonus:** Postman collection auto-generated!
@@ -872,6 +916,7 @@ Time: 8 min 15 sec
 **Per team onboarding o investor pitch:**
 
 ```
+
 Work in ~/Desktop/nuzantara/
 
 Generate comprehensive architecture documentation.
@@ -924,19 +969,23 @@ Analyze entire codebase and document:
    - Frontend optimization
 
 Include:
+
 - Mermaid diagrams
 - Code examples
 - Best practices
 - Future roadmap
 
 Output: docs/architecture/COMPLETE_ARCHITECTURE.md
+
 ```
 
 **Risultato:**
 ```
+
 ✅ Architecture Documentation Complete
 
 Analyzed:
+
 - 342 source files
 - 5 major components
 - 23 API endpoints
@@ -951,12 +1000,14 @@ Generated:
 🚀 Roadmap items: 15
 
 Perfect for:
+
 - Team onboarding
 - Investor presentations
 - Technical documentation
 - Future planning
 
 Time: 18 min 30 sec
+
 ```
 
 ---
@@ -966,6 +1017,7 @@ Time: 18 min 30 sec
 **Per team DevOps o per te quando devi ricordare steps:**
 
 ```
+
 Work in ~/Desktop/nuzantara/
 
 Generate step-by-step deployment guide for nuzantara.
@@ -1012,7 +1064,8 @@ Document complete deployment process:
 Include exact commands, not just descriptions.
 
 Output: docs/deployment/DEPLOYMENT_GUIDE.md
-```
+
+````
 
 **Risultato:** Deployment playbook ready!
 
@@ -1029,7 +1082,7 @@ Output: docs/deployment/DEPLOYMENT_GUIDE.md
 0 9 1 * * cd ~/Desktop/nuzantara && \
   claude cowork "Generate monthly status report" && \
   mail -s "Nuzantara Monthly Report" you@email.com < reports/monthly/latest.md
-```
+````
 
 ---
 
@@ -1038,6 +1091,7 @@ Output: docs/deployment/DEPLOYMENT_GUIDE.md
 **Scenario: Hai team che inizia a contribuire**
 
 **Onboarding automatico:**
+
 ```
 New team member joins →
 
@@ -1056,6 +1110,7 @@ Output: onboarding/[name]_getting_started.md
 ### Metrics
 
 **Senza Cowork:**
+
 - Weekly report: 1.5 ore
 - API docs: 4-6 ore
 - Architecture docs: 8-12 ore
@@ -1063,6 +1118,7 @@ Output: onboarding/[name]_getting_started.md
 - **Total:** 20-25 ore per documentation completa
 
 **Con Cowork:**
+
 - Weekly report: 4 min
 - API docs: 8 min
 - Architecture docs: 18 min
@@ -1078,24 +1134,28 @@ Output: onboarding/[name]_getting_started.md
 ### Workflow Settimanale Ottimale
 
 **Lunedì Mattina (15 minuti):**
+
 ```
 1. Generate weekly status report (4 min)
 2. Review & share con team
 ```
 
 **Martedì (se hai nuovi docs):**
+
 ```
 3. KB document analysis (12 min batch)
 4. Ingest to Qdrant
 ```
 
 **Venerdì Pomeriggio (5 minuti):**
+
 ```
 5. Organize Downloads weekly (3 min)
 6. Review next week priorities
 ```
 
 **As Needed (quando updates):**
+
 ```
 7. Update API docs (se nuovi endpoints)
 8. Update architecture docs (se major changes)
@@ -1112,6 +1172,7 @@ Output: onboarding/[name]_getting_started.md
 ### 1. Build Context con Memory MCP
 
 **Prima sessione, dì a Claude:**
+
 ```
 "Memorizza il context completo di nuzantara:
 
@@ -1158,6 +1219,7 @@ cd ~/Desktop/nuzantara/.cowork-optimization/templates/
 ### 3. Quality Gates
 
 **Sempre chiedi preview prima di batch operations:**
+
 ```
 "Show me preview of first 3 items before processing all"
 "Generate summary before moving files"
@@ -1167,6 +1229,7 @@ cd ~/Desktop/nuzantara/.cowork-optimization/templates/
 ### 4. Versioning
 
 **Per reports e docs, usa versioning:**
+
 ```
 reports/
   weekly/
@@ -1183,16 +1246,19 @@ Benefit: track evolution, compare progress
 **Progression path:**
 
 **Fase 1 (Week 1-2): Manual + Review**
+
 - Tu trigger ogni operation
 - Review ogni output
 - Build confidence
 
 **Fase 2 (Week 3-4): Semi-Auto**
+
 - Use templates
 - Batch operations
 - Quick review
 
 **Fase 3 (Month 2+): Mostly Auto**
+
 - Scheduled tasks
 - Trust output
 - Spot-check only
@@ -1203,18 +1269,19 @@ Benefit: track evolution, compare progress
 
 ### Time Savings
 
-| Use Case | Frequency | Manual Time | Cowork Time | Saving/Week |
-|----------|-----------|-------------|-------------|-------------|
-| Downloads org | Weekly | 20 min | 3 min | 17 min |
-| KB analysis | 2x/month | 4 ore | 15 min | ~2 ore |
-| Status report | Weekly | 1.5 ore | 4 min | 1.4 ore |
-| API docs | Monthly | 4 ore | 8 min | ~1 ore |
+| Use Case      | Frequency | Manual Time | Cowork Time | Saving/Week |
+| ------------- | --------- | ----------- | ----------- | ----------- |
+| Downloads org | Weekly    | 20 min      | 3 min       | 17 min      |
+| KB analysis   | 2x/month  | 4 ore       | 15 min      | ~2 ore      |
+| Status report | Weekly    | 1.5 ore     | 4 min       | 1.4 ore     |
+| API docs      | Monthly   | 4 ore       | 8 min       | ~1 ore      |
 
 **Total saving: ~5 ore/settimana**
 
 ### Value Calculation
 
 **Conservative ($50/ora):**
+
 - 5 ore/settimana × 4 weeks = 20 ore/mese
 - 20 ore × $50 = **$1,000/mese value**
 
@@ -1227,6 +1294,7 @@ Benefit: track evolution, compare progress
 ## ✅ ACTION PLAN
 
 ### Week 1: Start Simple
+
 ```
 Day 1: Downloads organization (use template)
 Day 2: Review, refine
@@ -1236,6 +1304,7 @@ Day 5: Quick KB analysis (5 docs test)
 ```
 
 ### Week 2: Expand
+
 ```
 Day 1: Full KB batch (50 docs)
 Day 2: KBLI initial processing
@@ -1245,6 +1314,7 @@ Day 5: Integrate in workflow
 ```
 
 ### Week 3-4: Optimize
+
 ```
 - Refine prompts based on results
 - Add to Memory MCP
@@ -1253,6 +1323,7 @@ Day 5: Integrate in workflow
 ```
 
 ### Month 2: Full Integration
+
 ```
 - All 4 use cases running smoothly
 - Minimal manual intervention
@@ -1265,6 +1336,7 @@ Day 5: Integrate in workflow
 ## 📚 Resources
 
 **Your existing setup:**
+
 - ✅ 5 cartelle configurate
 - ✅ 4 automation scripts
 - ✅ 5 base templates
@@ -1272,6 +1344,7 @@ Day 5: Integrate in workflow
 - ✅ Complete documentation
 
 **Questi 4 use cases:**
+
 - Location: `YOUR-4-USE-CASES-GUIDE.md` (questo file)
 - Reference: Quando usi Cowork
 - Iterate: Refine prompts based on results
@@ -1288,6 +1361,7 @@ Hai 4 use cases perfetti per Cowork:
 4. **Nuzantara docs** → 90% saving, always-updated documentation
 
 **Combined:**
+
 - 5 ore/settimana saved
 - $1,000/mese value
 - ROI 5x su Max plan

@@ -70,6 +70,7 @@ SKIP_COLLECTIONS = [
 @dataclass
 class ExtractionStats:
     """Aggregated stats across all collections"""
+
     total_chunks: int = 0
     total_entities: int = 0
     total_relations: int = 0
@@ -153,13 +154,13 @@ async def process_collection(
     max_concurrent: int = 10,
 ) -> dict:
     """Process a single collection and return stats"""
-    from scripts.run_kg_extraction_gemini import fetch_chunks_from_qdrant
     from backend.services.knowledge_graph import KGPipeline, PipelineConfig
+    from scripts.run_kg_extraction_gemini import fetch_chunks_from_qdrant
 
     start_time = datetime.now()
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"Processing: {collection}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     try:
         # Fetch chunks
@@ -205,7 +206,9 @@ async def process_collection(
                 "duration_seconds": duration,
             }
 
-            logger.info(f"✅ {collection}: {stats.entities_extracted} entities, {stats.relations_extracted} relations in {duration:.1f}s")
+            logger.info(
+                f"✅ {collection}: {stats.entities_extracted} entities, {stats.relations_extracted} relations in {duration:.1f}s"
+            )
             return result
 
         finally:
@@ -258,11 +261,13 @@ async def run_all_extractions(
             logger.warning(f"  ⚠️  {name}: EMPTY or NOT FOUND")
             continue
 
-        collections_to_process.append({
-            "name": name,
-            "count": actual_count,
-            "priority": coll["priority"],
-        })
+        collections_to_process.append(
+            {
+                "name": name,
+                "count": actual_count,
+                "priority": coll["priority"],
+            }
+        )
         total_expected += actual_count
         logger.info(f"  ✓ {name}: {actual_count:,} docs")
 
@@ -280,7 +285,9 @@ async def run_all_extractions(
         total_cost = cost_input + cost_output
 
         logger.info(f"\n💰 Estimated cost: ${total_cost:.2f} (€{total_cost * 0.92:.2f})")
-        logger.info(f"⏱️  Estimated time: {total_expected / 60:.0f} - {total_expected / 30:.0f} minutes")
+        logger.info(
+            f"⏱️  Estimated time: {total_expected / 60:.0f} - {total_expected / 30:.0f} minutes"
+        )
         return
 
     # Process each collection
@@ -322,7 +329,9 @@ async def run_all_extractions(
     logger.info("EXTRACTION COMPLETE")
     logger.info("=" * 70)
     logger.info(f"Duration: {duration:.1f}s ({duration / 60:.1f} minutes)")
-    logger.info(f"Collections processed: {stats.collections_processed}/{len(collections_to_process)}")
+    logger.info(
+        f"Collections processed: {stats.collections_processed}/{len(collections_to_process)}"
+    )
     if stats.collections_failed:
         logger.info(f"Collections failed: {stats.collections_failed}")
     logger.info("")

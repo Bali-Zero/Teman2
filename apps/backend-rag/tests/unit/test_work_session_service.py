@@ -84,7 +84,9 @@ class TestWorkSessionService:
             with (
                 patch("pathlib.Path.mkdir"),
                 patch("pathlib.Path.exists", return_value=True),
-                patch("backend.services.misc.work_session_service.WorkSessionService._write_to_log"),
+                patch(
+                    "backend.services.misc.work_session_service.WorkSessionService._write_to_log"
+                ),
             ):
                 from backend.services.misc.work_session_service import WorkSessionService
 
@@ -122,14 +124,17 @@ class TestWorkSessionService:
         """Test ending a session"""
         mock_db_pool.execute = AsyncMock()
         with patch(
-            "backend.services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.misc.work_session_service.asyncpg.create_pool",
+            return_value=mock_db_pool,
         ):
             with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with (
                     patch("pathlib.Path.mkdir"),
                     patch("pathlib.Path.exists", return_value=True),
-                    patch("backend.services.misc.work_session_service.WorkSessionService._write_to_log"),
+                    patch(
+                        "backend.services.misc.work_session_service.WorkSessionService._write_to_log"
+                    ),
                 ):
                     from backend.services.misc.work_session_service import WorkSessionService
 
@@ -147,7 +152,8 @@ class TestWorkSessionService:
             return_value={"status": "active", "session_start": "2025-01-01 09:00:00"}
         )
         with patch(
-            "backend.services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.misc.work_session_service.asyncpg.create_pool",
+            return_value=mock_db_pool,
         ):
             with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"

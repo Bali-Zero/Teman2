@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from backend.app.metrics import metrics_collector
+from backend.app.models import TierLevel
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.legal import (
     HierarchicalIndexer,
@@ -16,12 +18,9 @@ from backend.core.legal import (
     LegalMetadataExtractor,
     LegalStructureParser,
 )
-from backend.core.parsers import auto_detect_and_parse, DocumentParseError
+from backend.core.parsers import DocumentParseError, auto_detect_and_parse
 from backend.core.qdrant_db import QdrantClient
 from backend.utils.tier_classifier import TierClassifier
-
-from backend.app.metrics import metrics_collector
-from backend.app.models import TierLevel
 
 from .ingestion_logger import IngestionStage, ingestion_logger
 
@@ -137,15 +136,17 @@ class LegalIngestionService:
                 if "No text extracted" in str(e):
                     # Try OCR for scanned PDFs (async version)
                     logger.info(
-                        f"[STAGE 1] No text found in PDF, attempting OCR extraction...",
+                        "[STAGE 1] No text found in PDF, attempting OCR extraction...",
                         extra={
                             "document_id": document_id,
                             "stage": "parsing",
                             "ocr_fallback": True,
-                        }
+                        },
                     )
-                    from backend.core.parsers import extract_text_from_pdf_async
                     import asyncio
+
+                    from backend.core.parsers import extract_text_from_pdf_async
+
                     try:
                         # Check if we're in async context
                         loop = asyncio.get_running_loop()
@@ -159,7 +160,7 @@ class LegalIngestionService:
                                 "stage": "parsing",
                                 "ocr_used": True,
                                 "text_length": len(raw_text),
-                            }
+                            },
                         )
                     except RuntimeError:
                         # No running loop, use sync version
@@ -172,12 +173,12 @@ class LegalIngestionService:
                                 "stage": "parsing",
                                 "ocr_used": True,
                                 "text_length": len(raw_text),
-                            }
+                            },
                         )
                 else:
                     raise
             parsing_duration = time.time() - parsing_start
-            
+
             logger.info(
                 f"[STAGE 1] Parsing completed: {len(raw_text)} chars in {parsing_duration:.2f}s",
                 extra={
@@ -186,7 +187,7 @@ class LegalIngestionService:
                     "duration_seconds": parsing_duration,
                     "text_length": len(raw_text),
                     "ocr_used": ocr_used,
-                }
+                },
             )
 
             ingestion_logger.parsing_success(
@@ -210,7 +211,6 @@ class LegalIngestionService:
             drive_folder_path = "BALI ZERO/PERATURAN"
             try:
                 from backend.services.integrations.team_drive_service import TeamDriveService
-                from backend.app.core.config import settings
 
                 drive_service = TeamDriveService()
 
@@ -243,7 +243,7 @@ class LegalIngestionService:
                         "drive_file_id": drive_file_id,
                         "drive_web_link": drive_web_link,
                         "success": True,
-                    }
+                    },
                 )
 
             except Exception as e:
@@ -256,7 +256,7 @@ class LegalIngestionService:
                         "error": str(e),
                         "error_type": type(e).__name__,
                         "non_blocking": True,
-                    }
+                    },
                 )
 
             # STAGE 2: Clean (The Washer)
@@ -273,7 +273,7 @@ class LegalIngestionService:
                         "document_id": document_id,
                         "stage": "cleaning",
                         "skip_pricing": True,
-                    }
+                    },
                 )
                 # Split by newlines first
                 lines = cleaned_text.splitlines()
@@ -281,7 +281,7 @@ class LegalIngestionService:
                     # If few lines but lots of text, it might be one huge block. Try splitting by periods.
                     logger.debug(
                         "[STAGE 2] Text appears to be a single block. Splitting by sentences.",
-                        extra={"document_id": document_id, "stage": "cleaning"}
+                        extra={"document_id": document_id, "stage": "cleaning"},
                     )
                     lines = cleaned_text.split(". ")
                     separator = ". "
@@ -301,7 +301,7 @@ class LegalIngestionService:
                         "document_id": document_id,
                         "stage": "cleaning",
                         "pricing_segments_removed": pricing_removed,
-                    }
+                    },
                 )
 
             logger.info(
@@ -312,7 +312,7 @@ class LegalIngestionService:
                     "duration_seconds": cleaning_duration,
                     "text_length": len(cleaned_text),
                     "pricing_removed": pricing_removed,
-                }
+                },
             )
 
             # STAGE 3: Extract Metadata (The Librarian)
@@ -339,7 +339,7 @@ class LegalIngestionService:
                         "document_id": document_id,
                         "stage": "metadata_extraction",
                         "fallback_method": "vertex_ai",
-                    }
+                    },
                 )
                 try:
                     from backend.services.llm_clients.vertex_ai_service import VertexAIService
@@ -356,7 +356,7 @@ class LegalIngestionService:
                                 "metadata_type": ai_metadata.get("type_abbrev"),
                                 "metadata_number": ai_metadata.get("number"),
                                 "fallback_success": True,
-                            }
+                            },
                         )
                         # Merge AI metadata, preferring AI results for missing fields
                         if not metadata:
@@ -371,7 +371,7 @@ class LegalIngestionService:
                             "stage": "metadata_extraction",
                             "fallback_error": str(e),
                             "error_type": type(e).__name__,
-                        }
+                        },
                     )
 
             if not metadata or metadata.get("type_abbrev") == "UNKNOWN":
@@ -382,7 +382,7 @@ class LegalIngestionService:
                         "stage": "metadata_extraction",
                         "fallback_reason": "pattern_and_ai_failed",
                         "category": category,
-                    }
+                    },
                 )
 
                 # Use category as fallback for type_abbrev if possible
@@ -502,7 +502,7 @@ class LegalIngestionService:
                     "parent_documents": indexing_result["parent_documents"],
                     "total_bab": indexing_result.get("total_bab", 0),
                     "total_pasal": indexing_result.get("total_pasal", 0),
-                }
+                },
             )
 
             # STAGE 7: Knowledge Graph Extraction (Permanent)
@@ -511,7 +511,7 @@ class LegalIngestionService:
                 kg_start = time.time()
                 try:
                     kg_extractor = await self._get_kg_extractor()
-                    
+
                     if kg_extractor is None:
                         logger.info(
                             "[STAGE 7] KG extractor not available - skipping KG extraction",
@@ -520,7 +520,7 @@ class LegalIngestionService:
                                 "stage": "kg_extraction",
                                 "skipped": True,
                                 "skip_reason": "extractor_not_available",
-                            }
+                            },
                         )
                         kg_extraction_result = {"skipped": "extractor_not_available"}
                     else:
@@ -532,7 +532,7 @@ class LegalIngestionService:
                                 "document_id": document_id,
                                 "stage": "kg_extraction",
                                 "collection_name": target_collection,
-                            }
+                            },
                         )
                         kg_result = await kg_extractor.extract_from_collection(
                             collection_name=target_collection,
@@ -550,11 +550,13 @@ class LegalIngestionService:
                                 "document_id": document_id,
                                 "stage": "kg_extraction",
                                 "entities_extracted": kg_result.get("entities_extracted", 0),
-                                "relationships_extracted": kg_result.get("relationships_extracted", 0),
+                                "relationships_extracted": kg_result.get(
+                                    "relationships_extracted", 0
+                                ),
                                 "chunks_processed": kg_result.get("chunks_processed", 0),
                                 "duration_seconds": kg_duration,
                                 "success": True,
-                            }
+                            },
                         )
 
                         # Aggiungi KG stats al risultato
@@ -577,7 +579,7 @@ class LegalIngestionService:
                             "error_type": type(e).__name__,
                             "duration_seconds": kg_duration,
                             "non_blocking": True,
-                        }
+                        },
                     )
                     kg_extraction_result = {"error": error_msg}
                     # Non rilanciare l'eccezione - l'ingestione deve continuare
@@ -694,10 +696,7 @@ class LegalIngestionService:
                 # Cerca cartella con nome esatto
                 matching_folder = None
                 for pf in parent_files:
-                    if (
-                        pf.get("name") == folder_name
-                        and pf.get("type") == "folder"
-                    ):
+                    if pf.get("name") == folder_name and pf.get("type") == "folder":
                         matching_folder = pf
                         break
 
@@ -714,7 +713,9 @@ class LegalIngestionService:
                     logger.info(f"Created Drive folder: {folder_name} ({current_parent_id})")
             except Exception as e:
                 # Se list_files fallisce, prova a creare direttamente
-                logger.warning(f"Error listing files in {current_parent_id}: {e}. Attempting to create folder...")
+                logger.warning(
+                    f"Error listing files in {current_parent_id}: {e}. Attempting to create folder..."
+                )
                 try:
                     folder = await drive_service.create_folder(
                         name=folder_name,
@@ -731,10 +732,12 @@ class LegalIngestionService:
     async def _get_kg_extractor(self):
         """Lazy initialization of KG extractor."""
         if self.kg_extractor is None:
-            from backend.app.core.config import settings
-            import asyncpg
-            import sys
             import os
+            import sys
+
+            import asyncpg
+
+            from backend.app.core.config import settings
 
             try:
                 # Import KGIncrementalExtractor from scripts
@@ -746,16 +749,21 @@ class LegalIngestionService:
                 backend_rag_path = os.path.dirname(backend_path)  # apps/backend-rag
                 scripts_path = os.path.join(backend_rag_path, "scripts")
                 kg_extractor_path = os.path.join(scripts_path, "kg_incremental_extraction.py")
-                
+
                 if not os.path.exists(kg_extractor_path):
-                    raise ImportError(f"kg_incremental_extraction.py not found at {kg_extractor_path}")
-                
+                    raise ImportError(
+                        f"kg_incremental_extraction.py not found at {kg_extractor_path}"
+                    )
+
                 if scripts_path not in sys.path:
                     sys.path.insert(0, scripts_path)
 
                 # Import with proper module path
                 import importlib.util
-                spec = importlib.util.spec_from_file_location("kg_incremental_extraction", kg_extractor_path)
+
+                spec = importlib.util.spec_from_file_location(
+                    "kg_incremental_extraction", kg_extractor_path
+                )
                 kg_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(kg_module)
                 KGIncrementalExtractor = kg_module.KGIncrementalExtractor
@@ -764,6 +772,7 @@ class LegalIngestionService:
                 gemini = None
                 try:
                     import tempfile
+
                     from google import genai
 
                     creds_json = settings.google_credentials_json
@@ -771,7 +780,9 @@ class LegalIngestionService:
                     location = os.environ.get("GOOGLE_LOCATION", "us-central1")
 
                     if creds_json:
-                        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+                        with tempfile.NamedTemporaryFile(
+                            mode="w", suffix=".json", delete=False
+                        ) as f:
                             f.write(creds_json)
                             creds_path = f.name
                         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
@@ -790,7 +801,9 @@ class LegalIngestionService:
                             settings.database_url, min_size=1, max_size=5
                         )
                     except Exception as db_error:
-                        logger.warning(f"Could not create database pool for KG extraction: {db_error}")
+                        logger.warning(
+                            f"Could not create database pool for KG extraction: {db_error}"
+                        )
                         # Return None to skip KG extraction
                         return None
 

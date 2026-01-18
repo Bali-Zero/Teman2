@@ -54,7 +54,7 @@ def _load_module(
             self.get_intel_pending_path = "/tmp/pending_intel"
             self.qdrant_url = "http://localhost:6333"
             self.qdrant_api_key = None
-            self.redis_url = 'redis://localhost:6379'
+            self.redis_url = "redis://localhost:6379"
             self.jwt_secret_key = "test_secret_at_least_32_chars_long_"
             self.jwt_algorithm = "HS256"
 
@@ -72,13 +72,13 @@ def _load_module(
         types.SimpleNamespace(
             create_embeddings_generator=lambda **kwargs: _Embedder(),
             EmbeddingsGenerator=_Embedder,
-            redis_url='redis://localhost:6379'
+            redis_url="redis://localhost:6379",
         ),
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.core.qdrant_db",
-        types.SimpleNamespace(QdrantClient=_QdrantClient, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(QdrantClient=_QdrantClient, redis_url="redis://localhost:6379"),
     )
 
     app_pkg = types.ModuleType("app")
@@ -104,26 +104,26 @@ def _load_module(
 
 def _make_client(module):
     """Create test client with mocked dependencies.
-    
+
     Updated 2026-01-16: Added dependency overrides for get_current_user
     if the router uses it.
     """
     from backend.app.dependencies import get_current_user
-    
+
     app = FastAPI()
     app.include_router(module.router)
-    
+
     # Override get_current_user if router uses it
     def get_user_override(request=None, credentials=None):
         return {"email": "test@example.com", "role": "admin"}
-    
+
     # Only override if router actually uses this dependency
     # Check if router has endpoints that use get_current_user
     try:
         app.dependency_overrides[get_current_user] = get_user_override
     except Exception:
         pass  # Router might not use this dependency
-    
+
     return TestClient(app)
 
 

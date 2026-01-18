@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.app.services.audio_service import AudioService, get_audio_service
+from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 router = APIRouter(prefix="/audio", tags=["Audio"])
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ async def transcribe_audio(
     file: UploadFile = File(...),
     language: str | None = None,
     audio_service: AudioService = Depends(get_audio_service),
-    # current_user = Depends(get_current_user) # Optional: Enable auth
+    api_key_verified=Depends(verify_internal_api_key),
 ):
     """
     Transcribe uploaded audio file to text.
@@ -44,7 +45,7 @@ async def transcribe_audio(
 async def generate_speech(
     request: SpeechRequest,
     audio_service: AudioService = Depends(get_audio_service),
-    # current_user = Depends(get_current_user) # Optional: Enable auth
+    api_key_verified=Depends(verify_internal_api_key),
 ):
     """
     Generate speech from text (TTS). Returns audio/mpeg stream.

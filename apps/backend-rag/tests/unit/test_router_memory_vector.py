@@ -100,7 +100,10 @@ def client(mock_qdrant_client, mock_embedder):
     with (
         patch.object(memory_vector_module, "memory_vector_db", mock_qdrant_client),
         patch.object(memory_vector_module, "embedder", mock_embedder),
-        patch("backend.app.routers.memory_vector.get_memory_vector_db", return_value=mock_qdrant_client),
+        patch(
+            "backend.app.routers.memory_vector.get_memory_vector_db",
+            return_value=mock_qdrant_client,
+        ),
     ):
         from fastapi import FastAPI
 
@@ -893,7 +896,9 @@ def test_memory_vector_health_success(client, mock_qdrant_client, mock_embedder)
 
 def test_memory_vector_health_service_unavailable(client):
     """Test health check when Qdrant is unavailable"""
-    with patch("backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
+    with patch(
+        "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+    ) as mock_db:
         mock_db.side_effect = Exception("Qdrant unavailable")
 
         response = client.get("/api/memory/health")
@@ -913,7 +918,9 @@ def test_memory_vector_health_no_auth_required(client, mock_qdrant_client):
 
 def test_memory_vector_health_stats_error(client):
     """Test health check when stats retrieval fails"""
-    with patch("backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
+    with patch(
+        "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+    ) as mock_db:
         mock_client = MagicMock()
         mock_client.get_collection_stats = AsyncMock(side_effect=Exception("Stats error"))
         mock_db.return_value = mock_client

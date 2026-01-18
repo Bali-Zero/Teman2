@@ -134,7 +134,9 @@ class TestMetricsIntegration:
         """Test collecting all metrics"""
         from backend.app.metrics import collect_all_metrics
 
-        with patch("backend.app.metrics.metrics_collector.measure_redis_latency", new_callable=AsyncMock):
+        with patch(
+            "backend.app.metrics.metrics_collector.measure_redis_latency", new_callable=AsyncMock
+        ):
             metrics_output = await collect_all_metrics()
 
             assert metrics_output is not None

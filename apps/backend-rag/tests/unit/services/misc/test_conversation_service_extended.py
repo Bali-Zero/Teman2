@@ -70,7 +70,8 @@ class TestGetAutoCrm:
     def test_get_auto_crm_general_exception(self, conversation_service):
         """Test _get_auto_crm handles general exceptions"""
         with patch(
-            "backend.services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")
+            "backend.services.crm.auto_crm_service.get_auto_crm_service",
+            side_effect=Exception("Error"),
         ):
             result = conversation_service._get_auto_crm()
             assert result is None
@@ -108,7 +109,9 @@ class TestSaveConversation:
         mock_cache = MagicMock()
         mock_cache.add_message = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await conversation_service.save_conversation(
                 user_email="test@test.com",
                 messages=[
@@ -136,7 +139,9 @@ class TestSaveConversation:
         mock_cache = MagicMock()
         mock_cache.add_message = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await conversation_service.save_conversation(
                 user_email="test@test.com",
                 messages=[{"role": "user", "content": "Hello"}],
@@ -157,7 +162,9 @@ class TestSaveConversation:
         mock_cache = MagicMock()
         mock_cache.add_message = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await conversation_service.save_conversation(
                 user_email="test@test.com",
                 messages=[{"role": "user", "content": "Hello"}],
@@ -200,7 +207,9 @@ class TestSaveConversation:
         mock_cache = MagicMock()
         mock_cache.add_message = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await conversation_service.save_conversation(
                 user_email="test@test.com",
                 messages=[{"role": "user", "content": "Hello"}],
@@ -219,7 +228,9 @@ class TestSaveConversation:
         mock_cache = MagicMock()
         mock_cache.add_message = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await service.save_conversation(
                 user_email="test@test.com",
                 messages=[{"role": "user", "content": "Hello"}],
@@ -246,7 +257,9 @@ class TestSaveConversation:
             return_value={"processed": True, "extracted": {}}
         )
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
                 result = await conversation_service.save_conversation(
                     user_email="test@test.com",
@@ -272,7 +285,9 @@ class TestSaveConversation:
         mock_auto_crm = MagicMock()
         mock_auto_crm.process_conversation = AsyncMock(side_effect=Exception("CRM error"))
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
                 result = await conversation_service.save_conversation(
                     user_email="test@test.com",
@@ -298,7 +313,9 @@ class TestSaveConversation:
 
         mock_auto_crm = MagicMock()
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
                 result = await conversation_service.save_conversation(
                     user_email="test@test.com",
@@ -366,7 +383,9 @@ class TestGetHistory:
             return_value=[{"role": "user", "content": "Cached"}]
         )
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await conversation_service.get_history(
                 user_email="test@test.com",
                 session_id="test-session",
@@ -385,7 +404,9 @@ class TestGetHistory:
             return_value=[{"role": "user", "content": "Cached"}]
         )
 
-        with patch("backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
+        with patch(
+            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
+        ):
             result = await service.get_history(
                 user_email="test@test.com",
                 session_id="test-session",

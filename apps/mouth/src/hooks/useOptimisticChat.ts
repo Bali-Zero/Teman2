@@ -170,9 +170,7 @@ export function useOptimisticChat({
             const newSources = event.data as Source[];
             setSources(newSources);
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessage.id ? { ...m, sources: newSources } : m
-              )
+              prev.map((m) => (m.id === assistantMessage.id ? { ...m, sources: newSources } : m))
             );
             break;
           }
@@ -188,9 +186,7 @@ export function useOptimisticChat({
       // Complete streaming
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantMessage.id
-            ? { ...m, isStreaming: false, isPending: false }
-            : m
+          m.id === assistantMessage.id ? { ...m, isStreaming: false, isPending: false } : m
         )
       );
 
@@ -202,8 +198,7 @@ export function useOptimisticChat({
         );
       });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to send message';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
 
       // Update with error message
       setMessages((prev) =>
@@ -226,16 +221,7 @@ export function useOptimisticChat({
       currentAssistantIdRef.current = null;
       streamReaderRef.current = null;
     }
-  }, [
-    input,
-    isPending,
-    isStreaming,
-    messages,
-    sessionId,
-    userId,
-    addOptimisticMessage,
-    onError,
-  ]);
+  }, [input, isPending, isStreaming, messages, sessionId, userId, addOptimisticMessage, onError]);
 
   // ============================================
   // ❌ Cancel Stream

@@ -243,7 +243,9 @@ class TestAutonomousAgentsDashboardE2E:
         asyncio.get_event_loop().run_until_complete(insert_test_data())
 
         # Step 2: Run the agent
-        with patch("backend.agents.agents.conversation_trainer.ConversationTrainer") as mock_trainer_class:
+        with patch(
+            "backend.agents.agents.conversation_trainer.ConversationTrainer"
+        ) as mock_trainer_class:
             mock_trainer = AsyncMock()
             mock_trainer_class.return_value = mock_trainer
 
@@ -561,7 +563,9 @@ class TestAutonomousAgentsDashboardE2E:
         asyncio.get_event_loop().run_until_complete(insert_data())
 
         # Step 3: Run Conversation Trainer
-        with patch("backend.agents.agents.conversation_trainer.ConversationTrainer") as mock_trainer:
+        with patch(
+            "backend.agents.agents.conversation_trainer.ConversationTrainer"
+        ) as mock_trainer:
             mock_instance = AsyncMock()
             mock_trainer.return_value = mock_instance
             mock_instance.analyze_conversations.return_value = {"conversations_analyzed": 1}

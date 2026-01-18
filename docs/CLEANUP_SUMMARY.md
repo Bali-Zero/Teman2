@@ -10,6 +10,7 @@
 ### 1. File Deprecati Rimossi
 
 #### ✅ `apps/mouth/src/app/(workspace)/dashboard/page-old.tsx`
+
 - **Status:** Rimosso
 - **Motivo:** File vecchio non utilizzato (352 righe)
 - **Verifica:** Nessun import trovato nel codebase
@@ -21,11 +22,13 @@
 #### ✅ `apps/backend-rag/backend/app/routers/intel.py:929` - Agent Health Check
 
 **Prima:**
+
 ```python
 "agent_status": "active",  # TODO: Implement agent health check
 ```
 
 **Dopo:**
+
 ```python
 # Check agent health from autonomous scheduler
 agent_status = "unknown"
@@ -33,7 +36,7 @@ last_run = None
 try:
     from services.misc.autonomous_scheduler import get_autonomous_scheduler
     autonomous_scheduler = get_autonomous_scheduler()
-    
+
     if autonomous_scheduler and autonomous_scheduler.tasks:
         # Check if any task has run recently (within last 24h)
         recent_runs = [
@@ -63,6 +66,7 @@ metrics = {
 ```
 
 **Benefici:**
+
 - Health check reale basato su `AutonomousScheduler`
 - Status dettagliati: `active`, `idle`, `disabled`, `not_configured`, `unknown`
 - Tracking dell'ultimo run degli agenti
@@ -72,6 +76,7 @@ metrics = {
 #### ✅ `apps/backend-rag/backend/app/routers/intel.py:1185` - Qdrant Filter Support
 
 **Prima:**
+
 ```python
 # Qdrant: Use peek to get documents, then filter in Python
 # TODO: Implement Qdrant filter support for better performance
@@ -88,6 +93,7 @@ for metadata in results.get("metadatas", []):
 ```
 
 **Dopo:**
+
 ```python
 # Use Qdrant scroll with filter for better performance
 qdrant_filter = {
@@ -100,25 +106,25 @@ qdrant_filter = {
 try:
     # Scroll supports filters, peek doesn't - use scroll directly
     from app.core.config import settings
-    
+
     scroll_url = f"{settings.qdrant_url}/collections/{collection_name}/points/scroll"
     headers = {}
     if settings.qdrant_api_key:
         headers["api-key"] = settings.qdrant_api_key
-    
+
     scroll_payload = {
         "limit": 100,
         "with_payload": True,
         "with_vectors": False,
         "filter": qdrant_filter,
     }
-    
+
     async with httpx.AsyncClient(timeout=30.0) as http_client:
         response = await http_client.post(scroll_url, json=scroll_payload, headers=headers)
         response.raise_for_status()
         scroll_data = response.json().get("result", {})
         points = scroll_data.get("points", [])
-        
+
         filtered_metadatas = [
             point.get("payload", {}).get("metadata", {})
             for point in points
@@ -137,6 +143,7 @@ except Exception as scroll_error:
 ```
 
 **Benefici:**
+
 - Filtri applicati direttamente in Qdrant (più performante)
 - Riduzione del trasferimento dati (solo risultati filtrati)
 - Fallback robusto se il filtro Qdrant fallisce
@@ -146,12 +153,14 @@ except Exception as scroll_error:
 #### ✅ `apps/mouth/src/app/(workspace)/intelligence/system-pulse/page.tsx:39` - TODO Obsoleto
 
 **Prima:**
+
 ```typescript
 // TODO: Replace with real API call when backend endpoint is ready
 const metricsData = await intelligenceApi.getMetrics();
 ```
 
 **Dopo:**
+
 ```typescript
 // Fetch real-time metrics from backend API
 const metricsData = await intelligenceApi.getMetrics();
@@ -166,6 +175,7 @@ const metricsData = await intelligenceApi.getMetrics();
 #### ✅ `apps/backend-rag/backend/app/modules/knowledge/service.py` - KnowledgeService Deprecato
 
 **Prima:**
+
 ```python
 """
 DEPRECATED: This service is deprecated in favor of SearchService...
@@ -173,6 +183,7 @@ DEPRECATED: This service is deprecated in favor of SearchService...
 ```
 
 **Dopo:**
+
 ```python
 """
 ⚠️ DEPRECATED: This service is deprecated in favor of SearchService...
@@ -183,6 +194,7 @@ are migrated to SearchService. Do not use this service in new code.
 ```
 
 **Benefici:**
+
 - Documentazione più chiara sullo stato di deprecazione
 - Indicazione esplicita di non usare in nuovo codice
 - Nota sulla rimozione futura
@@ -192,12 +204,14 @@ are migrated to SearchService. Do not use this service in new code.
 ## 📊 Impatto
 
 ### File Modificati
+
 - ✅ `apps/mouth/src/app/(workspace)/dashboard/page-old.tsx` - **RIMOSSO**
 - ✅ `apps/backend-rag/backend/app/routers/intel.py` - 2 TODO risolti
 - ✅ `apps/mouth/src/app/(workspace)/intelligence/system-pulse/page.tsx` - TODO obsoleto rimosso
 - ✅ `apps/backend-rag/backend/app/modules/knowledge/service.py` - Documentazione migliorata
 
 ### Metriche
+
 - **File deprecati rimossi:** 1
 - **TODO critici risolti:** 3
 - **Documentazione migliorata:** 1 file
@@ -209,10 +223,12 @@ are migrated to SearchService. Do not use this service in new code.
 ## 🔍 Verifiche
 
 ### Linting
+
 - ✅ Nessun errore di linting rilevato
 - ✅ Import corretti (httpx aggiunto in cima al file)
 
 ### Funzionalità
+
 - ✅ Agent health check implementato con fallback robusto
 - ✅ Qdrant filter support con fallback a metodo precedente
 - ✅ Nessuna breaking change introdotta
@@ -222,7 +238,9 @@ are migrated to SearchService. Do not use this service in new code.
 ## 📝 Note
 
 ### KnowledgeService
+
 Il file `knowledge/service.py` è ancora presente perché:
+
 - È utilizzato come fallback in `router.py` per scenari test/local boot
 - Alcuni test lo utilizzano ancora
 - La migrazione completa a SearchService richiede aggiornamento di tutti i test

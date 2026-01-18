@@ -12,11 +12,12 @@ import os
 import sys
 
 # Color codes
-GREEN = '\033[92m'
-RED = '\033[91m'
-YELLOW = '\033[93m'
-BLUE = '\033[94m'
-RESET = '\033[0m'
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+RESET = "\033[0m"
+
 
 def check_file(filepath, description):
     """Check if file exists and return size"""
@@ -31,14 +32,18 @@ def check_file(filepath, description):
         print(f"  Path: {filepath} (NOT FOUND)")
         return False
 
+
 def test_categorization():
     """Test categorization service directly"""
     print(f"\n{BLUE}🧪 Testing Auto-Categorization Service...{RESET}")
 
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../apps/backend-rag'))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../apps/backend-rag"))
 
     try:
-        from backend.services.crm.document_categorizer import auto_categorize_document, extract_expiry_date
+        from backend.services.crm.document_categorizer import (
+            auto_categorize_document,
+            extract_expiry_date,
+        )
 
         test_cases = [
             ("Passport_JOHN_DOE_2028-12-31.pdf", "immigration", "Passport"),
@@ -56,9 +61,9 @@ def test_categorization():
 
         for filename, expected_cat, expected_type in test_cases:
             result = auto_categorize_document(filename)
-            actual_cat = result['document_category']
-            actual_type = result['document_type']
-            confidence = result['confidence']
+            actual_cat = result["document_category"]
+            actual_type = result["document_type"]
+            confidence = result["confidence"]
 
             if actual_cat == expected_cat and actual_type == expected_type:
                 print(f"{GREEN}✓{RESET} {filename}")
@@ -84,7 +89,9 @@ def test_categorization():
                 print(f"{GREEN}✓{RESET} {filename} → {extracted}")
                 passed += 1
             else:
-                print(f"{RED}✗{RESET} {filename} → Expected {expected_date}, got {extracted}")
+                print(
+                    f"{RED}✗{RESET} {filename} → Expected {expected_date}, got {extracted}"
+                )
                 failed += 1
 
         print(f"\n{BLUE}📊 Categorization Test Results:{RESET}")
@@ -101,22 +108,41 @@ def test_categorization():
         print(f"{RED}✗ Categorization test failed: {e}{RESET}")
         return False
 
+
 def main():
     print(f"\n{BLUE}{'=' * 60}{RESET}")
     print(f"{BLUE}PHASE 1 FILES VERIFICATION{RESET}")
     print(f"{BLUE}{'=' * 60}{RESET}\n")
 
-    base_path = os.path.join(os.path.dirname(__file__), '../apps/backend-rag')
+    base_path = os.path.join(os.path.dirname(__file__), "../apps/backend-rag")
 
     # Files to check
     files_to_check = [
-        (f"{base_path}/backend/app/routers/crm_drive_folders.py", "CRM Drive Folders Router (NEW)"),
-        (f"{base_path}/backend/app/routers/crm_enhanced.py", "CRM Enhanced Router (MODIFIED)"),
-        (f"{base_path}/backend/app/routers/crm_migration.py", "CRM Migration Router (NEW)"),
-        (f"{base_path}/backend/services/crm/document_categorizer.py", "Document Categorizer Service (NEW)"),
-        (f"{base_path}/backend/services/integrations/google_drive_service.py", "Google Drive Service (MODIFIED)"),
+        (
+            f"{base_path}/backend/app/routers/crm_drive_folders.py",
+            "CRM Drive Folders Router (NEW)",
+        ),
+        (
+            f"{base_path}/backend/app/routers/crm_enhanced.py",
+            "CRM Enhanced Router (MODIFIED)",
+        ),
+        (
+            f"{base_path}/backend/app/routers/crm_migration.py",
+            "CRM Migration Router (NEW)",
+        ),
+        (
+            f"{base_path}/backend/services/crm/document_categorizer.py",
+            "Document Categorizer Service (NEW)",
+        ),
+        (
+            f"{base_path}/backend/services/integrations/google_drive_service.py",
+            "Google Drive Service (MODIFIED)",
+        ),
         (f"{base_path}/backend/app/core/config.py", "Config (MODIFIED)"),
-        (f"{base_path}/backend/app/setup/router_registration.py", "Router Registration (MODIFIED)"),
+        (
+            f"{base_path}/backend/app/setup/router_registration.py",
+            "Router Registration (MODIFIED)",
+        ),
     ]
 
     print(f"{BLUE}📁 Checking Phase 1 Files...{RESET}\n")
@@ -141,14 +167,19 @@ def main():
 
     print(f"Files Found: {GREEN}{files_exist}/{len(files_to_check)}{RESET}")
     print(f"Files Missing: {RED}{files_missing}/{len(files_to_check)}{RESET}")
-    print(f"Categorization: {GREEN + '✓ PASS' if categorization_ok else RED + '✗ FAIL'}{RESET}")
+    print(
+        f"Categorization: {GREEN + '✓ PASS' if categorization_ok else RED + '✗ FAIL'}{RESET}"
+    )
 
     if files_missing == 0 and categorization_ok:
-        print(f"\n{GREEN}🎉 ALL CHECKS PASSED! Phase 1 code is complete and working!{RESET}")
+        print(
+            f"\n{GREEN}🎉 ALL CHECKS PASSED! Phase 1 code is complete and working!{RESET}"
+        )
         return 0
     else:
         print(f"\n{YELLOW}⚠️  Some checks failed. Review errors above.{RESET}")
         return 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

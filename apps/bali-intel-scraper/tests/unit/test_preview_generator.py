@@ -6,8 +6,7 @@ Covers: PreviewArticle, BaliZeroPreviewGenerator, helper functions
 import pytest
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import tempfile
 import os
 
@@ -144,7 +143,10 @@ class TestPreviewArticle:
     def test_create_full_article(self, sample_preview_article):
         """Test creating article with all fields"""
         assert sample_preview_article.article_id == "test123abc"
-        assert sample_preview_article.title == "Indonesia Extends Digital Nomad Visa to 5 Years"
+        assert (
+            sample_preview_article.title
+            == "Indonesia Extends Digital Nomad Visa to 5 Years"
+        )
         assert sample_preview_article.relevance_score == 92
         assert sample_preview_article.reviewed_by == "Marco Rossi"
 
@@ -477,7 +479,7 @@ class TestGeneratePreview:
         """Test HTML contains schema.org JSON-LD"""
         gen = BaliZeroPreviewGenerator()
         html = gen.generate_preview(sample_preview_article)
-        assert 'application/ld+json' in html
+        assert "application/ld+json" in html
 
     def test_dark_theme_colors(self, sample_preview_article):
         """Test HTML uses dark theme colors"""
@@ -496,7 +498,9 @@ class TestSavePreview:
         filepath = gen.save_preview(sample_preview_article)
         assert os.path.exists(filepath)
 
-    def test_filename_matches_article_id(self, sample_preview_article, generator_with_temp_dir):
+    def test_filename_matches_article_id(
+        self, sample_preview_article, generator_with_temp_dir
+    ):
         """Test filename matches article_id"""
         gen, tmpdir = generator_with_temp_dir
         filepath = gen.save_preview(sample_preview_article)
@@ -565,8 +569,12 @@ class TestCreatePreviewFromPipeline:
     def test_returns_tuple(self):
         """Test returns tuple of (article_id, preview_path)"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(BaliZeroPreviewGenerator, '__init__', return_value=None):
-                with patch.object(BaliZeroPreviewGenerator, 'save_preview', return_value=f"{tmpdir}/test.html"):
+            with patch.object(BaliZeroPreviewGenerator, "__init__", return_value=None):
+                with patch.object(
+                    BaliZeroPreviewGenerator,
+                    "save_preview",
+                    return_value=f"{tmpdir}/test.html",
+                ):
                     result = create_preview_from_pipeline(
                         title="Test",
                         content="Content",
@@ -592,7 +600,9 @@ class TestCreatePreviewFromPipeline:
         }
         # This tests the function constructs PreviewArticle correctly
         # by checking it doesn't raise errors with valid SEO metadata
-        with patch.object(BaliZeroPreviewGenerator, 'save_preview', return_value="/tmp/test.html"):
+        with patch.object(
+            BaliZeroPreviewGenerator, "save_preview", return_value="/tmp/test.html"
+        ):
             article_id, path = create_preview_from_pipeline(
                 title="Test",
                 content="Content",

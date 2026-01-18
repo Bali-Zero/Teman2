@@ -125,10 +125,7 @@ describe('AudioApi', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(audioApi.generateSpeech('Hello')).rejects.toThrow(
-        'Speech generation failed'
-      );
+      await expect(audioApi.generateSpeech('Hello')).rejects.toThrow('Speech generation failed');
     });
   });
 });
-

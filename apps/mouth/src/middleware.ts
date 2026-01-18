@@ -72,8 +72,8 @@ export function middleware(request: NextRequest) {
   // === PUBLIC DOMAIN (balizero.com) ===
   if (isPublicDomain) {
     // Check if trying to access internal routes
-    const isInternalRoute = INTERNAL_ROUTES.some(route =>
-      pathname === route || pathname.startsWith(`${route}/`)
+    const isInternalRoute = INTERNAL_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`)
     );
 
     if (isInternalRoute) {

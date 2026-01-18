@@ -283,14 +283,31 @@ export interface CreateClientParams {
   tags?: string[];
   address?: string;
   lead_source?: 'website' | 'whatsapp' | 'referral' | 'social_media' | 'walk_in' | 'other';
-  service_interest?: string[];  // e.g., ['kitas', 'pt_pma', 'tax']
+  service_interest?: string[]; // e.g., ['kitas', 'pt_pma', 'tax']
 }
 
 // Common nationalities for dropdown
 export const COMMON_NATIONALITIES = [
-  'Australian', 'American', 'British', 'Canadian', 'Chinese', 'Dutch', 'French',
-  'German', 'Indian', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Malaysian',
-  'Russian', 'Singaporean', 'Spanish', 'Swedish', 'Swiss', 'Ukrainian'
+  'Australian',
+  'American',
+  'British',
+  'Canadian',
+  'Chinese',
+  'Dutch',
+  'French',
+  'German',
+  'Indian',
+  'Indonesian',
+  'Italian',
+  'Japanese',
+  'Korean',
+  'Malaysian',
+  'Russian',
+  'Singaporean',
+  'Spanish',
+  'Swedish',
+  'Swiss',
+  'Ukrainian',
 ] as const;
 
 // Client statuses

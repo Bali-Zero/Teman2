@@ -1,6 +1,6 @@
 /**
  * Frontend Metrics System
- * 
+ *
  * Collects metrics from React hooks and components for monitoring.
  * Metrics can be sent to backend for Prometheus integration.
  */
@@ -103,14 +103,14 @@ class MetricsCollector {
       // Send to backend metrics endpoint
       const { api } = await import('./api');
       const token = api.getToken();
-      
+
       if (!token) return;
 
       await fetch('/api/metrics/frontend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ metrics: metricsToSend }),
       });

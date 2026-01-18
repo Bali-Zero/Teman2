@@ -10,11 +10,14 @@ import json
 from typing import List, Dict
 
 # Add backend path
-backend_path = os.path.join(os.path.dirname(__file__), "..", "..", "apps", "backend-rag")
+backend_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "apps", "backend-rag"
+)
 sys.path.insert(0, backend_path)
 sys.path.insert(0, os.path.join(backend_path, "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(backend_path, ".env"))
 
 from services.integrations.team_drive_service import TeamDriveService
@@ -23,13 +26,13 @@ from services.integrations.team_drive_service import TeamDriveService
 async def search_lampiran_files_oauth() -> List[Dict]:
     """Cerca file Lampiran in Google Drive usando OAuth"""
     drive = TeamDriveService()
-    
+
     print("🔍 Cercando file Lampiran in Google Drive (OAuth)...\n")
 
     # Lista di pattern da cercare
     search_queries = [
         "Lampiran I",
-        "Lampiran II", 
+        "Lampiran II",
         "Lampiran III",
         "Lampiran IV",
         "Lampiran_I",
@@ -43,7 +46,7 @@ async def search_lampiran_files_oauth() -> List[Dict]:
         print(f"  Cercando: '{query}'...")
         try:
             files = await drive.search_files(query=query, file_type="pdf", page_size=50)
-            
+
             if files:
                 print(f"    ✅ Trovati {len(files)} file")
                 for f in files:
@@ -59,7 +62,7 @@ async def search_lampiran_files_oauth() -> List[Dict]:
                             }
                             print(f"      - {f['name']}")
             else:
-                print(f"    ⏭️  Nessun file trovato")
+                print("    ⏭️  Nessun file trovato")
         except Exception as e:
             print(f"    ❌ Errore: {e}")
 
@@ -95,10 +98,12 @@ async def main():
         output_file = "reports/lampiran_drive_search_oauth.json"
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump({
-                "total_found": len(files),
-                "files": files
-            }, f, indent=2, ensure_ascii=False)
+            json.dump(
+                {"total_found": len(files), "files": files},
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
         print(f"📁 Risultati salvati in: {output_file}")
     else:
         print("\n❌ Nessun file Lampiran trovato in Google Drive")

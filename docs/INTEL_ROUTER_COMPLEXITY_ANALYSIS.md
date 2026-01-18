@@ -9,12 +9,14 @@
 ## 📊 Metriche Quantitative
 
 ### Dimensione
+
 - **Numero righe:** 1,539 righe
 - **Numero endpoint:** 15 endpoint REST
 - **Numero funzioni helper:** 3 funzioni helper
 - **Numero modelli Pydantic:** 4 modelli
 
 ### Endpoint Breakdown
+
 1. `POST /api/intel/scraper/submit` - Submission da scraper
 2. `GET /api/intel/staging/pending` - Lista items pending
 3. `GET /api/intel/staging/preview/{type}/{item_id}` - Preview item
@@ -38,36 +40,44 @@
 ### ❌ Problemi Critici Identificati
 
 #### 1. Logica Business nel Router
+
 **Problema:** La maggior parte della logica business è direttamente nel router invece che in servizi dedicati.
 
 **Esempi:**
+
 - **Classificazione Intel** (righe 100-125): Logica di classificazione visa/news direttamente nel router
 - **Notifiche Telegram** (righe 128-295): 167 righe di logica per formattare e inviare notifiche
 - **Analytics** (righe 1335-1502): 167 righe di calcolo analytics direttamente nell'endpoint
 - **Gestione File System** (multiple locations): Operazioni dirette su file system senza astrazione
 
 #### 2. Query Dirette su File System
+
 **Problema:** Operazioni dirette su file system senza layer di astrazione.
 
 **Esempi:**
+
 - `staging_file.write_text()` (riga 393)
 - `list(staging_dir.glob("*.json"))` (riga 365)
 - `shutil.move()` (riga 756)
 - Lettura/scrittura JSON diretta (multiple locations)
 
 #### 3. Trasformazioni Dati Complesse nel Router
+
 **Problema:** Trasformazioni dati complesse direttamente negli endpoint.
 
 **Esempi:**
+
 - Formattazione HTML per Telegram (righe 189-215)
 - Calcolo analytics con loop complessi (righe 1368-1486)
 - Parsing e trasformazione metadati Qdrant (righe 1123-1148)
 - Costruzione filtri Qdrant complessi (righe 1099-1115)
 
 #### 4. Dipendenze Hardcoded
+
 **Problema:** Dipendenze importate a livello di modulo, difficili da mockare.
 
 **Esempi:**
+
 - `QdrantClient` istanziato direttamente negli endpoint
 - `telegram_bot` importato globalmente
 - `embedder` creato a livello di modulo
@@ -126,6 +136,7 @@ Il router gestisce **troppe responsabilità**:
 ### Complessità Totale: **9/10** 🔴
 
 **Breakdown:**
+
 - **Dimensione:** 10/10 (1,539 righe è troppo grande)
 - **Accoppiamento:** 9/10 (molte dipendenze hardcoded)
 - **Coesione:** 6/10 (troppe responsabilità diverse)
@@ -137,7 +148,9 @@ Il router gestisce **troppe responsabilità**:
 ## 🚨 Problemi Critici
 
 ### 1. Violazione Single Responsibility Principle
+
 Il router fa troppe cose:
+
 - Routing HTTP
 - Business logic
 - Data access
@@ -145,19 +158,25 @@ Il router fa troppe cose:
 - Data transformation
 
 ### 2. Violazione Dependency Inversion Principle
+
 Dipendenze concrete invece di astrazioni:
+
 - `QdrantClient` istanziato direttamente
 - File system operations dirette
 - Telegram bot importato globalmente
 
 ### 3. Violazione Open/Closed Principle
+
 Difficile estendere senza modificare:
+
 - Logica business hardcoded negli endpoint
 - Nessun pattern strategy per classificazione
 - Nessun pattern factory per servizi
 
 ### 4. Testabilità Compromessa
+
 Impossibile testare in isolamento:
+
 - Dipendenze globali
 - File system reale richiesto
 - Qdrant reale richiesto
@@ -170,7 +189,9 @@ Impossibile testare in isolamento:
 ### Refactoring Prioritario
 
 #### 1. Estrai Service Layer (CRITICAL)
+
 Creare servizi dedicati:
+
 - `IntelClassificationService` - Classificazione visa/news
 - `StagingService` - Gestione staging area
 - `IntelNotificationService` - Notifiche Telegram
@@ -178,24 +199,32 @@ Creare servizi dedicati:
 - `IntelSearchService` - Ricerca semantica
 
 #### 2. Estrai Repository Layer (CRITICAL)
+
 Creare repository per accesso dati:
+
 - `StagingRepository` - Operazioni file system staging
 - `IntelRepository` - Operazioni Qdrant
 
 #### 3. Dependency Injection (HIGH)
+
 Iniettare dipendenze invece di import globali:
+
 - `QdrantClient` via dependency injection
 - `TelegramBot` via dependency injection
 - File system paths via config
 
 #### 4. Estrai Helper Functions (MEDIUM)
+
 Spostare funzioni helper in moduli separati:
+
 - `intel_classification.py`
 - `intel_formatters.py`
 - `intel_validators.py`
 
 #### 5. Test Coverage (HIGH)
+
 Aggiungere test unitari dopo refactoring:
+
 - Test per ogni service
 - Test per ogni repository
 - Test di integrazione per router
@@ -205,12 +234,14 @@ Aggiungere test unitari dopo refactoring:
 ## 📈 Target Post-Refactoring
 
 ### Metriche Target
+
 - **Router:** < 300 righe (solo routing)
 - **Services:** 5-7 servizi, ~200-300 righe ciascuno
 - **Repositories:** 2 repository, ~100-150 righe ciascuno
 - **Test Coverage:** > 80%
 
 ### Struttura Target
+
 ```
 backend/
 ├── app/

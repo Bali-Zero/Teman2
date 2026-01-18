@@ -2,7 +2,7 @@
 /**
  * Type Safety Check Script
  * Scans codebase for `any` usage and generates report
- * 
+ *
  * Usage: npm run type-safety:check
  */
 
@@ -29,9 +29,12 @@ function scanFile(filePath: string): AnyUsage[] {
     // Match `: any` or `as any` patterns
     const anyPattern = /:\s*any\b|as\s+any\b/g;
     const matches = line.match(anyPattern);
-    
+
     if (matches) {
-      const isTest = filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('__tests__');
+      const isTest =
+        filePath.includes('.test.') ||
+        filePath.includes('.spec.') ||
+        filePath.includes('__tests__');
       usages.push({
         file: filePath,
         line: index + 1,
@@ -49,28 +52,28 @@ function scanFile(filePath: string): AnyUsage[] {
  */
 function scanDirectory(dir: string, extensions: string[] = ['.ts', '.tsx']): AnyUsage[] {
   const usages: AnyUsage[] = [];
-  
+
   try {
     const entries = readdirSync(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
-      
+
       // Skip node_modules, .next, etc.
       if (entry.name.startsWith('.') || entry.name === 'node_modules') {
         continue;
       }
-      
+
       if (entry.isDirectory()) {
         usages.push(...scanDirectory(fullPath, extensions));
-      } else if (entry.isFile() && extensions.some(ext => entry.name.endsWith(ext))) {
+      } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
         usages.push(...scanFile(fullPath));
       }
     }
   } catch (error) {
     // Skip directories we can't read
   }
-  
+
   return usages;
 }
 
@@ -78,18 +81,18 @@ function scanDirectory(dir: string, extensions: string[] = ['.ts', '.tsx']): Any
  * Generate report
  */
 function generateReport(usages: AnyUsage[]): void {
-  const productionUsages = usages.filter(u => !u.isTest);
-  const testUsages = usages.filter(u => u.isTest);
-  
+  const productionUsages = usages.filter((u) => !u.isTest);
+  const testUsages = usages.filter((u) => u.isTest);
+
   const byFile = new Map<string, number>();
-  productionUsages.forEach(u => {
+  productionUsages.forEach((u) => {
     byFile.set(u.file, (byFile.get(u.file) || 0) + 1);
   });
-  
+
   const topFiles = Array.from(byFile.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
-  
+
   console.log('\n📊 TYPE SAFETY REPORT\n');
   console.log(`Total 'any' usage: ${usages.length}`);
   console.log(`  Production: ${productionUsages.length}`);
@@ -98,8 +101,8 @@ function generateReport(usages: AnyUsage[]): void {
   topFiles.forEach(([file, count], index) => {
     console.log(`  ${index + 1}. ${file}: ${count}`);
   });
-  
-  console.log(`\n✅ Type Safety Score: ${Math.max(0, 100 - (productionUsages.length * 2))}%`);
+
+  console.log(`\n✅ Type Safety Score: ${Math.max(0, 100 - productionUsages.length * 2)}%`);
 }
 
 /**
@@ -108,12 +111,12 @@ function generateReport(usages: AnyUsage[]): void {
 function main() {
   const srcDir = join(process.cwd(), 'src');
   console.log('🔍 Scanning for `any` usage...');
-  
+
   const usages = scanDirectory(srcDir);
   generateReport(usages);
-  
+
   // Exit with error if too many `any` in production
-  const productionCount = usages.filter(u => !u.isTest).length;
+  const productionCount = usages.filter((u) => !u.isTest).length;
   if (productionCount > 20) {
     console.log(`\n⚠️  Warning: ${productionCount} 'any' types found in production code`);
     process.exit(1);

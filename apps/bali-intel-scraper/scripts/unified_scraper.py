@@ -234,17 +234,61 @@ class SemanticDeduplicator:
 # Indonesia relevance keywords - articles MUST mention at least one
 INDONESIA_KEYWORDS = {
     # Countries/Regions
-    "indonesia", "indonesian", "bali", "balinese", "jakarta", "java", "sumatra",
-    "sulawesi", "kalimantan", "papua", "lombok", "surabaya", "bandung", "medan",
-    "yogyakarta", "jogja", "denpasar", "ubud", "canggu", "seminyak", "sanur",
+    "indonesia",
+    "indonesian",
+    "bali",
+    "balinese",
+    "jakarta",
+    "java",
+    "sumatra",
+    "sulawesi",
+    "kalimantan",
+    "papua",
+    "lombok",
+    "surabaya",
+    "bandung",
+    "medan",
+    "yogyakarta",
+    "jogja",
+    "denpasar",
+    "ubud",
+    "canggu",
+    "seminyak",
+    "sanur",
     # Government/Institutions
-    "imigrasi", "kemenkumham", "kemenkeu", "bkpm", "djp", "ojk", "bi", "kemenlu",
-    "dirjen", "kantor imigrasi", "rudenim",
+    "imigrasi",
+    "kemenkumham",
+    "kemenkeu",
+    "bkpm",
+    "djp",
+    "ojk",
+    "bi",
+    "kemenlu",
+    "dirjen",
+    "kantor imigrasi",
+    "rudenim",
     # Visa/Immigration terms specific to Indonesia
-    "kitas", "kitap", "voa", "evoa", "itas", "itap", "telex", "sponsor",
-    "pt pma", "pt pmdn", "notaris", "akta", "npwp", "nik", "ktp",
+    "kitas",
+    "kitap",
+    "voa",
+    "evoa",
+    "itas",
+    "itap",
+    "telex",
+    "sponsor",
+    "pt pma",
+    "pt pmdn",
+    "notaris",
+    "akta",
+    "npwp",
+    "nik",
+    "ktp",
     # Indonesian words
-    "rupiah", "idr", "rp", "juta", "ribu",
+    "rupiah",
+    "idr",
+    "rp",
+    "juta",
+    "ribu",
 }
 
 
@@ -520,9 +564,7 @@ class BaliZeroScraperV2:
                 extracted_content = result["content"]
                 if not is_indonesia_relevant(extracted_title, extracted_content):
                     self.stats["filtered_irrelevant"] += 1
-                    logger.debug(
-                        f"Filtered (not Indonesia): {extracted_title[:50]}..."
-                    )
+                    logger.debug(f"Filtered (not Indonesia): {extracted_title[:50]}...")
                     continue
 
                 # Track extraction method

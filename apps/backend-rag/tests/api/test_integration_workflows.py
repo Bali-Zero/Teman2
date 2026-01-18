@@ -62,7 +62,9 @@ class TestClientOnboardingWorkflow:
 
                     # Step 3: Track compliance
                     if journey_response.status_code in [200, 201]:
-                        with patch("backend.app.routers.agents.compliance_monitor") as mock_compliance:
+                        with patch(
+                            "backend.app.routers.agents.compliance_monitor"
+                        ) as mock_compliance:
                             mock_compliance.track_item = MagicMock(
                                 return_value={"alert_id": "alert_123"}
                             )
@@ -121,7 +123,9 @@ class TestConversationMemoryWorkflow:
 
             # Step 2: Store in memory (if conversation saved)
             if conversation_response.status_code in [200, 201]:
-                with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_mem:
+                with patch(
+                    "backend.app.routers.memory_vector.initialize_memory_vector_db"
+                ) as mock_mem:
                     mock_db = MagicMock()
                     mock_db.store_memory = AsyncMock(return_value={"memory_id": "mem_123"})
                     mock_mem.return_value = mock_db
@@ -190,7 +194,9 @@ class TestDocumentIngestionWorkflow:
 
             # Step 2: Search (if ingested successfully)
             if ingest_response.status_code in [200, 201]:
-                with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
+                with patch(
+                    "backend.app.routers.oracle_universal.get_search_service"
+                ) as mock_search:
                     mock_search_service = MagicMock()
                     mock_search_service.search = AsyncMock(
                         return_value={"results": [], "query": "test"}

@@ -157,7 +157,8 @@ def test_get_services_status(mock_settings, auth_headers):
 
 def test_get_services_status_registry_fail(mock_settings, auth_headers):
     with patch(
-        "backend.app.core.service_health.service_registry.get_status", side_effect=Exception("RegFail")
+        "backend.app.core.service_health.service_registry.get_status",
+        side_effect=Exception("RegFail"),
     ):
         response = client.get("/api/debug/services", headers=auth_headers)
         assert response.status_code == 200
@@ -194,7 +195,9 @@ def test_db_queries_slow(mock_settings, auth_headers):
 
 
 def test_db_queries_recent(mock_settings, auth_headers):
-    with patch("backend.app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries") as mock_get:
+    with patch(
+        "backend.app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries"
+    ) as mock_get:
         mock_get.return_value = []
         response = client.get("/api/debug/db/queries/recent", headers=auth_headers)
         assert response.status_code == 200

@@ -10,19 +10,19 @@
 
 ## 📊 Confronto Desktop App vs CLI
 
-| Feature | Desktop App | CLI (quello che hai) | Vincitore |
-|---------|-------------|---------------------|-----------|
-| **Interface** | GUI grafica | Terminale | Desktop per novizi, CLI per power users |
-| **Stabilità** | Alta (priorità stabilità) | Media-alta (features più recenti) | Desktop |
-| **Velocità update** | Lenta (stabile) | Veloce (bleeding edge) | CLI |
-| **Desktop Extensions** | ✅ One-click `.mcpb` install | ❌ Configurazione manuale | Desktop |
-| **Git Worktrees** | ✅ Built-in management | ⚠️ Manuale | Desktop |
-| **Remote SSH** | ❌ No | ✅ Sì | CLI |
-| **Automation/CI-CD** | ❌ Limitato | ✅ Scripting completo | CLI |
-| **Sandboxing** | ⚠️ Limitato | ✅ Avanzato | CLI |
-| **Checkpoints** | ❌ No | ✅ Rewind states | CLI |
-| **MCP Servers** | ✅ Sì | ✅ Sì | Pari |
-| **Cowork** | ✅ Integrato | ❌ No | Desktop |
+| Feature                | Desktop App                  | CLI (quello che hai)              | Vincitore                               |
+| ---------------------- | ---------------------------- | --------------------------------- | --------------------------------------- |
+| **Interface**          | GUI grafica                  | Terminale                         | Desktop per novizi, CLI per power users |
+| **Stabilità**          | Alta (priorità stabilità)    | Media-alta (features più recenti) | Desktop                                 |
+| **Velocità update**    | Lenta (stabile)              | Veloce (bleeding edge)            | CLI                                     |
+| **Desktop Extensions** | ✅ One-click `.mcpb` install | ❌ Configurazione manuale         | Desktop                                 |
+| **Git Worktrees**      | ✅ Built-in management       | ⚠️ Manuale                        | Desktop                                 |
+| **Remote SSH**         | ❌ No                        | ✅ Sì                             | CLI                                     |
+| **Automation/CI-CD**   | ❌ Limitato                  | ✅ Scripting completo             | CLI                                     |
+| **Sandboxing**         | ⚠️ Limitato                  | ✅ Avanzato                       | CLI                                     |
+| **Checkpoints**        | ❌ No                        | ✅ Rewind states                  | CLI                                     |
+| **MCP Servers**        | ✅ Sì                        | ✅ Sì                             | Pari                                    |
+| **Cowork**             | ✅ Integrato                 | ❌ No                             | Desktop                                 |
 
 ---
 
@@ -31,6 +31,7 @@
 ### 1️⃣ Desktop App = GUI + Semplificato
 
 **Vantaggi:**
+
 - 🎨 **Interfaccia grafica** - Non serve terminale
 - 📦 **Desktop Extensions** - Installa `.mcpb` con un click
 - 🌳 **Git Worktrees** - Gestione visuale worktrees
@@ -38,6 +39,7 @@
 - 🤝 **Cowork integrato** - Non-developer friendly
 
 **Use cases ideali:**
+
 - Non-developer che vogliono automation
 - Team che vuole interfaccia visuale
 - Progetti che richiedono massima stabilità
@@ -46,6 +48,7 @@
 ### 2️⃣ CLI = Potenza + Automazione
 
 **Vantaggi:**
+
 - 🚀 **Features più recenti** - Update più veloci
 - 🔧 **Remote SSH** - Lavora su server remoti
 - 🤖 **Automation completa** - CI/CD pipelines
@@ -54,6 +57,7 @@
 - 📜 **Scripting** - Integrazione con bash/zsh/scripts
 
 **Use cases ideali:**
+
 - Developer power users (TU!)
 - Automazioni e CI/CD
 - Lavoro su server remoti
@@ -67,15 +71,18 @@
 La **grande novità** è che Anthropic ha integrato **Cowork** nella Desktop App!
 
 ### Cosa È Cowork?
+
 - ✅ **Claude Code per non-developer**
 - ✅ **Folder-based interface** (selezioni cartella, descrivi task)
 - ✅ **Solo su Desktop App** (non in CLI)
 - ✅ **Per utenti Max** ($100-200/mese)
 
 ### Tu Hai Già Cowork!
+
 ✅ Hai Claude Max
 ✅ Hai Desktop App con Cowork
 ✅ **L'abbiamo ottimizzato con:**
+
 - 5 cartelle configurate
 - 4 automazioni
 - 5 templates
@@ -91,6 +98,7 @@ La **grande novità** è che Anthropic ha integrato **Cowork** nella Desktop App
 ### Desktop Extensions (.mcpb)
 
 **Desktop App:**
+
 ```
 1. Download file .mcpb
 2. Doppio click
@@ -98,6 +106,7 @@ La **grande novità** è che Anthropic ha integrato **Cowork** nella Desktop App
 ```
 
 **CLI (tuo setup):**
+
 ```
 1. npm install -g @package
 2. Modifica claude_desktop_config.json
@@ -112,11 +121,13 @@ La **grande novità** è che Anthropic ha integrato **Cowork** nella Desktop App
 ### Git Worktrees
 
 **Desktop App:**
+
 - GUI per creare worktrees
 - Visualizzazione grafica branches
 - Switch worktree con un click
 
 **CLI (tuo setup):**
+
 ```bash
 # Manuale ma più controllo
 git worktree add ../feature-branch feature
@@ -130,10 +141,12 @@ cd ../feature-branch
 ### Remote Work
 
 **Desktop App:**
+
 - ❌ Non può lavorare su server remoti
 - Solo filesystem locale
 
 **CLI (tuo setup):**
+
 ```bash
 # SSH su server remoto
 ssh user@server.com
@@ -147,10 +160,12 @@ claude --work-dir /var/www/app
 ### Sandboxing
 
 **Desktop App:**
+
 - Sandbox di base
 - Limitazioni per sicurezza
 
 **CLI (tuo setup):**
+
 ```bash
 # Sandbox avanzato con controllo fine
 claude --sandbox --network-isolation \
@@ -164,9 +179,11 @@ claude --sandbox --network-isolation \
 ### Checkpoints (Rewind)
 
 **Desktop App:**
+
 - ❌ Non disponibile
 
 **CLI (tuo setup):**
+
 ```bash
 # Crea checkpoint
 claude checkpoint create "before-refactor"
@@ -184,6 +201,7 @@ claude checkpoint restore "before-refactor"
 ## 🎯 Quale Dovresti Usare?
 
 ### Usa Desktop App Se:
+
 - ✅ Preferisci GUI a terminale
 - ✅ Vuoi massima stabilità
 - ✅ Installi molti extensions
@@ -191,6 +209,7 @@ claude checkpoint restore "before-refactor"
 - ✅ Usi principalmente Cowork
 
 ### Usa CLI Se (TU!):
+
 - ✅ Sei developer/power user
 - ✅ Vuoi bleeding edge features
 - ✅ Fai automation/CI-CD
@@ -205,6 +224,7 @@ claude checkpoint restore "before-refactor"
 **HAI GIÀ IL BEST OF BOTH WORLDS:**
 
 ### Per Development/Power Work → CLI
+
 ```bash
 # Hai CLI 2.1.9 con:
 - ✅ Tutte le features avanzate
@@ -215,6 +235,7 @@ claude checkpoint restore "before-refactor"
 ```
 
 ### Per File Management/Non-Code → Cowork (Desktop)
+
 ```bash
 # Hai Cowork ottimizzato con:
 - ✅ 5 cartelle configurate
@@ -233,6 +254,7 @@ claude checkpoint restore "before-refactor"
 ### Scenario 1: "Voglio automatizzare deployment"
 
 **CLI (meglio per te):**
+
 ```bash
 # Script CI/CD
 #!/bin/bash
@@ -247,6 +269,7 @@ claude --work-dir ~/nuzantara \
 ### Scenario 2: "Voglio organizzare Downloads"
 
 **Cowork Desktop (meglio per questo):**
+
 ```
 1. Apri Cowork
 2. "Work in ~/Downloads"
@@ -261,6 +284,7 @@ claude --work-dir ~/nuzantara \
 ### Scenario 3: "Voglio lavorare su server remoto"
 
 **CLI (solo opzione):**
+
 ```bash
 ssh your-server.com
 claude --work-dir /var/www/app
@@ -273,6 +297,7 @@ claude --work-dir /var/www/app
 ### Scenario 4: "Team non-tech vuole usare Claude"
 
 **Desktop + Cowork (meglio):**
+
 - GUI intuitiva
 - No terminale
 - One-click extensions
@@ -284,12 +309,14 @@ claude --work-dir /var/www/app
 ## 📈 Roadmap Features
 
 ### Desktop App (Futuro)
+
 - Windows support (ora solo Mac)
 - Cross-device sync
 - More .mcpb extensions
 - Team collaboration features
 
 ### CLI (Futuro)
+
 - Faster sandboxing
 - More checkpoint features
 - Better remote work
@@ -302,6 +329,7 @@ claude --work-dir /var/www/app
 ### Per Te (Developer/Power User):
 
 ✅ **CONTINUA CON CLI** per:
+
 - Development work
 - Automation
 - CI/CD pipelines
@@ -309,6 +337,7 @@ claude --work-dir /var/www/app
 - Script integration
 
 ✅ **USA COWORK (Desktop)** per:
+
 - File organization
 - Document management
 - KB sync
@@ -322,6 +351,7 @@ claude --work-dir /var/www/app
 ## 🔧 Comandi Utili
 
 ### Check Versioni
+
 ```bash
 # CLI version
 claude --version
@@ -333,6 +363,7 @@ claude --version
 ```
 
 ### Features CLI
+
 ```bash
 # Lista features disponibili
 claude --help
@@ -358,14 +389,14 @@ claude checkpoint --help
 
 ## ✅ Summary
 
-| Cosa | Hai? | Serve altro? |
-|------|------|--------------|
-| CLI 2.1.9 | ✅ | ❌ |
-| Desktop App | ✅ | ❌ |
-| Cowork | ✅ Ottimizzato | ❌ |
-| Memory MCP | ✅ | ❌ |
-| Chrome integration | ✅ | ❌ |
-| Setup completo | ✅ | ❌ |
+| Cosa               | Hai?           | Serve altro? |
+| ------------------ | -------------- | ------------ |
+| CLI 2.1.9          | ✅             | ❌           |
+| Desktop App        | ✅             | ❌           |
+| Cowork             | ✅ Ottimizzato | ❌           |
+| Memory MCP         | ✅             | ❌           |
+| Chrome integration | ✅             | ❌           |
+| Setup completo     | ✅             | ❌           |
 
 **Sei 100% coperto! Non serve installare niente altro.** 🎊
 

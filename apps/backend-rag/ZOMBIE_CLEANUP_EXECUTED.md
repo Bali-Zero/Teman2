@@ -13,7 +13,8 @@
 
 **Motivo:** Rimuovere 20 processi zombie creati da Cursor
 
-**Risultato:** 
+**Risultato:**
+
 - Extension-host terminato con force kill
 - Processi zombie rimossi completamente
 - Cursor riavvierà extension-host automaticamente
@@ -32,7 +33,8 @@
 
 **Motivo:** Terminare processo iCloud Drive bloccato
 
-**Risultato:** 
+**Risultato:**
+
 - Processo terminato
 - Nuovo processo `bird` riavviato automaticamente (PID 72227)
 - Sistema funzionante
@@ -59,13 +61,13 @@
 
 ### Confronto Prima/Dopo
 
-| Metrica | Prima | Dopo | Status |
-|---------|-------|------|--------|
-| **Processi Zombie** | 20 | 0 | ✅ Rimossi |
-| **Processi Stuck** | 1 | 1 | ⚠️ Nuovo processo |
-| **Processi Anomali** | 4+ | 1 | ✅ Ridotti |
-| **RAM Libera** | ~73 MB | ~424 MB | ✅ Migliorata |
-| **CPU Idle** | 3.6% | 30.8% | ✅ Migliorata |
+| Metrica              | Prima  | Dopo    | Status            |
+| -------------------- | ------ | ------- | ----------------- |
+| **Processi Zombie**  | 20     | 0       | ✅ Rimossi        |
+| **Processi Stuck**   | 1      | 1       | ⚠️ Nuovo processo |
+| **Processi Anomali** | 4+     | 1       | ✅ Ridotti        |
+| **RAM Libera**       | ~73 MB | ~424 MB | ✅ Migliorata     |
+| **CPU Idle**         | 3.6%   | 30.8%   | ✅ Migliorata     |
 
 **Nota:** I processi zombie sono stati rimossi con successo dopo force kill di extension-host. Un nuovo processo `bird` è stato riavviato (PID 72227).
 
@@ -102,6 +104,7 @@ ps aux | awk '$8 ~ /S/ && $3 > 20.0 {print "PID " $2 " - CPU: " $3 "% - " $11}'
 ```
 
 **Azioni:**
+
 - Chiudere/riavviare app con CPU alta
 - Verificare se ci sono script in esecuzione
 
@@ -133,6 +136,7 @@ ps aux | awk '$8 ~ /S/ && $3 > 20.0 {print "PID " $2 " - CPU: " $3 "%"}'
 3. ✅ Processo Chrome anomalo terminato
 
 **Risultati Ottenuti:**
+
 - ✅ Processi zombie: Rimossi completamente (da 20 a 0)
 - ✅ Processo stuck: Risolto (nuovo processo riavviato)
 - ✅ Processo Chrome anomalo: Terminato
@@ -141,6 +145,7 @@ ps aux | awk '$8 ~ /S/ && $3 > 20.0 {print "PID " $2 " - CPU: " $3 "%"}'
 - ✅ Sistema: Più stabile
 
 **Miglioramenti Totali:**
+
 - Processi zombie: -20 ✅
 - RAM libera: +351 MB ✅
 - CPU idle: +27.2% ✅

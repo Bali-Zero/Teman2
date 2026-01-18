@@ -19,7 +19,7 @@ jobs:
   test:
     name: Test Intel Services
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15

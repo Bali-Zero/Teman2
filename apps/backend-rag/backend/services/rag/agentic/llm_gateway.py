@@ -41,13 +41,13 @@ from typing import Any
 
 import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
-from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 
 from backend.app.core.circuit_breaker import CircuitBreaker
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.app.core.error_classification import ErrorClassifier, get_error_context
 from backend.app.metrics import metrics_collector
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
 
@@ -740,7 +740,10 @@ class LLMGateway:
         return result.content
 
     def create_chat_with_history(
-        self, history_to_use: list[dict] | None = None, model_tier: int = TIER_FLASH, system_instruction: str | None = None
+        self,
+        history_to_use: list[dict] | None = None,
+        model_tier: int = TIER_FLASH,
+        system_instruction: str | None = None,
     ) -> Any:
         """Create a chat session with conversation history.
 

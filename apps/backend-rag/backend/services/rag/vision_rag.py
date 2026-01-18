@@ -12,10 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from PIL import Image
 
 from backend.app.core.config import settings
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
 logger = logging.getLogger(__name__)
 

@@ -147,9 +147,8 @@ async def get_qdrant_collections(
     admin_user: dict = Depends(get_admin_user),
 ) -> dict[str, Any]:
     """List Qdrant collections with stats (ADMIN ONLY)"""
-    from backend.core.qdrant_db import QdrantClient
-
     from backend.app.core.config import settings
+    from backend.core.qdrant_db import QdrantClient
 
     try:
         client = QdrantClient(qdrant_url=settings.qdrant_url)

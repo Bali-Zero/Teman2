@@ -149,19 +149,25 @@ class PriorityOverrideService:
         # FIXED 2026-01-10: bali_zero_team doesn't exist, TeamKnowledgeTool handles this
         # Return None to let Agentic RAG use TeamKnowledgeTool instead
         if any(pattern in query_lower for pattern in self.identity_patterns):
-            logger.info("🧭 Route: TeamKnowledgeTool (IDENTITY QUERY - bali_zero_team collection removed)")
+            logger.info(
+                "🧭 Route: TeamKnowledgeTool (IDENTITY QUERY - bali_zero_team collection removed)"
+            )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
         # PRIORITY OVERRIDE: Team enumeration queries
         # FIXED 2026-01-10: bali_zero_team doesn't exist, TeamKnowledgeTool handles this
         if any(pattern in query_lower for pattern in self.team_patterns):
-            logger.info("🧭 Route: TeamKnowledgeTool (TEAM ENUMERATION - bali_zero_team collection removed)")
+            logger.info(
+                "🧭 Route: TeamKnowledgeTool (TEAM ENUMERATION - bali_zero_team collection removed)"
+            )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
         # EXPLICIT OVERRIDE: Force team routing for founder queries
         # FIXED 2026-01-10: bali_zero_team doesn't exist, TeamKnowledgeTool handles this
         if "fondatore" in query_lower or "founder" in query_lower:
-            logger.info("🧭 Route: TeamKnowledgeTool (FOUNDER QUERY - bali_zero_team collection removed)")
+            logger.info(
+                "🧭 Route: TeamKnowledgeTool (FOUNDER QUERY - bali_zero_team collection removed)"
+            )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
         # PRIORITY CHECK: Backend services queries

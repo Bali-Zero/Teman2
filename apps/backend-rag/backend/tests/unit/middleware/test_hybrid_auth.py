@@ -128,7 +128,7 @@ async def test_dispatch_public(middleware, mock_request):
     with patch("middleware.hybrid_auth.logger") as mock_logger:
         response = await middleware.dispatch(mock_request, call_next)
         assert response.headers["X-Auth-Type"] == "public"
-        
+
         # Verify structured logging was called
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args
@@ -148,7 +148,7 @@ async def test_temporary_endpoints_removed(middleware, mock_request):
         "/api/fix/test-login",
         "/api/debug/migrate",
     ]
-    
+
     for endpoint in temporary_endpoints:
         mock_request.url.path = endpoint
         assert middleware.is_public_endpoint(mock_request) is False, (

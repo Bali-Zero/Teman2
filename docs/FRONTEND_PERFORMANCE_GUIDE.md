@@ -13,13 +13,13 @@ Questo documento descrive le best practices e ottimizzazioni di performance impl
 
 ## 🎯 Performance Targets
 
-| Metrica | Target | Attuale | Status |
-|---------|--------|---------|--------|
-| **INP** | < 200ms | < 500ms | ✅ Needs Improvement |
-| **LCP** | < 2.5s | ~1.2s | ✅ Good |
-| **CLS** | < 0.1 | ~0.05 | ✅ Good |
-| **Memory (200 items)** | < 20MB | ~10-15MB | ✅ Good |
-| **Scroll FPS** | 60fps | 60fps | ✅ Good |
+| Metrica                | Target  | Attuale  | Status               |
+| ---------------------- | ------- | -------- | -------------------- |
+| **INP**                | < 200ms | < 500ms  | ✅ Needs Improvement |
+| **LCP**                | < 2.5s  | ~1.2s    | ✅ Good              |
+| **CLS**                | < 0.1   | ~0.05    | ✅ Good              |
+| **Memory (200 items)** | < 20MB  | ~10-15MB | ✅ Good              |
+| **Scroll FPS**         | 60fps   | 60fps    | ✅ Good              |
 
 ---
 
@@ -30,11 +30,13 @@ Questo documento descrive le best practices e ottimizzazioni di performance impl
 **Quando usare:** Liste con >20-30 items
 
 **Implementazione:**
+
 - **ClientKanban:** Virtualizzazione per colonne >20 items
 - **Client Grid:** Virtualizzazione per liste >30 items
 - **Chat Messages:** Virtualizzazione per >20 messaggi
 
 **Thresholds:**
+
 ```typescript
 // ClientKanban
 const VIRTUALIZATION_THRESHOLD = 20; // items per colonna
@@ -46,6 +48,7 @@ const ESTIMATED_CARD_HEIGHT = 200;
 ```
 
 **Esempio:**
+
 ```typescript
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -88,6 +91,7 @@ function VirtualizedList({ items }: { items: Item[] }) {
 ```
 
 **Benefici:**
+
 - ✅ Riduzione memory usage del 70-80%
 - ✅ Initial render più veloce dell'85-90%
 - ✅ Scroll smooth (60fps) anche con 200+ items
@@ -101,6 +105,7 @@ function VirtualizedList({ items }: { items: Item[] }) {
 **Implementazione:**
 
 #### A) React.memo con Default Comparison
+
 ```typescript
 export const StatsCard = React.memo(function StatsCard({
   title,
@@ -113,6 +118,7 @@ export const StatsCard = React.memo(function StatsCard({
 ```
 
 #### B) React.memo con Custom Comparison
+
 ```typescript
 export const ClientCard = React.memo(
   ({ client, isDragging }: ClientCardProps) => {
@@ -131,12 +137,14 @@ export const ClientCard = React.memo(
 ```
 
 **Best Practices:**
+
 - ✅ Usa `React.memo` per componenti in liste
 - ✅ Usa custom comparison solo quando necessario
 - ✅ Confronta solo campi critici per performance
 - ⚠️ NON memoizzare componenti con props che cambiano spesso
 
 **Benefici:**
+
 - ✅ Riduzione re-renders del 60-90%
 - ✅ Miglioramento performance generale
 
@@ -147,6 +155,7 @@ export const ClientCard = React.memo(
 **Quando usare:** Calcoli costosi o valori derivati da props/state
 
 **Implementazione:**
+
 ```typescript
 function useDashboardData() {
   const { data } = useQuery({ ... });
@@ -167,6 +176,7 @@ function useDashboardData() {
 ```
 
 **Best Practices:**
+
 - ✅ Memoizza calcoli costosi
 - ✅ Memoizza valori derivati usati in più posti
 - ✅ Includi tutte le dipendenze nell'array
@@ -179,6 +189,7 @@ function useDashboardData() {
 **Problema:** Troppi `motion.*` components possono causare INP issues
 
 **Best Practices:**
+
 - ✅ Usa CSS animations per transizioni semplici
 - ✅ Limita animazioni simultanee a 5-10
 - ✅ Usa `will-change` CSS invece di Framer Motion quando possibile
@@ -186,6 +197,7 @@ function useDashboardData() {
 - ⚠️ Lazy-load componenti con molte animazioni
 
 **Esempio:**
+
 ```typescript
 // ❌ BAD - Troppi motion components
 {items.map(item => (
@@ -211,19 +223,18 @@ function useDashboardData() {
 **Quando usare:** Componenti con bundle size grande o inizializzazione costosa
 
 **Implementazione:**
+
 ```typescript
 import dynamic from 'next/dynamic';
 
-const ParticlesBackground = dynamic(
-  () => import('@/components/ui/particles-background'),
-  { 
-    ssr: false, 
-    loading: () => null 
-  }
-);
+const ParticlesBackground = dynamic(() => import('@/components/ui/particles-background'), {
+  ssr: false,
+  loading: () => null,
+});
 ```
 
 **Best Practices:**
+
 - ✅ Lazy-load componenti non critici
 - ✅ Usa `ssr: false` per componenti client-only
 - ✅ Fornisci loading state appropriato
@@ -233,6 +244,7 @@ const ParticlesBackground = dynamic(
 ## 🚫 Anti-Patterns da Evitare
 
 ### 1. ❌ Renderizzare Tutti gli Items
+
 ```typescript
 // ❌ BAD - Renderizza tutti i 200+ items
 {clients.map(client => <ClientCard key={client.id} client={client} />)}
@@ -246,6 +258,7 @@ const ParticlesBackground = dynamic(
 ```
 
 ### 2. ❌ Re-calcolare Valori Derivati ad Ogni Render
+
 ```typescript
 // ❌ BAD - Ricalcola ad ogni render
 const total = stats.a + stats.b;
@@ -255,6 +268,7 @@ const total = useMemo(() => stats.a + stats.b, [stats.a, stats.b]);
 ```
 
 ### 3. ❌ Troppi Motion Components Simultanei
+
 ```typescript
 // ❌ BAD - 45+ motion components simultanei
 {items.map(item => (
@@ -272,6 +286,7 @@ const total = useMemo(() => stats.a + stats.b, [stats.a, stats.b]);
 ```
 
 ### 4. ❌ layoutId Non Necessario
+
 ```typescript
 // ❌ BAD - layoutId causa calcoli costosi con molti items
 <motion.div layoutId={`item-${id}`}>...</motion.div>
@@ -287,6 +302,7 @@ const total = useMemo(() => stats.a + stats.b, [stats.a, stats.b]);
 ### Web Vitals
 
 **Setup:**
+
 ```typescript
 import { initWebVitals } from '@/lib/web-vitals';
 
@@ -300,6 +316,7 @@ initWebVitals({
 ```
 
 **Metriche Monitorate:**
+
 - **LCP** (Largest Contentful Paint)
 - **CLS** (Cumulative Layout Shift)
 - **INP** (Interaction to Next Paint) ⭐ Most important
@@ -308,12 +325,14 @@ initWebVitals({
 ### Chrome DevTools
 
 **Performance Tab:**
+
 1. Apri DevTools → Performance
 2. Click Record
 3. Interagisci con la pagina
 4. Stop e analizza INP
 
 **Memory Tab:**
+
 1. Apri DevTools → Memory
 2. Heap snapshot prima
 3. Esegui azioni
@@ -321,6 +340,7 @@ initWebVitals({
 5. Confronta memory usage
 
 **React DevTools:**
+
 1. Install React DevTools extension
 2. Components tab → "Highlight updates"
 3. Verifica che componenti memoizzati non re-renderizzino inutilmente

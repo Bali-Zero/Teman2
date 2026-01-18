@@ -90,10 +90,7 @@ export function trackFilterRemoved(filterType: string): void {
 /**
  * Track sort operation
  */
-export function trackSortApplied(
-  sortField: string,
-  sortOrder: 'asc' | 'desc'
-): void {
+export function trackSortApplied(sortField: string, sortOrder: 'asc' | 'desc'): void {
   trackEvent('sort_applied', {
     sort_field: sortField,
     sort_order: sortOrder,
@@ -115,11 +112,7 @@ export function trackSearch(query: string, resultsCount: number): void {
 /**
  * Track case status change
  */
-export function trackCaseStatusChanged(
-  caseId: number,
-  oldStatus: string,
-  newStatus: string
-): void {
+export function trackCaseStatusChanged(caseId: number, oldStatus: string, newStatus: string): void {
   trackEvent('case_status_changed', {
     case_id: caseId,
     old_status: oldStatus,

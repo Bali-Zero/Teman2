@@ -52,15 +52,19 @@ export function logTypeSafety(context: TypeSafetyLogContext): void {
  * Log type error (for monitoring)
  */
 export function logTypeError(error: unknown, context: { file: string; line?: number }): void {
-  logger.error('Type safety: Type error detected', {
-    component: 'TypeSafety',
-    action: 'type_error',
-    metadata: {
-      file: context.file,
-      ...(context.line && { line: context.line }),
-      error: error instanceof Error ? error.message : String(error),
+  logger.error(
+    'Type safety: Type error detected',
+    {
+      component: 'TypeSafety',
+      action: 'type_error',
+      metadata: {
+        file: context.file,
+        ...(context.line && { line: context.line }),
+        error: error instanceof Error ? error.message : String(error),
+      },
     },
-  }, error instanceof Error ? error : new Error(String(error)));
+    error instanceof Error ? error : new Error(String(error))
+  );
 }
 
 /**

@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -116,9 +106,7 @@
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobTemplates",
                   "httpMethod": "POST",
                   "id": "transcoder.projects.locations.jobTemplates.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "jobTemplateId": {
                       "description": "Required. The ID to use for the job template, which will become the final component of the job template's resource name. This value should be 4-63 characters, and valid characters must match the regular expression `a-zA-Z*`.",
@@ -140,18 +128,14 @@
                   "response": {
                     "$ref": "JobTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a job template.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobTemplates/{jobTemplatesId}",
                   "httpMethod": "DELETE",
                   "id": "transcoder.projects.locations.jobTemplates.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The name of the job template to delete. `projects/{project}/locations/{location}/jobTemplates/{job_template}`",
@@ -165,18 +149,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Returns the job template data.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobTemplates/{jobTemplatesId}",
                   "httpMethod": "GET",
                   "id": "transcoder.projects.locations.jobTemplates.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The name of the job template to retrieve. Format: `projects/{project}/locations/{location}/jobTemplates/{job_template}`",
@@ -190,18 +170,14 @@
                   "response": {
                     "$ref": "JobTemplate"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists job templates in the specified region.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobTemplates",
                   "httpMethod": "GET",
                   "id": "transcoder.projects.locations.jobTemplates.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "The maximum number of items to return.",
@@ -226,9 +202,7 @@
                   "response": {
                     "$ref": "ListJobTemplatesResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -239,9 +213,7 @@
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobs",
                   "httpMethod": "POST",
                   "id": "transcoder.projects.locations.jobs.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The parent location to create and process this job. Format: `projects/{project}/locations/{location}`",
@@ -258,18 +230,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a job.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobs/{jobsId}",
                   "httpMethod": "DELETE",
                   "id": "transcoder.projects.locations.jobs.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The name of the job to delete. Format: `projects/{project}/locations/{location}/jobs/{job}`",
@@ -283,18 +251,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Returns the job data.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobs/{jobsId}",
                   "httpMethod": "GET",
                   "id": "transcoder.projects.locations.jobs.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Required. The name of the job to retrieve. Format: `projects/{project}/locations/{location}/jobs/{job}`",
@@ -308,18 +272,14 @@
                   "response": {
                     "$ref": "Job"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists jobs in the specified region.",
                   "flatPath": "v1beta1/projects/{projectsId}/locations/{locationsId}/jobs",
                   "httpMethod": "GET",
                   "id": "transcoder.projects.locations.jobs.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "The maximum number of items to return.",
@@ -344,9 +304,7 @@
                   "response": {
                     "$ref": "ListJobsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             }
@@ -423,11 +381,7 @@
         },
         "fadeType": {
           "description": "Required. Type of fade animation: `FADE_IN` or `FADE_OUT`.",
-          "enum": [
-            "FADE_TYPE_UNSPECIFIED",
-            "FADE_IN",
-            "FADE_OUT"
-          ],
+          "enum": ["FADE_TYPE_UNSPECIFIED", "FADE_IN", "FADE_OUT"],
           "enumDescriptions": [
             "The fade type is not specified.",
             "Fade the overlay object into view.",
@@ -864,13 +818,7 @@
         },
         "state": {
           "description": "Output only. The current state of the job.",
-          "enum": [
-            "PROCESSING_STATE_UNSPECIFIED",
-            "PENDING",
-            "RUNNING",
-            "SUCCEEDED",
-            "FAILED"
-          ],
+          "enum": ["PROCESSING_STATE_UNSPECIFIED", "PENDING", "RUNNING", "SUCCEEDED", "FAILED"],
           "enumDescriptions": [
             "The processing state is not specified.",
             "The job is enqueued and will be picked up for processing soon.",
@@ -1032,11 +980,7 @@
         },
         "type": {
           "description": "Required. Type of the manifest, can be \"HLS\" or \"DASH\".",
-          "enum": [
-            "MANIFEST_TYPE_UNSPECIFIED",
-            "HLS",
-            "DASH"
-          ],
+          "enum": ["MANIFEST_TYPE_UNSPECIFIED", "HLS", "DASH"],
           "enumDescriptions": [
             "The manifest type is not specified.",
             "Create `\"HLS\"` manifest. The corresponding file extension is `\".m3u8\"`.",

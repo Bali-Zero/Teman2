@@ -47,6 +47,7 @@ The Article Composer enables the marketing team to create articles manually with
 Enrich raw article content with Claude AI into a BaliZero Executive Brief.
 
 **Request:**
+
 ```json
 {
   "title": "New Tax Regulation for Expats",
@@ -58,6 +59,7 @@ Enrich raw article content with Claude AI into a BaliZero Executive Brief.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -99,6 +101,7 @@ Enrich raw article content with Claude AI into a BaliZero Executive Brief.
 Check if the article composer is properly configured.
 
 **Response:**
+
 ```json
 {
   "configured": true,
@@ -113,9 +116,12 @@ Check if the article composer is properly configured.
 Publish an enriched article to GitHub (triggers Vercel auto-deploy).
 
 **Request:**
+
 ```json
 {
-  "article": { /* EnrichedArticle from /compose */ },
+  "article": {
+    /* EnrichedArticle from /compose */
+  },
   "slug": "new-tax-rules-expats-2026",
   "cover_image_base64": "iVBORw0KGgo...",
   "cover_image_filename": "cover.jpg",
@@ -125,6 +131,7 @@ Publish an enriched article to GitHub (triggers Vercel auto-deploy).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -141,6 +148,7 @@ Publish an enriched article to GitHub (triggers Vercel auto-deploy).
 Check if the article publisher is properly configured.
 
 **Response:**
+
 ```json
 {
   "configured": true,
@@ -188,27 +196,29 @@ Create a Personal Access Token (Classic) with **`repo`** scope:
 
 When publishing, you can specify a featured position:
 
-| Position | Description |
-|----------|-------------|
-| `mainNews1` | Main News 1 (Large Right) |
-| `mainNews2` | Main News 2 (Large Left) |
-| `mainNews3` | Main News 3 (Medium Middle) |
-| `mainNews4` | Main News 4 (Large Middle) |
-| `mainNews5` | Main News 5 (Medium Left) |
-| `latestInsights` | Latest Insights (Grid) |
-| `none` | No Featured Position |
+| Position         | Description                 |
+| ---------------- | --------------------------- |
+| `mainNews1`      | Main News 1 (Large Right)   |
+| `mainNews2`      | Main News 2 (Large Left)    |
+| `mainNews3`      | Main News 3 (Medium Middle) |
+| `mainNews4`      | Main News 4 (Large Middle)  |
+| `mainNews5`      | Main News 5 (Medium Left)   |
+| `latestInsights` | Latest Insights (Grid)      |
+| `none`           | No Featured Position        |
 
 After publishing, you'll receive a code snippet to manually update `news/page.tsx`.
 
 ## Slug Validation Rules
 
 Slugs must:
+
 - Be lowercase letters, numbers, and hyphens only
 - Be at least 3 characters
 - Be less than 100 characters
 - Not already exist in the repository
 
 Examples:
+
 - ✅ `new-tax-rules-2026`
 - ✅ `kitas-extension-guide`
 - ❌ `New Tax Rules` (uppercase, spaces)
@@ -216,27 +226,27 @@ Examples:
 
 ## Category Mapping
 
-| Input Category | Output Folder |
-|----------------|---------------|
-| `immigration` | `/articles/immigration/` |
-| `business` | `/articles/business/` |
-| `tax` | `/articles/tax/` |
-| `tax-legal` | `/articles/tax/` |
-| `legal` | `/articles/tax/` |
-| `property` | `/articles/property/` |
-| `lifestyle` | `/articles/lifestyle/` |
-| `tech` | `/articles/tech/` |
+| Input Category | Output Folder            |
+| -------------- | ------------------------ |
+| `immigration`  | `/articles/immigration/` |
+| `business`     | `/articles/business/`    |
+| `tax`          | `/articles/tax/`         |
+| `tax-legal`    | `/articles/tax/`         |
+| `legal`        | `/articles/tax/`         |
+| `property`     | `/articles/property/`    |
+| `lifestyle`    | `/articles/lifestyle/`   |
+| `tech`         | `/articles/tech/`        |
 
 ## Error Handling
 
-| Error Code | Meaning | Solution |
-|------------|---------|----------|
-| 400 | Invalid slug format | Fix slug to match validation rules |
-| 400 | Invalid base64 image | Re-encode image as valid base64 |
-| 409 | Slug already exists | Choose a different slug |
-| 413 | Image exceeds 2MB | Compress image below 2MB |
-| 500 | GitHub API not configured | Set GITHUB_TOKEN, REPO, OWNER |
-| 500 | Anthropic API not configured | Set ANTHROPIC_API_KEY |
+| Error Code | Meaning                      | Solution                           |
+| ---------- | ---------------------------- | ---------------------------------- |
+| 400        | Invalid slug format          | Fix slug to match validation rules |
+| 400        | Invalid base64 image         | Re-encode image as valid base64    |
+| 409        | Slug already exists          | Choose a different slug            |
+| 413        | Image exceeds 2MB            | Compress image below 2MB           |
+| 500        | GitHub API not configured    | Set GITHUB_TOKEN, REPO, OWNER      |
+| 500        | Anthropic API not configured | Set ANTHROPIC_API_KEY              |
 
 ## File Structure After Publish
 
@@ -312,6 +322,7 @@ seo:
 Both the composer and publisher emit structured logs:
 
 ### Compose Logs
+
 ```
 INFO  Composing article: New Tax Regulation...
       {"title": "...", "category": "tax", "content_length": 2500}
@@ -323,6 +334,7 @@ INFO  ✅ Article enriched: New Tax Rules Could Save Expats...
 ```
 
 ### Publish Logs
+
 ```
 INFO  Publish request received: new-tax-rules-2026
       {"slug": "...", "category": "tax", "position": "mainNews1"}
@@ -348,11 +360,11 @@ PYTHONPATH=backend pytest tests/unit/app/routers/test_article_composer.py -v
 
 ## Related Files
 
-| File | Purpose |
-|------|---------|
-| `backend/app/routers/article_composer.py` | API endpoints |
-| `backend/services/integrations/github_publisher.py` | GitHub API service |
-| `apps/mouth/src/lib/api/articles.api.ts` | Frontend API client |
-| `apps/mouth/src/app/(workspace)/intelligence/article-composer/page.tsx` | UI component |
-| `tests/unit/services/integrations/test_github_publisher.py` | Service tests |
-| `tests/unit/app/routers/test_article_composer.py` | Router tests |
+| File                                                                    | Purpose             |
+| ----------------------------------------------------------------------- | ------------------- |
+| `backend/app/routers/article_composer.py`                               | API endpoints       |
+| `backend/services/integrations/github_publisher.py`                     | GitHub API service  |
+| `apps/mouth/src/lib/api/articles.api.ts`                                | Frontend API client |
+| `apps/mouth/src/app/(workspace)/intelligence/article-composer/page.tsx` | UI component        |
+| `tests/unit/services/integrations/test_github_publisher.py`             | Service tests       |
+| `tests/unit/app/routers/test_article_composer.py`                       | Router tests        |

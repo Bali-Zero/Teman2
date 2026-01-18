@@ -45,7 +45,7 @@ async def test_get_orchestrator_lazy_initialization(mock_request):
     mock_request.app.state.search_service = MagicMock()
 
     mock_orchestrator = MagicMock()
-    
+
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
         with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
             result = get_orchestrator(mock_request)
@@ -59,7 +59,7 @@ async def test_get_orchestrator_instance_reuse(mock_request):
     mock_request.app.state.search_service = MagicMock()
 
     mock_orchestrator = MagicMock()
-    
+
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
         with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
             # First call
@@ -78,7 +78,9 @@ async def test_get_orchestrator_initialization_error(mock_request):
     mock_request.app.state.db_pool = MagicMock()
     mock_request.app.state.search_service = MagicMock()
 
-    with patch("backend.services.rag.agentic.create_agentic_rag", side_effect=Exception("Init error")):
+    with patch(
+        "backend.services.rag.agentic.create_agentic_rag", side_effect=Exception("Init error")
+    ):
         with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
             with pytest.raises(Exception, match="Init error"):
                 get_orchestrator(mock_request)
@@ -241,10 +243,11 @@ def test_get_auto_crm_lazy_initialization(mock_request):
 def test_dependency_override_get_orchestrator(mock_request):
     """Test overriding get_orchestrator dependency"""
     from fastapi import FastAPI
+
     app = FastAPI()
     mock_orchestrator = MagicMock()
     app.dependency_overrides[get_orchestrator] = lambda: mock_orchestrator
-    
+
     # Simulate FastAPI dependency resolution
     result = app.dependency_overrides[get_orchestrator]()
     assert result == mock_orchestrator
@@ -253,10 +256,11 @@ def test_dependency_override_get_orchestrator(mock_request):
 def test_dependency_override_get_database_pool(mock_request):
     """Test overriding get_database_pool dependency"""
     from fastapi import FastAPI
+
     app = FastAPI()
     mock_pool = MagicMock()
     app.dependency_overrides[get_database_pool] = lambda: mock_pool
-    
+
     result = app.dependency_overrides[get_database_pool]()
     assert result == mock_pool
 
@@ -264,10 +268,11 @@ def test_dependency_override_get_database_pool(mock_request):
 def test_dependency_override_get_search_service(mock_request):
     """Test overriding get_search_service dependency"""
     from fastapi import FastAPI
+
     app = FastAPI()
     mock_service = MagicMock()
     app.dependency_overrides[get_search_service] = lambda: mock_service
-    
+
     result = app.dependency_overrides[get_search_service]()
     assert result == mock_service
 
@@ -277,13 +282,13 @@ def test_multiple_dependencies_in_single_endpoint(mock_request):
     mock_pool = MagicMock()
     mock_pool.acquire = AsyncMock()
     mock_service = MagicMock()
-    
+
     mock_request.app.state.db_pool = mock_pool
     mock_request.app.state.search_service = mock_service
-    
+
     pool = get_database_pool(mock_request)
     service = get_search_service(mock_request)
-    
+
     assert pool == mock_pool
     assert service == mock_service
 
@@ -291,10 +296,10 @@ def test_multiple_dependencies_in_single_endpoint(mock_request):
 def test_dependency_exception_propagation(mock_request):
     """Test that exceptions propagate correctly"""
     mock_request.app.state.search_service = None
-    
+
     with pytest.raises(HTTPException) as exc_info:
         get_search_service(mock_request)
-    
+
     assert exc_info.value.status_code == 503
 
 
@@ -302,6 +307,6 @@ def test_dependency_missing_attribute(mock_request):
     """Test handling of missing attributes in request.app.state"""
     # Remove app attribute to trigger error
     del mock_request.app
-    
+
     with pytest.raises(AttributeError):
         get_search_service(mock_request)

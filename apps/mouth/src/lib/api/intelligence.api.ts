@@ -1,17 +1,17 @@
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export interface StagingItem {
   id: string;
-  type: "visa" | "news";
+  type: 'visa' | 'news';
   title: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   detected_at: string;
   source: string;
-  detection_type: "NEW" | "UPDATED";
+  detection_type: 'NEW' | 'UPDATED';
   content?: string;
   is_critical?: boolean;
-  cover_image?: string;  // Optional for tests
+  cover_image?: string; // Optional for tests
   source_name?: string;
 }
 
@@ -37,11 +37,11 @@ export interface PublishResponse {
 }
 
 export interface SystemMetrics {
-  agent_status: "active" | "idle" | "error";
+  agent_status: 'active' | 'idle' | 'error';
   last_run: string | null;
   items_processed_today: number;
   avg_response_time_ms: number;
-  qdrant_health: "healthy" | "degraded" | "down";
+  qdrant_health: 'healthy' | 'degraded' | 'down';
   next_scheduled_run: string | null;
   uptime_percentage: number;
 }
@@ -77,7 +77,7 @@ export const intelligenceApi = {
   /**
    * Get pending items from staging
    */
-  getPendingItems: async (type: "all" | "visa" | "news" = "all"): Promise<StagingResponse> => {
+  getPendingItems: async (type: 'all' | 'visa' | 'news' = 'all'): Promise<StagingResponse> => {
     const endpoint = `/api/intel/staging/pending?type=${type}`;
     const startTime = performance.now();
 
@@ -102,7 +102,7 @@ export const intelligenceApi = {
   /**
    * Get preview of staging item (full content)
    */
-  getPreview: async (type: "visa" | "news", id: string): Promise<StagingItem> => {
+  getPreview: async (type: 'visa' | 'news', id: string): Promise<StagingItem> => {
     const endpoint = `/api/intel/staging/preview/${type}/${id}`;
     const startTime = performance.now();
 
@@ -128,14 +128,14 @@ export const intelligenceApi = {
   /**
    * Approve item and ingest to Qdrant
    */
-  approveItem: async (type: "visa" | "news", id: string): Promise<ApproveResponse> => {
+  approveItem: async (type: 'visa' | 'news', id: string): Promise<ApproveResponse> => {
     const endpoint = `/api/intel/staging/approve/${type}/${id}`;
     const startTime = performance.now();
 
     logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'approve' });
 
     try {
-      const response = await api.request<ApproveResponse>(endpoint, { method: "POST" });
+      const response = await api.request<ApproveResponse>(endpoint, { method: 'POST' });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
@@ -157,14 +157,14 @@ export const intelligenceApi = {
   /**
    * Reject item and archive
    */
-  rejectItem: async (type: "visa" | "news", id: string): Promise<ApproveResponse> => {
+  rejectItem: async (type: 'visa' | 'news', id: string): Promise<ApproveResponse> => {
     const endpoint = `/api/intel/staging/reject/${type}/${id}`;
     const startTime = performance.now();
 
     logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'reject' });
 
     try {
-      const response = await api.request<ApproveResponse>(endpoint, { method: "POST" });
+      const response = await api.request<ApproveResponse>(endpoint, { method: 'POST' });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
@@ -186,14 +186,14 @@ export const intelligenceApi = {
   /**
    * Publish item to knowledge base and register in anti-duplicate system
    */
-  publishItem: async (type: "visa" | "news", id: string): Promise<PublishResponse> => {
+  publishItem: async (type: 'visa' | 'news', id: string): Promise<PublishResponse> => {
     const endpoint = `/api/intel/staging/publish/${type}/${id}`;
     const startTime = performance.now();
 
     logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'publish' });
 
     try {
-      const response = await api.request<PublishResponse>(endpoint, { method: "POST" });
+      const response = await api.request<PublishResponse>(endpoint, { method: 'POST' });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {

@@ -20,14 +20,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -39,11 +33,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -150,9 +140,7 @@
                   "flatPath": "v1alpha/platforms/{platformsId}/properties/{propertiesId}/ideaActivities",
                   "httpMethod": "POST",
                   "id": "ideahub.platforms.properties.ideaActivities.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Required. The parent resource where this idea activity will be created. Format: platforms/{platform}/property/{property}",
@@ -179,9 +167,7 @@
                   "flatPath": "v1alpha/platforms/{platformsId}/properties/{propertiesId}/ideaStates/{ideaStatesId}",
                   "httpMethod": "PATCH",
                   "id": "ideahub.platforms.properties.ideaStates.patch",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Unique identifier for the idea state. Format: platforms/{platform}/properties/{property}/ideaStates/{idea_state}",
@@ -214,9 +200,7 @@
                   "flatPath": "v1alpha/platforms/{platformsId}/properties/{propertiesId}/ideas",
                   "httpMethod": "GET",
                   "id": "ideahub.platforms.properties.ideas.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "filter": {
                       "description": "Allows filtering. Supported syntax: * Filter expressions are made up of one or more restrictions. * Restrictions are implicitly combined, as if the `AND` operator was always used. The `OR` operator is currently unsupported. * Supported functions: - `saved(bool)`: If set to true, fetches only saved ideas. If set to false, fetches all except saved ideas. Can't be simultaneously used with `dismissed(bool)`. - `dismissed(bool)`: If set to true, fetches only dismissed ideas. Can't be simultaneously used with `saved(bool)`. The `false` value is currently unsupported. Examples: * `saved(true)` * `saved(false)` * `dismissed(true)` The length of this field should be no more than 500 characters.",
@@ -261,9 +245,7 @@
                   "flatPath": "v1alpha/platforms/{platformsId}/properties/{propertiesId}/locales",
                   "httpMethod": "GET",
                   "id": "ideahub.platforms.properties.locales.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "pageSize": {
                       "description": "The maximum number of locales to return. The service may return fewer than this value. If unspecified, at most 100 locales will be returned. The maximum value is 100; values above 100 will be coerced to 100.",
@@ -298,9 +280,7 @@
                   "flatPath": "v1alpha/platforms/{platformsId}/properties/{propertiesId}/topicStates/{topicStatesId}",
                   "httpMethod": "PATCH",
                   "id": "ideahub.platforms.properties.topicStates.patch",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Unique identifier for the topic state. Format: platforms/{platform}/properties/{property}/topicStates/{topic_state}",

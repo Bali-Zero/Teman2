@@ -9,12 +9,12 @@
 
 ### Metriche Prima/Dopo
 
-| Metrica | Prima | Dopo | Riduzione |
-|---------|-------|------|-----------|
-| **Router righe** | 1,539 | 998 | **-35%** (541 righe) |
-| **Servizi creati** | 0 | 4 | +4 servizi |
-| **Righe servizi** | - | 921 | - |
-| **Complessità router** | 9/10 | 4/10 | **-56%** |
+| Metrica                | Prima | Dopo | Riduzione            |
+| ---------------------- | ----- | ---- | -------------------- |
+| **Router righe**       | 1,539 | 998  | **-35%** (541 righe) |
+| **Servizi creati**     | 0     | 4    | +4 servizi           |
+| **Righe servizi**      | -     | 921  | -                    |
+| **Complessità router** | 9/10  | 4/10 | **-56%**             |
 
 ### Struttura Creata
 
@@ -34,20 +34,25 @@ backend/services/intel/
 ## 🔧 Servizi Creati
 
 ### 1. IntelClassificationService (79 righe)
+
 **Responsabilità:** Classificazione articoli in "visa" o "news"
 
 **Metodi:**
+
 - `classify_intel_type(category, title, content) -> Literal["visa", "news"]`
 
 **Features:**
+
 - Classificazione basata su categoria e keyword
 - Tracking metriche Prometheus
 - Logging strutturato
 
 ### 2. IntelStagingService (308 righe)
+
 **Responsabilità:** Gestione staging area (save, load, list, archive)
 
 **Metodi:**
+
 - `get_staging_dir(intel_type) -> Path`
 - `generate_item_id(intel_type, title, source_url) -> str`
 - `save_staging_item(intel_type, item_id, staging_data) -> Path`
@@ -58,34 +63,41 @@ backend/services/intel/
 - `update_staging_queue_metrics() -> None`
 
 **Features:**
+
 - Gestione file system staging
 - Controllo duplicati
 - Archiviazione items
 - Aggiornamento metriche Prometheus
 
 ### 3. IntelApprovalService (267 righe)
+
 **Responsabilità:** Gestione approval workflow e notifiche Telegram
 
 **Metodi:**
+
 - `send_approval_notification(intel_type, item_id, item_data, enriched_data, image_path) -> bool`
 - `_build_notification_caption(...) -> str` (private)
 - `_build_approval_keyboard(...) -> Dict` (private)
 - `_save_voting_status(...) -> None` (private)
 
 **Features:**
+
 - Notifiche Telegram con formattazione HTML
 - Supporto immagini e dati arricchiti
 - Gestione voting status
 - Keyboard inline per approval/rejection
 
 ### 4. IntelAnalyticsService (250 righe)
+
 **Responsabilità:** Calcolo analytics e metriche storiche
 
 **Metodi:**
+
 - `get_intelligence_analytics(days) -> Dict`
 - `_generate_daily_trends(days) -> List[Dict]` (private)
 
 **Features:**
+
 - Analytics storiche (approval rate, rejection rate)
 - Daily trends
 - Type breakdown (visa/news)
@@ -96,6 +108,7 @@ backend/services/intel/
 ## 🔄 Router Refactorizzato
 
 ### Prima: 1,539 righe (Monolite)
+
 - ❌ Logica business nel router
 - ❌ Operazioni file system dirette
 - ❌ Trasformazioni dati complesse
@@ -103,6 +116,7 @@ backend/services/intel/
 - ❌ Difficile da testare
 
 ### Dopo: 998 righe (Thin Layer)
+
 - ✅ Solo routing HTTP → service calls
 - ✅ Validazione input (Pydantic)
 - ✅ Formattazione output
@@ -145,18 +159,21 @@ backend/services/intel/
 ## 🎯 Miglioramenti Architetturali
 
 ### Separazione Concerns
+
 - ✅ Logica business estratta in servizi
 - ✅ Operazioni file system incapsulate in `IntelStagingService`
 - ✅ Notifiche Telegram incapsulate in `IntelApprovalService`
 - ✅ Analytics incapsulate in `IntelAnalyticsService`
 
 ### Testabilità
+
 - ✅ Servizi testabili in isolamento
 - ✅ Dipendenze iniettate (non hardcoded)
 - ✅ Mocking facilitato
 - ✅ Test unitari possibili per ogni servizio
 
 ### Manutenibilità
+
 - ✅ Responsabilità chiare per ogni servizio
 - ✅ Codice più leggibile e organizzato
 - ✅ Facile aggiungere nuove features
@@ -167,16 +184,19 @@ backend/services/intel/
 ## 📈 Metriche di Qualità
 
 ### Complessità Router
+
 - **Prima:** 9/10 🔴
 - **Dopo:** 4/10 🟢
 - **Miglioramento:** -56%
 
 ### Testabilità
+
 - **Prima:** 9/10 (molto difficile) 🔴
 - **Dopo:** 3/10 (facile) 🟢
 - **Miglioramento:** -67%
 
 ### Manutenibilità
+
 - **Prima:** 8/10 (difficile) 🔴
 - **Dopo:** 3/10 (facile) 🟢
 - **Miglioramento:** -63%

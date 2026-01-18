@@ -60,7 +60,9 @@ class TestIngestionService:
         ingestion_service._is_legal_document = MagicMock(return_value=False)
         with patch("backend.services.ingestion.ingestion_service.get_document_info") as mock_info:
             mock_info.return_value = {"title": "Test Book", "author": "Test Author"}
-            with patch("backend.services.ingestion.ingestion_service.auto_detect_and_parse") as mock_parse:
+            with patch(
+                "backend.services.ingestion.ingestion_service.auto_detect_and_parse"
+            ) as mock_parse:
                 mock_parse.return_value = "Test content"
                 ingestion_service.chunker.chunk_text = MagicMock(return_value=["chunk1", "chunk2"])
                 ingestion_service.embedder.generate_embeddings = AsyncMock(

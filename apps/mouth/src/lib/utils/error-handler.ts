@@ -13,17 +13,13 @@ export interface ErrorContext {
 
 /**
  * Handle errors with structured logging and optional user notification
- * 
+ *
  * @param error - The error to handle
  * @param context - Context information (component, action, metadata)
  * @param userMessage - Optional user-friendly error message
  * @returns Formatted error message
  */
-export function handleError(
-  error: unknown,
-  context: ErrorContext,
-  userMessage?: string
-): string {
+export function handleError(error: unknown, context: ErrorContext, userMessage?: string): string {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorName = error instanceof Error ? error.name : 'UnknownError';
 
@@ -55,7 +51,7 @@ export function handleApiError(
   defaultMessage = 'An error occurred'
 ): { message: string; code?: string } {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  
+
   // Extract error code if available
   const errorWithCode = error as Error & { code?: string };
   const code = errorWithCode.code;
@@ -71,9 +67,7 @@ export function handleApiError(
     SERVER_ERROR: 'Server error. Please try again later.',
   };
 
-  const userMessage = code && errorMessages[code] 
-    ? errorMessages[code] 
-    : defaultMessage;
+  const userMessage = code && errorMessages[code] ? errorMessages[code] : defaultMessage;
 
   handleError(error, context, userMessage);
 

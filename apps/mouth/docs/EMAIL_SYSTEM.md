@@ -82,10 +82,12 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `GET /api/email/inbox`
 
 **Parametri:**
+
 - `folder_id` (string, optional): ID cartella Zoho (default: INBOX)
 - `limit` (number, optional): Numero email da recuperare (default: 50)
 
 **Risposta:**
+
 ```json
 {
   "emails": [
@@ -114,6 +116,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `GET /api/email/{message_id}`
 
 **Risposta:**
+
 ```json
 {
   "message_id": "string",
@@ -142,6 +145,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `POST /api/email/search`
 
 **Payload:**
+
 ```json
 {
   "query": "string",
@@ -151,6 +155,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 ```
 
 **Funzionalità:**
+
 - Ricerca in subject, sender, body
 - Case-insensitive
 - Supporto operatori Zoho (from:, to:, subject:, etc.)
@@ -160,6 +165,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `POST /api/email/send`
 
 **Payload:**
+
 ```json
 {
   "to": ["email@example.com"],
@@ -182,6 +188,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `POST /api/email/delete`
 
 **Payload:**
+
 ```json
 {
   "message_ids": ["string"]
@@ -189,6 +196,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 ```
 
 **Risposta:**
+
 ```json
 {
   "success": boolean,
@@ -205,6 +213,7 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 **Endpoint:** `POST /api/email/toggle-flag`
 
 **Payload:**
+
 ```json
 {
   "message_id": "string",
@@ -219,24 +228,27 @@ Il sistema Email di Zantara integra Zoho Mail per fornire un'interfaccia complet
 ### 1. Email Page (`/app/(workspace)/email/page.tsx`)
 
 **Responsabilità:**
+
 - Gestione stato email (lista, selezione, filtri)
 - Coordinamento tra EmailList e EmailViewer
 - Gestione azioni (delete, flag, search)
 - Connessione Zoho status
 
 **State Management:**
+
 ```typescript
-const [emails, setEmails] = useState<EmailSummary[]>([])
-const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
-const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null)
-const [isLoading, setIsLoading] = useState(true)
-const [zohoStatus, setZohoStatus] = useState<ZohoStatus | null>(null)
-const [searchQuery, setSearchQuery] = useState('')
+const [emails, setEmails] = useState<EmailSummary[]>([]);
+const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
+const [isLoading, setIsLoading] = useState(true);
+const [zohoStatus, setZohoStatus] = useState<ZohoStatus | null>(null);
+const [searchQuery, setSearchQuery] = useState('');
 ```
 
 **Handler Critici:**
 
 **handleDelete** (linee 308-331):
+
 ```typescript
 const handleDelete = async (emailIds: string[]) => {
   if (!confirm(`Eliminare ${emailIds.length} email?`)) return;
@@ -258,7 +270,9 @@ const handleDelete = async (emailIds: string[]) => {
     }
   } catch (error) {
     console.error('Failed to delete emails:', error);
-    alert(`❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    alert(
+      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 };
 ```
@@ -266,12 +280,14 @@ const handleDelete = async (emailIds: string[]) => {
 ### 2. EmailViewer (`/components/email/EmailViewer.tsx`)
 
 **Responsabilità:**
+
 - Visualizzazione dettaglio email
 - CRM client lookup automatico
 - Gestione attachments
 - Azioni email (reply, forward, delete, flag)
 
 **CRM Integration (linee 58-81):**
+
 ```typescript
 useEffect(() => {
   const lookupClient = async () => {
@@ -300,6 +316,7 @@ useEffect(() => {
 ```
 
 **CRM Badge (linee 243-273):**
+
 ```typescript
 {clientLookupDone && (
   <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--background-elevated)]/50">
@@ -336,18 +353,55 @@ useEffect(() => {
 ```
 
 **HTML Sanitization (linee 389-407):**
+
 ```typescript
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      'a', 'b', 'i', 'u', 'strong', 'em', 'p', 'br', 'div', 'span',
-      'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'table', 'thead', 'tbody', 'tr', 'td', 'th',
-      'img', 'blockquote', 'pre', 'code', 'hr',
+      'a',
+      'b',
+      'i',
+      'u',
+      'strong',
+      'em',
+      'p',
+      'br',
+      'div',
+      'span',
+      'ul',
+      'ol',
+      'li',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'td',
+      'th',
+      'img',
+      'blockquote',
+      'pre',
+      'code',
+      'hr',
     ],
     ALLOWED_ATTR: [
-      'href', 'src', 'alt', 'title', 'class', 'style',
-      'width', 'height', 'align', 'valign', 'colspan', 'rowspan',
+      'href',
+      'src',
+      'alt',
+      'title',
+      'class',
+      'style',
+      'width',
+      'height',
+      'align',
+      'valign',
+      'colspan',
+      'rowspan',
     ],
     ALLOW_DATA_ATTR: false,
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
@@ -359,6 +413,7 @@ function sanitizeHtml(html: string): string {
 ### 3. EmailList (`/components/email/EmailList.tsx`)
 
 **Responsabilità:**
+
 - Rendering lista email
 - Gestione selezione multipla
 - Visualizzazione preview
@@ -502,10 +557,10 @@ export const crmApi = {
 
 **Badge Stati:**
 
-| Stato | Badge | Azione |
-|-------|-------|--------|
-| **Loading** | Spinner + "Checking CRM..." | Waiting API response |
-| **Found** | 🟢 "Cliente: {name}" + link | Click → `/clients/{id}` |
+| Stato         | Badge                                | Azione                      |
+| ------------- | ------------------------------------ | --------------------------- |
+| **Loading**   | Spinner + "Checking CRM..."          | Waiting API response        |
+| **Found**     | 🟢 "Cliente: {name}" + link          | Click → `/clients/{id}`     |
 | **Not Found** | 🔵 "Nuovo contatto - Aggiungi a CRM" | Click → Create client modal |
 
 ---
@@ -518,23 +573,27 @@ export const crmApi = {
 **File:** `apps/mouth/src/components/email/EmailViewer.tsx:252`
 
 **Problema:**
+
 ```typescript
 // ❌ BEFORE
 href={`/clienti/${senderClient.id}`}  // Italian route → 404
 ```
 
 **Soluzione:**
+
 ```typescript
 // ✅ AFTER
 href={`/clients/${senderClient.id}`}  // English route → Works
 ```
 
 **Impatto:**
+
 - Click su badge cliente navigava a route inesistente
 - Utente vedeva pagina 404
 - Workflow interrotto
 
 **Testing:**
+
 - ✅ Click su badge → Apre `/clients/67`
 - ✅ Profilo cliente caricato correttamente
 - ✅ Tutti i dati cliente visibili
@@ -547,6 +606,7 @@ href={`/clients/${senderClient.id}`}  // English route → Works
 **File:** `apps/mouth/src/app/(workspace)/email/page.tsx:308-331`
 
 **Problema:**
+
 ```typescript
 // ❌ BEFORE
 const handleDelete = async (emailIds: string[]) => {
@@ -569,6 +629,7 @@ const handleDelete = async (emailIds: string[]) => {
 ```
 
 **Soluzione:**
+
 ```typescript
 // ✅ AFTER
 const handleDelete = async (emailIds: string[]) => {
@@ -593,17 +654,21 @@ const handleDelete = async (emailIds: string[]) => {
   } catch (error) {
     console.error('Failed to delete emails:', error);
     // ✅ Feedback errore dettagliato
-    alert(`❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    alert(
+      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 };
 ```
 
 **Impatto:**
+
 - Pulsante delete rispondeva ma email non eliminate
 - Nessun feedback visibile all'utente
 - Confusione se operazione completata
 
 **Testing:**
+
 - ✅ Delete con API success → Alert verde + UI aggiornata
 - ✅ Delete con API error → Alert rosso + UI NON aggiornata
 - ✅ Messaggio errore dettagliato con causa
@@ -616,10 +681,11 @@ const handleDelete = async (emailIds: string[]) => {
 **File:** `apps/mouth/src/app/api/[...path]/route.ts:73-77`
 
 **Problema:**
+
 ```typescript
 // ❌ BEFORE
 if (contentType.includes('multipart/form-data')) {
-  headers.delete('content-type');  // Deleted for FormData
+  headers.delete('content-type'); // Deleted for FormData
   body = (await req.formData()) as unknown as BodyInit;
 } else {
   const buf = await req.arrayBuffer();
@@ -629,6 +695,7 @@ if (contentType.includes('multipart/form-data')) {
 ```
 
 **Soluzione:**
+
 ```typescript
 // ✅ AFTER
 if (contentType.includes('multipart/form-data')) {
@@ -645,11 +712,13 @@ if (contentType.includes('multipart/form-data')) {
 ```
 
 **Impatto:**
+
 - Login API calls fallivano con 401
 - FastAPI non riusciva a parsare JSON request body
 - Tutte le POST/PUT/PATCH requests con JSON payload affette
 
 **Testing:**
+
 - ✅ Login funziona (JSON payload parsato correttamente)
 - ✅ Email send funziona
 - ✅ Email delete funziona
@@ -663,6 +732,7 @@ if (contentType.includes('multipart/form-data')) {
 **File:** `apps/backend-rag/backend/app/routers/intel.py:11`
 
 **Problema:**
+
 ```python
 # ❌ BEFORE
 # Missing import, but Optional used at line 501
@@ -671,6 +741,7 @@ class ApprovalRequest(BaseModel):
 ```
 
 **Soluzione:**
+
 ```python
 # ✅ AFTER
 from typing import Optional  # Line 11
@@ -680,11 +751,13 @@ class ApprovalRequest(BaseModel):
 ```
 
 **Impatto:**
+
 - Backend completamente offline
 - NameError durante startup
 - Login e tutte le API calls fallivano con 503
 
 **Testing:**
+
 - ✅ Backend deploy successful
 - ✅ Health checks PASSED
 - ✅ All API endpoints operational
@@ -695,16 +768,16 @@ class ApprovalRequest(BaseModel):
 
 ### Test Completi Eseguiti (2026-01-05)
 
-| # | Test | Metodo | Risultato |
-|---|------|--------|-----------|
-| 1 | Zoho Connection Status | Browser automation | ✅ Connected (zero@balizero.com) |
-| 2 | Email List Loading | Browser automation | ✅ 1 email loaded |
-| 3 | Email Detail View | Click email | ✅ Full detail displayed |
-| 4 | CRM Client Badge | Automatic lookup | ✅ Badge shown for Antonello Siano |
-| 5 | CRM Client Link | Click badge | ✅ Navigate to `/clients/67` |
-| 6 | Toggle Star/Flag | Click star button | ✅ Star filled (yellow) |
-| 7 | Email Search | Type "antonello" | ✅ Email filtered correctly |
-| 8 | Compose Modal | Click Compose button | ✅ Modal opened with fields |
+| #   | Test                   | Metodo               | Risultato                          |
+| --- | ---------------------- | -------------------- | ---------------------------------- |
+| 1   | Zoho Connection Status | Browser automation   | ✅ Connected (zero@balizero.com)   |
+| 2   | Email List Loading     | Browser automation   | ✅ 1 email loaded                  |
+| 3   | Email Detail View      | Click email          | ✅ Full detail displayed           |
+| 4   | CRM Client Badge       | Automatic lookup     | ✅ Badge shown for Antonello Siano |
+| 5   | CRM Client Link        | Click badge          | ✅ Navigate to `/clients/67`       |
+| 6   | Toggle Star/Flag       | Click star button    | ✅ Star filled (yellow)            |
+| 7   | Email Search           | Type "antonello"     | ✅ Email filtered correctly        |
+| 8   | Compose Modal          | Click Compose button | ✅ Modal opened with fields        |
 
 ### Test Suite Automated
 
@@ -719,6 +792,7 @@ npm run test:email:coverage
 ```
 
 **Tests:**
+
 - Email list rendering
 - Email detail rendering
 - CRM integration
@@ -753,6 +827,7 @@ npm run test:email:coverage
 **Cause Possibili:**
 
 1. **Zoho OAuth Token Scaduto**
+
    ```bash
    # Check Zoho status
    curl -s https://nuzantara-rag.fly.dev/api/email/status \
@@ -763,6 +838,7 @@ npm run test:email:coverage
    ```
 
 2. **Backend Down**
+
    ```bash
    # Check backend health
    curl -s https://nuzantara-rag.fly.dev/health | jq
@@ -776,6 +852,7 @@ npm run test:email:coverage
    - Check if Content-Type header preserved
 
 **Fix:**
+
 ```bash
 # Re-authorize Zoho if needed
 # Visit: https://www.balizero.com/settings/integrations
@@ -795,14 +872,16 @@ fly apps restart nuzantara-rag
 **Debug:**
 
 1. **Check Browser Console**
+
    ```javascript
    // Should see:
-   "✅ 1 email eliminate con successo"
+   '✅ 1 email eliminate con successo';
    // OR
-   "❌ Errore: Impossibile eliminare le email..."
+   '❌ Errore: Impossibile eliminare le email...';
    ```
 
 2. **Check Network Tab**
+
    ```bash
    POST /api/email/delete
    Status: 200
@@ -818,6 +897,7 @@ fly apps restart nuzantara-rag
    ```
 
 **Fix:**
+
 - If alert shows error → Check backend logs
 - If no alert → Missing success check in code
 - If 401 → Re-login required
@@ -831,6 +911,7 @@ fly apps restart nuzantara-rag
 **Debug:**
 
 1. **Check Client Lookup**
+
    ```bash
    # Test API directly
    curl -s "https://nuzantara-rag.fly.dev/api/crm/clients?email=antonellosiano@gmail.com" \
@@ -840,6 +921,7 @@ fly apps restart nuzantara-rag
    ```
 
 2. **Check EmailViewer State**
+
    ```typescript
    // Should trigger on email change
    useEffect(() => {
@@ -856,6 +938,7 @@ fly apps restart nuzantara-rag
    ```
 
 **Fix:**
+
 - Email non ha `from.address` → Badge non mostrato (corretto)
 - API returns 404 → Cliente non esiste, mostra "Aggiungi a CRM"
 - `clientLookupDone` false → Spinner mostrato
@@ -869,15 +952,17 @@ fly apps restart nuzantara-rag
 **Debug:**
 
 1. **Check Route**
+
    ```typescript
    // EmailViewer.tsx line 252
    href={`/clients/${senderClient.id}`}  // ← Must be /clients/ not /clienti/
    ```
 
 2. **Check Client ID**
+
    ```javascript
    // Console log
-   console.log('Client ID:', senderClient.id);  // Should be number, not undefined
+   console.log('Client ID:', senderClient.id); // Should be number, not undefined
    ```
 
 3. **Verify Route Exists**
@@ -888,6 +973,7 @@ fly apps restart nuzantara-rag
    ```
 
 **Fix:**
+
 - Wrong route → Update to `/clients/`
 - Client ID undefined → Check API response structure
 - Route doesn't exist → Check Next.js routing
@@ -901,6 +987,7 @@ fly apps restart nuzantara-rag
 **Debug:**
 
 1. **Check Event Handler**
+
    ```typescript
    // page.tsx
    const [showCompose, setShowCompose] = useState(false);
@@ -911,6 +998,7 @@ fly apps restart nuzantara-rag
    ```
 
 2. **Check Modal Render**
+
    ```typescript
    {showCompose && (
      <ComposeModal
@@ -924,11 +1012,12 @@ fly apps restart nuzantara-rag
    ```css
    /* Modal should be on top */
    .modal-overlay {
-     z-index: 50;  /* Higher than other elements */
+     z-index: 50; /* Higher than other elements */
    }
    ```
 
 **Fix:**
+
 - State non cambia → Aggiungi console.log in onClick
 - Modal non renderizzato → Check conditional rendering
 - Modal nascosto → Check z-index CSS
@@ -986,12 +1075,12 @@ JWT_ALGORITHM=HS256
 
 ### Metrics Target
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Email List Load | < 500ms | ~400ms |
-| Email Detail Load | < 300ms | ~250ms |
-| CRM Lookup | < 200ms | ~150ms |
-| Search Response | < 400ms | ~350ms |
+| Metric            | Target  | Current |
+| ----------------- | ------- | ------- |
+| Email List Load   | < 500ms | ~400ms  |
+| Email Detail Load | < 300ms | ~250ms  |
+| CRM Lookup        | < 200ms | ~150ms  |
+| Search Response   | < 400ms | ~350ms  |
 
 ---
 
@@ -1026,6 +1115,7 @@ JWT_ALGORITHM=HS256
 ### v1.0.0 (2026-01-05)
 
 **Features:**
+
 - ✅ Zoho Mail integration
 - ✅ Email list con preview
 - ✅ Email detail view
@@ -1036,12 +1126,14 @@ JWT_ALGORITHM=HS256
 - ✅ Toggle flag/star
 
 **Bug Fixes:**
+
 - 🐛 Fixed client link route (clienti → clients)
 - 🐛 Fixed delete feedback (added success/error alerts)
 - 🐛 Fixed proxy Content-Type header preservation
 - 🐛 Fixed backend crash (Optional import)
 
 **Testing:**
+
 - ✅ Comprehensive manual testing
 - ✅ All features verified operational
 

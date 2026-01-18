@@ -28,7 +28,9 @@ class SafeStorage {
       localStorage.removeItem(testKey);
       return true;
     } catch (e) {
-      console.warn('[SafeStorage] localStorage blocked (Private Browsing or disabled). Using memory fallback.');
+      console.warn(
+        '[SafeStorage] localStorage blocked (Private Browsing or disabled). Using memory fallback.'
+      );
       return false;
     }
   }

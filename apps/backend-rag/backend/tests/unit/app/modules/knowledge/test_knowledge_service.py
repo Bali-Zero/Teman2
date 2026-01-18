@@ -43,9 +43,13 @@ def mock_router():
 @pytest.fixture
 def knowledge_service(mock_qdrant_client, mock_router):
     """Create KnowledgeService instance with mocked dependencies"""
-    with patch("backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
+    with patch(
+        "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+    ):
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            with patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router):
+            with patch(
+                "backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router
+            ):
                 mock_embedder_instance = MagicMock()
                 mock_embedder_instance.provider = "test"
                 mock_embedder_instance.dimensions = 384

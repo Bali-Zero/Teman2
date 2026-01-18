@@ -29,7 +29,8 @@ def followup_service():
 def followup_service_no_ai():
     """Create FollowupService instance without AI"""
     with patch(
-        "backend.services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+        "backend.services.misc.followup_service.ZantaraAIClient",
+        side_effect=Exception("Not available"),
     ):
         return FollowupService()
 
@@ -48,7 +49,8 @@ class TestFollowupService:
     def test_init_no_ai(self):
         """Test initialization without AI"""
         with patch(
-            "backend.services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+            "backend.services.misc.followup_service.ZantaraAIClient",
+            side_effect=Exception("Not available"),
         ):
             service = FollowupService()
             assert service.zantara_client is None

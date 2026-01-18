@@ -7,9 +7,7 @@
       "crm_id": 1,
       "crm_name": "Adele Marthe",
       "target_folder": "Bali Zero Clients/Adele Marthe/",
-      "source_folders": [
-        "Dropbox/ADITYA/Adele Marthe"
-      ],
+      "source_folders": ["Dropbox/ADITYA/Adele Marthe"],
       "total_files": 3,
       "total_size_mb": 0.0,
       "migration_steps": [

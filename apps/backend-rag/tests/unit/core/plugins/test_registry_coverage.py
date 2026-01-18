@@ -2,7 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+
+from backend.core.plugins.plugin import (
+    Plugin,
+    PluginCategory,
+    PluginInput,
+    PluginMetadata,
+    PluginOutput,
+)
 from backend.core.plugins.registry import PluginRegistry
 
 

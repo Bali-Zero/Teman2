@@ -13,6 +13,7 @@
 **75/75 test passed** (100% success rate)
 
 **Test Coverage Completo:**
+
 1. **intelligence.api.test.ts**: 15/15 ✅
    - getPendingItems, getPreview, approveItem, rejectItem
    - Logging completo, gestione errori
@@ -50,6 +51,7 @@
 ### Problema Identificato
 
 Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazione:
+
 - Form di login richiesto: "AUTHORIZED PERSONNEL ONLY"
 - Campi: IDENTITY, SECURITY KEY
 - Bottone: AUTHENTICATE
@@ -65,7 +67,7 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 5. ✅ **Reject Workflow** - Reject → Confirmation → Item removed
 6. ✅ **Cancel Workflow** - Confirmation → Cancel → Item rimane
 7. ✅ **Sync Sources** - News Room refresh functionality
-8. ✅ **External Links** - Verificano target="_blank" e rel="noreferrer"
+8. ✅ **External Links** - Verificano target="\_blank" e rel="noreferrer"
 9. ✅ **Metrics Refresh** - System Pulse aggiornamento metriche
 10. ✅ **Error State** - Metrics Unavailable → Retry → Success
 11. ✅ **Header Consistency** - "Agent Active" visibile su tutte le pagine
@@ -78,23 +80,27 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 ### Coerenza Verificata:
 
 #### 1. **Navigation Tabs**
+
 - ✅ Click su tab → Navigazione corretta
 - ✅ Tab attivo → Highlight corretto (bg-[var(--accent)]/10)
 - ✅ Tab inattivi → No highlight
 - ✅ Deep paths → Active state detection corretto
 
 #### 2. **Refresh/Sync Buttons**
+
 - ✅ Visa Oracle "Refresh" → Ricarica getPendingItems('visa')
 - ✅ News Room "Sync Sources" → Ricarica getPendingItems('news')
 - ✅ System Pulse "Refresh" → Ricarica /api/intel/metrics
 
 #### 3. **Preview Workflow**
+
 - ✅ "View Content" → Apre preview
 - ✅ Preview visible → Mostra content
 - ✅ "Hide Preview" → Chiude preview
 - ✅ Toggle corretto → Open/Close multipli funzionano
 
 #### 4. **Approve Workflow**
+
 - ✅ "Approve & Ingest" → Mostra confirmation dialog
 - ✅ Dialog message corretto → "This will ingest the content into the Knowledge Base"
 - ✅ Confirm → Item rimosso dalla lista
@@ -102,6 +108,7 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 - ✅ Logging completo → approve_start, approve_success, approve_cancelled
 
 #### 5. **Reject Workflow**
+
 - ✅ "Reject" → Mostra confirmation dialog
 - ✅ Dialog message corretto → "Are you sure you want to reject this update?"
 - ✅ Confirm → Item rimosso dalla lista
@@ -109,12 +116,14 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 - ✅ Logging completo → reject_start, reject_success, reject_cancelled
 
 #### 6. **Error Handling**
+
 - ✅ API failures → Mostra error state
 - ✅ "Retry" button → Riprova l'operazione
 - ✅ Errors logged → logger.error chiamato
 - ✅ Toast notifications → Error messages mostrati
 
 #### 7. **Empty States**
+
 - ✅ No items → "All Caught Up!" (Visa Oracle)
 - ✅ No items → "No Drafts Pending" (News Room)
 - ✅ Error → "Metrics Unavailable" con "Retry" button (System Pulse)
@@ -126,6 +135,7 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 ### Logica dei Bottoni: ✅ COERENTE
 
 **Nessun bug o "nonsense" trovato:**
+
 1. Ogni bottone conduce allo step logico atteso
 2. Confirmation dialogs prevengono azioni accidentali
 3. Cancel buttons preservano lo stato corrente
@@ -153,6 +163,7 @@ Le pagine Intelligence Center (`/intelligence/*`) sono protette da autenticazion
 ### Per E2E Testing:
 
 1. **Aggiungere Auth Helper**
+
    ```typescript
    // test-helpers/auth.ts
    export async function authenticateUser(page: Page) {

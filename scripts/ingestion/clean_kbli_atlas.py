@@ -21,7 +21,7 @@ OCR_CORRUPTED_FIELDS = [
 OCR_GARBAGE_PATTERNS = [
     r"Kcw[a-z]*",  # Kewajiban OCR fail
     r"Pcr[a-z]*",  # Persyaratan OCR fail
-    r"Ruer?g",     # Ruang OCR fail
+    r"Ruer?g",  # Ruang OCR fail
     r"Llrg|Ltug|Lfng",  # Lingkup OCR fail
     r"IIMI|UUXU|UMKT",  # UMKU OCR fail
     r"t8t|t8I|\(et|\(el",  # Random OCR artifacts
@@ -98,7 +98,7 @@ def clean_atlas(input_path: str, output_path: str) -> dict:
     """Clean the entire KBLI atlas."""
 
     print(f"Loading {input_path}...")
-    with open(input_path, 'r', encoding='utf-8') as f:
+    with open(input_path, "r", encoding="utf-8") as f:
         atlas = json.load(f)
 
     data = atlas.get("data", atlas)  # Handle both formats
@@ -138,12 +138,12 @@ def clean_atlas(input_path: str, output_path: str) -> dict:
     }
 
     print(f"\nSaving cleaned atlas to {output_path}...")
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("CLEANING COMPLETE")
-    print("="*50)
+    print("=" * 50)
     print(f"Total entries:        {stats['total_entries']:,}")
     print(f"With risk_data:       {stats['entries_with_risk_data']:,}")
     print(f"Entries cleaned:      {stats['entries_cleaned']:,}")

@@ -164,7 +164,8 @@ class TestReActLoopExecution:
             # Provide context that matches query keywords to avoid ABSTAIN
             tool_result = "Calculation result: 2+2 equals 4. Mathematical operation completed."
             with patch(
-                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(tool_result, 0.1)
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                return_value=(tool_result, 0.1),
             ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
@@ -211,7 +212,8 @@ class TestReActLoopExecution:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                return_value=(rich_content, 0.15),
             ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
@@ -370,7 +372,8 @@ class TestCitationHandling:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                return_value=(vector_result, 0.2),
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -411,7 +414,8 @@ class TestCitationHandling:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                return_value=(vector_result, 0.2),
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,

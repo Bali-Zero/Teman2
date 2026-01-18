@@ -31,11 +31,11 @@ nuzantara/                         # Root workspace (solo config)
 
 ### Deployment Mapping
 
-| Workspace | Platform | Project Name | URL |
-|-----------|----------|--------------|-----|
-| `apps/mouth` | Vercel | `mouth` | zantara.balizero.com |
-| `apps/backend-rag` | Fly.io | `backend-rag` | backend-rag.fly.dev |
-| Root (nuzantara) | Vercel | `nuzantara` | ⚠️ Non usato (solo config) |
+| Workspace          | Platform | Project Name  | URL                        |
+| ------------------ | -------- | ------------- | -------------------------- |
+| `apps/mouth`       | Vercel   | `mouth`       | zantara.balizero.com       |
+| `apps/backend-rag` | Fly.io   | `backend-rag` | backend-rag.fly.dev        |
+| Root (nuzantara)   | Vercel   | `nuzantara`   | ⚠️ Non usato (solo config) |
 
 **IMPORTANTE:** Il deployment root "nuzantara" su Vercel NON serve - è solo configurazione workspace.
 
@@ -110,17 +110,19 @@ git push origin main
 ### REGOLA 1: Mai Creare Stub Senza Verificare Originale
 
 **❌ SBAGLIATO:**
+
 ```typescript
 // File da eliminare: analytics.ts (270 righe)
 // Creo stub minimo
 
 // analytics.ts (nuovo)
 export const analytics = {
-  track: () => {}  // ← Solo 1 metodo, originale ne aveva 12!
+  track: () => {}, // ← Solo 1 metodo, originale ne aveva 12!
 };
 ```
 
 **✅ CORRETTO:**
+
 ```bash
 # 1. Verificare file originale
 git show HEAD:apps/mouth/src/lib/analytics.ts | wc -l
@@ -140,6 +142,7 @@ grep -r "analytics" apps/mouth/src --include="*.tsx"
 ### REGOLA 2: Test Build Locale OBBLIGATORIO
 
 **❌ SBAGLIATO:**
+
 ```bash
 git add .
 git commit -m "cleanup files"
@@ -148,6 +151,7 @@ git push    # ← Push senza build test!
 ```
 
 **✅ CORRETTO:**
+
 ```bash
 npm run build    # ← Test build PRIMA di push
 # ✓ Generating static pages (62/62)
@@ -158,6 +162,7 @@ git push    # ← Push solo se build OK
 ```
 
 **Tempo risparmiato:**
+
 - Build locale: 2 minuti
 - Deployment fallito: 3 minuti + debug 30 minuti
 - **Risparmio: 31 minuti**
@@ -165,6 +170,7 @@ git push    # ← Push solo se build OK
 ### REGOLA 3: Verificare Dipendenze Prima di Delete
 
 **❌ SBAGLIATO:**
+
 ```bash
 # Elimino file che sembrano legacy
 git rm docs/LEGACY_*.md
@@ -174,6 +180,7 @@ git commit -m "cleanup legacy files"
 ```
 
 **✅ CORRETTO:**
+
 ```bash
 # 1. Lista file da eliminare
 FILES_TO_DELETE=$(git diff --name-only --diff-filter=D)
@@ -197,6 +204,7 @@ git commit -m "cleanup verified unused files"
 ### REGOLA 4: Monorepo - Test OGNI App Separatamente
 
 **❌ SBAGLIATO:**
+
 ```bash
 # Root
 npm run build  # ← Non testa apps/mouth!
@@ -207,6 +215,7 @@ git push
 ```
 
 **✅ CORRETTO:**
+
 ```bash
 # Test TUTTE le app che deployano
 
@@ -463,10 +472,12 @@ git push origin main
 ## 🔄 Change Log
 
 ### v2.0 - 2026-01-16
+
 - ✅ Aggiunte 4 regole anti-pattern critiche
 - ✅ Aggiunta procedura cleanup sicuro
 - ✅ Aggiunto template ripristino file
 - ✅ Aggiunto debug tips
 
 ### v1.0 - 2026-01-01
+
 - Initial version

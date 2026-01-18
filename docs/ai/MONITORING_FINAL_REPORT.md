@@ -9,6 +9,7 @@
 ## ✅ DEPLOY STATUS
 
 ### Deploy Corrente:
+
 - **Deployment ID:** `dpl_5VdjGD2zPVcVGiztCaTQwpT6Jfb7`
 - **Status:** ✅ **Ready** (Production)
 - **URL:** https://mouth-77xuogi1i-nuzantara-2026.vercel.app
@@ -17,6 +18,7 @@
 - **Commit:** `3ba0a46c` - Consolidamento streaming SSE + cleanup legacy code
 
 ### Domain Status:
+
 - ✅ `zantara.balizero.com` → Redirect a `/login` (normale, richiede auth)
 - ✅ `balizero.com` → Attivo
 - ✅ `www.balizero.com` → Attivo
@@ -27,18 +29,21 @@
 ## 📊 VERIFICA DEPLOY
 
 ### 1. Build Status ✅
+
 - ✅ Build completato: Success
 - ✅ Build duration: ~1m
 - ✅ Output items: 573
 - ✅ Nessun errore di build
 
 ### 2. Domain Response ✅
+
 - ✅ HTTP/2 307 redirect a `/login` (normale)
 - ✅ HTML valido e completo
 - ✅ Scripts e assets caricati correttamente
 - ✅ Meta tags presenti
 
 ### 3. Deploy Verification ✅
+
 - ✅ Deploy attivo in produzione
 - ✅ Aliases configurati correttamente
 - ✅ Nessun errore di deploy
@@ -48,6 +53,7 @@
 ## 🔍 LOGS MONITORING
 
 ### Status Logs:
+
 - **Runtime Logs:** Nessun log disponibile (normale per deploy recente senza traffico)
 - **Nota:** Logs runtime appaiono solo quando c'è traffico attivo
 - **Monitoraggio:** Continuare a monitorare durante test manuali
@@ -55,6 +61,7 @@
 ### Pattern Attesi nei Logs:
 
 #### ✅ Logs Normali (da vedere durante test):
+
 ```
 [INFO] Stream completed [component: "ChatApi", action: "sendMessageStreaming", ...]
 [INFO] Message received successfully [component: "ChatPage", ...]
@@ -62,6 +69,7 @@
 ```
 
 #### ⚠️ Logs da Monitorare:
+
 ```
 [ERROR] Stream error [component: "ChatApi", ...]
 [ERROR] Failed to load [component: "...", ...]
@@ -69,6 +77,7 @@
 ```
 
 #### ❌ Logs da Evitare:
+
 ```
 console.log(...)  ❌ Dovrebbe essere logger.info()
 console.error(...) ❌ Dovrebbe essere logger.error()
@@ -80,12 +89,14 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
 ## 🧪 TEST MANUALE - ISTRUZIONI
 
 ### Step 1: Accesso ✅
+
 1. ✅ Apri browser
 2. ✅ Vai a: https://zantara.balizero.com
 3. ✅ Verifica redirect a `/login` funziona
 4. ⏳ Login con credenziali (da fare manualmente)
 
 ### Step 2: Chat Streaming Test ⏳
+
 1. ⏳ Naviga a `/chat` dopo login
 2. ⏳ Apri DevTools Console (F12)
 3. ⏳ Invia messaggio: "Hello, test streaming"
@@ -96,6 +107,7 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
    - [ ] Logs strutturati visibili
 
 ### Step 3: Verifica Logger Strutturato ⏳
+
 1. ⏳ In Console, cerca logs strutturati:
    ```javascript
    // Dovresti vedere:
@@ -105,6 +117,7 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
    ```
 
 ### Step 4: Test Error Handling ⏳
+
 1. ⏳ Simula errore (disabilita network in DevTools)
 2. ⏳ Invia messaggio
 3. ⏳ Verifica messaggio errore user-friendly
@@ -115,17 +128,20 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
 ## 📈 PERFORMANCE METRICS
 
 ### Build Metrics ✅:
+
 - ✅ Build time: ~1m
 - ✅ Build success: Yes
 - ✅ Output items: 573
 - ✅ Bundle size: Verificare in Vercel dashboard
 
 ### Runtime Metrics (da verificare durante test):
-- TTFB: ___ms (target: < 500ms)
-- Streaming latency: ___ms (target: < 1000ms)
-- Error rate: ___% (target: < 1%)
+
+- TTFB: \_\_\_ms (target: < 500ms)
+- Streaming latency: \_\_\_ms (target: < 1000ms)
+- Error rate: \_\_\_% (target: < 1%)
 
 ### Vercel Dashboard:
+
 - URL: https://vercel.com/nuzantara-2026/mouth
 - Verificare:
   - [ ] Deploy success rate
@@ -163,6 +179,7 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
 ## 🎯 RISULTATO ATTESO
 
 Dopo test manuali completati:
+
 - ✅ Chat streaming funziona correttamente
 - ✅ Logger strutturato attivo e funzionante
 - ✅ Error handling migliorato
@@ -174,22 +191,26 @@ Dopo test manuali completati:
 ## 📝 COMANDI MONITORING
 
 ### Verifica Status:
+
 ```bash
 cd apps/mouth
 vercel ls
 ```
 
 ### Logs Runtime:
+
 ```bash
 vercel logs https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ```
 
 ### Inspect Deploy:
+
 ```bash
 vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ```
 
 ### Health Check:
+
 ```bash
 curl -I https://zantara.balizero.com
 ```
@@ -199,6 +220,7 @@ curl -I https://zantara.balizero.com
 ## ✅ CHECKLIST FINALE
 
 ### Deploy:
+
 - [x] Deploy completato con successo
 - [x] Build senza errori
 - [x] Deploy in produzione attivo
@@ -206,6 +228,7 @@ curl -I https://zantara.balizero.com
 - [x] Modifiche attive in produzione
 
 ### Test (da completare manualmente):
+
 - [ ] Chat streaming funziona
 - [ ] Logger strutturato attivo
 - [ ] Error handling funziona
@@ -213,6 +236,7 @@ curl -I https://zantara.balizero.com
 - [ ] Performance OK
 
 ### Monitoring:
+
 - [x] Status deploy verificato
 - [x] Domain response verificato
 - [ ] Logs runtime (da monitorare durante test)
@@ -243,6 +267,7 @@ curl -I https://zantara.balizero.com
 **Deploy Status:** ✅ **PRODUCTION READY**
 
 Tutte le modifiche sono state deployate con successo:
+
 - ✅ Consolidamento streaming SSE
 - ✅ Logger strutturato attivo
 - ✅ Error handling centralizzato

@@ -9,11 +9,13 @@
 ## 📊 METRICHE QUANTITATIVE
 
 ### Dimensioni
+
 - **Linee totali:** 1,938
 - **Linee di codice (escluse import/commenti):** ~1,650
 - **Componente principale:** 1 funzione React component
 
 ### React Hooks
+
 - **useState:** 18 hooks
 - **useEffect:** 10 hooks
 - **useCallback:** 20+ hooks
@@ -25,12 +27,14 @@
 **Totale Hooks:** ~57 hook calls
 
 ### Funzioni Definite
+
 - **Funzioni principali:** ~50 funzioni
 - **Handler functions:** 25+
 - **Utility functions:** 5+
 - **Componenti inline:** 1 (UserAvatarDisplay)
 
 ### Dipendenze useEffect
+
 - **useEffect con dipendenze complesse:** 6
 - **useEffect senza dipendenze:** 2
 - **useEffect con cleanup:** 4
@@ -42,18 +46,21 @@
 Il componente `ChatPage` gestisce **12+ responsabilità principali**:
 
 ### 1. **Gestione Messaggi**
+
 - Stato messaggi (messages, optimisticMessages)
 - Streaming SSE (Server-Sent Events)
 - Aggiornamento real-time del contenuto
 - Gestione pending/streaming states
 
 ### 2. **Autenticazione & Profilo Utente**
+
 - Caricamento profilo utente
 - Gestione avatar (upload, localStorage)
 - Verifica autenticazione
 - Redirect se non autenticato
 
 ### 3. **Conversazioni**
+
 - Lista conversazioni
 - Caricamento conversazione esistente
 - Creazione nuova conversazione
@@ -61,60 +68,71 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
 - Salvataggio conversazione
 
 ### 4. **Streaming & SSE**
+
 - Gestione stream di risposta
 - Tracking step (thinking, tool_call, observation)
 - Gestione timeout e errori
 - Cleanup streaming steps
 
 ### 5. **Text-to-Speech (TTS)**
+
 - Generazione audio da testo
 - Playback audio
 - Gestione stato playing/loading
 - Cleanup URL e audio element
 
 ### 6. **Audio Recording (STT)**
+
 - Registrazione audio
 - Trascrizione audio
 - Gestione errori microfono
 - Validazione blob audio
 
 ### 7. **Image Management**
+
 - Upload immagini per chat
 - Preview immagini allegate
 - Rimozione immagini
 - Validazione file (tipo, dimensione)
 
 ### 8. **Image Generation**
+
 - Modal generazione immagini
 - Invio prompt generazione
 - Visualizzazione immagini generate
 
 ### 9. **UI State Management**
+
 - Sidebar open/close
 - Modals (SearchDocs, ImageGen)
 - Toast notifications
 - Loading states
 
 ### 10. **Team Status**
+
 - Clock in/out
 - Status online/offline
 - Caricamento stato team
 
 ### 11. **Search & Docs**
+
 - Modal ricerca documenti
 - Inserimento testo da ricerca
 - Integrazione con SearchDocsModal
 
 ### 12. **Keyboard Shortcuts**
+
 - Enter per invio
 - Shift+Enter per nuova riga
 - Gestione focus textarea
 
 ### 13. **Auto-scroll**
+
 - Scroll automatico a nuovi messaggi
 - Gestione ref per scroll
 
 ### 14. **Analytics Tracking**
+
 - Event tracking per tutte le azioni
 - Metriche performance
 - User behavior tracking
@@ -126,21 +144,25 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
 ### Stati Interdipendenti
 
 **Gruppo 1: Messaggi & Streaming**
+
 - `messages` ↔ `optimisticMessages` ↔ `streamingSteps`
 - `isPending` ↔ `thinkingElapsedTime` ↔ `currentStatus`
 - **Accoppiamento:** 🔴 ALTO - 5 stati strettamente correlati
 
 **Gruppo 2: Audio**
+
 - `playingMessageId` ↔ `ttsLoading` ↔ `audioRef` ↔ `audioUrlRef`
 - `audioBlob` ↔ `recordingTime` ↔ `isRecording`
 - **Accoppiamento:** 🔴 ALTO - 6 stati correlati
 
 **Gruppo 3: UI**
+
 - `sidebarOpen` ↔ `isSearchDocsOpen` ↔ `isImageGenOpen` ↔ `toast`
 - `attachedImages` ↔ `input` ↔ `imageGenPrompt`
 - **Accoppiamento:** 🟡 MEDIO - Stati UI relativamente indipendenti
 
 **Gruppo 4: Conversazioni**
+
 - `currentConversationId` ↔ `sessionId` ↔ `messages`
 - **Accoppiamento:** 🟡 MEDIO - 3 stati correlati
 
@@ -192,7 +214,7 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
 
 1. **handleSend** (linea 526-794)
    - **Linee:** 268
-   - **Responsabilità:** 
+   - **Responsabilità:**
      - Validazione input
      - Creazione messaggi optimistic
      - Chiamata API streaming
@@ -254,6 +276,7 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
    - Difficile testare tutti i percorsi
 
 **Esempio di complessità testing:**
+
 ```typescript
 // Per testare handleSend servono:
 - Mock di api.sendMessageStreaming
@@ -298,6 +321,7 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
    - Difficile testare tutte le combinazioni
 
 **Esempio: Aggiungere "Edit Message"**
+
 ```typescript
 // Richiederebbe modifiche a:
 - Stato messages (aggiungere editing state)
@@ -396,26 +420,27 @@ Il componente `ChatPage` gestisce **12+ responsabilità principali**:
 
 ## 📊 METRICHE RIASSUNTIVE
 
-| Metrica | Valore | Valutazione |
-|---------|--------|-------------|
-| **Linee totali** | 1,938 | 🔴 Troppo grande |
-| **useState hooks** | 18 | 🔴 Troppi stati |
-| **useEffect hooks** | 10 | 🟡 Accettabile |
-| **Funzioni definite** | ~50 | 🔴 Troppe funzioni |
-| **Responsabilità** | 12+ | 🔴 Troppe responsabilità |
-| **Accoppiamento stati** | Alto | 🔴 Stati interdipendenti |
-| **Complessità handleSend** | 268 linee | 🔴 Funzione troppo grande |
-| **Difficoltà testing** | 8/10 | 🔴 Molto difficile |
-| **Difficoltà aggiungere feature** | 9/10 | 🔴 Estremamente difficile |
-| **Rischio bug** | Alto | 🔴 Alto rischio |
+| Metrica                           | Valore    | Valutazione               |
+| --------------------------------- | --------- | ------------------------- |
+| **Linee totali**                  | 1,938     | 🔴 Troppo grande          |
+| **useState hooks**                | 18        | 🔴 Troppi stati           |
+| **useEffect hooks**               | 10        | 🟡 Accettabile            |
+| **Funzioni definite**             | ~50       | 🔴 Troppe funzioni        |
+| **Responsabilità**                | 12+       | 🔴 Troppe responsabilità  |
+| **Accoppiamento stati**           | Alto      | 🔴 Stati interdipendenti  |
+| **Complessità handleSend**        | 268 linee | 🔴 Funzione troppo grande |
+| **Difficoltà testing**            | 8/10      | 🔴 Molto difficile        |
+| **Difficoltà aggiungere feature** | 9/10      | 🔴 Estremamente difficile |
+| **Rischio bug**                   | Alto      | 🔴 Alto rischio           |
 
 ---
 
 ## ✅ CONCLUSIONE
 
-Il componente `ChatPage` è **troppo complesso e monolitico**. 
+Il componente `ChatPage` è **troppo complesso e monolitico**.
 
 **Problemi principali:**
+
 - 🔴 File troppo grande (1,938 linee)
 - 🔴 Troppi stati interdipendenti (18 useState)
 - 🔴 Funzioni troppo grandi (handleSend: 268 linee)
@@ -426,6 +451,7 @@ Il componente `ChatPage` è **troppo complesso e monolitico**.
 **Raccomandazione:** **REFACTORING URGENTE**
 
 Il componente dovrebbe essere suddiviso in:
+
 - 5-7 hook custom
 - 4-5 componenti UI separati
 - 2-3 context per state management

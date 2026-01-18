@@ -204,7 +204,7 @@ describe('useChatSend', () => {
   it('should cleanup streaming steps', async () => {
     const { useChatStreaming } = await import('../useChatStreaming');
     let stepCallback: ((step: any) => void) | null = null;
-    
+
     vi.mocked(useChatStreaming).mockReturnValue({
       isStreaming: false,
       setIsStreaming: vi.fn(),
@@ -230,8 +230,11 @@ describe('useChatSend', () => {
     });
 
     // Wait for cleanup effect to run
-    await waitFor(() => {
-      expect(result.current.streamingSteps.length).toBeLessThanOrEqual(10);
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(result.current.streamingSteps.length).toBeLessThanOrEqual(10);
+      },
+      { timeout: 2000 }
+    );
   });
 });

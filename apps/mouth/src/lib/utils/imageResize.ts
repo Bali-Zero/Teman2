@@ -117,8 +117,14 @@ export async function cropToSquare(
         // Draw cropped and resized image
         ctx.drawImage(
           img,
-          sx, sy, minDim, minDim,  // Source rectangle (crop)
-          0, 0, size, size          // Destination rectangle (resize)
+          sx,
+          sy,
+          minDim,
+          minDim, // Source rectangle (crop)
+          0,
+          0,
+          size,
+          size // Destination rectangle (resize)
         );
 
         // Convert to base64

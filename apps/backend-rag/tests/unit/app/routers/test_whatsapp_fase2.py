@@ -42,9 +42,7 @@ class TestWhatsAppStatusUpdates:
                 "backend.app.routers.whatsapp_chat.whatsapp_service",
                 mock_whatsapp_service,
             ):
-                with patch(
-                    "backend.app.routers.whatsapp_chat.get_messaging_identity_service"
-                ):
+                with patch("backend.app.routers.whatsapp_chat.get_messaging_identity_service"):
                     mock_request = MagicMock()
                     mock_request.app.state.database_pool = MagicMock()
 
@@ -196,9 +194,7 @@ class TestWhatsAppTimeout:
                 async with asyncio.timeout(0.1):
                     await asyncio.sleep(1)
             except asyncio.TimeoutError:
-                mock_logger.warning(
-                    f"WhatsApp query from +1234567890 timed out after 45 seconds"
-                )
+                mock_logger.warning("WhatsApp query from +1234567890 timed out after 45 seconds")
 
             # Verify warning was logged
             mock_logger.warning.assert_called_once()
@@ -230,7 +226,7 @@ class TestWhatsAppIntegration:
             if (current_time - last_status_time) >= status_update_interval:
                 await mock_whatsapp_service.send_message(
                     phone="+1234567890",
-                    text=f"🔍 Processing... (update {i+1})",
+                    text=f"🔍 Processing... (update {i + 1})",
                     reply_to_message_id="msg123",
                 )
                 last_status_time = current_time
@@ -269,7 +265,14 @@ class TestWhatsAppIntegration:
         }
 
         # All phases should have emoji
-        for phase in ["processing", "searching", "analyzing", "thinking", "reasoning", "generating"]:
+        for phase in [
+            "processing",
+            "searching",
+            "analyzing",
+            "thinking",
+            "reasoning",
+            "generating",
+        ]:
             assert phase in phase_emoji
             assert len(phase_emoji[phase]) > 0  # Has emoji
 

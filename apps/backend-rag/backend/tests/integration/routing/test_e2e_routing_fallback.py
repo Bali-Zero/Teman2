@@ -255,7 +255,9 @@ class TestE2ERoutingFallback:
         query = "URGENTE: Informazioni su visto"
 
         # Mock priority override
-        with patch("backend.services.routing.priority_override.PriorityOverrideService") as mock_priority:
+        with patch(
+            "backend.services.routing.priority_override.PriorityOverrideService"
+        ) as mock_priority:
             mock_priority_instance = MagicMock()
             mock_priority_instance.get_override_collection = MagicMock(return_value="visa_oracle")
             mock_priority.return_value = mock_priority_instance

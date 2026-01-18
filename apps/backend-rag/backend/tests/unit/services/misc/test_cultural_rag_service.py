@@ -55,7 +55,9 @@ class TestCulturalRAGService:
         mock_search_service.cultural_insights = None
 
         # Mock CulturalInsightsService initialization
-        with patch("backend.services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
+        with patch(
+            "backend.services.misc.cultural_insights_service.CulturalInsightsService"
+        ) as mock_cis:
             mock_instance = MagicMock()
             mock_cis.return_value = mock_instance
             service = CulturalRAGService(search_service=mock_search_service)
@@ -65,7 +67,9 @@ class TestCulturalRAGService:
     def test_init_without_services(self):
         """Test initialization without services"""
         # Mock CulturalInsightsService initialization
-        with patch("backend.services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
+        with patch(
+            "backend.services.misc.cultural_insights_service.CulturalInsightsService"
+        ) as mock_cis:
             mock_instance = MagicMock()
             mock_cis.return_value = mock_instance
             service = CulturalRAGService()

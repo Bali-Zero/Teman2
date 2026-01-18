@@ -191,9 +191,7 @@ class QueryGates:
         if not self.clarification_service:
             return GateResult(triggered=False)
 
-        ambiguity_info = self.clarification_service.detect_ambiguity(
-            query, conversation_history
-        )
+        ambiguity_info = self.clarification_service.detect_ambiguity(query, conversation_history)
 
         if (
             ambiguity_info["is_ambiguous"]
@@ -276,9 +274,7 @@ class QueryGates:
 
         return GateResult(triggered=False)
 
-    def gate_result_to_core_result(
-        self, gate_result: GateResult, start_time: float
-    ) -> CoreResult:
+    def gate_result_to_core_result(self, gate_result: GateResult, start_time: float) -> CoreResult:
         """
         Convert a triggered GateResult to a CoreResult.
 
@@ -298,10 +294,16 @@ class QueryGates:
         return CoreResult(
             answer=gate_result.response or "",
             sources=[],
-            verification_score=1.0 if gate_result.gate_name not in ("security", "out_of_domain") else 0.0,
-            evidence_score=1.0 if gate_result.gate_name not in ("security", "out_of_domain", "clarification") else 0.0,
+            verification_score=1.0
+            if gate_result.gate_name not in ("security", "out_of_domain")
+            else 0.0,
+            evidence_score=1.0
+            if gate_result.gate_name not in ("security", "out_of_domain", "clarification")
+            else 0.0,
             is_ambiguous=gate_result.gate_name == "clarification",
-            clarification_question=gate_result.response if gate_result.gate_name == "clarification" else None,
+            clarification_question=gate_result.response
+            if gate_result.gate_name == "clarification"
+            else None,
             entities=gate_result.metadata.get("entities", {}) if gate_result.metadata else {},
             model_used=f"{gate_result.gate_name}-gate",
             timings={"total": time.time() - start_time},

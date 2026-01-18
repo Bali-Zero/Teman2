@@ -29,7 +29,9 @@ export function useSearchDocs() {
       const resp = await api.searchDocs({ query: q, level, limit });
       setResults(resp.results || []);
       setTotalFound(resp.total_found || 0);
-      setExecutionTimeMs(typeof resp.execution_time_ms === 'number' ? resp.execution_time_ms : null);
+      setExecutionTimeMs(
+        typeof resp.execution_time_ms === 'number' ? resp.execution_time_ms : null
+      );
       if (!resp.results?.length) {
         setStatusMessage('No results found for this query.');
       }
@@ -63,4 +65,3 @@ export function useSearchDocs() {
     runSearch,
   };
 }
-

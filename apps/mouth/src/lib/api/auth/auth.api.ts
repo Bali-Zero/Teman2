@@ -79,13 +79,17 @@ export class AuthApi {
         user: response.data.user,
       };
     } catch (error) {
-      logger.error('Login error', {
-        component: 'AuthApi',
-        action: 'login_error',
-        metadata: {
-          message: error instanceof Error ? error.message : 'Unknown error',
+      logger.error(
+        'Login error',
+        {
+          component: 'AuthApi',
+          action: 'login_error',
+          metadata: {
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
         },
-      }, error instanceof Error ? error : new Error(String(error)));
+        error instanceof Error ? error : new Error(String(error))
+      );
       throw error;
     }
   }
@@ -104,4 +108,3 @@ export class AuthApi {
     return profile;
   }
 }
-

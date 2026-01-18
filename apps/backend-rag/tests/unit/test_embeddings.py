@@ -423,6 +423,7 @@ def test_convenience_function_generate_embeddings(mock_openai_client):
 def test_convenience_function_without_api_key():
     """Test convenience function without API key (uses sentence transformers)"""
     import numpy as np
+
     from backend.core.embeddings import generate_embeddings
 
     mock_transformer = MagicMock()

@@ -2672,7 +2672,9 @@ class TestStreamQueryEdgeCases:
         """Test that recall gate failure falls back to RAG"""
         with (
             patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService") as mock_es,
+            patch(
+                "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
+            ) as mock_es,
             patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_spb,
             patch("backend.services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipe,
             patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
@@ -2680,7 +2682,9 @@ class TestStreamQueryEdgeCases:
             patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,
             patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_cwm,
             patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_guc,
-            patch("backend.services.rag.agentic.orchestrator._is_conversation_recall_query") as mock_recall,
+            patch(
+                "backend.services.rag.agentic.orchestrator._is_conversation_recall_query"
+            ) as mock_recall,
             patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator"),
         ):
             mock_recall.return_value = True

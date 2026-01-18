@@ -9,15 +9,17 @@
 ## 📊 ANALISI CODEBASE ATTUALE
 
 ### Test Esistenti
-| Metrica | Valore |
-|---------|--------|
-| **File Test Totali** | 553 |
-| **File Sorgente** | 705 |
-| **Rapporto Test/Sorgente** | 78% |
-| **Framework** | pytest + pytest-asyncio |
-| **Conftest Files** | 7 |
+
+| Metrica                    | Valore                  |
+| -------------------------- | ----------------------- |
+| **File Test Totali**       | 553                     |
+| **File Sorgente**          | 705                     |
+| **Rapporto Test/Sorgente** | 78%                     |
+| **Framework**              | pytest + pytest-asyncio |
+| **Conftest Files**         | 7                       |
 
 ### Struttura Test
+
 ```
 tests/
 ├── api/           # 94 items - Test endpoint API
@@ -29,11 +31,11 @@ tests/
 ```
 
 ### Agenti Esistenti (Base per Test Force)
+
 1. **TestGuardian** (`test_guardian.py`) - ✅ GIÀ ESISTENTE
    - Analizza coverage
    - Genera test con LLM
    - Self-healing (run → fail → fix → pass)
-   
 2. **ConversationTrainer** (`conversation_trainer.py`)
    - Pattern di apprendimento da conversazioni
    - Genera miglioramenti automatici
@@ -77,13 +79,15 @@ tests/
 ## 🧠 INTEGRAZIONE LLM LOCALE (Qwen 7B)
 
 ### Requisiti Hardware
-| Risorsa | Disponibile | Richiesto Qwen 7B | Note |
-|---------|-------------|-------------------|------|
-| **RAM** | 16GB | ~8GB | ✅ Fattibile |
-| **Chip** | M4 | ARM64 | ✅ Ottimizzato |
-| **VRAM** | Unified | ~6GB | ✅ Metal GPU |
+
+| Risorsa  | Disponibile | Richiesto Qwen 7B | Note           |
+| -------- | ----------- | ----------------- | -------------- |
+| **RAM**  | 16GB        | ~8GB              | ✅ Fattibile   |
+| **Chip** | M4          | ARM64             | ✅ Ottimizzato |
+| **VRAM** | Unified     | ~6GB              | ✅ Metal GPU   |
 
 ### Configurazione Consigliata
+
 ```bash
 # Installa Ollama (ottimizzato per Apple Silicon)
 brew install ollama
@@ -96,13 +100,15 @@ ollama run qwen2.5-coder:7b-instruct-q4_K_M "Hello"
 ```
 
 ### Modelli Alternativi Leggeri
-| Modello | RAM | Qualità Code | Velocità |
-|---------|-----|--------------|----------|
-| `qwen2.5-coder:7b-instruct-q4_K_M` | ~5GB | ⭐⭐⭐⭐ | Veloce |
-| `codellama:7b-instruct-q4_K_M` | ~5GB | ⭐⭐⭐ | Veloce |
-| `deepseek-coder:6.7b-instruct-q4_K_M` | ~4GB | ⭐⭐⭐⭐ | Veloce |
+
+| Modello                               | RAM  | Qualità Code | Velocità |
+| ------------------------------------- | ---- | ------------ | -------- |
+| `qwen2.5-coder:7b-instruct-q4_K_M`    | ~5GB | ⭐⭐⭐⭐     | Veloce   |
+| `codellama:7b-instruct-q4_K_M`        | ~5GB | ⭐⭐⭐       | Veloce   |
+| `deepseek-coder:6.7b-instruct-q4_K_M` | ~4GB | ⭐⭐⭐⭐     | Veloce   |
 
 ### Fallback Strategy
+
 ```python
 # Priority Chain
 1. Qwen 7B Local (Ollama) → Gratuito, veloce, privato
@@ -115,13 +121,14 @@ ollama run qwen2.5-coder:7b-instruct-q4_K_M "Hello"
 ## 🎯 COMPONENTI DA IMPLEMENTARE
 
 ### 1. TestCreatorAgent (Nuovo)
+
 **Responsabilità:** Generare test per nuovo codice
 
 ```python
 class TestCreatorAgent:
     """
     Monitora git diff per nuovo codice e genera test automaticamente.
-    
+
     Workflow:
     1. Rileva nuovi file/funzioni (git diff)
     2. Analizza contesto (imports, dipendenze)
@@ -131,7 +138,7 @@ class TestCreatorAgent:
     6. Se fallisce → auto-fix → retry
     7. Commit su branch dedicato
     """
-    
+
     def watch_for_changes(self): ...
     def analyze_new_code(self, file_path): ...
     def generate_tests(self, context): ...
@@ -140,13 +147,14 @@ class TestCreatorAgent:
 ```
 
 ### 2. TestMaintainerAgent (Nuovo)
+
 **Responsabilità:** Aggiornare test esistenti quando il codice cambia
 
 ```python
 class TestMaintainerAgent:
     """
     Mantiene i test allineati con le modifiche al codice.
-    
+
     Workflow:
     1. Rileva modifiche a file sorgente
     2. Trova test correlati
@@ -154,20 +162,21 @@ class TestMaintainerAgent:
     4. Se breaking → genera fix con LLM
     5. Valida e commit
     """
-    
+
     def find_related_tests(self, source_file): ...
     def check_test_validity(self, test_file): ...
     def update_test(self, test_file, changes): ...
 ```
 
 ### 3. TestCleanerAgent (Nuovo)
+
 **Responsabilità:** Eliminare test obsoleti, duplicati, legacy
 
 ```python
 class TestCleanerAgent:
     """
     Pulisce la test suite da cruft accumulato.
-    
+
     Workflow:
     1. Scansiona tutti i test
     2. Rileva:
@@ -178,7 +187,7 @@ class TestCleanerAgent:
     3. Propone eliminazione
     4. Archivia in backup prima di eliminare
     """
-    
+
     def scan_all_tests(self): ...
     def detect_orphaned_tests(self): ...
     def detect_duplicates(self): ...
@@ -187,26 +196,27 @@ class TestCleanerAgent:
 ```
 
 ### 4. TestForceOrchestrator (Centrale)
+
 **Responsabilità:** Coordina tutti gli agenti
 
 ```python
 class TestForceOrchestrator:
     """
     Orchestratore centrale della Test Force.
-    
+
     Modes:
     - WATCH: Monitoraggio continuo (daemon)
     - SCAN: Scansione completa una tantum
     - FIX: Fix automatico problemi rilevati
     - REPORT: Solo reportistica
     """
-    
+
     def __init__(self, llm_provider="local"):
         self.creator = TestCreatorAgent(llm_provider)
         self.maintainer = TestMaintainerAgent(llm_provider)
         self.cleaner = TestCleanerAgent(llm_provider)
         self.guardian = TestGuardian(llm_provider)  # Esistente
-    
+
     async def run_full_scan(self): ...
     async def watch_mode(self): ...
     async def generate_report(self): ...
@@ -217,12 +227,14 @@ class TestForceOrchestrator:
 ## 📋 PIANO IMPLEMENTAZIONE (FASI)
 
 ### Fase 1: Setup LLM Locale (1-2 ore)
+
 - [ ] Installare Ollama
 - [ ] Scaricare Qwen 7B quantizzato
 - [ ] Testare integrazione con TestGuardian esistente
 - [ ] Creare wrapper unificato per LLM
 
 ### Fase 2: TestCreatorAgent (4-6 ore)
+
 - [ ] Implementare git diff watcher
 - [ ] Code context analyzer (usa esistente `CodeContextAnalyzer`)
 - [ ] Prompt engineering per generazione test
@@ -230,24 +242,28 @@ class TestForceOrchestrator:
 - [ ] Unit tests per il creator stesso
 
 ### Fase 3: TestMaintainerAgent (3-4 ore)
+
 - [ ] Mapping source → test files
 - [ ] Diff analyzer per modifiche
 - [ ] Test validity checker
 - [ ] Update generator
 
 ### Fase 4: TestCleanerAgent (3-4 ore)
+
 - [ ] Orphan detector
 - [ ] Semantic duplicate finder (embedding-based)
 - [ ] Archive system
 - [ ] Cleanup executor
 
 ### Fase 5: Orchestrator & CLI (2-3 ore)
+
 - [ ] Orchestratore centrale
 - [ ] CLI interface
 - [ ] Daemon mode per watch continuo
 - [ ] Report generator (HTML/MD)
 
 ### Fase 6: Integrazione & Testing (2-3 ore)
+
 - [ ] Test end-to-end
 - [ ] Performance tuning
 - [ ] Documentazione
@@ -313,13 +329,13 @@ python -m backend.agents.agents.test_guardian --mode=auto --provider=local
 
 ## 📊 METRICHE DI SUCCESSO
 
-| Metrica | Target |
-|---------|--------|
-| Coverage automatica | > 90% |
-| Test obsoleti rimossi | < 5% del totale |
-| Tempo generazione test | < 30s per file |
-| Self-healing success rate | > 80% |
-| False positives (test inutili) | < 10% |
+| Metrica                        | Target          |
+| ------------------------------ | --------------- |
+| Coverage automatica            | > 90%           |
+| Test obsoleti rimossi          | < 5% del totale |
+| Tempo generazione test         | < 30s per file  |
+| Self-healing success rate      | > 80%           |
+| False positives (test inutili) | < 10%           |
 
 ---
 

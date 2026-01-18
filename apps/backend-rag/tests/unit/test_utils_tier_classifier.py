@@ -11,9 +11,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.utils.tier_classifier import TierClassifier, classify_book_tier
-
 from backend.app.models import TierLevel
+from backend.utils.tier_classifier import TierClassifier, classify_book_tier
 
 # ============================================================================
 # Tests for TierClassifier.__init__

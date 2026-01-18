@@ -81,11 +81,11 @@ export async function saveConversation(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         session_id: sessionId,
-        messages: messages.map(m => ({
+        messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
           sources: m.sources,
@@ -121,7 +121,7 @@ export async function loadConversations(): Promise<{
   try {
     const response = await fetch(`${BACKEND_URL}/api/bali-zero/conversations/list`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       next: { revalidate: 60 }, // Cache for 60 seconds
     });
@@ -151,7 +151,7 @@ export async function deleteConversation(id: number): Promise<{ success: boolean
     const response = await fetch(`${BACKEND_URL}/api/bali-zero/conversations/${id}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -178,7 +178,7 @@ export async function toggleClockStatus(
     const response = await fetch(`${BACKEND_URL}/api/bali-zero/team/${endpoint}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 

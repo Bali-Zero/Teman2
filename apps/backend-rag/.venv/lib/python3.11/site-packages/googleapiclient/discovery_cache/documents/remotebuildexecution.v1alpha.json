@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -114,9 +104,7 @@
               "flatPath": "v1alpha/projects/{projectsId}/instances",
               "httpMethod": "POST",
               "id": "remotebuildexecution.projects.instances.create",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "parent": {
                   "description": "Resource name of the project containing the instance. Format: `projects/[PROJECT_ID]`.",
@@ -133,18 +121,14 @@
               "response": {
                 "$ref": "GoogleLongrunningOperation"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "delete": {
               "description": "Deletes the specified instance. Returns a long running operation which contains a `google.protobuf.Empty` response on completion. Deleting an instance with worker pools in it will delete these worker pools.",
               "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}",
               "httpMethod": "DELETE",
               "id": "remotebuildexecution.projects.instances.delete",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Name of the instance to delete. Format: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]`.",
@@ -158,18 +142,14 @@
               "response": {
                 "$ref": "GoogleLongrunningOperation"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "get": {
               "description": "Returns the specified instance.",
               "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}",
               "httpMethod": "GET",
               "id": "remotebuildexecution.projects.instances.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Name of the instance to retrieve. Format: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]`.",
@@ -183,18 +163,14 @@
               "response": {
                 "$ref": "GoogleDevtoolsRemotebuildexecutionAdminV1alphaInstance"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "list": {
               "description": "Lists instances in a project.",
               "flatPath": "v1alpha/projects/{projectsId}/instances",
               "httpMethod": "GET",
               "id": "remotebuildexecution.projects.instances.list",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "parent": {
                   "description": "Resource name of the project. Format: `projects/[PROJECT_ID]`.",
@@ -208,18 +184,14 @@
               "response": {
                 "$ref": "GoogleDevtoolsRemotebuildexecutionAdminV1alphaListInstancesResponse"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "patch": {
               "description": "Updates the specified instance. Returns a long running operation which contains the updated instance in the response on completion.",
               "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}",
               "httpMethod": "PATCH",
               "id": "remotebuildexecution.projects.instances.patch",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "loggingEnabled": {
                   "description": "Deprecated, use instance.logging_enabled instead. Whether to enable Stackdriver logging for this instance.",
@@ -252,9 +224,7 @@
               "response": {
                 "$ref": "GoogleLongrunningOperation"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           },
           "resources": {
@@ -265,9 +235,7 @@
                   "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}/workerpools",
                   "httpMethod": "POST",
                   "id": "remotebuildexecution.projects.instances.workerpools.create",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "parent": {
                       "description": "Resource name of the instance in which to create the new worker pool. Format: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]`.",
@@ -284,18 +252,14 @@
                   "response": {
                     "$ref": "GoogleLongrunningOperation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes the specified worker pool. Returns a long running operation, which contains a `google.protobuf.Empty` response on completion. While the long running operation is in progress, any call to `GetWorkerPool` returns a worker pool in state `DELETING`.",
                   "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}/workerpools/{workerpoolsId}",
                   "httpMethod": "DELETE",
                   "id": "remotebuildexecution.projects.instances.workerpools.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Name of the worker pool to delete. Format: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]/workerpools/[POOL_ID]`.",
@@ -309,18 +273,14 @@
                   "response": {
                     "$ref": "GoogleLongrunningOperation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Returns the specified worker pool.",
                   "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}/workerpools/{workerpoolsId}",
                   "httpMethod": "GET",
                   "id": "remotebuildexecution.projects.instances.workerpools.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "Name of the worker pool to retrieve. Format: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]/workerpools/[POOL_ID]`.",
@@ -334,18 +294,14 @@
                   "response": {
                     "$ref": "GoogleDevtoolsRemotebuildexecutionAdminV1alphaWorkerPool"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists worker pools in an instance.",
                   "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}/workerpools",
                   "httpMethod": "GET",
                   "id": "remotebuildexecution.projects.instances.workerpools.list",
-                  "parameterOrder": [
-                    "parent"
-                  ],
+                  "parameterOrder": ["parent"],
                   "parameters": {
                     "filter": {
                       "description": "Optional. A filter expression that filters resources listed in the response. The expression must specify the field name, a comparison operator, and the value that you want to use for filtering. The value must be a string, a number, or a boolean. String values are case-insensitive. The comparison operator must be either `:`, `=`, `!=`, `>`, `>=`, `<=` or `<`. The `:` operator can be used with string fields to match substrings. For non-string fields it is equivalent to the `=` operator. The `:*` comparison can be used to test whether a key has been defined. You can also filter on nested fields. To filter on multiple expressions, you can separate expression using `AND` and `OR` operators, using parentheses to specify precedence. If neither operator is specified, `AND` is assumed. Examples: Include only pools with more than 100 reserved workers: `(worker_count > 100) (worker_config.reserved = true)` Include only pools with a certain label or machines of the e2-standard family: `worker_config.labels.key1 : * OR worker_config.machine_type: e2-standard`",
@@ -364,18 +320,14 @@
                   "response": {
                     "$ref": "GoogleDevtoolsRemotebuildexecutionAdminV1alphaListWorkerPoolsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "patch": {
                   "description": "Updates an existing worker pool with a specified size and/or configuration. Returns a long running operation, which contains a worker pool on completion. While the long running operation is in progress, any call to `GetWorkerPool` returns a worker pool in state `UPDATING`.",
                   "flatPath": "v1alpha/projects/{projectsId}/instances/{instancesId}/workerpools/{workerpoolsId}",
                   "httpMethod": "PATCH",
                   "id": "remotebuildexecution.projects.instances.workerpools.patch",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "WorkerPool resource name formatted as: `projects/[PROJECT_ID]/instances/[INSTANCE_ID]/workerpools/[POOL_ID]`. name should not be populated when creating a worker pool since it is provided in the `poolId` field.",
@@ -392,9 +344,7 @@
                   "response": {
                     "$ref": "GoogleLongrunningOperation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             }
@@ -407,9 +357,7 @@
               "flatPath": "v1alpha/projects/{projectsId}/operations/{operationsId}",
               "httpMethod": "GET",
               "id": "remotebuildexecution.projects.operations.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "The name of the operation resource.",
@@ -423,9 +371,7 @@
               "response": {
                 "$ref": "GoogleLongrunningOperation"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           }
         }
@@ -681,13 +627,7 @@
         },
         "stage": {
           "description": "The current stage of execution.",
-          "enum": [
-            "UNKNOWN",
-            "CACHE_CHECK",
-            "QUEUED",
-            "EXECUTING",
-            "COMPLETED"
-          ],
+          "enum": ["UNKNOWN", "CACHE_CHECK", "QUEUED", "EXECUTING", "COMPLETED"],
           "enumDescriptions": [
             "Invalid value.",
             "Checking the result against the cache.",
@@ -1134,11 +1074,7 @@
       "properties": {
         "cmUsage": {
           "description": "Indicates if and how Container Manager is being used for task execution.",
-          "enum": [
-            "CONFIG_NONE",
-            "CONFIG_MATCH",
-            "CONFIG_MISMATCH"
-          ],
+          "enum": ["CONFIG_NONE", "CONFIG_MATCH", "CONFIG_MISMATCH"],
           "enumDescriptions": [
             "Container Manager is disabled or not running for this execution.",
             "Container Manager is enabled and there was a matching container available for use during execution.",
@@ -1498,11 +1434,7 @@
         },
         "linuxIsolation": {
           "description": "linux_isolation allows overriding the docker runtime used for containers started on Linux.",
-          "enum": [
-            "LINUX_ISOLATION_UNSPECIFIED",
-            "GVISOR",
-            "OFF"
-          ],
+          "enum": ["LINUX_ISOLATION_UNSPECIFIED", "GVISOR", "OFF"],
           "enumDescriptions": [
             "Default value. Will be using Linux default runtime.",
             "Use gVisor runsc runtime.",
@@ -1526,12 +1458,7 @@
         },
         "policy": {
           "description": "The policy of the feature.",
-          "enum": [
-            "POLICY_UNSPECIFIED",
-            "ALLOWED",
-            "FORBIDDEN",
-            "RESTRICTED"
-          ],
+          "enum": ["POLICY_UNSPECIFIED", "ALLOWED", "FORBIDDEN", "RESTRICTED"],
           "enumDescriptions": [
             "Default value, if not explicitly set. Equivalent to FORBIDDEN, unless otherwise documented on a specific Feature.",
             "Feature is explicitly allowed.",
@@ -1587,12 +1514,7 @@
         },
         "state": {
           "description": "Output only. State of the instance.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The instance is in state `CREATING` once `CreateInstance` is called and before the instance is ready for use.",
@@ -1768,14 +1690,7 @@
         },
         "state": {
           "description": "Output only. State of the worker pool.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "UPDATING",
-            "DELETING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "UPDATING", "DELETING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The worker pool is in state `CREATING` once `CreateWorkerPool` is called and before all requested workers are ready.",
@@ -1808,13 +1723,7 @@
         },
         "command": {
           "description": "The admin action; see `Command` for legal values.",
-          "enum": [
-            "UNSPECIFIED",
-            "BOT_UPDATE",
-            "BOT_RESTART",
-            "BOT_TERMINATE",
-            "HOST_RESTART"
-          ],
+          "enum": ["UNSPECIFIED", "BOT_UPDATE", "BOT_RESTART", "BOT_TERMINATE", "HOST_RESTART"],
           "enumDescriptions": [
             "Illegal value.",
             "Download and run a new version of the bot. `arg` will be a resource accessible via `ByteStream.Read` to obtain the new bot code.",

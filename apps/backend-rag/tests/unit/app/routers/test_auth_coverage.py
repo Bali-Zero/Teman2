@@ -3,7 +3,7 @@ import sys
 import types
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -48,18 +48,22 @@ def _load_module(monkeypatch, pool=None):
         jwt_secret_key="secret",
         jwt_algorithm="HS256",
         jwt_access_token_expire_hours=1,
-        redis_url='redis://localhost:6379'
+        redis_url="redis://localhost:6379",
     )
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub
-    config_mock.Settings = types.SimpleNamespace() # Dummy Settings class
+    config_mock.Settings = types.SimpleNamespace()  # Dummy Settings class
     monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     async def get_database_pool():
         return pool
 
     monkeypatch.setitem(
-        sys.modules, "backend.app.dependencies", types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379')
+        sys.modules,
+        "backend.app.dependencies",
+        types.SimpleNamespace(
+            get_database_pool=get_database_pool, redis_url="redis://localhost:6379"
+        ),
     )
 
     cookie_calls = {}
@@ -79,7 +83,7 @@ def _load_module(monkeypatch, pool=None):
         types.SimpleNamespace(
             set_auth_cookies=set_auth_cookies,
             clear_auth_cookies=clear_auth_cookies,
-            redis_url='redis://localhost:6379'
+            redis_url="redis://localhost:6379",
         ),
     )
 
@@ -103,19 +107,19 @@ def _load_module(monkeypatch, pool=None):
             get_logger=lambda _name: _Logger(),
             log_error=lambda *_args, **_kwargs: None,
             log_warning=lambda *_args, **_kwargs: None,
-            redis_url='redis://localhost:6379'
+            redis_url="redis://localhost:6379",
         ),
     )
 
     audit_service = types.SimpleNamespace(
-        pool=None,
-        connect=AsyncMock(),
-        log_auth_event=AsyncMock()
+        pool=None, connect=AsyncMock(), log_auth_event=AsyncMock()
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.services.monitoring.audit_service",
-        types.SimpleNamespace(get_audit_service=lambda: audit_service, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_audit_service=lambda: audit_service, redis_url="redis://localhost:6379"
+        ),
     )
 
     app_pkg = types.ModuleType("app")

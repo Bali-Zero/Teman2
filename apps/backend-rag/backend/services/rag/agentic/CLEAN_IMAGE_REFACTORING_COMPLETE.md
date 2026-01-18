@@ -13,6 +13,7 @@
 **Funzione:** `clean_image_generation_response(text: str) -> str`
 
 **Miglioramenti:**
+
 - ✅ Aggiunti tutti i pattern del frontend (17+ pattern)
 - ✅ Gestione markdown images (`!\[.*?\]\(.*?\)`)
 - ✅ Gestione broken markdown images
@@ -24,6 +25,7 @@
 - ✅ Early exit ottimizzato (controlla anche image patterns)
 
 **Pattern aggiunti:**
+
 - Markdown image syntax
 - Broken markdown images
 - Bullet point versions
@@ -38,6 +40,7 @@
 **File:** `apps/mouth/src/lib/api/chat/chat.api.ts`
 
 **Modifiche:**
+
 - ✅ Rimossa funzione `cleanImageResponse` (51 righe)
 - ✅ Rimossa chiamata riga 528 (durante streaming)
 - ✅ Rimossa chiamata riga 622 (buffer flush)
@@ -45,6 +48,7 @@
 - ✅ Aggiunto commento esplicativo sulla delega al backend
 
 **Risultato:**
+
 - Codice più pulito
 - Single source of truth nel backend
 - Nessuna duplicazione
@@ -54,6 +58,7 @@
 **File:** `apps/backend-rag/tests/unit/app/routers/test_clean_image_response_comprehensive.py`
 
 **Test coverage:**
+
 - ✅ 18+ test cases
 - ✅ Tutti i pattern del frontend coperti
 - ✅ Edge cases testati
@@ -63,14 +68,14 @@
 
 ## 📊 METRICHE FINALI
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **File con implementazione** | 2 | 1 | -50% |
-| **Pattern Backend** | 9 | 17+ | +89% |
-| **Pattern Frontend** | 17+ | 0 (delegato) | -100% |
-| **Righe duplicate** | ~97 | 0 | -100% |
-| **Rischio drift** | 85% | 0% | -100% |
-| **Test coverage** | Backend: ✅, Frontend: ❌ | Backend: ✅✅ | +100% |
+| Metrica                      | Prima                     | Dopo          | Miglioramento |
+| ---------------------------- | ------------------------- | ------------- | ------------- |
+| **File con implementazione** | 2                         | 1             | -50%          |
+| **Pattern Backend**          | 9                         | 17+           | +89%          |
+| **Pattern Frontend**         | 17+                       | 0 (delegato)  | -100%         |
+| **Righe duplicate**          | ~97                       | 0             | -100%         |
+| **Rischio drift**            | 85%                       | 0%            | -100%         |
+| **Test coverage**            | Backend: ✅, Frontend: ❌ | Backend: ✅✅ | +100%         |
 
 ---
 
@@ -145,14 +150,17 @@ Frontend (TypeScript)
 ## 📝 FILE MODIFICATI
 
 **Backend:**
+
 - ✅ `apps/backend-rag/backend/app/routers/agentic_rag.py` - Funzione migliorata
 - ✅ `apps/backend-rag/tests/unit/app/routers/test_clean_image_response_comprehensive.py` - Test creati
 - ✅ `apps/backend-rag/tests/unit/app/routers/test_agentic_rag_coverage.py` - Test aggiornati
 
 **Frontend:**
+
 - ✅ `apps/mouth/src/lib/api/chat/chat.api.ts` - Funzione rimossa, chiamate rimosse
 
 **Documentazione:**
+
 - ✅ `CLEAN_IMAGE_DUPLICATION_ANALYSIS.md` - Analisi originale
 - ✅ `CLEAN_IMAGE_REFACTORING_COMPLETE.md` - Questo documento
 
@@ -173,6 +181,7 @@ Frontend (TypeScript)
 ### Post-Deploy Verification
 
 Dopo il deploy, verificare:
+
 1. Streaming funziona normalmente
 2. URLs pollinations non appaiono più
 3. Markdown images vengono rimosse

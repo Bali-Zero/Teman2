@@ -39,17 +39,21 @@ def _load_module(monkeypatch, service=None):
     monkeypatch.setitem(
         sys.modules,
         "backend.app.dependencies",
-        types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_database_pool=get_database_pool, redis_url="redis://localhost:6379"
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.app.routers.auth",
-        types.SimpleNamespace(get_current_user=get_current_user, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_current_user=get_current_user, redis_url="redis://localhost:6379"
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.services.memory.collective_memory_service",
-        types.SimpleNamespace(CollectiveMemoryService=service, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(CollectiveMemoryService=service, redis_url="redis://localhost:6379"),
     )
 
     app_pkg = types.ModuleType("app")

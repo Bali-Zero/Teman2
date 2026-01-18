@@ -12,9 +12,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.utils.tier_classifier import TierClassifier
-
 from backend.app.models import TierLevel
+from backend.utils.tier_classifier import TierClassifier
 
 
 @pytest.fixture

@@ -5,8 +5,9 @@ Tests per:
 - FASE 2.3: Markdown fallback strategy (MarkdownV2 → HTML → Plain)
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestTelegramMarkdownFallback:
@@ -49,9 +50,7 @@ class TestTelegramMarkdownFallback:
         mock_bot = AsyncMock()
         # First call (MarkdownV2) fails
         # Second call (HTML) succeeds
-        mock_bot.send_message = AsyncMock(
-            side_effect=[Exception("MarkdownV2 error"), None]
-        )
+        mock_bot.send_message = AsyncMock(side_effect=[Exception("MarkdownV2 error"), None])
 
         with patch("backend.app.routers.telegram.telegram_bot", mock_bot):
             result = await send_telegram_message_with_fallback(
@@ -135,12 +134,10 @@ class TestTelegramMarkdownFallback:
         for markdown, expected_html in test_cases:
             # Simulate HTML conversion (from send_telegram_message_with_fallback)
             html_text = markdown
-            html_text = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', html_text)
-            html_text = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', html_text)
-            html_text = re.sub(r'_([^_]+)_', r'<i>\1</i>', html_text)
-            html_text = re.sub(
-                r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', html_text
-            )
+            html_text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", html_text)
+            html_text = re.sub(r"\*([^*]+)\*", r"<i>\1</i>", html_text)
+            html_text = re.sub(r"_([^_]+)_", r"<i>\1</i>", html_text)
+            html_text = re.sub(r"\[([^\]]+)\]\(([^\)]+)\)", r'<a href="\2">\1</a>', html_text)
 
             assert html_text == expected_html
 
@@ -153,11 +150,11 @@ class TestTelegramMarkdownFallback:
 
         # Simulate plain text stripping (from send_telegram_message_with_fallback)
         plain_text = test_text
-        plain_text = re.sub(r'^#{1,6}\s+', '', plain_text, flags=re.MULTILINE)
-        plain_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', plain_text)
-        plain_text = re.sub(r'\*([^*]+)\*', r'\1', plain_text)
-        plain_text = re.sub(r'_([^_]+)_', r'\1', plain_text)
-        plain_text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', plain_text)
+        plain_text = re.sub(r"^#{1,6}\s+", "", plain_text, flags=re.MULTILINE)
+        plain_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", plain_text)
+        plain_text = re.sub(r"\*([^*]+)\*", r"\1", plain_text)
+        plain_text = re.sub(r"_([^_]+)_", r"\1", plain_text)
+        plain_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", plain_text)
 
         assert plain_text == "Header\nbold and italic and link"
 
@@ -227,7 +224,26 @@ class TestMarkdownEscaping:
         """Should escape all Telegram MarkdownV2 special characters"""
         from backend.app.routers.telegram import _escape_markdown_v2
 
-        special_chars = ["_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"]
+        special_chars = [
+            "_",
+            "*",
+            "[",
+            "]",
+            "(",
+            ")",
+            "~",
+            "`",
+            ">",
+            "#",
+            "+",
+            "-",
+            "=",
+            "|",
+            "{",
+            "}",
+            ".",
+            "!",
+        ]
 
         for char in special_chars:
             escaped = _escape_markdown_v2(char)
@@ -291,8 +307,9 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_performance_fast_path(self):
         """Should return quickly when MarkdownV2 succeeds (no fallback needed)"""
-        from backend.app.routers.telegram import send_telegram_message_with_fallback
         import time
+
+        from backend.app.routers.telegram import send_telegram_message_with_fallback
 
         mock_bot = AsyncMock()
         mock_bot.send_message = AsyncMock()

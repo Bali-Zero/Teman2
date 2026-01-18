@@ -13,9 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path as PathLib
 
 import httpx
-from backend.core.embeddings import create_embeddings_generator
-from backend.core.qdrant_db import QdrantClient
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
@@ -23,13 +21,16 @@ from backend.app.core.constants import HttpTimeoutConstants, IntelConstants
 from backend.app.metrics import (
     intel_articles_duplicates,
     intel_articles_submitted,
-    intel_bulk_operations_total,
     intel_bulk_operation_items,
+    intel_bulk_operations_total,
     intel_items_approved,
     intel_items_rejected,
     intel_scraper_latency,
     intel_user_actions_total,
 )
+from backend.app.utils.internal_api_auth import verify_internal_api_key
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.qdrant_db import QdrantClient
 from backend.services.intel import (
     IntelAnalyticsService,
     IntelApprovalService,
@@ -73,7 +74,9 @@ class ScraperSubmission(BaseModel):
     published_at: str | None = None
     extraction_method: str | None = IntelConstants.DEFAULT_EXTRACTION_METHOD
     tier: str = IntelConstants.DEFAULT_TIER  # T1, T2, T3
-    cover_image: str | None = Field(None, description="Cover image URL/path (optional, generated later by enricher)")
+    cover_image: str | None = Field(
+        None, description="Cover image URL/path (optional, generated later by enricher)"
+    )
 
 
 class ApprovalRequest(BaseModel):
@@ -108,7 +111,10 @@ class IntelStoreRequest(BaseModel):
 
 
 @router.post("/api/intel/scraper/submit")
-async def submit_from_scraper(submission: ScraperSubmission):
+async def submit_from_scraper(
+    submission: ScraperSubmission,
+    api_key_verified=Depends(verify_internal_api_key),
+):
     """
     Receive article from bali-intel-scraper and save to staging.
 
@@ -340,7 +346,12 @@ async def bulk_reject_items(type: str, item_ids: list[str]):
 
 
 @router.post("/api/intel/staging/approve/{type}/{item_id}")
-async def approve_staging_item(type: str, item_id: str, request: ApprovalRequest | None = None):
+async def approve_staging_item(
+    type: str,
+    item_id: str,
+    request: ApprovalRequest | None = None,
+    api_key_verified=Depends(verify_internal_api_key),
+):
     """
     Initiate approval process by sending Telegram notification to team.
 
@@ -599,9 +610,7 @@ async def get_system_metrics():
                 ]
                 if recent_runs:
                     agent_status = "active"
-                    last_run = max(
-                        recent_runs, key=lambda t: t.last_run or datetime.min
-                    ).last_run
+                    last_run = max(recent_runs, key=lambda t: t.last_run or datetime.min).last_run
                     if last_run:
                         last_run = last_run.isoformat()
                 elif any(task.enabled for task in autonomous_scheduler.tasks.values()):
@@ -872,7 +881,9 @@ async def get_critical_items(
                     async with httpx.AsyncClient(
                         timeout=HttpTimeoutConstants.INTEL_SCRAPER_TIMEOUT
                     ) as http_client:
-                        response = await http_client.post(scroll_url, json=scroll_payload, headers=headers)
+                        response = await http_client.post(
+                            scroll_url, json=scroll_payload, headers=headers
+                        )
                         response.raise_for_status()
                         scroll_data = response.json().get("result", {})
                         points = scroll_data.get("points", [])
@@ -922,9 +933,7 @@ async def get_critical_items(
 
 
 @router.get("/api/intel/trends")
-async def get_trends(
-    category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS
-):
+async def get_trends(category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS):
     """Get trending topics and keywords"""
     try:
         if category:

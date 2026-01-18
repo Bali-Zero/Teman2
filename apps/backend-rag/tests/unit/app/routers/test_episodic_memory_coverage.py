@@ -61,12 +61,16 @@ def _load_module(monkeypatch, service=None):
     monkeypatch.setitem(
         sys.modules,
         "backend.app.dependencies",
-        types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_database_pool=get_database_pool, redis_url="redis://localhost:6379"
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
         "backend.app.routers.auth",
-        types.SimpleNamespace(get_current_user=get_current_user, redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_current_user=get_current_user, redis_url="redis://localhost:6379"
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
@@ -75,7 +79,7 @@ def _load_module(monkeypatch, service=None):
             EpisodicMemoryService=service,
             EventType=EventType,
             Emotion=Emotion,
-            redis_url='redis://localhost:6379'
+            redis_url="redis://localhost:6379",
         ),
     )
 

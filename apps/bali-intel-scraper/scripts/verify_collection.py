@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verifica collezione e punti salvati"""
+
 import os
 import httpx
 
@@ -16,11 +17,11 @@ with httpx.Client(timeout=30.0, headers=headers) as client:
     print(f"Collection: {COLLECTION_NAME}")
     print(f"Points: {data.get('points_count', 0)}")
     print(f"Status: {data.get('status', 'unknown')}")
-    
+
     # Scroll punti
     r = client.post(
         f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points/scroll",
-        json={"limit": 5, "with_payload": True}
+        json={"limit": 5, "with_payload": True},
     )
     points = r.json().get("result", {}).get("points", [])
     print(f"\nFound {len(points)} points:")

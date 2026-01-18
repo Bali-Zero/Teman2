@@ -11,10 +11,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 import asyncpg
-from backend.db.migration_base import BaseMigration, MigrationError
-from backend.db.migration_manager import MigrationManager
 
 from backend.app.core.config import settings
+from backend.db.migration_base import BaseMigration, MigrationError
+from backend.db.migration_manager import MigrationManager
 
 
 @pytest.fixture

@@ -21,20 +21,24 @@ Tutte e 4 le funzionalità avanzate sono state implementate con successo:
 ### 1. ✅ Filtri e Sorting
 
 **Implementato in:**
+
 - `visa-oracle/page.tsx`
 - `news-room/page.tsx`
 
 **Funzionalità:**
+
 - 🔍 **Search**: Real-time search per titolo, ID, source
 - 🏷️ **Type Filter**: All, NEW, UPDATED, Critical (News)
 - 📅 **Date Sort**: Newest First / Oldest First
 - 🔤 **Title Sort**: A-Z / Z-A
 
 **Performance:**
+
 - Usa `useMemo` per ottimizzare il filtering
 - Re-render solo quando necessario
 
 **Backend Tracking:**
+
 - `intel_filter_usage_total` - Tracks filter usage
 - `intel_sort_usage_total` - Tracks sort usage
 - `intel_search_queries_total` - Tracks search queries
@@ -46,17 +50,20 @@ Tutte e 4 le funzionalità avanzate sono state implementate con successo:
 **Nuova Pagina:** `/intelligence/analytics`
 
 **Features:**
+
 - 📊 **Summary Cards**: Total Processed, Approval Rate, Rejection Rate, Published
 - 📈 **Daily Trends Chart**: Visualizzazione grafica attività giornaliera
 - 📋 **Type Breakdown**: Statistiche separate per Visa e News
 - ⏱️ **Period Selector**: 7, 30, 90, 180 days
 
 **Backend:**
+
 - `GET /api/intel/analytics?days=30` endpoint
 - Calcola dati storici da directory archived
 - Tracking: `intel_analytics_queries_total`
 
 **Visualizzazione:**
+
 - Bar chart colorato per trends
 - Cards con metriche chiave
 - Breakdown tables per tipo
@@ -66,23 +73,27 @@ Tutte e 4 le funzionalità avanzate sono state implementate con successo:
 ### 3. ✅ Bulk Operations
 
 **Visa Oracle:**
+
 - ✅ Selezione multipla con checkbox
 - ✅ Bulk Approve (con conferma)
 - ✅ Bulk Reject (con conferma)
 - ✅ Select All / Deselect All
 
 **News Room:**
+
 - ✅ Selezione multipla con checkbox
 - ✅ Bulk Publish (con conferma)
 - ✅ Select All / Deselect All
 
 **Features:**
+
 - Visual feedback per items selezionati
 - Progress tracking per ogni item
 - Success/failure reporting
 - Error handling robusto
 
 **Backend:**
+
 - `POST /api/intel/staging/bulk-approve/{type}`
 - `POST /api/intel/staging/bulk-reject/{type}`
 - Processing sequenziale con error handling
@@ -112,6 +123,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 ```
 
 **Tracking Points:**
+
 - ✅ Filter usage su `/api/intel/staging/pending`
 - ✅ Sort usage su `/api/intel/staging/pending`
 - ✅ Search queries quando search param presente
@@ -120,6 +132,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 - ✅ Analytics queries su `/api/intel/analytics`
 
 **Grafana Dashboard:**
+
 - ✅ Creato `intelligence-center-dashboard.json`
 - ✅ 14 panels con visualizzazioni complete
 - ✅ Auto-provisioning via Grafana config
@@ -129,6 +142,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 ## 📁 Files Modified/Created
 
 ### Frontend
+
 1. ✅ `visa-oracle/page.tsx` - Filtri, sorting, bulk ops
 2. ✅ `news-room/page.tsx` - Filtri, sorting, bulk ops
 3. ✅ `analytics/page.tsx` - **NEW** Analytics Dashboard
@@ -136,19 +150,23 @@ intel_user_actions_total[intel_type, action]        # Counter
 5. ✅ `intelligence.api.ts` - Aggiunto `getAnalytics()`
 
 ### Backend
+
 1. ✅ `intel.py` - Analytics endpoint, bulk endpoints, metric tracking
 2. ✅ `metrics.py` - Nuove metriche Prometheus
 
 ### Tests
+
 1. ✅ `visa-oracle/page.test.tsx` - Test aggiornati (25+ tests)
 2. ✅ `news-room/page.test.tsx` - Test aggiornati (20+ tests)
 3. ✅ `analytics/page.test.tsx` - **NEW** (14 tests)
 4. ✅ `intelligence.api.test.ts` - Test aggiornati (24 tests)
 
 ### Grafana
+
 1. ✅ `intelligence-center-dashboard.json` - **NEW** Dashboard completo
 
 ### Documentation
+
 1. ✅ `INTELLIGENCE_REFACTOR_SUMMARY.md` - Refactoring iniziale
 2. ✅ `ADVANCED_FEATURES_SUMMARY.md` - Features avanzate
 3. ✅ `TESTING_SUMMARY.md` - Testing completo
@@ -159,11 +177,13 @@ intel_user_actions_total[intel_type, action]        # Counter
 ## 🧪 Test Coverage
 
 ### Test Results
+
 - **Total Test Files:** 6
 - **Total Tests:** 117+ tests
 - **Coverage:** Comprehensive
 
 ### Test Breakdown
+
 - ✅ API Client: 24 tests
 - ✅ Layout: 11 tests
 - ✅ Visa Oracle: 25+ tests
@@ -172,6 +192,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 - ✅ Analytics: 14 tests
 
 ### Coverage Areas
+
 - ✅ Component lifecycle
 - ✅ User interactions
 - ✅ API calls
@@ -206,6 +227,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 14. **Bulk Operations Success Rate** - Percentage stat
 
 **Features:**
+
 - Auto-refresh ogni 30 secondi
 - Time range: Last 6 hours (configurabile)
 - Color-coded thresholds
@@ -213,6 +235,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 - Export capabilities
 
 **Access:**
+
 - URL: `http://localhost:3001` (Grafana)
 - Auto-loaded via provisioning
 - Folder: "Nuzantara"
@@ -222,6 +245,7 @@ intel_user_actions_total[intel_type, action]        # Counter
 ## 🚀 Usage Examples
 
 ### Filters & Sorting
+
 ```typescript
 // Automatic filtering based on state
 const filteredAndSortedItems = useMemo(() => {
@@ -230,6 +254,7 @@ const filteredAndSortedItems = useMemo(() => {
 ```
 
 ### Bulk Operations
+
 ```typescript
 // Select items
 setSelectedItems(new Set(['item-1', 'item-2']));
@@ -239,6 +264,7 @@ await handleBulkApprove(); // Processes all selected items
 ```
 
 ### Analytics
+
 ```typescript
 // Load analytics for last 30 days
 const analytics = await intelligenceApi.getAnalytics(30);
@@ -249,6 +275,7 @@ console.log(analytics.daily_trends);
 ```
 
 ### Prometheus Metrics
+
 ```python
 # Track filter usage
 intel_filter_usage_total.labels(intel_type="visa", filter_type="NEW").inc()
@@ -265,6 +292,7 @@ intel_bulk_operation_items.labels(intel_type="visa", operation="approve").observ
 ### Prometheus Metrics Exposed
 
 **Counters:**
+
 - `zantara_intel_bulk_operations_total`
 - `zantara_intel_filter_usage_total`
 - `zantara_intel_sort_usage_total`
@@ -273,13 +301,16 @@ intel_bulk_operation_items.labels(intel_type="visa", operation="approve").observ
 - `zantara_intel_user_actions_total`
 
 **Histograms:**
+
 - `zantara_intel_bulk_operation_items`
 
 **Gauges:**
+
 - `zantara_intel_staging_queue_size` (existing)
 - `zantara_intel_approval_rate` (existing)
 
 **Access:**
+
 - Prometheus: `http://localhost:9090/metrics`
 - Grafana: `http://localhost:3001`
 
@@ -308,12 +339,14 @@ intel_bulk_operation_items.labels(intel_type="visa", operation="approve").observ
 4. ✅ **Prometheus Metrics** - Tracking completo + Grafana dashboard
 
 **Risultati:**
+
 - 🎯 **117+ tests** passanti
 - 📊 **14 Grafana panels** per monitoring
 - 📝 **4 documenti** di documentazione
 - 🚀 **Production-ready** code
 
 **Il Intelligence Center è ora un sistema enterprise-grade completo con:**
+
 - Gestione efficiente del contenuto
 - Analytics avanzati
 - Monitoring completo

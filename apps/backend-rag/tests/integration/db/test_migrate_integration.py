@@ -252,7 +252,9 @@ class TestMigrateIntegration:
         from backend.db.migrate import MigrationError, main
 
         with patch("sys.argv", ["migrate", "status"]):
-            with patch("backend.db.migrate.MigrationManager", side_effect=MigrationError("Init failed")):
+            with patch(
+                "backend.db.migrate.MigrationManager", side_effect=MigrationError("Init failed")
+            ):
                 try:
                     main()
                 except SystemExit as e:
@@ -279,7 +281,9 @@ class TestMigrateIntegration:
 
         with patch("sys.argv", ["migrate", "status"]):
             with patch("backend.db.migrate.MigrationManager") as mock_manager_class:
-                with patch("backend.db.migrate.asyncio.run", side_effect=Exception("General error")):
+                with patch(
+                    "backend.db.migrate.asyncio.run", side_effect=Exception("General error")
+                ):
                     mock_manager = MagicMock()
                     mock_manager_class.return_value = mock_manager
 

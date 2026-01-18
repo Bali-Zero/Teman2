@@ -75,11 +75,13 @@ export class DriveApi {
    * List files in a folder
    * Uses new Team Drive endpoint
    */
-  async listFiles(params: {
-    folder_id?: string;
-    page_token?: string;
-    page_size?: number;
-  } = {}): Promise<FileListResponse> {
+  async listFiles(
+    params: {
+      folder_id?: string;
+      page_token?: string;
+      page_size?: number;
+    } = {}
+  ): Promise<FileListResponse> {
     const queryParams = new URLSearchParams();
     if (params.folder_id) queryParams.append('folder_id', params.folder_id);
     if (params.page_token) queryParams.append('page_token', params.page_token);
@@ -227,7 +229,7 @@ export class DriveApi {
           if (typeof document !== 'undefined') {
             const csrfCookie = document.cookie
               .split('; ')
-              .find(row => row.startsWith('nz_csrf_token='));
+              .find((row) => row.startsWith('nz_csrf_token='));
             if (csrfCookie) {
               headers['X-CSRF-Token'] = csrfCookie.split('=')[1];
             }
@@ -338,7 +340,9 @@ export class DriveApi {
         xhr.withCredentials = true;
 
         // CRITICAL: Add CSRF token for cookie-based auth (required by backend middleware)
-        const csrfCookie = document.cookie.split('; ').find(row => row.startsWith('nz_csrf_token='));
+        const csrfCookie = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('nz_csrf_token='));
         if (csrfCookie) {
           const csrfToken = csrfCookie.split('=')[1];
           xhr.setRequestHeader('X-CSRF-Token', csrfToken);

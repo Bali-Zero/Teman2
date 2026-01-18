@@ -32,7 +32,9 @@ class TestResponseHandler:
 
     def test_classify_query(self, response_handler):
         """Test query classification"""
-        with patch("backend.services.routing.response_handler.classify_query_for_rag") as mock_classify:
+        with patch(
+            "backend.services.routing.response_handler.classify_query_for_rag"
+        ) as mock_classify:
             mock_classify.return_value = "business"
 
             result = response_handler.classify_query("How to open a company?")
@@ -45,7 +47,9 @@ class TestResponseHandler:
 
     def test_sanitize_response_success(self, response_handler):
         """Test successful response sanitization"""
-        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch(
+            "backend.services.routing.response_handler.process_zantara_response"
+        ) as mock_process:
             mock_process.return_value = "Sanitized response"
 
             result = response_handler.sanitize_response("Raw response", "business")
@@ -53,7 +57,9 @@ class TestResponseHandler:
 
     def test_sanitize_response_error(self, response_handler):
         """Test sanitization error handling"""
-        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch(
+            "backend.services.routing.response_handler.process_zantara_response"
+        ) as mock_process:
             mock_process.side_effect = Exception("Error")
 
             result = response_handler.sanitize_response("Raw response", "business")
@@ -61,7 +67,9 @@ class TestResponseHandler:
 
     def test_sanitize_response_with_santai(self, response_handler):
         """Test sanitization with SANTAI mode"""
-        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch(
+            "backend.services.routing.response_handler.process_zantara_response"
+        ) as mock_process:
             mock_process.return_value = "Sanitized"
 
             result = response_handler.sanitize_response("Raw response", "casual", apply_santai=True)
@@ -69,7 +77,9 @@ class TestResponseHandler:
 
     def test_sanitize_response_without_contact(self, response_handler):
         """Test sanitization without contact info"""
-        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch(
+            "backend.services.routing.response_handler.process_zantara_response"
+        ) as mock_process:
             mock_process.return_value = "Sanitized"
 
             result = response_handler.sanitize_response(

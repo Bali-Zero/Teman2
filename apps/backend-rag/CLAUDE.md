@@ -7,6 +7,7 @@
 **Obiettivo:** Analizzare il Knowledge Graph creato da 37M chiamate Gemini API (3.9M Rp / €230 EUR) per capire se l'investimento è stato utile.
 
 **Risultati Chiave:**
+
 - **Nodi**: 34,606 entità estratte
 - **Relazioni**: 30,628 edges
 - **ROI**: POSITIVO (~13,000 relazioni utili per €230)
@@ -40,6 +41,7 @@
 ### ⚠️ CRITICAL DISCOVERY: HAS_FEE ≠ Prezzi Bali Zero
 
 **Problema Identificato dall'utente:**
+
 > "HAS_FEE (~1,500): Costi ufficiali - quali? attenzione gli unici costi che possiamo dire al cliente finale sono i nostri prezzi"
 
 **Analisi Completata:**
@@ -61,11 +63,13 @@
 ❌ **Prezzi Bali Zero** - CONFERMATO al 100%
 
 I prezzi Bali Zero sono **SOLO** in:
+
 - File: `backend/data/bali_zero_official_prices_2025.json`
 - Tool: `PricingTool` (Tool #2 nell'orchestrator)
 - Caricati da `PricingService._load_prices()`
 
 **Verifica Codice:**
+
 ```python
 # pricing_service.py:26-28
 json_path = Path(__file__).parent.parent.parent / "data" / "bali_zero_official_prices_2025.json"
@@ -97,6 +101,7 @@ RULE 3: ONLY STATE FACTS YOU CAN VERIFY
 ```
 
 **PricingTool Description** (`tools.py:309-313`):
+
 ```python
 "🚨 MANDATORY for ALL Bali Zero service price questions. "
 "Get OFFICIAL pricing from Bali Zero database (NO AI generation, NO memory). "
@@ -126,9 +131,9 @@ RULE 3: ONLY STATE FACTS YOU CAN VERIFY
 
 ### Files Modificati
 
-| File | Tipo | Descrizione |
-|------|------|-------------|
-| `docs/KG_VALUE_ASSESSMENT_2026_01_18.md` | NEW | Analisi completa valore KG + pricing policy |
+| File                                     | Tipo | Descrizione                                 |
+| ---------------------------------------- | ---- | ------------------------------------------- |
+| `docs/KG_VALUE_ASSESSMENT_2026_01_18.md` | NEW  | Analisi completa valore KG + pricing policy |
 
 **Commit:** `bd60e049` - "docs: clarify HAS_FEE relationships are NOT Bali Zero prices"
 
@@ -139,12 +144,14 @@ RULE 3: ONLY STATE FACTS YOU CAN VERIFY
 **Obiettivo:** Verificare al 100% che LLM usa SOLO prezzi Bali Zero.
 
 **Script Creati:**
+
 1. `/tmp/test_pricing_policy.py` - Test HTTP con autenticazione
 2. `/tmp/test_pricing_real.py` - Test diretto orchestrator
 3. `/tmp/verify_pricing_config.py` - Verifica statica configurazione
 4. `/tmp/MANUAL_PRICING_TESTS.md` - Guida test manuali
 
 **Problema Incontrato:**
+
 - Test HTTP richiedono JWT token (endpoint `/api/agentic/query` protetto)
 - Test diretti falliscono per import errors (dipendenze mancanti in ambiente locale)
 - Background processes killati (exit code 137)
@@ -160,17 +167,20 @@ RULE 3: ONLY STATE FACTS YOU CAN VERIFY
 **Domanda:** L'LLM rispetta davvero le regole nel 100% dei casi?
 
 **Cosa sappiamo:**
+
 - ✅ Prompt ha regole esplicite (RULE 1, 2, 3)
 - ✅ PricingTool ha description "MANDATORY"
 - ✅ HAS_FEE non contiene prezzi Bali Zero (verificato codice sorgente)
 
 **Cosa NON sappiamo (manca test reale):**
+
 - ❓ L'LLM chiama sempre `get_pricing` per domande sui prezzi?
 - ❓ L'LLM dice sempre "da verificare" quando prezzo non trovato?
 - ❓ L'LLM inventa mai range tipo "5-10 milioni"?
 - ❓ L'LLM usa mai HAS_FEE come prezzi cliente?
 
 **Come Verificare:**
+
 - Opzione A: Test manuale via browser su https://www.balizero.com/chat
 - Opzione B: Script curl con JWT token (richiede login prima)
 - Opzione C: Analisi conversation logs produzione (se disponibili)
@@ -178,6 +188,7 @@ RULE 3: ONLY STATE FACTS YOU CAN VERIFY
 #### 2. Quale Provider LLM È Attivo?
 
 **Discovery:** Fly.io secrets mostrano **3 provider configurati**:
+
 ```
 OPENAI_API_KEY ✅
 ANTHROPIC_API_KEY ✅
@@ -187,16 +198,19 @@ GOOGLE_API_KEY (Gemini) ✅
 **Domanda:** Quale viene usato di default per Zantara chat?
 
 **Non abbiamo verificato:**
+
 - File `llm_gateway.py` (tentativo di lettura fallito - file vuoto?)
 - Configurazione default provider in `config.py`
 - Logica di fallback tra provider
 
 **Possibile che:**
+
 - Usa OpenAI di default (più affidabile)
 - Gemini solo per KG extraction (batch job)
 - Fallback ad Anthropic se OpenAI down
 
 **Come Verificare:**
+
 ```bash
 grep -r "default.*provider\|DEFAULT_MODEL\|LLM_PROVIDER" apps/backend-rag/backend/
 ```
@@ -204,17 +218,20 @@ grep -r "default.*provider\|DEFAULT_MODEL\|LLM_PROVIDER" apps/backend-rag/backen
 #### 3. Confidence Score nel KG
 
 **Problema Noto (da documentazione):**
+
 - Tutti i nodi hanno `confidence = 0.9` HARDCODED
 - Non riflette vera qualità (source singola vs multipla)
 
 **Domanda:** Questo impatta il ranking dei risultati KG tool?
 
 **Non sappiamo:**
+
 - Il KnowledgeGraphTool usa confidence per ranking?
 - Entità single-source (77%) vengono filtrate?
 - Rischio hallucination per single-source entities?
 
 **File da analizzare:**
+
 ```
 apps/backend-rag/backend/services/tools/knowledge_graph_tool.py
 apps/backend-rag/backend/services/knowledge_graph/kg_builder.py
@@ -234,10 +251,12 @@ apps/backend-rag/backend/services/knowledge_graph/kg_builder.py
 **Domanda:** Queste percentuali sono accurate?
 
 **Non abbiamo verificato:**
+
 - Query SQL diretta al database per contare per collection
 - Overlap tra collections (stessa entity in più collections?)
 
 **Come Verificare:**
+
 ```sql
 SELECT source_collection, COUNT(*)
 FROM kg_nodes
@@ -247,12 +266,14 @@ GROUP BY source_collection;
 #### 5. Orphan Nodes
 
 **Dalla documentazione:**
+
 - ~5,000 nodi (14.5%) senza relazioni
 - "Provide no graph traversal value"
 
 **Domanda:** Questi dovrebbero essere puliti?
 
 **Non sappiamo:**
+
 - Impattano performance query KG?
 - Causano falsi positivi in ricerche?
 - Vale la pena fare cleanup?
@@ -262,6 +283,7 @@ GROUP BY source_collection;
 ### Raccomandazioni Next Steps
 
 **Priorità Alta:**
+
 1. ✅ **Test Reali Pricing Policy** (manuale o automatico)
    - Eseguire i 7 test case in `/tmp/MANUAL_PRICING_TESTS.md`
    - Documentare risultati in KG_VALUE_ASSESSMENT
@@ -270,36 +292,39 @@ GROUP BY source_collection;
    - Analizzare `llm_gateway.py` (file sembra corrotto?)
    - Verificare quale API viene usata per chat Zantara
 
-**Priorità Media:**
-3. 📊 **Analisi KG Coverage Reale**
-   - Query SQL per distribution per collection
-   - Verificare accuracy delle stime nella documentazione
+**Priorità Media:** 3. 📊 **Analisi KG Coverage Reale**
+
+- Query SQL per distribution per collection
+- Verificare accuracy delle stime nella documentazione
 
 4. 🧹 **Cleanup Orphan Nodes** (se impattano performance)
    - Script per identificare orphan nodes
    - Analisi se causano falsi positivi
 
-**Priorità Bassa:**
-5. ⚙️ **Implementare Dynamic Confidence Scoring**
-   - Già documentato in KG_VALUE_ASSESSMENT come improvement
-   - Basare confidence su numero sources (multi-source boost)
+**Priorità Bassa:** 5. ⚙️ **Implementare Dynamic Confidence Scoring**
+
+- Già documentato in KG_VALUE_ASSESSMENT come improvement
+- Basare confidence su numero sources (multi-source boost)
 
 ---
 
 ### LLM Provider Status
 
 **Verificato via Fly.io secrets:**
+
 ```bash
 fly secrets list -a nuzantara-rag
 ```
 
 **Secrets Attivi:**
+
 - `OPENAI_API_KEY` ✅
 - `ANTHROPIC_API_KEY` ✅
 - `GOOGLE_API_KEY` / `GOOGLEAISTUDIO_API_KEY` ✅
 - `GOOGLE_CREDENTIALS_JSON` ✅ (Vertex AI)
 
 **Domanda Utente:**
+
 > "ma se abbiamo fermato tutte le api key di google come sta rispondendo LLM?"
 
 **Risposta:**
@@ -312,11 +337,13 @@ Le API key Google NON sono state fermate - sono ancora configurate in Fly.io. In
 ### Comandi Utili
 
 **Verificare provider LLM:**
+
 ```bash
 grep -r "DEFAULT_MODEL\|LLM_PROVIDER" apps/backend-rag/backend/app/core/
 ```
 
 **Query KG stats:**
+
 ```sql
 -- Nodes per collection
 SELECT source_collection, COUNT(*) as nodes
@@ -335,6 +362,7 @@ WHERE NOT EXISTS (
 ```
 
 **Test pricing via browser:**
+
 1. Open https://www.balizero.com/chat
 2. Login as zero@balizero.com
 3. Ask: "Quanto costa aprire una PT PMA?"

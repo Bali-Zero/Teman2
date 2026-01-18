@@ -23,7 +23,6 @@ from backend.services.crm.ai_crm_extractor import (
     get_extractor,
 )
 
-
 # ============================================================================
 # Tests for AsyncpgJSONEncoder (UUID serialization fix)
 # ============================================================================
@@ -82,10 +81,7 @@ class TestAsyncpgJSONEncoder:
         decoded = json.loads(result)
 
         assert decoded["client"]["id"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        assert (
-            decoded["client"]["practices"][0]["id"]
-            == "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-        )
+        assert decoded["client"]["practices"][0]["id"] == "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 
     def test_encode_mixed_types(self):
         """Test encoding of mixed types (UUID, datetime, date, strings, numbers)"""
@@ -153,7 +149,9 @@ def mock_ai_client():
 @pytest.fixture
 def extractor(mock_ai_client):
     """Create extractor with mocked AI client"""
-    with patch("backend.services.crm.ai_crm_extractor.ZantaraAIClient", return_value=mock_ai_client):
+    with patch(
+        "backend.services.crm.ai_crm_extractor.ZantaraAIClient", return_value=mock_ai_client
+    ):
         return AICRMExtractor(ai_client=mock_ai_client)
 
 
@@ -257,9 +255,7 @@ class TestAICRMExtractor:
         assert result["client"]["full_name"] == "John Doe"
 
     @pytest.mark.asyncio
-    async def test_extract_from_conversation_handles_markdown_json(
-        self, extractor, mock_ai_client
-    ):
+    async def test_extract_from_conversation_handles_markdown_json(self, extractor, mock_ai_client):
         """Test extraction handles JSON wrapped in markdown code blocks"""
         mock_ai_client.conversational.return_value = {
             "text": '```json\n{"client": {"confidence": 0.5}, "practice_intent": {"detected": false}, "sentiment": "neutral", "urgency": "normal", "summary": "", "action_items": [], "topics_discussed": [], "extracted_entities": {"dates": [], "amounts": [], "locations": [], "documents_mentioned": []}}\n```'
@@ -455,9 +451,7 @@ class TestGetExtractor:
     def test_get_extractor_returns_instance(self):
         """Test get_extractor returns an extractor instance"""
         with patch("backend.services.crm.ai_crm_extractor._extractor_instance", None):
-            with patch(
-                "backend.services.crm.ai_crm_extractor.ZantaraAIClient"
-            ) as mock_client:
+            with patch("backend.services.crm.ai_crm_extractor.ZantaraAIClient") as mock_client:
                 mock_client.return_value = MagicMock()
 
                 result = get_extractor()
@@ -467,9 +461,7 @@ class TestGetExtractor:
     def test_get_extractor_singleton_behavior(self):
         """Test get_extractor returns same instance"""
         with patch("backend.services.crm.ai_crm_extractor._extractor_instance", None):
-            with patch(
-                "backend.services.crm.ai_crm_extractor.ZantaraAIClient"
-            ) as mock_client:
+            with patch("backend.services.crm.ai_crm_extractor.ZantaraAIClient") as mock_client:
                 mock_client.return_value = MagicMock()
 
                 result1 = get_extractor()

@@ -12,6 +12,7 @@ cd ~/Desktop/nuzantara/tools/dropbox-migration
 ```
 
 Se fallisce, segui le istruzioni per ottenere:
+
 - Dropbox API token
 - Google Drive credentials
 - Database URL (opzionale per fase 1)
@@ -27,6 +28,7 @@ python3 dropbox_to_gdrive_migration.py --dry-run
 Questo mostra cosa verrà fatto **senza** caricare file realmente.
 
 Output esempio:
+
 ```
 [DRY RUN] Would migrate:
   ✓ ADITYA/ → 45 files (2.3 GB)
@@ -54,6 +56,7 @@ python3 dropbox_to_gdrive_migration.py --no-pause
 ```
 
 **Output in real-time:**
+
 ```
 [1/50] Processing: ADITYA
   ✓ Created folder structure in Google Drive
@@ -79,6 +82,7 @@ Press Enter to continue...
 Apri: https://drive.google.com/
 
 Dovresti vedere:
+
 ```
 📁 Bali Zero Clients/
    📁 ADITYA/
@@ -95,7 +99,7 @@ Dovresti vedere:
 ```bash
 cd ~/Desktop/nuzantara
 psql $DATABASE_URL -c "
-SELECT 
+SELECT
     c.full_name,
     COUNT(d.id) as docs
 FROM clients c
@@ -108,8 +112,9 @@ LIMIT 10;
 ```
 
 Output esempio:
+
 ```
- full_name  | docs 
+ full_name  | docs
 ------------+------
  ADITYA     |   25
  DAVID      |   32
@@ -132,6 +137,7 @@ tail -f continuous_sync.log
 ```
 
 **Da ora in poi**: Ogni file che aggiungi/modifichi in Dropbox viene automaticamente:
+
 1. Rilevato (ogni 60s)
 2. Categorizzato
 3. Uploadato su Google Drive
@@ -142,6 +148,7 @@ tail -f continuous_sync.log
 ## 🆘 Se Qualcosa Va Storto
 
 ### "Dropbox API token invalid"
+
 ```bash
 # Rigenera token: https://www.dropbox.com/developers/apps
 # Aggiorna .env:
@@ -150,6 +157,7 @@ nano .env
 ```
 
 ### "Google Drive quota exceeded"
+
 ```bash
 # Controlla spazio disponibile
 # Hai 30TB, non dovrebbe succedere
@@ -157,6 +165,7 @@ nano .env
 ```
 
 ### "Client not found in CRM"
+
 ```bash
 # Opzione 1: Crea il cliente manualmente nel CRM prima
 
@@ -165,6 +174,7 @@ AUTO_CREATE_CLIENTS=true
 ```
 
 ### Script si blocca / errori
+
 ```bash
 # Controlla log
 cat migration_*.log | grep ERROR

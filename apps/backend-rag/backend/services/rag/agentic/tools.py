@@ -192,7 +192,9 @@ class VectorSearchTool(BaseTool):
 
                 # Include document ID in formatted text if available
                 id_prefix = f"ID: {doc_id}\n" if doc_id else ""
-                formatted_texts.append(f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}")
+                formatted_texts.append(
+                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}"
+                )
 
                 sources_metadata.append(
                     {
@@ -236,8 +238,8 @@ class CalculatorTool(BaseTool):
 
     async def execute(self, expression: str, **kwargs) -> str:
         try:
-            from backend.app.utils.safe_math import safe_evaluate, SafeMathError
-            
+            from backend.app.utils.safe_math import SafeMathError, safe_evaluate
+
             try:
                 result = safe_evaluate(expression)
             except SafeMathError as e:
@@ -804,6 +806,7 @@ class WebSearchTool(BaseTool):
                     }
                 )
 
+
 class TimeSheetTool(BaseTool):
     """Tool for team timesheet management (clock-in, clock-out, status)"""
 
@@ -839,21 +842,22 @@ class TimeSheetTool(BaseTool):
             },
             "required": ["action", "email"],
         }
-    
+
     def _get_user_id_by_email(self, email: str) -> str | None:
         try:
-           from pathlib import Path
-           # Try relative to this file
-           path = Path(__file__).parent.parent.parent.parent / "data" / "team_members.json"
-           if not path.exists():
-               path = Path("/app/backend/data/team_members.json")
-           
-           if path.exists():
-               with open(path) as f:
-                   data = json.load(f)
-                   for m in data:
-                       if m.get("email", "").lower() == email.lower():
-                           return m.get("id")
+            from pathlib import Path
+
+            # Try relative to this file
+            path = Path(__file__).parent.parent.parent.parent / "data" / "team_members.json"
+            if not path.exists():
+                path = Path("/app/backend/data/team_members.json")
+
+            if path.exists():
+                with open(path) as f:
+                    data = json.load(f)
+                    for m in data:
+                        if m.get("email", "").lower() == email.lower():
+                            return m.get("id")
         except Exception as e:
             logger.debug(f"[TimeSheetTool] Failed to lookup user by email {email}: {e}")
         return None
@@ -861,7 +865,7 @@ class TimeSheetTool(BaseTool):
     async def execute(self, action: str, email: str, **kwargs) -> str:
         try:
             from backend.services.analytics.team_timesheet_service import get_timesheet_service
-            
+
             service = get_timesheet_service()
             if not service:
                 return json.dumps({"error": "Timesheet service unavailable"})
@@ -880,7 +884,7 @@ class TimeSheetTool(BaseTool):
                 res = await service.get_my_status(user_id)
                 return json.dumps(res)
             else:
-                 return json.dumps({"error": f"Unknown action {action}"})
+                return json.dumps({"error": f"Unknown action {action}"})
 
         except Exception as e:
             return json.dumps({"error": str(e)})

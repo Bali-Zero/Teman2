@@ -34,14 +34,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -53,11 +47,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -117,9 +107,7 @@
           "flatPath": "v1alpha2/operations/{operationsId}:cancel",
           "httpMethod": "POST",
           "id": "genomics.operations.cancel",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "The name of the operation resource to be cancelled.",
@@ -146,9 +134,7 @@
           "flatPath": "v1alpha2/operations/{operationsId}",
           "httpMethod": "GET",
           "id": "genomics.operations.get",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "The name of the operation resource.",
@@ -172,9 +158,7 @@
           "flatPath": "v1alpha2/operations",
           "httpMethod": "GET",
           "id": "genomics.operations.list",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "filter": {
               "description": "A string for filtering Operations. In v2alpha1, the following filter fields are supported: * createTime: The time this job was created * events: The set of event (names) that have occurred while running the pipeline. The : operator can be used to determine if a particular event has occurred. * error: If the pipeline is running, this value is NULL. Once the pipeline finishes, the value is the standard Google error code. * labels.key or labels.\"key with space\" where key is a label key. * done: If the pipeline is running, this value is false. Once the pipeline finishes, the value is true. In v1 and v1alpha2, the following filter fields are supported: * projectId: Required. Corresponds to OperationMetadata.projectId. * createTime: The time this job was created, in seconds from the [epoch](http://en.wikipedia.org/wiki/Unix_time). Can use `>=` and/or `<=` operators. * status: Can be `RUNNING`, `SUCCESS`, `FAILURE`, or `CANCELED`. Only one status may be specified. * labels.key where key is a label key. Examples: * `projectId = my-project AND createTime >= 1432140000` * `projectId = my-project AND createTime >= 1432140000 AND createTime <= 1432150000 AND status = RUNNING` * `projectId = my-project AND labels.color = *` * `projectId = my-project AND labels.color = red`",
@@ -237,9 +221,7 @@
           "flatPath": "v1alpha2/pipelines/{pipelineId}",
           "httpMethod": "DELETE",
           "id": "genomics.pipelines.delete",
-          "parameterOrder": [
-            "pipelineId"
-          ],
+          "parameterOrder": ["pipelineId"],
           "parameters": {
             "pipelineId": {
               "description": "Caller must have WRITE access to the project in which this pipeline is defined.",
@@ -262,9 +244,7 @@
           "flatPath": "v1alpha2/pipelines/{pipelineId}",
           "httpMethod": "GET",
           "id": "genomics.pipelines.get",
-          "parameterOrder": [
-            "pipelineId"
-          ],
+          "parameterOrder": ["pipelineId"],
           "parameters": {
             "pipelineId": {
               "description": "Caller must have READ access to the project in which this pipeline is defined.",
@@ -573,12 +553,7 @@
         },
         "type": {
           "description": "Required. The type of the disk to create.",
-          "enum": [
-            "TYPE_UNSPECIFIED",
-            "PERSISTENT_HDD",
-            "PERSISTENT_SSD",
-            "LOCAL_SSD"
-          ],
+          "enum": ["TYPE_UNSPECIFIED", "PERSISTENT_HDD", "PERSISTENT_SSD", "LOCAL_SSD"],
           "enumDescriptions": [
             "Default disk type. Use one of the other options below.",
             "Specifies a Google Compute Engine persistent hard disk. See https://cloud.google.com/compute/docs/disks/#pdspecs for details.",

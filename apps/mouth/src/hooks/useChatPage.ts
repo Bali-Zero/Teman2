@@ -1,6 +1,6 @@
 /**
  * Composite hook for Chat Page orchestration
- * 
+ *
  * Combines all chat-related hooks and provides a unified interface
  * for the ChatPage component.
  */
@@ -66,12 +66,12 @@ export interface UseChatPageReturn {
   currentStatus: string;
   streamingSteps: Array<AgentStep>;
   imageModalOpen: boolean;
-  
+
   // Refs
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   isMountedRef: React.MutableRefObject<boolean>;
-  
+
   // Hooks
   chatInput: ReturnType<typeof useChatInput>;
   chatTTS: ReturnType<typeof useChatTTS>;
@@ -79,7 +79,7 @@ export interface UseChatPageReturn {
   conversations: ReturnType<typeof useConversations>;
   teamStatus: ReturnType<typeof useTeamStatus>;
   audioRecorder: ReturnType<typeof useAudioRecorder>;
-  
+
   // Handlers
   handleSend: () => Promise<void>;
   handleNewChat: () => void;
@@ -153,14 +153,14 @@ export function useChatPage(): UseChatPageReturn {
     sessionId,
     attachedImages: chatInput.attachedImages,
     conversationHistory: displayMessages
-      .filter(m => !m.isStreaming)
-      .map(m => ({ role: m.role, content: m.content })),
+      .filter((m) => !m.isStreaming)
+      .map((m) => ({ role: m.role, content: m.content })),
     isMountedRef,
     isAbortedRef,
     onToast: showToast,
     onChunk: (chunk: string) => {
-      setMessages(prev =>
-        prev.map(m =>
+      setMessages((prev) =>
+        prev.map((m) =>
           m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
             ? { ...m, content: chunk, isPending: false }
             : m
@@ -168,12 +168,14 @@ export function useChatPage(): UseChatPageReturn {
       );
     },
     onComplete: (fullResponse, sources, metadata) => {
-      const typedMeta = metadata as {
-        generated_image?: string;
-        followup_questions?: string[];
-        execution_time?: number;
-        route_used?: string;
-      } | undefined;
+      const typedMeta = metadata as
+        | {
+            generated_image?: string;
+            followup_questions?: string[];
+            execution_time?: number;
+            route_used?: string;
+          }
+        | undefined;
 
       logger.info('Message received successfully', {
         component: 'useChatPage',
@@ -187,10 +189,14 @@ export function useChatPage(): UseChatPageReturn {
 
       const { trackEvent } = require('@/lib/analytics');
       const userProfile = api.getUserProfile();
-      trackEvent('chat_message_received', { sessionId, responseLength: fullResponse.length }, userProfile?.email);
+      trackEvent(
+        'chat_message_received',
+        { sessionId, responseLength: fullResponse.length },
+        userProfile?.email
+      );
 
-      setMessages(prev =>
-        prev.map(m =>
+      setMessages((prev) =>
+        prev.map((m) =>
           m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
             ? {
                 ...m,
@@ -211,26 +217,46 @@ export function useChatPage(): UseChatPageReturn {
       startTransition(async () => {
         try {
           await saveConversation(
-            displayMessages.filter(m => !m.isStreaming).map(m => ({
-              ...m,
-              content: m.id === displayMessages[displayMessages.length - 1]?.id ? fullResponse : m.content,
-            })),
+            displayMessages
+              .filter((m) => !m.isStreaming)
+              .map((m) => ({
+                ...m,
+                content:
+                  m.id === displayMessages[displayMessages.length - 1]?.id
+                    ? fullResponse
+                    : m.content,
+              })),
             sessionId
           );
-          
+
           // Track metrics
-          chatMetrics.conversationSaved(sessionId, displayMessages.filter(m => !m.isStreaming).length);
-          
+          chatMetrics.conversationSaved(
+            sessionId,
+            displayMessages.filter((m) => !m.isStreaming).length
+          );
+
           trackEvent('chat_conversation_saved', { sessionId }, userProfile?.email);
         } catch (error) {
-          logger.error('Failed to save conversation', { component: 'useChatPage', action: 'saveConversation', metadata: { sessionId } }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to save conversation',
+            { component: 'useChatPage', action: 'saveConversation', metadata: { sessionId } },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       });
     },
     onError: (error: Error) => {
-      logger.error('Message send error', { component: 'useChatPage', action: 'onError', metadata: { sessionId, errorMessage: error.message } }, error);
-      setMessages(prev =>
-        prev.map(m =>
+      logger.error(
+        'Message send error',
+        {
+          component: 'useChatPage',
+          action: 'onError',
+          metadata: { sessionId, errorMessage: error.message },
+        },
+        error
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
           m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
             ? {
                 ...m,
@@ -244,7 +270,7 @@ export function useChatPage(): UseChatPageReturn {
       setCurrentStatus('');
     },
     onStep: (step: AgentStep) => {
-      setStreamingSteps(prev => [...prev, step]);
+      setStreamingSteps((prev) => [...prev, step]);
       if (step.type === 'status' && typeof step.data === 'string') {
         setCurrentStatus(step.data);
       }
@@ -261,7 +287,11 @@ export function useChatPage(): UseChatPageReturn {
     logger.info('Message send started', {
       component: 'useChatPage',
       action: 'handleSend',
-      metadata: { sessionId, textLength: trimmedInput.length, hasImages: chatInput.attachedImages.length > 0 },
+      metadata: {
+        sessionId,
+        textLength: trimmedInput.length,
+        hasImages: chatInput.attachedImages.length > 0,
+      },
     });
 
     // Track metrics
@@ -296,7 +326,7 @@ export function useChatPage(): UseChatPageReturn {
       addOptimisticMessage(assistantMessage);
     });
 
-    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     await chatSend.sendMessage(trimmedInput || '[Image attached]');
   }, [chatInput, isPending, chatSend, sessionId, addOptimisticMessage]);
 
@@ -315,34 +345,41 @@ export function useChatPage(): UseChatPageReturn {
         if (profile.avatar) setUserAvatar(profile.avatar);
       }
     } catch (error) {
-      logger.error('Failed to load user profile', { component: 'useChatPage', action: 'loadUserProfile' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to load user profile',
+        { component: 'useChatPage', action: 'loadUserProfile' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }, []);
 
   // Handle avatar upload
-  const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleAvatarChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file', 'error');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image must be less than 5MB', 'error');
-      return;
-    }
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be less than 5MB', 'error');
+        return;
+      }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setUserAvatar(base64String);
-      localStorage.setItem('user_avatar', base64String);
-      showToast('Avatar updated', 'success');
-    };
-    reader.onerror = () => showToast('Failed to read image file', 'error');
-    reader.readAsDataURL(file);
-  }, [showToast]);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setUserAvatar(base64String);
+        localStorage.setItem('user_avatar', base64String);
+        showToast('Avatar updated', 'success');
+      };
+      reader.onerror = () => showToast('Failed to read image file', 'error');
+      reader.readAsDataURL(file);
+    },
+    [showToast]
+  );
 
   // Initial data load
   useEffect(() => {
@@ -354,11 +391,19 @@ export function useChatPage(): UseChatPageReturn {
     const loadInitialData = async () => {
       setIsInitialLoading(true);
       try {
-        await Promise.all([conversations.loadConversationList(), teamStatus.loadClockStatus(), loadUserProfile()]);
+        await Promise.all([
+          conversations.loadConversationList(),
+          teamStatus.loadClockStatus(),
+          loadUserProfile(),
+        ]);
         if (isMountedRef.current) setIsInitialLoading(false);
       } catch (error) {
         if (isMountedRef.current) setIsInitialLoading(false);
-        logger.error('Failed to load initial data', { component: 'useChatPage', action: 'loadInitialData' }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to load initial data',
+          { component: 'useChatPage', action: 'loadInitialData' },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     };
     loadInitialData();
@@ -379,7 +424,11 @@ export function useChatPage(): UseChatPageReturn {
 
   // Handle new chat
   const handleNewChat = useCallback(() => {
-    logger.info('New chat created', { component: 'useChatPage', action: 'handleNewChat', metadata: { previousSessionId: sessionId } });
+    logger.info('New chat created', {
+      component: 'useChatPage',
+      action: 'handleNewChat',
+      metadata: { previousSessionId: sessionId },
+    });
     const { trackEvent } = require('@/lib/analytics');
     const userProfile = api.getUserProfile();
     trackEvent('chat_new_conversation', { previousSessionId: sessionId }, userProfile?.email);
@@ -400,23 +449,29 @@ export function useChatPage(): UseChatPageReturn {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
           setMessages(
-            conv.messages
-              .filter(isApiConversationMessage)
-              .map((m): ChatMessage => {
-                const role = (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as 'user' | 'assistant';
-                const timestamp = m.timestamp ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date) : new Date();
-                const sources: Source[] | undefined = m.sources?.map((s: { title?: string; content?: string }) => ({
+            conv.messages.filter(isApiConversationMessage).map((m): ChatMessage => {
+              const role = (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as
+                | 'user'
+                | 'assistant';
+              const timestamp = m.timestamp
+                ? typeof m.timestamp === 'string'
+                  ? new Date(m.timestamp)
+                  : (m.timestamp as Date)
+                : new Date();
+              const sources: Source[] | undefined = m.sources?.map(
+                (s: { title?: string; content?: string }) => ({
                   title: s.title || '',
                   content: s.content,
-                }));
-                return {
-                  id: m.id || generateId(),
-                  role,
-                  content: m.content || '',
-                  timestamp,
-                  sources,
-                };
-              })
+                })
+              );
+              return {
+                id: m.id || generateId(),
+                role,
+                content: m.content || '',
+                timestamp,
+                sources,
+              };
+            })
           );
           if (conv.session_id) setSessionId(conv.session_id);
 
@@ -425,10 +480,22 @@ export function useChatPage(): UseChatPageReturn {
 
           const { trackEvent } = require('@/lib/analytics');
           const userProfile = api.getUserProfile();
-          trackEvent('chat_conversation_loaded', { conversationId: id, messageCount: conv.messages.length }, userProfile?.email);
+          trackEvent(
+            'chat_conversation_loaded',
+            { conversationId: id, messageCount: conv.messages.length },
+            userProfile?.email
+          );
         }
       } catch (error) {
-        logger.error('Failed to load conversation', { component: 'useChatPage', action: 'handleConversationClick', metadata: { conversationId: id } }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to load conversation',
+          {
+            component: 'useChatPage',
+            action: 'handleConversationClick',
+            metadata: { conversationId: id },
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
       if (window.innerWidth < 768) sidebar.closeSidebar();
     },
@@ -448,7 +515,15 @@ export function useChatPage(): UseChatPageReturn {
         trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
         if (conversations.currentConversationId === id) handleNewChat();
       } catch (error) {
-        logger.error('Failed to delete conversation', { component: 'useChatPage', action: 'handleDeleteConversation', metadata: { conversationId: id } }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to delete conversation',
+          {
+            component: 'useChatPage',
+            action: 'handleDeleteConversation',
+            metadata: { conversationId: id },
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     },
     [conversations, handleNewChat]
@@ -459,7 +534,11 @@ export function useChatPage(): UseChatPageReturn {
     try {
       await teamStatus.toggleClock();
     } catch (error) {
-      logger.error('Clock status toggle failed', { component: 'useChatPage', action: 'toggleClock' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Clock status toggle failed',
+        { component: 'useChatPage', action: 'toggleClock' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }, [teamStatus]);
 
@@ -493,7 +572,10 @@ export function useChatPage(): UseChatPageReturn {
           return;
         }
 
-        if (!audioRecorder.audioBlob.type.startsWith('audio/') && !audioRecorder.audioMimeType.startsWith('audio/')) {
+        if (
+          !audioRecorder.audioBlob.type.startsWith('audio/') &&
+          !audioRecorder.audioMimeType.startsWith('audio/')
+        ) {
           chatInput.setInput('');
           showToast('Invalid audio format. Please try recording again.', 'error');
           return;
@@ -501,7 +583,10 @@ export function useChatPage(): UseChatPageReturn {
 
         chatInput.setInput('Transcribing...');
         const transcriptionStart = Date.now();
-        const text = await api.transcribeAudio(audioRecorder.audioBlob, audioRecorder.audioMimeType);
+        const text = await api.transcribeAudio(
+          audioRecorder.audioBlob,
+          audioRecorder.audioMimeType
+        );
         const transcriptionDuration = (Date.now() - transcriptionStart) / 1000;
 
         if (!isMountedRef.current) return;
@@ -516,7 +601,11 @@ export function useChatPage(): UseChatPageReturn {
 
           const { trackEvent } = require('@/lib/analytics');
           const userProfile = api.getUserProfile();
-          trackEvent('chat_audio_transcribed', { blobSize: audioRecorder.audioBlob.size, textLength: text.length }, userProfile?.email);
+          trackEvent(
+            'chat_audio_transcribed',
+            { blobSize: audioRecorder.audioBlob.size, textLength: text.length },
+            userProfile?.email
+          );
           chatInput.setInput(text);
         } else {
           chatInput.setInput('');

@@ -29,6 +29,7 @@ from loguru import logger
 
 class ImageAspectRatio(Enum):
     """Supported aspect ratios for Imagen."""
+
     SQUARE = "1:1"
     PORTRAIT_3_4 = "3:4"
     LANDSCAPE_4_3 = "4:3"
@@ -39,6 +40,7 @@ class ImageAspectRatio(Enum):
 @dataclass
 class ImageResult:
     """Result from image generation."""
+
     success: bool
     image_bytes: Optional[bytes] = None
     image_path: Optional[str] = None
@@ -64,11 +66,7 @@ class GeminiAPIImageGenerator:
     Falls back to Gemini native image generation if Imagen fails.
     """
 
-    def __init__(
-        self,
-        output_dir: str = "data/images",
-        api_key: Optional[str] = None
-    ):
+    def __init__(self, output_dir: str = "data/images", api_key: Optional[str] = None):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,11 +98,7 @@ class GeminiAPIImageGenerator:
             await self._client.aclose()
 
     def _build_editorial_prompt(
-        self,
-        title: str,
-        category: str,
-        summary: str = "",
-        key_details: list = None
+        self, title: str, category: str, summary: str = "", key_details: list = None
     ) -> str:
         """
         Build a professional editorial image prompt.
@@ -412,6 +406,7 @@ DO NOT INCLUDE:
 # CONVENIENCE FUNCTIONS
 # ============================================================================
 
+
 async def generate_article_cover(
     title: str,
     category: str,
@@ -448,6 +443,7 @@ async def generate_article_cover(
 # ============================================================================
 
 if __name__ == "__main__":
+
     async def test():
         print("=" * 70)
         print("GEMINI API IMAGE GENERATOR - Test")
@@ -464,7 +460,7 @@ if __name__ == "__main__":
         )
 
         if result.success:
-            print(f"✅ SUCCESS!")
+            print("✅ SUCCESS!")
             print(f"   Path: {result.image_path}")
             print(f"   Time: {result.generation_time_ms}ms")
             print(f"   Size: {len(result.image_bytes) / 1024:.1f} KB")

@@ -5,6 +5,7 @@ Extended unit tests for core.reranker module to improve coverage
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from backend.core.reranker import ReRanker
 
 

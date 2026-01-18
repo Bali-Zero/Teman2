@@ -74,10 +74,10 @@ practices                  # Pratiche legali in corso
 
 ### Roles
 
-| Role | Email Pattern | Permissions |
-|------|--------------|-------------|
-| **Super Admin** | `zero@balizero.com` | Full access - vede TUTTI i clienti |
-| **Regular Member** | `*@balizero.com` | Vede solo clienti `assigned_to` loro |
+| Role               | Email Pattern       | Permissions                          |
+| ------------------ | ------------------- | ------------------------------------ |
+| **Super Admin**    | `zero@balizero.com` | Full access - vede TUTTI i clienti   |
+| **Regular Member** | `*@balizero.com`    | Vede solo clienti `assigned_to` loro |
 
 ### Authentication Flow
 
@@ -134,9 +134,11 @@ else:
 **Endpoint**: `POST /api/crm/clients`
 
 **Required Fields**:
+
 - `full_name` (string, min 2 chars)
 
 **Optional Fields**:
+
 - `email`, `phone`, `whatsapp`
 - `nationality`, `passport_number`, `passport_expiry`, `date_of_birth`
 - `company_name`, `address`, `notes`
@@ -146,6 +148,7 @@ else:
 - `tags` (array of strings)
 
 **Date Sanitization**:
+
 ```python
 # CRITICAL: Empty strings must be converted to None for PostgreSQL DATE columns
 passport_expiry = client.passport_expiry if client.passport_expiry else None
@@ -153,16 +156,20 @@ date_of_birth = client.date_of_birth if client.date_of_birth else None
 ```
 
 **Example Request**:
+
 ```typescript
-const client = await api.crm.createClient({
-  full_name: "Marco Rossi",
-  email: "marco@example.com",
-  phone: "+393331234567",
-  nationality: "Italian",
-  passport_expiry: "2028-12-31",  // or "" (converted to NULL)
-  status: "lead",
-  assigned_to: "adit@balizero.com"
-}, "zero@balizero.com");  // created_by
+const client = await api.crm.createClient(
+  {
+    full_name: 'Marco Rossi',
+    email: 'marco@example.com',
+    phone: '+393331234567',
+    nationality: 'Italian',
+    passport_expiry: '2028-12-31', // or "" (converted to NULL)
+    status: 'lead',
+    assigned_to: 'adit@balizero.com',
+  },
+  'zero@balizero.com'
+); // created_by
 ```
 
 #### Update Client
@@ -170,6 +177,7 @@ const client = await api.crm.createClient({
 **Endpoint**: `PATCH /api/crm/clients/{client_id}`
 
 **Field Mapping** (whitelist):
+
 ```python
 ALLOWED_FIELDS = [
     "full_name", "email", "phone", "whatsapp", "company_name",
@@ -180,6 +188,7 @@ ALLOWED_FIELDS = [
 ```
 
 **Date Sanitization** (UPDATE):
+
 ```python
 date_fields = {"passport_expiry", "date_of_birth"}
 
@@ -199,10 +208,11 @@ for field, value in updates.dict(exclude_unset=True).items():
 **Behavior**: Soft delete (sets `status = inactive`)
 
 **Frontend Refresh**:
+
 ```typescript
 await api.crm.deleteClient(client.id, user.email);
 router.push('/clients');
-router.refresh();  // CRITICAL: Force data refetch
+router.refresh(); // CRITICAL: Force data refetch
 ```
 
 ---
@@ -216,15 +226,18 @@ Gestione familiari e dipendenti collegati al cliente (per pratiche family visa, 
 **Endpoint**: `POST /api/crm/clients/{client_id}/family`
 
 **Required Fields**:
+
 - `full_name` (string)
 - `relationship`: `spouse | child | parent | dependent`
 
 **Optional Fields**:
+
 - `date_of_birth`, `nationality`, `passport_number`, `passport_expiry`
 - `current_visa_type`, `visa_expiry`
 - `email`, `phone`, `notes`
 
 **Date Sanitization**:
+
 ```python
 # backend/app/routers/crm_enhanced.py:338-366
 
@@ -242,14 +255,15 @@ INSERT INTO client_family_members (
 ```
 
 **Example Request**:
+
 ```typescript
 await api.crm.createFamilyMember(clientId, {
-  full_name: "Anna Rossi",
-  relationship: "spouse",
-  nationality: "Italian",
-  passport_number: "AB1234567",
-  passport_expiry: "2027-06-15",  // or "" (auto NULL)
-  visa_expiry: ""  // Empty → NULL in DB
+  full_name: 'Anna Rossi',
+  relationship: 'spouse',
+  nationality: 'Italian',
+  passport_number: 'AB1234567',
+  passport_expiry: '2027-06-15', // or "" (auto NULL)
+  visa_expiry: '', // Empty → NULL in DB
 });
 ```
 
@@ -258,6 +272,7 @@ await api.crm.createFamilyMember(clientId, {
 **Endpoint**: `PATCH /api/crm/clients/{client_id}/family/{member_id}`
 
 **Date Sanitization** (UPDATE):
+
 ```python
 # backend/app/routers/crm_enhanced.py:374-409
 
@@ -285,9 +300,11 @@ Gestione documenti (passaporti, visti, contratti, certificates).
 **Endpoint**: `POST /api/crm/clients/{client_id}/documents`
 
 **Required Fields**:
+
 - `document_type` (string, e.g., "Passport", "KITAS", "PT PMA Deed")
 
 **Optional Fields**:
+
 - `document_category`: `immigration | pma | tax | personal | other`
 - `file_name`, `file_id`, `file_url`, `google_drive_file_url`
 - `expiry_date` (DATE)
@@ -296,6 +313,7 @@ Gestione documenti (passaporti, visti, contratti, certificates).
 - `notes`
 
 **Date Sanitization**:
+
 ```python
 # backend/app/routers/crm_enhanced.py:482-508
 
@@ -311,14 +329,15 @@ INSERT INTO documents (
 ```
 
 **Example Request**:
+
 ```typescript
 await api.crm.createDocument(clientId, {
-  document_type: "Passport",
-  document_category: "immigration",
-  file_name: "passport_marco_rossi.pdf",
-  google_drive_file_url: "https://drive.google.com/file/d/...",
-  expiry_date: "2028-12-31",  // or "" (auto NULL)
-  family_member_id: 123  // Optional
+  document_type: 'Passport',
+  document_category: 'immigration',
+  file_name: 'passport_marco_rossi.pdf',
+  google_drive_file_url: 'https://drive.google.com/file/d/...',
+  expiry_date: '2028-12-31', // or "" (auto NULL)
+  family_member_id: 123, // Optional
 });
 ```
 
@@ -331,6 +350,7 @@ Aggiungi note veloci alla timeline del cliente.
 **Endpoint**: `POST /api/crm/interactions/`
 
 **Frontend Implementation**:
+
 ```typescript
 // apps/mouth/src/app/(workspace)/clients/[id]/page.tsx:384-395
 
@@ -349,6 +369,7 @@ const onAddNote = async (note: string) => {
 ```
 
 **Backend**:
+
 ```python
 # backend/app/routers/crm_interactions.py:128-209
 
@@ -392,17 +413,23 @@ const countryFlag = getCountryFlag(client.nationality);
 ```
 
 **Flag Mapping** (30+ countries):
+
 ```typescript
 const NATIONALITY_FLAGS: Record<string, string> = {
-  'Italian': '🇮🇹', 'Italy': '🇮🇹',
-  'Russian': '🇷🇺', 'Russia': '🇷🇺',
-  'Ukrainian': '🇺🇦', 'Ukraine': '🇺🇦',
-  'American': '🇺🇸', 'USA': '🇺🇸',
+  Italian: '🇮🇹',
+  Italy: '🇮🇹',
+  Russian: '🇷🇺',
+  Russia: '🇷🇺',
+  Ukrainian: '🇺🇦',
+  Ukraine: '🇺🇦',
+  American: '🇺🇸',
+  USA: '🇺🇸',
   // ... 26 more countries
 };
 ```
 
 **Applied to**:
+
 - `ClientCard.tsx` (kanban view)
 - `clients/[id]/page.tsx` (detail page header)
 
@@ -412,38 +439,38 @@ const NATIONALITY_FLAGS: Record<string, string> = {
 
 ### Clients Endpoints
 
-| Method | Endpoint | Description | Auth | Filter |
-|--------|----------|-------------|------|--------|
-| GET | `/api/crm/clients` | List clients | Required | by assigned_to |
-| POST | `/api/crm/clients` | Create client | Required | - |
-| GET | `/api/crm/clients/{id}` | Get client detail | Required | - |
-| PATCH | `/api/crm/clients/{id}` | Update client | Required | - |
-| DELETE | `/api/crm/clients/{id}` | Soft delete client | Required | - |
+| Method | Endpoint                | Description        | Auth     | Filter         |
+| ------ | ----------------------- | ------------------ | -------- | -------------- |
+| GET    | `/api/crm/clients`      | List clients       | Required | by assigned_to |
+| POST   | `/api/crm/clients`      | Create client      | Required | -              |
+| GET    | `/api/crm/clients/{id}` | Get client detail  | Required | -              |
+| PATCH  | `/api/crm/clients/{id}` | Update client      | Required | -              |
+| DELETE | `/api/crm/clients/{id}` | Soft delete client | Required | -              |
 
 ### Family Members Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/family` | List family members |
-| POST | `/api/crm/clients/{id}/family` | Add family member |
-| PATCH | `/api/crm/clients/{id}/family/{member_id}` | Update member |
-| DELETE | `/api/crm/clients/{id}/family/{member_id}` | Delete member |
+| Method | Endpoint                                   | Description         |
+| ------ | ------------------------------------------ | ------------------- |
+| GET    | `/api/crm/clients/{id}/family`             | List family members |
+| POST   | `/api/crm/clients/{id}/family`             | Add family member   |
+| PATCH  | `/api/crm/clients/{id}/family/{member_id}` | Update member       |
+| DELETE | `/api/crm/clients/{id}/family/{member_id}` | Delete member       |
 
 ### Documents Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/documents` | List documents |
-| POST | `/api/crm/clients/{id}/documents` | Add document |
-| PATCH | `/api/crm/clients/{id}/documents/{doc_id}` | Update document |
+| Method | Endpoint                                   | Description      |
+| ------ | ------------------------------------------ | ---------------- |
+| GET    | `/api/crm/clients/{id}/documents`          | List documents   |
+| POST   | `/api/crm/clients/{id}/documents`          | Add document     |
+| PATCH  | `/api/crm/clients/{id}/documents/{doc_id}` | Update document  |
 | DELETE | `/api/crm/clients/{id}/documents/{doc_id}` | Archive document |
 
 ### Interactions Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/timeline` | Get interaction timeline |
-| POST | `/api/crm/interactions/` | Create interaction (note, call, etc) |
+| Method | Endpoint                         | Description                          |
+| ------ | -------------------------------- | ------------------------------------ |
+| GET    | `/api/crm/clients/{id}/timeline` | Get interaction timeline             |
+| POST   | `/api/crm/interactions/`         | Create interaction (note, call, etc) |
 
 ---
 
@@ -472,6 +499,7 @@ passport_expiry = data.passport_expiry if data.passport_expiry else None
 ```
 
 **Applied to**:
+
 - `crm_clients.py` - client creation/update
 - `crm_enhanced.py` - family member creation/update
 - `crm_enhanced.py` - document creation/update
@@ -521,7 +549,7 @@ router.push('/clients');
 // AFTER (✅ Fresh data)
 await api.crm.deleteClient(client.id, user.email);
 router.push('/clients');
-router.refresh();  // Force refetch
+router.refresh(); // Force refetch
 ```
 
 ---
@@ -693,24 +721,27 @@ CREATE TABLE documents (
 ### 1. Date Field Handling
 
 **❌ NEVER**:
+
 ```typescript
 // Don't send empty strings for dates
 const data = {
-  passport_expiry: "",  // ❌ Will crash
-  date_of_birth: ""     // ❌ Will crash
+  passport_expiry: '', // ❌ Will crash
+  date_of_birth: '', // ❌ Will crash
 };
 ```
 
 **✅ ALWAYS**:
+
 ```typescript
 // Send undefined or valid date string
 const data = {
-  passport_expiry: formData.passport_expiry || undefined,  // ✅ OK
-  date_of_birth: "1990-01-15"  // ✅ OK
+  passport_expiry: formData.passport_expiry || undefined, // ✅ OK
+  date_of_birth: '1990-01-15', // ✅ OK
 };
 ```
 
 **Backend will sanitize**:
+
 ```python
 # Automatic conversion to None/NULL
 passport_expiry = data.passport_expiry if data.passport_expiry else None
@@ -719,30 +750,34 @@ passport_expiry = data.passport_expiry if data.passport_expiry else None
 ### 2. Access Control
 
 **❌ NEVER**:
+
 ```typescript
 // Don't implement filtering on frontend
-const myClients = allClients.filter(c => c.assigned_to === user.email);
+const myClients = allClients.filter((c) => c.assigned_to === user.email);
 ```
 
 **✅ ALWAYS**:
+
 ```typescript
 // Let backend filter (secure)
-const clients = await api.crm.getClients();  // Auto-filtered by assigned_to
+const clients = await api.crm.getClients(); // Auto-filtered by assigned_to
 ```
 
 ### 3. Refresh After Mutations
 
 **❌ NEVER**:
+
 ```typescript
 await api.crm.deleteClient(id);
-router.push('/clients');  // ❌ Stale cache
+router.push('/clients'); // ❌ Stale cache
 ```
 
 **✅ ALWAYS**:
+
 ```typescript
 await api.crm.deleteClient(id);
 router.push('/clients');
-router.refresh();  // ✅ Fresh data
+router.refresh(); // ✅ Fresh data
 ```
 
 ---
@@ -752,21 +787,25 @@ router.refresh();  // ✅ Fresh data
 ### v2.0 (2026-01-05)
 
 **Security Fixes**:
+
 - ✅ Added authentication requirement for client list
 - ✅ Enforced strict `assigned_to` filtering
 - ✅ Removed Ruslana special-case logic
 
 **Data Integrity Fixes**:
+
 - ✅ Date sanitization in family member create/update
 - ✅ Date sanitization in document create/update
 - ✅ Date sanitization in client create/update
 
 **UX Improvements**:
+
 - ✅ Avatar fallback system (flag emoji → white circle)
 - ✅ Delete client auto-refresh
 - ✅ Team members dropdown updated (15 members)
 
 **Bug Fixes**:
+
 - ✅ Fixed "Invalid field name: company_name"
 - ✅ Fixed "Database service temporarily unavailable"
 - ✅ Fixed stale data after delete
@@ -781,6 +820,7 @@ router.refresh();  // ✅ Fresh data
 **Logs**: `fly logs -a nuzantara-rag`
 
 **Emergency Rollback**:
+
 ```bash
 # List releases
 fly releases -a nuzantara-rag

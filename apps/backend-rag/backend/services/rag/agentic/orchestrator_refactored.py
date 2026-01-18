@@ -17,7 +17,8 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from backend.app.metrics import metrics_collector
+from backend.services.rag.agentic.kg_enhanced_retrieval import KGEnhancedRetrieval
+
 from backend.app.utils.tracing import add_span_event
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.context_window_manager import ContextWindowManager
@@ -25,7 +26,6 @@ from backend.services.misc.emotional_attunement import EmotionalAttunementServic
 from backend.services.misc.followup_service import FollowupService
 from backend.services.misc.golden_answer_service import GoldenAnswerService
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
-from backend.services.rag.agentic.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.pipeline import create_default_pipeline
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
@@ -35,10 +35,9 @@ from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import BaseTool
 
 from .llm_gateway import LLMGateway
-from .schema import CoreResult
-
 from .orchestrator_core import OrchestratorCore
-from .orchestrator_streaming import OrchestratorStreamingManager, StreamEvent
+from .orchestrator_streaming import OrchestratorStreamingManager
+from .schema import CoreResult
 
 logger = logging.getLogger(__name__)
 

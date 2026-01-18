@@ -15,6 +15,7 @@ Halo, gue baru setup PT PMA bulan lalu. Sekarang bingung soal pajak. Banyak bang
 Halo! Tenang, gue breakdown satu-satu ya.
 
 Sebagai PT PMA, ada beberapa kewajiban pajak utama:
+
 1. **PPh Badan** — Pajak perusahaan (22%)
 2. **PPh 21** — Potongan gaji karyawan
 3. **PPN** — Pajak pertambahan nilai (11%)
@@ -30,10 +31,12 @@ Oke oke. Yang pertama PPh Badan itu gimana?
 **PPh Badan** = Pajak atas keuntungan perusahaan.
 
 Tarifnya:
+
 - **22%** dari laba bersih (untuk revenue > Rp 4.8M/tahun)
 - **0.5%** dari omzet (untuk revenue < Rp 4.8M/tahun) — ini program UMKM
 
 Contoh:
+
 - PT lo profit Rp 500 juta/tahun
 - PPh Badan = 22% × 500 juta = **Rp 110 juta**
 
@@ -71,12 +74,12 @@ Artinya: lo sebagai employer yang harus potong dari gaji mereka, lalu setor ke n
 Tarifnya **progresif**:
 
 | Penghasilan/Tahun | Tarif |
-|-------------------|-------|
-| 0 - 60 juta | 5% |
-| 60 - 250 juta | 15% |
-| 250 - 500 juta | 25% |
-| 500 juta - 5M | 30% |
-| > 5M | 35% |
+| ----------------- | ----- |
+| 0 - 60 juta       | 5%    |
+| 60 - 250 juta     | 15%   |
+| 250 - 500 juta    | 25%   |
+| 500 juta - 5M     | 30%   |
+| > 5M              | 35%   |
 
 **5 — Client:**
 Wait, berarti gue harus itung pajak setiap karyawan, potong dari gaji, terus setor?
@@ -85,6 +88,7 @@ Wait, berarti gue harus itung pajak setiap karyawan, potong dari gaji, terus set
 Exactly. Setiap bulan.
 
 Contoh:
+
 - Karyawan gaji Rp 10 juta/bulan = Rp 120 juta/tahun
 - PTKP (penghasilan tidak kena pajak) = Rp 54 juta (lajang)
 - Penghasilan kena pajak = 120 - 54 = **Rp 66 juta**
@@ -104,6 +108,7 @@ Kalau karyawan asing (WNA), ada aturan berbeda — biasanya kena **PPh 26** (20%
 Ini salah satu alasan kenapa banyak PT PMA pakai jasa **accounting & payroll**. Biar nggak pusing ngitung sendiri.
 
 **Paket kita mulai Rp 1.500.000/bulan** — include:
+
 - Payroll processing
 - PPh 21 calculation & filing
 - BPJS administration
@@ -118,6 +123,7 @@ Betul. **PPN = 11%** dari nilai jual barang/jasa.
 Tapi ini berlaku kalau PT lo udah terdaftar sebagai **PKP** (Pengusaha Kena Pajak).
 
 **Wajib daftar PKP kalau:**
+
 - Omzet > Rp 4.8 miliar/tahun
 - Atau kamu pilih daftar sukarela
 
@@ -130,11 +136,13 @@ Omzet gue masih kecil. Berarti bisa skip PPN dulu?
 Technically bisa. Tapi ada pertimbangan:
 
 **Tidak daftar PKP:**
+
 - ❌ Nggak bisa klaim input PPN (PPN yang lo bayar ke supplier)
 - ❌ Beberapa klien korporat prefer kerja sama dengan PKP
 - ✅ Nggak perlu buat faktur pajak tiap transaksi
 
 **Daftar PKP:**
+
 - ✅ Bisa klaim input PPN (offset)
 - ✅ Lebih "profesional" di mata klien besar
 - ❌ Wajib buat faktur pajak tiap transaksi
@@ -151,12 +159,14 @@ Oke gue tunda dulu. Sekarang BPJS — itu wajib?
 Ada 2 jenis:
 
 **BPJS Kesehatan (Health):**
+
 - Employer: **4%** dari gaji
 - Employee: **1%** dari gaji
 - Total: **5%**
 - Max salary cap: Rp 12 juta
 
 **BPJS Ketenagakerjaan (Employment):**
+
 - JKK (kecelakaan kerja): **0.24-1.74%** (tergantung risiko industri)
 - JKM (kematian): **0.30%**
 - JHT (hari tua): **3.70%** (employer) + **2.00%** (employee)
@@ -172,11 +182,13 @@ Jadi karyawan gaji Rp 10 juta, gue bayar BPJS berapa?
 Breakdown:
 
 **BPJS Kesehatan:**
+
 - Employer (4%): Rp 400.000
 - Employee (1%): Rp 100.000
 - **Total: Rp 500.000**
 
 **BPJS Ketenagakerjaan** (asumsi industri risk rendah):
+
 - JKK (0.24%): Rp 24.000
 - JKM (0.30%): Rp 30.000
 - JHT employer (3.70%): Rp 370.000
@@ -186,6 +198,7 @@ Breakdown:
 - **Total: Rp 924.000**
 
 **Grand total per bulan:**
+
 - Employer bayar: ~**Rp 1.024.000**
 - Employee bayar: ~**Rp 400.000** (dipotong dari gaji)
 
@@ -198,6 +211,7 @@ Wah lumayan juga ya. Kalau nggak bayar BPJS gimana?
 **Jangan coba-coba.**
 
 Sanksi:
+
 - **Denda 2%** per bulan dari iuran yang belum dibayar
 - **Suspensi layanan** (karyawan nggak bisa klaim kesehatan)
 - **Denda administratif** sampai Rp 5 juta
@@ -214,18 +228,21 @@ Oke oke, mendingan bayar. Terus soal laporan LKPM itu apa?
 Ini wajib untuk **semua PT PMA**, dilaporkan ke BKPM setiap **kuartal** (3 bulan sekali).
 
 Isinya:
+
 - Realisasi investasi
 - Jumlah karyawan (lokal vs asing)
 - Revenue & profit
 - Rencana ekspansi
 
 **Deadline:**
+
 - Q1: 30 April
 - Q2: 31 Juli
 - Q3: 31 Oktober
 - Q4: 31 Januari (tahun depan)
 
 **Sanksi kalau telat:**
+
 - Peringatan tertulis
 - Pembekuan izin usaha
 - Pencabutan izin (ekstrim case)
@@ -237,6 +254,7 @@ Wah ribet. Ini juga harus lapor sendiri?
 Bisa via **OSS sistem** (online).
 
 Tapi kalau lo pakai **accounting package** dari kita, kita yang handle semuanya:
+
 - LKPM filing tiap kuartal
 - PPh 21 monthly filing
 - PPh Badan tahunan
@@ -252,12 +270,14 @@ Btw, gue denger ada sistem baru namanya Coretax. Itu apa?
 **Coretax** = sistem pajak baru pemerintah, launch **2025**.
 
 Menggantikan sistem lama (DJP Online). Semua jadi **terintegrasi**:
+
 - e-Filing (lapor pajak)
 - e-Billing (bayar pajak)
 - e-Faktur (faktur PPN)
 - e-Bupot (bukti potong)
 
 **Yang berubah:**
+
 - Interface baru (agak mirip platform modern)
 - Real-time validation
 - Auto-calculation untuk beberapa pajak
@@ -284,6 +304,7 @@ Oke bagus. Satu lagi — kalau gue transfer uang dari PT ke rekening pribadi gue
 Dividen kena **PPh 23 = 10%** (untuk pemegang saham lokal).
 
 Contoh:
+
 - Profit PT = Rp 500 juta
 - Bayar PPh Badan 22% = Rp 110 juta
 - Sisa = Rp 390 juta
@@ -325,10 +346,12 @@ Ah, ini penting. Ada namanya **Transfer Pricing** rules.
 Kalau PT lo transaksi dengan **related party** di luar negeri (contoh: HQ lo), harus pakai **arm's length price** — harga yang wajar seperti transaksi independent.
 
 **Wajib bikin:**
+
 - **TP Documentation** (dokumentasi transfer pricing)
 - **CbCR** (Country-by-Country Reporting) kalau revenue > Rp 11 triliun
 
 **Contoh case:**
+
 - PT Indonesia beli barang dari parent company Singapore
 - Harga harus **wajar** (market price)
 - Kalau terlalu tinggi → profit Indonesia kecil → pajak kecil → **tax evasion risk**
@@ -340,6 +363,7 @@ Wah ribet juga ya. Bisa dibantu?
 
 **Consultant:**
 **Yes.** Kita handle TP Documentation untuk PT PMA:
+
 - Harga mulai **Rp 15.000.000/tahun**
 - Include benchmarking study
 - TP policy & documentation
@@ -354,15 +378,18 @@ Oke deh. Kesimpulannya apa aja yang harus gue bayar rutin?
 Recap kewajiban bulanan/tahunan:
 
 **Bulanan:**
+
 - PPh 21 (gaji karyawan) → setor tanggal 10
 - BPJS Kesehatan → tanggal 10
 - BPJS Ketenagakerjaan → tanggal 15
 - PPN (kalau PKP) → setor tanggal 15, lapor akhir bulan
 
 **Kuartalan:**
+
 - LKPM ke BKPM
 
 **Tahunan:**
+
 - SPT Tahunan Badan (PPh Badan) → akhir April
 - Financial audit (kalau revenue > Rp 50M)
 
@@ -374,6 +401,7 @@ Oke, gue pikir-pikir pakai jasa kalian deh. Berapa per bulan?
 
 **Consultant:**
 **Paket Basic (Rp 1.500.000/bulan):**
+
 - Monthly bookkeeping
 - PPh 21 filing
 - BPJS administration
@@ -381,6 +409,7 @@ Oke, gue pikir-pikir pakai jasa kalian deh. Berapa per bulan?
 - SPT Tahunan
 
 **Paket Premium (Rp 3.000.000/bulan):**
+
 - Semua di Basic
 - PKP/PPN filing
 - Financial reporting
@@ -388,6 +417,7 @@ Oke, gue pikir-pikir pakai jasa kalian deh. Berapa per bulan?
 - Audit support
 
 **Add-ons:**
+
 - TP Documentation: Rp 15.000.000/tahun
 - Coretax migration: Rp 5.000.000 (one-time)
 
@@ -396,6 +426,7 @@ Oke deal. Gue mau paket Basic dulu. Gimana cara mulai?
 
 **Consultant:**
 Kirim ini:
+
 1. **Akta PT + NIB**
 2. **NPWP Perusahaan**
 3. **Rekening koran** 3 bulan terakhir
@@ -423,6 +454,7 @@ Hi, I just set up my PT PMA last month. Now I'm confused about taxes. Seems like
 Hi! No worries, I'll break it down step by step.
 
 As a PT PMA, you have several main tax obligations:
+
 1. **Corporate Income Tax (PPh Badan)** — 22% on profit
 2. **Employee Income Tax (PPh 21)** — withholding from salaries
 3. **VAT (PPN)** — 11% value-added tax
@@ -438,10 +470,12 @@ Okay. First, how does Corporate Income Tax work?
 **Corporate Income Tax (PPh Badan)** = tax on company profit.
 
 Rates:
+
 - **22%** of net profit (for revenue > IDR 4.8B/year)
 - **0.5%** of revenue (for revenue < IDR 4.8B/year) — SME program
 
 Example:
+
 - Your PT profits IDR 500 million/year
 - Corporate tax = 22% × 500M = **IDR 110 million**
 
@@ -479,12 +513,12 @@ Meaning: you as the employer must deduct it from their salary and remit to the g
 **Progressive rates:**
 
 | Annual Income (IDR) | Rate |
-|---------------------|------|
-| 0 - 60 million | 5% |
-| 60 - 250 million | 15% |
-| 250 - 500 million | 25% |
-| 500 million - 5B | 30% |
-| > 5 billion | 35% |
+| ------------------- | ---- |
+| 0 - 60 million      | 5%   |
+| 60 - 250 million    | 15%  |
+| 250 - 500 million   | 25%  |
+| 500 million - 5B    | 30%  |
+| > 5 billion         | 35%  |
 
 **5 — Client:**
 So I have to calculate tax for each employee, deduct from salary, then remit?
@@ -493,6 +527,7 @@ So I have to calculate tax for each employee, deduct from salary, then remit?
 Exactly. Every month.
 
 Example:
+
 - Employee salary IDR 10 million/month = IDR 120 million/year
 - PTKP (tax-free threshold) = IDR 54 million (single)
 - Taxable income = 120 - 54 = **IDR 66 million**
@@ -512,6 +547,7 @@ For foreign employees (expatriates), different rules apply — usually subject t
 This is one reason many PT PMAs use **accounting & payroll services**. Less headache.
 
 **Our packages start at IDR 1,500,000/month** — includes:
+
 - Payroll processing
 - PPh 21 calculation & filing
 - BPJS administration
@@ -526,6 +562,7 @@ Correct. **VAT = 11%** on sales of goods/services.
 But this only applies if your PT is registered as **PKP** (Taxable Entrepreneur).
 
 **Must register as PKP if:**
+
 - Revenue > IDR 4.8 billion/year
 - Or you choose voluntary registration
 
@@ -538,11 +575,13 @@ My revenue is still small. Can I skip VAT for now?
 Technically yes. But consider this:
 
 **Not registering as PKP:**
+
 - ❌ Cannot claim input VAT (VAT you pay to suppliers)
 - ❌ Some corporate clients prefer working with PKP
 - ✅ No need to issue tax invoices every transaction
 
 **Registering as PKP:**
+
 - ✅ Can claim input VAT (offset)
 - ✅ More "professional" in eyes of large clients
 - ❌ Must issue tax invoices every transaction
@@ -559,12 +598,14 @@ I'll hold off for now. What about BPJS — is it mandatory?
 Two types:
 
 **BPJS Kesehatan (Health):**
+
 - Employer: **4%** of salary
 - Employee: **1%** of salary
 - Total: **5%**
 - Max salary cap: IDR 12 million
 
 **BPJS Ketenagakerjaan (Employment):**
+
 - JKK (work accident): **0.24-1.74%** (depends on industry risk)
 - JKM (death): **0.30%**
 - JHT (old age): **3.70%** (employer) + **2.00%** (employee)
@@ -580,11 +621,13 @@ So for an employee earning IDR 10 million, how much BPJS do I pay?
 Breakdown:
 
 **BPJS Kesehatan:**
+
 - Employer (4%): IDR 400,000
 - Employee (1%): IDR 100,000
 - **Total: IDR 500,000**
 
 **BPJS Ketenagakerjaan** (assuming low-risk industry):
+
 - JKK (0.24%): IDR 24,000
 - JKM (0.30%): IDR 30,000
 - JHT employer (3.70%): IDR 370,000
@@ -594,6 +637,7 @@ Breakdown:
 - **Total: IDR 924,000**
 
 **Grand total per month:**
+
 - Employer pays: ~**IDR 1,024,000**
 - Employee pays: ~**IDR 400,000** (deducted from salary)
 
@@ -606,6 +650,7 @@ That's substantial. What if I don't pay BPJS?
 **Don't risk it.**
 
 Penalties:
+
 - **2% monthly fine** on unpaid contributions
 - **Service suspension** (employees can't claim healthcare)
 - **Administrative fines** up to IDR 5 million
@@ -622,18 +667,21 @@ Okay, better to pay. What's this LKPM report?
 Mandatory for **all PT PMAs**, filed to BKPM every **quarter** (every 3 months).
 
 Contents:
+
 - Investment realization
 - Number of employees (local vs foreign)
 - Revenue & profit
 - Expansion plans
 
 **Deadlines:**
+
 - Q1: April 30
 - Q2: July 31
 - Q3: October 31
 - Q4: January 31 (next year)
 
 **Penalties for late filing:**
+
 - Written warning
 - Business license suspension
 - License revocation (extreme cases)
@@ -645,6 +693,7 @@ Sounds tedious. Do I file this myself?
 Can be done via **OSS system** (online).
 
 But if you use our **accounting package**, we handle everything:
+
 - LKPM filing quarterly
 - PPh 21 monthly filing
 - Corporate tax annually
@@ -660,12 +709,14 @@ By the way, I heard about a new system called Coretax. What's that?
 **Coretax** = new government tax system, launched **2025**.
 
 Replacing the old system (DJP Online). Everything becomes **integrated**:
+
 - e-Filing (tax returns)
 - e-Billing (tax payments)
 - e-Faktur (VAT invoices)
 - e-Bupot (withholding certificates)
 
 **What's changing:**
+
 - New interface (more modern platform-like)
 - Real-time validation
 - Auto-calculation for some taxes
@@ -692,6 +743,7 @@ Good. One more thing — if I transfer money from the PT to my personal account,
 Dividends are subject to **PPh 23 = 10%** (for local shareholders).
 
 Example:
+
 - PT profit = IDR 500 million
 - Pay corporate tax 22% = IDR 110 million
 - Remaining = IDR 390 million
@@ -733,10 +785,12 @@ Ah, important. There's **Transfer Pricing** rules.
 If your PT transacts with **related parties** abroad (e.g., your HQ), must use **arm's length prices** — fair prices like independent transactions.
 
 **Must prepare:**
+
 - **TP Documentation** (transfer pricing documentation)
 - **CbCR** (Country-by-Country Reporting) if revenue > IDR 11 trillion
 
 **Example case:**
+
 - Indonesian PT buys goods from Singapore parent company
 - Price must be **fair** (market price)
 - If too high → Indonesian profit low → tax low → **tax evasion risk**
@@ -748,6 +802,7 @@ Sounds complex. Can you help?
 
 **Consultant:**
 **Yes.** We handle TP Documentation for PT PMAs:
+
 - Starting from **IDR 15,000,000/year**
 - Includes benchmarking study
 - TP policy & documentation
@@ -762,15 +817,18 @@ Alright. What's the summary of what I need to pay regularly?
 Recap of monthly/annual obligations:
 
 **Monthly:**
+
 - PPh 21 (employee salaries) → remit by 10th
 - BPJS Kesehatan → by 10th
 - BPJS Ketenagakerjaan → by 15th
 - VAT (if PKP) → remit by 15th, file by month-end
 
 **Quarterly:**
+
 - LKPM to BKPM
 
 **Annually:**
+
 - Annual Corporate Tax Return → by end of April
 - Financial audit (if revenue > IDR 50M)
 
@@ -782,6 +840,7 @@ I think I'll use your service. How much per month?
 
 **Consultant:**
 **Basic Package (IDR 1,500,000/month):**
+
 - Monthly bookkeeping
 - PPh 21 filing
 - BPJS administration
@@ -789,6 +848,7 @@ I think I'll use your service. How much per month?
 - Annual tax return
 
 **Premium Package (IDR 3,000,000/month):**
+
 - Everything in Basic
 - PKP/VAT filing
 - Financial reporting
@@ -796,6 +856,7 @@ I think I'll use your service. How much per month?
 - Audit support
 
 **Add-ons:**
+
 - TP Documentation: IDR 15,000,000/year
 - Coretax migration: IDR 5,000,000 (one-time)
 
@@ -804,6 +865,7 @@ Deal. I'll start with Basic. How do I begin?
 
 **Consultant:**
 Send these:
+
 1. **PT Deed + NIB**
 2. **Company NPWP**
 3. **Bank statements** last 3 months
@@ -831,6 +893,7 @@ Mas, aku nembe setup PT PMA wulan wingi. Saiki bingung soal pajak. Kathah banget
 Halo mas! Tenang, tak breakdown siji-siji yo.
 
 Dadi PT PMA, ono sawetara kewajiban pajak utama:
+
 1. **PPh Badan** — Pajak perusahaan (22%)
 2. **PPh 21** — Potongan gaji karyawan
 3. **PPN** — Pajak pertambahan nilai (11%)
@@ -846,10 +909,12 @@ Oke oke. Sing pertama PPh Badan iku piye?
 **PPh Badan** = Pajak atas keuntungan perusahaan.
 
 Tarifé:
+
 - **22%** soko laba bersih (kanggo revenue > Rp 4.8M/taun)
 - **0.5%** soko omzet (kanggo revenue < Rp 4.8M/taun) — iki program UMKM
 
 Contone:
+
 - PT sampeyan profit Rp 500 juta/taun
 - PPh Badan = 22% × 500 juta = **Rp 110 juta**
 
@@ -886,12 +951,12 @@ Artine: sampeyan dadi employer sing kudu motong soko gaji wong-wong, terus setor
 Tarifé **progresif**:
 
 | Penghasilan/Taun | Tarif |
-|------------------|-------|
-| 0 - 60 juta | 5% |
-| 60 - 250 juta | 15% |
-| 250 - 500 juta | 25% |
-| 500 juta - 5M | 30% |
-| > 5M | 35% |
+| ---------------- | ----- |
+| 0 - 60 juta      | 5%    |
+| 60 - 250 juta    | 15%   |
+| 250 - 500 juta   | 25%   |
+| 500 juta - 5M    | 30%   |
+| > 5M             | 35%   |
 
 **5 — Client:**
 Wait, berarti aku kudu etung pajak saben karyawan, potong soko gaji, terus setor?
@@ -900,6 +965,7 @@ Wait, berarti aku kudu etung pajak saben karyawan, potong soko gaji, terus setor
 Exactly. Saben sasi.
 
 Contone:
+
 - Karyawan gaji Rp 10 juta/sasi = Rp 120 juta/taun
 - PTKP (penghasilan ora kena pajak) = Rp 54 juta (lajang)
 - Penghasilan kena pajak = 120 - 54 = **Rp 66 juta**
@@ -919,6 +985,7 @@ Nek karyawan asing (WNA), ono aturan bedo — biasané kena **PPh 26** (20%) uto
 Iki salah siji alasan kenapa kathah PT PMA nganggo jasa **accounting & payroll**. Supaya ora pusing etung dewe.
 
 **Paket kito mulai Rp 1.500.000/sasi** — include:
+
 - Payroll processing
 - PPh 21 calculation & filing
 - BPJS administration
@@ -933,6 +1000,7 @@ Bener. **PPN = 11%** soko nilai adol barang/jasa.
 Tapi iki berlaku nek PT sampeyan wis terdaftar dadi **PKP** (Pengusaha Kena Pajak).
 
 **Wajib daftar PKP nek:**
+
 - Omzet > Rp 4.8 miliar/taun
 - Utowo sampeyan pilih daftar sukarela
 
@@ -945,11 +1013,13 @@ Omzet ku isih cilik. Berarti iso skip PPN dhisik?
 Technically iso. Tapi ono pertimbangan:
 
 **Ora daftar PKP:**
+
 - ❌ Ora iso klaim input PPN (PPN sing sampeyan bayar neng supplier)
 - ❌ Sawetara klien korporat prefer kerjo bareng karo PKP
 - ✅ Ora kudu gawe faktur pajak saben transaksi
 
 **Daftar PKP:**
+
 - ✅ Iso klaim input PPN (offset)
 - ✅ Luwih "profesional" neng moto klien gedhe
 - ❌ Wajib gawe faktur pajak saben transaksi
@@ -966,12 +1036,14 @@ Oke tak tunda dhisik. Saiki BPJS — iku wajib?
 Ono 2 jenis:
 
 **BPJS Kesehatan:**
+
 - Employer: **4%** soko gaji
 - Employee: **1%** soko gaji
 - Total: **5%**
 - Max salary cap: Rp 12 juta
 
 **BPJS Ketenagakerjaan:**
+
 - JKK (kecelakaan): **0.24-1.74%** (gumantung risiko industri)
 - JKM (kematian): **0.30%**
 - JHT (hari tua): **3.70%** (employer) + **2.00%** (employee)
@@ -987,11 +1059,13 @@ Dadi karyawan gaji Rp 10 juta, aku bayar BPJS piro?
 Breakdown:
 
 **BPJS Kesehatan:**
+
 - Employer (4%): Rp 400.000
 - Employee (1%): Rp 100.000
 - **Total: Rp 500.000**
 
 **BPJS Ketenagakerjaan** (asumsi industri risk rendah):
+
 - JKK (0.24%): Rp 24.000
 - JKM (0.30%): Rp 30.000
 - JHT employer (3.70%): Rp 370.000
@@ -1001,6 +1075,7 @@ Breakdown:
 - **Total: Rp 924.000**
 
 **Grand total per sasi:**
+
 - Employer bayar: ~**Rp 1.024.000**
 - Employee bayar: ~**Rp 400.000** (dipotong soko gaji)
 
@@ -1013,6 +1088,7 @@ Wah lumayan yo. Nek ora bayar BPJS piye?
 **Ojo dicoba-coba.**
 
 Sanksi:
+
 - **Denda 2%** per sasi soko iuran sing durung dibayar
 - **Suspensi layanan** (karyawan ora iso klaim kesehatan)
 - **Denda administratif** sampek Rp 5 juta
@@ -1029,18 +1105,21 @@ Oke oke, luwih apik bayar. Terus soal laporan LKPM iku opo?
 Iki wajib kanggo **kabeh PT PMA**, dilaporke neng BKPM saben **kuartal** (3 sasi pisan).
 
 Isine:
+
 - Realisasi investasi
 - Jumlah karyawan (lokal vs asing)
 - Revenue & profit
 - Rencana ekspansi
 
 **Deadline:**
+
 - Q1: 30 April
 - Q2: 31 Juli
 - Q3: 31 Oktober
 - Q4: 31 Januari (taun ngarep)
 
 **Sanksi nek telat:**
+
 - Peringatan tertulis
 - Pembekuan izin usaha
 - Pencabutan izin (ekstrim case)
@@ -1052,6 +1131,7 @@ Wah ribet. Iki yo kudu lapor dewe?
 Iso via **sistem OSS** (online).
 
 Tapi nek sampeyan nganggo **accounting package** soko kito, kito sing handle kabehe:
+
 - LKPM filing saben kuartal
 - PPh 21 monthly filing
 - PPh Badan tahunan
@@ -1067,12 +1147,14 @@ Btw, aku krungu ono sistem anyar jenengé Coretax. Iku opo?
 **Coretax** = sistem pajak anyar pemerintah, launch **2025**.
 
 Ngganti sistem lawas (DJP Online). Kabeh dadi **terintegrasi**:
+
 - e-Filing (lapor pajak)
 - e-Billing (bayar pajak)
 - e-Faktur (faktur PPN)
 - e-Bupot (bukti potong)
 
 **Sing owah:**
+
 - Interface anyar (agak mirip platform modern)
 - Real-time validation
 - Auto-calculation kanggo sawetara pajak
@@ -1099,6 +1181,7 @@ Oke bagus. Siji maneh — nek aku transfer dhuwit soko PT neng rekening pribadi 
 Dividen kena **PPh 23 = 10%** (kanggo pemegang saham lokal).
 
 Contone:
+
 - Profit PT = Rp 500 juta
 - Bayar PPh Badan 22% = Rp 110 juta
 - Sisa = Rp 390 juta
@@ -1140,10 +1223,12 @@ Ah, iki penting. Ono jenengé **Transfer Pricing** rules.
 Nek PT sampeyan transaksi karo **related party** neng njaba negeri (contone: HQ sampeyan), kudu nganggo **arm's length price** — rego sing wajar koyo transaksi independent.
 
 **Wajib gawe:**
+
 - **TP Documentation** (dokumentasi transfer pricing)
 - **CbCR** (Country-by-Country Reporting) nek revenue > Rp 11 triliun
 
 **Contoh case:**
+
 - PT Indonesia tuku barang soko parent company Singapore
 - Rego kudu **wajar** (market price)
 - Nek terlalu dhuwur → profit Indonesia cilik → pajak cilik → **tax evasion risk**
@@ -1155,6 +1240,7 @@ Wah ribet yo. Iso dibantu?
 
 **Consultant:**
 **Iso.** Kito handle TP Documentation kanggo PT PMA:
+
 - Rego mulai **Rp 15.000.000/taun**
 - Include benchmarking study
 - TP policy & documentation
@@ -1169,15 +1255,18 @@ Oke. Kesimpulane opo wae sing kudu tak bayar rutin?
 Recap kewajiban bulanan/tahunan:
 
 **Bulanan:**
+
 - PPh 21 (gaji karyawan) → setor tanggal 10
 - BPJS Kesehatan → tanggal 10
 - BPJS Ketenagakerjaan → tanggal 15
 - PPN (nek PKP) → setor tanggal 15, lapor akhir sasi
 
 **Kuartalan:**
+
 - LKPM neng BKPM
 
 **Tahunan:**
+
 - SPT Tahunan Badan (PPh Badan) → akhir April
 - Financial audit (nek revenue > Rp 50M)
 
@@ -1189,6 +1278,7 @@ Oke, tak pikir-pikir nganggo jasa awakdewe. Piro per sasi?
 
 **Consultant:**
 **Paket Basic (Rp 1.500.000/sasi):**
+
 - Monthly bookkeeping
 - PPh 21 filing
 - BPJS administration
@@ -1196,6 +1286,7 @@ Oke, tak pikir-pikir nganggo jasa awakdewe. Piro per sasi?
 - SPT Tahunan
 
 **Paket Premium (Rp 3.000.000/sasi):**
+
 - Kabeh neng Basic
 - PKP/PPN filing
 - Financial reporting
@@ -1203,6 +1294,7 @@ Oke, tak pikir-pikir nganggo jasa awakdewe. Piro per sasi?
 - Audit support
 
 **Add-ons:**
+
 - TP Documentation: Rp 15.000.000/taun
 - Coretax migration: Rp 5.000.000 (one-time)
 
@@ -1211,6 +1303,7 @@ Oke deal. Aku arep paket Basic dhisik. Piye carane mulai?
 
 **Consultant:**
 Kirim iki:
+
 1. **Akta PT + NIB**
 2. **NPWP Perusahaan**
 3. **Rekening koran** 3 sasi terakhir
@@ -1231,24 +1324,24 @@ Welcome to the world of Indonesian taxation — kito handle, sampeyan fokus bisn
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **Corporate Tax** | 22% on profit (> IDR 4.8B revenue) |
-| **SME Tax** | 0.5% on revenue (< IDR 4.8B) |
-| **PPh 21 Rates** | Progressive 5%-35% |
-| **PTKP Single** | IDR 54 million/year |
-| **VAT Rate** | 11% |
-| **PKP Threshold** | IDR 4.8 billion revenue/year |
-| **BPJS Health** | 4% employer + 1% employee |
-| **BPJS Employment** | ~6.24-7.74% employer + 3% employee |
-| **Dividend Tax** | 10% (PPh 23) |
-| **Effective Tax** | ~32% (22% corporate + 10% dividend) |
-| **LKPM Filing** | Quarterly to BKPM |
-| **Coretax** | New system 2025 |
-| **TP Documentation** | IDR 15M/year |
-| **Accounting Basic** | IDR 1.5M/month |
-| **Accounting Premium** | IDR 3M/month |
+| Topic                  | Details                             |
+| ---------------------- | ----------------------------------- |
+| **Corporate Tax**      | 22% on profit (> IDR 4.8B revenue)  |
+| **SME Tax**            | 0.5% on revenue (< IDR 4.8B)        |
+| **PPh 21 Rates**       | Progressive 5%-35%                  |
+| **PTKP Single**        | IDR 54 million/year                 |
+| **VAT Rate**           | 11%                                 |
+| **PKP Threshold**      | IDR 4.8 billion revenue/year        |
+| **BPJS Health**        | 4% employer + 1% employee           |
+| **BPJS Employment**    | ~6.24-7.74% employer + 3% employee  |
+| **Dividend Tax**       | 10% (PPh 23)                        |
+| **Effective Tax**      | ~32% (22% corporate + 10% dividend) |
+| **LKPM Filing**        | Quarterly to BKPM                   |
+| **Coretax**            | New system 2025                     |
+| **TP Documentation**   | IDR 15M/year                        |
+| **Accounting Basic**   | IDR 1.5M/month                      |
+| **Accounting Premium** | IDR 3M/month                        |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data*
+_Generated by Nuzantara KB + Claude for Bali Zero training data_

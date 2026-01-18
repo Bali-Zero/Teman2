@@ -41,7 +41,8 @@ class TestMemoryServicePostgresIntegration:
     async def service(self, mock_db_pool):
         """Create MemoryServicePostgres instance"""
         with patch(
-            "backend.services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.memory_service_postgres.asyncpg.create_pool",
+            return_value=mock_db_pool,
         ):
             from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
@@ -61,7 +62,8 @@ class TestMemoryServicePostgresIntegration:
     async def test_connect(self, service, mock_db_pool):
         """Test connecting to PostgreSQL"""
         with patch(
-            "backend.services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.memory_service_postgres.asyncpg.create_pool",
+            return_value=mock_db_pool,
         ):
             await service.connect()
 

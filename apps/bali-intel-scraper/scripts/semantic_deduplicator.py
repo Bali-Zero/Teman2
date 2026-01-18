@@ -15,7 +15,7 @@ Flow:
 import os
 import hashlib
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Tuple
+from typing import Dict, Tuple
 from loguru import logger
 from qdrant_client import QdrantClient, models
 from openai import AsyncOpenAI
@@ -23,8 +23,9 @@ from openai import AsyncOpenAI
 # Configurazione
 COLLECTION_NAME = "balizero_news_history"
 SIMILARITY_THRESHOLD = 0.88  # 88% identico = duplicato sicuro
-SEARCH_WINDOW_DAYS = 5       # Controlla solo news recenti
+SEARCH_WINDOW_DAYS = 5  # Controlla solo news recenti
 EMBEDDING_MODEL = "text-embedding-3-small"
+
 
 class SemanticDeduplicator:
     def __init__(self):
@@ -35,28 +36,32 @@ class SemanticDeduplicator:
         # Se continua a fallire, possiamo usare httpx direttamente come fallback
         try:
             self.qdrant = QdrantClient(
-                url=self.qdrant_url, 
+                url=self.qdrant_url,
                 api_key=self.qdrant_key,
                 timeout=30,
-                prefer_grpc=False
+                prefer_grpc=False,
             )
             # Test connessione immediata
             _ = self.qdrant.get_collections()
         except Exception as e:
             logger.error(f"Errore inizializzazione QdrantClient: {e}")
-            logger.warning("QdrantClient fallito, le operazioni potrebbero non funzionare")
+            logger.warning(
+                "QdrantClient fallito, le operazioni potrebbero non funzionare"
+            )
             # Manteniamo il client anche se fallisce, per permettere retry nelle operazioni
             self.qdrant = QdrantClient(
-                url=self.qdrant_url, 
+                url=self.qdrant_url,
                 api_key=self.qdrant_key,
                 timeout=30,
-                prefer_grpc=False
+                prefer_grpc=False,
             )
-        
+
         # Setup OpenAI (per embedding)
         self.openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        
-        logger.info(f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})")
+
+        logger.info(
+            f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})"
+        )
 
     async def _get_embedding(self, text: str) -> list[float]:
         """Genera embedding vettoriale per il testo"""
@@ -64,8 +69,7 @@ class SemanticDeduplicator:
             # Pulisci e tronca testo se troppo lungo
             text = text[:8000]
             response = await self.openai.embeddings.create(
-                input=text,
-                model=EMBEDDING_MODEL
+                input=text, model=EMBEDDING_MODEL
             )
             return response.data[0].embedding
         except Exception as e:
@@ -75,10 +79,13 @@ class SemanticDeduplicator:
     def _generate_id(self, url: str) -> str:
         """Genera ID deterministico basato su URL (UUID format)"""
         import uuid
+
         hash_val = hashlib.md5(url.encode()).hexdigest()
         return str(uuid.UUID(hash_val))
 
-    async def is_duplicate(self, title: str, summary: str, url: str) -> Tuple[bool, str, float]:
+    async def is_duplicate(
+        self, title: str, summary: str, url: str
+    ) -> Tuple[bool, str, float]:
         """
         Verifica se la notizia esiste già semanticamente.
         Returns: (is_duplicate, original_title, similarity_score)
@@ -86,10 +93,7 @@ class SemanticDeduplicator:
         # 1. Check rapido URL esatto (Deduplicazione tecnica)
         try:
             doc_id = self._generate_id(url)
-            points = self.qdrant.retrieve(
-                collection_name=COLLECTION_NAME,
-                ids=[doc_id]
-            )
+            points = self.qdrant.retrieve(collection_name=COLLECTION_NAME, ids=[doc_id])
             if points:
                 logger.info(f"🔄 Duplicato ESATTO trovato (URL match): {title[:50]}...")
                 return True, points[0].payload.get("title", "Unknown"), 1.0
@@ -101,13 +105,15 @@ class SemanticDeduplicator:
             # Combina titolo e sommario per contesto migliore
             query_text = f"{title}\n{summary}"
             vector = await self._get_embedding(query_text)
-            
+
             if not vector:
                 return False, "", 0.0
 
             # Filtro temporale (solo news recenti)
-            cutoff_date = (datetime.utcnow() - timedelta(days=SEARCH_WINDOW_DAYS)).isoformat()
-            
+            cutoff_date = (
+                datetime.utcnow() - timedelta(days=SEARCH_WINDOW_DAYS)
+            ).isoformat()
+
             # Cerca vettori simili
             search_result = self.qdrant.search(
                 collection_name=COLLECTION_NAME,
@@ -117,11 +123,11 @@ class SemanticDeduplicator:
                     must=[
                         models.FieldCondition(
                             key="published_at",
-                            range=models.DatetimeRange(gte=cutoff_date)
+                            range=models.DatetimeRange(gte=cutoff_date),
                         )
                     ]
                 ),
-                with_payload=True
+                with_payload=True,
             )
 
             if search_result:
@@ -146,7 +152,7 @@ class SemanticDeduplicator:
             title = article.get("title", "")
             summary = article.get("summary", "") or article.get("content", "")[:500]
             url = article.get("sourceUrl") or article.get("url", "")
-            
+
             if not url or not title:
                 return
 
@@ -154,7 +160,7 @@ class SemanticDeduplicator:
             doc_id = self._generate_id(url)
             text_to_embed = f"{title}\n{summary}"
             vector = await self._get_embedding(text_to_embed)
-            
+
             if not vector:
                 return
 
@@ -165,52 +171,51 @@ class SemanticDeduplicator:
                 "source_url": url,
                 "source": article.get("source", "Unknown"),
                 "category": article.get("category", "general"),
-                "published_at": article.get("publishedAt") or datetime.utcnow().isoformat(),
-                "tier": "T2", # Default tier
-                "ingested_at": datetime.utcnow().isoformat()
+                "published_at": article.get("publishedAt")
+                or datetime.utcnow().isoformat(),
+                "tier": "T2",  # Default tier
+                "ingested_at": datetime.utcnow().isoformat(),
             }
 
             # Upsert in Qdrant
             self.qdrant.upsert(
                 collection_name=COLLECTION_NAME,
-                points=[
-                    models.PointStruct(
-                        id=doc_id,
-                        vector=vector,
-                        payload=payload
-                    )
-                ]
+                points=[models.PointStruct(id=doc_id, vector=vector, payload=payload)],
             )
             logger.info(f"💾 Salvato in memoria news: {title[:50]}...")
 
         except Exception as e:
             logger.error(f"Errore salvataggio news: {e}")
 
+
 # Test rapido
 if __name__ == "__main__":
+
     async def test():
         dedup = SemanticDeduplicator()
-        
+
         # Test Case
         title = "Bali Introduces New Tourist Tax"
         summary = "Foreign visitors must pay IDR 150,000 upon entry starting February."
         url = "https://example.com/bali-tax-test"
-        
+
         # 1. Check
         is_dup, match, score = await dedup.is_duplicate(title, summary, url)
         print(f"Is duplicate? {is_dup} (Score: {score}) - Match: {match}")
-        
+
         # 2. Save
         if not is_dup:
-            await dedup.save_article({
-                "title": title,
-                "summary": summary,
-                "sourceUrl": url,
-                "source": "TestBot",
-                "category": "immigration"
-            })
+            await dedup.save_article(
+                {
+                    "title": title,
+                    "summary": summary,
+                    "sourceUrl": url,
+                    "source": "TestBot",
+                    "category": "immigration",
+                }
+            )
             print("Saved.")
-            
+
             # 3. Re-check (dovrebbe essere True ora)
             is_dup, match, score = await dedup.is_duplicate(title, summary, url)
             print(f"Re-check: Is duplicate? {is_dup} (Score: {score})")

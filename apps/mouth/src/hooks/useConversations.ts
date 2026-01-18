@@ -93,8 +93,10 @@ export function useConversations() {
     refetch: loadConversationList,
   } = useConversationsList();
 
-  const { deleteConversation: deleteConversationMutation, clearConversations: clearHistoryMutation } =
-    useConversationMutations();
+  const {
+    deleteConversation: deleteConversationMutation,
+    clearConversations: clearHistoryMutation,
+  } = useConversationMutations();
 
   const deleteConversation = async (conversationId: number) => {
     try {

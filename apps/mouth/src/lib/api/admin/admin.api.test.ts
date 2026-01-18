@@ -140,9 +140,12 @@ describe('AdminApi', () => {
 
       await adminApi.getMonthlySummary('2024-01-01');
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/team/activity/monthly?month_start=2024-01-01', {
-        headers: { 'X-User-Email': 'admin@example.com' },
-      });
+      expect(mockRequest).toHaveBeenCalledWith(
+        '/api/team/activity/monthly?month_start=2024-01-01',
+        {
+          headers: { 'X-User-Email': 'admin@example.com' },
+        }
+      );
     });
   });
 

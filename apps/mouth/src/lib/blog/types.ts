@@ -26,7 +26,7 @@ export interface Article {
   title: string;
   subtitle?: string;
   excerpt: string;
-  content: string;                    // MDX content
+  content: string; // MDX content
   coverImage: string;
   coverImageAlt: string;
   category: ArticleCategory;
@@ -35,7 +35,7 @@ export interface Article {
   // Metadata
   author: Author;
   coAuthors?: Author[];
-  reviewedBy?: string;                // Legal team verification
+  reviewedBy?: string; // Legal team verification
 
   // Timestamps
   createdAt: Date;
@@ -54,7 +54,7 @@ export interface Article {
   canonicalUrl?: string;
 
   // Analytics
-  readingTime: number;                // minutes
+  readingTime: number; // minutes
   viewCount: number;
   shareCount: number;
   likeCount: number;
@@ -70,8 +70,8 @@ export interface Article {
   translations?: ArticleTranslation[];
 
   // Zantara Integration
-  linkedCaseIds?: string[];           // Cases correlati
-  linkedClientIds?: string[];         // Clienti interessati
+  linkedCaseIds?: string[]; // Cases correlati
+  linkedClientIds?: string[]; // Clienti interessati
   autoNotifyClients?: boolean;
 }
 
@@ -106,7 +106,7 @@ export interface Author {
   avatar: string;
   role: string;
   bio?: string;
-  isAI: boolean;                      // true = Zantara AI
+  isAI: boolean; // true = Zantara AI
   socialLinks?: AuthorSocialLinks;
 }
 
@@ -124,12 +124,12 @@ export interface NewsletterSubscriber {
   id: string;
   email: string;
   name?: string;
-  categories: ArticleCategory[];      // Interessi
+  categories: ArticleCategory[]; // Interessi
   frequency: 'daily' | 'weekly' | 'monthly';
   language: 'en' | 'id';
   subscribedAt: Date;
   confirmed: boolean;
-  zohoContactId?: string;             // Link a Zoho
+  zohoContactId?: string; // Link a Zoho
 }
 
 export interface NewsletterSubscribeRequest {
@@ -158,8 +158,8 @@ export interface AIGenerationRequest {
   category: ArticleCategory;
   tone: ArticleTone;
   targetLength: ArticleLength;
-  includeData: boolean;               // Include stats/charts
-  sources?: string[];                 // URLs to reference
+  includeData: boolean; // Include stats/charts
+  sources?: string[]; // URLs to reference
 }
 
 export interface AIGenerationResponse {
@@ -168,7 +168,7 @@ export interface AIGenerationResponse {
   excerpt: string;
   content: string;
   suggestedTags: string[];
-  confidence: number;                 // 0.0 - 1.0
+  confidence: number; // 0.0 - 1.0
   coverImagePrompt: string;
 }
 
@@ -219,8 +219,8 @@ export interface ArticleAnalytics {
   articleId: string;
   views: number;
   uniqueViews: number;
-  avgReadTime: number;                // seconds
-  completionRate: number;             // percentage who finished
+  avgReadTime: number; // seconds
+  completionRate: number; // percentage who finished
   shares: ShareAnalytics;
   referrers: ReferrerAnalytics[];
   deviceBreakdown: DeviceBreakdown;
@@ -361,13 +361,16 @@ export interface PaginatedResponse<T> {
 // Category Metadata
 // ============================================================================
 
-export const CATEGORY_METADATA: Record<ArticleCategory, {
-  label: string;
-  description: string;
-  icon: string;
-  color: string;
-  gradient: string;
-}> = {
+export const CATEGORY_METADATA: Record<
+  ArticleCategory,
+  {
+    label: string;
+    description: string;
+    icon: string;
+    color: string;
+    gradient: string;
+  }
+> = {
   immigration: {
     label: 'Immigration',
     description: 'Visas, permits, and relocation guides',

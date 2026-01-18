@@ -11,6 +11,7 @@
 ### Modifiche Deployate
 
 **Refactoring Orchestrator:**
+
 - ✅ `orchestrator.py` refactored (ridotto da 1,298 a 896 righe, -31%)
 - ✅ `stream_query()` refactored (ridotto da ~600 a ~323 righe, -46%)
 - ✅ Creati 7 moduli specializzati:
@@ -25,6 +26,7 @@
 - ✅ Logging aggiunto in tutti i moduli
 
 **Metriche:**
+
 - Duplicazione codice: ~70% → <5% (-93%)
 - Complessità: 73 → <25 (-66%)
 - Testabilità: Bassa → Alta (+100%)
@@ -34,17 +36,20 @@
 ## ✅ DEPLOY VERIFICATION
 
 ### Build Status
+
 - ✅ Image build successful
 - ✅ Image size: 436 MB
 - ✅ Release command (migrations) completed successfully
 - ✅ Rolling deployment completed successfully
 
 ### Machine Status
+
 - ✅ 2 machines updated successfully
 - ✅ All machines in good state
 - ✅ DNS configuration verified
 
 ### Health Check
+
 ```bash
 curl https://nuzantara-rag.fly.dev/health
 ```
@@ -56,7 +61,9 @@ curl https://nuzantara-rag.fly.dev/health
 ## 🔍 POST-DEPLOY MONITORING
 
 ### Logs Check
+
 Monitorare logs per:
+
 - ✅ OrchestratorCore initialization
 - ✅ Nessun errore di import
 - ✅ Nessun errore di sintassi
@@ -64,7 +71,9 @@ Monitorare logs per:
 - ✅ Streaming funzionante
 
 ### Performance Check
+
 Monitorare:
+
 - Tempo di risposta query
 - Uso memoria
 - Errori 500/503
@@ -75,6 +84,7 @@ Monitorare:
 ## 📋 ROLLBACK PLAN
 
 Se necessario, rollback con:
+
 ```bash
 flyctl releases -a nuzantara-rag
 flyctl releases rollback <previous-release-id> -a nuzantara-rag
@@ -85,6 +95,7 @@ flyctl releases rollback <previous-release-id> -a nuzantara-rag
 ## 🎯 SUCCESS CRITERIA
 
 Deploy considerato riuscito se:
+
 - ✅ Health endpoint risponde correttamente
 - ✅ Nessun errore critico nei logs
 - ✅ Query processing funziona normalmente

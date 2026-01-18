@@ -72,12 +72,7 @@ class DashboardMetricsCollector {
   /**
    * Track API call
    */
-  trackApiCall(
-    endpoint: string,
-    success: boolean,
-    duration: number,
-    userId?: string
-  ): void {
+  trackApiCall(endpoint: string, success: boolean, duration: number, userId?: string): void {
     this.addMetric({
       timestamp: new Date(),
       metricType: 'api_call',
@@ -165,13 +160,13 @@ class DashboardMetricsCollector {
    * Get performance summary
    */
   getPerformanceSummary(): PerformanceMetric {
-    const apiMetrics = this.metrics.filter(m => m.metricType === 'api_call');
-    const performanceMetrics = this.metrics.filter(m => m.metricType === 'performance');
+    const apiMetrics = this.metrics.filter((m) => m.metricType === 'api_call');
+    const performanceMetrics = this.metrics.filter((m) => m.metricType === 'performance');
 
-    const loadTimeMetric = performanceMetrics.find(m => m.action === 'dashboard_load');
-    const renderTimeMetric = performanceMetrics.find(m => m.action === 'dashboard_render');
+    const loadTimeMetric = performanceMetrics.find((m) => m.action === 'dashboard_load');
+    const renderTimeMetric = performanceMetrics.find((m) => m.action === 'dashboard_render');
 
-    const apiSuccessCount = apiMetrics.filter(m => m.action === 'api_success').length;
+    const apiSuccessCount = apiMetrics.filter((m) => m.action === 'api_success').length;
     const apiTotalCount = apiMetrics.length;
 
     return {
@@ -187,10 +182,10 @@ class DashboardMetricsCollector {
    * Get button click statistics
    */
   getButtonClickStats(): Record<string, number> {
-    const buttonClicks = this.metrics.filter(m => m.metricType === 'button_click');
+    const buttonClicks = this.metrics.filter((m) => m.metricType === 'button_click');
     const stats: Record<string, number> = {};
 
-    buttonClicks.forEach(metric => {
+    buttonClicks.forEach((metric) => {
       const buttonName = metric.metadata?.buttonName as string;
       if (buttonName) {
         stats[buttonName] = (stats[buttonName] || 0) + 1;
@@ -204,10 +199,10 @@ class DashboardMetricsCollector {
    * Get error statistics
    */
   getErrorStats(): Record<string, number> {
-    const errors = this.metrics.filter(m => m.metricType === 'error');
+    const errors = this.metrics.filter((m) => m.metricType === 'error');
     const stats: Record<string, number> = {};
 
-    errors.forEach(metric => {
+    errors.forEach((metric) => {
       const errorType = metric.metadata?.errorType as string;
       if (errorType) {
         stats[errorType] = (stats[errorType] || 0) + 1;
@@ -240,15 +235,19 @@ class DashboardMetricsCollector {
    * Export metrics for analysis
    */
   exportMetrics(): string {
-    return JSON.stringify({
-      metrics: this.metrics,
-      summary: {
-        performance: this.getPerformanceSummary(),
-        buttonClicks: this.getButtonClickStats(),
-        errors: this.getErrorStats(),
+    return JSON.stringify(
+      {
+        metrics: this.metrics,
+        summary: {
+          performance: this.getPerformanceSummary(),
+          buttonClicks: this.getButtonClickStats(),
+          errors: this.getErrorStats(),
+        },
+        exportedAt: new Date().toISOString(),
       },
-      exportedAt: new Date().toISOString(),
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   /**
@@ -276,10 +275,14 @@ class DashboardMetricsCollector {
 
         localStorage.setItem('dashboard_metrics', JSON.stringify(metrics));
       } catch (error) {
-        logger.error('Failed to store metrics in localStorage', {
-          component: 'DashboardMetrics',
-          action: 'addMetric',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to store metrics in localStorage',
+          {
+            component: 'DashboardMetrics',
+            action: 'addMetric',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
   }

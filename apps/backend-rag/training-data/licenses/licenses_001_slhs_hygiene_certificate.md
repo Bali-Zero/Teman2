@@ -9,6 +9,7 @@
 ## Cos'è SLHS?
 
 **SLHS** (Sertifikat Laik Higiene Sanitasi) è il certificato igienico-sanitario obbligatorio per tutti i business che:
+
 - Producono cibo o bevande
 - Servono cibo o bevande al pubblico
 - Gestiscono ristorazione o catering
@@ -19,8 +20,8 @@
 
 ## Prezzo Bali Zero 2025
 
-| Servizio | Prezzo | Timeline |
-|----------|--------|----------|
+| Servizio                                | Prezzo            | Timeline      |
+| --------------------------------------- | ----------------- | ------------- |
 | SLHS (Sertifikat Laik Higiene Sanitasi) | **IDR 9.000.000** | 3-4 settimane |
 
 ---
@@ -28,6 +29,7 @@
 ## Chi deve avere SLHS?
 
 **Obbligatorio per:**
+
 - Ristoranti e trattorie
 - Café e coffee shop
 - Bar e beach club
@@ -37,6 +39,7 @@
 - Produttori alimentari
 
 **Non richiesto per:**
+
 - Uffici senza ristorazione
 - Retail non alimentare
 - Servizi professionali
@@ -46,6 +49,7 @@
 ## Requisiti per ottenere SLHS
 
 ### Requisiti strutturali:
+
 1. **Cucina conforme** agli standard igienici
 2. **Separazione aree** preparazione/lavaggio/stoccaggio
 3. **Bagni separati** per staff e clienti
@@ -54,6 +58,7 @@
 6. **Acqua potabile** certificata
 
 ### Documenti richiesti:
+
 - NIB (Nomor Induk Berusaha)
 - Akta pendirian perusahaan
 - NPWP perusahaan

@@ -21,7 +21,7 @@ export async function scanAnyUsage(): Promise<{
   // or a tool like eslint-plugin-typescript
   // For now, return current metrics
   const metrics = typeSafetyMetrics.getMetrics();
-  
+
   return {
     total: metrics.totalAnyCount,
     byFile: [],
@@ -118,7 +118,9 @@ export class TypeSafetyMonitor {
     }
 
     if (metrics.criticalAnyCount > 0) {
-      recommendations.push(`Remove ${metrics.criticalAnyCount} 'any' types from critical code paths`);
+      recommendations.push(
+        `Remove ${metrics.criticalAnyCount} 'any' types from critical code paths`
+      );
     }
 
     if (metrics.migrationProgress < 90) {

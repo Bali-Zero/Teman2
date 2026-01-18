@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -114,9 +104,7 @@
               "flatPath": "v1/projects/{projectsId}/locations/{locationsId}",
               "httpMethod": "GET",
               "id": "gameservices.projects.locations.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "Resource name for the location.",
@@ -130,18 +118,14 @@
               "response": {
                 "$ref": "Location"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             },
             "list": {
               "description": "Lists information about the supported locations for this service.",
               "flatPath": "v1/projects/{projectsId}/locations",
               "httpMethod": "GET",
               "id": "gameservices.projects.locations.list",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "filter": {
                   "description": "A filter to narrow down results to a preferred subset. The filtering language accepts strings like `\"displayName=tokyo\"`, and is documented in more detail in [AIP-160](https://google.aip.dev/160).",
@@ -176,9 +160,7 @@
               "response": {
                 "$ref": "ListLocationsResponse"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           },
           "resources": {
@@ -189,9 +171,7 @@
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/gameServerDeployments/{gameServerDeploymentsId}:getIamPolicy",
                   "httpMethod": "GET",
                   "id": "gameservices.projects.locations.gameServerDeployments.getIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "options.requestedPolicyVersion": {
                       "description": "Optional. The maximum policy version that will be used to format the policy. Valid values are 0, 1, and 3. Requests specifying an invalid value will be rejected. Requests for policies with any conditional role bindings must specify version 3. Policies with no conditional role bindings may specify any valid value or leave the field unset. The policy in the response might use the policy version that you specified, or it might use a lower policy version. For example, if you specify version 3, but the policy has no conditional role bindings, the response uses version 1. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies).",
@@ -211,18 +191,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "setIamPolicy": {
                   "description": "Sets the access control policy on the specified resource. Replaces any existing policy. Can return `NOT_FOUND`, `INVALID_ARGUMENT`, and `PERMISSION_DENIED` errors.",
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/gameServerDeployments/{gameServerDeploymentsId}:setIamPolicy",
                   "httpMethod": "POST",
                   "id": "gameservices.projects.locations.gameServerDeployments.setIamPolicy",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy is being specified. See [Resource names](https://cloud.google.com/apis/design/resource_names) for the appropriate value for this field.",
@@ -239,18 +215,14 @@
                   "response": {
                     "$ref": "Policy"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "testIamPermissions": {
                   "description": "Returns permissions that a caller has on the specified resource. If the resource does not exist, this will return an empty set of permissions, not a `NOT_FOUND` error. Note: This operation is designed to be used for building permission-aware UIs and command-line tools, not for authorization checking. This operation may \"fail open\" without warning.",
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/gameServerDeployments/{gameServerDeploymentsId}:testIamPermissions",
                   "httpMethod": "POST",
                   "id": "gameservices.projects.locations.gameServerDeployments.testIamPermissions",
-                  "parameterOrder": [
-                    "resource"
-                  ],
+                  "parameterOrder": ["resource"],
                   "parameters": {
                     "resource": {
                       "description": "REQUIRED: The resource for which the policy detail is being requested. See [Resource names](https://cloud.google.com/apis/design/resource_names) for the appropriate value for this field.",
@@ -267,9 +239,7 @@
                   "response": {
                     "$ref": "TestIamPermissionsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             },
@@ -280,9 +250,7 @@
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/operations/{operationsId}:cancel",
                   "httpMethod": "POST",
                   "id": "gameservices.projects.locations.operations.cancel",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource to be cancelled.",
@@ -299,18 +267,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "delete": {
                   "description": "Deletes a long-running operation. This method indicates that the client is no longer interested in the operation result. It does not cancel the operation. If the server doesn't support this method, it returns `google.rpc.Code.UNIMPLEMENTED`.",
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/operations/{operationsId}",
                   "httpMethod": "DELETE",
                   "id": "gameservices.projects.locations.operations.delete",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource to be deleted.",
@@ -324,18 +288,14 @@
                   "response": {
                     "$ref": "Empty"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "get": {
                   "description": "Gets the latest state of a long-running operation. Clients can use this method to poll the operation result at intervals as recommended by the API service.",
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/operations/{operationsId}",
                   "httpMethod": "GET",
                   "id": "gameservices.projects.locations.operations.get",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "name": {
                       "description": "The name of the operation resource.",
@@ -349,18 +309,14 @@
                   "response": {
                     "$ref": "Operation"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 },
                 "list": {
                   "description": "Lists operations that match the specified filter in the request. If the server doesn't support this method, it returns `UNIMPLEMENTED`.",
                   "flatPath": "v1/projects/{projectsId}/locations/{locationsId}/operations",
                   "httpMethod": "GET",
                   "id": "gameservices.projects.locations.operations.list",
-                  "parameterOrder": [
-                    "name"
-                  ],
+                  "parameterOrder": ["name"],
                   "parameters": {
                     "filter": {
                       "description": "The standard list filter.",
@@ -390,9 +346,7 @@
                   "response": {
                     "$ref": "ListOperationsResponse"
                   },
-                  "scopes": [
-                    "https://www.googleapis.com/auth/cloud-platform"
-                  ]
+                  "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
                 }
               }
             }
@@ -438,12 +392,7 @@
         },
         "logType": {
           "description": "The log type that this config enables.",
-          "enum": [
-            "LOG_TYPE_UNSPECIFIED",
-            "ADMIN_READ",
-            "DATA_WRITE",
-            "DATA_READ"
-          ],
+          "enum": ["LOG_TYPE_UNSPECIFIED", "ADMIN_READ", "DATA_WRITE", "DATA_READ"],
           "enumDescriptions": [
             "Default case. Should never be this.",
             "Admin reads. Example: CloudIAM getIamPolicy",
@@ -521,11 +470,7 @@
         },
         "logName": {
           "description": "The log_name to populate in the Cloud Audit Record.",
-          "enum": [
-            "UNSPECIFIED_LOG_NAME",
-            "ADMIN_ACTIVITY",
-            "DATA_ACCESS"
-          ],
+          "enum": ["UNSPECIFIED_LOG_NAME", "ADMIN_ACTIVITY", "DATA_ACCESS"],
           "enumDescriptions": [
             "Default. Should not be used.",
             "Corresponds to \"cloudaudit.googleapis.com/activity\"",
@@ -566,14 +511,7 @@
         },
         "op": {
           "description": "An operator to apply the subject with.",
-          "enum": [
-            "NO_OP",
-            "EQUALS",
-            "NOT_EQUALS",
-            "IN",
-            "NOT_IN",
-            "DISCHARGED"
-          ],
+          "enum": ["NO_OP", "EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "DISCHARGED"],
           "enumDescriptions": [
             "Default no-op.",
             "DEPRECATED. Use IN instead.",
@@ -590,13 +528,7 @@
         },
         "sys": {
           "description": "Trusted attributes supplied by any service that owns resources and uses the IAM system for access control.",
-          "enum": [
-            "NO_ATTR",
-            "REGION",
-            "SERVICE",
-            "NAME",
-            "IP"
-          ],
+          "enum": ["NO_ATTR", "REGION", "SERVICE", "NAME", "IP"],
           "enumDescriptions": [
             "Default non-attribute type",
             "Region of the resource",
@@ -658,10 +590,7 @@
       "id": "DataAccessOptions",
       "properties": {
         "logMode": {
-          "enum": [
-            "LOG_MODE_UNSPECIFIED",
-            "LOG_FAIL_CLOSED"
-          ],
+          "enum": ["LOG_MODE_UNSPECIFIED", "LOG_FAIL_CLOSED"],
           "enumDescriptions": [
             "Client is not required to write a partial Gin log immediately after the authorization check. If client chooses to write one and it fails, client may either fail open (allow the operation to continue) or fail closed (handle as a DENY outcome).",
             "The application's operation in the context of which this authorization check is being made may only be performed if it is successfully logged to Gin. For instance, the authorization library may satisfy this obligation by emitting a partial log entry at authorization check time and only returning ALLOW to the application if it succeeds. If a matching Rule has this directive, but the client has not indicated that it will honor such requirements, then the IAM check will result in authorization failure by setting CheckPolicyResponse.success=false."
@@ -868,14 +797,7 @@
       "properties": {
         "action": {
           "description": "Required",
-          "enum": [
-            "NO_ACTION",
-            "ALLOW",
-            "ALLOW_WITH_LOG",
-            "DENY",
-            "DENY_WITH_LOG",
-            "LOG"
-          ],
+          "enum": ["NO_ACTION", "ALLOW", "ALLOW_WITH_LOG", "DENY", "DENY_WITH_LOG", "LOG"],
           "enumDescriptions": [
             "Default no action.",
             "Matching 'Entries' grant access.",

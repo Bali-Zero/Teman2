@@ -33,6 +33,7 @@ Use the automated deployment script that includes pre-deploy checks, deployment,
 ```
 
 **What it does:**
+
 1. ✅ Pre-deploy code syntax checks
 2. 🚀 Deploys to Fly.io
 3. ⏳ Waits for deployment stabilization
@@ -43,22 +44,26 @@ Use the automated deployment script that includes pre-deploy checks, deployment,
 ### Method 2: Manual Deployment
 
 **Step 1: Navigate to backend directory**
+
 ```bash
 cd apps/backend-rag
 ```
 
 **Step 2: Deploy to Fly.io**
+
 ```bash
 fly deploy -a nuzantara-rag --remote-only
 ```
 
 **Step 3: Wait for deployment**
+
 ```bash
 # Wait ~30 seconds for deployment to stabilize
 sleep 30
 ```
 
 **Step 4: Verify deployment**
+
 ```bash
 # Health check
 curl https://nuzantara-rag.fly.dev/health
@@ -73,6 +78,7 @@ python3 scripts/testing/test_intel_production.py
 ## ✅ Post-Deploy Verification
 
 ### 1. Health Check
+
 ```bash
 curl https://nuzantara-rag.fly.dev/health
 ```
@@ -80,6 +86,7 @@ curl https://nuzantara-rag.fly.dev/health
 Expected: `{"status":"healthy",...}`
 
 ### 2. Production Tests
+
 ```bash
 python3 scripts/testing/test_intel_production.py
 ```
@@ -87,6 +94,7 @@ python3 scripts/testing/test_intel_production.py
 Expected: All tests pass or show expected authentication requirements
 
 ### 3. Monitor Metrics
+
 ```bash
 python3 scripts/monitoring/monitor_intel_metrics.py
 ```
@@ -94,6 +102,7 @@ python3 scripts/monitoring/monitor_intel_metrics.py
 Expected: Metrics within normal range
 
 ### 4. Check Performance
+
 ```bash
 python3 scripts/monitoring/monitor_intel_performance.py 5
 ```
@@ -101,11 +110,13 @@ python3 scripts/monitoring/monitor_intel_performance.py 5
 Expected: Response times < 500ms
 
 ### 5. Monitor Logs
+
 ```bash
 fly logs -a nuzantara-rag --limit 50
 ```
 
 Look for:
+
 - ✅ No errors
 - ✅ Service initialization successful
 - ✅ Intel services loaded correctly
@@ -117,16 +128,19 @@ Look for:
 If deployment causes issues, rollback to previous version:
 
 **Step 1: List releases**
+
 ```bash
 fly releases -a nuzantara-rag
 ```
 
 **Step 2: Rollback to previous release**
+
 ```bash
 fly releases rollback <release-id> -a nuzantara-rag
 ```
 
 **Step 3: Verify rollback**
+
 ```bash
 fly status -a nuzantara-rag
 curl https://nuzantara-rag.fly.dev/health
@@ -137,18 +151,21 @@ curl https://nuzantara-rag.fly.dev/health
 ## 📊 Monitoring After Deployment
 
 ### Immediate Monitoring (First 5 minutes)
+
 - Check health endpoint
 - Monitor logs for errors
 - Verify metrics collection
 - Test key endpoints
 
 ### Short-term Monitoring (First hour)
+
 - Monitor error rates
 - Check response times
 - Verify staging operations
 - Check approval workflow
 
 ### Long-term Monitoring (Daily)
+
 - Review daily monitoring reports
 - Check performance trends
 - Analyze error patterns
@@ -161,12 +178,14 @@ curl https://nuzantara-rag.fly.dev/health
 ### Deployment Fails
 
 **Check:**
+
 1. Fly CLI authentication: `fly auth whoami`
 2. App exists: `fly apps list`
 3. Code syntax: `python3 -m py_compile backend/services/intel/*.py`
 4. Network connectivity
 
 **Common Issues:**
+
 - **Build timeout:** Increase timeout or check build logs
 - **Dockerfile not found:** Ensure you're in `apps/backend-rag` directory
 - **Authentication error:** Run `fly auth login`
@@ -174,11 +193,13 @@ curl https://nuzantara-rag.fly.dev/health
 ### Health Check Fails
 
 **Check:**
+
 1. Deployment status: `fly status -a nuzantara-rag`
 2. Machine logs: `fly logs -a nuzantara-rag`
 3. Machine health: `fly status -a nuzantara-rag`
 
 **Common Issues:**
+
 - **Port not listening:** Check app configuration
 - **Database connection:** Verify Qdrant connection
 - **Service initialization:** Check startup logs
@@ -186,12 +207,14 @@ curl https://nuzantara-rag.fly.dev/health
 ### Tests Fail After Deployment
 
 **Check:**
+
 1. Endpoint accessibility
 2. Authentication requirements
 3. Service availability
 4. Network connectivity
 
 **Common Issues:**
+
 - **401 Unauthorized:** Expected for protected endpoints
 - **Timeout:** Service may still be starting
 - **Connection refused:** Service not ready yet

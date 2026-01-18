@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Standalone test of categorization - copied from source"""
-import re
-from typing import Dict, Optional
+
+from typing import Dict
 
 # Comprehensive keyword mapping for document categorization
 CATEGORIZATION_RULES = {
@@ -43,13 +43,19 @@ CATEGORIZATION_RULES = {
     },
 }
 
+
 def auto_categorize_document(filename: str) -> Dict[str, any]:
     """Categorize document from filename"""
     if not filename:
-        return {"document_type": "Other", "document_category": "other", "confidence": 0.5, "matched_keyword": None}
-    
+        return {
+            "document_type": "Other",
+            "document_category": "other",
+            "confidence": 0.5,
+            "matched_keyword": None,
+        }
+
     filename_lower = filename.lower()
-    
+
     for category, doc_types in CATEGORIZATION_RULES.items():
         for doc_type, keywords in doc_types.items():
             for keyword in keywords:
@@ -57,23 +63,31 @@ def auto_categorize_document(filename: str) -> Dict[str, any]:
                     return {
                         "document_type": doc_type.replace("_", " ").title(),
                         "document_category": category,
-                        "confidence": 0.9 if filename_lower.startswith(keyword) else 0.7,
+                        "confidence": 0.9
+                        if filename_lower.startswith(keyword)
+                        else 0.7,
                         "matched_keyword": keyword,
                     }
-    
-    return {"document_type": "Other", "document_category": "other", "confidence": 0.5, "matched_keyword": None}
+
+    return {
+        "document_type": "Other",
+        "document_category": "other",
+        "confidence": 0.5,
+        "matched_keyword": None,
+    }
+
 
 # Run tests
 print("🧪 Testing Auto-Categorization Service...")
 tests = [
-    ('Passport_JOHN_DOE_2028-12-31.pdf', 'immigration', 'Passport'),
-    ('KITAS_2025-06-15.jpg', 'immigration', 'Kitas'),
-    ('Akta_PT_ABC.pdf', 'pma', 'Akta'),
-    ('NPWP_Company.pdf', 'pma', 'Npwp Company'),
-    ('SPT_2023.pdf', 'tax', 'Spt'),
-    ('Invoice_Dec.pdf', 'tax', 'Invoice'),
-    ('Photo_3x4.jpg', 'personal', 'Photo'),
-    ('CV_Resume.pdf', 'personal', 'Cv'),
+    ("Passport_JOHN_DOE_2028-12-31.pdf", "immigration", "Passport"),
+    ("KITAS_2025-06-15.jpg", "immigration", "Kitas"),
+    ("Akta_PT_ABC.pdf", "pma", "Akta"),
+    ("NPWP_Company.pdf", "pma", "Npwp Company"),
+    ("SPT_2023.pdf", "tax", "Spt"),
+    ("Invoice_Dec.pdf", "tax", "Invoice"),
+    ("Photo_3x4.jpg", "personal", "Photo"),
+    ("CV_Resume.pdf", "personal", "Cv"),
 ]
 
 passed = 0
@@ -81,11 +95,13 @@ failed = 0
 
 for filename, exp_cat, exp_type in tests:
     result = auto_categorize_document(filename)
-    if result['document_category'] == exp_cat and result['document_type'] == exp_type:
+    if result["document_category"] == exp_cat and result["document_type"] == exp_type:
         print(f"✓ {filename} → {result['document_category']}/{result['document_type']}")
         passed += 1
     else:
-        print(f"✗ {filename} → Expected {exp_cat}/{exp_type}, got {result['document_category']}/{result['document_type']}")
+        print(
+            f"✗ {filename} → Expected {exp_cat}/{exp_type}, got {result['document_category']}/{result['document_type']}"
+        )
         failed += 1
 
 print(f"\n📊 Results: {passed}/{len(tests)} passed")

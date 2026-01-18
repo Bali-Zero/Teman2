@@ -43,6 +43,7 @@
 ## 📋 Contenuti Documentati
 
 ### Best Practices
+
 - Virtualizzazione liste
 - Memoizzazione componenti
 - useMemo per valori derivati
@@ -50,6 +51,7 @@
 - Lazy loading
 
 ### Performance Targets
+
 - INP: < 200ms (good)
 - Memory: < 20MB per 200 items
 - Scroll: 60fps
@@ -57,6 +59,7 @@
 - CLS: < 0.1
 
 ### Miglioramenti
+
 - INP: 70-80% miglioramento
 - Memory: 70-80% riduzione
 - Re-renders: 60-90% riduzione
@@ -66,6 +69,7 @@
 ## 🔗 Cross-References
 
 Tutti i file principali ora referenziano `docs/FRONTEND_PERFORMANCE_GUIDE.md`:
+
 - README.md
 - AI_ONBOARDING.md
 - AI_AGENT_BEST_PRACTICES.md

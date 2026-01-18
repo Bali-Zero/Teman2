@@ -12,10 +12,12 @@
 **Causa:** Cursor Helper (PID 1133) non gestisce correttamente la terminazione dei processi figlio
 
 **Zombie Trovati:**
+
 - Tutti con PPID 1133 (Cursor Helper extension-host)
 - PID: 1892, 1704, 2795, 3032, 3033, 1469, 1340, 2039, 1682, 1663, 1656, 1644, 1643, 1598, 1388, 1338, 1337, 1336, 11467, 11424
 
 **Impatto:**
+
 - Occupano slot nella tabella processi
 - Indicano bug in Cursor
 - Non consumano risorse ma possono accumularsi
@@ -25,6 +27,7 @@
 ### 2. Processo Stuck (1) ⚠️
 
 **Processo:** `bird` (PID 55790)
+
 - **Tipo:** iCloudDriveCore (Apple)
 - **CPU:** 38.7%
 - **MEM:** 44 MB
@@ -39,11 +42,11 @@
 
 **Processi con CPU Alta ma Stato Sleeping:**
 
-| PID | Processo | CPU | MEM | Problema |
-|-----|----------|-----|-----|----------|
+| PID   | Processo      | CPU   | MEM  | Problema             |
+| ----- | ------------- | ----- | ---- | -------------------- |
 | 64262 | Google Chrome | 78.8% | 3.3% | CPU alta ma sleeping |
-| 625 | iTerm2 | 46.0% | 2.1% | CPU alta ma sleeping |
-| 48324 | Claude | 17.6% | 2.8% | CPU alta ma sleeping |
+| 625   | iTerm2        | 46.0% | 2.1% | CPU alta ma sleeping |
+| 48324 | Claude        | 17.6% | 2.8% | CPU alta ma sleeping |
 | 64197 | Google Chrome | 10.7% | 1.2% | CPU alta ma sleeping |
 
 **Impatto:** Consumano CPU inutilmente
@@ -57,18 +60,22 @@
 #### 1. Risolvere Processi Zombie
 
 **Opzione A: Riavviare Cursor (Consigliato)**
+
 - Chiudere Cursor completamente
 - Riaprire Cursor
 - I processi zombie verranno rimossi automaticamente
 
 **Opzione B: Terminare Extension-Host**
+
 ```bash
 kill 1133
 ```
+
 - Cursor riavvierà automaticamente extension-host
 - I processi zombie verranno rimossi
 
 **Opzione C: Riavviare Sistema**
+
 - Riavviare Mac rimuove tutti i processi zombie
 
 ---
@@ -80,14 +87,17 @@ kill 1133
 **Processo:** `bird` (PID 55790)
 
 **Opzione A: Riprendere Processo**
+
 ```bash
 kill -CONT 55790
 ```
 
 **Opzione B: Terminare Processo**
+
 ```bash
 kill 55790
 ```
+
 - Si riavvierà automaticamente se necessario
 
 ---
@@ -95,14 +105,17 @@ kill 55790
 #### 3. Risolvere Processi Anomali
 
 **Chrome (PID 64262):**
+
 - Chiudere tab Chrome non necessarie
 - Oppure riavviare Chrome completamente
 
 **iTerm2 (PID 625):**
+
 - Verificare se ci sono script in esecuzione
 - Riavviare iTerm2 se necessario
 
 **Claude (PID 48324):**
+
 - Chiudere Claude se non necessario
 - Considerare reinstallazione (molti processi in path temporaneo)
 

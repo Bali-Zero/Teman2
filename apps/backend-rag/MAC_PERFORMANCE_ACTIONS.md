@@ -9,13 +9,13 @@
 
 ### 1. Pulizia Cache ✅
 
-| Cache | Dimensione | Status |
-|-------|------------|--------|
-| CloudKit | 265 MB | ✅ Pulita |
-| ms-playwright-go | 127 MB | ✅ Pulita |
-| us.zoom.xos | 73 MB | ✅ Pulita |
-| node-gyp | 64 MB | ✅ Pulita |
-| Homebrew | 52 MB | ✅ Pulita |
+| Cache            | Dimensione | Status    |
+| ---------------- | ---------- | --------- |
+| CloudKit         | 265 MB     | ✅ Pulita |
+| ms-playwright-go | 127 MB     | ✅ Pulita |
+| us.zoom.xos      | 73 MB      | ✅ Pulita |
+| node-gyp         | 64 MB      | ✅ Pulita |
+| Homebrew         | 52 MB      | ✅ Pulita |
 
 **Totale Cache Pulita:** ~580 MB
 
@@ -28,10 +28,12 @@
 **Problema:** 2 VM attive consumano ~10.6 GB RAM
 
 **VM Attive Identificate:**
+
 - PID 2026: ~6.5 GB RAM, 196% CPU
 - PID 48375: ~4.1 GB RAM, 42.8% CPU (stuck)
 
 **Azione:**
+
 1. Apri **Activity Monitor** (Applicazioni > Utility)
 2. Cerca "VirtualMachine" nella barra di ricerca
 3. Seleziona le VM non necessarie
@@ -40,6 +42,7 @@
 **Spazio Liberabile:** ~10 GB RAM
 
 **Alternativa (Terminale):**
+
 ```bash
 # Verificare VM attive
 ps aux | grep VirtualMachine | grep -v grep
@@ -55,6 +58,7 @@ ps aux | grep VirtualMachine | grep -v grep
 **Problema:** ~15.4 GB di memoria compressa (swap massivo)
 
 **Azione:**
+
 ```bash
 sudo purge
 ```
@@ -64,6 +68,7 @@ sudo purge
 **Nota:** Richiede password amministratore
 
 **Verifica Dopo:**
+
 ```bash
 vm_stat | grep "Pages free"
 ```
@@ -75,6 +80,7 @@ vm_stat | grep "Pages free"
 **Problema:** 25 processi npm/node attivi, alcuni consumano 70-80% CPU
 
 **Azione:**
+
 ```bash
 # Vedere processi npm attivi
 ps aux | grep npm | grep -v grep
@@ -89,7 +95,8 @@ kill <PID>
 kill -9 <PID>
 ```
 
-**Raccomandazione:** 
+**Raccomandazione:**
+
 - Verificare che non siano build/test importanti prima di terminare
 - Se sono processi di sviluppo, potrebbero essere necessari
 
@@ -98,11 +105,13 @@ kill -9 <PID>
 ### 4. Chiudere App Non Necessarie ⚠️
 
 **App Pesanti Identificate:**
+
 - Claude: 55% CPU, ~700 MB RAM
 - Cursor Helper: 60% CPU, 709 MB RAM
 - Chrome/Safari: Se con molte tab aperte
 
 **Azione:**
+
 - Chiudere app non necessarie manualmente
 - Chiudere tab browser non necessarie
 
@@ -128,12 +137,12 @@ ps aux | awk '{if ($4 > 5.0) print $4"% MEM - "$11}' | sort -rn | head -10
 
 ### Risultati Attesi
 
-| Metrica | Prima | Dopo (Atteso) |
-|---------|-------|---------------|
-| RAM Libera | 98 MB | 10+ GB |
-| CPU Idle | 3.6% | 30-40% |
-| Load Average | 5.79-7.30 | 2-3 |
-| Swap Attivo | Sì (~15 GB) | No |
+| Metrica      | Prima       | Dopo (Atteso) |
+| ------------ | ----------- | ------------- |
+| RAM Libera   | 98 MB       | 10+ GB        |
+| CPU Idle     | 3.6%        | 30-40%        |
+| Load Average | 5.79-7.30   | 2-3           |
+| Swap Attivo  | Sì (~15 GB) | No            |
 
 ---
 

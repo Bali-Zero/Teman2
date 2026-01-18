@@ -25,26 +25,57 @@ Author: BaliZero Team
 """
 
 import re
-import json
 import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from loguru import logger
 
 
 # Category colors matching balizero.com
 CATEGORY_COLORS = {
-    "immigration": {"primary": "#2251ff", "bg": "rgba(34, 81, 255, 0.1)", "name": "Immigration"},
-    "business": {"primary": "#22c55e", "bg": "rgba(34, 197, 94, 0.1)", "name": "Business"},
-    "tax": {"primary": "#f59e0b", "bg": "rgba(245, 158, 11, 0.1)", "name": "Tax & Legal"},
-    "tax-legal": {"primary": "#f59e0b", "bg": "rgba(245, 158, 11, 0.1)", "name": "Tax & Legal"},
-    "property": {"primary": "#e85c41", "bg": "rgba(232, 92, 65, 0.1)", "name": "Property"},
-    "lifestyle": {"primary": "#7c3aed", "bg": "rgba(124, 58, 237, 0.1)", "name": "Lifestyle"},
+    "immigration": {
+        "primary": "#2251ff",
+        "bg": "rgba(34, 81, 255, 0.1)",
+        "name": "Immigration",
+    },
+    "business": {
+        "primary": "#22c55e",
+        "bg": "rgba(34, 197, 94, 0.1)",
+        "name": "Business",
+    },
+    "tax": {
+        "primary": "#f59e0b",
+        "bg": "rgba(245, 158, 11, 0.1)",
+        "name": "Tax & Legal",
+    },
+    "tax-legal": {
+        "primary": "#f59e0b",
+        "bg": "rgba(245, 158, 11, 0.1)",
+        "name": "Tax & Legal",
+    },
+    "property": {
+        "primary": "#e85c41",
+        "bg": "rgba(232, 92, 65, 0.1)",
+        "name": "Property",
+    },
+    "lifestyle": {
+        "primary": "#7c3aed",
+        "bg": "rgba(124, 58, 237, 0.1)",
+        "name": "Lifestyle",
+    },
     "tech": {"primary": "#ec4899", "bg": "rgba(236, 72, 153, 0.1)", "name": "Tech"},
-    "regulation": {"primary": "#f59e0b", "bg": "rgba(245, 158, 11, 0.1)", "name": "Regulation"},
-    "investment": {"primary": "#22c55e", "bg": "rgba(34, 197, 94, 0.1)", "name": "Investment"},
+    "regulation": {
+        "primary": "#f59e0b",
+        "bg": "rgba(245, 158, 11, 0.1)",
+        "name": "Regulation",
+    },
+    "investment": {
+        "primary": "#22c55e",
+        "bg": "rgba(34, 197, 94, 0.1)",
+        "name": "Investment",
+    },
     "general": {"primary": "#2251ff", "bg": "rgba(34, 81, 255, 0.1)", "name": "News"},
 }
 
@@ -52,6 +83,7 @@ CATEGORY_COLORS = {
 @dataclass
 class PreviewArticle:
     """Article data for preview generation"""
+
     article_id: str
     title: str
     subtitle: str
@@ -97,17 +129,20 @@ class BaliZeroPreviewGenerator:
         text = re.sub(
             r"^### (.+)$",
             lambda m: f'<h3 id="{self._slugify(m.group(1))}">{m.group(1)}</h3>',
-            text, flags=re.MULTILINE
+            text,
+            flags=re.MULTILINE,
         )
         text = re.sub(
             r"^## (.+)$",
             lambda m: f'<h2 id="{self._slugify(m.group(1))}">{m.group(1)}</h2>',
-            text, flags=re.MULTILINE
+            text,
+            flags=re.MULTILINE,
         )
         text = re.sub(
             r"^# (.+)$",
             lambda m: f'<h1 id="{self._slugify(m.group(1))}">{m.group(1)}</h1>',
-            text, flags=re.MULTILINE
+            text,
+            flags=re.MULTILINE,
         )
 
         # Bold and italic
@@ -119,7 +154,11 @@ class BaliZeroPreviewGenerator:
         text = re.sub(r"(<li>.*</li>\n?)+", r"<ul>\g<0></ul>", text)
 
         # Links
-        text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', text)
+        text = re.sub(
+            r"\[([^\]]+)\]\(([^)]+)\)",
+            r'<a href="\2" target="_blank" rel="noopener">\1</a>',
+            text,
+        )
 
         # Horizontal rules
         text = re.sub(r"^---+$", r"<hr>", text, flags=re.MULTILINE)
@@ -148,12 +187,12 @@ class BaliZeroPreviewGenerator:
         if not tldr_summary:
             return ""
         # Use HTML entity for lightning emoji to avoid f-string issues
-        return f'''
+        return f"""
         <div class="tldr-box">
             <div class="tldr-label">&#9889; TL;DR</div>
             <p class="tldr-text">{tldr_summary}</p>
         </div>
-        '''
+        """
 
     def _generate_cover_image_html(self, cover_image: str, title: str) -> str:
         """Generate cover image HTML (separate method to avoid nested f-string)"""
@@ -176,21 +215,15 @@ class BaliZeroPreviewGenerator:
         for match in re.finditer(md_pattern, content, re.MULTILINE):
             level = len(match.group(1))
             text = match.group(2).strip()
-            headings.append({
-                "level": level,
-                "text": text,
-                "id": self._slugify(text)
-            })
+            headings.append({"level": level, "text": text, "id": self._slugify(text)})
 
         for match in re.finditer(html_pattern, content):
             level = int(match.group(1))
             text = match.group(2).strip()
             if not any(h["text"] == text for h in headings):
-                headings.append({
-                    "level": level,
-                    "text": text,
-                    "id": self._slugify(text)
-                })
+                headings.append(
+                    {"level": level, "text": text, "id": self._slugify(text)}
+                )
 
         return headings
 
@@ -209,7 +242,9 @@ class BaliZeroPreviewGenerator:
             dt = datetime.fromisoformat(article.published_at.replace("Z", "+00:00"))
             formatted_date = dt.strftime("%B %d, %Y")
         except:
-            formatted_date = article.published_at[:10] if article.published_at else "Today"
+            formatted_date = (
+                article.published_at[:10] if article.published_at else "Today"
+            )
 
         # Generate TOC HTML
         toc_html = ""
@@ -227,35 +262,33 @@ class BaliZeroPreviewGenerator:
         if article.faq_items:
             faq_items_html = ""
             for faq in article.faq_items:
-                faq_items_html += f'''
+                faq_items_html += f"""
                 <div class="faq-item">
                     <h3 class="faq-question">{faq.get("question", "")}</h3>
                     <p class="faq-answer">{faq.get("answer", "")}</p>
                 </div>
-                '''
-            faq_html = f'''
+                """
+            faq_html = f"""
             <section class="faq-section">
                 <h2>Frequently Asked Questions</h2>
                 {faq_items_html}
             </section>
-            '''
+            """
 
         # Keywords/tags HTML
         tags_html = "".join(
-            f'<span class="tag">{kw}</span>'
-            for kw in article.keywords[:8]
+            f'<span class="tag">{kw}</span>' for kw in article.keywords[:8]
         )
 
         # Entities HTML
         entities_html = "".join(
-            f'<span class="entity">{ent}</span>'
-            for ent in article.key_entities[:6]
+            f'<span class="entity">{ent}</span>' for ent in article.key_entities[:6]
         )
 
         # Human review badge
         review_badge = ""
         if article.reviewed_by:
-            review_badge = f'''
+            review_badge = f"""
             <div class="review-badge">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -263,7 +296,7 @@ class BaliZeroPreviewGenerator:
                 </svg>
                 Reviewed by {article.reviewed_by}
             </div>
-            '''
+            """
 
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -903,7 +936,7 @@ class BaliZeroPreviewGenerator:
             <h1 class="article-title">{article.title}</h1>
 
             <!-- Subtitle -->
-            {f'<p class="article-subtitle">{article.subtitle}</p>' if article.subtitle else ''}
+            {f'<p class="article-subtitle">{article.subtitle}</p>' if article.subtitle else ""}
 
             <!-- Meta -->
             <div class="article-meta">
@@ -1110,7 +1143,9 @@ class BaliZeroPreviewGenerator:
         logger.success(f"Preview saved: {filepath}")
         return str(filepath)
 
-    def get_preview_url(self, article_id: str, base_url: str = "https://bali-intel-scraper.fly.dev") -> str:
+    def get_preview_url(
+        self, article_id: str, base_url: str = "https://bali-intel-scraper.fly.dev"
+    ) -> str:
         """Get the public URL for a preview"""
         return f"{base_url}/preview/{article_id}"
 
@@ -1218,12 +1253,35 @@ Applications can be submitted through Indonesian embassies worldwide or converte
         cover_image="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=514&fit=crop",
         published_at="2026-01-11T10:00:00Z",
         reading_time=5,
-        keywords=["digital nomad visa", "E33G", "Indonesia visa", "remote work", "Bali", "expat"],
-        key_entities=["Indonesia", "Bali", "Ministry of Law", "Digital Nomad Visa", "E33G", "Immigration"],
+        keywords=[
+            "digital nomad visa",
+            "E33G",
+            "Indonesia visa",
+            "remote work",
+            "Bali",
+            "expat",
+        ],
+        key_entities=[
+            "Indonesia",
+            "Bali",
+            "Ministry of Law",
+            "Digital Nomad Visa",
+            "E33G",
+            "Immigration",
+        ],
         faq_items=[
-            {"question": "How long is the digital nomad visa valid?", "answer": "The E33G Digital Nomad Visa is now valid for up to 5 years, extended from the previous 1-year validity."},
-            {"question": "What is the income requirement?", "answer": "You need to prove a minimum monthly income of $2,000 USD from foreign sources."},
-            {"question": "Can I work for Indonesian companies?", "answer": "No, the E33G visa only allows remote work for foreign employers. Working for Indonesian companies requires a different visa type."},
+            {
+                "question": "How long is the digital nomad visa valid?",
+                "answer": "The E33G Digital Nomad Visa is now valid for up to 5 years, extended from the previous 1-year validity.",
+            },
+            {
+                "question": "What is the income requirement?",
+                "answer": "You need to prove a minimum monthly income of $2,000 USD from foreign sources.",
+            },
+            {
+                "question": "Can I work for Indonesian companies?",
+                "answer": "No, the E33G visa only allows remote work for foreign employers. Working for Indonesian companies requires a different visa type.",
+            },
         ],
         tldr_summary="Indonesia has extended the Digital Nomad Visa (E33G) from 1 year to 5 years, requiring $2,000/month income and allowing remote work for foreign companies without Indonesian income tax for stays under 183 days.",
         schema_json_ld='{"@context":"https://schema.org","@type":"NewsArticle","headline":"Indonesia Extends Digital Nomad Visa to 5 Years"}',

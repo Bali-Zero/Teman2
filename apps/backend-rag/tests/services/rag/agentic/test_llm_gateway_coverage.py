@@ -106,7 +106,10 @@ def sample_images():
 def llm_gateway(mock_genai_client, sample_gemini_tools):
     """Create LLMGateway instance with mocked dependencies."""
     with (
-        patch("backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client),
+        patch(
+            "backend.services.rag.agentic.llm_gateway.get_genai_client",
+            return_value=mock_genai_client,
+        ),
         patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
     ):
         gateway = LLMGateway(gemini_tools=sample_gemini_tools)
@@ -122,7 +125,8 @@ class TestLLMGatewayInitialization:
         """Test initialization without Gemini tools."""
         with (
             patch(
-                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
+                return_value=mock_genai_client,
             ),
             patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
         ):
@@ -138,7 +142,8 @@ class TestLLMGatewayInitialization:
         """Test initialization with Gemini tools."""
         with (
             patch(
-                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
+                return_value=mock_genai_client,
             ),
             patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
         ):
@@ -347,7 +352,9 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_token_usage.total_tokens = 30
@@ -377,7 +384,9 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.002
             mock_create_usage.return_value = mock_token_usage
@@ -407,7 +416,9 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -433,7 +444,9 @@ class TestSendMessage:
             ]
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -454,7 +467,9 @@ class TestSendMessage:
             ]
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -489,7 +504,9 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -503,7 +520,9 @@ class TestSendMessage:
     async def test_send_message_cost_limit_reached(self, llm_gateway, mock_genai_client):
         """Test stopping fallback when cost limit reached."""
         # Mock expensive response
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.20  # Exceeds 0.10 limit
             mock_create_usage.return_value = mock_token_usage
@@ -724,7 +743,9 @@ class TestEdgeCases:
                 return_value=mock_response
             )
 
-            with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+            with patch(
+                "backend.services.rag.agentic.llm_gateway.create_token_usage"
+            ) as mock_create_usage:
                 mock_token_usage = MagicMock()
                 mock_create_usage.return_value = mock_token_usage
 
@@ -745,7 +766,9 @@ class TestEdgeCases:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -776,7 +799,9 @@ class TestMetricsAndLogging:
             ]
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -799,7 +824,9 @@ class TestMetricsAndLogging:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -828,7 +855,9 @@ class TestIntegrationFlows:
         ]
         mock_genai_client._client.aio.models.generate_content = AsyncMock(side_effect=responses)
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -854,7 +883,9 @@ class TestIntegrationFlows:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -885,7 +916,9 @@ class TestIntegrationFlows:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.005
             mock_create_usage.return_value = mock_token_usage
@@ -923,7 +956,9 @@ class TestPerformance:
             return_value=mock_response
         )
 
-        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch(
+            "backend.services.rag.agentic.llm_gateway.create_token_usage"
+        ) as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 

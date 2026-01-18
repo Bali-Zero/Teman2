@@ -9,12 +9,14 @@
 ## 📊 METRICHE QUANTITATIVE
 
 ### 1. Dimensioni
+
 - **Righe di codice:** `1,298` righe
 - **Metodi pubblici:** `2` (`process_query`, `stream_query`)
 - **Metodi privati:** `1` (`_create_error_event`)
 - **Costruttore:** `1` (`__init__`)
 
 ### 2. Dipendenze Inizializzate
+
 **Totale: 20+ servizi/componenti inizializzati nel `__init__`:**
 
 1. `self.tools` - Dict di tool definitions
@@ -41,6 +43,7 @@
 **Import esterni:** `34` moduli importati
 
 ### 3. Complessità Ciclomatica
+
 - **Complessità totale stimata:** `135`
 - **`process_query()`:** `54` (CRITICO - molto alta)
 - **`stream_query()`:** `73` (CRITICO - estremamente alta)
@@ -49,6 +52,7 @@
 **Soglia critica:** Complessità > 10 indica codice difficile da testare e mantenere.
 
 ### 4. Accoppiamento
+
 - **File che importano questo modulo:** `19` file
   - Router: `agentic_rag.py`, `telegram.py`, `blog_ask.py`
   - Test: `15+` file di test
@@ -95,15 +99,15 @@
 
 ### ✅ CONFERMATO: È un God Object
 
-| Indicatore | Valore | Soglia Critica | Status |
-|------------|--------|----------------|--------|
-| **Righe di codice** | 1,298 | > 500 | 🔴 CRITICO |
-| **Responsabilità distinte** | 27+ | > 5 | 🔴 CRITICO |
-| **Dipendenze inizializzate** | 20+ | > 10 | 🔴 CRITICO |
-| **Complessità ciclomatica** | 135 | > 50 | 🔴 CRITICO |
-| **Complessità metodo max** | 73 | > 10 | 🔴 CRITICO |
-| **File che dipendono** | 19 | > 10 | 🟡 ALTO |
-| **Import esterni** | 34 | > 20 | 🟡 ALTO |
+| Indicatore                   | Valore | Soglia Critica | Status     |
+| ---------------------------- | ------ | -------------- | ---------- |
+| **Righe di codice**          | 1,298  | > 500          | 🔴 CRITICO |
+| **Responsabilità distinte**  | 27+    | > 5            | 🔴 CRITICO |
+| **Dipendenze inizializzate** | 20+    | > 10           | 🔴 CRITICO |
+| **Complessità ciclomatica**  | 135    | > 50           | 🔴 CRITICO |
+| **Complessità metodo max**   | 73     | > 10           | 🔴 CRITICO |
+| **File che dipendono**       | 19     | > 10           | 🟡 ALTO    |
+| **Import esterni**           | 34     | > 20           | 🟡 ALTO    |
 
 ---
 
@@ -112,11 +116,13 @@
 ### 1. Accoppiamento (Coupling)
 
 **Alto Accoppiamento:**
+
 - Dipende da **20+ servizi** diversi
 - Ogni modifica richiede aggiornare molti mock nei test
 - Difficile testare singole responsabilità in isolamento
 
 **Esempio Test:**
+
 ```python
 # Per testare una singola feature, devi mockare:
 - db_pool
@@ -142,6 +148,7 @@
 ### 2. Coesione (Cohesion)
 
 **Bassa Coesione:**
+
 - Metodi `process_query()` e `stream_query()` duplicano ~70% della logica
 - Gate checks duplicati (security, greeting, casual, identity, clarification, out-of-domain)
 - Context loading duplicato
@@ -149,6 +156,7 @@
 - KG retrieval duplicato
 
 **Duplicazione identificata:**
+
 - Lines 242-266 vs 738-749 (context loading)
 - Lines 306-321 vs 789-798 (security gate)
 - Lines 323-339 vs 800-810 (greeting check)
@@ -162,16 +170,19 @@
 ### 3. Manutenibilità
 
 **Difficoltà di comprensione:**
+
 - `stream_query()`: 596 righe, complessità 73
 - `process_query()`: 465 righe, complessità 54
 - Tempo stimato per capire il flusso completo: **4-6 ore**
 
 **Difficoltà di modifica:**
+
 - Aggiungere una nuova gate: richiede modifiche in 2 posti (stream + non-stream)
 - Aggiungere una nuova feature: rischio di introdurre bug per duplicazione
 - Refactoring: molto rischioso per alta complessità
 
 **Bug History (stima):**
+
 - Duplicazione logica → bug duplicati
 - Complessità alta → bug difficili da debuggare
 - Accoppiamento alto → bug a cascata
@@ -183,6 +194,7 @@
 ### 🎯 PRIORITÀ ALTA: Refactoring Strategico
 
 #### 1. **Estrarre Query Pre-Processing Pipeline**
+
 ```python
 # Nuovo: QueryPreProcessor
 class QueryPreProcessor:
@@ -197,6 +209,7 @@ class QueryPreProcessor:
 ```
 
 #### 2. **Estrarre Context Manager**
+
 ```python
 # Nuovo: QueryContextManager
 class QueryContextManager:
@@ -206,6 +219,7 @@ class QueryContextManager:
 ```
 
 #### 3. **Unificare Streaming e Non-Streaming**
+
 ```python
 # Refactor: Single processing method con flag
 async def process_query(self, ..., stream: bool = False):
@@ -215,6 +229,7 @@ async def process_query(self, ..., stream: bool = False):
 ```
 
 #### 4. **Estrarre Response Builder**
+
 ```python
 # Nuovo: ResponseBuilder
 class ResponseBuilder:
@@ -225,6 +240,7 @@ class ResponseBuilder:
 ```
 
 #### 5. **Ridurre Dipendenze con Facade Pattern**
+
 ```python
 # Nuovo: RAGServiceFacade
 class RAGServiceFacade:
@@ -236,13 +252,13 @@ class RAGServiceFacade:
 
 ## 📈 METRICHE POST-REFACTORING (Target)
 
-| Metrica | Attuale | Target | Miglioramento |
-|---------|---------|--------|---------------|
-| Righe orchestrator | 1,298 | < 400 | -70% |
-| Responsabilità | 27+ | < 5 | -80% |
-| Complessità max metodo | 73 | < 15 | -80% |
-| Dipendenze dirette | 20+ | < 5 | -75% |
-| Duplicazione codice | ~40% | < 5% | -90% |
+| Metrica                | Attuale | Target | Miglioramento |
+| ---------------------- | ------- | ------ | ------------- |
+| Righe orchestrator     | 1,298   | < 400  | -70%          |
+| Responsabilità         | 27+     | < 5    | -80%          |
+| Complessità max metodo | 73      | < 15   | -80%          |
+| Dipendenze dirette     | 20+     | < 5    | -75%          |
+| Duplicazione codice    | ~40%    | < 5%   | -90%          |
 
 ---
 
@@ -251,6 +267,7 @@ class RAGServiceFacade:
 **VERDETTO: CONFERMATO GOD OBJECT** 🔴
 
 Il file `orchestrator.py` presenta tutti gli indicatori di un God Object:
+
 - ✅ Troppe responsabilità (27+)
 - ✅ Troppe dipendenze (20+)
 - ✅ Complessità ciclomatica critica (135)

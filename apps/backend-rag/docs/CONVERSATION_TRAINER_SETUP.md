@@ -18,6 +18,7 @@ Tutti i componenti sono stati implementati:
 ### Step 1: Eseguire Migration
 
 **In Produzione (Fly.io):**
+
 ```bash
 # Connessione al database Fly.io
 fly proxy 15432:5432 -a nuzantara-postgres &
@@ -28,6 +29,7 @@ python apps/backend-rag/backend/migrations/migration_025.py
 ```
 
 **In Sviluppo Locale:**
+
 ```bash
 # Configura DATABASE_URL
 export DATABASE_URL="postgresql://user:pass@localhost:5432/nuzantara_db"
@@ -37,6 +39,7 @@ python apps/backend-rag/backend/migrations/migration_025.py
 ```
 
 **Verifica Migration:**
+
 ```sql
 -- Verifica tabella
 SELECT COUNT(*) FROM conversation_ratings;
@@ -53,6 +56,7 @@ SELECT indexname FROM pg_indexes WHERE tablename = 'conversation_ratings';
 ### Step 2: Verificare API Endpoint
 
 **Test con curl:**
+
 ```bash
 # Genera un session_id valido (UUID)
 SESSION_ID=$(python -c "import uuid; print(uuid.uuid4())")
@@ -75,6 +79,7 @@ curl http://localhost:8080/api/feedback/ratings/$SESSION_ID \
 ```
 
 **Risposta attesa:**
+
 ```json
 {
   "success": true,
@@ -101,18 +106,21 @@ curl http://localhost:8080/api/feedback/ratings/$SESSION_ID \
 ### Step 4: Verificare Scheduler
 
 **Trigger Manuale (per test):**
+
 ```bash
 curl -X POST http://localhost:8080/api/autonomous-agents/conversation-trainer/run?days_back=7 \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
 **Verifica Status:**
+
 ```bash
 curl http://localhost:8080/api/autonomous-agents/scheduler/status \
   -H "X-API-Key: YOUR_API_KEY"
 ```
 
 **Verifica Logs:**
+
 ```bash
 # Backend logs
 fly logs --app nuzantara-rag | grep "Conversation Trainer"
@@ -122,6 +130,7 @@ tail -f logs/backend.log | grep "Conversation Trainer"
 ```
 
 **Log attesi:**
+
 ```
 🎓 Conversation Trainer found X patterns
 ✅ Generated improved prompt from conversation analysis
@@ -135,6 +144,7 @@ tail -f logs/backend.log | grep "Conversation Trainer"
 **Scenario completo:**
 
 1. **Crea conversazione con rating alto:**
+
    ```sql
    -- Inserisci rating manualmente per test
    INSERT INTO conversation_ratings (session_id, rating, feedback_text, turn_count)
@@ -147,12 +157,14 @@ tail -f logs/backend.log | grep "Conversation Trainer"
    ```
 
 2. **Assicurati che ci siano messaggi in conversation_history:**
+
    ```sql
-   SELECT COUNT(*) FROM conversation_history 
+   SELECT COUNT(*) FROM conversation_history
    WHERE session_id = '00000000-0000-0000-0000-000000000001'::uuid;
    ```
 
 3. **Esegui ConversationTrainer:**
+
    ```bash
    curl -X POST http://localhost:8080/api/autonomous-agents/conversation-trainer/run?days_back=7 \
      -H "X-API-Key: YOUR_API_KEY"
@@ -173,6 +185,7 @@ python apps/backend-rag/scripts/verify_conversation_trainer_setup.py
 ```
 
 Questo script verifica:
+
 - ✅ Struttura file migration
 - ✅ Router API registrato
 - ✅ Scheduler configurato
@@ -185,8 +198,9 @@ Questo script verifica:
 **Metriche da monitorare:**
 
 1. **Ratings salvati:**
+
    ```sql
-   SELECT 
+   SELECT
      rating,
      COUNT(*) as count,
      AVG(turn_count) as avg_turns
@@ -196,6 +210,7 @@ Questo script verifica:
    ```
 
 2. **High-rated conversations disponibili:**
+
    ```sql
    SELECT COUNT(*) FROM v_rated_conversations;
    ```
@@ -213,7 +228,8 @@ Questo script verifica:
 ### Problema: Migration fallisce
 
 **Errore:** `DATABASE_URL not configured`
-**Soluzione:** 
+**Soluzione:**
+
 ```bash
 export DATABASE_URL="postgresql://user:pass@host:port/db"
 ```
@@ -221,14 +237,16 @@ export DATABASE_URL="postgresql://user:pass@host:port/db"
 ### Problema: Vista vuota
 
 **Causa:** Nessun rating >= 4 salvato
-**Soluzione:** 
+**Soluzione:**
+
 - Verifica che ci siano ratings nella tabella
 - Verifica che ci siano messaggi in `conversation_history` per quei session_id
 
 ### Problema: API ritorna 503
 
 **Causa:** Database pool non disponibile
-**Soluzione:** 
+**Soluzione:**
+
 - Verifica che backend sia avviato
 - Verifica che `app.state.db_pool` sia inizializzato
 
@@ -236,6 +254,7 @@ export DATABASE_URL="postgresql://user:pass@host:port/db"
 
 **Causa:** Scheduler non avviato o task disabilitato
 **Soluzione:**
+
 ```bash
 # Verifica status
 curl http://localhost:8080/api/autonomous-agents/scheduler/status
@@ -263,4 +282,3 @@ Prima di considerare il setup completo:
 
 **Ultimo aggiornamento:** 2025-01-22  
 **Status:** ✅ Implementazione Completa
-

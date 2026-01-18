@@ -18,7 +18,6 @@ CRON (ogni giorno alle 6:00):
 
 import asyncio
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -32,63 +31,145 @@ OUTPUT_DIR = Path(__file__).parent
 # Ottieni password da: fly postgres connect -a nuzantara-postgres
 # Oppure imposta DATABASE_URL come variabile ambiente
 import os
+
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgres://backend_rag_v2:PASSWORD@localhost:15432/nuzantara_rag?sslmode=disable"
+    "postgres://backend_rag_v2:PASSWORD@localhost:15432/nuzantara_rag?sslmode=disable",
 )
 
 # Configurazione file Excel per categoria semantica
 EXCEL_FILES = {
     "01_CRM.xlsx": [
-        ("clients", "SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status, client_type, assigned_to, created_at FROM clients ORDER BY id"),
-        ("practices", "SELECT id, uuid, client_id, practice_type_code, title, status, priority, quoted_price, assigned_to, start_date, expiry_date, payment_status, created_at FROM practices ORDER BY id"),
-        ("interactions", "SELECT id, uuid, client_id, practice_id, type, channel, title, content, direction, sentiment, created_at, team_member FROM interactions ORDER BY created_at DESC LIMIT 500"),
+        (
+            "clients",
+            "SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status, client_type, assigned_to, created_at FROM clients ORDER BY id",
+        ),
+        (
+            "practices",
+            "SELECT id, uuid, client_id, practice_type_code, title, status, priority, quoted_price, assigned_to, start_date, expiry_date, payment_status, created_at FROM practices ORDER BY id",
+        ),
+        (
+            "interactions",
+            "SELECT id, uuid, client_id, practice_id, type, channel, title, content, direction, sentiment, created_at, team_member FROM interactions ORDER BY created_at DESC LIMIT 500",
+        ),
         ("practice_types", "SELECT * FROM practice_types"),
         ("client_preferences", "SELECT * FROM client_preferences"),
-        ("client_invitations", "SELECT id, client_id, email, expires_at, used_at, created_at FROM client_invitations"),
+        (
+            "client_invitations",
+            "SELECT id, client_id, email, expires_at, used_at, created_at FROM client_invitations",
+        ),
         ("crm_settings", "SELECT * FROM crm_settings"),
     ],
     "02_TEAM.xlsx": [
-        ("team_members", "SELECT id, name, email, role, department, language, active, last_login, created_at FROM team_members ORDER BY name"),
-        ("team_employees", "SELECT employee_id, name, email, role, department, is_active, created_at FROM team_employees"),
-        ("team_access", "SELECT id, user_id, role, is_active, last_login, created_at FROM team_access"),
-        ("team_timesheet", "SELECT id, user_id, email, action_type, timestamp, notes FROM team_timesheet ORDER BY timestamp DESC LIMIT 1000"),
+        (
+            "team_members",
+            "SELECT id, name, email, role, department, language, active, last_login, created_at FROM team_members ORDER BY name",
+        ),
+        (
+            "team_employees",
+            "SELECT employee_id, name, email, role, department, is_active, created_at FROM team_employees",
+        ),
+        (
+            "team_access",
+            "SELECT id, user_id, role, is_active, last_login, created_at FROM team_access",
+        ),
+        (
+            "team_timesheet",
+            "SELECT id, user_id, email, action_type, timestamp, notes FROM team_timesheet ORDER BY timestamp DESC LIMIT 1000",
+        ),
         ("departments", "SELECT * FROM departments"),
-        ("team_work_sessions", "SELECT * FROM team_work_sessions ORDER BY session_start DESC LIMIT 100"),
+        (
+            "team_work_sessions",
+            "SELECT * FROM team_work_sessions ORDER BY session_start DESC LIMIT 100",
+        ),
     ],
     "03_MEMORY.xlsx": [
-        ("memory_facts", "SELECT id, user_id, content, fact_type, confidence, source, created_at FROM memory_facts ORDER BY created_at DESC LIMIT 500"),
-        ("episodic_memories", "SELECT id, user_id, event_type, title, description, emotion, occurred_at, source, created_at FROM episodic_memories ORDER BY created_at DESC LIMIT 500"),
-        ("collective_memory", "SELECT id, memory_key, memory_type, memory_content, created_by, created_at, access_count FROM collective_memory"),
-        ("conversations", "SELECT id, user_id, session_id, created_at, metadata->>'member_name' as member_name FROM conversations ORDER BY created_at DESC LIMIT 500"),
+        (
+            "memory_facts",
+            "SELECT id, user_id, content, fact_type, confidence, source, created_at FROM memory_facts ORDER BY created_at DESC LIMIT 500",
+        ),
+        (
+            "episodic_memories",
+            "SELECT id, user_id, event_type, title, description, emotion, occurred_at, source, created_at FROM episodic_memories ORDER BY created_at DESC LIMIT 500",
+        ),
+        (
+            "collective_memory",
+            "SELECT id, memory_key, memory_type, memory_content, created_by, created_at, access_count FROM collective_memory",
+        ),
+        (
+            "conversations",
+            "SELECT id, user_id, session_id, created_at, metadata->>'member_name' as member_name FROM conversations ORDER BY created_at DESC LIMIT 500",
+        ),
         ("conversation_ratings", "SELECT * FROM conversation_ratings"),
     ],
     "04_KNOWLEDGE.xlsx": [
-        ("parent_documents", "SELECT id, document_id, type, title, char_count, pasal_count, created_at, mime_type, is_canonical FROM parent_documents ORDER BY created_at DESC"),
-        ("kg_nodes_sample", "SELECT entity_id, entity_type, name, description, confidence, source_collection, created_at FROM kg_nodes ORDER BY created_at DESC LIMIT 1000"),
-        ("kg_edges_sample", "SELECT relationship_id, source_entity_id, target_entity_id, relationship_type, confidence, created_at FROM kg_edges ORDER BY created_at DESC LIMIT 1000"),
-        ("query_analytics", "SELECT id, query_text, language_preference, model_used, response_time_ms, document_count, created_at FROM query_analytics ORDER BY created_at DESC LIMIT 500"),
+        (
+            "parent_documents",
+            "SELECT id, document_id, type, title, char_count, pasal_count, created_at, mime_type, is_canonical FROM parent_documents ORDER BY created_at DESC",
+        ),
+        (
+            "kg_nodes_sample",
+            "SELECT entity_id, entity_type, name, description, confidence, source_collection, created_at FROM kg_nodes ORDER BY created_at DESC LIMIT 1000",
+        ),
+        (
+            "kg_edges_sample",
+            "SELECT relationship_id, source_entity_id, target_entity_id, relationship_type, confidence, created_at FROM kg_edges ORDER BY created_at DESC LIMIT 1000",
+        ),
+        (
+            "query_analytics",
+            "SELECT id, query_text, language_preference, model_used, response_time_ms, document_count, created_at FROM query_analytics ORDER BY created_at DESC LIMIT 500",
+        ),
         ("kbli_blueprints", "SELECT * FROM kbli_blueprints"),
     ],
     "05_USERS.xlsx": [
-        ("user_profiles", "SELECT id, email, full_name, phone, user_type, status, total_sessions, total_messages, language_pref, created_at FROM user_profiles ORDER BY created_at DESC"),
-        ("users", "SELECT id, email, name, role, status, language_preference, created_at FROM users"),
-        ("user_facts", "SELECT id, user_id, fact_type, fact_key, fact_value, confidence, learned_at FROM user_facts ORDER BY learned_at DESC LIMIT 500"),
+        (
+            "user_profiles",
+            "SELECT id, email, full_name, phone, user_type, status, total_sessions, total_messages, language_pref, created_at FROM user_profiles ORDER BY created_at DESC",
+        ),
+        (
+            "users",
+            "SELECT id, email, name, role, status, language_preference, created_at FROM users",
+        ),
+        (
+            "user_facts",
+            "SELECT id, user_id, fact_type, fact_key, fact_value, confidence, learned_at FROM user_facts ORDER BY learned_at DESC LIMIT 500",
+        ),
         ("user_stats", "SELECT * FROM user_stats"),
         ("persistent_sessions", "SELECT * FROM persistent_sessions"),
     ],
     "06_CONTENT.xlsx": [
-        ("news_items", "SELECT id, title, slug, summary, source, category, priority, status, published_at, view_count, ai_sentiment FROM news_items ORDER BY published_at DESC"),
-        ("visa_types", "SELECT id, code, name, duration, category, cost_visa, renewable, foreign_eligible, created_at FROM visa_types ORDER BY code"),
-        ("document_categories", "SELECT * FROM document_categories ORDER BY sort_order"),
-        ("newsletter_subscribers", "SELECT id, email, name, categories, frequency, language, confirmed, source, created_at FROM newsletter_subscribers"),
+        (
+            "news_items",
+            "SELECT id, title, slug, summary, source, category, priority, status, published_at, view_count, ai_sentiment FROM news_items ORDER BY published_at DESC",
+        ),
+        (
+            "visa_types",
+            "SELECT id, code, name, duration, category, cost_visa, renewable, foreign_eligible, created_at FROM visa_types ORDER BY code",
+        ),
+        (
+            "document_categories",
+            "SELECT * FROM document_categories ORDER BY sort_order",
+        ),
+        (
+            "newsletter_subscribers",
+            "SELECT id, email, name, categories, frequency, language, confirmed, source, created_at FROM newsletter_subscribers",
+        ),
     ],
     "07_SYSTEM.xlsx": [
-        ("activity_log", "SELECT * FROM activity_log ORDER BY performed_at DESC LIMIT 500"),
-        ("schema_migrations", "SELECT id, migration_name, migration_number, applied_at, execution_time_ms FROM schema_migrations ORDER BY migration_number"),
+        (
+            "activity_log",
+            "SELECT * FROM activity_log ORDER BY performed_at DESC LIMIT 500",
+        ),
+        (
+            "schema_migrations",
+            "SELECT id, migration_name, migration_number, applied_at, execution_time_ms FROM schema_migrations ORDER BY migration_number",
+        ),
         ("migration_log", "SELECT * FROM migration_log"),
         ("folder_access_rules", "SELECT * FROM folder_access_rules"),
-        ("email_activity_log", "SELECT * FROM email_activity_log ORDER BY created_at DESC LIMIT 200"),
+        (
+            "email_activity_log",
+            "SELECT * FROM email_activity_log ORDER BY created_at DESC LIMIT 200",
+        ),
     ],
 }
 
@@ -118,9 +199,9 @@ async def run_query(conn: asyncpg.Connection, query: str) -> list[dict]:
 
 async def export_to_excel():
     """Esporta tutte le tabelle in file Excel."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"POSTGRESQL EXPORT - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Connessione al database
     print("\nConnessione a PostgreSQL via fly proxy...")
@@ -142,7 +223,7 @@ async def export_to_excel():
             print(f"📁 {excel_file}")
 
             file_rows = 0
-            with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+            with pd.ExcelWriter(filepath, engine="openpyxl") as writer:
                 for table_name, query in tables:
                     print(f"  📊 {table_name}...", end=" ", flush=True)
 
@@ -156,7 +237,9 @@ async def export_to_excel():
                         file_rows += len(data)
                         total_tables += 1
                     else:
-                        pd.DataFrame().to_excel(writer, sheet_name=table_name[:31], index=False)
+                        pd.DataFrame().to_excel(
+                            writer, sheet_name=table_name[:31], index=False
+                        )
                         print("(vuoto)")
 
             total_rows += file_rows
@@ -169,7 +252,7 @@ async def export_to_excel():
     readme = OUTPUT_DIR / "README.md"
     readme.write_text(f"""# Database PostgreSQL Export
 
-**Ultimo aggiornamento:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Ultimo aggiornamento:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 ## File Excel
 
@@ -211,10 +294,10 @@ python3 update_excel.py
 - Dati estratti da PostgreSQL su Fly.io (nuzantara-rag)
 """)
 
-    print(f"{'='*60}")
-    print(f"✅ EXPORT COMPLETATO!")
+    print(f"{'=' * 60}")
+    print("✅ EXPORT COMPLETATO!")
     print(f"   {total_rows:,} righe in {total_tables} tabelle")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == "__main__":

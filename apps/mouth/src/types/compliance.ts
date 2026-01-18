@@ -1,6 +1,12 @@
 export type AlertSeverity = 'info' | 'warning' | 'urgent' | 'critical';
 export type AlertStatus = 'pending' | 'sent' | 'acknowledged' | 'resolved' | 'expired';
-export type ComplianceType = 'visa_expiry' | 'tax_filing' | 'license_renewal' | 'permit_renewal' | 'regulatory_change' | 'document_expiry';
+export type ComplianceType =
+  | 'visa_expiry'
+  | 'tax_filing'
+  | 'license_renewal'
+  | 'permit_renewal'
+  | 'regulatory_change'
+  | 'document_expiry';
 
 export interface ComplianceAlert {
   alert_id: string;

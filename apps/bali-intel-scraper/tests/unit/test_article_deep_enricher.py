@@ -313,7 +313,9 @@ class TestEnrichArticle:
 
                 # Mock the API image generator to return a valid path
                 if enricher.api_image_generator:
-                    with patch.object(enricher.api_image_generator, "generate_cover_image") as mock_img:
+                    with patch.object(
+                        enricher.api_image_generator, "generate_cover_image"
+                    ) as mock_img:
                         mock_img.return_value = "/tmp/test_image.png"
 
                         result = await enricher.enrich_article(
@@ -329,7 +331,9 @@ class TestEnrichArticle:
                         assert result.category == "immigration"
                 else:
                     # If no API generator, mock the browser generator
-                    with patch.object(enricher.image_generator, "generate_cover_image") as mock_img:
+                    with patch.object(
+                        enricher.image_generator, "generate_cover_image"
+                    ) as mock_img:
                         mock_img.return_value = "/tmp/test_image.png"
 
                         result = await enricher.enrich_article(
@@ -372,7 +376,9 @@ class TestEnrichArticle:
             ):
                 # Mock the API image generator
                 if enricher.api_image_generator:
-                    with patch.object(enricher.api_image_generator, "generate_cover_image") as mock_img:
+                    with patch.object(
+                        enricher.api_image_generator, "generate_cover_image"
+                    ) as mock_img:
                         mock_img.return_value = "/tmp/test_image.png"
 
                         result = await enricher.enrich_article(

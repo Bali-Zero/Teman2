@@ -7,6 +7,7 @@
 The Intel Scraper interacts with multiple services:
 
 ### Backend (Fly.io)
+
 - **URL:** `https://nuzantara-rag.fly.dev`
 - **Purpose:** API endpoints for article submission, preview hosting
 - **Endpoints Used:**
@@ -14,8 +15,9 @@ The Intel Scraper interacts with multiple services:
   - `/preview/{article_id}` - Preview HTML hosting (optional)
 
 ### Frontend (Vercel)
+
 - **URL:** `https://nuzantara-mouth.vercel.app`
-- **Custom Domains:** 
+- **Custom Domains:**
   - `https://zantara.balizero.com` (via DNS)
   - `https://balizero.com` (via DNS)
 - **Purpose:** News Room UI for team review
@@ -57,12 +59,14 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID=8290313965 -a nuzantara-rag
 ## Deployment
 
 ### Backend (Fly.io)
+
 ```bash
 cd apps/backend-rag
 ./scripts/fly-backend.sh deploy
 ```
 
 ### Frontend (Vercel)
+
 ```bash
 cd apps/mouth
 vercel deploy --prod

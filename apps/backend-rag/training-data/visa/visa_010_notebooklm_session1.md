@@ -1,13 +1,19 @@
 # NotebookLM Generated Training Data - Session 1
+
 # Source: Official imigrasi.go.id data (scraped)
+
 # Generated: December 2024
+
 # Coverage: A4, B4, C series, D series, E28C, E28F, E29, E31B, E33B, E33E, E33G, E35, F1, F4
 
 ---
 
 ## visa_type: A4
+
 ## topic: Bebas Visa Tugas Pemerintahan
+
 ## languages: Indonesian, English
+
 ## difficulty: basic
 
 ### Conversation 1
@@ -35,8 +41,11 @@
 ---
 
 ## visa_type: B4
+
 ## topic: Visa Saat Kedatangan (Tugas Pemerintahan)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -64,8 +73,11 @@
 ---
 
 ## visa_type: C10A
+
 ## topic: Visa Pemuka Agama (Ceramah/Seminar)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -93,8 +105,11 @@
 ---
 
 ## visa_type: C11
+
 ## topic: Visa Bisnis Pameran (Exhibitor)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -122,8 +137,11 @@
 ---
 
 ## visa_type: E28C
+
 ## topic: Visa Investor (Tanpa Mendirikan Perusahaan)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -151,8 +169,11 @@
 ---
 
 ## visa_type: E28F
+
 ## topic: Visa Investor (Ibukota Negara / IKN)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -180,8 +201,11 @@
 ---
 
 ## visa_type: E29
+
 ## topic: Visa Penelitian (Research)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -209,8 +233,11 @@
 ---
 
 ## visa_type: E31B
+
 ## topic: Visa Keluarga (Suami/Istri dari Pemegang ITAS/ITAP)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -238,8 +265,11 @@
 ---
 
 ## visa_type: E33E
+
 ## topic: Visa Lanjut Usia (Silver Hair / Retirement)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -267,8 +297,11 @@
 ---
 
 ## visa_type: E33B
+
 ## topic: Visa Keahlian Khusus (Global Talent - Tanpa Penjamin)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -296,8 +329,11 @@
 ---
 
 ## visa_type: E33G
+
 ## topic: Visa Pekerja Jarak Jauh (Remote Worker)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -325,8 +361,11 @@
 ---
 
 ## visa_type: E33G
+
 ## topic: Visa Pengobatan (Medical Treatment)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -354,8 +393,11 @@
 ---
 
 ## visa_type: E35
+
 ## topic: Visa Bekerja dan Berwisata (Working Holiday)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -383,8 +425,11 @@
 ---
 
 ## visa_type: C11A
+
 ## topic: Visa Bisnis Pameran (Negara Calling Visa)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -412,8 +457,11 @@
 ---
 
 ## visa_type: C12
+
 ## topic: Visa Pra-Investasi (Single Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -441,8 +489,11 @@
 ---
 
 ## visa_type: C13
+
 ## topic: Visa Kru Alat Angkut (Join Vessel)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -470,8 +521,11 @@
 ---
 
 ## visa_type: C14
+
 ## topic: Visa Pembuatan Film (Syuting)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -499,8 +553,11 @@
 ---
 
 ## visa_type: C15
+
 ## topic: Visa Pekerjaan Darurat (Emergency)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -528,8 +585,11 @@
 ---
 
 ## visa_type: C16
+
 ## topic: Visa Pelatihan (Trainer/Instructor)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -557,8 +617,11 @@
 ---
 
 ## visa_type: C17
+
 ## topic: Visa Audit dan Inspeksi
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -586,8 +649,11 @@
 ---
 
 ## visa_type: C18
+
 ## topic: Visa Uji Coba Kerja (Probation)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -615,8 +681,11 @@
 ---
 
 ## visa_type: C19
+
 ## topic: Visa Pelayanan Purnajual (After-Sales)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -644,8 +713,11 @@
 ---
 
 ## visa_type: C2
+
 ## topic: Visa Bisnis (Business Meeting/Signing)
+
 ## languages: Indonesian, English
+
 ## difficulty: basic
 
 ### Conversation 1
@@ -673,8 +745,11 @@
 ---
 
 ## visa_type: C20
+
 ## topic: Visa Pemasangan Mesin (Installation)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -702,8 +777,11 @@
 ---
 
 ## visa_type: C21
+
 ## topic: Visa Proses Peradilan (Litigation)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -731,8 +809,11 @@
 ---
 
 ## visa_type: C22
+
 ## topic: Visa Magang (Umum/Industri)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -760,8 +841,11 @@
 ---
 
 ## visa_type: C22A
+
 ## topic: Visa Magang Akademik
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -789,8 +873,11 @@
 ---
 
 ## visa_type: C22B
+
 ## topic: Visa Program Magang (Industri dan Perusahaan)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -818,8 +905,11 @@
 ---
 
 ## visa_type: C3
+
 ## topic: Visa Perawatan Kesehatan (Medical Treatment)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -847,8 +937,11 @@
 ---
 
 ## visa_type: C4
+
 ## topic: Visa Tugas Pemerintahan
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -876,8 +969,11 @@
 ---
 
 ## visa_type: C5
+
 ## topic: Visa Media dan Pers (Jurnalis)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -905,8 +1001,11 @@
 ---
 
 ## visa_type: C6
+
 ## topic: Visa Kegiatan Sosial
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -934,8 +1033,11 @@
 ---
 
 ## visa_type: C7
+
 ## topic: Visa Kegiatan Seni dan Budaya (Umum)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -963,8 +1065,11 @@
 ---
 
 ## visa_type: C7A
+
 ## topic: Visa Pertunjukan Musik
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -992,8 +1097,11 @@
 ---
 
 ## visa_type: C7B
+
 ## topic: Visa Kru Pertunjukan Musik
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1021,8 +1129,11 @@
 ---
 
 ## visa_type: C7C
+
 ## topic: Visa Pertunjukan Seni (Non-Musik)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1050,8 +1161,11 @@
 ---
 
 ## visa_type: C8A
+
 ## topic: Visa Olahraga (Atlet)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1079,8 +1193,11 @@
 ---
 
 ## visa_type: C8B
+
 ## topic: Visa Olahraga (Ofisial)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1108,8 +1225,11 @@
 ---
 
 ## visa_type: C9
+
 ## topic: Visa Studi Banding, Kursus, dan Pelatihan Singkat
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1137,8 +1257,11 @@
 ---
 
 ## visa_type: C9A
+
 ## topic: Visa Kursus Singkat (Bidang Keagamaan)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1166,8 +1289,11 @@
 ---
 
 ## visa_type: C9B
+
 ## topic: Visa Kursus Singkat (Bahasa Indonesia)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1195,8 +1321,11 @@
 ---
 
 ## visa_type: D1
+
 ## topic: Visa Wisata Multiple Entry
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1224,8 +1353,11 @@
 ---
 
 ## visa_type: D12
+
 ## topic: Visa Pra-Investasi (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -1253,8 +1385,11 @@
 ---
 
 ## visa_type: D14
+
 ## topic: Visa Pembuatan Film (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1282,8 +1417,11 @@
 ---
 
 ## visa_type: D17
+
 ## topic: Visa Bisnis Audit dan Inspeksi (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1311,8 +1449,11 @@
 ---
 
 ## visa_type: D2
+
 ## topic: Visa Bisnis (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: basic
 
 ### Conversation 1
@@ -1340,8 +1481,11 @@
 ---
 
 ## visa_type: D3
+
 ## topic: Visa Perawatan Kesehatan (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1369,8 +1513,11 @@
 ---
 
 ## visa_type: D7
+
 ## topic: Visa Kegiatan Seni dan Budaya (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1398,8 +1545,11 @@
 ---
 
 ## visa_type: D7A
+
 ## topic: Visa Pertunjukan Musik (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1427,8 +1577,11 @@
 ---
 
 ## visa_type: D7B
+
 ## topic: Visa Kru Pertunjukan Musik (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -1456,8 +1609,11 @@
 ---
 
 ## visa_type: D8A
+
 ## topic: Visa Olahraga Atlet (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1485,8 +1641,11 @@
 ---
 
 ## visa_type: D8B
+
 ## topic: Visa Olahraga Ofisial (Multiple Entry)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -1514,8 +1673,11 @@
 ---
 
 ## visa_type: F1
+
 ## topic: Visa Saat Kedatangan (Wisata) Khusus Kepulauan Riau
+
 ## languages: Indonesian, English
+
 ## difficulty: basic
 
 ### Conversation 1
@@ -1543,8 +1705,11 @@
 ---
 
 ## visa_type: F4
+
 ## topic: Visa Saat Kedatangan (Tugas Pemerintahan)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1

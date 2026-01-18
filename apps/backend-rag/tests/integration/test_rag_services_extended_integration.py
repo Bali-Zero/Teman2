@@ -391,7 +391,11 @@ class TestVisionRAGIntegration:
     @pytest.mark.asyncio
     async def test_vision_rag_query_with_vision(self, qdrant_client, db_pool):
         """Test Vision RAG query with visual elements"""
-        from backend.services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
+        from backend.services.rag.vision_rag import (
+            MultiModalDocument,
+            VisionRAGService,
+            VisualElement,
+        )
 
         mock_genai_client = MagicMock()
         mock_genai_client.is_available = True

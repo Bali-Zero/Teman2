@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -112,11 +102,7 @@
           "flatPath": "v2/{v2Id}/actionResults/{hash}/{sizeBytes}",
           "httpMethod": "GET",
           "id": "remotebuildexecution.actionResults.get",
-          "parameterOrder": [
-            "instanceName",
-            "hash",
-            "sizeBytes"
-          ],
+          "parameterOrder": ["instanceName", "hash", "sizeBytes"],
           "parameters": {
             "hash": {
               "description": "The hash. In the case of SHA-256, it will always be a lowercase hex string exactly 64 characters long.",
@@ -159,20 +145,14 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2ActionResult"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "update": {
           "description": "Upload a new execution result. In order to allow the server to perform access control based on the type of action, and to assist with client debugging, the client MUST first upload the Action that produced the result, along with its Command, into the `ContentAddressableStorage`. Server implementations MAY modify the `UpdateActionResultRequest.action_result` and return an equivalent value. Errors: * `INVALID_ARGUMENT`: One or more arguments are invalid. * `FAILED_PRECONDITION`: One or more errors occurred in updating the action result, such as a missing command or action. * `RESOURCE_EXHAUSTED`: There is insufficient storage space to add the entry to the cache.",
           "flatPath": "v2/{v2Id}/actionResults/{hash}/{sizeBytes}",
           "httpMethod": "PUT",
           "id": "remotebuildexecution.actionResults.update",
-          "parameterOrder": [
-            "instanceName",
-            "hash",
-            "sizeBytes"
-          ],
+          "parameterOrder": ["instanceName", "hash", "sizeBytes"],
           "parameters": {
             "hash": {
               "description": "The hash. In the case of SHA-256, it will always be a lowercase hex string exactly 64 characters long.",
@@ -208,9 +188,7 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2ActionResult"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     },
@@ -221,9 +199,7 @@
           "flatPath": "v2/{v2Id}/actions:execute",
           "httpMethod": "POST",
           "id": "remotebuildexecution.actions.execute",
-          "parameterOrder": [
-            "instanceName"
-          ],
+          "parameterOrder": ["instanceName"],
           "parameters": {
             "instanceName": {
               "description": "The instance of the execution system to operate against. A server may support multiple instances of the execution system (with their own workers, storage, caches, etc.). The server MAY require use of this field to select between them in an implementation-defined fashion, otherwise it can be omitted.",
@@ -240,9 +216,7 @@
           "response": {
             "$ref": "GoogleLongrunningOperation"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     },
@@ -253,9 +227,7 @@
           "flatPath": "v2/{v2Id}/blobs:batchRead",
           "httpMethod": "POST",
           "id": "remotebuildexecution.blobs.batchRead",
-          "parameterOrder": [
-            "instanceName"
-          ],
+          "parameterOrder": ["instanceName"],
           "parameters": {
             "instanceName": {
               "description": "The instance of the execution system to operate against. A server may support multiple instances of the execution system (with their own workers, storage, caches, etc.). The server MAY require use of this field to select between them in an implementation-defined fashion, otherwise it can be omitted.",
@@ -272,18 +244,14 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2BatchReadBlobsResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "batchUpdate": {
           "description": "Upload many blobs at once. The server may enforce a limit of the combined total size of blobs to be uploaded using this API. This limit may be obtained using the Capabilities API. Requests exceeding the limit should either be split into smaller chunks or uploaded using the ByteStream API, as appropriate. This request is equivalent to calling a Bytestream `Write` request on each individual blob, in parallel. The requests may succeed or fail independently. Errors: * `INVALID_ARGUMENT`: The client attempted to upload more than the server supported limit. Individual requests may return the following errors, additionally: * `RESOURCE_EXHAUSTED`: There is insufficient disk quota to store the blob. * `INVALID_ARGUMENT`: The Digest does not match the provided data.",
           "flatPath": "v2/{v2Id}/blobs:batchUpdate",
           "httpMethod": "POST",
           "id": "remotebuildexecution.blobs.batchUpdate",
-          "parameterOrder": [
-            "instanceName"
-          ],
+          "parameterOrder": ["instanceName"],
           "parameters": {
             "instanceName": {
               "description": "The instance of the execution system to operate against. A server may support multiple instances of the execution system (with their own workers, storage, caches, etc.). The server MAY require use of this field to select between them in an implementation-defined fashion, otherwise it can be omitted.",
@@ -300,18 +268,14 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2BatchUpdateBlobsResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "findMissing": {
           "description": "Determine if blobs are present in the CAS. Clients can use this API before uploading blobs to determine which ones are already present in the CAS and do not need to be uploaded again. Servers SHOULD increase the lifetimes of the referenced blobs if necessary and applicable. There are no method-specific errors.",
           "flatPath": "v2/{v2Id}/blobs:findMissing",
           "httpMethod": "POST",
           "id": "remotebuildexecution.blobs.findMissing",
-          "parameterOrder": [
-            "instanceName"
-          ],
+          "parameterOrder": ["instanceName"],
           "parameters": {
             "instanceName": {
               "description": "The instance of the execution system to operate against. A server may support multiple instances of the execution system (with their own workers, storage, caches, etc.). The server MAY require use of this field to select between them in an implementation-defined fashion, otherwise it can be omitted.",
@@ -328,20 +292,14 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2FindMissingBlobsResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "getTree": {
           "description": "Fetch the entire directory tree rooted at a node. This request must be targeted at a Directory stored in the ContentAddressableStorage (CAS). The server will enumerate the `Directory` tree recursively and return every node descended from the root. The GetTreeRequest.page_token parameter can be used to skip ahead in the stream (e.g. when retrying a partially completed and aborted request), by setting it to a value taken from GetTreeResponse.next_page_token of the last successfully processed GetTreeResponse). The exact traversal order is unspecified and, unless retrieving subsequent pages from an earlier request, is not guaranteed to be stable across multiple invocations of `GetTree`. If part of the tree is missing from the CAS, the server will return the portion present and omit the rest. Errors: * `NOT_FOUND`: The requested tree root is not present in the CAS.",
           "flatPath": "v2/{v2Id}/blobs/{hash}/{sizeBytes}:getTree",
           "httpMethod": "GET",
           "id": "remotebuildexecution.blobs.getTree",
-          "parameterOrder": [
-            "instanceName",
-            "hash",
-            "sizeBytes"
-          ],
+          "parameterOrder": ["instanceName", "hash", "sizeBytes"],
           "parameters": {
             "hash": {
               "description": "The hash. In the case of SHA-256, it will always be a lowercase hex string exactly 64 characters long.",
@@ -379,9 +337,7 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2GetTreeResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     },
@@ -392,9 +348,7 @@
           "flatPath": "v2/operations/{operationsId}:waitExecution",
           "httpMethod": "POST",
           "id": "remotebuildexecution.operations.waitExecution",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "The name of the Operation returned by Execute.",
@@ -411,9 +365,7 @@
           "response": {
             "$ref": "GoogleLongrunningOperation"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     },
@@ -424,9 +376,7 @@
           "flatPath": "v2/{v2Id}/capabilities",
           "httpMethod": "GET",
           "id": "remotebuildexecution.getCapabilities",
-          "parameterOrder": [
-            "instanceName"
-          ],
+          "parameterOrder": ["instanceName"],
           "parameters": {
             "instanceName": {
               "description": "The instance of the execution system to operate against. A server may support multiple instances of the execution system (with their own workers, storage, caches, etc.). The server MAY require use of this field to select between them in an implementation-defined fashion, otherwise it can be omitted.",
@@ -440,9 +390,7 @@
           "response": {
             "$ref": "BuildBazelRemoteExecutionV2ServerCapabilities"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     }
@@ -684,16 +632,7 @@
         "digestFunction": {
           "description": "All the digest functions supported by the remote cache. Remote cache may support multiple digest functions simultaneously.",
           "items": {
-            "enum": [
-              "UNKNOWN",
-              "SHA256",
-              "SHA1",
-              "MD5",
-              "VSO",
-              "SHA384",
-              "SHA512",
-              "MURMUR3"
-            ],
+            "enum": ["UNKNOWN", "SHA256", "SHA1", "MD5", "VSO", "SHA384", "SHA512", "MURMUR3"],
             "enumDescriptions": [
               "It is an error for the server to return this value.",
               "The SHA-256 digest function.",
@@ -716,10 +655,7 @@
         "supportedCompressor": {
           "description": "Compressors supported by the \"compressed-blobs\" bytestream resources. Servers MUST support identity/no-compression, even if it is not listed here. Note that this does not imply which if any compressors are supported by the server at the gRPC level.",
           "items": {
-            "enum": [
-              "IDENTITY",
-              "ZSTD"
-            ],
+            "enum": ["IDENTITY", "ZSTD"],
             "enumDescriptions": [
               "No compression. Servers and clients MUST always support this, and do not need to advertise it.",
               "Zstandard compression."
@@ -730,11 +666,7 @@
         },
         "symlinkAbsolutePathStrategy": {
           "description": "Whether absolute symlink targets are supported.",
-          "enum": [
-            "UNKNOWN",
-            "DISALLOWED",
-            "ALLOWED"
-          ],
+          "enum": ["UNKNOWN", "DISALLOWED", "ALLOWED"],
           "enumDescriptions": [
             "Invalid value.",
             "Server will return an `INVALID_ARGUMENT` on input symlinks with absolute targets. If an action tries to create an output symlink with an absolute target, a `FAILED_PRECONDITION` will be returned.",
@@ -889,13 +821,7 @@
         },
         "stage": {
           "description": "The current stage of execution.",
-          "enum": [
-            "UNKNOWN",
-            "CACHE_CHECK",
-            "QUEUED",
-            "EXECUTING",
-            "COMPLETED"
-          ],
+          "enum": ["UNKNOWN", "CACHE_CHECK", "QUEUED", "EXECUTING", "COMPLETED"],
           "enumDescriptions": [
             "Invalid value.",
             "Checking the result against the cache.",
@@ -1042,16 +968,7 @@
       "properties": {
         "digestFunction": {
           "description": "Remote execution may only support a single digest function.",
-          "enum": [
-            "UNKNOWN",
-            "SHA256",
-            "SHA1",
-            "MD5",
-            "VSO",
-            "SHA384",
-            "SHA512",
-            "MURMUR3"
-          ],
+          "enum": ["UNKNOWN", "SHA256", "SHA1", "MD5", "VSO", "SHA384", "SHA512", "MURMUR3"],
           "enumDescriptions": [
             "It is an error for the server to return this value.",
             "The SHA-256 digest function.",
@@ -1570,11 +1487,7 @@
       "properties": {
         "cmUsage": {
           "description": "Indicates if and how Container Manager is being used for task execution.",
-          "enum": [
-            "CONFIG_NONE",
-            "CONFIG_MATCH",
-            "CONFIG_MISMATCH"
-          ],
+          "enum": ["CONFIG_NONE", "CONFIG_MATCH", "CONFIG_MISMATCH"],
           "enumDescriptions": [
             "Container Manager is disabled or not running for this execution.",
             "Container Manager is enabled and there was a matching container available for use during execution.",
@@ -1934,11 +1847,7 @@
         },
         "linuxIsolation": {
           "description": "linux_isolation allows overriding the docker runtime used for containers started on Linux.",
-          "enum": [
-            "LINUX_ISOLATION_UNSPECIFIED",
-            "GVISOR",
-            "OFF"
-          ],
+          "enum": ["LINUX_ISOLATION_UNSPECIFIED", "GVISOR", "OFF"],
           "enumDescriptions": [
             "Default value. Will be using Linux default runtime.",
             "Use gVisor runsc runtime.",
@@ -1962,12 +1871,7 @@
         },
         "policy": {
           "description": "The policy of the feature.",
-          "enum": [
-            "POLICY_UNSPECIFIED",
-            "ALLOWED",
-            "FORBIDDEN",
-            "RESTRICTED"
-          ],
+          "enum": ["POLICY_UNSPECIFIED", "ALLOWED", "FORBIDDEN", "RESTRICTED"],
           "enumDescriptions": [
             "Default value, if not explicitly set. Equivalent to FORBIDDEN, unless otherwise documented on a specific Feature.",
             "Feature is explicitly allowed.",
@@ -2023,12 +1927,7 @@
         },
         "state": {
           "description": "Output only. State of the instance.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The instance is in state `CREATING` once `CreateInstance` is called and before the instance is ready for use.",
@@ -2204,14 +2103,7 @@
         },
         "state": {
           "description": "Output only. State of the worker pool.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "UPDATING",
-            "DELETING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "UPDATING", "DELETING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The worker pool is in state `CREATING` once `CreateWorkerPool` is called and before all requested workers are ready.",
@@ -2244,13 +2136,7 @@
         },
         "command": {
           "description": "The admin action; see `Command` for legal values.",
-          "enum": [
-            "UNSPECIFIED",
-            "BOT_UPDATE",
-            "BOT_RESTART",
-            "BOT_TERMINATE",
-            "HOST_RESTART"
-          ],
+          "enum": ["UNSPECIFIED", "BOT_UPDATE", "BOT_RESTART", "BOT_TERMINATE", "HOST_RESTART"],
           "enumDescriptions": [
             "Illegal value.",
             "Download and run a new version of the bot. `arg` will be a resource accessible via `ByteStream.Read` to obtain the new bot code.",

@@ -130,7 +130,9 @@ async def test_create_client_journey_success(mock_journey):
     """Test successful journey creation"""
     request = CreateJourneyRequest(journey_type="pt_pma_setup", client_id="client-123")
 
-    with patch("backend.app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey):
+    with patch(
+        "backend.app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey
+    ):
         result = await create_client_journey(request)
 
         assert result["success"] is True
@@ -176,9 +178,12 @@ async def test_get_journey_success():
     mock_journey = MockJourney()
     mock_progress = {"completed": 2, "total": 5, "percentage": 40.0}
 
-    with patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey):
+    with patch(
+        "backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey
+    ):
         with patch(
-            "backend.app.routers.agents.journey_orchestrator.get_progress", return_value=mock_progress
+            "backend.app.routers.agents.journey_orchestrator.get_progress",
+            return_value=mock_progress,
         ):
             result = await get_journey("journey-123")
 
@@ -204,7 +209,9 @@ async def test_complete_journey_step_success(mock_journey):
     """Test successful step completion"""
     with (
         patch("backend.app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
-        patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
+        patch(
+            "backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey
+        ),
     ):
         result = await complete_journey_step("journey-123", "step-1", "Notes")
 
@@ -232,7 +239,9 @@ async def test_get_next_steps():
     mock_step = MagicMock()
     mock_step.__dict__ = {"step_id": "step-2", "title": "Next Step"}
 
-    with patch("backend.app.routers.agents.journey_orchestrator.get_next_steps", return_value=[mock_step]):
+    with patch(
+        "backend.app.routers.agents.journey_orchestrator.get_next_steps", return_value=[mock_step]
+    ):
         result = await get_next_steps("journey-123")
 
         assert result["success"] is True
@@ -294,7 +303,8 @@ async def test_add_compliance_tracking_error():
 async def test_get_compliance_alerts_no_filters(mock_alert):
     """Test get compliance alerts without filters"""
     with patch(
-        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items",
+        return_value=[mock_alert],
     ):
         result = await get_compliance_alerts()
 
@@ -308,7 +318,8 @@ async def test_get_compliance_alerts_no_filters(mock_alert):
 async def test_get_compliance_alerts_with_client_filter(mock_alert):
     """Test get compliance alerts with client filter"""
     with patch(
-        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items",
+        return_value=[mock_alert],
     ):
         result = await get_compliance_alerts(client_id="client-123")
 
@@ -320,7 +331,8 @@ async def test_get_compliance_alerts_with_client_filter(mock_alert):
 async def test_get_compliance_alerts_with_severity_filter(mock_alert):
     """Test get compliance alerts with severity filter"""
     with patch(
-        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items",
+        return_value=[mock_alert],
     ):
         result = await get_compliance_alerts(severity="critical")
 
@@ -389,7 +401,8 @@ async def test_get_compliance_alerts_with_dict_alert():
     }
 
     with patch(
-        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[dict_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items",
+        return_value=[dict_alert],
     ):
         result = await get_compliance_alerts(client_id="client-456")
 
@@ -530,7 +543,8 @@ async def test_get_analytics_summary():
     mock_stats = {"total_journeys": 10, "active_journeys": 5, "completed_journeys": 5}
 
     with patch(
-        "backend.app.routers.agents.journey_orchestrator.get_orchestrator_stats", return_value=mock_stats
+        "backend.app.routers.agents.journey_orchestrator.get_orchestrator_stats",
+        return_value=mock_stats,
     ):
         result = await get_analytics_summary()
 
@@ -597,7 +611,9 @@ async def test_complete_journey_step_empty_notes(mock_journey):
     """Test step completion with empty notes"""
     with (
         patch("backend.app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
-        patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
+        patch(
+            "backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey
+        ),
     ):
         result = await complete_journey_step("journey-123", "step-1", None)
 
@@ -661,7 +677,9 @@ async def test_add_compliance_tracking_negative_cost(mock_compliance_item):
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_empty_list():
     """Test get compliance alerts when no alerts exist"""
-    with patch("backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[]):
+    with patch(
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[]
+    ):
         result = await get_compliance_alerts()
 
         assert result["success"] is True
@@ -699,7 +717,9 @@ async def test_get_compliance_alerts_multiple_severities():
         MockAlert("alert-2", "client-2", AlertSeverity.URGENT),
     ]
 
-    with patch("backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=alerts):
+    with patch(
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=alerts
+    ):
         result = await get_compliance_alerts()
 
         assert result["success"] is True

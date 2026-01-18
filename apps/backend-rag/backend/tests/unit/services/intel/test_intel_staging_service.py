@@ -2,11 +2,10 @@
 Unit tests for IntelStagingService.
 """
 
-import json
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 
 import pytest
 

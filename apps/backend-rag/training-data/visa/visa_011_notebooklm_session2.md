@@ -1,13 +1,19 @@
 # NotebookLM Generated Training Data - Session 2
+
 # Source: Official imigrasi.go.id data (scraped)
+
 # Generated: December 2024
+
 # Coverage: A1, B1, C1, E28A, E28B, E28D, E28G, E30A, E30B, E31 series, E32 series, E33, E33A, E33C
 
 ---
 
 ## visa_type: A1
+
 ## topic: Fasilitas Bebas Visa Kunjungan untuk Wisata
+
 ## languages: Indonesian, English
+
 ## difficulty: basic
 
 ### Conversation 1
@@ -35,8 +41,11 @@
 ---
 
 ## visa_type: B1
+
 ## topic: Visa Kunjungan Saat Kedatangan (Visa on Arrival - VoA)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -64,8 +73,11 @@
 ---
 
 ## visa_type: C1
+
 ## topic: Visa Kunjungan Wisata (Single Entry 60 Hari)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -93,8 +105,11 @@
 ---
 
 ## visa_type: E28A
+
 ## topic: Visa Investor (Direksi/Komisaris)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -122,8 +137,11 @@
 ---
 
 ## visa_type: E28B
+
 ## topic: Visa Investor Pendirian Perusahaan (Golden Visa)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -151,8 +169,11 @@
 ---
 
 ## visa_type: E28D
+
 ## topic: Visa Investor Pendirian Kantor Cabang
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -180,8 +201,11 @@
 ---
 
 ## visa_type: E28G
+
 ## topic: Visa Investor Representatif Perusahaan Induk
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -209,8 +233,11 @@
 ---
 
 ## visa_type: E30A
+
 ## topic: Visa Pelajar (Sekolah)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -238,8 +265,11 @@
 ---
 
 ## visa_type: E30B
+
 ## topic: Visa Pendidikan (Mahasiswa/Doktoral)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -267,8 +297,11 @@
 ---
 
 ## visa_type: E31A
+
 ## topic: Visa Keluarga (Penyatuan Keluarga dengan WNI)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -296,8 +329,11 @@
 ---
 
 ## visa_type: E31C
+
 ## topic: Visa Keluarga (Anak dari Ayah/Ibu WNI)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -325,8 +361,11 @@
 ---
 
 ## visa_type: E31D
+
 ## topic: Visa Keluarga (Anak - Varian)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -354,8 +393,11 @@
 ---
 
 ## visa_type: E31E
+
 ## topic: Visa Keluarga (Anak Mengikut Orang Tua WNA)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -383,8 +425,11 @@
 ---
 
 ## visa_type: E31F
+
 ## topic: Visa Keluarga (Anak dengan Putusan Pengadilan)
+
 ## languages: Indonesian, English
+
 ## difficulty: specialized
 
 ### Conversation 1
@@ -412,8 +457,11 @@
 ---
 
 ## visa_type: E31G
+
 ## topic: Visa Keluarga (Orang Tua dari Anak WNI)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -441,8 +489,11 @@
 ---
 
 ## visa_type: E31H
+
 ## topic: Visa Keluarga (Orang Tua dari Anak WNA Pemegang ITAS/ITAP)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -470,8 +521,11 @@
 ---
 
 ## visa_type: E31J
+
 ## topic: Visa Keluarga (Saudara Kandung)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -499,8 +553,11 @@
 ---
 
 ## visa_type: E32A
+
 ## topic: Visa Eks Warga Negara Indonesia (Repatriasi/Tinggal)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -528,8 +585,11 @@
 ---
 
 ## visa_type: E32B
+
 ## topic: Visa Eks WNI Derajat 1 dan 2 (Golden Visa)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -557,8 +617,11 @@
 ---
 
 ## visa_type: E32C
+
 ## topic: Visa Eks WNI (Maksimal 2 Tahun)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -586,8 +649,11 @@
 ---
 
 ## visa_type: E32D
+
 ## topic: Visa Eks WNI (Maksimal 1 Tahun)
+
 ## languages: Indonesian, English
+
 ## difficulty: intermediate
 
 ### Conversation 1
@@ -615,8 +681,11 @@
 ---
 
 ## visa_type: E33
+
 ## topic: Visa Rumah Kedua (Second Home Visa)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -644,8 +713,11 @@
 ---
 
 ## visa_type: E33A
+
 ## topic: Visa Keahlian Khusus (Global Talent - Dengan Sponsor)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -673,8 +745,11 @@
 ---
 
 ## visa_type: E33C
+
 ## topic: Visa Tokoh Dunia (Global Figure)
+
 ## languages: Indonesian, English
+
 ## difficulty: advanced
 
 ### Conversation 1
@@ -709,13 +784,13 @@
 
 **Consultant:** Pertanyaan bagus, Pak/Bu. Ini perbedaan utamanya:
 
-| Aspek | E33 Second Home | E33E Retirement |
-|-------|-----------------|-----------------|
-| Syarat Umur | Tidak ada | Minimal 55 tahun |
-| Keuangan | US$130k bank ATAU US$1M properti | US$50k bank + US$3k/bulan income |
-| Durasi | 5 tahun | 5 tahun |
-| Boleh Kerja? | Ya (dengan izin tambahan) | Tidak |
-| Sponsor | Tidak perlu | Tidak perlu |
+| Aspek        | E33 Second Home                  | E33E Retirement                  |
+| ------------ | -------------------------------- | -------------------------------- |
+| Syarat Umur  | Tidak ada                        | Minimal 55 tahun                 |
+| Keuangan     | US$130k bank ATAU US$1M properti | US$50k bank + US$3k/bulan income |
+| Durasi       | 5 tahun                          | 5 tahun                          |
+| Boleh Kerja? | Ya (dengan izin tambahan)        | Tidak                            |
+| Sponsor      | Tidak perlu                      | Tidak perlu                      |
 
 **Client:** Jadi kalau saya umur 50 tahun dan punya uang US$130k, saya pakai E33?
 

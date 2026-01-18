@@ -9,6 +9,7 @@
 ## ✅ PRE-TEST VERIFICA
 
 ### Status Deploy:
+
 - ✅ Deploy completato: `3ba0a46c`
 - ✅ Status: Ready (Production)
 - ✅ Build: Success (1m)
@@ -19,12 +20,14 @@
 ## 🧪 TEST MANUALE - CHAT STREAMING
 
 ### 1. Accesso e Login
+
 - [ ] Accedere a https://zantara.balizero.com
 - [ ] Verificare redirect a `/login` funziona
 - [ ] Login con credenziali valide
 - [ ] Verificare redirect a dashboard/chat
 
 ### 2. Chat Streaming - Test Base
+
 - [ ] Aprire pagina chat (`/chat`)
 - [ ] Verificare UI carica correttamente
 - [ ] Inviare messaggio semplice (es: "Hello")
@@ -35,6 +38,7 @@
   - [ ] Risposta completa ricevuta
 
 ### 3. Chat Streaming - Test Avanzati
+
 - [ ] Test con immagini:
   - [ ] Attaccare immagine
   - [ ] Inviare messaggio con immagine
@@ -49,6 +53,7 @@
   - [ ] Verificare abort funziona
 
 ### 4. Logger Strutturato - Verifica
+
 - [ ] Aprire DevTools Console
 - [ ] Inviare messaggio chat
 - [ ] Verificare logs strutturati:
@@ -58,6 +63,7 @@
   - [ ] Nessun `console.log/warn/error` raw
 
 ### 5. Error Handling - Test
+
 - [ ] Simulare errore network:
   - [ ] Disabilitare network in DevTools
   - [ ] Inviare messaggio
@@ -89,16 +95,19 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ### Cosa Cercare nei Logs:
 
 #### ✅ Logs Attesi (Normali):
+
 - `[INFO] Stream completed` - Streaming completato con successo
 - `[INFO] Message received successfully` - Messaggio ricevuto
 - `[DEBUG] Loading user profile` - Caricamento profilo
 
 #### ⚠️ Logs da Monitorare:
+
 - `[ERROR] Stream error` - Errori durante streaming
 - `[ERROR] Failed to load` - Errori caricamento
 - `[WARN]` - Warning vari
 
 #### ❌ Logs da Evitare:
+
 - `console.log` raw (dovrebbero essere sostituiti)
 - `console.error` raw (dovrebbero essere logger.error)
 - Errori di type safety
@@ -133,17 +142,20 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ## 🔍 REGRESSIONI DA VERIFICARE
 
 ### Funzionalità Esistenti:
+
 - [ ] Login funziona correttamente
 - [ ] Dashboard carica correttamente
 - [ ] Chat funziona come prima
 - [ ] Altri endpoint API funzionano
 
 ### Nuove Funzionalità:
+
 - [ ] Logger strutturato attivo
 - [ ] Error handling migliorato
 - [ ] Type safety migliorata
 
 ### Performance:
+
 - [ ] Nessun degrado performance
 - [ ] Bundle size non aumentato
 - [ ] Load time simile o migliore
@@ -153,6 +165,7 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ## 🐛 BUG DA VERIFICARE
 
 ### Bug Potenziali:
+
 - [ ] Streaming si interrompe prematuramente
 - [ ] Errori durante streaming
 - [ ] Logs duplicati o eccessivi
@@ -160,6 +173,7 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 - [ ] Type errors in console
 
 ### Fix da Verificare:
+
 - [ ] `useOptimisticChat` rimosso correttamente
 - [ ] `sendMessageStream` non più utilizzato
 - [ ] Logger strutturato sostituisce console
@@ -170,17 +184,20 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ## ✅ CHECKLIST FINALE
 
 ### Test Funzionalità:
+
 - [ ] Chat streaming funziona
 - [ ] Logger strutturato attivo
 - [ ] Error handling funziona
 - [ ] Nessun errore console
 
 ### Monitoring:
+
 - [ ] Logs Vercel verificati
 - [ ] Performance metriche OK
 - [ ] Nessuna regressione
 
 ### Documentazione:
+
 - [ ] Test completati
 - [ ] Risultati documentati
 - [ ] Issue risolte verificate
@@ -190,22 +207,25 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ## 📝 NOTE TEST
 
 ### Ambiente:
-- Browser: _______________
-- OS: _______________
-- Network: _______________
+
+- Browser: ******\_\_\_******
+- OS: ******\_\_\_******
+- Network: ******\_\_\_******
 
 ### Risultati:
-- Test completati: ___/___
-- Errori trovati: ___
+
+- Test completati: **_/_**
+- Errori trovati: \_\_\_
 - Performance: ☐ OK ☐ Degradata
 
 ### Issue Trovate:
-1. _______________
-2. _______________
-3. _______________
+
+1. ***
+2. ***
+3. ***
 
 ---
 
-**Test Started:** _______________  
-**Test Completed:** _______________  
+**Test Started:** ******\_\_\_******  
+**Test Completed:** ******\_\_\_******  
 **Status:** ☐ Pass ☐ Fail ☐ Partial

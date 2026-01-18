@@ -17,10 +17,11 @@ import logging
 import time
 from typing import Any
 
+from backend.services.rag.agentic.kg_enhanced_retrieval import KGEnhancedRetrieval
+
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
-from backend.services.rag.agentic.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
@@ -29,13 +30,12 @@ from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
 
 from .llm_gateway import LLMGateway
-from .query_helpers import wrap_query_with_language_instruction
-from .schema import CoreResult
-
 from .orchestrator_context import OrchestratorContextManager
 from .orchestrator_metrics import OrchestratorMetricsManager
 from .orchestrator_response import OrchestratorResponseBuilder
 from .orchestrator_routing import OrchestratorRoutingManager
+from .query_helpers import wrap_query_with_language_instruction
+from .schema import CoreResult
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
@@ -308,8 +308,8 @@ class OrchestratorCore:
             return self.query_gates.gate_result_to_core_result(gate_result, start_time)
 
         # 3. Extract entities and KG context
-        extracted_entities, system_context_for_prompt = (
-            await self.extract_entities_and_kg_context(query)
+        extracted_entities, system_context_for_prompt = await self.extract_entities_and_kg_context(
+            query
         )
 
         # 4. Check semantic cache
@@ -341,19 +341,15 @@ class OrchestratorCore:
         )
 
         # 8. Execute ReAct loop
-        logger.info(
-            f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})"
-        )
-        state, model_used_name, token_usage, reasoning_duration = (
-            await self.execute_react_loop(
-                state=state,
-                chat=chat,
-                system_prompt=system_prompt,
-                query=query,
-                user_id=user_id or "anonymous",
-                model_tier=model_tier,
-                tool_execution_counter=tool_execution_counter,
-            )
+        logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
+        state, model_used_name, token_usage, reasoning_duration = await self.execute_react_loop(
+            state=state,
+            chat=chat,
+            system_prompt=system_prompt,
+            query=query,
+            user_id=user_id or "anonymous",
+            model_tier=model_tier,
+            tool_execution_counter=tool_execution_counter,
         )
 
         # 9. Extract metrics data

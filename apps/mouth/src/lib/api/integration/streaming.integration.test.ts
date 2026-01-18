@@ -204,11 +204,10 @@ describe('Streaming Integration Tests', () => {
 
       await api.sendMessageStreaming('test', undefined, vi.fn(), onDone, vi.fn());
 
-      expect(onDone).toHaveBeenCalledWith(
-        'Answer',
-        [{ title: 'Source 1', content: 'Content 1' }],
-        { execution_time: 1.5, route_used: 'fast' }
-      );
+      expect(onDone).toHaveBeenCalledWith('Answer', [{ title: 'Source 1', content: 'Content 1' }], {
+        execution_time: 1.5,
+        route_used: 'fast',
+      });
     });
 
     it('should handle abort signal during streaming', async () => {
@@ -426,4 +425,3 @@ describe('Streaming Integration Tests', () => {
     });
   });
 });
-

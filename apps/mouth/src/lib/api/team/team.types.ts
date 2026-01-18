@@ -19,4 +19,3 @@ export interface UserStatusResponse {
   week_hours: number;
   week_days: number;
 }
-

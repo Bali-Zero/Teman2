@@ -304,7 +304,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_basic(self, service):
         """Test building enhanced system prompt with basic emotional profile"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -325,7 +329,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_with_collaborator_name(self, service):
         """Test building enhanced system prompt with collaborator name"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -346,7 +354,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_stressed(self, service):
         """Test building enhanced system prompt for stressed state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -365,7 +377,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_confused(self, service):
         """Test building enhanced system prompt for confused state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -384,7 +400,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_urgent(self, service):
         """Test building enhanced system prompt for urgent state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -403,7 +423,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_sad(self, service):
         """Test building enhanced system prompt for sad state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -422,7 +446,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_anxious(self, service):
         """Test building enhanced system prompt for anxious state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -441,7 +469,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_embarrassed(self, service):
         """Test building enhanced system prompt for embarrassed state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -460,7 +492,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_lonely(self, service):
         """Test building enhanced system prompt for lonely state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -479,7 +515,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_scared(self, service):
         """Test building enhanced system prompt for scared state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(
@@ -498,7 +538,11 @@ class TestEmotionalAttunementServiceIntegration:
 
     def test_build_enhanced_system_prompt_worried(self, service):
         """Test building enhanced system prompt for worried state"""
-        from backend.services.misc.emotional_attunement import EmotionalProfile, EmotionalState, ToneStyle
+        from backend.services.misc.emotional_attunement import (
+            EmotionalProfile,
+            EmotionalState,
+            ToneStyle,
+        )
 
         base_prompt = "You are a helpful assistant."
         profile = EmotionalProfile(

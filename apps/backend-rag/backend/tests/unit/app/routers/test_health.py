@@ -52,7 +52,9 @@ class TestHealthRouter:
         mock_search_service.embedder = mock_embedder
         app.state.search_service = mock_search_service
 
-        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+        with patch(
+            "backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock
+        ) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             response = client.get("/health")

@@ -58,7 +58,8 @@ class TestConnect:
             mock_settings.database_url = "postgresql://test"
 
             with patch(
-                "backend.services.monitoring.audit_service.asyncpg.create_pool", new_callable=AsyncMock
+                "backend.services.monitoring.audit_service.asyncpg.create_pool",
+                new_callable=AsyncMock,
             ) as mock_pool:
                 mock_pool.return_value = MagicMock()
 
@@ -90,7 +91,8 @@ class TestConnect:
             mock_settings.database_url = "postgresql://invalid"
 
             with patch(
-                "backend.services.monitoring.audit_service.asyncpg.create_pool", new_callable=AsyncMock
+                "backend.services.monitoring.audit_service.asyncpg.create_pool",
+                new_callable=AsyncMock,
             ) as mock_pool:
                 mock_pool.side_effect = Exception("Connection failed")
 

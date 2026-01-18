@@ -16,11 +16,10 @@ are migrated to SearchService. Do not use this service in new code.
 import logging
 from typing import Any
 
-from backend.core.cache import cached
-from backend.core.qdrant_db import QdrantClient
-
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
+from backend.core.cache import cached
+from backend.core.qdrant_db import QdrantClient
 from backend.services.routing.query_router import QueryRouter
 
 logger = logging.getLogger(__name__)

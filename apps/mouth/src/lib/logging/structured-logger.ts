@@ -20,7 +20,12 @@ interface LogContext {
 
 const isDev = process.env.NODE_ENV === 'development';
 
-function formatLog(level: LogLevel, category: LogCategory, message: string, context?: LogContext): string {
+function formatLog(
+  level: LogLevel,
+  category: LogCategory,
+  message: string,
+  context?: LogContext
+): string {
   const timestamp = new Date().toISOString();
   const contextStr = context ? ` ${JSON.stringify(context)}` : '';
   return `[${timestamp}] [${level.toUpperCase()}] [${category}] ${message}${contextStr}`;

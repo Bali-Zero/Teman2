@@ -8,9 +8,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import asyncpg
-from backend.db.migration_base import BaseMigration, MigrationError
 
 from backend.app.core.config import settings
+from backend.db.migration_base import BaseMigration, MigrationError
 
 logger = logging.getLogger(__name__)
 

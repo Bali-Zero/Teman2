@@ -11,18 +11,15 @@ Run with: pytest backend/tests/test_crm_migration_endpoints.py -v
 """
 
 import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 # Import services and functions to test
 from backend.services.crm.document_categorizer import (
     auto_categorize_document,
+    auto_categorize_documents_batch,
     extract_expiry_date,
     extract_person_name,
-    auto_categorize_documents_batch,
     get_categorization_stats,
 )
-
 
 # ============================================================================
 # AUTO-CATEGORIZATION SERVICE TESTS
@@ -136,7 +133,11 @@ class TestDocumentCategorizer:
         result2 = auto_categorize_document("passport.pdf")
         result3 = auto_categorize_document("PaSpOrT.pdf")
 
-        assert result1["document_category"] == result2["document_category"] == result3["document_category"]
+        assert (
+            result1["document_category"]
+            == result2["document_category"]
+            == result3["document_category"]
+        )
         assert result1["document_type"] == result2["document_type"] == result3["document_type"]
 
 
@@ -385,7 +386,7 @@ class TestPerformance:
         assert len(results) == 100
 
         print(f"\n✓ Processed {len(results)} documents in {elapsed:.3f} seconds")
-        print(f"✓ Average: {(elapsed/len(results))*1000:.2f}ms per document")
+        print(f"✓ Average: {(elapsed / len(results)) * 1000:.2f}ms per document")
 
 
 # ============================================================================

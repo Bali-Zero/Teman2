@@ -8,23 +8,25 @@
 ## Latest Update (2025-12-23)
 
 ### Model Configuration Update (Updated 2025-12-28)
+
 - **Primary Model**: `gemini-3-flash` (was gemini-2.5-flash)
 - **Fallback Model**: `gemini-2.0-flash` (stable)
 - **OpenRouter**: ❌ Removed as fallback
 
 ### Service Account Update
+
 - **Active SA**: `vertex-express@gen-lang-client-0498009027.iam.gserviceaccount.com`
 - **Auth Method**: Vertex AI with Service Account (preferred for production)
 
 ## Migration Completion Summary
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| Dependencies | ✅ Complete | google-genai 1.56.0, httpx 0.28.1, openai 2.14.0 |
-| Core Migration | ✅ Complete | GenAIClient wrapper created |
-| Secondary Services | ✅ Complete | All services updated |
-| Tests | ✅ Complete | Mocking patterns updated |
-| Deployment | ✅ Complete | v857 - healthy in production |
+| Phase              | Status      | Notes                                            |
+| ------------------ | ----------- | ------------------------------------------------ |
+| Dependencies       | ✅ Complete | google-genai 1.56.0, httpx 0.28.1, openai 2.14.0 |
+| Core Migration     | ✅ Complete | GenAIClient wrapper created                      |
+| Secondary Services | ✅ Complete | All services updated                             |
+| Tests              | ✅ Complete | Mocking patterns updated                         |
+| Deployment         | ✅ Complete | v857 - healthy in production                     |
 
 ### Critical Fix Applied During Deployment
 
@@ -33,6 +35,7 @@
 **Root Cause**: `openai==1.55.0` incompatible with `httpx>=0.28.1` (proxies parameter removed)
 
 **Solution**:
+
 ```txt
 # Before (BROKEN)
 openai==1.55.0
@@ -44,6 +47,7 @@ httpx>=0.28.1,<1.0.0
 ```
 
 **Final Versions in Production**:
+
 - `google-genai` 1.56.0
 - `openai` 2.14.0
 - `httpx` 0.28.1
@@ -57,13 +61,16 @@ Google has deprecated the `google.generativeai` package in favor of the new unif
 ## Dependency Conflict
 
 ### The Problem
+
 ```
 google-genai requires: httpx>=0.28.1
 current pin:           httpx==0.27.2 (for openai compatibility)
 ```
 
 ### Resolution
+
 Update httpx and verify openai compatibility:
+
 ```txt
 httpx>=0.28.1,<1.0.0  # Compatible with both google-genai and openai
 ```
@@ -72,22 +79,22 @@ httpx>=0.28.1,<1.0.0  # Compatible with both google-genai and openai
 
 ### Priority 1: Core Production Code (5 files)
 
-| File | Usage | Complexity |
-|------|-------|------------|
-| `backend/llm/zantara_ai_client.py` | Main AI engine | High |
-| `backend/services/gemini_service.py` | Jaksel persona | Medium |
-| `backend/services/rag/agentic/llm_gateway.py` | RAG gateway | High |
-| `backend/services/rag/vision_rag.py` | Vision processing | Medium |
-| `backend/services/multimodal/pdf_vision_service.py` | PDF analysis | Low |
+| File                                                | Usage             | Complexity |
+| --------------------------------------------------- | ----------------- | ---------- |
+| `backend/llm/zantara_ai_client.py`                  | Main AI engine    | High       |
+| `backend/services/gemini_service.py`                | Jaksel persona    | Medium     |
+| `backend/services/rag/agentic/llm_gateway.py`       | RAG gateway       | High       |
+| `backend/services/rag/vision_rag.py`                | Vision processing | Medium     |
+| `backend/services/multimodal/pdf_vision_service.py` | PDF analysis      | Low        |
 
 ### Priority 2: Secondary Services (4 files)
 
-| File | Usage |
-|------|-------|
-| `backend/services/oracle_google_services.py` | Oracle integration |
-| `backend/services/image_generation_service.py` | Image generation |
-| `backend/services/smart_oracle.py` | Smart Oracle |
-| `backend/services/context/agentic_orchestrator_v2.py` | Orchestrator |
+| File                                                  | Usage              |
+| ----------------------------------------------------- | ------------------ |
+| `backend/services/oracle_google_services.py`          | Oracle integration |
+| `backend/services/image_generation_service.py`        | Image generation   |
+| `backend/services/smart_oracle.py`                    | Smart Oracle       |
+| `backend/services/context/agentic_orchestrator_v2.py` | Orchestrator       |
 
 ### Priority 3: Test Files (20 files)
 
@@ -196,6 +203,7 @@ config = types.GenerateContentConfig(
 ### Phase 1: Dependencies (5 min)
 
 1. Update `requirements.txt`:
+
 ```txt
 # Google Cloud Integration
 google-genai>=1.55.0  # NEW unified SDK (replaces google-generativeai)
@@ -232,6 +240,7 @@ httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert requirements.txt changes
 2. Keep both SDKs temporarily: `google-generativeai>=0.5.0`
 3. Use feature flag to switch between implementations

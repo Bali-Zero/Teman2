@@ -3,6 +3,7 @@
 Configurazione avanzata e automazioni per Claude Cowork - Ottimizzazioni performance, integrazioni e workflow automatizzati.
 
 ## 📋 Indice
+
 - [Features](#features)
 - [Installazione](#installazione)
 - [Configurazione](#configurazione)
@@ -16,17 +17,20 @@ Configurazione avanzata e automazioni per Claude Cowork - Ottimizzazioni perform
 ## ✨ Features
 
 ### 1. Espansione Cartelle
+
 - ✅ 5 cartelle autorizzate (vs 1 originale)
 - ✅ Accesso a: nuzantara, KB, kbli, Downloads, Documents
 - ✅ Permessi gestiti centralmente
 
 ### 2. Performance Optimization
+
 - ⚡ Cache intelligente file grandi
 - ⚡ Pre-loading cartelle frequenti
 - ⚡ Cleanup automatico sessioni vecchie
 - ⚡ Limite 3 sessioni concorrenti
 
 ### 3. Integrazioni MCP Avanzate
+
 - 🔌 Filesystem (ottimizzato)
 - 🔌 GitHub integration
 - 🔌 PostgreSQL direct access
@@ -35,18 +39,21 @@ Configurazione avanzata e automazioni per Claude Cowork - Ottimizzazioni perform
 - 🔌 Slack notifications (opzionale)
 
 ### 4. Automazioni Custom
+
 - 🤖 Auto-organize Downloads (ogni ora)
 - 🤖 Backup sessioni Cowork (ogni 6 ore)
 - 🤖 Sync KB → Qdrant (ogni 2 ore)
 - 🤖 Cleanup sessioni vecchie (daily)
 
 ### 5. Security & Backup
+
 - 🔒 Whitelist cartelle sensibili
 - 🔒 Backup automatico pre-operazioni
 - 🔒 Logging dettagliato azioni
 - 🔒 Limits su operazioni batch
 
 ### 6. Prompt Templates
+
 - 📝 File Organization
 - 📝 Document Analysis
 - 📝 Data Processing
@@ -58,12 +65,14 @@ Configurazione avanzata e automazioni per Claude Cowork - Ottimizzazioni perform
 ## 🚀 Installazione
 
 ### Metodo 1: Installer Automatico
+
 ```bash
 cd ~/Desktop/nuzantara/.cowork-optimization
 ./install.sh
 ```
 
 ### Metodo 2: Manuale
+
 ```bash
 # 1. Rendi eseguibili gli script
 chmod +x ~/Desktop/nuzantara/.cowork-optimization/scripts/*.sh
@@ -80,6 +89,7 @@ mkdir -p ~/Desktop/nuzantara/.cowork-optimization/{logs,backups/{sessions,auto}}
 ## ⚙️ Configurazione
 
 ### 1. Cartelle Autorizzate
+
 File: `~/Library/Application Support/Claude/Claude Extensions Settings/ant.dir.ant.anthropic.filesystem.json`
 
 ```json
@@ -98,9 +108,11 @@ File: `~/Library/Application Support/Claude/Claude Extensions Settings/ant.dir.a
 ```
 
 ### 2. MCP Servers (Opzionale)
+
 File: `mcp-config-enhanced.json`
 
 Configura variabili d'ambiente:
+
 ```bash
 export GITHUB_TOKEN="your_token"
 export POSTGRES_PASSWORD="your_password"
@@ -109,6 +121,7 @@ export BRAVE_API_KEY="your_key"
 ```
 
 ### 3. Cron Jobs (Opzionale)
+
 ```bash
 crontab ~/Desktop/nuzantara/.cowork-optimization/cowork-crontab.txt
 ```
@@ -120,18 +133,21 @@ crontab ~/Desktop/nuzantara/.cowork-optimization/cowork-crontab.txt
 ### Quick Start con Templates
 
 1. **Organizza Downloads**
+
    ```
    Cowork > Usa template "File Organization"
    Cartella: ~/Downloads
    ```
 
 2. **Analizza Documenti KB**
+
    ```
    Cowork > Usa template "Document Analysis"
    Cartella: ~/Desktop/KB
    ```
 
 3. **Sync KB a Qdrant**
+
    ```
    Cowork > Usa template "KB Sync"
    Esegui sync automatico
@@ -146,21 +162,25 @@ crontab ~/Desktop/nuzantara/.cowork-optimization/cowork-crontab.txt
 ### Comandi Manuali
 
 **Backup immediato:**
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/scripts/backup-cowork-sessions.sh
 ```
 
 **Organizza Downloads ora:**
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/scripts/auto-organize-downloads.sh
 ```
 
 **Cleanup sessioni:**
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/scripts/cleanup-old-sessions.sh
 ```
 
 **Sync KB:**
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/scripts/sync-kb-to-qdrant.sh
 ```
@@ -181,13 +201,13 @@ Tutti i template sono in: `~/Desktop/nuzantara/.cowork-optimization/templates/`
 
 ### Templates Disponibili
 
-| Template | Descrizione | Use Case |
-|----------|-------------|----------|
-| `file-organization.md` | Organizza file per tipo/data | Downloads caotici |
-| `document-analysis.md` | Analisi documenti + summary | Research, meeting notes |
-| `data-processing.md` | Trasforma e valida dati | CSV, JSON, Excel |
-| `kb-sync.md` | Sync KB a Qdrant | Aggiorna knowledge base |
-| `project-report.md` | Report completo progetto | Status updates |
+| Template               | Descrizione                  | Use Case                |
+| ---------------------- | ---------------------------- | ----------------------- |
+| `file-organization.md` | Organizza file per tipo/data | Downloads caotici       |
+| `document-analysis.md` | Analisi documenti + summary  | Research, meeting notes |
+| `data-processing.md`   | Trasforma e valida dati      | CSV, JSON, Excel        |
+| `kb-sync.md`           | Sync KB a Qdrant             | Aggiorna knowledge base |
+| `project-report.md`    | Report completo progetto     | Status updates          |
 
 ---
 
@@ -195,12 +215,12 @@ Tutti i template sono in: `~/Desktop/nuzantara/.cowork-optimization/templates/`
 
 ### Schedule Automatico (con cron)
 
-| Script | Frequenza | Descrizione |
-|--------|-----------|-------------|
-| `auto-organize-downloads.sh` | Ogni ora | Organizza Downloads automaticamente |
-| `backup-cowork-sessions.sh` | Ogni 6 ore | Backup incrementale sessioni |
-| `sync-kb-to-qdrant.sh` | Ogni 2 ore | Sync KB se modifiche |
-| `cleanup-old-sessions.sh` | Daily 3 AM | Rimuove sessioni >7 giorni |
+| Script                       | Frequenza  | Descrizione                         |
+| ---------------------------- | ---------- | ----------------------------------- |
+| `auto-organize-downloads.sh` | Ogni ora   | Organizza Downloads automaticamente |
+| `backup-cowork-sessions.sh`  | Ogni 6 ore | Backup incrementale sessioni        |
+| `sync-kb-to-qdrant.sh`       | Ogni 2 ore | Sync KB se modifiche                |
+| `cleanup-old-sessions.sh`    | Daily 3 AM | Rimuove sessioni >7 giorni          |
 
 ### Logs
 
@@ -217,14 +237,18 @@ Tutti i log sono in: `~/Desktop/nuzantara/.cowork-optimization/logs/`
 ## 🔒 Security
 
 ### File Protetti
+
 Non saranno mai toccati da Cowork:
+
 - `*.key`, `*.pem` - Chiavi private
 - `*.env` - Variabili d'ambiente
 - `*secret*`, `*password*` - File sensibili
 - Directory: `.ssh`, `.aws`, `.config`
 
 ### Backup Automatico
+
 Backup prima di:
+
 - Delete operations
 - Replace operations
 - Move operations
@@ -238,6 +262,7 @@ Backup salvati in: `~/Desktop/nuzantara/.cowork-optimization/backups/auto/`
 ### Problema: Cartelle non accessibili in Cowork
 
 **Soluzione:**
+
 1. Riavvia Claude Desktop app
 2. Verifica configurazione:
    ```bash
@@ -251,6 +276,7 @@ Backup salvati in: `~/Desktop/nuzantara/.cowork-optimization/backups/auto/`
 ### Problema: Script automazioni non funzionano
 
 **Soluzione:**
+
 1. Verifica permessi:
    ```bash
    ls -la ~/Desktop/nuzantara/.cowork-optimization/scripts/
@@ -267,6 +293,7 @@ Backup salvati in: `~/Desktop/nuzantara/.cowork-optimization/backups/auto/`
 ### Problema: Cron jobs non eseguiti
 
 **Soluzione:**
+
 1. Verifica crontab:
    ```bash
    crontab -l
@@ -283,6 +310,7 @@ Backup salvati in: `~/Desktop/nuzantara/.cowork-optimization/backups/auto/`
 ### Problema: MCP server non connette
 
 **Soluzione:**
+
 1. Controlla log MCP:
    ```bash
    tail -f ~/Library/Logs/Claude/mcp.log
@@ -304,6 +332,7 @@ Backup salvati in: `~/Desktop/nuzantara/.cowork-optimization/backups/auto/`
 ### Monitoring
 
 Controlla performance con:
+
 ```bash
 # Spazio usato da sessioni
 du -sh ~/Library/Application\ Support/Claude/local-agent-mode-sessions/
@@ -335,6 +364,7 @@ MIT License - Creato per ottimizzare Claude Cowork
 ## 🤝 Support
 
 Per problemi o suggerimenti:
+
 1. Controlla i log in `.cowork-optimization/logs/`
 2. Consulta sezione [Troubleshooting](#troubleshooting)
 3. Verifica configurazione con `install.sh`

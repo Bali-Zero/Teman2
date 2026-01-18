@@ -13,10 +13,8 @@ Output: JSON strutturati per confronto con Qdrant
 import os
 import re
 import json
-import sys
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
-from datetime import datetime
 
 try:
     import pypdf
@@ -34,7 +32,10 @@ except ImportError:
     class pypdf:  # type: ignore
         PdfReader = _Wrapper
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_extraction")
 
 # Paths PDF sul Desktop
@@ -91,7 +92,9 @@ def detect_pma_info(text: str) -> tuple[Optional[bool], str]:
     if "pma" in text_lower or "kepemilikan asing" in text_lower:
         if any(x in text_lower for x in ["diizinkan", "allowed", "ya", "boleh"]):
             pma_allowed = True
-        elif any(x in text_lower for x in ["tidak diizinkan", "tidak boleh", "dilarang"]):
+        elif any(
+            x in text_lower for x in ["tidak diizinkan", "tidak boleh", "dilarang"]
+        ):
             pma_allowed = False
 
         # Cerca percentuale
@@ -246,7 +249,7 @@ def extract_ingub_bali(pdf_path: str) -> Dict:
 
     print(f"📄 Analisi INGUB 6/2025 da: {os.path.basename(pdf_path)}")
     reader = pypdf.PdfReader(pdf_path)
-    
+
     result = {
         "source": "INGUB-6-TAHUN-2025",
         "kbli_codes": [],
@@ -300,7 +303,9 @@ def extract_ingub_bali(pdf_path: str) -> Dict:
     if "toko modern" in text_lower or "berjejaring" in text_lower:
         result["restrictions"]["applies_to"] = "toko_modern_berjejaring"
 
-    print(f"  ✅ Analisi completata: {len(result['kbli_codes'])} KBLI, {len(result['areas'])} aree")
+    print(
+        f"  ✅ Analisi completata: {len(result['kbli_codes'])} KBLI, {len(result['areas'])} aree"
+    )
     return result
 
 

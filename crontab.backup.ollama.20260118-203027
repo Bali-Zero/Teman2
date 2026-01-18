@@ -1,0 +1,31 @@
+0 4 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh
+0 16 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh
+0 16 * * 0 /Users/antonellosiano/Desktop/nuzantara/scripts/auto_judgement_day.sh
+0 5 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_kb_ingest.sh
+0 4 * * * cd /Users/antonellosiano/Desktop/nuzantara/apps/bali-intel-scraper/scripts && /usr/bin/python3 unified_scraper.py >> /Users/antonellosiano/Desktop/nuzantara/logs/scrapers/unified_scraper.log 2>&1
+0 16 * * * cd /Users/antonellosiano/Desktop/nuzantara/apps/bali-intel-scraper/scripts && /usr/bin/python3 unified_scraper.py >> /Users/antonellosiano/Desktop/nuzantara/logs/scrapers/unified_scraper.log 2>&1
+0 4 * * * cd /Users/antonellosiano/Desktop/nuzantara/apps/kb && /usr/bin/python3 intelligent_visa_agent.py >> /Users/antonellosiano/Desktop/nuzantara/logs/scrapers/visa_agent.log 2>&1
+0 16 * * * cd /Users/antonellosiano/Desktop/nuzantara/apps/kb && /usr/bin/python3 intelligent_visa_agent.py >> /Users/antonellosiano/Desktop/nuzantara/logs/scrapers/visa_agent.log 2>&1
+
+# ==========================================
+# NUZANTARA AUTOMATION CRON JOBS
+# Generated: 2026-01-18 20:01:37
+# Documentation (Scribe) - Daily at 2:00 AM
+0 2 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/scribe_cron.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/scribe_cron.log 2>&1
+# Quality Control (Sentinel) - Daily at 3:00 AM
+0 3 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_sentinel.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/sentinel_nightly.log 2>&1
+# Database Backup - Daily at 1:00 AM (before Scribe)
+0 1 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/backup-db.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/backup.log 2>&1
+# Daily Monitoring - Daily at 8:00 AM (after all night processes)
+0 8 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/daily-monitoring.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/daily_monitoring.log 2>&1
+# Intel Scraper - Daily at 4:00 AM and 4:00 PM
+0 4 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1
+0 16 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1
+# KB Ingest - Daily at 5:00 AM
+0 5 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_kb_ingest.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/kb_ingest.log 2>&1
+# News Enricher - Every 6 hours (0:00, 6:00, 12:00, 18:00)
+0 0,6,12,18 * * * /Users/antonellosiano/Desktop/nuzantara/apps/bali-intel-scraper/scripts/run_news_enricher.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/news_enricher.log 2>&1
+# Judgement Day - Sunday at 4:00 PM
+0 16 * * 0 /Users/antonellosiano/Desktop/nuzantara/scripts/auto_judgement_day.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/judgement_day.log 2>&1
+# Unified Scraper - Daily at 4:00 AM and 4:00 PM
+# Visa Agent - Daily at 4:00 AM and 4:00 PM

@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
+
 from backend.agents.services.client_scoring import ClientScoringService
 from backend.agents.services.client_segmentation import ClientSegmentationService
 from backend.agents.services.nurturing_message import NurturingMessageService

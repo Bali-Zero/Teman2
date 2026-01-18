@@ -5,13 +5,13 @@ Supporto bilingue (ID + EN) obbligatorio.
 """
 
 from typing import List, Optional, Dict, Any, Literal
-from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from enum import Enum
 
 
 class RiskLevel(str, Enum):
     """Livelli di rischio."""
+
     RENDAH = "Rendah"
     MENENGAH_RENDAH = "Menengah Rendah"
     MENENGAH = "Menengah"
@@ -22,6 +22,7 @@ class RiskLevel(str, Enum):
 
 class SkalaUsaha(str, Enum):
     """Scale di business."""
+
     MIKRO = "Mikro"
     KECIL = "Kecil"
     MENENGAH = "Menengah"
@@ -30,6 +31,7 @@ class SkalaUsaha(str, Enum):
 
 class WarningType(str, Enum):
     """Tipi di warning."""
+
     PENTING = "penting"
     SARAN = "saran"
     INFO = "info"
@@ -37,6 +39,7 @@ class WarningType(str, Enum):
 
 class RelasiType(str, Enum):
     """Tipi di relazione KBLI."""
+
     SERUPA = "serupa"
     KOMPLEMENTER = "komplementer"
     SUPPLY_CHAIN = "supply_chain"
@@ -45,12 +48,18 @@ class RelasiType(str, Enum):
 
 # Modelli per strutture annidate
 
+
 class PMAInfo(BaseModel):
     """Informazioni PMA (Penanaman Modal Asing)."""
+
     allowed: bool
     max_percentage: str = Field(..., description="Es: '100%', '67%', '0%'")
-    min_investment_idr: int = Field(default=10000000000, description="IDR 10 miliar default")
-    min_paid_up_idr: int = Field(default=10000000000, description="IDR 10 miliar default")
+    min_investment_idr: int = Field(
+        default=10000000000, description="IDR 10 miliar default"
+    )
+    min_paid_up_idr: int = Field(
+        default=10000000000, description="IDR 10 miliar default"
+    )
     restrictions: Optional[str] = None
     restrictions_en: Optional[str] = None
     notes: Optional[str] = None
@@ -60,6 +69,7 @@ class PMAInfo(BaseModel):
 
 class SkalaUsahaInfo(BaseModel):
     """Informazioni per ogni scala usaha."""
+
     max_revenue_idr: Optional[int] = None
     min_revenue_idr: Optional[int] = None
     requirements: str
@@ -67,6 +77,7 @@ class SkalaUsahaInfo(BaseModel):
 
 class SkalaUsahaData(BaseModel):
     """Dati skala usaha."""
+
     allowed_scales: List[SkalaUsaha]
     mikro: Optional[SkalaUsahaInfo] = None
     kecil: Optional[SkalaUsahaInfo] = None
@@ -76,6 +87,7 @@ class SkalaUsahaData(BaseModel):
 
 class PBUMKUItem(BaseModel):
     """Item PB UMKU."""
+
     kode: str
     nama: str
     nama_en: str
@@ -87,6 +99,7 @@ class PBUMKUItem(BaseModel):
 
 class TimelinePhase(BaseModel):
     """Fase della timeline."""
+
     fase: int
     nama: str
     nama_en: str
@@ -97,12 +110,14 @@ class TimelinePhase(BaseModel):
 
 class TimelineData(BaseModel):
     """Dati timeline."""
+
     totale_stimato_hari: str
     fasi: List[TimelinePhase]
 
 
 class DocumentiNecessari(BaseModel):
     """Documenti necessari."""
+
     per_costituzione_pt: List[str]
     per_costituzione_pt_en: List[str]
     per_nib: List[str]
@@ -115,6 +130,7 @@ class DocumentiNecessari(BaseModel):
 
 class ObbligoPeriodico(BaseModel):
     """Obbligo periodico."""
+
     obbligo: str
     obbligo_en: str
     frequenza: str
@@ -127,6 +143,7 @@ class ObbligoPeriodico(BaseModel):
 
 class ObbligoUnaTantum(BaseModel):
     """Obbligo una tantum."""
+
     obbligo: str
     obbligo_en: str
     quando: str
@@ -137,12 +154,14 @@ class ObbligoUnaTantum(BaseModel):
 
 class ObblighiPostApertura(BaseModel):
     """Obblighi post-apertura."""
+
     periodici: List[ObbligoPeriodico]
     una_tantum: List[ObbligoUnaTantum]
 
 
 class Warning(BaseModel):
     """Warning o consiglio."""
+
     tipo: WarningType
     messaggio: str
     messaggio_en: str
@@ -150,6 +169,7 @@ class Warning(BaseModel):
 
 class KBLICorrelato(BaseModel):
     """KBLI correlato."""
+
     kode: str
     relasi: RelasiType
     relasi_en: str
@@ -159,6 +179,7 @@ class KBLICorrelato(BaseModel):
 
 class FAQ(BaseModel):
     """FAQ."""
+
     pertanyaan: str
     pertanyaan_en: str
     jawaban: str
@@ -167,6 +188,7 @@ class FAQ(BaseModel):
 
 class Metadata(BaseModel):
     """Metadata tecnici."""
+
     version: str = "2025"
     source_primary: str
     source_pma: Optional[str] = None
@@ -178,35 +200,36 @@ class Metadata(BaseModel):
 
 # Schema principale
 
+
 class KBLIUltimatePayload(BaseModel):
     """Payload ultimate completo per un KBLI."""
-    
+
     # Identità base
     kode: str = Field(..., pattern=r"^\d{5}$", description="Codice KBLI a 5 cifre")
     judul: str
     judul_en: str
     sektor: Optional[str] = None
     sub_sektor: Optional[str] = None
-    
+
     # Descrizione umana
     deskripsi_singkat: Optional[str] = None
     deskripsi_singkat_en: Optional[str] = None
     contesto_utente: Optional[str] = None
     contesto_utente_en: Optional[str] = None
-    
+
     # Classificazione rischio
     tingkat_risiko: Optional[RiskLevel] = None
     risk_level_en: Optional[str] = None
     risk_explanation: Optional[str] = None
     risk_explanation_en: Optional[str] = None
     perizinan_dasar: Optional[str] = None
-    
+
     # PMA
     pma: Optional[PMAInfo] = None
-    
+
     # Skala usaha
     skala_usaha: Optional[SkalaUsahaData] = None
-    
+
     # Ruang lingkup
     ruang_lingkup: Optional[str] = None
     ruang_lingkup_en: Optional[str] = None
@@ -214,31 +237,31 @@ class KBLIUltimatePayload(BaseModel):
     attivita_incluse_en: Optional[List[str]] = None
     attivita_escluse: Optional[List[str]] = None
     attivita_escluse_en: Optional[List[str]] = None
-    
+
     # PB UMKU
     pb_umku: Optional[List[PBUMKUItem]] = None
-    
+
     # Timeline
     timeline: Optional[TimelineData] = None
-    
+
     # Documenti necessari
     documenti_necessari: Optional[DocumentiNecessari] = None
-    
+
     # Obblighi post-apertura
     obblighi_post_apertura: Optional[ObblighiPostApertura] = None
-    
+
     # Warnings
     warnings: Optional[List[Warning]] = None
-    
+
     # KBLI correlati
     kbli_correlati: Optional[List[KBLICorrelato]] = None
-    
+
     # FAQ
     faq: Optional[List[FAQ]] = None
-    
+
     # Metadata
     metadata: Metadata
-    
+
     class Config:
         use_enum_values = True
         json_schema_extra = {
@@ -247,18 +270,17 @@ class KBLIUltimatePayload(BaseModel):
                 "judul": "Industri Barang dari Plastik untuk Pengemasan",
                 "judul_en": "Plastic Packaging Manufacturing Industry",
                 "tingkat_risiko": "Rendah",
-                "pma": {
-                    "allowed": True,
-                    "max_percentage": "100%"
-                }
+                "pma": {"allowed": True, "max_percentage": "100%"},
             }
         }
 
 
-def validate_payload(payload_dict: Dict[str, Any]) -> tuple[bool, Optional[str], Optional[KBLIUltimatePayload]]:
+def validate_payload(
+    payload_dict: Dict[str, Any],
+) -> tuple[bool, Optional[str], Optional[KBLIUltimatePayload]]:
     """
     Valida un payload dictionary contro lo schema.
-    
+
     Returns:
         (is_valid, error_message, validated_payload)
     """

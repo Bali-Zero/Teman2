@@ -8,9 +8,8 @@ import logging
 from datetime import date, datetime
 from uuid import UUID
 
-from backend.llm.zantara_ai_client import ZantaraAIClient
-
 from backend.app.core.config import settings
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
 
 class AsyncpgJSONEncoder(json.JSONEncoder):
@@ -22,6 +21,7 @@ class AsyncpgJSONEncoder(json.JSONEncoder):
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
         return super().default(obj)
+
 
 logger = logging.getLogger(__name__)
 

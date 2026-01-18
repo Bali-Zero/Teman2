@@ -24,21 +24,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
 
     // Call backend to track view
-    const response = await fetch(
-      `${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userAgent,
-          referer,
-          ip: hashIP(ip), // Hash for privacy
-          timestamp: new Date().toISOString(),
-        }),
-      }
-    );
+    const response = await fetch(`${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userAgent,
+        referer,
+        ip: hashIP(ip), // Hash for privacy
+        timestamp: new Date().toISOString(),
+      }),
+    });
 
     if (!response.ok) {
       // Silent fail for view tracking
@@ -61,15 +58,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { category, slug } = await params;
 
-    const response = await fetch(
-      `${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        next: { revalidate: 60 }, // Cache for 1 minute
-      }
-    );
+    const response = await fetch(`${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      next: { revalidate: 60 }, // Cache for 1 minute
+    });
 
     if (!response.ok) {
       return NextResponse.json({ views: 0 });
@@ -88,7 +82,7 @@ function hashIP(ip: string): string {
   let hash = 0;
   for (let i = 0; i < ip.length; i++) {
     const char = ip.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return hash.toString(16);

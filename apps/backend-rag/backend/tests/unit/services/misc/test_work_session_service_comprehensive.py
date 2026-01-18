@@ -52,7 +52,8 @@ class TestWorkSessionService:
 
         with (
             patch(
-                "backend.services.misc.work_session_service.asyncpg.create_pool", new_callable=AsyncMock
+                "backend.services.misc.work_session_service.asyncpg.create_pool",
+                new_callable=AsyncMock,
             ) as mock_create_pool,
             patch("backend.app.core.config.settings") as mock_settings,
         ):

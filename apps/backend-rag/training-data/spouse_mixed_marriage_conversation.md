@@ -17,6 +17,7 @@ Halo! Ada solusi sempurna untuk situasi kamu: **E31A Spouse KITAS**.
 Ini visa khusus untuk pasangan WNA yang menikah dengan WNI (Warga Negara Indonesia).
 
 Keuntungannya:
+
 - **2 tahun validity** (bisa diperpanjang berkali-kali)
 - **Multiple entry** (bebas keluar masuk Indonesia)
 - Bisa **bekerja** dengan izin tambahan (IMTA)
@@ -29,6 +30,7 @@ Wah bagus! Syaratnya apa saja?
 Dokumen utama:
 
 **Dari kamu (WNA):**
+
 - Paspor valid min 18 bulan
 - Foto background merah
 - Akta lahir asli (apostille)
@@ -36,6 +38,7 @@ Dokumen utama:
 - SKCK dari negara asal (apostille)
 
 **Dari pasangan (WNI):**
+
 - KTP & KK asli
 - Akta nikah (sudah terdaftar di Dukcapil Indonesia)
 - Surat sponsor dari pasangan
@@ -50,6 +53,7 @@ Kami menikah di Australia tahun lalu. Belum daftar di Indonesia. Gimana caranya?
 Harus daftar dulu ke **Dukcapil** (Dinas Kependudukan dan Pencatatan Sipil).
 
 Prosesnya:
+
 1. **Legalisir akta nikah Australia** di KBRI Canberra/Konsulat RI
 2. **Translate ke Bahasa Indonesia** (sworn translator)
 3. **Daftar ke Dukcapil** di kota domisili pasangan WNI kamu
@@ -62,11 +66,13 @@ Ribet ya. Kalian bisa bantu proses legalisir?
 
 **Consultant:**
 **Bisa bantu sebagian:**
+
 - Koordinasi dengan sworn translator
 - Prepare dokumen untuk Dukcapil
 - Dampingi proses registrasi Dukcapil (kalau di Bali/Jakarta)
 
 **Tidak bisa bantu:**
+
 - Legalisir di KBRI (harus kamu yang ke embassy)
 - Upload dokumen ke Dukcapil (beberapa daerah pakai sistem online)
 
@@ -77,14 +83,15 @@ Oke paham. Setelah akta nikah terdaftar, berapa lama proses E31A?
 
 **Consultant:**
 **Timeline E31A:**
+
 - **Offshore** (apply dari luar Indonesia): 7-14 hari kerja
 - **Onshore** (apply dari dalam Indonesia): 3-4 minggu
 
 **Harga E31A Spouse KITAS (Bali Zero 2025):**
 
-| Durasi | Offshore | Onshore | Extension |
-|--------|----------|---------|-----------|
-| **1 Tahun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000 |
+| Durasi      | Offshore      | Onshore       | Extension     |
+| ----------- | ------------- | ------------- | ------------- |
+| **1 Tahun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000  |
 | **2 Tahun** | Rp 15.000.000 | Rp 18.000.000 | Rp 15.000.000 |
 
 Sponsor dari pasangan WNI (bukan perusahaan), jadi prosesnya lebih sederhana dibanding visa kerja.
@@ -96,6 +103,7 @@ Kalau saya mau kerja dengan E31A, bisa?
 **Bisa**, tapi harus apply **IMTA** (Izin Mempekerjakan Tenaga Asing) dan **RPTKA** terlebih dahulu.
 
 **2 opsi:**
+
 1. **Kerja di perusahaan lain**
    - Perusahaan sponsor IMTA/RPTKA
    - Wajib ada karyawan lokal (rasio 1:10)
@@ -114,10 +122,12 @@ Hmm saya freelance designer untuk klien luar negeri. Bayar saya transfer ke reke
 **Grey area.**
 
 Secara teknis:
+
 - ❌ Tidak boleh bekerja tanpa IMTA
 - ✅ Tapi kalau income dari luar negeri, transfer ke rekening luar, tidak ada employer lokal → **low risk**
 
 Praktisnya:
+
 - Banyak expat di Bali pakai E31A/E33G untuk remote work
 - Imigrasi jarang periksa selama kamu nggak "kerja kantoran" di company lokal
 - Tetap **report** SKTT (domicile report) setiap tahun
@@ -151,6 +161,7 @@ Kalau anak sudah WNI, nggak perlu visa lagi kan?
 **Betul!** Kalau anak sudah dapat KTP/KK Indonesia sebagai WNI, dia bebas tinggal di Indonesia tanpa visa.
 
 Prosesnya:
+
 1. **Daftar anak di Dukcapil**
 2. **Dapat akta lahir Indonesia** (berdasarkan akta lahir Australia yang dilegalisir)
 3. **Masukkan anak ke Kartu Keluarga (KK)** pasangan WNI kamu
@@ -167,15 +178,18 @@ Oke. Satu lagi — saya baca ada namanya SKTT. Itu apa?
 Ini **laporan domicile** yang wajib untuk semua pemegang KITAS.
 
 **Wajib lapor:**
+
 - **Sesetiap tahun sekali**
 - Atau setiap kali pindah alamat
 
 **Cara lapor:**
+
 - Datang ke **kantor imigrasi** sesuai domisili
 - Bawa KITAS asli + KK/surat sewa
 - Proses 10-30 menit, **gratis**
 
 **Sanksi kalau tidak lapor:**
+
 - Denda administratif
 - Susah extend KITAS
 - Bisa kena deportasi (ekstrim case)
@@ -195,6 +209,7 @@ Bagus. Terus kalau nanti KITAS saya mau habis (2 tahun lagi), extend gimana?
 **Extension E31A** (setelah 1-2 tahun pertama):
 
 **Syarat:**
+
 - Akta nikah masih valid (masih menikah)
 - Pasangan WNI masih hidup & tinggal di Indonesia
 - SKTT up to date (nggak ada tunggakan)
@@ -212,6 +227,7 @@ Kalau misalnya kami cerai, KITAS saya gimana?
 **KITAS langsung tidak valid** kalau cerai.
 
 Harus switch ke visa lain:
+
 1. **E33G Digital Nomad** (kalau income dari remote work)
 2. **E28A Investor** (kalau punya PT PMA)
 3. **C2 Business** atau **D12 Investigation** (kalau bisnis)
@@ -228,6 +244,7 @@ Paham. Oh iya, pasangan saya (WNI) harus punya NPWP ya? Dia belum punya. Gimana?
 **Wajib punya** untuk sponsor E31A.
 
 **Cara bikin NPWP:**
+
 1. **Online via ereg.pajak.go.id**
    - Upload KTP, KK, surat domisili
    - NPWP keluar dalam 1-3 hari
@@ -247,6 +264,7 @@ Oke noted. Dokumen apa saja yang perlu disiapkan untuk E31A + ITKS anak?
 **Dokumen yang perlu disiapkan:**
 
 **Dari WNA (kamu):**
+
 - Paspor valid min 18 bulan
 - Foto background merah
 - Akta lahir asli (apostille dari negara asal)
@@ -254,12 +272,14 @@ Oke noted. Dokumen apa saja yang perlu disiapkan untuk E31A + ITKS anak?
 - Surat keterangan sehat
 
 **Dari WNI (pasangan):**
+
 - KTP & KK asli
 - Akta nikah (sudah terdaftar di Dukcapil Indonesia)
 - NPWP
 - Surat sponsor
 
 **Untuk anak:**
+
 - Paspor anak
 - Akta lahir anak (apostille)
 - Foto anak background merah
@@ -271,11 +291,13 @@ Bagus! Satu pertanyaan terakhir — berapa lama saya harus di Indonesia per tahu
 **Tidak ada minimum stay requirement.**
 
 E31A adalah **residence permit**, bukan **visa turis**. Kamu bisa:
+
 - Tinggal 365 hari di Indonesia
 - Atau cuma 30 hari per tahun
 - Atau nol hari (asal SKTT tetap dilaporkan)
 
 **Yang penting:**
+
 - Lapor SKTT setiap tahun (bisa diwakilkan)
 - KITAS belum expire
 - Masih menikah dengan WNI
@@ -289,16 +311,19 @@ Perfect! Saya mau proceed. Dokumen apa yang harus saya kirim?
 Kirim ini dulu:
 
 **Dari WNA (kamu):**
+
 1. Scan paspor (full pages)
 2. Foto 4x6 background merah
 3. Akta lahir asli (apostille) — scan
 4. Akta nikah Australia — scan
 
 **Dari WNI (pasangan):**
+
 1. Scan KTP & KK
 2. Scan NPWP (atau bukti sedang proses)
 
 **Untuk anak:**
+
 1. Scan paspor anak
 2. Akta lahir anak (apostille)
 3. Foto anak 4x6 background merah
@@ -326,6 +351,7 @@ Hi! There's a perfect solution for your situation: **E31A Spouse KITAS**.
 This is a special visa for foreign nationals married to Indonesian citizens (WNI).
 
 Benefits:
+
 - **2-year validity** (renewable indefinitely)
 - **Multiple entry** (free to exit/enter Indonesia)
 - Can **work** with additional permit (IMTA)
@@ -338,6 +364,7 @@ Sounds great! What are the requirements?
 Main documents:
 
 **From you (foreigner):**
+
 - Valid passport min 18 months
 - Red background photo
 - Original birth certificate (apostilled)
@@ -345,6 +372,7 @@ Main documents:
 - Police clearance from home country (apostilled)
 
 **From spouse (Indonesian):**
+
 - Original KTP & KK (ID & family card)
 - Marriage certificate (registered in Indonesian Dukcapil)
 - Sponsor letter from spouse
@@ -359,6 +387,7 @@ We married in Australia last year. Not registered in Indonesia yet. How to do it
 Must register with **Dukcapil** (Civil Registry Office) first.
 
 Process:
+
 1. **Legalize Australian marriage cert** at Indonesian Embassy Canberra/Consulate
 2. **Translate to Bahasa Indonesia** (sworn translator)
 3. **Register at Dukcapil** in your Indonesian spouse's city of residence
@@ -371,11 +400,13 @@ Quite involved. Can you help with legalization?
 
 **Consultant:**
 **Can help partially:**
+
 - Coordinate with sworn translator
 - Prepare documents for Dukcapil
 - Accompany Dukcapil registration (if in Bali/Jakarta)
 
 **Cannot help:**
+
 - Legalization at Embassy (must go yourself)
 - Upload to Dukcapil system (some areas use online system)
 
@@ -386,14 +417,15 @@ Got it. After marriage cert is registered, how long for E31A process?
 
 **Consultant:**
 **E31A Timeline:**
+
 - **Offshore** (apply from outside Indonesia): 7-14 working days
 - **Onshore** (apply from inside Indonesia): 3-4 weeks
 
 **E31A Spouse KITAS Pricing (Bali Zero 2025):**
 
-| Duration | Offshore | Onshore | Extension |
-|----------|----------|---------|-----------|
-| **1 Year** | IDR 11,000,000 | IDR 13,500,000 | IDR 9,000,000 |
+| Duration    | Offshore       | Onshore        | Extension      |
+| ----------- | -------------- | -------------- | -------------- |
+| **1 Year**  | IDR 11,000,000 | IDR 13,500,000 | IDR 9,000,000  |
 | **2 Years** | IDR 15,000,000 | IDR 18,000,000 | IDR 15,000,000 |
 
 Sponsor is your Indonesian spouse (not a company), so the process is simpler than work visas.
@@ -405,6 +437,7 @@ If I want to work with E31A, is it possible?
 **Yes**, but must apply for **IMTA** (Work Permit) and **RPTKA** first.
 
 **2 options:**
+
 1. **Work at another company**
    - Company sponsors IMTA/RPTKA
    - Must have local employees (1:10 ratio)
@@ -423,10 +456,12 @@ I'm a freelance designer for foreign clients. Payments go to my overseas account
 **Grey area.**
 
 Technically:
+
 - ❌ Cannot work without IMTA
 - ✅ But if income from abroad, transfers to foreign account, no local employer → **low risk**
 
 In practice:
+
 - Many expats in Bali use E31A/E33G for remote work
 - Immigration rarely checks as long as you're not "office working" at local company
 - Still must **report** SKTT (domicile report) annually
@@ -460,6 +495,7 @@ Once child has Indonesian citizenship, no more visa needed right?
 **Correct!** Once child has Indonesian KTP/KK as WNI, free to stay in Indonesia without visa.
 
 Process:
+
 1. **Register child at Dukcapil**
 2. **Get Indonesian birth certificate** (based on legalized Australian birth cert)
 3. **Add child to Family Card (KK)** of your Indonesian spouse
@@ -476,15 +512,18 @@ Okay. One more thing — I read about SKTT. What's that?
 This is **mandatory domicile reporting** for all KITAS holders.
 
 **Must report:**
+
 - **Annually**
 - Or whenever you change address
 
 **How to report:**
+
 - Go to **immigration office** in your domicile area
 - Bring original KITAS + KK/rental agreement
 - Process 10-30 minutes, **free**
 
 **Penalties for not reporting:**
+
 - Administrative fines
 - Difficulty extending KITAS
 - Possible deportation (extreme cases)
@@ -504,6 +543,7 @@ Nice. When my KITAS expires (in 2 years), how to extend?
 **E31A Extension** (after first 2 years):
 
 **Requirements:**
+
 - Marriage certificate still valid (still married)
 - Indonesian spouse still alive & living in Indonesia
 - SKTT up to date (no arrears)
@@ -521,6 +561,7 @@ If we divorce, what happens to my KITAS?
 **KITAS immediately invalid** if divorced.
 
 Must switch to another visa:
+
 1. **E33G Digital Nomad** (if income from remote work)
 2. **E28A Investor** (if you have PT PMA)
 3. **C2 Business** or **D12 Investigation** (if business)
@@ -537,6 +578,7 @@ Understood. My spouse (Indonesian) needs NPWP right? She doesn't have one yet. H
 **Mandatory** for E31A sponsorship.
 
 **How to get NPWP:**
+
 1. **Online via ereg.pajak.go.id**
    - Upload KTP, KK, domicile letter
    - NPWP issued in 1-3 days
@@ -556,6 +598,7 @@ Noted. What documents do I need to prepare for E31A + child ITKS?
 **Documents needed:**
 
 **From foreigner (you):**
+
 - Valid passport min 18 months
 - Red background photo
 - Original birth certificate (apostilled from home country)
@@ -563,12 +606,14 @@ Noted. What documents do I need to prepare for E31A + child ITKS?
 - Health certificate
 
 **From Indonesian spouse:**
+
 - Original KTP & KK
 - Marriage certificate (registered at Indonesian Dukcapil)
 - NPWP
 - Sponsor letter
 
 **For child:**
+
 - Child's passport
 - Child's birth certificate (apostilled)
 - Child's red background photo
@@ -580,11 +625,13 @@ Great! Last question — how long must I be in Indonesia per year with E31A?
 **No minimum stay requirement.**
 
 E31A is a **residence permit**, not a **tourist visa**. You can:
+
 - Stay 365 days in Indonesia
 - Or only 30 days per year
 - Or zero days (as long as SKTT is reported)
 
 **What matters:**
+
 - Report SKTT annually (can be represented)
 - KITAS not expired
 - Still married to WNI
@@ -598,16 +645,19 @@ Perfect! I want to proceed. What documents should I send?
 Send these first:
 
 **From foreigner (you):**
+
 1. Passport scan (full pages)
 2. Photo 4x6 red background
 3. Original birth certificate (apostilled) — scan
 4. Australian marriage certificate — scan
 
 **From Indonesian (spouse):**
+
 1. KTP & KK scans
 2. NPWP scan (or proof of processing)
 
 **For child:**
+
 1. Child's passport scan
 2. Child's birth certificate (apostilled)
 3. Child's photo 4x6 red background
@@ -635,6 +685,7 @@ Halo! Ono solusi sempurna kanggo situasi sampeyan: **E31A Spouse KITAS**.
 Iki visa khusus kanggo pasangan WNA sing nikah karo WNI (Warga Negara Indonesia).
 
 Keuntungane:
+
 - **2 taun validity** (iso diperpanjang berkali-kali)
 - **Multiple entry** (bebas metu mlebu Indonesia)
 - Iso **kerjo** karo izin tambahan (IMTA)
@@ -647,6 +698,7 @@ Wah bagus! Syarate opo wae?
 Dokumen utama:
 
 **Soko sampeyan (WNA):**
+
 - Paspor valid min 18 sasi
 - Foto background abang
 - Akta lahir asli (apostille)
@@ -654,6 +706,7 @@ Dokumen utama:
 - SKCK soko negara asal (apostille)
 
 **Soko pasangan (WNI):**
+
 - KTP & KK asli
 - Akta nikah (wis terdaftar neng Dukcapil Indonesia)
 - Surat sponsor soko pasangan
@@ -668,6 +721,7 @@ Kito nikah neng Australia taun wingi. Durung daftar neng Indonesia. Piye carane?
 Kudu daftar dhisik neng **Dukcapil** (Dinas Kependudukan dan Pencatatan Sipil).
 
 Prosesne:
+
 1. **Legalisir akta nikah Australia** neng KBRI Canberra/Konsulat RI
 2. **Translate neng Bahasa Indonesia** (sworn translator)
 3. **Daftar neng Dukcapil** neng kota domisili pasangan WNI sampeyan
@@ -680,11 +734,13 @@ Ribet yo. Awakdewe iso bantu proses legalisir?
 
 **Consultant:**
 **Iso bantu sebagian:**
+
 - Koordinasi karo sworn translator
 - Prepare dokumen kanggo Dukcapil
 - Dampingi proses registrasi Dukcapil (nek neng Bali/Jakarta)
 
 **Ora iso bantu:**
+
 - Legalisir neng KBRI (kudu sampeyan sing neng embassy)
 - Upload dokumen neng Dukcapil (sawetara daerah nganggo sistem online)
 
@@ -695,14 +751,15 @@ Oke paham. Sakwise akta nikah terdaftar, suwi piro proses E31A?
 
 **Consultant:**
 **Timeline E31A:**
+
 - **Offshore** (apply soko njaba Indonesia): 7-14 dino kerjo
 - **Onshore** (apply soko dalam Indonesia): 3-4 minggu
 
 **Rego E31A Spouse KITAS (Bali Zero 2025):**
 
-| Durasi | Offshore | Onshore | Extension |
-|--------|----------|---------|-----------|
-| **1 Taun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000 |
+| Durasi     | Offshore      | Onshore       | Extension     |
+| ---------- | ------------- | ------------- | ------------- |
+| **1 Taun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000  |
 | **2 Taun** | Rp 15.000.000 | Rp 18.000.000 | Rp 15.000.000 |
 
 Sponsor soko pasangan WNI (dudu perusahaan), dadi prosesne luwih gampang dibanding visa kerjo.
@@ -714,6 +771,7 @@ Nek aku arep kerjo karo E31A, iso?
 **Iso**, tapi kudu apply **IMTA** (Izin Mempekerjakan Tenaga Asing) lan **RPTKA** terlebih dhisik.
 
 **2 opsi:**
+
 1. **Kerjo neng perusahaan liyo**
    - Perusahaan sponsor IMTA/RPTKA
    - Wajib ono karyawan lokal (rasio 1:10)
@@ -732,10 +790,12 @@ Hmm aku freelance designer kanggo klien luar negeri. Bayar aku transfer neng rek
 **Grey area.**
 
 Secara teknis:
+
 - ❌ Ora oleh kerjo tanpo IMTA
 - ✅ Tapi nek income soko luar negeri, transfer neng rekening luar, ora ono employer lokal → **low risk**
 
 Praktisne:
+
 - Kathah expat neng Bali nganggo E31A/E33G kanggo remote work
 - Imigrasi jarang periksa salawase sampeyan ora "kerjo kantoran" neng company lokal
 - Tetep **report** SKTT (domicile report) saben taun
@@ -769,6 +829,7 @@ Nek anak wis WNI, ora butuh visa maneh kan?
 **Bener!** Nek anak wis entuk KTP/KK Indonesia dadi WNI, bebas tinggal neng Indonesia tanpo visa.
 
 Prosesne:
+
 1. **Daftar anak neng Dukcapil**
 2. **Entuk akta lahir Indonesia** (berdasarke akta lahir Australia sing dilegalisir)
 3. **Lebokke anak neng Kartu Keluarga (KK)** pasangan WNI sampeyan
@@ -785,15 +846,18 @@ Oke. Siji maneh — aku moco ono jenengé SKTT. Iku opo?
 Iki **laporan domicile** sing wajib kanggo kabeh pemegang KITAS.
 
 **Wajib lapor:**
+
 - **Saben taun pisan**
 - Utowo saben pindah alamat
 
 **Cara lapor:**
+
 - Teko neng **kantor imigrasi** sesuai domisili
 - Gowo KITAS asli + KK/surat sewa
 - Proses 10-30 menit, **gratis**
 
 **Sanksi nek ora lapor:**
+
 - Denda administratif
 - Susah extend KITAS
 - Iso kena deportasi (ekstrim case)
@@ -813,6 +877,7 @@ Bagus. Terus nek mengko KITAS ku arep entek (2 taun maneh), extend piye?
 **Extension E31A** (sakwise 2 taun pertama):
 
 **Syarat:**
+
 - Akta nikah isih valid (isih nikah)
 - Pasangan WNI isih urip & tinggal neng Indonesia
 - SKTT up to date (ora ono tunggakan)
@@ -830,6 +895,7 @@ Nek misal kito pegatan, KITAS ku piye?
 **KITAS langsung ora valid** nek pegatan.
 
 Kudu switch neng visa liyo:
+
 1. **E33G Digital Nomad** (nek income soko remote work)
 2. **E28A Investor** (nek duwe PT PMA)
 3. **C2 Business** utowo **D12 Investigation** (nek bisnis)
@@ -846,6 +912,7 @@ Paham. Oh iyo, pasangan ku (WNI) kudu duwe NPWP yo? Dheweke durung duwe. Piye?
 **Wajib duwe** kanggo sponsor E31A.
 
 **Cara gawe NPWP:**
+
 1. **Online via ereg.pajak.go.id**
    - Upload KTP, KK, surat domisili
    - NPWP metu dalam 1-3 dino
@@ -865,6 +932,7 @@ Oke noted. Dokumen opo wae sing kudu disiapke kanggo E31A + ITKS anak?
 **Dokumen sing kudu disiapke:**
 
 **Soko WNA (sampeyan):**
+
 - Paspor valid min 18 sasi
 - Foto background abang
 - Akta lahir asli (apostille soko negara asal)
@@ -872,12 +940,14 @@ Oke noted. Dokumen opo wae sing kudu disiapke kanggo E31A + ITKS anak?
 - Surat keterangan sehat
 
 **Soko WNI (pasangan):**
+
 - KTP & KK asli
 - Akta nikah (wis terdaftar neng Dukcapil Indonesia)
 - NPWP
 - Surat sponsor
 
 **Kanggo anak:**
+
 - Paspor anak
 - Akta lahir anak (apostille)
 - Foto anak background abang
@@ -889,11 +959,13 @@ Bagus! Siji pertanyaan terakhir — suwi piro aku kudu neng Indonesia per taun k
 **Ora ono minimum stay requirement.**
 
 E31A iku **residence permit**, dudu **visa turis**. Sampeyan iso:
+
 - Tinggal 365 dino neng Indonesia
 - Utowo mung 30 dino per taun
 - Utowo nol dino (salawase SKTT tetep dilaporke)
 
 **Sing penting:**
+
 - Lapor SKTT saben taun (iso diwakilke)
 - KITAS durung expire
 - Isih nikah karo WNI
@@ -907,16 +979,19 @@ Perfect! Aku arep proceed. Dokumen opo sing kudu tak kirim?
 Kirim iki dhisik:
 
 **Soko WNA (sampeyan):**
+
 1. Scan paspor (full pages)
 2. Foto 4x6 background abang
 3. Akta lahir asli (apostille) — scan
 4. Akta nikah Australia — scan
 
 **Soko WNI (pasangan):**
+
 1. Scan KTP & KK
 2. Scan NPWP (utowo bukti lagi proses)
 
 **Kanggo anak:**
+
 1. Scan paspor anak
 2. Akta lahir anak (apostille)
 3. Foto anak 4x6 background abang
@@ -935,16 +1010,16 @@ Kito proses sesegera mungkin — welcome home!
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **E31A Spouse KITAS** | For foreigners married to Indonesians |
-| **Validity** | 1 or 2 years, renewable |
-| **1 Year Price** | Offshore IDR 11M / Onshore IDR 13.5M / Extend IDR 9M |
-| **2 Years Price** | Offshore IDR 15M / Onshore IDR 18M / Extend IDR 15M |
-| **Marriage Registration** | Must register at Dukcapil Indonesia |
-| **SKTT Reporting** | Annually, free |
-| **No Minimum Stay** | Flexible residence |
+| Topic                     | Details                                              |
+| ------------------------- | ---------------------------------------------------- |
+| **E31A Spouse KITAS**     | For foreigners married to Indonesians                |
+| **Validity**              | 1 or 2 years, renewable                              |
+| **1 Year Price**          | Offshore IDR 11M / Onshore IDR 13.5M / Extend IDR 9M |
+| **2 Years Price**         | Offshore IDR 15M / Onshore IDR 18M / Extend IDR 15M  |
+| **Marriage Registration** | Must register at Dukcapil Indonesia                  |
+| **SKTT Reporting**        | Annually, free                                       |
+| **No Minimum Stay**       | Flexible residence                                   |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data*
+_Generated by Nuzantara KB + Claude for Bali Zero training data_

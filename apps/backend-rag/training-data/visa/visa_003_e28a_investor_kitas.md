@@ -17,6 +17,7 @@ Halo! Selamat untuk PT PMA-nya yang baru aktif!
 Untuk investor/direktur PT PMA, kamu butuh **E28A Investor KITAS**.
 
 Ini visa khusus untuk:
+
 - Direktur PT PMA
 - Komisaris PT PMA
 - Pemegang saham aktif (shareholder yang terlibat operasional)
@@ -28,6 +29,7 @@ Syarat E28A apa saja setelah PT PMA aktif?
 
 **Consultant:**
 **Dokumen dari PT PMA:**
+
 - Akta pendirian PT (deed of incorporation)
 - NIB (Nomor Induk Berusaha) aktif
 - NPWP perusahaan
@@ -36,6 +38,7 @@ Syarat E28A apa saja setelah PT PMA aktif?
 - Proof of capital deposit (min Rp 2.5 miliar disetor)
 
 **Dokumen pribadi:**
+
 - Paspor valid min 18 bulan
 - Foto 4x6 background merah
 - CV/resume
@@ -55,16 +58,19 @@ E28A = izin tinggal (residence permit)
 **IMTA** = izin kerja (work permit)
 
 Untuk kerja di PT sendiri, butuh:
+
 - **E28A KITAS** (izin tinggal)
 - **IMTA** (izin kerja)
 - **RPTKA** (rencana penggunaan tenaga kerja asing) - dokumen perusahaan
 
 **Tapi praktisnya:**
+
 - IMTA & RPTKA di-apply **bersamaan** dengan E28A
 - Satu paket processing
 - Biaya include semua
 
 **Harga E28A + IMTA (Bali Zero 2025):**
+
 - **Offshore:** Rp 17.000.000 - 19.000.000
 - **Onshore:** Rp 19.000.000 - 21.000.000
 - **MERP 5 tahun SUDAH TERMASUK** (Re-entry Permit langsung 5 tahun)
@@ -76,6 +82,7 @@ RPTKA itu apa? Ribet nggak?
 **RPTKA** = Rencana Penggunaan Tenaga Kerja Asing
 
 Ini dokumen dari PT yang menjelaskan:
+
 - **Jumlah expat** yang akan di-hire
 - **Posisi** mereka (director, manager, specialist)
 - **Rasio lokal vs asing** (wajib hire karyawan lokal)
@@ -83,6 +90,7 @@ Ini dokumen dari PT yang menjelaskan:
 - **Knowledge transfer plan** (expat harus train local staff)
 
 **Rasio wajib:**
+
 - **1 expat : 10 karyawan lokal** (minimum)
 - Kalau 2 expat → min 20 karyawan lokal
 - Kalau 1 expat (direktur/owner) → **bisa waiver** rasio (special case)
@@ -94,15 +102,18 @@ PT saya belum hire karyawan lokal, baru saya seorang. Gimana?
 
 **Consultant:**
 **Waiver tersedia** untuk:
+
 - **Single director/owner** (belum operasional penuh)
 - **Startup phase** (< 1 tahun)
 - **Small investment** (di bawah threshold tertentu)
 
 **Tapi ada commitment:**
+
 - Dalam **6-12 bulan** harus mulai hire lokal
 - Saat IMTA extension (tahun ke-2), wajib tunjukkan karyawan lokal
 
 **Rekomendasi:**
+
 - Hire **minimal 1-2 karyawan lokal** sebelum apply IMTA
 - Bisa part-time atau kontrak (PKWT)
 - Untuk tunjukkan good faith ke Kemnaker (Ministry of Labor)
@@ -114,14 +125,17 @@ Berapa gaji minimum karyawan lokal?
 **UMR/UMP** (Upah Minimum Regional/Provinsi) varies by location:
 
 **Bali:**
+
 - Badung (Seminyak/Canggu): ~**Rp 3.200.000/bulan**
 - Denpasar: ~**Rp 3.000.000/bulan**
 - Gianyar (Ubud): ~**Rp 2.900.000/bulan**
 
 **Jakarta:**
+
 - DKI Jakarta: ~**Rp 5.067.000/bulan**
 
 **Plus mandatory:**
+
 - **BPJS Kesehatan** (health): 4% employer + 1% employee
 - **BPJS Ketenagakerjaan** (employment): ~6% employer + 3% employee
 
@@ -134,12 +148,14 @@ Oke noted. Kembali ke E28A — timeline-nya berapa lama?
 **E28A Timeline:**
 
 **Offshore (apply dari luar Indonesia):**
+
 - Document preparation: 1-2 minggu
 - RPTKA approval: 1 minggu
 - E28A + IMTA submission: 2-3 minggu
 - **Total: 4-6 minggu**
 
 **Onshore (apply dari dalam Indonesia):**
+
 - Must be on valid visa (tourist, business, etc.)
 - Same process but slower approval
 - **Total: 5-8 minggu**
@@ -153,10 +169,12 @@ Biaya totalnya berapa dari awal sampai dapat KITAS?
 **Total Cost Breakdown:**
 
 **E28A Package (Bali Zero 2025):**
+
 - **Investor KITAS 2 Years (Offshore):** **Rp 17.000.000** (all-inclusive: KITAS + IMTA + RPTKA)
 - **Investor KITAS 2 Years (Onshore):** **Rp 19.000.000** (all-inclusive)
 
 **Supporting Costs:**
+
 - Medical checkup: Rp 500.000
 - Police clearance (apostille): Rp 2.000.000 - 3.000.000
 - Document legalization: Rp 1.500.000
@@ -165,6 +183,7 @@ Biaya totalnya berapa dari awal sampai dapat KITAS?
 **Grand Total (Offshore):** **Rp 21.000.000 - 22.000.000** (~USD 1,350)
 
 **Plus annual:**
+
 - BPJS for local staff: ~Rp 450K/employee/month
 - Accounting/tax filing: Rp 1.500.000 - 3.000.000/month
 
@@ -175,16 +194,19 @@ E28A bisa untuk berapa orang dalam satu PT?
 **Unlimited** secara teknis, tapi:
 
 **Praktisnya:**
+
 - **1-2 directors** (common untuk small PT PMA)
 - **3-5 expat managers/specialists** (medium company)
 - **10+ expat** (large operations)
 
 **Yang harus dijaga:**
+
 - **Rasio 1:10** expat:local employees
 - Kalau 5 expat → min **50 karyawan lokal**
 - **Capital requirement** increase (Rp 10 miliar per KBLI per expat)
 
 **Contoh:**
+
 - PT dengan 1 director → Rp 10 miliar capital, 0-10 local staff (waiver)
 - PT dengan 3 expat → Rp 10-30 miliar capital, 30+ local staff
 
@@ -195,19 +217,21 @@ Saya mau add istri saya sebagai komisaris. Dia juga butuh E28A?
 **Ya, bisa!**
 
 **Istri sebagai komisaris:**
+
 - Apply **E28A separate** (sebagai komisaris)
 - Atau apply **E26 Spouse KITAS** (sebagai spouse)
 
 **Comparison:**
 
-| Feature | E28A Komisaris | E26 Spouse |
-|---------|----------------|------------|
-| **Cost** | Rp 19.000.000 | Rp 14.500.000 |
-| **Work permit** | Ya (komisaris role) | Tidak (tapi bisa add IMTA) |
-| **RPTKA needed** | Ya | Tidak |
-| **Validity** | 2 tahun | 2 tahun |
+| Feature          | E28A Komisaris      | E26 Spouse                 |
+| ---------------- | ------------------- | -------------------------- |
+| **Cost**         | Rp 19.000.000       | Rp 14.500.000              |
+| **Work permit**  | Ya (komisaris role) | Tidak (tapi bisa add IMTA) |
+| **RPTKA needed** | Ya                  | Tidak                      |
+| **Validity**     | 2 tahun             | 2 tahun                    |
 
 **Rekomendasi:**
+
 - Kalau istri **actively involved** dalam bisnis → **E28A**
 - Kalau istri **not working** → **E26** (lebih murah, simpler)
 
@@ -234,6 +258,7 @@ Kalau E28A sudah dapat, kewajiban saya apa?
 4. **BPJS active** untuk semua karyawan lokal
 
 **Kalau telat/tidak lapor:**
+
 - Susah extend KITAS
 - Denda administratif
 - Risk closure PT
@@ -245,12 +270,14 @@ LKPM itu ribet nggak? Saya harus isi sendiri?
 **LKPM** = Laporan Kegiatan Penanaman Modal
 
 **Isi laporan:**
+
 - Realisasi investasi (berapa yang sudah di-inject)
 - Revenue & profit
 - Jumlah karyawan (local vs expat)
 - Rencana expansion
 
 **Cara lapor:**
+
 - Via **OSS system** (online)
 - Submit **setiap kuartal:**
   - Q1: 30 April
@@ -259,6 +286,7 @@ LKPM itu ribet nggak? Saya harus isi sendiri?
   - Q4: 31 Januari
 
 **Kami bisa handle:**
+
 - **Accounting package** include LKPM filing
 - Harga: Rp 1.500.000 - 3.000.000/month (full accounting + tax + LKPM)
 
@@ -271,6 +299,7 @@ Setelah 2 tahun, extend E28A gimana?
 **30-60 hari sebelum** expire, mulai prepare:
 
 **Documents needed:**
+
 - Updated medical checkup (baru)
 - Police clearance Indonesia (baru, SKCK lokal)
 - Updated RPTKA (show karyawan lokal bertambah)
@@ -279,6 +308,7 @@ Setelah 2 tahun, extend E28A gimana?
 - LKPM up to date
 
 **Biaya:**
+
 - E28A extension: **Rp 18.000.000**
 - IMTA extension: (included)
 
@@ -293,6 +323,7 @@ Kalau PT saya nggak profitable, KITAS bisa di-reject saat extension?
 **Bisa, tapi jarang.**
 
 Yang dilihat saat extension:
+
 - ✅ **PT masih aktif** (NIB valid, domisili valid)
 - ✅ **Tax compliance** (SPT filed on time, bayar pajak)
 - ✅ **LKPM filed** regularly
@@ -302,12 +333,14 @@ Yang dilihat saat extension:
 **Tidak harus profit** — startup bisa rugi 2-3 tahun pertama, it's okay.
 
 **Red flags:**
+
 - ❌ PT dormant (no activity, no transaction)
 - ❌ Tidak lapor tax/LKPM bertahun-tahun
 - ❌ Tidak bayar BPJS karyawan
 - ❌ Tidak hire local staff (breach RPTKA commitment)
 
 **Rekomendasi:**
+
 - Maintain minimal activity (invoice, transaction)
 - File tax returns (meskipun rugi)
 - Keep 1-2 karyawan lokal (BPJS active)
@@ -336,10 +369,12 @@ Gaji saya sebagai direktur diatur gimana? Harus berapa?
    - Ambil dividend nanti
 
 **Praktisnya:**
+
 - Tahun 1-2: **reinvest** (build business)
 - Tahun 3+: **salary + dividend** (mix)
 
 **Contoh:**
+
 - Salary Rp 15 juta/bulan (PPh 21 ~15%)
 - Dividend Rp 100 juta/tahun (PPh 23 = 10%)
 
@@ -350,15 +385,18 @@ Saya perlu travel sering ke Singapura. E28A allow multiple entry kan?
 **Yes! E28A = multiple entry.**
 
 Kamu bebas:
+
 - ✅ Keluar masuk Indonesia kapan saja
 - ✅ Stay di luar Indonesia berapa lama pun
 - ✅ No minimum stay requirement di Indonesia
 
 **Tapi ingat:**
+
 - **SKTT** tetap harus lapor setiap tahun (bisa diwakilkan)
 - **Tax residency:** kalau stay < 183 hari/tahun, mungkin tidak tax resident (consult tax advisor)
 
 **Praktis untuk:**
+
 - Digital nomad lifestyle
 - Multi-country business
 - Frequent travel
@@ -393,6 +431,7 @@ Bisakah saya convert E28A ke permanent residence (KITAP)?
 **KITAP** (Kartu Izin Tinggal Tetap) = Permanent Residence.
 
 **Requirements:**
+
 - Hold **KITAS continuously for 4-5 years** (E28A atau KITAS lainnya)
 - PT PMA **masih aktif dan compliant**
 - Clean immigration & tax record
@@ -401,6 +440,7 @@ Bisakah saya convert E28A ke permanent residence (KITAP)?
 - Medical & police clearance
 
 **Benefits KITAP:**
+
 - **Permanent residence** (no expiry, just renew every 5 years)
 - **No sponsor needed** (bisa close PT, tetap boleh stay)
 - Can work **anywhere** (not limited to sponsoring company)
@@ -415,34 +455,40 @@ Oke, saya siap apply E28A. Langkah pertama apa?
 **Step-by-Step:**
 
 **1. Confirm PT PMA ready (1-2 hari):**
-   - NIB aktif?
-   - Akta sudah approved Kemenkumham?
-   - Capital sudah disetor?
-   - Domisili sudah?
+
+- NIB aktif?
+- Akta sudah approved Kemenkumham?
+- Capital sudah disetor?
+- Domisili sudah?
 
 **2. Prepare personal documents (1 minggu):**
-   - Medical checkup (book appointment)
-   - Police clearance (apply + apostille dari negara asal)
-   - Scan paspor, foto, CV
+
+- Medical checkup (book appointment)
+- Police clearance (apply + apostille dari negara asal)
+- Scan paspor, foto, CV
 
 **3. Submit to Bali Zero:**
-   - Email docs@balizero.com
-   - Attach: PT docs + personal docs
-   - We review & start RPTKA
+
+- Email docs@balizero.com
+- Attach: PT docs + personal docs
+- We review & start RPTKA
 
 **4. RPTKA approval (1-2 minggu):**
-   - We prepare RPTKA document
-   - Submit to Kemnaker
-   - Get approval letter
+
+- We prepare RPTKA document
+- Submit to Kemnaker
+- Get approval letter
 
 **5. E28A + IMTA application (2-3 minggu):**
-   - Submit via evisa system
-   - Track approval
-   - Receive visa approval
+
+- Submit via evisa system
+- Track approval
+- Receive visa approval
 
 **6. Fly to Indonesia (if offshore):**
-   - Show evisa at airport
-   - KITAS card delivered ~1 minggu after arrival
+
+- Show evisa at airport
+- KITAS card delivered ~1 minggu after arrival
 
 **Total:** 4-6 minggu from start to KITAS in hand.
 
@@ -458,6 +504,7 @@ Silakan! Kirim semua ke:
 **Subject:** E28A Investor KITAS Application - [Nama PT] - [Nama Anda]
 
 **Attach:**
+
 1. Akta PT + SK Kemenkumham
 2. NIB
 3. NPWP Perusahaan
@@ -482,6 +529,7 @@ Hi! Congratulations on your new PT PMA!
 For PT PMA investor/director, you need **E28A Investor KITAS**.
 
 This visa is specifically for:
+
 - PT PMA Directors
 - PT PMA Commissioners
 - Active shareholders (involved in operations)
@@ -493,6 +541,7 @@ What are the E28A requirements after PT PMA is active?
 
 **Consultant:**
 **Documents from PT PMA:**
+
 - PT deed of incorporation
 - Active NIB (Business Identification Number)
 - Company NPWP (tax number)
@@ -501,6 +550,7 @@ What are the E28A requirements after PT PMA is active?
 - Proof of capital deposit (min IDR 2.5 billion deposited)
 
 **Personal documents:**
+
 - Valid passport (min 18 months)
 - Photo 4x6 red background
 - CV/resume
@@ -520,16 +570,19 @@ E28A = residence permit
 **IMTA** = work permit
 
 To work in your own PT, you need:
+
 - **E28A KITAS** (residence)
 - **IMTA** (work permit)
 - **RPTKA** (foreign worker employment plan) - company document
 
 **But in practice:**
+
 - IMTA & RPTKA applied **simultaneously** with E28A
 - One package processing
 - Cost includes all
 
 **E28A + IMTA Pricing (Bali Zero 2025):**
+
 - **Offshore:** IDR 17,000,000 - 19,000,000
 - **Onshore:** IDR 19,000,000 - 21,000,000
 - **5-YEAR MERP INCLUDED** (Multiple Entry Re-entry Permit for 5 years)
@@ -541,6 +594,7 @@ What's RPTKA? Is it complicated?
 **RPTKA** = Foreign Worker Employment Plan
 
 This is a company document explaining:
+
 - **Number of expats** to be hired
 - Their **positions** (director, manager, specialist)
 - **Local vs foreign ratio** (must hire local employees)
@@ -548,6 +602,7 @@ This is a company document explaining:
 - **Knowledge transfer plan** (expats must train local staff)
 
 **Mandatory ratio:**
+
 - **1 expat : 10 local employees** (minimum)
 - 2 expats → min 20 local employees
 - 1 expat (director/owner) → **ratio waiver available** (special case)
@@ -559,15 +614,18 @@ My PT hasn't hired local staff yet, just me. How does that work?
 
 **Consultant:**
 **Waiver available** for:
+
 - **Single director/owner** (not fully operational)
 - **Startup phase** (< 1 year)
 - **Small investment** (below certain threshold)
 
 **But there's a commitment:**
+
 - Within **6-12 months** must start hiring locals
 - At IMTA extension (year 2), must show local employees
 
 **Recommendation:**
+
 - Hire **minimum 1-2 local employees** before applying IMTA
 - Can be part-time or contract (PKWT)
 - Shows good faith to Kemnaker (Ministry of Labor)
@@ -579,14 +637,17 @@ What's the minimum salary for local employees?
 **UMR/UMP** (Regional/Provincial Minimum Wage) varies by location:
 
 **Bali:**
+
 - Badung (Seminyak/Canggu): ~**IDR 3,200,000/month**
 - Denpasar: ~**IDR 3,000,000/month**
 - Gianyar (Ubud): ~**IDR 2,900,000/month**
 
 **Jakarta:**
+
 - DKI Jakarta: ~**IDR 5,067,000/month**
 
 **Plus mandatory:**
+
 - **BPJS Kesehatan** (health): 4% employer + 1% employee
 - **BPJS Ketenagakerjaan** (employment): ~6% employer + 3% employee
 
@@ -599,12 +660,14 @@ Got it. Back to E28A — what's the timeline?
 **E28A Timeline:**
 
 **Offshore (apply from outside Indonesia):**
+
 - Document preparation: 1-2 weeks
 - RPTKA approval: 1 week
 - E28A + IMTA submission: 2-3 weeks
 - **Total: 4-6 weeks**
 
 **Onshore (apply from within Indonesia):**
+
 - Must be on valid visa (tourist, business, etc.)
 - Same process but slower approval
 - **Total: 5-8 weeks**
@@ -618,10 +681,12 @@ What's the total cost from start to receiving KITAS?
 **Total Cost Breakdown:**
 
 **E28A Package (Bali Zero 2025):**
+
 - **Investor KITAS 2 Years (Offshore):** **IDR 17,000,000** (all-inclusive: KITAS + IMTA + RPTKA + **5-year MERP**)
 - **Investor KITAS 2 Years (Onshore):** **IDR 19,000,000** (all-inclusive + **5-year MERP**)
 
 **Supporting Costs:**
+
 - Medical checkup: IDR 500,000
 - Police clearance (apostille): IDR 2,000,000 - 3,000,000
 - Document legalization: IDR 1,500,000
@@ -630,6 +695,7 @@ What's the total cost from start to receiving KITAS?
 **Grand Total (Offshore):** **IDR 21,000,000 - 22,000,000** (~USD 1,350)
 
 **Plus annual:**
+
 - BPJS for local staff: ~IDR 450K/employee/month
 - Accounting/tax filing: IDR 1,500,000 - 3,000,000/month
 
@@ -640,16 +706,19 @@ How many people can get E28A in one PT?
 **Unlimited** technically, but:
 
 **In practice:**
+
 - **1-2 directors** (common for small PT PMA)
 - **3-5 expat managers/specialists** (medium company)
 - **10+ expats** (large operations)
 
 **Must maintain:**
+
 - **1:10 ratio** expat:local employees
 - 5 expats → min **50 local employees**
 - **Capital requirement** increases (IDR 10 billion per KBLI per expat)
 
 **Example:**
+
 - PT with 1 director → IDR 10 billion capital, 0-10 local staff (waiver)
 - PT with 3 expats → IDR 10-30 billion capital, 30+ local staff
 
@@ -660,19 +729,21 @@ I want to add my wife as commissioner. Does she also need E28A?
 **Yes, she can!**
 
 **Wife as commissioner:**
+
 - Apply **separate E28A** (as commissioner)
 - Or apply **E26 Spouse KITAS** (as spouse)
 
 **Comparison:**
 
-| Feature | E28A Commissioner | E26 Spouse |
-|---------|-------------------|------------|
-| **Cost** | IDR 19,000,000 | IDR 14,500,000 |
-| **Work permit** | Yes (commissioner role) | No (but can add IMTA) |
-| **RPTKA needed** | Yes | No |
-| **Validity** | 2 years | 2 years |
+| Feature          | E28A Commissioner       | E26 Spouse            |
+| ---------------- | ----------------------- | --------------------- |
+| **Cost**         | IDR 19,000,000          | IDR 14,500,000        |
+| **Work permit**  | Yes (commissioner role) | No (but can add IMTA) |
+| **RPTKA needed** | Yes                     | No                    |
+| **Validity**     | 2 years                 | 2 years               |
 
 **Recommendation:**
+
 - If wife **actively involved** in business → **E28A**
 - If wife **not working** → **E26** (cheaper, simpler)
 
@@ -699,6 +770,7 @@ Once I get E28A, what are my obligations?
 4. **Active BPJS** for all local employees
 
 **If late/not reported:**
+
 - Difficulty extending KITAS
 - Administrative fines
 - Risk of PT closure
@@ -710,12 +782,14 @@ Is LKPM complicated? Do I fill it myself?
 **LKPM** = Investment Activity Report
 
 **Report content:**
+
 - Investment realization (how much injected)
 - Revenue & profit
 - Employee count (local vs expat)
 - Expansion plans
 
 **How to report:**
+
 - Via **OSS system** (online)
 - Submit **quarterly:**
   - Q1: April 30
@@ -724,6 +798,7 @@ Is LKPM complicated? Do I fill it myself?
   - Q4: January 31
 
 **We can handle:**
+
 - **Accounting package** includes LKPM filing
 - Price: IDR 1,500,000 - 3,000,000/month (full accounting + tax + LKPM)
 
@@ -736,6 +811,7 @@ After 2 years, how do I extend E28A?
 **30-60 days before** expiry, start preparing:
 
 **Documents needed:**
+
 - Updated medical checkup (new)
 - Indonesian police clearance (new, local SKCK)
 - Updated RPTKA (show increased local staff)
@@ -744,6 +820,7 @@ After 2 years, how do I extend E28A?
 - LKPM up to date
 
 **Cost:**
+
 - E28A extension: **IDR 18,000,000**
 - IMTA extension: (included)
 
@@ -758,6 +835,7 @@ If my PT isn't profitable, can KITAS be rejected during extension?
 **Possible, but rare.**
 
 What they check during extension:
+
 - ✅ **PT still active** (NIB valid, domicile valid)
 - ✅ **Tax compliance** (SPT filed on time, taxes paid)
 - ✅ **LKPM filed** regularly
@@ -767,12 +845,14 @@ What they check during extension:
 **Doesn't have to be profitable** — startups can lose money first 2-3 years, it's okay.
 
 **Red flags:**
+
 - ❌ PT dormant (no activity, no transactions)
 - ❌ Not filing tax/LKPM for years
 - ❌ Not paying employee BPJS
 - ❌ Not hiring local staff (breach RPTKA commitment)
 
 **Recommendation:**
+
 - Maintain minimal activity (invoices, transactions)
 - File tax returns (even if loss)
 - Keep 1-2 local employees (active BPJS)
@@ -801,10 +881,12 @@ How is my salary as director regulated? How much should it be?
    - Take dividend later
 
 **In practice:**
+
 - Year 1-2: **reinvest** (build business)
 - Year 3+: **salary + dividend** (mix)
 
 **Example:**
+
 - Salary IDR 15 million/month (PPh 21 ~15%)
 - Dividend IDR 100 million/year (PPh 23 = 10%)
 
@@ -815,15 +897,18 @@ I need to travel frequently to Singapore. E28A allows multiple entry, right?
 **Yes! E28A = multiple entry.**
 
 You're free to:
+
 - ✅ Exit/enter Indonesia anytime
 - ✅ Stay outside Indonesia for any duration
 - ✅ No minimum stay requirement in Indonesia
 
 **But remember:**
+
 - **SKTT** must still be reported annually (can be represented)
 - **Tax residency:** if stay < 183 days/year, may not be tax resident (consult tax advisor)
 
 **Practical for:**
+
 - Digital nomad lifestyle
 - Multi-country business
 - Frequent travel
@@ -858,6 +943,7 @@ Can I convert E28A to permanent residence (KITAP)?
 **KITAP** (Permanent Stay Permit Card) = Permanent Residence.
 
 **Requirements:**
+
 - Hold **KITAS continuously for 4-5 years** (E28A or other KITAS)
 - PT PMA **still active and compliant**
 - Clean immigration & tax record
@@ -866,6 +952,7 @@ Can I convert E28A to permanent residence (KITAP)?
 - Medical & police clearance
 
 **KITAP Benefits:**
+
 - **Permanent residence** (no expiry, just renew every 5 years)
 - **No sponsor needed** (can close PT, still can stay)
 - Can work **anywhere** (not limited to sponsoring company)
@@ -880,34 +967,40 @@ Okay, I'm ready to apply for E28A. What's the first step?
 **Step-by-Step:**
 
 **1. Confirm PT PMA ready (1-2 days):**
-   - NIB active?
-   - Deed approved by Kemenkumham?
-   - Capital deposited?
-   - Domicile obtained?
+
+- NIB active?
+- Deed approved by Kemenkumham?
+- Capital deposited?
+- Domicile obtained?
 
 **2. Prepare personal documents (1 week):**
-   - Medical checkup (book appointment)
-   - Police clearance (apply + apostille from home country)
-   - Scan passport, photo, CV
+
+- Medical checkup (book appointment)
+- Police clearance (apply + apostille from home country)
+- Scan passport, photo, CV
 
 **3. Submit to Bali Zero:**
-   - Email docs@balizero.com
-   - Attach: PT docs + personal docs
-   - We review & start RPTKA
+
+- Email docs@balizero.com
+- Attach: PT docs + personal docs
+- We review & start RPTKA
 
 **4. RPTKA approval (1-2 weeks):**
-   - We prepare RPTKA document
-   - Submit to Kemnaker
-   - Get approval letter
+
+- We prepare RPTKA document
+- Submit to Kemnaker
+- Get approval letter
 
 **5. E28A + IMTA application (2-3 weeks):**
-   - Submit via evisa system
-   - Track approval
-   - Receive visa approval
+
+- Submit via evisa system
+- Track approval
+- Receive visa approval
 
 **6. Fly to Indonesia (if offshore):**
-   - Show evisa at airport
-   - KITAS card delivered ~1 week after arrival
+
+- Show evisa at airport
+- KITAS card delivered ~1 week after arrival
 
 **Total:** 4-6 weeks from start to KITAS in hand.
 
@@ -923,6 +1016,7 @@ Please do! Send everything to:
 **Subject:** E28A Investor KITAS Application - [PT Name] - [Your Name]
 
 **Attach:**
+
 1. PT Deed + Kemenkumham approval
 2. NIB
 3. Company NPWP
@@ -947,6 +1041,7 @@ Halo! Selamat kanggo PT PMA-ne sing anyar aktif!
 Kanggo investor/direktur PT PMA, sampeyan butuh **E28A Investor KITAS**.
 
 Iki visa khusus kanggo:
+
 - Direktur PT PMA
 - Komisaris PT PMA
 - Pemegang saham aktif (shareholder sing terlibat operasional)
@@ -958,6 +1053,7 @@ Syarat E28A opo wae sakwise PT PMA aktif?
 
 **Consultant:**
 **Dokumen soko PT PMA:**
+
 - Akta pendirian PT (deed of incorporation)
 - NIB (Nomor Induk Berusaha) aktif
 - NPWP perusahaan
@@ -966,6 +1062,7 @@ Syarat E28A opo wae sakwise PT PMA aktif?
 - Proof of capital deposit (min Rp 2.5 miliar disetor)
 
 **Dokumen pribadi:**
+
 - Paspor valid min 18 sasi
 - Foto 4x6 background abang
 - CV/resume
@@ -985,16 +1082,19 @@ E28A = izin tinggal (residence permit)
 **IMTA** = izin kerja (work permit)
 
 Kanggo kerjo neng PT dewe, butuh:
+
 - **E28A KITAS** (izin tinggal)
 - **IMTA** (izin kerja)
 - **RPTKA** (rencana penggunaan tenaga kerja asing) - dokumen perusahaan
 
 **Tapi praktisne:**
+
 - IMTA & RPTKA di-apply **bareng** karo E28A
 - Siji paket processing
 - Biaya include kabeh
 
 **Rego E28A + IMTA:**
+
 - **Offshore:** Rp 17.000.000 - 19.000.000
 - **Onshore:** Rp 19.000.000 - 21.000.000
 - **MERP 5 taun WIS TERMASUK** (Re-entry Permit langsung 5 taun)
@@ -1006,6 +1106,7 @@ RPTKA iku opo? Ribet ora?
 **RPTKA** = Rencana Penggunaan Tenaga Kerja Asing
 
 Iki dokumen soko PT sing nerangke:
+
 - **Jumlah expat** sing bakal di-hire
 - **Posisi** wong-wong iku (director, manager, specialist)
 - **Rasio lokal vs asing** (wajib hire karyawan lokal)
@@ -1013,6 +1114,7 @@ Iki dokumen soko PT sing nerangke:
 - **Knowledge transfer plan** (expat kudu train local staff)
 
 **Rasio wajib:**
+
 - **1 expat : 10 karyawan lokal** (minimum)
 - Nek 2 expat → min 20 karyawan lokal
 - Nek 1 expat (direktur/owner) → **iso waiver** rasio (special case)
@@ -1024,15 +1126,18 @@ PT ku durung hire karyawan lokal, anyar aku dewe. Piye?
 
 **Consultant:**
 **Waiver tersedia** kanggo:
+
 - **Single director/owner** (durung operasional penuh)
 - **Startup phase** (< 1 taun)
 - **Small investment** (neng ngisor threshold tertentu)
 
 **Tapi ono commitment:**
+
 - Dalam **6-12 sasi** kudu mulai hire lokal
 - Naliko IMTA extension (taun ke-2), wajib tunjukke karyawan lokal
 
 **Rekomendasi:**
+
 - Hire **minimal 1-2 karyawan lokal** sakdurunge apply IMTA
 - Iso part-time utowo kontrak (PKWT)
 - Kanggo tunjukke good faith neng Kemnaker (Ministry of Labor)
@@ -1044,14 +1149,17 @@ Piro gaji minimum karyawan lokal?
 **UMR/UMP** (Upah Minimum Regional/Provinsi) varies by location:
 
 **Bali:**
+
 - Badung (Seminyak/Canggu): ~**Rp 3.200.000/sasi**
 - Denpasar: ~**Rp 3.000.000/sasi**
 - Gianyar (Ubud): ~**Rp 2.900.000/sasi**
 
 **Jakarta:**
+
 - DKI Jakarta: ~**Rp 5.067.000/sasi**
 
 **Plus mandatory:**
+
 - **BPJS Kesehatan** (health): 4% employer + 1% employee
 - **BPJS Ketenagakerjaan** (employment): ~6% employer + 3% employee
 
@@ -1064,12 +1172,14 @@ Oke noted. Balik neng E28A — timeline-ne piro suwi?
 **E28A Timeline:**
 
 **Offshore (apply soko njaba Indonesia):**
+
 - Document preparation: 1-2 minggu
 - RPTKA approval: 1 minggu
 - E28A + IMTA submission: 2-3 minggu
 - **Total: 4-6 minggu**
 
 **Onshore (apply soko dalam Indonesia):**
+
 - Kudu neng valid visa (tourist, business, dll)
 - Same process tapi approval luwih alon
 - **Total: 5-8 minggu**
@@ -1083,10 +1193,12 @@ Biaya totale piro soko awal sampek entuk KITAS?
 **Total Cost Breakdown:**
 
 **E28A Package (Bali Zero 2025):**
+
 - **Investor KITAS 2 Years (Offshore):** **Rp 17.000.000** (all-inclusive: KITAS + IMTA + RPTKA)
 - **Investor KITAS 2 Years (Onshore):** **Rp 19.000.000** (all-inclusive)
 
 **Supporting Costs:**
+
 - Medical checkup: Rp 500.000
 - Police clearance (apostille): Rp 2.000.000 - 3.000.000
 - Document legalization: Rp 1.500.000
@@ -1095,6 +1207,7 @@ Biaya totale piro soko awal sampek entuk KITAS?
 **Grand Total (Offshore):** **Rp 21.000.000 - 22.000.000** (~USD 1,350)
 
 **Plus annual:**
+
 - BPJS kanggo local staff: ~Rp 450K/employee/sasi
 - Accounting/tax filing: Rp 1.500.000 - 3.000.000/sasi
 
@@ -1105,16 +1218,19 @@ E28A iso kanggo piro wong neng siji PT?
 **Unlimited** secara teknis, tapi:
 
 **Praktisne:**
+
 - **1-2 directors** (common kanggo small PT PMA)
 - **3-5 expat managers/specialists** (medium company)
 - **10+ expat** (large operations)
 
 **Sing kudu dijaga:**
+
 - **Rasio 1:10** expat:local employees
 - Nek 5 expat → min **50 karyawan lokal**
 - **Capital requirement** increase (Rp 10 miliar per KBLI per expat)
 
 **Contone:**
+
 - PT karo 1 director → Rp 10 miliar capital, 0-10 local staff (waiver)
 - PT karo 3 expat → Rp 10-30 miliar capital, 30+ local staff
 
@@ -1125,19 +1241,21 @@ Aku arep add bojoku dadi komisaris. Dheweke yo butuh E28A?
 **Iyo, iso!**
 
 **Bojo dadi komisaris:**
+
 - Apply **E28A separate** (dadi komisaris)
 - Utowo apply **E26 Spouse KITAS** (dadi spouse)
 
 **Comparison:**
 
-| Feature | E28A Komisaris | E26 Spouse |
-|---------|----------------|------------|
-| **Cost** | Rp 19.000.000 | Rp 14.500.000 |
-| **Work permit** | Iyo (komisaris role) | Ora (tapi iso add IMTA) |
-| **RPTKA needed** | Iyo | Ora |
-| **Validity** | 2 taun | 2 taun |
+| Feature          | E28A Komisaris       | E26 Spouse              |
+| ---------------- | -------------------- | ----------------------- |
+| **Cost**         | Rp 19.000.000        | Rp 14.500.000           |
+| **Work permit**  | Iyo (komisaris role) | Ora (tapi iso add IMTA) |
+| **RPTKA needed** | Iyo                  | Ora                     |
+| **Validity**     | 2 taun               | 2 taun                  |
 
 **Rekomendasi:**
+
 - Nek bojo **actively involved** neng bisnis → **E28A**
 - Nek bojo **not working** → **E26** (luwih murah, simpler)
 
@@ -1164,6 +1282,7 @@ Nek E28A wis entuk, kewajiban ku opo?
 4. **BPJS active** kanggo kabeh karyawan lokal
 
 **Nek telat/ora lapor:**
+
 - Susah extend KITAS
 - Denda administratif
 - Risk closure PT
@@ -1175,12 +1294,14 @@ LKPM iku ribet ora? Aku kudu isi dewe?
 **LKPM** = Laporan Kegiatan Penanaman Modal
 
 **Isi laporan:**
+
 - Realisasi investasi (piro sing wis di-inject)
 - Revenue & profit
 - Jumlah karyawan (local vs expat)
 - Rencana expansion
 
 **Cara lapor:**
+
 - Via **OSS system** (online)
 - Submit **saben kuartal:**
   - Q1: 30 April
@@ -1189,6 +1310,7 @@ LKPM iku ribet ora? Aku kudu isi dewe?
   - Q4: 31 Januari
 
 **Kito iso handle:**
+
 - **Accounting package** include LKPM filing
 - Rego: Rp 1.500.000 - 3.000.000/sasi (full accounting + tax + LKPM)
 
@@ -1201,6 +1323,7 @@ Sakwise 2 taun, extend E28A piye?
 **30-60 dino sakdurunge** expire, mulai prepare:
 
 **Documents needed:**
+
 - Updated medical checkup (anyar)
 - Police clearance Indonesia (anyar, SKCK lokal)
 - Updated RPTKA (show karyawan lokal bertambah)
@@ -1209,6 +1332,7 @@ Sakwise 2 taun, extend E28A piye?
 - LKPM up to date
 
 **Biaya:**
+
 - E28A extension: **Rp 18.000.000**
 - IMTA extension: (included)
 
@@ -1223,6 +1347,7 @@ Nek PT ku ora profitable, KITAS iso di-reject naliko extension?
 **Iso, tapi jarang.**
 
 Sing diliat naliko extension:
+
 - ✅ **PT isih aktif** (NIB valid, domisili valid)
 - ✅ **Tax compliance** (SPT filed on time, bayar pajak)
 - ✅ **LKPM filed** regularly
@@ -1232,12 +1357,14 @@ Sing diliat naliko extension:
 **Ora kudu profit** — startup iso rugi 2-3 taun pertama, it's okay.
 
 **Red flags:**
+
 - ❌ PT dormant (ora ono activity, ora ono transaction)
 - ❌ Ora lapor tax/LKPM bertahun-tahun
 - ❌ Ora bayar BPJS karyawan
 - ❌ Ora hire local staff (breach RPTKA commitment)
 
 **Rekomendasi:**
+
 - Maintain minimal activity (invoice, transaction)
 - File tax returns (sanajan rugi)
 - Keep 1-2 karyawan lokal (BPJS active)
@@ -1266,10 +1393,12 @@ Gaji ku dadi direktur diatur piye? Kudu piro?
    - Jukut dividend mengko
 
 **Praktisne:**
+
 - Taun 1-2: **reinvest** (build business)
 - Taun 3+: **salary + dividend** (mix)
 
 **Contone:**
+
 - Salary Rp 15 juta/sasi (PPh 21 ~15%)
 - Dividend Rp 100 juta/taun (PPh 23 = 10%)
 
@@ -1280,15 +1409,18 @@ Aku perlu travel kerep neng Singapura. E28A allow multiple entry kan?
 **Iyo! E28A = multiple entry.**
 
 Sampeyan bebas:
+
 - ✅ Metu mlebu Indonesia kapan wae
 - ✅ Stay neng njaba Indonesia piro suwi wae
 - ✅ Ora ono minimum stay requirement neng Indonesia
 
 **Tapi elingo:**
+
 - **SKTT** tetep kudu lapor saben taun (iso diwakilke)
 - **Tax residency:** nek stay < 183 dino/taun, mungkin ora tax resident (consult tax advisor)
 
 **Praktis kanggo:**
+
 - Digital nomad lifestyle
 - Multi-country business
 - Frequent travel
@@ -1323,6 +1455,7 @@ Isoko aku convert E28A neng permanent residence (KITAP)?
 **KITAP** (Kartu Izin Tinggal Tetap) = Permanent Residence.
 
 **Requirements:**
+
 - Hold **KITAS continuously for 4-5 taun** (E28A utowo KITAS liyane)
 - PT PMA **isih aktif lan compliant**
 - Clean immigration & tax record
@@ -1331,6 +1464,7 @@ Isoko aku convert E28A neng permanent residence (KITAP)?
 - Medical & police clearance
 
 **Benefits KITAP:**
+
 - **Permanent residence** (ora expire, mung renew saben 5 taun)
 - **Ora butuh sponsor** (iso tutup PT, tetep oleh stay)
 - Iso kerjo **endi wae** (ora limited neng sponsoring company)
@@ -1345,34 +1479,40 @@ Oke, aku siap apply E28A. Langkah pertama opo?
 **Step-by-Step:**
 
 **1. Confirm PT PMA ready (1-2 dino):**
-   - NIB aktif?
-   - Akta wis approved Kemenkumham?
-   - Capital wis disetor?
-   - Domisili wis?
+
+- NIB aktif?
+- Akta wis approved Kemenkumham?
+- Capital wis disetor?
+- Domisili wis?
 
 **2. Prepare personal documents (1 minggu):**
-   - Medical checkup (book appointment)
-   - Police clearance (apply + apostille soko negara asal)
-   - Scan paspor, foto, CV
+
+- Medical checkup (book appointment)
+- Police clearance (apply + apostille soko negara asal)
+- Scan paspor, foto, CV
 
 **3. Submit neng Bali Zero:**
-   - Email docs@balizero.com
-   - Attach: PT docs + personal docs
-   - Kito review & mulai RPTKA
+
+- Email docs@balizero.com
+- Attach: PT docs + personal docs
+- Kito review & mulai RPTKA
 
 **4. RPTKA approval (1-2 minggu):**
-   - Kito prepare RPTKA document
-   - Submit neng Kemnaker
-   - Entuk approval letter
+
+- Kito prepare RPTKA document
+- Submit neng Kemnaker
+- Entuk approval letter
 
 **5. E28A + IMTA application (2-3 minggu):**
-   - Submit via evisa system
-   - Track approval
-   - Nompo visa approval
+
+- Submit via evisa system
+- Track approval
+- Nompo visa approval
 
 **6. Fly to Indonesia (nek offshore):**
-   - Tunjukke evisa neng airport
-   - KITAS card delivered ~1 minggu sakwise arrival
+
+- Tunjukke evisa neng airport
+- KITAS card delivered ~1 minggu sakwise arrival
 
 **Total:** 4-6 minggu soko mulai sampek KITAS neng tangan.
 
@@ -1388,6 +1528,7 @@ Monggo! Kirim kabehe neng:
 **Subject:** E28A Investor KITAS Application - [Jeneng PT] - [Jeneng Sampeyan]
 
 **Attach:**
+
 1. Akta PT + SK Kemenkumham
 2. NIB
 3. NPWP Perusahaan
@@ -1403,29 +1544,29 @@ Congrats neng PT PMA sampeyan — welcome to doing business in Indonesia! 🇮�
 
 ## 📊 Summary — Key Facts Used
 
-| Topic | Details |
-|-------|---------|
-| **Visa Type** | E28A Investor KITAS |
-| **Validity** | 2 years, multiple entry |
-| **For** | PT PMA directors, commissioners, active shareholders |
-| **IMTA Required** | Yes (work permit, included in package) |
-| **RPTKA Required** | Yes (foreign worker employment plan) |
-| **Offshore Cost** | IDR 17,000,000 - 19,000,000 (E28A + IMTA + 5-year MERP) |
-| **Onshore Cost** | IDR 19,000,000 - 21,000,000 (includes 5-year MERP) |
-| **Extension Cost** | IDR 18,000,000 (after 2 years) |
-| **Timeline Offshore** | 4-6 weeks |
-| **Timeline Onshore** | 5-8 weeks |
+| Topic                    | Details                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| **Visa Type**            | E28A Investor KITAS                                       |
+| **Validity**             | 2 years, multiple entry                                   |
+| **For**                  | PT PMA directors, commissioners, active shareholders      |
+| **IMTA Required**        | Yes (work permit, included in package)                    |
+| **RPTKA Required**       | Yes (foreign worker employment plan)                      |
+| **Offshore Cost**        | IDR 17,000,000 - 19,000,000 (E28A + IMTA + 5-year MERP)   |
+| **Onshore Cost**         | IDR 19,000,000 - 21,000,000 (includes 5-year MERP)        |
+| **Extension Cost**       | IDR 18,000,000 (after 2 years)                            |
+| **Timeline Offshore**    | 4-6 weeks                                                 |
+| **Timeline Onshore**     | 5-8 weeks                                                 |
 | **Local Employee Ratio** | 1 expat : 10 local employees (waiver for single director) |
-| **Minimum Capital** | IDR 2.5 billion (paid-up) |
-| **UMR Bali** | IDR 2.9M - 3.2M/month (varies by regency) |
-| **UMR Jakarta** | IDR 5.067M/month |
-| **BPJS Cost** | ~10-15% of salary (employer + employee) |
-| **SKTT Reporting** | Annually |
-| **LKPM Reporting** | Quarterly to BKPM |
-| **KITAP Eligibility** | After 4-5 years continuous KITAS |
-| **Multiple Entry** | Yes (no stay limit) |
-| **Tax Residency** | 183+ days/year triggers Indonesian tax |
+| **Minimum Capital**      | IDR 2.5 billion (paid-up)                                 |
+| **UMR Bali**             | IDR 2.9M - 3.2M/month (varies by regency)                 |
+| **UMR Jakarta**          | IDR 5.067M/month                                          |
+| **BPJS Cost**            | ~10-15% of salary (employer + employee)                   |
+| **SKTT Reporting**       | Annually                                                  |
+| **LKPM Reporting**       | Quarterly to BKPM                                         |
+| **KITAP Eligibility**    | After 4-5 years continuous KITAS                          |
+| **Multiple Entry**       | Yes (no stay limit)                                       |
+| **Tax Residency**        | 183+ days/year triggers Indonesian tax                    |
 
 ---
 
-*Generated by Nuzantara KB + Claude for Bali Zero training data*
+_Generated by Nuzantara KB + Claude for Bali Zero training data_

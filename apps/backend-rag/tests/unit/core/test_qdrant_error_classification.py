@@ -90,4 +90,3 @@ def test_classify_unknown_error_non_retryable(classifier):
 
     assert error_type == QdrantErrorType.NON_RETRYABLE
     assert retryable == False
-

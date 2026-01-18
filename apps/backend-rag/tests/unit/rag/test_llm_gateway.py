@@ -55,14 +55,14 @@ def mock_settings():
 @pytest.fixture
 def mock_genai_client():
     """Mock GenAIClient from backend.llm.genai_client.
-    
+
     Updated 2026-01-16: Fixed mock to match actual GenAIClient API.
     - is_available is a property, not an attribute
     - create_chat_session returns ChatSession instance
     - ChatSession.send_message is async method
     """
     mock_client = MagicMock()
-    
+
     # is_available is a property, not an attribute
     type(mock_client).is_available = PropertyMock(return_value=True)
 
@@ -83,13 +83,15 @@ def mock_genai_client():
     mock_chat = MagicMock()
     mock_chat.send_message = AsyncMock(return_value={"text": "Chat response"})
     mock_chat.send_message_stream = AsyncMock()
+
     # Create async generator for streaming
     async def mock_stream(*args, **kwargs):
         mock_chunk = MagicMock()
         mock_chunk.text = "Stream chunk"
         yield mock_chunk
+
     mock_chat.send_message_stream = mock_stream
-    
+
     mock_client.create_chat_session = MagicMock(return_value=mock_chat)
     # For backward compatibility
     mock_client.create_chat = MagicMock(return_value=mock_chat)
@@ -113,7 +115,8 @@ def llm_gateway(mock_settings, mock_genai_client):
     with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
         # Patch get_genai_client which is called by LLMGateway.__init__
         with patch(
-            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client",
+            return_value=mock_genai_client,
         ):
             gateway = LLMGateway(gemini_tools=[])
             return gateway
@@ -126,7 +129,8 @@ class TestLLMGatewayInitialization:
         """Test that LLMGateway initializes with GenAI client."""
         with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
             with patch(
-                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
+                return_value=mock_genai_client,
             ):
                 gateway = LLMGateway()
 
@@ -147,7 +151,8 @@ class TestLLMGatewayInitialization:
         fake_tools = [{"name": "test_tool", "description": "Test"}]
         with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
             with patch(
-                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
+                return_value=mock_genai_client,
             ):
                 gateway = LLMGateway(gemini_tools=fake_tools)
 

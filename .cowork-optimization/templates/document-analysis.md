@@ -1,7 +1,9 @@
 # Document Analysis Template
 
 ## Task Description
+
 Analyze documents in [FOLDER_PATH] and extract:
+
 - Key topics and themes
 - Important dates and deadlines
 - Action items and TODOs
@@ -9,6 +11,7 @@ Analyze documents in [FOLDER_PATH] and extract:
 - Summary of each document
 
 ## Instructions
+
 1. Read all documents in [FOLDER_PATH]
 2. For each document, extract:
    - Title/filename
@@ -25,11 +28,14 @@ Analyze documents in [FOLDER_PATH] and extract:
    - Cross-references between docs
 
 ## Output Format
+
 ```markdown
 # Document Analysis Report
+
 Generated: [DATE]
 
 ## Summary
+
 - Total documents: [N]
 - Date range: [START] - [END]
 - Main topics: [LIST]
@@ -37,16 +43,20 @@ Generated: [DATE]
 ## Documents by Topic
 
 ### [TOPIC 1]
+
 - Document 1: [SUMMARY]
 - Document 2: [SUMMARY]
 
 ### [TOPIC 2]
+
 ...
 
 ## Action Items
+
 - [ ] Item 1 (from doc X)
 - [ ] Item 2 (from doc Y)
 
 ## Timeline
+
 - [DATE]: Event/Deadline from doc Z
 ```

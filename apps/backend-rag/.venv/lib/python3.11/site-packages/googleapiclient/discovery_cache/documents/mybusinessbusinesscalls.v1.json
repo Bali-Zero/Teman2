@@ -20,14 +20,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -39,11 +33,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -103,9 +93,7 @@
           "flatPath": "v1/locations/{locationsId}/businesscallssettings",
           "httpMethod": "GET",
           "id": "mybusinessbusinesscalls.locations.getBusinesscallssettings",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "Required. The BusinessCallsSettings to get. The `name` field is used to identify the business call settings to get. Format: locations/{location_id}/businesscallssettings.",
@@ -125,9 +113,7 @@
           "flatPath": "v1/locations/{locationsId}/businesscallssettings",
           "httpMethod": "PATCH",
           "id": "mybusinessbusinesscalls.locations.updateBusinesscallssettings",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "Required. The resource name of the calls settings. Format: locations/{location}/businesscallssettings",
@@ -160,9 +146,7 @@
               "flatPath": "v1/locations/{locationsId}/businesscallsinsights",
               "httpMethod": "GET",
               "id": "mybusinessbusinesscalls.locations.businesscallsinsights.list",
-              "parameterOrder": [
-                "parent"
-              ],
+              "parameterOrder": ["parent"],
               "parameters": {
                 "filter": {
                   "description": "Optional. A filter constraining the calls insights to return. The response includes only entries that match the filter. If the MetricType is not provided, AGGREGATE_COUNT is returned. If no end_date is provided, the last date for which data is available is used. If no start_date is provided, we will default to the first date for which data is available, which is currently 6 months. If start_date is before the date when data is available, data is returned starting from the date when it is available. At this time we support following filters. 1. start_date=\"DATE\" where date is in YYYY-MM-DD format. 2. end_date=\"DATE\" where date is in YYYY-MM-DD format. 3. metric_type=XYZ where XYZ is a valid MetricType. 4. Conjunctions(AND) of all of the above. e.g., \"start_date=2021-08-01 AND end_date=2021-08-10 AND metric_type=AGGREGATE_COUNT\" The AGGREGATE_COUNT metric_type ignores the DD part of the date.",
@@ -250,10 +234,7 @@
         },
         "metricType": {
           "description": "The metric for which the value applies.",
-          "enum": [
-            "METRIC_TYPE_UNSPECIFIED",
-            "AGGREGATE_COUNT"
-          ],
+          "enum": ["METRIC_TYPE_UNSPECIFIED", "AGGREGATE_COUNT"],
           "enumDescriptions": [
             "Type of metric is unspecified.",
             "The metrics provided are counts aggregated over the input time_range."
@@ -273,11 +254,7 @@
       "properties": {
         "callsState": {
           "description": "Required. The state of this location's enrollment in Business calls.",
-          "enum": [
-            "CALLS_STATE_UNSPECIFIED",
-            "ENABLED",
-            "DISABLED"
-          ],
+          "enum": ["CALLS_STATE_UNSPECIFIED", "ENABLED", "DISABLED"],
           "enumDescriptions": [
             "Unspecified.",
             "Business calls is enabled for the location.",

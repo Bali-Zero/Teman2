@@ -9,6 +9,7 @@ Lo scraper trova le informazioni da **2 fonti principali**:
 ## 1️⃣ **Google News RSS** (`rss_fetcher.py`)
 
 ### Come Funziona:
+
 - **Fonte:** Google News RSS Feed
 - **URL Base:** `https://news.google.com/rss/search`
 - **Query:** Ricerca per topic specifici (vedi sotto)
@@ -17,38 +18,45 @@ Lo scraper trova le informazioni da **2 fonti principali**:
 ### Topic Monitorati (20+ query):
 
 #### Immigration
+
 - `Indonesia visa KITAS regulation`
 - `Bali visa immigration`
 - `Indonesia golden visa`
 - `digital nomad visa Indonesia`
 
 #### Business
+
 - `Indonesia PT PMA foreign investment`
 - `Indonesia business regulation BKPM`
 - `Bali business startup`
 - `Indonesia KBLI OSS`
 
 #### Tax
+
 - `Indonesia tax regulation pajak`
 - `Indonesia NPWP tax`
 - `Indonesia corporate tax PPh`
 
 #### Property
+
 - `Bali property real estate`
 - `Indonesia land ownership foreigner`
 - `Bali villa investment`
 
 #### Tech/AI
+
 - `Indonesia AI artificial intelligence`
 - `Indonesia startup technology funding`
 - `Indonesia fintech digital economy`
 - `Indonesia kecerdasan buatan`
 
 #### Lifestyle
+
 - `Bali expat news`
 - `Bali digital nomad`
 
 ### Output RSS:
+
 ```json
 {
   "title": "Article Title",
@@ -65,12 +73,14 @@ Lo scraper trova le informazioni da **2 fonti principali**:
 ## 2️⃣ **790+ Fonti Web** (`unified_scraper.py` - BaliZeroScraperV2)
 
 ### Come Funziona:
+
 - **Fonte:** Scraping diretto da siti web configurati
 - **Config:** `config/unified_sources.json` + `config/extended_sources.json`
 - **Metodo:** Web scraping con `SmartExtractor`
 - **Categorie:** immigration, tax_bkpm, property, business, tech, etc.
 
 ### Esempio Configurazione:
+
 ```json
 {
   "sources": [
@@ -156,7 +166,7 @@ async def process_article(self, article: PipelineArticle):
             return article  # ← SKIP, non processa oltre
     except Exception as e:
         logger.error(f"Dedup check failed (continuing safely): {e}")
-    
+
     # STEP 1: LLAMA SCORING (solo se non duplicato)
     # ...
 ```
@@ -166,18 +176,21 @@ async def process_article(self, article: PipelineArticle):
 ## 🎯 Modalità di Esecuzione
 
 ### `--mode quick`
+
 - **Fonte:** Solo Google News RSS
 - **Step 0:** ✅ Deduplicazione semantica
 - **Step 1:** ✅ LLAMA Scoring
 - **Step 2+:** ❌ No enrichment (solo scoring + invio)
 
 ### `--mode full`
+
 - **Fonte:** Google News RSS
 - **Step 0:** ✅ Deduplicazione semantica
 - **Step 1:** ✅ LLAMA Scoring
 - **Step 2-7:** ✅ Pipeline completa (Claude enrichment, images, SEO, etc.)
 
 ### `--mode massive`
+
 - **Fonte:** 790+ fonti web (scraping diretto)
 - **Step 0:** ✅ Deduplicazione semantica
 - **Step 1:** ✅ LLAMA Scoring

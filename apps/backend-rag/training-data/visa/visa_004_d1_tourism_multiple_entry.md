@@ -15,6 +15,7 @@ Halo, saya sering bolak-balik Indonesia untuk liburan dan visit keluarga. Ada vi
 Halo! Untuk frequent traveler seperti kamu, **D1 Tourism Multiple Entry Visa** adalah pilihan terbaik.
 
 Keuntungan D1:
+
 - **Validity 1 atau 2 tahun** (pilih sesuai kebutuhan)
 - **Multiple entry** — bebas keluar masuk
 - **Max stay 60 hari** per kunjungan
@@ -29,6 +30,7 @@ Wah, bagus! Itu 60 hari per entry bisa diperpanjang?
 **Tidak bisa diperpanjang**.
 
 D1 adalah visa visit, bukan residence. Setelah 60 hari:
+
 - Harus keluar Indonesia dulu
 - Bisa langsung masuk lagi (re-entry)
 - Counter 60 hari reset
@@ -43,11 +45,11 @@ Oh I see. Jadi D1 untuk frequent short trips, E33G untuk long stay + remote work
 **Consultant:**
 **Exactly!**
 
-| Visa | Validity | Max Stay | Extension | Best For |
-|------|----------|----------|-----------|----------|
-| **D1 Tourism** | 1-2 tahun | 60 hari/entry | Tidak bisa | Frequent traveler |
-| **E33G Digital Nomad** | 1 tahun | Extendable | Bisa extend | Long-term + remote work |
-| **VOA** | 30 hari | 30 hari | 1x extend | Short holiday |
+| Visa                   | Validity  | Max Stay      | Extension   | Best For                |
+| ---------------------- | --------- | ------------- | ----------- | ----------------------- |
+| **D1 Tourism**         | 1-2 tahun | 60 hari/entry | Tidak bisa  | Frequent traveler       |
+| **E33G Digital Nomad** | 1 tahun   | Extendable    | Bisa extend | Long-term + remote work |
+| **VOA**                | 30 hari   | 30 hari       | 1x extend   | Short holiday           |
 
 D1 = convenience untuk frequent trips, E33G = long-term stay.
 
@@ -58,16 +60,19 @@ Syarat apply D1 apa saja?
 **Dokumen D1 Tourism Multiple Entry:**
 
 **Personal:**
+
 - Paspor valid min 18 bulan
 - Foto background merah 4x6 (terbaru)
 - KTP/ID card negara asal
 
 **Financial:**
+
 - Bank statement 3 bulan terakhir
 - Minimum balance **USD 5,000** atau equivalent
 - Rekening atas nama sendiri
 
 **Travel:**
+
 - Flight booking (round trip pertama)
 - Hotel reservation untuk trip pertama
 - Itinerary singkat
@@ -79,12 +84,14 @@ Bank statement harus USD atau bisa currency lain?
 Bisa **currency apa saja** — USD, EUR, SGD, AUD, dll.
 
 Yang penting:
+
 - Equivalent **USD 5,000+**
 - Statement **3 bulan** terakhir
 - **Nama sendiri** (bukan joint account)
 - Ada **transaksi normal** (bukan fresh deposit)
 
 Contoh acceptable:
+
 - SGD 7,000
 - EUR 4,500
 - AUD 8,000
@@ -96,16 +103,18 @@ Berapa biaya D1?
 **Consultant:**
 **Harga D1 Tourism Multiple Entry (Bali Zero 2025):**
 
-| Durasi | Harga Bali Zero |
-|--------|-----------------|
-| **D1 1 Tahun** | IDR 5.000.000 |
-| **D1 2 Tahun** | IDR 7.000.000 |
+| Durasi         | Harga Bali Zero |
+| -------------- | --------------- |
+| **D1 1 Tahun** | IDR 5.000.000   |
+| **D1 2 Tahun** | IDR 7.000.000   |
 
 **Timeline:**
+
 - Processing: **5-10 hari kerja**
 - Apply via: **Evisa portal** (recommended) atau Embassy Indonesia
 
 **Validity:**
+
 - Mulai dari tanggal issue, bukan first entry
 - Pilihan 1 tahun atau 2 tahun, tidak bisa extend
 
@@ -116,10 +125,12 @@ Bisa apply D1 dari dalam Indonesia?
 **Tidak bisa** apply D1 dari dalam Indonesia (onshore).
 
 D1 harus di-apply dari luar Indonesia:
+
 - **Evisa portal** (recommended, fully online) ✅
 - **Embassy/Konsulat Indonesia** (jika e-Visa tidak tersedia)
 
 Kalau sekarang di Indonesia dengan VOA:
+
 1. Selesaikan trip saat ini
 2. Pulang ke home country
 3. Apply D1 via e-Visa portal atau embassy
@@ -132,6 +143,7 @@ Kalau visa D1 habis, gimana perpanjangnya?
 **D1 tidak bisa diperpanjang** setelah expire.
 
 Process setelah 1/2 tahun habis:
+
 - Apply **D1 baru** dari embassy (fresh application)
 - Dokumen lengkap lagi
 - Biaya full lagi
@@ -139,6 +151,7 @@ Process setelah 1/2 tahun habis:
 Tidak ada "renewal" atau "extension" — ini adalah **visa baru**.
 
 **Tips:**
+
 - Apply D1 baru 1-2 bulan sebelum yang lama expire
 - Overlap visa tidak masalah
 
@@ -149,16 +162,19 @@ Saya sering bawa laptop untuk kerja remote. Boleh kerja dengan D1?
 **Hati-hati!**
 
 D1 adalah **purely tourism visa**. Technically:
+
 - Tidak boleh bekerja di Indonesia
 - Tidak boleh dapat income dari sumber Indonesia
 - Tidak ada izin kerja attached
 
 **Reality:**
+
 - Kerja remote untuk employer luar negeri = grey area
 - Banyak digital nomad pakai ini
 - Immigration jarang cek laptop
 
 **Safer option:**
+
 - Kalau frequent + kerja remote → **E33G Digital Nomad KITAS**
 - Legal, 1 tahun (extendable), bisa kerja remote officially
 
@@ -171,6 +187,7 @@ Entry point harus dari airport tertentu?
 **D1 bisa entry dari mana saja!**
 
 Semua international entry point:
+
 - ✅ All airports (CGK, DPS, SUB, dll)
 - ✅ Seaports (Batam, Bintan, dll)
 - ✅ Land borders (Entikong, Aruk, dll)
@@ -186,10 +203,12 @@ Ada blacklist negara yang ga bisa apply D1?
 **D1 open untuk hampir semua negara**.
 
 Negara yang ada restrictions:
+
 - Countries with strained diplomatic relations
 - Beberapa negara mungkin butuh additional screening
 
 **Smooth processing** untuk:
+
 - 🇦🇺 Australia
 - 🇸🇬 Singapore
 - 🇲🇾 Malaysia
@@ -239,6 +258,7 @@ Hi, I travel to Indonesia frequently for holidays and family visits. Is there a 
 Hello! For frequent travelers like yourself, the **D1 Tourism Multiple Entry Visa** is your best option.
 
 D1 Benefits:
+
 - **1 or 2-year validity** (choose based on your needs)
 - **Multiple entry** — unlimited exits and entries
 - **60-day maximum stay** per visit
@@ -253,6 +273,7 @@ Nice! Can the 60 days per entry be extended?
 **No extensions possible.**
 
 D1 is a visit visa, not residence. After 60 days:
+
 - You must exit Indonesia
 - You can re-enter immediately
 - The 60-day counter resets
@@ -267,11 +288,11 @@ Got it. So D1 is for frequent short trips, E33G for long stays + remote work?
 **Consultant:**
 **Exactly right!**
 
-| Visa | Validity | Max Stay | Extension | Best For |
-|------|----------|----------|-----------|----------|
-| **D1 Tourism** | 1-2 years | 60 days/entry | No | Frequent travelers |
-| **E33G Digital Nomad** | 1 year | Extendable | Yes | Long-term + remote work |
-| **VOA** | 30 days | 30 days | 1x | Short holidays |
+| Visa                   | Validity  | Max Stay      | Extension | Best For                |
+| ---------------------- | --------- | ------------- | --------- | ----------------------- |
+| **D1 Tourism**         | 1-2 years | 60 days/entry | No        | Frequent travelers      |
+| **E33G Digital Nomad** | 1 year    | Extendable    | Yes       | Long-term + remote work |
+| **VOA**                | 30 days   | 30 days       | 1x        | Short holidays          |
 
 D1 = convenience for frequent trips, E33G = long-term stay.
 
@@ -282,16 +303,19 @@ What are the D1 requirements?
 **D1 Tourism Multiple Entry Documents:**
 
 **Personal:**
+
 - Passport valid min 18 months
 - Red background photo 4x6cm (recent)
 - National ID from home country
 
 **Financial:**
+
 - Bank statement for last 3 months
 - Minimum balance **USD 5,000** or equivalent
 - Account in your own name
 
 **Travel:**
+
 - Round trip flight booking (first trip)
 - Hotel reservation for first trip
 - Brief itinerary
@@ -303,12 +327,14 @@ Does the bank statement need to be in USD?
 **Any currency is acceptable** — USD, EUR, SGD, AUD, etc.
 
 Key requirements:
+
 - Equivalent to **USD 5,000+**
 - Statement covering **3 months**
 - **Your name only** (not joint account)
 - Shows **normal transactions** (not fresh deposits)
 
 Acceptable examples:
+
 - SGD 7,000
 - EUR 4,500
 - AUD 8,000
@@ -320,16 +346,18 @@ What's the cost of D1?
 **Consultant:**
 **D1 Tourism Multiple Entry Pricing (Bali Zero 2025):**
 
-| Duration | Bali Zero Price |
-|----------|-----------------|
-| **D1 1 Year** | IDR 5,000,000 |
-| **D1 2 Years** | IDR 7,000,000 |
+| Duration       | Bali Zero Price |
+| -------------- | --------------- |
+| **D1 1 Year**  | IDR 5,000,000   |
+| **D1 2 Years** | IDR 7,000,000   |
 
 **Timeline:**
+
 - Processing: **5-10 working days**
 - Apply via: **Evisa portal** (recommended) or Indonesian Embassy
 
 **Validity:**
+
 - Starts from issue date, not first entry
 - Choice of 1 year or 2 years, cannot extend
 
@@ -340,10 +368,12 @@ Can I apply for D1 from inside Indonesia?
 **No**, D1 cannot be applied onshore (from within Indonesia).
 
 D1 must be applied from outside Indonesia:
+
 - **Evisa portal** (recommended, fully online) ✅
 - **Indonesian Embassy/Consulate** (if e-Visa not available)
 
 If you're currently in Indonesia on VOA:
+
 1. Complete your current stay
 2. Return to home country
 3. Apply for D1 via e-Visa portal or embassy
@@ -356,6 +386,7 @@ When my D1 expires, how do I renew it?
 **D1 cannot be renewed** after expiry.
 
 Process after 1/2 years:
+
 - Apply for **new D1** from embassy (fresh application)
 - Full document submission again
 - Full fee payment again
@@ -363,6 +394,7 @@ Process after 1/2 years:
 There's no "renewal" or "extension" — it's a **brand new visa**.
 
 **Tips:**
+
 - Apply for new D1 1-2 months before current one expires
 - Overlapping visas are fine
 
@@ -373,16 +405,19 @@ I often bring my laptop for remote work. Can I work on a D1?
 **Be careful here!**
 
 D1 is **purely a tourism visa**. Technically:
+
 - No working in Indonesia allowed
 - No income from Indonesian sources
 - No work permit attached
 
 **Reality:**
+
 - Remote work for overseas employer = grey area
 - Many digital nomads use this
 - Immigration rarely checks laptops
 
 **Safer option:**
+
 - If frequent travel + remote work → **E33G Digital Nomad KITAS**
 - Legal, 1 year (extendable), officially allows remote work
 
@@ -395,6 +430,7 @@ Do I need to enter through specific airports?
 **D1 allows entry from anywhere!**
 
 All international entry points:
+
 - ✅ All airports (CGK, DPS, SUB, etc.)
 - ✅ Seaports (Batam, Bintan, etc.)
 - ✅ Land borders (Entikong, Aruk, etc.)
@@ -410,10 +446,12 @@ Are there blacklisted countries that can't apply for D1?
 **D1 is open to almost all nationalities.**
 
 Countries with restrictions:
+
 - Those with strained diplomatic relations with Indonesia
 - Some may require additional screening
 
 **Smooth processing** for:
+
 - Australia, Singapore, Malaysia
 - Japan, South Korea
 - EU countries
@@ -453,15 +491,15 @@ Would you like us to assist with the processing?
 
 ## Summary Table
 
-| Aspect | Detail |
-|--------|--------|
-| **Visa Type** | D1 Tourism Multiple Entry |
-| **Validity** | 1 year or 2 years from issue |
-| **Max Stay** | 60 days per entry |
-| **Extension** | Not possible (must exit and re-enter) |
-| **Apply From** | Embassy/Consulate (offshore only) |
-| **Min Bank Balance** | USD 5,000 equivalent |
-| **Bali Zero Price** | IDR 5M (1 year) / IDR 7M (2 years) |
-| **Processing** | 5-10 working days |
-| **Work Allowed** | No (tourism only) |
-| **Entry Points** | All international ports |
+| Aspect               | Detail                                |
+| -------------------- | ------------------------------------- |
+| **Visa Type**        | D1 Tourism Multiple Entry             |
+| **Validity**         | 1 year or 2 years from issue          |
+| **Max Stay**         | 60 days per entry                     |
+| **Extension**        | Not possible (must exit and re-enter) |
+| **Apply From**       | Embassy/Consulate (offshore only)     |
+| **Min Bank Balance** | USD 5,000 equivalent                  |
+| **Bali Zero Price**  | IDR 5M (1 year) / IDR 7M (2 years)    |
+| **Processing**       | 5-10 working days                     |
+| **Work Allowed**     | No (tourism only)                     |
+| **Entry Points**     | All international ports               |

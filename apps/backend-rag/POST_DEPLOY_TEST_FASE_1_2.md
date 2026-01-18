@@ -9,12 +9,14 @@
 ## Test Summary
 
 ### ✅ Backend Deployed
+
 - **App:** nuzantara-rag
 - **Deployment:** Successful (2 machines healthy)
 - **URL:** https://nuzantara-rag.fly.dev
 - **Features:** FASE 2.1, 2.2, 2.3 deployed
 
 ### ⏳ Frontend Pending
+
 - **App:** nuzantara-mouth (Vercel)
 - **Status:** Local commit ready, push blocked by pre-existing test failures
 - **Features:** FASE 1.2, 1.3 ready to deploy
@@ -26,6 +28,7 @@
 ### 2.1: WhatsApp Status Updates (10s intervals)
 
 **Test Steps:**
+
 1. Send WhatsApp message to business number: `+62 XXX` (configured in Fly secrets)
 2. **Expected behavior:**
    - User receives status update every ~10 seconds:
@@ -36,6 +39,7 @@
    - User sees progress throughout the wait
 
 **Verification:**
+
 ```bash
 # Check logs for status updates
 fly logs -a nuzantara-rag | grep "FASE 2.1"
@@ -46,6 +50,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.1"
 ```
 
 **Success Criteria:**
+
 - [ ] Status updates sent every 10± seconds
 - [ ] Correct emoji for each phase
 - [ ] User reports improved UX (knows system is working)
@@ -55,6 +60,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.1"
 ### 2.2: WhatsApp Timeout (45s)
 
 **Test Steps:**
+
 1. Trigger a complex query that takes >45 seconds (e.g., "Explain all Indonesia visa types in detail")
 2. **Expected behavior:**
    - Status updates sent up to ~40 seconds
@@ -62,6 +68,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.1"
    - No infinite waiting
 
 **Verification:**
+
 ```bash
 # Check logs for timeout
 fly logs -a nuzantara-rag | grep "FASE 2.2"
@@ -72,6 +79,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.2"
 ```
 
 **Success Criteria:**
+
 - [ ] Query times out at exactly 45 seconds
 - [ ] Timeout message sent to user
 - [ ] Logs show timeout reason and elapsed time
@@ -82,6 +90,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.2"
 ### 2.3: Telegram Markdown Fallback
 
 **Test Steps:**
+
 1. Send Telegram message with **problematic markdown** (special characters):
    - "What's the price? (USD $100.50 - 20% off!)"
    - "PT PMA requirements: Step 1 → Step 2 → Step 3"
@@ -92,6 +101,7 @@ fly logs -a nuzantara-rag | grep "FASE 2.2"
    - Message ALWAYS delivered (no 400 errors)
 
 **Verification:**
+
 ```bash
 # Check logs for fallback strategy
 fly logs -a nuzantara-rag | grep "Telegram message sent"
@@ -103,6 +113,7 @@ fly logs -a nuzantara-rag | grep "Telegram message sent"
 ```
 
 **Success Criteria:**
+
 - [ ] All messages delivered (no 400 errors)
 - [ ] Fallback strategy logged (MarkdownV2 → HTML → Plain)
 - [ ] Formatting preserved when possible
@@ -115,6 +126,7 @@ fly logs -a nuzantara-rag | grep "Telegram message sent"
 ### 1.2: ImageGenModal State Management
 
 **Test Steps:**
+
 1. Open webapp: https://www.balizero.com/chat
 2. Login as `zero@balizero.com`
 3. Click ✨ sparkles icon in chat input bar
@@ -125,6 +137,7 @@ fly logs -a nuzantara-rag | grep "Telegram message sent"
    - State persists during conversation
 
 **Success Criteria:**
+
 - [ ] Modal opens on sparkles click
 - [ ] Modal closes on X button
 - [ ] Can generate images via modal
@@ -135,6 +148,7 @@ fly logs -a nuzantara-rag | grep "Telegram message sent"
 ### 1.3: Session ID with UUID v4
 
 **Test Steps:**
+
 1. Open webapp in **incognito window**
 2. Open browser DevTools → Console
 3. Type: `localStorage.getItem('sessionId')`
@@ -143,6 +157,7 @@ fly logs -a nuzantara-rag | grep "Telegram message sent"
 6. Check sessionId again → should be **different** (new session)
 
 **Verification:**
+
 ```bash
 # Check backend logs for session ID format
 fly logs -a nuzantara-rag | grep "init_session"
@@ -152,6 +167,7 @@ fly logs -a nuzantara-rag | grep "init_session"
 ```
 
 **Success Criteria:**
+
 - [ ] Session IDs follow UUID v4 format
 - [ ] No collisions (run 100+ concurrent tests)
 - [ ] Logs confirm UUID v4 generation
@@ -164,6 +180,7 @@ fly logs -a nuzantara-rag | grep "init_session"
 ### Unified Session Test
 
 **Test Steps:**
+
 1. User registers on webapp with phone number verification
 2. User sends message on **webapp**
 3. User sends message on **WhatsApp** (same phone)
@@ -171,11 +188,13 @@ fly logs -a nuzantara-rag | grep "init_session"
 5. Check webapp conversation history
 
 **Expected Behavior:**
+
 - All 3 messages appear in **one unified conversation**
 - Session ID format: `unified_session_{user_id}` (not channel-specific)
 - Conversation context preserved across channels
 
 **Success Criteria:**
+
 - [ ] Webapp shows messages from all 3 channels
 - [ ] Session ID shared across channels
 - [ ] Conversation context flows correctly
@@ -221,6 +240,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ```
 
 **Expected:**
+
 - avg_duration: 25-35 seconds
 - avg_updates: 2-4 updates per query
 - timeout_rate: <5%
@@ -257,6 +277,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ```
 
 **Expected:**
+
 - markdownv2_success: 70-80%
 - html_fallback: 15-25%
 - plain_fallback: 1-5%
@@ -267,6 +288,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ## Deployment Checklist
 
 ### Backend (✅ COMPLETED)
+
 - [x] FASE 2.1 code deployed (status updates)
 - [x] FASE 2.2 code deployed (timeout handling)
 - [x] FASE 2.3 code deployed (markdown fallback)
@@ -275,6 +297,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 - [ ] Verify logs in production (run tests above)
 
 ### Frontend (⏳ PENDING)
+
 - [x] FASE 1.2 code committed locally (ImageGenModal)
 - [x] FASE 1.3 code committed locally (UUID v4)
 - [x] Logging added to frontend
@@ -289,6 +312,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 ### Local Test Failures (Not Blocking)
 
 **Issue:** 22 pre-existing test failures in unrelated components:
+
 - `useChatTTS.test.ts` - 4 failures (TTS error handling)
 - `useChatInput.test.ts` - 3 failures (toast callbacks)
 - `StatsCard.memo.test.tsx` - 1 failure (React.memo)
@@ -296,6 +320,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 **Impact:** Blocks git push due to Husky pre-push hook
 
 **Workaround Options:**
+
 1. Fix 22 failing tests (unrelated to FASE 1+2)
 2. Push frontend with `--no-verify` (bypass hook)
 3. Manually deploy frontend to Vercel
@@ -334,6 +359,7 @@ AND created_at > NOW() - INTERVAL '24 hours';
 If critical issues found in production:
 
 **Backend Rollback:**
+
 ```bash
 # Revert to previous release
 fly releases -a nuzantara-rag
@@ -341,6 +367,7 @@ fly deploy --image registry.fly.io/nuzantara-rag:deployment-PREVIOUS_ID
 ```
 
 **Frontend Rollback:**
+
 ```bash
 # Vercel automatic rollback via dashboard
 # Or git revert + push

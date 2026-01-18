@@ -114,11 +114,13 @@ vercel env ls | grep NEXT_PUBLIC_API_URL
 ### Problema: Variabili presenti ma non funzionano
 
 **Possibili cause**:
+
 1. Variabili non sono per l'ambiente corretto (es. solo Development ma serve Production)
 2. Valore contiene caratteri extra o spazi
 3. Deployment non è stato rigenerato dopo l'aggiunta
 
 **Soluzione**:
+
 1. Verifica che le variabili siano per **Production**
 2. Copia e incolla il valore esatto: `https://nuzantara-rag.fly.dev`
 3. Redeploya il progetto
@@ -127,7 +129,8 @@ vercel env ls | grep NEXT_PUBLIC_API_URL
 
 **Causa**: Le variabili sono state aggiunte dopo il deployment
 
-**Soluzione**: 
+**Soluzione**:
+
 - Redeploya il progetto (vedi sopra)
 
 ### Problema: Variabili diverse per ambiente

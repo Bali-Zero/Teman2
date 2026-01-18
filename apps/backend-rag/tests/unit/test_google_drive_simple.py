@@ -254,7 +254,9 @@ class TestGoogleDriveRouterSimple:
             mock_service.is_configured.return_value = True
             mock_service.root_folder_id = "folder123"
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_connection_status(mock_current_user, mock_db_pool)
 
                 assert result.connected is True
@@ -282,7 +284,9 @@ class TestGoogleDriveRouterSimple:
             mock_service.is_configured.return_value = True
             mock_service.get_authorization_url.return_value = "https://auth.google.com"
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_auth_url(mock_request, mock_current_user, mock_db_pool)
 
                 assert result["auth_url"] == "https://auth.google.com"
@@ -313,7 +317,9 @@ class TestGoogleDriveRouterSimple:
             mock_service = MagicMock()
             mock_service.is_configured.return_value = False
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 with pytest.raises(HTTPException) as exc_info:
                     await get_auth_url(mock_request, mock_current_user, mock_db_pool)
 
@@ -338,7 +344,9 @@ class TestGoogleDriveRouterSimple:
             mock_service = MagicMock()
             mock_service.exchange_code = AsyncMock(return_value=None)
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await oauth_callback(
                     code="auth_code", state="user123:token123", error=None, db_pool=mock_db_pool
                 )
@@ -408,7 +416,9 @@ class TestGoogleDriveRouterSimple:
             mock_service = MagicMock()
             mock_service.exchange_code = AsyncMock(side_effect=Exception("Exchange failed"))
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await oauth_callback(
                     code="auth_code", state="user123:token123", error=None, db_pool=mock_db_pool
                 )
@@ -433,7 +443,9 @@ class TestGoogleDriveRouterSimple:
             mock_service = MagicMock()
             mock_service.disconnect = AsyncMock(return_value=True)
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await disconnect(mock_current_user, mock_db_pool)
 
                 assert result["success"] is True
@@ -458,7 +470,9 @@ class TestGoogleDriveRouterSimple:
             mock_service.root_folder_id = "folder123"
 
             with (
-                patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service),
+                patch(
+                    "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+                ),
                 patch("backend.app.routers.google_drive.httpx.AsyncClient") as mock_client,
             ):
                 # Mock HTTP client for user info
@@ -496,7 +510,9 @@ class TestGoogleDriveRouterSimple:
             mock_service.is_configured.return_value = True
             mock_service.get_authorization_url.return_value = "https://auth.google.com"
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_system_auth_url(mock_current_user, mock_db_pool)
 
                 assert result["auth_url"] == "https://auth.google.com"
@@ -561,7 +577,9 @@ class TestGoogleDriveRouterSimple:
                 return_value=[{"id": "folder1", "name": "Folder 1"}]
             )
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await list_files(
                     folder_id="folder123",
                     page_token="token456",
@@ -600,7 +618,9 @@ class TestGoogleDriveRouterSimple:
             mock_service = MagicMock()
             mock_service.is_connected = AsyncMock(return_value=False)
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 with pytest.raises(HTTPException) as exc_info:
                     await list_files(
                         folder_id=None,
@@ -639,7 +659,9 @@ class TestGoogleDriveRouterSimple:
                 }
             )
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_file("file1", mock_current_user, mock_db_pool)
 
                 assert result.id == "file1"
@@ -673,7 +695,9 @@ class TestGoogleDriveRouterSimple:
                 ]
             )
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await search_files(
                     q="search query",
                     page_size=20,
@@ -710,7 +734,9 @@ class TestGoogleDriveRouterSimple:
                 return_value={"id": "folder1", "name": "User Folder"}
             )
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_my_folder(mock_current_user, mock_db_pool)
 
                 assert result["found"] is True
@@ -739,7 +765,9 @@ class TestGoogleDriveRouterSimple:
             mock_service.is_connected = AsyncMock(return_value=True)
             mock_service.get_user_folder = AsyncMock(return_value=None)
 
-            with patch("backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service):
+            with patch(
+                "backend.app.routers.google_drive.GoogleDriveService", return_value=mock_service
+            ):
                 result = await get_my_folder(mock_current_user, mock_db_pool)
 
                 assert result["found"] is False

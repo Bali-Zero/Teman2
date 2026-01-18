@@ -10,6 +10,7 @@
 ### Processi Zombie Trovati: **20**
 
 **Lista Processi Zombie:**
+
 - PID 1892, 1704, 2795, 3032, 3033, 1469, 1340, 2039, 1682, 1663, 1656, 1644, 1643, 1598, 1388, 1338, 1337, 1336, 11467, 11424
 
 **Stato:** Tutti con nome `<defunct>`
@@ -21,6 +22,7 @@
 ### Processi Stuck Trovati: **1**
 
 **Processo Stuck:**
+
 - **PID 55790:** `bird` (Cloudflare)
   - CPU: 0.0%
   - MEM: 28 MB
@@ -35,12 +37,12 @@
 
 ### Processi con CPU Alta ma Stato Sleeping
 
-| PID | Processo | CPU | MEM | Note |
-|-----|----------|-----|-----|------|
+| PID   | Processo      | CPU   | MEM  | Note       |
+| ----- | ------------- | ----- | ---- | ---------- |
 | 64262 | Google Chrome | 78.8% | 3.3% | ⚠️ Anomalo |
-| 625 | iTerm2 | 46.0% | 1.9% | ⚠️ Anomalo |
+| 625   | iTerm2        | 46.0% | 1.9% | ⚠️ Anomalo |
 | 64197 | Google Chrome | 10.7% | 1.2% | ⚠️ Anomalo |
-| 64238 | Google Chrome | 9.5% | 0.5% | ⚠️ Anomalo |
+| 64238 | Google Chrome | 9.5%  | 0.5% | ⚠️ Anomalo |
 
 **Problema:** Processi in stato "sleeping" ma consumano molta CPU
 
@@ -49,6 +51,7 @@
 ### Processi con Path Temporanei
 
 **Claude AppTranslocation:**
+
 - Molti processi Claude in `/private/var/folders/.../T/AppTranslocation/`
 - Path temporaneo indica app non installata correttamente
 - Processi multipli dello stesso tipo
@@ -66,10 +69,12 @@ Processi che sono stati terminati ma il processo padre non ha chiamato `wait()` 
 ### Analisi Zombie Trovati
 
 **Tutti i 20 zombie hanno PPID 1133:**
+
 - **PPID 1133:** Cursor Helper (Plugin): extension-host
 - **Problema:** Cursor non sta gestendo correttamente la terminazione dei processi figlio
 
 **Lista Zombie:**
+
 - PID 1892, 1704, 2795, 3032, 3033, 1469, 1340, 2039, 1682, 1663, 1656, 1644, 1643, 1598, 1388, 1338, 1337, 1336, 11467, 11424
 
 ### Perché Sono un Problema?
@@ -81,10 +86,12 @@ Processi che sono stati terminati ma il processo padre non ha chiamato `wait()` 
 ### Come Risolvere?
 
 **Metodo 1: Riavviare Cursor**
+
 - Chiudere e riaprire Cursor
 - Rimuove automaticamente i processi zombie
 
 **Metodo 2: Terminare Processo Padre (PPID 1133)**
+
 ```bash
 # Terminare extension-host di Cursor
 kill 1133
@@ -92,6 +99,7 @@ kill 1133
 ```
 
 **Metodo 3: Riavviare Sistema**
+
 - Riavviare Mac rimuove tutti i processi zombie
 
 ---
@@ -101,6 +109,7 @@ kill 1133
 ### Processo Stuck: `bird` (PID 55790)
 
 **Dettagli:**
+
 - **Nome:** bird (iCloudDriveCore - Apple)
 - **CPU:** 38.7%
 - **MEM:** 44 MB
@@ -110,6 +119,7 @@ kill 1133
 **Problema:** Processo iCloud Drive che potrebbe essere bloccato
 
 **Azione:**
+
 ```bash
 # Riprendere processo
 kill -CONT 55790
@@ -127,6 +137,7 @@ kill 55790
 **Problema:** 78.8% CPU ma stato sleeping
 
 **Azione:**
+
 - Chiudere tab Chrome non necessarie
 - Oppure riavviare Chrome
 
@@ -135,6 +146,7 @@ kill 55790
 **Problema:** 46.0% CPU ma stato sleeping
 
 **Azione:**
+
 - Verificare se ci sono script in esecuzione
 - Riavviare iTerm2 se necessario
 

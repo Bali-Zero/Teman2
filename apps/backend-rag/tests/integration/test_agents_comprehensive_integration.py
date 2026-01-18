@@ -172,7 +172,9 @@ class TestAgentsComprehensiveIntegration:
             )
 
             # Initialize compliance monitor
-            with patch("backend.services.proactive_compliance_monitor.SearchService") as mock_search:
+            with patch(
+                "backend.services.proactive_compliance_monitor.SearchService"
+            ) as mock_search:
                 from backend.services.proactive_compliance_monitor import (
                     ProactiveComplianceMonitor,
                 )
@@ -401,10 +403,14 @@ class TestAgentsComprehensiveIntegration:
 
             # Initialize service with mocked dependencies
             with (
-                patch("backend.services.cross_oracle_synthesis_service.SearchService") as mock_search,
+                patch(
+                    "backend.services.cross_oracle_synthesis_service.SearchService"
+                ) as mock_search,
                 patch("backend.services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai,
             ):
-                from backend.services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+                from backend.services.cross_oracle_synthesis_service import (
+                    CrossOracleSynthesisService,
+                )
 
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance

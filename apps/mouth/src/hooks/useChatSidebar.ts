@@ -1,11 +1,11 @@
 /**
  * Custom hook for managing chat sidebar state
- * 
+ *
  * Handles:
  * - Sidebar open/close state
  * - Search docs modal state
  * - Sidebar interactions
- * 
+ *
  * @returns Sidebar state and handlers
  */
 
@@ -19,7 +19,7 @@ export interface UseChatSidebarReturn {
   // State
   sidebarOpen: boolean;
   isSearchDocsOpen: boolean;
-  
+
   // Handlers
   openSidebar: () => void;
   closeSidebar: () => void;
@@ -37,10 +37,10 @@ export function useChatSidebar(): UseChatSidebarReturn {
       component: 'useChatSidebar',
       action: 'openSidebar',
     });
-    
+
     // Track metrics
     chatMetrics.sidebarOpened();
-    
+
     const userProfile = api.getUserProfile();
     trackEvent('chat_sidebar_opened', {}, userProfile?.email);
 
@@ -52,10 +52,10 @@ export function useChatSidebar(): UseChatSidebarReturn {
       component: 'useChatSidebar',
       action: 'closeSidebar',
     });
-    
+
     // Track metrics
     chatMetrics.sidebarClosed();
-    
+
     const userProfile = api.getUserProfile();
     trackEvent('chat_sidebar_closed', {}, userProfile?.email);
 
@@ -75,7 +75,7 @@ export function useChatSidebar(): UseChatSidebarReturn {
       component: 'useChatSidebar',
       action: 'openSearchDocs',
     });
-    
+
     const userProfile = api.getUserProfile();
     trackEvent('chat_search_docs_opened', {}, userProfile?.email);
 
@@ -87,7 +87,7 @@ export function useChatSidebar(): UseChatSidebarReturn {
       component: 'useChatSidebar',
       action: 'closeSearchDocs',
     });
-    
+
     setIsSearchDocsOpen(false);
   }, []);
 

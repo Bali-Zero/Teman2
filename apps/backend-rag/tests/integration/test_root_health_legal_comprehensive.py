@@ -188,7 +188,9 @@ class TestLegalIngestRouter:
     @pytest.mark.asyncio
     async def test_legal_ingestion_service_initialization(self):
         """Test LegalIngestionService initialization"""
-        with patch("backend.services.legal_ingestion_service.LegalIngestionService") as mock_service:
+        with patch(
+            "backend.services.legal_ingestion_service.LegalIngestionService"
+        ) as mock_service:
             from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()

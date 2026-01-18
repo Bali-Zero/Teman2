@@ -19,6 +19,7 @@
 ## Test Coverage Breakdown
 
 ### Pydantic Model Validation Tests (12 tests)
+
 - ✅ `PracticeCreate` validation (7 tests)
   - Valid practice creation
   - Invalid status, priority validation
@@ -32,6 +33,7 @@
   - All fields can be None
 
 ### Create Practice Endpoint Tests (7 tests)
+
 - ✅ Successful practice creation
 - ✅ Practice creation with custom quoted price
 - ✅ Practice type not found (404)
@@ -41,6 +43,7 @@
 - ✅ Missing created_by parameter (422)
 
 ### List Practices Endpoint Tests (10 tests)
+
 - ✅ List without filters
 - ✅ Filter by client_id
 - ✅ Filter by status
@@ -53,12 +56,14 @@
 - ✅ Database error handling
 
 ### Get Active Practices Endpoint Tests (4 tests)
+
 - ✅ Get active practices without filter
 - ✅ Filter by assigned_to
 - ✅ Empty results
 - ✅ Database error handling
 
 ### Get Upcoming Renewals Endpoint Tests (6 tests)
+
 - ✅ Default days parameter
 - ✅ Custom days parameter
 - ✅ Invalid days (too low)
@@ -67,6 +72,7 @@
 - ✅ Database error handling
 
 ### Get Practice By ID Endpoint Tests (5 tests)
+
 - ✅ Successful retrieval
 - ✅ Practice not found (404)
 - ✅ Invalid ID - zero (422)
@@ -74,6 +80,7 @@
 - ✅ Database error handling
 
 ### Update Practice Endpoint Tests (8 tests)
+
 - ✅ Update status
 - ✅ Update multiple fields
 - ✅ Update with expiry date (creates renewal alert)
@@ -84,6 +91,7 @@
 - ✅ Database error handling
 
 ### Add Document Endpoint Tests (5 tests)
+
 - ✅ Successfully add document
 - ✅ Add to existing documents
 - ✅ Practice not found (404)
@@ -91,17 +99,20 @@
 - ✅ Database error handling
 
 ### Get Practices Stats Endpoint Tests (4 tests)
+
 - ⏭️ Get stats success (SKIPPED - cache decorator issue)
 - ⏭️ Empty database (SKIPPED - cache decorator issue)
 - ⏭️ Database error (SKIPPED - cache decorator issue)
 - ✅ Caching behavior verification
 
 ### Error Handling Tests (3 tests)
+
 - ✅ Unique constraint violation (400)
 - ✅ Foreign key violation (400)
 - ✅ Check constraint violation (400)
 
 ### Edge Case Tests (7 tests)
+
 - ✅ Practice with all optional fields
 - ✅ Update with all price fields
 - ✅ Practice with zero quoted price
@@ -119,6 +130,7 @@ This represents a known testing limitation with decorated endpoints that use cac
 ## Test Architecture
 
 ### Mock Data Classes
+
 - Used dataclasses with `MockRecord` to create proper asyncpg.Record mocks
 - Separate factory functions for different record types:
   - `create_practice_record()`
@@ -126,10 +138,12 @@ This represents a known testing limitation with decorated endpoints that use cac
   - `create_list_practice_record()`
 
 ### Dependency Overrides
+
 - Proper override of `get_database_pool` dependency
 - Correct async context manager setup for db_pool.acquire()
 
 ### Test Organization
+
 - Grouped by endpoint/functionality
 - Consistent naming conventions
 - Clear docstrings for each test

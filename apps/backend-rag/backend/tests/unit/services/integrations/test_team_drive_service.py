@@ -702,7 +702,9 @@ class TestMetricsIntegration:
                         mock_client.post = AsyncMock(return_value=mock_response)
                         mock_httpx.return_value = mock_client
 
-                        from backend.services.integrations.team_drive_service import TeamDriveService
+                        from backend.services.integrations.team_drive_service import (
+                            TeamDriveService,
+                        )
 
                         service = TeamDriveService(db_pool=mock_db_pool_expired_token)
                         await service._refresh_oauth_token("refresh_token")

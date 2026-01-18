@@ -4,9 +4,10 @@ Unit tests for OrchestratorResponseBuilder
 Test coverage target: >95%
 """
 
-import pytest
 import time
 from unittest.mock import MagicMock
+
+import pytest
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder

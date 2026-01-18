@@ -10,16 +10,16 @@ import json
 import os
 import re
 import subprocess
-import sys
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import tempfile
 
 import fitz  # PyMuPDF
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 LAMPIRAN_DIR = os.path.join(PROJECT_ROOT, "lampiran")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "lampiran_analysis")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -61,7 +61,7 @@ def extract_page_as_image(pdf_path: str, page_num: int, output_path: str) -> boo
 def call_gemini_cli_with_image(image_path: str, prompt: str) -> str:
     """
     Chiama Gemini CLI con SOLO l'immagine della pagina (non il PDF).
-    
+
     Prova diversi formati di comando:
     1. gemini analyze --image <path> --prompt "<prompt>"
     2. gemini vision --image <path> --prompt "<prompt>"
@@ -70,37 +70,48 @@ def call_gemini_cli_with_image(image_path: str, prompt: str) -> str:
     commands_to_try = [
         ["gemini", "analyze", "--image", image_path, "--prompt", prompt],
         ["gemini", "vision", "--image", image_path, "--prompt", prompt],
-        ["python", "-m", "gemini", "analyze", "--image", image_path, "--prompt", prompt],
-        ["python3", "-m", "gemini", "analyze", "--image", image_path, "--prompt", prompt],
+        [
+            "python",
+            "-m",
+            "gemini",
+            "analyze",
+            "--image",
+            image_path,
+            "--prompt",
+            prompt,
+        ],
+        [
+            "python3",
+            "-m",
+            "gemini",
+            "analyze",
+            "--image",
+            image_path,
+            "--prompt",
+            prompt,
+        ],
     ]
-    
+
     for cmd in commands_to_try:
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=True
+                cmd, capture_output=True, text=True, timeout=120, check=True
             )
             return result.stdout
         except subprocess.TimeoutExpired:
             return "Error: Timeout"
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             # Prova comando successivo
             continue
         except FileNotFoundError:
             # Prova comando successivo
             continue
-    
+
     return "Error: Gemini CLI not found or command format incorrect"
 
 
 async def analyze_page_with_gemini_cli(
-    pdf_path: str,
-    page_num: int,
-    pdf_name: str,
-    agent_id: int
+    pdf_path: str, page_num: int, pdf_name: str, agent_id: int
 ) -> Dict[str, Any]:
     """
     Analizza UNA SINGOLA PAGINA usando Gemini CLI.
@@ -171,33 +182,39 @@ Rispondi SOLO in formato JSON valido:
     "observations": "..."
 }}
 """
-    
+
     # Estrai SOLO questa pagina come immagine PNG
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         image_path = tmp.name
-    
+
     if not extract_page_as_image(pdf_path, page_num, image_path):
         return {"page": page_num, "error": "Failed to extract page"}
-    
+
     try:
         # Chiama Gemini CLI con SOLO l'immagine della pagina (non il PDF)
-        print(f"  [Agent {agent_id}] Invio pagina {page_num} come immagine PNG a Gemini CLI...")
+        print(
+            f"  [Agent {agent_id}] Invio pagina {page_num} come immagine PNG a Gemini CLI..."
+        )
         result = await asyncio.to_thread(call_gemini_cli_with_image, image_path, prompt)
-        
+
         # Parse JSON
         try:
             result_clean = result
             if "```json" in result:
-                result_clean = re.sub(r'```json\s*', '', result)
-                result_clean = re.sub(r'```\s*$', '', result_clean, flags=re.MULTILINE)
+                result_clean = re.sub(r"```json\s*", "", result)
+                result_clean = re.sub(r"```\s*$", "", result_clean, flags=re.MULTILINE)
             elif "```" in result:
-                result_clean = re.sub(r'```[a-z]*\s*', '', result)
-                result_clean = re.sub(r'```\s*$', '', result_clean, flags=re.MULTILINE)
-            
+                result_clean = re.sub(r"```[a-z]*\s*", "", result)
+                result_clean = re.sub(r"```\s*$", "", result_clean, flags=re.MULTILINE)
+
             analysis = json.loads(result_clean)
             return {"page": page_num, "analysis": analysis}
         except json.JSONDecodeError as e:
-            return {"page": page_num, "raw_response": result[:1000], "parse_error": str(e)}
+            return {
+                "page": page_num,
+                "raw_response": result[:1000],
+                "parse_error": str(e),
+            }
     finally:
         # Cleanup: elimina immagine temporanea
         if os.path.exists(image_path):
@@ -205,11 +222,7 @@ Rispondi SOLO in formato JSON valido:
 
 
 async def analyze_pages_range(
-    pdf_path: str,
-    pdf_name: str,
-    start_page: int,
-    end_page: int,
-    agent_id: int
+    pdf_path: str, pdf_name: str, start_page: int, end_page: int, agent_id: int
 ) -> Dict[str, Any]:
     """Analizza un range di pagine - UNA PAGINA ALLA VOLTA."""
     resoconto = {
@@ -220,31 +233,41 @@ async def analyze_pages_range(
         "end_page": end_page,
         "total_pages": end_page - start_page + 1,
         "analysis_date": datetime.now().isoformat(),
-        "results": []
+        "results": [],
     }
-    
-    print(f"  [Agent {agent_id}] Analizzando pagine {start_page}-{end_page} ({end_page - start_page + 1} pagine)...")
-    print(f"  [Agent {agent_id}] ⚠️  IMPORTANTE: Processando pagina per pagina, NON caricando tutto il PDF")
-    
+
+    print(
+        f"  [Agent {agent_id}] Analizzando pagine {start_page}-{end_page} ({end_page - start_page + 1} pagine)..."
+    )
+    print(
+        f"  [Agent {agent_id}] ⚠️  IMPORTANTE: Processando pagina per pagina, NON caricando tutto il PDF"
+    )
+
     pages_analyzed = 0
     for page_num in range(start_page, end_page + 1):
         try:
             # Processa UNA pagina alla volta
-            result = await analyze_page_with_gemini_cli(pdf_path, page_num, pdf_name, agent_id)
+            result = await analyze_page_with_gemini_cli(
+                pdf_path, page_num, pdf_name, agent_id
+            )
             resoconto["results"].append(result)
             pages_analyzed += 1
-            
+
             if page_num % 10 == 0:
-                print(f"  [Agent {agent_id}] Progress: {page_num - start_page + 1}/{end_page - start_page + 1} pagine")
-            
+                print(
+                    f"  [Agent {agent_id}] Progress: {page_num - start_page + 1}/{end_page - start_page + 1} pagine"
+                )
+
             # Rate limiting tra pagine
             await asyncio.sleep(DELAY_BETWEEN_PAGES)
         except Exception as e:
             print(f"  [Agent {agent_id}] ⚠️  Errore pagina {page_num}: {e}")
             resoconto["results"].append({"page": page_num, "error": str(e)})
-    
+
     resoconto["pages_analyzed"] = pages_analyzed
-    print(f"  [Agent {agent_id}] ✅ Completato: {pages_analyzed}/{end_page - start_page + 1} pagine")
+    print(
+        f"  [Agent {agent_id}] ✅ Completato: {pages_analyzed}/{end_page - start_page + 1} pagine"
+    )
     return resoconto
 
 
@@ -267,34 +290,34 @@ async def main():
     print("=" * 70)
     print("⚠️  IMPORTANTE: Processando pagina per pagina, NON caricando tutto il PDF")
     print("=" * 70)
-    
+
     pdf_path = os.path.join(LAMPIRAN_DIR, PDF_FILENAME)
     if not os.path.exists(pdf_path):
         print(f"❌ PDF non trovato: {pdf_path}")
         return
-    
+
     total_pages = get_pdf_pages(pdf_path)
     print(f"📄 Totale pagine: {total_pages}")
-    
+
     num_agents = min(NUM_AGENTS, max(1, total_pages // MIN_PAGES_PER_AGENT))
     print(f"🤖 Agenti: {num_agents}")
-    
+
     page_chunks = split_pages_for_agents(total_pages, num_agents)
     print(f"📦 Chunk: {len(page_chunks)}")
     for i, (start, end) in enumerate(page_chunks, 1):
         print(f"   Agent {i}: pagine {start}-{end} ({end - start + 1} pagine)")
-    
+
     tasks = []
     for agent_id, (start, end) in enumerate(page_chunks, 1):
         task = analyze_pages_range(pdf_path, PDF_NAME, start, end, agent_id)
         tasks.append(task)
-    
+
     print(f"\n🔄 Avvio {len(tasks)} agenti in parallelo...")
     print("⚠️  Ogni agente processa UNA PAGINA ALLA VOLTA come immagine PNG")
     start_time = time.time()
     resoconti = await asyncio.gather(*tasks, return_exceptions=True)
     elapsed = time.time() - start_time
-    
+
     pdf_resoconto = {
         "pdf_name": PDF_NAME,
         "pdf_path": pdf_path,
@@ -302,9 +325,9 @@ async def main():
         "num_agents": num_agents,
         "analysis_date": datetime.now().isoformat(),
         "elapsed_time_seconds": elapsed,
-        "agents": []
+        "agents": [],
     }
-    
+
     total_analyzed = 0
     for resoconto in resoconti:
         if isinstance(resoconto, Exception):
@@ -312,17 +335,22 @@ async def main():
         else:
             pdf_resoconto["agents"].append(resoconto)
             total_analyzed += resoconto.get("pages_analyzed", 0)
-    
+
     pdf_resoconto["total_pages_analyzed"] = total_analyzed
-    
+
     safe_name = PDF_NAME.replace("/", "_").replace(" ", "_")
-    output_file = os.path.join(OUTPUT_DIR, f"resoconto_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    output_file = os.path.join(
+        OUTPUT_DIR,
+        f"resoconto_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+    )
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(pdf_resoconto, f, indent=2, ensure_ascii=False)
-    
+
     print(f"\n✅ Resoconto salvato: {os.path.basename(output_file)}")
-    print(f"📊 Pagine analizzate: {total_analyzed}/{total_pages} ({total_analyzed/total_pages*100:.1f}%)")
-    print(f"⏱️  Tempo: {elapsed/60:.1f} minuti")
+    print(
+        f"📊 Pagine analizzate: {total_analyzed}/{total_pages} ({total_analyzed / total_pages * 100:.1f}%)"
+    )
+    print(f"⏱️  Tempo: {elapsed / 60:.1f} minuti")
     print("\n" + "=" * 70)
 
 

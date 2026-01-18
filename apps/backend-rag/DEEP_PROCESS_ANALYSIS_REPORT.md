@@ -9,13 +9,13 @@
 
 ### 1. Processi con CPU Molto Alta 🔴
 
-| PID | Processo | CPU | MEM | Problema |
-|-----|----------|-----|-----|----------|
-| **5437** | cursor-agent | 143.1% | 3.7% | 🔴 CRITICO |
-| **69012** | Documents | 98.5% | 1.5% | 🔴 CRITICO |
-| **687** | fileproviderd | 81.3% | 0.3% | 🔴 CRITICO |
+| PID       | Processo       | CPU    | MEM  | Problema   |
+| --------- | -------------- | ------ | ---- | ---------- |
+| **5437**  | cursor-agent   | 143.1% | 3.7% | 🔴 CRITICO |
+| **69012** | Documents      | 98.5%  | 1.5% | 🔴 CRITICO |
+| **687**   | fileproviderd  | 81.3%  | 0.3% | 🔴 CRITICO |
 | **64538** | VirtualMachine | 103.8% | 8.1% | 🔴 CRITICO |
-| **74487** | Chrome | 66.2% | 3.3% | ⚠️ ALTO |
+| **74487** | Chrome         | 66.2%  | 3.3% | ⚠️ ALTO    |
 
 **Totale CPU Consumata:** ~493% (su 10 core = 49% del sistema!)
 
@@ -25,12 +25,12 @@
 
 ### 2. Processi con File Aperti Molti ⚠️
 
-| PID | Processo | File Aperti | Note |
-|-----|----------|-------------|------|
-| **64538** | VirtualMachine | 7,711 | ⚠️ Molto alto |
-| **702** | corespotlightd | 508 | ⚠️ Alto |
-| **64197** | Chrome | 369 | ⚠️ Alto |
-| **1609** | Docker backend | 346 | ⚠️ Alto |
+| PID       | Processo       | File Aperti | Note          |
+| --------- | -------------- | ----------- | ------------- |
+| **64538** | VirtualMachine | 7,711       | ⚠️ Molto alto |
+| **702**   | corespotlightd | 508         | ⚠️ Alto       |
+| **64197** | Chrome         | 369         | ⚠️ Alto       |
+| **1609**  | Docker backend | 346         | ⚠️ Alto       |
 
 **Problema:** Troppi file aperti possono causare problemi di performance
 
@@ -38,12 +38,12 @@
 
 ### 3. Processi con Network Attivo ⚠️
 
-| PID | Processo | Connessioni | Note |
-|-----|----------|-------------|------|
-| **1609** | Docker backend | 23 | Network attivo |
-| **64240** | Chrome | 10 | Network attivo |
-| **1796** | Docker | 10 | Network attivo |
-| **1664** | Google Drive | 7 | Network attivo |
+| PID       | Processo       | Connessioni | Note           |
+| --------- | -------------- | ----------- | -------------- |
+| **1609**  | Docker backend | 23          | Network attivo |
+| **64240** | Chrome         | 10          | Network attivo |
+| **1796**  | Docker         | 10          | Network attivo |
+| **1664**  | Google Drive   | 7           | Network attivo |
 
 **Nota:** Network attivo è normale per queste app, ma può consumare risorse
 
@@ -51,11 +51,11 @@
 
 ### 4. Processi con CPU Alta ma Sleeping ⚠️
 
-| PID | Processo | CPU | MEM | Problema |
-|-----|----------|-----|-----|----------|
-| **64238** | Chrome | 15.6% | 0.4% | CPU alta sleeping |
-| **625** | iTerm2 | 13.7% | 0.9% | CPU alta sleeping |
-| **48324** | Claude | 18.3% | 2.6% | CPU alta sleeping |
+| PID       | Processo | CPU   | MEM  | Problema          |
+| --------- | -------- | ----- | ---- | ----------------- |
+| **64238** | Chrome   | 15.6% | 0.4% | CPU alta sleeping |
+| **625**   | iTerm2   | 13.7% | 0.9% | CPU alta sleeping |
+| **48324** | Claude   | 18.3% | 2.6% | CPU alta sleeping |
 
 **Problema:** Processi in stato sleeping ma consumano CPU (anomalo)
 
@@ -63,11 +63,11 @@
 
 ### 5. Processi con Stato Anomalo ⚠️
 
-| PID | Processo | Stato | Note |
-|-----|----------|-------|------|
-| **64538** | VirtualMachine | Us | Stato anomalo |
-| **72227** | bird (iCloud) | U | Stato anomalo |
-| **389** | revisiond | Us | Stato anomalo |
+| PID       | Processo       | Stato | Note          |
+| --------- | -------------- | ----- | ------------- |
+| **64538** | VirtualMachine | Us    | Stato anomalo |
+| **72227** | bird (iCloud)  | U     | Stato anomalo |
+| **389**   | revisiond      | Us    | Stato anomalo |
 
 **Nota:** Stati 'U' e 'Us' sono stati macOS non standard (uninterruptible sleep)
 
@@ -76,6 +76,7 @@
 ### 6. Processi con Path Temporanei ⚠️
 
 **Claude AppTranslocation:**
+
 - PID 48210: Path in `/private/var/folders/.../T/AppTranslocation/`
 - Indica app non installata correttamente
 - Molti processi Claude in path temporaneo
@@ -87,12 +88,14 @@
 ### 7. Processi con Environment Variables Sensibili ⚠️
 
 **Trovati Token in Environment:**
+
 - `GITHUB_TOKEN`: Presente in vari processi
 - `BRAVE_API_KEY`: Presente in vari processi
 
 **Nota:** ⚠️ Token visibili in processi (normale ma da considerare per sicurezza)
 
-**Raccomandazione:** 
+**Raccomandazione:**
+
 - Usare keychain per token sensibili
 - Non esportare token in environment variables
 
@@ -101,16 +104,19 @@
 ## 📊 STATISTICHE
 
 ### Processi Totali
+
 - **Totale:** ~479 processi
 - **Zombie:** 0 ✅
 - **Stuck:** 1 (nuovo processo bird)
 - **Anomali:** 10+
 
 ### Processi Pesanti (CPU > 50%)
+
 - **4 processi** consumano ~442% CPU totale
 - **Impatto:** Sistema molto lento
 
 ### File Aperti
+
 - **Top processo:** VirtualMachine con 8,184 file aperti
 - **Problema:** Potenziale limite file descriptor
 
@@ -123,24 +129,28 @@
 #### 1. Terminare Processi con CPU Molto Alta
 
 **cursor-agent (PID 5437):** 143.1% CPU
+
 ```bash
 kill 5437
 # Oppure riavviare Cursor
 ```
 
 **Documents (PID 69012):** 98.5% CPU
+
 ```bash
 kill 69012
 # Oppure chiudere app Documents
 ```
 
 **fileproviderd (PID 687):** 81.3% CPU
+
 ```bash
 # Processo sistema - verificare cosa sta facendo
 sudo fs_usage -f filesys -w 1 | grep fileproviderd
 ```
 
 **VirtualMachine (PID 64538):** 103.8% CPU, 7,711 file aperti
+
 ```bash
 kill 64538
 # Oppure chiudere VM dall'app Virtualization
@@ -176,7 +186,8 @@ kill 64538
 
 **Problema:** VM consuma 104.9% CPU e ha 8,184 file aperti
 
-**Azione:** 
+**Azione:**
+
 - Verificare se VM è necessaria
 - Chiudere se non necessaria
 
@@ -189,6 +200,7 @@ kill 64538
 **Problema:** fileproviderd consuma 97.4% CPU
 
 **Azione:**
+
 ```bash
 # Verificare attività
 sudo fs_usage -f filesys -w 1 | grep fileproviderd
@@ -254,12 +266,14 @@ lsof -i 2>/dev/null | awk 'NR>1 {print $2}' | sort | uniq -c | sort -rn | head -
 4. ⚠️ **Claude** in path temporaneo (reinstallare)
 
 **Azioni Immediate:**
+
 - Terminare processi con CPU molto alta
 - Chiudere Documents se non necessario
 - Riavviare Cursor
 - Verificare VirtualMachine
 
 **Risultato Atteso:**
+
 - CPU usage: Ridotto significativamente
 - RAM: Liberata
 - Performance: Molto migliorata

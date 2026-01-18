@@ -33,7 +33,8 @@ def pdf_vision_service(mock_genai_client):
         with (
             patch("backend.services.multimodal.pdf_vision_service.GENAI_AVAILABLE", True),
             patch(
-                "backend.services.multimodal.pdf_vision_service.GenAIClient", return_value=mock_genai_client
+                "backend.services.multimodal.pdf_vision_service.GenAIClient",
+                return_value=mock_genai_client,
             ),
         ):
             return PDFVisionService(api_key="test_key", ai_client=mock_genai_client)

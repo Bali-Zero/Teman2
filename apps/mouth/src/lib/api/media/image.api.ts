@@ -32,4 +32,3 @@ export class ImageApi {
     return { image_url: response.images[0] };
   }
 }
-

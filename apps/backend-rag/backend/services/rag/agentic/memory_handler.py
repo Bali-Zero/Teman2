@@ -41,7 +41,7 @@ class MemoryHandler:
             lock_timeout: Timeout in seconds for acquiring per-user locks
         """
         self.db_pool = db_pool
-        self._memory_orchestrator: "MemoryOrchestrator | None" = None
+        self._memory_orchestrator: MemoryOrchestrator | None = None
         self._memory_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._lock_timeout = lock_timeout
 

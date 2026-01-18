@@ -347,7 +347,8 @@ async def test_consolidate_with_existing_conflicts(base_state):
     base_state["query"] = "New memory"
     # Mock detect_conflicts to return conflicts
     with patch(
-        "backend.services.memory.collective_memory_workflow.detect_conflicts", return_value=["Conflict 1"]
+        "backend.services.memory.collective_memory_workflow.detect_conflicts",
+        return_value=["Conflict 1"],
     ):
         result = await consolidate_with_existing(base_state)
 

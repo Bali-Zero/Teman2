@@ -12,10 +12,12 @@ Result: 117/117 visa types now have correct official requirements.
 
 Run: python migration_043_fix_visa_types_from_qdrant.py
 """
+
 import asyncio
-import asyncpg
 import logging
 import os
+
+import asyncpg
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,12 +31,12 @@ VISA_DATA = {
             "Keputusan Kementerian Hukum dan HAM tentang pengesahan pendirian perusahaan",
             "Rekening giro perusahaan 2 bulan terakhir (atau dalam 90 hari setelah ITAS terbit jika perusahaan baru)",
             "Masa berlaku visa 90 hari sejak diterbitkan",
-            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia"
+            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia",
         ],
         "restrictions": [
             "Dilarang tinggal melebihi jangka waktu izin tinggal (overstay)",
             "Dilarang melakukan pekerjaan yang tidak sesuai dengan izin tinggal",
-            "Dilarang melakukan penjualan barang atau jasa kecuali diperlukan dalam pekerjaan"
+            "Dilarang melakukan penjualan barang atau jasa kecuali diperlukan dalam pekerjaan",
         ],
         "process_steps": [
             "Buat akun di evisa.imigrasi.go.id",
@@ -42,8 +44,8 @@ VISA_DATA = {
             "Upload rekening giro perusahaan 2 bulan",
             "Bayar biaya PNBP",
             "Tunggu verifikasi (5 hari kerja)",
-            "Visa diterbitkan - gunakan dalam 90 hari"
-        ]
+            "Visa diterbitkan - gunakan dalam 90 hari",
+        ],
     },
     # E33G - Digital Nomad
     "E33G": {
@@ -51,12 +53,12 @@ VISA_DATA = {
             "Tinggal di Indonesia untuk melaksanakan tugas dari perusahaan luar negeri (remote work)",
             "Rekening bank yang membuktikan penghasilan paling sedikit US$60.000 per tahun",
             "Perjanjian kerja dengan perusahaan yang didirikan di luar Wilayah Indonesia",
-            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia"
+            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia",
         ],
         "restrictions": [
             "Dilarang tinggal melebihi jangka waktu izin tinggal (overstay)",
             "Dilarang melakukan pekerjaan yang tidak sesuai dengan izin tinggal",
-            "Dilarang melakukan penjualan barang atau jasa kecuali diperlukan dalam pekerjaan"
+            "Dilarang melakukan penjualan barang atau jasa kecuali diperlukan dalam pekerjaan",
         ],
         "process_steps": [
             "Buat akun di evisa.imigrasi.go.id",
@@ -64,8 +66,8 @@ VISA_DATA = {
             "Upload kontrak kerja dengan perusahaan luar negeri",
             "Bayar biaya PNBP Rp 7.000.000",
             "Tunggu verifikasi (5 hari kerja)",
-            "Visa diterbitkan - gunakan dalam 90 hari"
-        ]
+            "Visa diterbitkan - gunakan dalam 90 hari",
+        ],
     },
     # E33E - Retirement (55+)
     "E33E": {
@@ -73,12 +75,12 @@ VISA_DATA = {
             "Tinggal di Indonesia untuk masa pensiun (usia 55 tahun ke atas)",
             "Bukti jaminan dana US$50.000 di bank milik negara (dalam 90 hari setelah ITAS)",
             "Bukti penghasilan atau tunjangan paling sedikit US$3.000 per bulan",
-            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia"
+            "ITAS dan Izin Masuk Kembali terbit otomatis saat masuk Indonesia",
         ],
         "restrictions": [
             "Dilarang bekerja atau melakukan kegiatan usaha",
             "Dilarang tinggal melebihi jangka waktu izin tinggal (overstay)",
-            "Wajib memiliki asuransi kesehatan yang berlaku di Indonesia"
+            "Wajib memiliki asuransi kesehatan yang berlaku di Indonesia",
         ],
         "process_steps": [
             "Buat akun di evisa.imigrasi.go.id",
@@ -86,8 +88,8 @@ VISA_DATA = {
             "Siapkan bukti penghasilan US$3k/bulan (pensiun/investasi)",
             "Upload surat pernyataan komitmen dana US$50k",
             "Bayar biaya PNBP",
-            "Tunggu verifikasi (5 hari kerja)"
-        ]
+            "Tunggu verifikasi (5 hari kerja)",
+        ],
     },
 }
 
@@ -117,7 +119,7 @@ async def run_migration():
                 data.get("allowed_activities", []),
                 data.get("restrictions", []),
                 data.get("process_steps", []),
-                code
+                code,
             )
             if result:
                 logger.info(f"OK {code}: {result['name']}")

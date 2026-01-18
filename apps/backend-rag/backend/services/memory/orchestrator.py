@@ -30,6 +30,7 @@ from enum import Enum
 from typing import Any
 
 import asyncpg
+
 from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
 from .collective_memory_service import CollectiveMemoryService

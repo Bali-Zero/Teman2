@@ -1,11 +1,12 @@
 from __future__ import annotations
-from tests.conftest import create_mock_settings
 
 from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
+
 from backend.db.migration_base import BaseMigration, MigrationError
+from tests.conftest import create_mock_settings
 
 
 class _DummyTransaction:
@@ -84,8 +85,12 @@ def test_calculate_checksum_changes(tmp_path):
 async def test_apply_success(monkeypatch, tmp_path):
     migration = _make_migration(tmp_path, "CREATE TABLE test(id int);")
     dummy_conn = _DummyConn()
-    monkeypatch.setattr("backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn))
-    monkeypatch.setattr("backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test"))
+    monkeypatch.setattr(
+        "backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+    )
+    monkeypatch.setattr(
+        "backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test")
+    )
     migration.verify = AsyncMock(return_value=True)
 
     result = await migration.apply()
@@ -103,8 +108,12 @@ async def test_apply_skips_when_already_applied(monkeypatch, tmp_path):
     migration = _make_migration(tmp_path, "CREATE TABLE test(id int);")
     dummy_conn = _DummyConn()
     dummy_conn.applied = True
-    monkeypatch.setattr("backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn))
-    monkeypatch.setattr("backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test"))
+    monkeypatch.setattr(
+        "backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+    )
+    monkeypatch.setattr(
+        "backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test")
+    )
     migration.verify = AsyncMock(return_value=True)
 
     result = await migration.apply()
@@ -117,8 +126,12 @@ async def test_apply_skips_when_already_applied(monkeypatch, tmp_path):
 async def test_apply_verify_failure(monkeypatch, tmp_path):
     migration = _make_migration(tmp_path, "CREATE TABLE test(id int);")
     dummy_conn = _DummyConn()
-    monkeypatch.setattr("backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn))
-    monkeypatch.setattr("backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test"))
+    monkeypatch.setattr(
+        "backend.db.migration_base.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+    )
+    monkeypatch.setattr(
+        "backend.db.migration_base.settings", create_mock_settings(database_url="postgres://test")
+    )
     migration.verify = AsyncMock(return_value=False)
 
     with pytest.raises(MigrationError, match="Verification failed"):
@@ -130,7 +143,9 @@ async def test_apply_verify_failure(monkeypatch, tmp_path):
 @pytest.mark.asyncio
 async def test_apply_requires_database_url(monkeypatch, tmp_path):
     migration = _make_migration(tmp_path, "CREATE TABLE test(id int);")
-    monkeypatch.setattr("backend.db.migration_base.settings", create_mock_settings(database_url=None))
+    monkeypatch.setattr(
+        "backend.db.migration_base.settings", create_mock_settings(database_url=None)
+    )
 
     with pytest.raises(MigrationError, match="DATABASE_URL not configured"):
         await migration.apply()

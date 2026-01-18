@@ -53,10 +53,9 @@ export class PortalApi {
   // ============================================================================
 
   async getVisaStatus(): Promise<VisaInfo> {
-    const response = await this.client.request<PortalApiResponse<VisaInfo>>(
-      '/api/portal/visa',
-      { method: 'GET' }
-    );
+    const response = await this.client.request<PortalApiResponse<VisaInfo>>('/api/portal/visa', {
+      method: 'GET',
+    });
     return response.data!;
   }
 
@@ -81,10 +80,9 @@ export class PortalApi {
   }
 
   async setPrimaryCompany(companyId: number): Promise<void> {
-    await this.client.request<PortalApiResponse<void>>(
-      `/api/portal/company/${companyId}/select`,
-      { method: 'POST' }
-    );
+    await this.client.request<PortalApiResponse<void>>(`/api/portal/company/${companyId}/select`, {
+      method: 'POST',
+    });
   }
 
   // ============================================================================
@@ -159,10 +157,9 @@ export class PortalApi {
   }
 
   async markMessageRead(messageId: number): Promise<void> {
-    await this.client.request<PortalApiResponse<void>>(
-      `/api/portal/messages/${messageId}/read`,
-      { method: 'POST' }
-    );
+    await this.client.request<PortalApiResponse<void>>(`/api/portal/messages/${messageId}/read`, {
+      method: 'POST',
+    });
   }
 
   // ============================================================================

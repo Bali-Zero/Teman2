@@ -21,7 +21,6 @@ from backend.plugins.team.search_member_plugin import (
     TeamSearchInput,
     TeamSearchOutput,
 )
-
 from backend.services.crm.collaborator_service import CollaboratorProfile
 
 # ============================================================================
@@ -150,7 +149,9 @@ def test_team_search_output_optional_fields():
 
 def test_plugin_initialization_default():
     """Test plugin initialization with default collaborator service"""
-    with patch("backend.plugins.team.search_member_plugin.CollaboratorService") as mock_service_class:
+    with patch(
+        "backend.plugins.team.search_member_plugin.CollaboratorService"
+    ) as mock_service_class:
         mock_service_class.return_value = MagicMock()
         plugin = TeamMemberSearchPlugin()
 

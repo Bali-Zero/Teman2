@@ -36,7 +36,9 @@ class CreateMappingRequest(BaseModel):
     user_id: str = Field(..., description="UUID from user_profiles (team member or portal client)")
     channel: str = Field(..., description="Channel type: 'whatsapp' or 'telegram'")
     phone: str | None = Field(None, description="WhatsApp phone (for whatsapp channel)")
-    telegram_chat_id: int | None = Field(None, description="Telegram chat ID (for telegram channel)")
+    telegram_chat_id: int | None = Field(
+        None, description="Telegram chat ID (for telegram channel)"
+    )
     display_name: str | None = Field(None, description="Display name from profile")
     verified: bool = Field(False, description="Whether association is verified")
 

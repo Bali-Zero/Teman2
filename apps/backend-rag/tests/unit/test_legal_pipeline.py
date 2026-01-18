@@ -14,8 +14,12 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.core.legal import LegalChunker, LegalCleaner, LegalMetadataExtractor, LegalStructureParser
-
+from backend.core.legal import (
+    LegalChunker,
+    LegalCleaner,
+    LegalMetadataExtractor,
+    LegalStructureParser,
+)
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 # ============================================================================
@@ -276,7 +280,9 @@ async def test_legal_ingestion_service_full_pipeline():
     """Test complete legal ingestion pipeline"""
     # Mock file operations
     with (
-        patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse") as mock_parse,
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse"
+        ) as mock_parse,
         patch("backend.services.ingestion.legal_ingestion_service.QdrantClient") as mock_qdrant,
         patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
     ):

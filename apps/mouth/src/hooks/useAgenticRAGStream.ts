@@ -4,10 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  AgenticRAGQueryRequest,
-  Source,
-} from '@/lib/api/zantara-sdk/types';
+import type { AgenticRAGQueryRequest, Source } from '@/lib/api/zantara-sdk/types';
 
 export interface AgenticRAGStreamEvent {
   type: 'status' | 'token' | 'sources' | 'done' | 'error';
@@ -199,10 +196,3 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
     reset,
   };
 }
-
-
-
-
-
-
-

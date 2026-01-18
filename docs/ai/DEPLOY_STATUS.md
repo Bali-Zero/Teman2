@@ -8,11 +8,13 @@
 ## 🔴 PROBLEMI RILEVATI
 
 ### 1. Test Falliti
+
 - Alcuni test stanno fallendo dopo l'aggiunta del logger strutturato
 - Il logging durante i test potrebbe interferire con gli assertion
 - Necessario fixare i test prima del deploy
 
 ### 2. Pre-commit Hook
+
 - Hook pre-commit controlla per `print()` statements in Python
 - Nessun file Python modificato nelle nostre modifiche frontend
 - Hook potrebbe essere troppo restrittivo
@@ -22,6 +24,7 @@
 ## ✅ MODIFICHE PRONTE
 
 Tutte le modifiche sono pronte e funzionanti:
+
 - ✅ Consolidamento streaming SSE
 - ✅ Rimozione codice legacy
 - ✅ Logger strutturato

@@ -9,12 +9,12 @@
 
 ### Confronto Prima/Dopo
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **RAM Libera** | 98 MB | ~480 MB | **+382 MB** ✅ |
-| **CPU Idle** | 3.6% | 38.4% | **+34.8%** ✅ |
+| Metrica          | Prima     | Dopo      | Miglioramento                |
+| ---------------- | --------- | --------- | ---------------------------- |
+| **RAM Libera**   | 98 MB     | ~480 MB   | **+382 MB** ✅               |
+| **CPU Idle**     | 3.6%      | 38.4%     | **+34.8%** ✅                |
 | **Load Average** | 5.79-7.30 | 5.39-6.79 | **Leggero miglioramento** ⚠️ |
-| **Cache Pulite** | - | ~580 MB | **+580 MB** ✅ |
+| **Cache Pulite** | -         | ~580 MB   | **+580 MB** ✅               |
 
 ---
 
@@ -22,13 +22,13 @@
 
 ### 1. Pulizia Cache ✅
 
-| Cache | Dimensione | Status |
-|-------|------------|--------|
-| CloudKit | 265 MB | ✅ Pulita (0B) |
-| ms-playwright-go | 127 MB | ✅ Pulita (0B) |
-| Zoom (us.zoom.xos) | 73 MB | ✅ Pulita (0B) |
-| node-gyp | 64 MB | ✅ Pulita (0B) |
-| Homebrew | 52 MB | ✅ Pulita (52M residuo) |
+| Cache              | Dimensione | Status                  |
+| ------------------ | ---------- | ----------------------- |
+| CloudKit           | 265 MB     | ✅ Pulita (0B)          |
+| ms-playwright-go   | 127 MB     | ✅ Pulita (0B)          |
+| Zoom (us.zoom.xos) | 73 MB      | ✅ Pulita (0B)          |
+| node-gyp           | 64 MB      | ✅ Pulita (0B)          |
+| Homebrew           | 52 MB      | ✅ Pulita (52M residuo) |
 
 **Totale Cache Pulita:** ~580 MB
 
@@ -39,6 +39,7 @@
 ### 1. VM Attive (2 VM) 🔴
 
 **Stato:**
+
 - PID 2026: 206.7% CPU, 3.7% MEM (~6.5 GB RAM), TIME: 179:34
 - PID 48375: 0.3% CPU, 3.3% MEM (~4.1 GB RAM), TIME: 19:19
 
@@ -53,6 +54,7 @@
 ### 2. Memoria Compressa 🔴
 
 **Stato:**
+
 - Memoria compressa: ~16 GB
 - Swap ancora attivo
 
@@ -67,6 +69,7 @@
 ### 3. Processi npm Attivi ⚠️
 
 **Stato:**
+
 - 25 processi npm/node attivi
 - Nessun processo npm pesante al momento (CPU < 5%)
 
@@ -83,12 +86,14 @@
 #### 1. Chiudere VM Non Necessarie
 
 **Metodo 1: Activity Monitor**
+
 1. Apri Activity Monitor (Applicazioni > Utility)
 2. Cerca "VirtualMachine"
 3. Seleziona VM non necessarie
 4. Clicca "Forza Termina"
 
 **Metodo 2: Terminale**
+
 ```bash
 # Verificare VM
 ps aux | grep VirtualMachine | grep -v grep
@@ -110,6 +115,7 @@ sudo purge
 **Effetto:** Libera memoria compressa e cache sistema
 
 **Verifica Dopo:**
+
 ```bash
 vm_stat | grep "Pages free"
 ```
@@ -140,13 +146,13 @@ kill <PID>
 
 ## 📈 RISULTATI ATTESI DOPO AZIONI MANUALI
 
-| Metrica | Attuale | Dopo Azioni Manuali (Atteso) |
-|---------|---------|------------------------------|
-| **RAM Libera** | ~480 MB | 10+ GB |
-| **CPU Idle** | 38.4% | 50-60% |
-| **Load Average** | 5.39-6.79 | 2-3 |
-| **Swap Attivo** | Sì (~16 GB) | No |
-| **Performance** | Migliorata | Normale/Veloce |
+| Metrica          | Attuale     | Dopo Azioni Manuali (Atteso) |
+| ---------------- | ----------- | ---------------------------- |
+| **RAM Libera**   | ~480 MB     | 10+ GB                       |
+| **CPU Idle**     | 38.4%       | 50-60%                       |
+| **Load Average** | 5.39-6.79   | 2-3                          |
+| **Swap Attivo**  | Sì (~16 GB) | No                           |
+| **Performance**  | Migliorata  | Normale/Veloce               |
 
 ---
 
@@ -213,15 +219,18 @@ kill <PID>
 **Ottimizzazioni Automatiche:** ✅ Completate
 
 **Miglioramenti Ottenuti:**
+
 - RAM libera: +382 MB
 - CPU idle: +34.8%
 - Cache pulite: ~580 MB
 
 **Azioni Manuali Richieste:**
+
 - Chiudere VM non necessarie (~10 GB RAM)
 - Eseguire `sudo purge` (libera memoria compressa)
 
 **Risultato Atteso Dopo Azioni Manuali:**
+
 - RAM libera: 10+ GB
 - CPU idle: 50-60%
 - Performance: Normale/Veloce
@@ -232,6 +241,7 @@ kill <PID>
 **Prossimo Passo:** Eseguire azioni manuali critiche
 
 **Documentazione:**
+
 - `MAC_PERFORMANCE_OPTIMIZATION.md` - Analisi completa
 - `MAC_PERFORMANCE_ACTIONS.md` - Istruzioni azioni manuali
 - `MAC_PERFORMANCE_QUICK_FIX.sh` - Script pulizia automatica

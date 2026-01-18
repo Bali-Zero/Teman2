@@ -63,15 +63,18 @@ pip install dropbox google-api-python-client google-auth-httplib2 google-auth-oa
 **Passo 1**: Vai su https://www.dropbox.com/developers/apps
 
 **Passo 2**: Crea nuova app
+
 - Choose API: **Scoped access**
 - Access type: **Full Dropbox**
 - Name: `nuzantara-migration`
 
 **Passo 3**: Genera Access Token
+
 - Tab "Settings" → "Generated access token"
 - Copia il token
 
 **Passo 4**: Setta la variabile d'ambiente
+
 ```bash
 export DROPBOX_API_TOKEN='sl.xxxxxxxxxxxxxxxxxxxxxxx'
 ```
@@ -81,17 +84,21 @@ export DROPBOX_API_TOKEN='sl.xxxxxxxxxxxxxxxxxxxxxxx'
 **Passo 1**: Vai su https://console.cloud.google.com/
 
 **Passo 2**: Crea progetto (se non esiste)
+
 - Nome: `nuzantara-crm`
 
 **Passo 3**: Abilita Google Drive API
+
 - API & Services → Enable APIs
 - Cerca "Google Drive API" → Enable
 
 **Passo 4**: Crea Service Account
+
 - IAM & Admin → Service Accounts → Create
 - Download JSON credentials
 
 **Passo 5**: Setta la variabile d'ambiente
+
 ```bash
 export GOOGLE_DRIVE_CREDENTIALS_PATH='/path/to/credentials.json'
 ```
@@ -169,6 +176,7 @@ python dropbox_to_gdrive_migration.py --batch-size 10
 ### Naming Convention Automatica
 
 **Prima**:
+
 ```
 passport marco.pdf
 KITAS scan.jpg
@@ -176,6 +184,7 @@ tax 2024.xlsx
 ```
 
 **Dopo**:
+
 ```
 Passport_MARCO_ROSSI_2028-12-31.pdf
 KITAS_Investor_2026-06-15.pdf
@@ -272,7 +281,7 @@ python dropbox_to_gdrive_migration.py --report
 
 ```sql
 -- Clienti con documenti migrati
-SELECT 
+SELECT
     c.full_name,
     COUNT(d.id) as doc_count,
     MAX(d.uploaded_at) as last_upload
@@ -283,7 +292,7 @@ GROUP BY c.id
 ORDER BY doc_count DESC;
 
 -- Documenti per categoria
-SELECT 
+SELECT
     document_category,
     COUNT(*) as count
 FROM documents
@@ -314,6 +323,7 @@ export DROPBOX_API_TOKEN='new_token'
 **Opzione 1**: Crea manualmente il cliente nel CRM prima
 
 **Opzione 2**: Abilita auto-create:
+
 ```python
 # In dropbox_to_gdrive_migration.py
 AUTO_CREATE_CLIENTS = True
@@ -322,6 +332,7 @@ AUTO_CREATE_CLIENTS = True
 ### Problema: "Duplicate files uploaded"
 
 Lo script controlla MD5 hash - se hai duplicati, controlla:
+
 ```bash
 # Trova duplicati in Dropbox
 python dropbox_to_gdrive_migration.py --find-duplicates

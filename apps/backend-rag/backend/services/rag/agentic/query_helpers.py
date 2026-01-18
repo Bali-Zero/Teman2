@@ -9,9 +9,6 @@ Contains:
 """
 
 import logging
-from typing import Literal
-
-from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -136,22 +133,16 @@ def detect_query_language(query: str) -> str:
 
     # French
     if any(
-        word in query_lower
-        for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]
+        word in query_lower for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]
     ):
         return "FRENCH"
 
     # Spanish
-    if any(
-        word in query_lower
-        for word in ["hola", "cómo", "como estas", "gracias", "por qué"]
-    ):
+    if any(word in query_lower for word in ["hola", "cómo", "como estas", "gracias", "por qué"]):
         return "SPANISH"
 
     # German
-    if any(
-        word in query_lower for word in ["hallo", "wie geht", "danke", "warum", "können"]
-    ):
+    if any(word in query_lower for word in ["hallo", "wie geht", "danke", "warum", "können"]):
         return "GERMAN"
 
     return "ENGLISH"  # Default to English
@@ -236,9 +227,7 @@ def is_conversation_recall_query(query: str) -> bool:
     return any(trigger in query_lower for trigger in RECALL_TRIGGERS)
 
 
-def format_conversation_history_for_recall(
-    history: list[dict], max_messages: int = 20
-) -> str:
+def format_conversation_history_for_recall(history: list[dict], max_messages: int = 20) -> str:
     """
     Format conversation history for recall prompts.
 

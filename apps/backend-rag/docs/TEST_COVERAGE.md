@@ -7,6 +7,7 @@ This document describes the test coverage system for the Nuzantara Backend RAG a
 ## Coverage Test Script
 
 ### Location
+
 `apps/backend-rag/scripts/run_coverage_test.sh`
 
 ### Usage
@@ -57,6 +58,7 @@ cd apps/backend-rag && python3 -m http.server 8000
 ## Coverage Configuration
 
 ### Configuration File
+
 `.coveragerc` in `apps/backend-rag/`
 
 ### Key Settings
@@ -131,6 +133,7 @@ pytest apps/backend-rag/tests/ -x
 ### 1. Write Tests for New Code
 
 When adding new features:
+
 - Write unit tests for core logic
 - Add integration tests for workflows
 - Include API tests for endpoints
@@ -145,12 +148,12 @@ When adding new features:
 
 ### Critical Modules - Achieved >95% Target
 
-| Module | Coverage | Status |
-|--------|----------|--------|
-| `reasoning.py` | 96.44% | ✅ Exceeded |
-| `llm_gateway.py` | 99.01% | ✅ Exceeded |
-| `response_processor.py` | 94.74% | ✅ Near target |
-| `schema.py` | 100% | ✅ Full coverage |
+| Module                  | Coverage | Status           |
+| ----------------------- | -------- | ---------------- |
+| `reasoning.py`          | 96.44%   | ✅ Exceeded      |
+| `llm_gateway.py`        | 99.01%   | ✅ Exceeded      |
+| `response_processor.py` | 94.74%   | ✅ Near target   |
+| `schema.py`             | 100%     | ✅ Full coverage |
 
 ### Test Summary
 
@@ -161,6 +164,7 @@ When adding new features:
 ### 3. Review Coverage Reports
 
 Regularly check:
+
 - Which files have low coverage
 - Which functions are untested
 - Dead code that can be removed
@@ -168,6 +172,7 @@ Regularly check:
 ### 4. Exclude Appropriate Code
 
 Some code doesn't need coverage:
+
 - Abstract base classes
 - Type checking blocks
 - Debug/development code
@@ -221,5 +226,3 @@ If tests are running slowly:
 - `pytest.ini`: Pytest configuration
 - `.coveragerc`: Coverage configuration
 - `pyproject.toml`: Project configuration and tool settings
-
-

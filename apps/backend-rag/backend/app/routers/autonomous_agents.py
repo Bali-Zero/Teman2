@@ -14,11 +14,12 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from pydantic import BaseModel
+
 from backend.agents.agents.client_value_predictor import ClientValuePredictor
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

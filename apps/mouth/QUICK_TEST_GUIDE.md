@@ -7,15 +7,18 @@
 ## ⚡ Quick Test (5 minuti)
 
 ### 1. Verifica Build
+
 ```bash
 cd apps/mouth
 npm run build
 ```
+
 ✅ **Expected:** Build completato senza errori
 
 ### 2. Verifica Virtualizzazione
 
 **Test Rapido:**
+
 1. Avvia dev server: `npm run dev`
 2. Vai a `/clients`
 3. Assicurati di avere 30+ clienti
@@ -28,6 +31,7 @@ npm run build
 ### 3. Verifica Memoizzazione
 
 **Test Rapido:**
+
 1. Vai a `/dashboard`
 2. Apri React DevTools → Components
 3. Seleziona un `StatsCard`

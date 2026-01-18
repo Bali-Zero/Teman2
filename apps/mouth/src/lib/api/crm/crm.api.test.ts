@@ -33,7 +33,9 @@ describe('CrmApi', () => {
 
       const result = await crmApi.getUpcomingRenewals();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/crm/practices/renewals/upcoming?days=90');
+      expect(mockClient.request).toHaveBeenCalledWith(
+        '/api/crm/practices/renewals/upcoming?days=90'
+      );
       expect(result).toEqual(mockRenewals);
     });
 
@@ -43,7 +45,9 @@ describe('CrmApi', () => {
 
       await crmApi.getUpcomingRenewals(30);
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/crm/practices/renewals/upcoming?days=30');
+      expect(mockClient.request).toHaveBeenCalledWith(
+        '/api/crm/practices/renewals/upcoming?days=30'
+      );
     });
   });
 
@@ -118,4 +122,3 @@ describe('CrmApi', () => {
     });
   });
 });
-

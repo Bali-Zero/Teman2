@@ -47,7 +47,7 @@ def client(app):
 @pytest.fixture
 def mock_image_service():
     """Mock ImageGenerationService.
-    
+
     Updated 2026-01-16: Service is instantiated inside the endpoint,
     so we need to patch the class constructor.
     """
@@ -74,7 +74,9 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": "a beautiful sunset"})
 
         assert response.status_code == 200
@@ -94,7 +96,9 @@ class TestGenerateImageEndpoint:
             "details": "GOOGLE_API_KEY environment variable required",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 503
@@ -110,7 +114,9 @@ class TestGenerateImageEndpoint:
             "details": "Prompt cannot be empty",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": ""})
 
         assert response.status_code == 400
@@ -126,7 +132,9 @@ class TestGenerateImageEndpoint:
             "details": "Network timeout",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
@@ -139,7 +147,9 @@ class TestGenerateImageEndpoint:
         """Test exception handling during image generation"""
         mock_image_service.generate_image.side_effect = RuntimeError("Unexpected error")
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
@@ -157,7 +167,9 @@ class TestGenerateImageEndpoint:
             # prompt and service fields missing
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": "test"})
 
         assert response.status_code == 200
@@ -178,7 +190,9 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": long_prompt})
 
         assert response.status_code == 200
@@ -195,7 +209,9 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             response = client.post("/media/generate-image", json={"prompt": special_prompt})
 
         assert response.status_code == 200
@@ -490,7 +506,8 @@ class TestUploadFileEndpoint:
 
             with patch("builtins.open", create=True) as mock_open:
                 with patch(
-                    "backend.app.routers.media.shutil.copyfileobj", side_effect=OSError("Copy failed")
+                    "backend.app.routers.media.shutil.copyfileobj",
+                    side_effect=OSError("Copy failed"),
                 ):
                     mock_file = MagicMock()
                     mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
@@ -586,7 +603,9 @@ class TestLogging:
         """Test that errors are logged during image generation"""
         mock_image_service.generate_image.side_effect = RuntimeError("Test error")
 
-        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch(
+            "backend.app.routers.media.ImageGenerationService", return_value=mock_image_service
+        ):
             with patch("backend.app.routers.media.logger") as mock_logger:
                 response = client.post("/media/generate-image", json={"prompt": "test"})
 

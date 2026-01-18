@@ -16,8 +16,7 @@ import json
 import time
 import asyncio
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from io import StringIO
+from unittest.mock import MagicMock
 
 # Add scripts directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
@@ -56,10 +55,7 @@ class TestSetupLogging:
         log_dir = tmp_path / "logs"
 
         # Development should use DEBUG
-        setup_logging(
-            log_dir=str(log_dir),
-            environment="development"
-        )
+        setup_logging(log_dir=str(log_dir), environment="development")
         # Level is set on handlers, not easily inspectable without mocking
 
     def test_setup_logging_uses_env_variable(self, tmp_path, monkeypatch):
@@ -74,30 +70,19 @@ class TestSetupLogging:
         """Test custom log level override"""
         log_dir = tmp_path / "logs"
 
-        setup_logging(
-            log_dir=str(log_dir),
-            level="WARNING",
-            environment="development"
-        )
+        setup_logging(log_dir=str(log_dir), level="WARNING", environment="development")
 
     def test_setup_logging_json_format(self, tmp_path):
         """Test JSON format is enabled for production"""
         log_dir = tmp_path / "logs"
 
-        setup_logging(
-            log_dir=str(log_dir),
-            environment="production",
-            json_logs=True
-        )
+        setup_logging(log_dir=str(log_dir), environment="production", json_logs=True)
 
     def test_setup_logging_creates_error_log(self, tmp_path):
         """Test error log file is created"""
         log_dir = tmp_path / "logs"
 
-        setup_logging(
-            log_dir=str(log_dir),
-            app_name="test_app"
-        )
+        setup_logging(log_dir=str(log_dir), app_name="test_app")
 
         # Log files are created lazily on first write
 
@@ -221,6 +206,7 @@ class TestLogOperationDecorator:
 
     def test_log_operation_preserves_function_name(self):
         """Test decorator preserves function metadata"""
+
         @log_operation()
         def named_function():
             """Docstring"""
@@ -503,9 +489,7 @@ class TestIntegration:
 
         # Setup
         setup_logging(
-            log_dir=str(log_dir),
-            app_name="integration_test",
-            environment="testing"
+            log_dir=str(log_dir), app_name="integration_test", environment="testing"
         )
 
         logger = get_logger("integration")
@@ -529,9 +513,7 @@ class TestIntegration:
         log_dir = tmp_path / "logs"
 
         setup_logging(
-            log_dir=str(log_dir),
-            app_name="async_test",
-            environment="testing"
+            log_dir=str(log_dir), app_name="async_test", environment="testing"
         )
 
         @log_operation("async_workflow")

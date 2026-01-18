@@ -1,7 +1,9 @@
 # 🎯 ESEMPIO PRATICO - Workflow Completo
 
 ## Scenario Reale
+
 Ho analizzato i tuoi Downloads e ho trovato **~1.5GB** di file disorganizzati:
+
 - PDF legali (Lampiran PP 28/2025)
 - PDF su Bali (regulatory, bureaucracy)
 - Immagini (.jpg)
@@ -16,12 +18,14 @@ Vediamo come il **setup ottimizzato** risolve questo in 3 minuti invece di 20+.
 ## 📋 STEP 1: Analisi Downloads (CON Template)
 
 ### Prompt per Cowork:
+
 ```markdown
 Work in folder: ~/Downloads
 
 Task: Analyze all files and create comprehensive report
 
 Instructions:
+
 1. Scan all files in Downloads
 2. Categorize by type:
    - Legal documents (PDF Lampiran PP)
@@ -45,16 +49,21 @@ Instructions:
 5. Create summary report as: ~/Downloads/DOWNLOADS-ANALYSIS-2026-01-16.md
 
 Output Format:
+
 # Downloads Analysis Report
+
 Generated: 2026-01-16
 
 ## Summary
+
 - Total files: [N]
 - Total size: [SIZE]
 - Categories: [N]
 
 ## By Category
+
 ### Legal Documents (PP 28/2025)
+
 - Files: [N]
 - Size: [SIZE]
 - List: [FILES]
@@ -62,12 +71,14 @@ Generated: 2026-01-16
 [... etc for each category]
 
 ## Recommendations
+
 1. Files to archive
 2. Files to delete
 3. Organization strategy
 ```
 
 ### Cosa Succede:
+
 - ✅ Cowork accede **immediatamente** a Downloads (configurato!)
 - ✅ Analizza tutti i file
 - ✅ Crea report dettagliato
@@ -79,6 +90,7 @@ Generated: 2026-01-16
 ## 📁 STEP 2: Organizzazione Intelligente
 
 ### Prompt per Cowork:
+
 ```markdown
 Work in folder: ~/Downloads
 
@@ -89,17 +101,17 @@ Based on the analysis, organize files:
    ├── Legal-PP28-2025/
    ├── Bali-Regulatory/
    ├── Media/
-   │   ├── Images/
-   │   └── Videos/
+   │ ├── Images/
+   │ └── Videos/
    ├── Software/
    └── Archive-OLD/
 
 2. Move files:
    - All "Lampiran PP 28" → Legal-PP28-2025/
-   - All "Bali_*.pdf" → Bali-Regulatory/
-   - All *.jpg → Media/Images/
-   - All *.mp4 → Media/Videos/
-   - All *.exe → Software/
+   - All "Bali\_\*.pdf" → Bali-Regulatory/
+   - All \*.jpg → Media/Images/
+   - All \*.mp4 → Media/Videos/
+   - All \*.exe → Software/
    - Files older than 30 days → Archive-OLD/
 
 3. Safety rules:
@@ -111,6 +123,7 @@ Based on the analysis, organize files:
 ```
 
 ### Cosa Succede:
+
 - ✅ Crea struttura organizzata
 - ✅ Sposta file in categorie logiche
 - ✅ Backup automatico (sistema security)
@@ -122,6 +135,7 @@ Based on the analysis, organize files:
 ## 📊 STEP 3: Report & Next Steps
 
 ### Risultato Atteso:
+
 ```
 ~/Downloads/
 ├── DOWNLOADS-ANALYSIS-2026-01-16.md    # Report completo
@@ -136,7 +150,9 @@ Based on the analysis, organize files:
 ```
 
 ### Log Automatico:
+
 Il file `~/.cowork-optimization/logs/downloads-organize.log` conterrà:
+
 ```
 [2026-01-16 21:30:15] Moved: 2.1 Lampiran I.A PP Nomor 28 → Legal-PP28-2025
 [2026-01-16 21:30:15] Moved: Bali_Regulatory_Pivot.pdf → Bali-Regulatory
@@ -189,11 +205,13 @@ Il file `~/.cowork-optimization/logs/downloads-organize.log` conterrà:
 Dopo aver fatto questo una volta, puoi:
 
 ### Opzione A: Manuale On-Demand
+
 ```bash
 ~/Desktop/nuzantara/.cowork-optimization/scripts/auto-organize-downloads.sh
 ```
 
 ### Opzione B: Automatico (con cron)
+
 ```bash
 # Già configurato in cowork-crontab.txt
 0 * * * * ~/Desktop/nuzantara/.cowork-optimization/scripts/auto-organize-downloads.sh
@@ -205,14 +223,14 @@ Risultato: **Downloads sempre organizzati, zero effort**
 
 ## 📈 Metriche Questo Esempio
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| Tempo setup | 5 min | 0 sec | ∞ |
-| Tempo task | 15 min | 3 min | **80% più veloce** |
-| Consistenza | Variabile | 100% | **Garantita** |
-| Backup | No | Sì | **Sicurezza** |
-| Log | No | Sì | **Tracciabilità** |
-| Reversibilità | No | Sì | **Zero rischio** |
+| Metrica       | Prima     | Dopo  | Miglioramento      |
+| ------------- | --------- | ----- | ------------------ |
+| Tempo setup   | 5 min     | 0 sec | ∞                  |
+| Tempo task    | 15 min    | 3 min | **80% più veloce** |
+| Consistenza   | Variabile | 100%  | **Garantita**      |
+| Backup        | No        | Sì    | **Sicurezza**      |
+| Log           | No        | Sì    | **Tracciabilità**  |
+| Reversibilità | No        | Sì    | **Zero rischio**   |
 
 ---
 
@@ -241,6 +259,7 @@ Risultato: **Downloads sempre organizzati, zero effort**
 Con lo stesso setup puoi fare:
 
 1. **Analizza KB Documents**
+
    ```
    Work in ~/Desktop/KB
    → Usa template document-analysis.md
@@ -248,6 +267,7 @@ Con lo stesso setup puoi fare:
    ```
 
 2. **Sync KB a Qdrant**
+
    ```
    Work in ~/Desktop/KB
    → Usa template kb-sync.md
@@ -255,6 +275,7 @@ Con lo stesso setup puoi fare:
    ```
 
 3. **Project Status Report**
+
    ```
    Work in ~/Desktop/nuzantara
    → Usa template project-report.md

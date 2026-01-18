@@ -17,28 +17,31 @@
 
 ## Bali Zero 2025 Prices
 
-| Service | Price | Notes |
-|---------|-------|-------|
-| NPWP Personal + Coretax | **IDR 1.000.000** | Personal tax ID with Coretax system registration |
-| NPWPD (Corporate/Regional) | **IDR 2.500.000** | Corporate or regional tax ID registration |
+| Service                    | Price             | Notes                                            |
+| -------------------------- | ----------------- | ------------------------------------------------ |
+| NPWP Personal + Coretax    | **IDR 1.000.000** | Personal tax ID with Coretax system registration |
+| NPWPD (Corporate/Regional) | **IDR 2.500.000** | Corporate or regional tax ID registration        |
 
 ---
 
 ## NPWP Personal
 
 ### Who Needs It:
+
 - Indonesian citizens with income
 - Foreigners with KITAS and Indonesian income
 - Directors of PT PMA companies
 - Freelancers and self-employed
 
 ### Requirements:
+
 - KTP (Indonesian ID) or KITAS/KITAP
 - Passport (for foreigners)
 - Domicile letter (Surat Keterangan Domisili)
 - SKTT if foreigner
 
 ### Registration Process:
+
 1. **Prepare documents** - ID, domicile, KITAS
 2. **Apply at KPP** (Kantor Pelayanan Pajak) - local tax office
 3. **Or online** via ereg.pajak.go.id
@@ -51,12 +54,14 @@
 **Coretax** is Indonesia's new integrated tax system replacing old DJP Online.
 
 ### Features:
+
 - Unified tax filing platform
 - Real-time tax calculation
 - Digital invoices (e-Faktur integration)
 - Mobile app access
 
 ### Registration:
+
 - Automatic for new NPWP applications
 - Existing NPWP holders must migrate
 - Bali Zero assists with migration
@@ -66,12 +71,14 @@
 ## NPWP Badan (Corporate)
 
 ### Who Needs It:
+
 - PT PMA (Foreign Investment Company)
 - PT Lokal (Local Company)
 - CV (Partnership)
 - All registered businesses
 
 ### Requirements:
+
 - Akta pendirian perusahaan (company deed)
 - SK Kemenkumham (Ministry approval)
 - NIB (Nomor Induk Berusaha)
@@ -80,6 +87,7 @@
 - Office address proof
 
 ### Registration Process:
+
 1. **Company establishment completed** - Akta, SK, NIB
 2. **Apply at KPP** or via ereg.pajak.go.id
 3. **Verification visit** by tax officer (sometimes)
@@ -90,9 +98,11 @@
 ## NPWPD (Regional Tax ID)
 
 ### What is NPWPD?
+
 Regional tax registration number for local taxes (PDRD - Pajak Daerah dan Retribusi Daerah).
 
 ### Required for:
+
 - Hotel tax (PHR)
 - Restaurant tax
 - Entertainment tax
@@ -100,6 +110,7 @@ Regional tax registration number for local taxes (PDRD - Pajak Daerah dan Retrib
 - Advertisement tax
 
 ### Registration:
+
 - At Bapenda (local revenue office)
 - After NIB and NPWP obtained
 - Specific to business location (kabupaten/kota)
@@ -109,15 +120,18 @@ Regional tax registration number for local taxes (PDRD - Pajak Daerah dan Retrib
 ## Tax Residency Rules
 
 ### When are you a Tax Resident?
+
 - Present in Indonesia **183+ days per year**
 - Intend to reside in Indonesia
 
 ### Tax Resident Obligations:
+
 - File SPT (annual tax return) on worldwide income
 - NPWP mandatory
 - Monthly tax deposits if self-employed
 
 ### Non-Resident:
+
 - Taxed only on Indonesian-source income
 - 20% withholding tax rate
 - No SPT filing required
@@ -146,11 +160,13 @@ A: Yes, submit closure form at KPP. Must clear all tax obligations first.
 ## Important Warnings
 
 **Tax Residency (183 days):**
+
 - 183+ days in Indonesia = Tax resident
 - Must file Indonesian tax return on worldwide income
 - Plan stay carefully for tax optimization
 
 **NPWP for Business:**
+
 - Cannot issue invoices without NPWP
 - Cannot claim VAT credits without NPWP
 - Required for bidding government contracts

@@ -1,8 +1,6 @@
 {
   "isEnabled": true,
   "userConfig": {
-    "allowed_directories": [
-      "/Users/antonellosiano/Desktop/nuzantara"
-    ]
+    "allowed_directories": ["/Users/antonellosiano/Desktop/nuzantara"]
   }
 }

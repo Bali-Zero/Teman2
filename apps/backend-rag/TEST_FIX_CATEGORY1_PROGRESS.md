@@ -9,9 +9,11 @@
 ## ✅ FIX COMPLETATI
 
 ### 1. test_memory_orchestrator_error_handling.py ✅
+
 **File:** `tests/unit/services/memory/test_memory_orchestrator_error_handling.py`
 
 **Fix Applicati:**
+
 - ✅ Fixato import `ErrorClassifier` e `ErrorCategory` con fallback
 - ✅ Fixato `test_error_classification_for_failures` per gestire `(ErrorCategory, ErrorSeverity)` tuple
 - ✅ Aggiunto import `ErrorSeverity` per verifiche corrette
@@ -21,9 +23,11 @@
 ---
 
 ### 2. test_memory_orchestrator_race_conditions.py ✅
+
 **File:** `tests/unit/services/memory/test_memory_orchestrator_race_conditions.py`
 
 **Fix Applicati:**
+
 - ✅ Fixato `mock_memory_service` per restituire `UserMemory` invece di `MagicMock`
 - ✅ Mock ora corrisponde alla struttura reale restituita da `get_memory()`
 
@@ -32,6 +36,7 @@
 ---
 
 ### 3. test_complete_error_handling_suite.py ⏳
+
 **File:** `tests/unit/error_handling/test_complete_error_handling_suite.py`
 
 **Status:** Da verificare - test di logica, potrebbero funzionare già

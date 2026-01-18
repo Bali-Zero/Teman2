@@ -91,7 +91,8 @@ class TestReasoningFullFlow:
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                return_value=mock_tool_call,
             ):
                 result_state, model_used, messages = await engine.execute_react_loop(
                     state=state,

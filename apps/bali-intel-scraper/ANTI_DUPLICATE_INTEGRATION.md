@@ -32,7 +32,9 @@ ClaudeValidator.add_published_article(
 ### Punti di integrazione possibili
 
 #### Opzione A: Backend Publish Endpoint (CONSIGLIATO)
+
 Creare endpoint `/api/intel/staging/{item_id}/publish` che:
+
 1. Legge articolo da staging
 2. Pubblica su Sanity/website
 3. Chiama `ClaudeValidator.add_published_article()`
@@ -68,6 +70,7 @@ async def publish_approved_article(item_id: str):
 ```
 
 #### Opzione B: Telegram Bot dopo approvazione
+
 Modificare `telegram_approval.py` per pubblicare automaticamente dopo voto 2/3:
 
 ```python
@@ -86,6 +89,7 @@ if vote_result["status"] == "approved":
 ```
 
 #### Opzione C: Script manuale batch publish
+
 Per pubblicare articoli già approvati in Telegram:
 
 ```python
@@ -140,6 +144,7 @@ Il file `data/published_articles.json` viene auto-creato e mantenuto:
 ## 🧪 Test del Sistema
 
 ### Test 1: Duplicate Quick Check
+
 ```python
 from claude_validator import ClaudeValidator
 
@@ -165,6 +170,7 @@ print(f"✅ Quick check funziona: similar to '{result}'")
 ```
 
 ### Test 2: Claude Semantic Check
+
 ```python
 # Articolo con leggera variazione
 result = await validator.validate_article(
@@ -208,5 +214,6 @@ Prima di andare in produzione:
 ## Contatto
 
 Per domande sull'implementazione, vedere:
+
 - `scripts/claude_validator.py` (linee 74-128)
 - Questo documento

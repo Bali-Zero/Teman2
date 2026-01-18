@@ -7,10 +7,7 @@ Basato su navigazione manuale via browser
 # Dati raccolti manualmente
 gdrive_structure = {
     "CRM": {
-        "COMPANY": {
-            "type": "category",
-            "status": "to_scan"
-        },
+        "COMPANY": {"type": "category", "status": "to_scan"},
         "DATA_BS": {
             "type": "dropbox_copy",
             "subfolders": {
@@ -20,34 +17,35 @@ gdrive_structure = {
                         {"name": "Bali Zero", "type": "utility"},
                         {"name": "BS", "type": "utility"},
                         {"name": "Draft", "type": "utility"},
-                        {"name": "Foto", "type": "utility"}
+                        {"name": "Foto", "type": "utility"},
                     ],
-                    "status": "partial_scan"
+                    "status": "partial_scan",
                 },
                 "ANGEL": {"status": "to_scan"},
                 "DATA_ADI": {"status": "to_scan"},
                 "EXTEND_VISA": {"status": "to_scan"},
-                "MEGI": {"status": "to_scan"}
-            }
+                "MEGI": {"status": "to_scan"},
+            },
         },
         "INDIVIDUAL": {
             "type": "clean_clients",
             "known_items": [
                 {"name": "Larissa Bianca Galvanone", "type": "client"},
-                {"name": "Laura Piranese", "type": "client"}
+                {"name": "Laura Piranese", "type": "client"},
             ],
-            "status": "partial_scan"
-        }
+            "status": "partial_scan",
+        },
     }
 }
+
 
 def estimate_clients():
     """
     Stima numero clienti basato su quello che sappiamo
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 STIMA CLIENTI SU GOOGLE DRIVE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print("🔍 Basato su scan parziale:\n")
 
@@ -56,30 +54,30 @@ def estimate_clients():
     print(f"✅ INDIVIDUAL/: {individual_clients} clienti (confermati)")
 
     # DATA BS: sconosciuto, ma contiene repository Dropbox
-    print(f"\n❓ DATA BS/: numero sconosciuto")
-    print(f"   Contiene 5 repository:")
-    print(f"   - ADITYA (visto: 1 cliente + utility folders)")
-    print(f"   - ANGEL (non scannerizzato)")
-    print(f"   - DATA ADI (non scannerizzato)")
-    print(f"   - EXTEND VISA (non scannerizzato)")
-    print(f"   - MEGI (non scannerizzato)")
+    print("\n❓ DATA BS/: numero sconosciuto")
+    print("   Contiene 5 repository:")
+    print("   - ADITYA (visto: 1 cliente + utility folders)")
+    print("   - ANGEL (non scannerizzato)")
+    print("   - DATA ADI (non scannerizzato)")
+    print("   - EXTEND VISA (non scannerizzato)")
+    print("   - MEGI (non scannerizzato)")
 
-    print(f"\n💡 STIMA CONSERVATIVA:")
-    print(f"   Se ogni repository ha ~100-500 clienti:")
-    print(f"   - Minimo: 5 × 100 = 500 clienti")
-    print(f"   - Massimo: 5 × 500 = 2,500 clienti")
-    print(f"   - Medio: ~1,250 clienti")
+    print("\n💡 STIMA CONSERVATIVA:")
+    print("   Se ogni repository ha ~100-500 clienti:")
+    print("   - Minimo: 5 × 100 = 500 clienti")
+    print("   - Massimo: 5 × 500 = 2,500 clienti")
+    print("   - Medio: ~1,250 clienti")
 
-    print(f"\n💡 STIMA OTTIMISTICA:")
-    print(f"   Se hai copiato tutti i repository completi da Dropbox:")
-    print(f"   - ADITYA: ~776 clienti (da Dropbox)")
-    print(f"   - ANGEL: ~16 clienti")
-    print(f"   - MEGI: ~431 clienti")
-    print(f"   - Stima totale: ~1,200-1,500 clienti")
+    print("\n💡 STIMA OTTIMISTICA:")
+    print("   Se hai copiato tutti i repository completi da Dropbox:")
+    print("   - ADITYA: ~776 clienti (da Dropbox)")
+    print("   - ANGEL: ~16 clienti")
+    print("   - MEGI: ~431 clienti")
+    print("   - Stima totale: ~1,200-1,500 clienti")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("❗ CONCLUSIONE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print("Per avere numero ESATTO serve:")
     print("1. Scan completo ricorsivo di DATA BS/")
@@ -98,6 +96,7 @@ def estimate_clients():
     print("   - Poi script automatico")
     print("   - Ma serve configurare OAuth client")
     print()
+
 
 if __name__ == "__main__":
     estimate_clients()

@@ -31,16 +31,17 @@ def mock_db_pool():
 @pytest.fixture
 def mock_memory_service():
     """Mock memory service.
-    
+
     Updated 2026-01-16: Fixed to return UserMemory object
     that matches what get_memory() actually returns.
     """
-    from backend.services.memory.memory_service_postgres import UserMemory
     from datetime import datetime
-    
+
+    from backend.services.memory.memory_service_postgres import UserMemory
+
     service = MagicMock()
     service.pool = AsyncMock()
-    
+
     # get_memory() returns a UserMemory dataclass
     mock_memory = UserMemory(
         user_id="test@example.com",
@@ -69,6 +70,7 @@ def mock_fact_extractor():
 def orchestrator(mock_db_pool, mock_memory_service, mock_fact_extractor):
     """Create MemoryOrchestrator instance"""
     from backend.services.memory.orchestrator import MemoryServiceStatus
+
     orchestrator = MemoryOrchestrator(db_pool=mock_db_pool)
     orchestrator._memory_service = mock_memory_service
     orchestrator._fact_extractor = mock_fact_extractor

@@ -3,9 +3,8 @@ Admin Team Activity Router
 Complete team activity dashboard with messages, timesheet, and CRM actions
 """
 
-import json
 import logging
-from datetime import datetime, date
+from datetime import datetime
 from typing import Any
 
 import asyncpg
@@ -80,7 +79,9 @@ class OverviewStats(BaseModel):
 
 @router.get("/overview")
 async def get_overview(
-    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD), defaults to 30 days ago"),
+    start_date: str | None = Query(
+        None, description="Start date (YYYY-MM-DD), defaults to 30 days ago"
+    ),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -114,7 +115,8 @@ async def get_overview(
             if start_date:
                 # Parse string to date object for asyncpg
                 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-                top_users = await conn.fetch("""
+                top_users = await conn.fetch(
+                    """
                     SELECT user_id, COUNT(*) as msg_count
                     FROM v_messages
                     WHERE role = 'user'
@@ -122,7 +124,9 @@ async def get_overview(
                     GROUP BY user_id
                     ORDER BY msg_count DESC
                     LIMIT 10
-                """, start_date_obj)
+                """,
+                    start_date_obj,
+                )
             else:
                 top_users = await conn.fetch("""
                     SELECT user_id, COUNT(*) as msg_count
@@ -233,7 +237,9 @@ async def get_messages(
 @router.get("/team-stats")
 async def get_team_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
-    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD), overrides days if provided"),
+    start_date: str | None = Query(
+        None, description="Start date (YYYY-MM-DD), overrides days if provided"
+    ),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -560,8 +566,8 @@ async def export_messages(
             rows = await conn.fetch(query, *params)
 
         # Generate CSV
-        import io
         import csv
+        import io
 
         output = io.StringIO()
         writer = csv.writer(output)

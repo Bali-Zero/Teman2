@@ -9,14 +9,14 @@
 
 ## Quick Reference
 
-| Servizio | URL Locale | Credenziali | Scopo |
-|----------|------------|-------------|-------|
-| **Grafana** | http://localhost:3001 | admin / changeme123 | Dashboard visualizzazione |
-| **Prometheus** | http://localhost:9090 | - | Metrics storage + query |
-| **Alertmanager** | http://localhost:9093 | - | Alert routing |
-| **Jaeger** | http://localhost:16686 | - | Distributed tracing |
-| **SonarQube** | http://localhost:9000 | admin / admin | Code quality |
-| **Qdrant** | http://localhost:6333/dashboard | - | Vector DB inspection |
+| Servizio         | URL Locale                      | Credenziali         | Scopo                     |
+| ---------------- | ------------------------------- | ------------------- | ------------------------- |
+| **Grafana**      | http://localhost:3001           | admin / changeme123 | Dashboard visualizzazione |
+| **Prometheus**   | http://localhost:9090           | -                   | Metrics storage + query   |
+| **Alertmanager** | http://localhost:9093           | -                   | Alert routing             |
+| **Jaeger**       | http://localhost:16686          | -                   | Distributed tracing       |
+| **SonarQube**    | http://localhost:9000           | admin / admin       | Code quality              |
+| **Qdrant**       | http://localhost:6333/dashboard | -                   | Vector DB inspection      |
 
 ---
 
@@ -34,6 +34,7 @@ docker compose ps
 ```
 
 **Ordine di startup automatico:**
+
 1. Alertmanager (nessuna dipendenza)
 2. Prometheus (dipende da Alertmanager)
 3. Grafana (dipende da Prometheus)
@@ -46,19 +47,20 @@ docker compose ps
 ### Auto-Provisioning
 
 I dashboard sono caricati **automaticamente** all'avvio di Grafana.
+
 - **Datasources:** Prometheus + Jaeger (pre-configurati)
 - **Dashboards:** 6 dashboard in folder "Nuzantara"
 
 ### Dashboard Disponibili
 
-| Dashboard | File | Metriche Principali |
-|-----------|------|---------------------|
-| **RAG Pipeline** | `rag-dashboard.json` | Latency, cache hit rate, tool calls, fallback count |
-| **System Health** | `system-health-dashboard.json` | CPU, RAM, uptime, active sessions |
-| **Qdrant Health** | `qdrant-health-dashboard.json` | Vector search latency, error rate |
-| **Error Tracking** | `error-tracking-dashboard.json` | 4xx/5xx per endpoint, error trends |
-| **Security** | `security-dashboard.json` | Failed logins, rate limit hits |
-| **Lock Contention** | `lock-contention-dashboard.json` | Memory locks, race conditions |
+| Dashboard           | File                             | Metriche Principali                                 |
+| ------------------- | -------------------------------- | --------------------------------------------------- |
+| **RAG Pipeline**    | `rag-dashboard.json`             | Latency, cache hit rate, tool calls, fallback count |
+| **System Health**   | `system-health-dashboard.json`   | CPU, RAM, uptime, active sessions                   |
+| **Qdrant Health**   | `qdrant-health-dashboard.json`   | Vector search latency, error rate                   |
+| **Error Tracking**  | `error-tracking-dashboard.json`  | 4xx/5xx per endpoint, error trends                  |
+| **Security**        | `security-dashboard.json`        | Failed logins, rate limit hits                      |
+| **Lock Contention** | `lock-contention-dashboard.json` | Memory locks, race conditions                       |
 
 ### Creare Nuovo Dashboard
 
@@ -74,6 +76,7 @@ I dashboard sono caricati **automaticamente** all'avvio di Grafana.
 ### Metriche Backend (~50 totali)
 
 **RAG Pipeline:**
+
 ```promql
 # Latenza totale RAG
 histogram_quantile(0.95, rate(zantara_rag_pipeline_duration_seconds_bucket[5m]))
@@ -86,6 +89,7 @@ sum(rate(zantara_rag_fallback_count_total[5m]))
 ```
 
 **LLM Usage:**
+
 ```promql
 # Token usage per modello
 sum by (model) (rate(zantara_llm_prompt_tokens_total[5m]))
@@ -98,6 +102,7 @@ sum by (model) (rate(zantara_llm_circuit_breaker_opened_total[5m]))
 ```
 
 **Lock Contention:**
+
 ```promql
 # Timeout memory lock
 sum by (user_id) (rate(zantara_memory_lock_timeout_total[5m]))
@@ -107,6 +112,7 @@ histogram_quantile(0.99, rate(zantara_memory_lock_contention_seconds_bucket[5m])
 ```
 
 **Error Handling:**
+
 ```promql
 # Stream errors
 sum(rate(zantara_stream_fatal_error_total[5m]))
@@ -141,13 +147,13 @@ sum(rate(zantara_cache_hits_total[5m])) /
 
 Configurati in `config/prometheus/alerts.yml`:
 
-| Alert | Condizione | Severity |
-|-------|------------|----------|
-| `CriticalQdrantErrorRate` | Error rate > 5% per 2m | critical |
-| `CriticalQdrantSearchLatency` | P95 > 1000ms per 2m | critical |
-| `QdrantMetricsEndpointDown` | Endpoint unreachable | critical |
-| `HighMemoryLockContention` | Contention > 500ms | warning |
-| `LLMAllModelsFailed` | Tutti i modelli falliti | critical |
+| Alert                         | Condizione              | Severity |
+| ----------------------------- | ----------------------- | -------- |
+| `CriticalQdrantErrorRate`     | Error rate > 5% per 2m  | critical |
+| `CriticalQdrantSearchLatency` | P95 > 1000ms per 2m     | critical |
+| `QdrantMetricsEndpointDown`   | Endpoint unreachable    | critical |
+| `HighMemoryLockContention`    | Contention > 500ms      | warning  |
+| `LLMAllModelsFailed`          | Tutti i modelli falliti | critical |
 
 ### Verificare Alert
 
@@ -183,11 +189,13 @@ curl -s http://localhost:9093/api/v2/silences | jq
 ### Trace ID nei Log
 
 I trace ID sono inclusi nei log backend:
+
 ```
 2025-12-31 10:00:00 INFO [trace_id=abc123] Processing query...
 ```
 
 Per cercare un trace specifico:
+
 ```
 http://localhost:16686/trace/abc123
 ```
@@ -277,6 +285,7 @@ Richiede setup aggiuntivo:
    - Quale fase è lenta? (embedding, search, reranking, LLM)
 
 2. **Prometheus** - Query specifica
+
    ```promql
    histogram_quantile(0.95, rate(zantara_rag_vector_search_duration_seconds_bucket[5m]))
    ```
@@ -308,16 +317,16 @@ Richiede setup aggiuntivo:
 
 ## 9. File Configuration
 
-| File | Scopo |
-|------|-------|
-| `docker-compose.yml` | Service definitions |
-| `config/prometheus/prometheus.yml` | Prometheus config |
-| `config/prometheus/alerts.yml` | Alert rules |
-| `config/alertmanager/alertmanager.yml` | Alert routing |
+| File                                       | Scopo                      |
+| ------------------------------------------ | -------------------------- |
+| `docker-compose.yml`                       | Service definitions        |
+| `config/prometheus/prometheus.yml`         | Prometheus config          |
+| `config/prometheus/alerts.yml`             | Alert rules                |
+| `config/alertmanager/alertmanager.yml`     | Alert routing              |
 | `config/grafana/provisioning/datasources/` | Auto-configure datasources |
-| `config/grafana/provisioning/dashboards/` | Auto-load dashboards |
-| `config/grafana/dashboards/*.json` | Dashboard definitions |
-| `backend/app/metrics.py` | Prometheus metrics export |
+| `config/grafana/provisioning/dashboards/`  | Auto-load dashboards       |
+| `config/grafana/dashboards/*.json`         | Dashboard definitions      |
+| `backend/app/metrics.py`                   | Prometheus metrics export  |
 
 ---
 
@@ -378,12 +387,14 @@ logger = get_logger(__name__)
 ### Output Formats
 
 **Development** (colored, human-readable):
+
 ```
 21:37:05 [INFO    ] zantara.backend: Logging configured
     context: {"level": "INFO", "environment": "development"}
 ```
 
 **Production** (JSON for log aggregation):
+
 ```json
 {
   "timestamp": "2026-01-09T21:37:05.123Z",
@@ -392,8 +403,8 @@ logger = get_logger(__name__)
   "message": "Logging configured",
   "service": "nuzantara-backend",
   "environment": "production",
-  "source": {"file": "/app/backend/app/setup/logging_config.py", "line": 150},
-  "context": {"level": "INFO"}
+  "source": { "file": "/app/backend/app/setup/logging_config.py", "line": 150 },
+  "context": { "level": "INFO" }
 }
 ```
 
@@ -423,22 +434,23 @@ with log_operation(logger, "process_query", user_id=123) as ctx:
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `app/setup/logging_config.py` | Configure formatters, handlers, rotation |
-| `app/utils/logging_utils.py` | Utility functions (log_success, log_error, etc.) |
-| `app/setup/app_factory.py` | Calls `configure_logging()` at startup |
+| File                          | Purpose                                          |
+| ----------------------------- | ------------------------------------------------ |
+| `app/setup/logging_config.py` | Configure formatters, handlers, rotation         |
+| `app/utils/logging_utils.py`  | Utility functions (log_success, log_error, etc.) |
+| `app/setup/app_factory.py`    | Calls `configure_logging()` at startup           |
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOG_LEVEL` | INFO | DEBUG, INFO, WARNING, ERROR, CRITICAL |
-| `ENVIRONMENT` | development | production = JSON output |
+| Variable      | Default     | Description                           |
+| ------------- | ----------- | ------------------------------------- |
+| `LOG_LEVEL`   | INFO        | DEBUG, INFO, WARNING, ERROR, CRITICAL |
+| `ENVIRONMENT` | development | production = JSON output              |
 
 ---
 
 **Documentazione correlata:**
+
 - [ALERTS_RUNBOOK.md](ALERTS_RUNBOOK.md) - Runbook per gestire alert
 - [LOCK_MONITORING_GUIDE.md](LOCK_MONITORING_GUIDE.md) - Guida race conditions
 - [DEBUG_GUIDE.md](DEBUG_GUIDE.md) - Debug endpoints API

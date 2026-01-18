@@ -24,11 +24,7 @@ export interface IApiClient {
    * @param timeoutMs - Request timeout in milliseconds (default: 30000)
    * @returns Promise resolving to typed response
    */
-  request<T>(
-    endpoint: string,
-    options?: ApiRequestOptions,
-    timeoutMs?: number
-  ): Promise<T>;
+  request<T>(endpoint: string, options?: ApiRequestOptions, timeoutMs?: number): Promise<T>;
 
   /**
    * Get admin-specific headers for protected endpoints.

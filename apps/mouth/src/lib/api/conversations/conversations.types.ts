@@ -45,4 +45,3 @@ export interface SingleConversationResponse {
   metadata?: Record<string, unknown>;
   error?: string;
 }
-

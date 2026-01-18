@@ -240,9 +240,8 @@ class TestProductivityRouterIntegration:
     @pytest.fixture
     def client(self):
         """Create test client"""
-        from fastapi import FastAPI
-
         from backend.app.routers.productivity import router
+        from fastapi import FastAPI
 
         app = FastAPI()
         app.include_router(router)
@@ -308,9 +307,9 @@ class TestDependenciesIntegration:
     def test_get_ai_client_available(self, app):
         """Test getting AI client when available"""
         from fastapi import Request
-        from backend.llm.zantara_ai_client import ZantaraAIClient
 
         from backend.app.dependencies import get_ai_client
+        from backend.llm.zantara_ai_client import ZantaraAIClient
 
         app.state.ai_client = ZantaraAIClient()
 
@@ -374,10 +373,10 @@ class TestDependenciesIntegration:
 
     def test_get_cache(self, app):
         """Test getting cache service"""
-        from backend.core.cache import CacheService
         from fastapi import Request
 
         from backend.app.dependencies import get_cache
+        from backend.core.cache import CacheService
 
         app.state.cache_service = CacheService()
 

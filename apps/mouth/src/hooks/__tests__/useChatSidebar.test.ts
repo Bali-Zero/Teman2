@@ -1,6 +1,6 @@
 /**
  * Unit tests for useChatSidebar hook
- * 
+ *
  * Note: Some tests are simplified because the hook uses require() dynamically
  * which is difficult to mock with Vitest. The core functionality is tested.
  */

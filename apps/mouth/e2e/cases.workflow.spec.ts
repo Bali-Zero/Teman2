@@ -21,7 +21,9 @@ test.describe('Cases Page E2E Workflows', () => {
   test.describe('View Mode Switching', () => {
     test('should switch from Kanban to List view and maintain state', async () => {
       // Verify Kanban view is default
-      const kanbanColumns = page.locator('h3').filter({ hasText: /Inquiry|Quotation|In Progress|Completed/ });
+      const kanbanColumns = page
+        .locator('h3')
+        .filter({ hasText: /Inquiry|Quotation|In Progress|Completed/ });
       await expect(kanbanColumns.first()).toBeVisible();
 
       // Click List view button
@@ -50,7 +52,9 @@ test.describe('Cases Page E2E Workflows', () => {
       await kanbanButton.click();
 
       // Verify Kanban columns are visible
-      const kanbanColumns = page.locator('h3').filter({ hasText: /Inquiry|Quotation|In Progress|Completed/ });
+      const kanbanColumns = page
+        .locator('h3')
+        .filter({ hasText: /Inquiry|Quotation|In Progress|Completed/ });
       await expect(kanbanColumns.first()).toBeVisible();
     });
   });
@@ -71,8 +75,7 @@ test.describe('Cases Page E2E Workflows', () => {
       await statusDropdown.selectOption('inquiry');
 
       // Verify filter is applied (check badge)
-      const filterBadge = filterButton.locator('..')
-        .locator('span').filter({ hasText: /\d/ });
+      const filterBadge = filterButton.locator('..').locator('span').filter({ hasText: /\d/ });
       await expect(filterBadge).toBeVisible();
     });
 
@@ -93,8 +96,7 @@ test.describe('Cases Page E2E Workflows', () => {
       }
 
       // Verify multiple filters show in badge
-      const filterBadge = filterButton.locator('..')
-        .locator('span').filter({ hasText: /\d/ });
+      const filterBadge = filterButton.locator('..').locator('span').filter({ hasText: /\d/ });
       await expect(filterBadge).toBeVisible();
     });
 
@@ -111,8 +113,7 @@ test.describe('Cases Page E2E Workflows', () => {
       await clearButton.click();
 
       // Verify filter badge is gone
-      const filterBadge = filterButton.locator('..')
-        .locator('span').filter({ hasText: /\d/ });
+      const filterBadge = filterButton.locator('..').locator('span').filter({ hasText: /\d/ });
       await expect(filterBadge).not.toBeVisible();
 
       // Verify filter is reset
@@ -132,8 +133,7 @@ test.describe('Cases Page E2E Workflows', () => {
       await listButton.click();
 
       // Verify filter is still applied
-      const filterBadge = filterButton.locator('..')
-        .locator('span').filter({ hasText: /\d/ });
+      const filterBadge = filterButton.locator('..').locator('span').filter({ hasText: /\d/ });
       await expect(filterBadge).toBeVisible();
     });
   });
@@ -198,7 +198,10 @@ test.describe('Cases Page E2E Workflows', () => {
       const listButton = page.locator('button[title="List View"]');
       await listButton.click();
 
-      const clientHeader = page.locator('th').filter({ hasText: /^Client$/ }).first();
+      const clientHeader = page
+        .locator('th')
+        .filter({ hasText: /^Client$/ })
+        .first();
 
       // First click - sort ascending
       await clientHeader.click();
@@ -216,7 +219,10 @@ test.describe('Cases Page E2E Workflows', () => {
       await listButton.click();
 
       const idHeader = page.locator('th').filter({ hasText: 'ID' }).first();
-      const clientHeader = page.locator('th').filter({ hasText: /^Client$/ }).first();
+      const clientHeader = page
+        .locator('th')
+        .filter({ hasText: /^Client$/ })
+        .first();
 
       // Sort by ID
       await idHeader.click();
@@ -282,7 +288,10 @@ test.describe('Cases Page E2E Workflows', () => {
       await expect(page.locator('table')).toBeVisible();
 
       // 4. Sort by client name
-      const clientHeader = page.locator('th').filter({ hasText: /^Client$/ }).first();
+      const clientHeader = page
+        .locator('th')
+        .filter({ hasText: /^Client$/ })
+        .first();
       await clientHeader.click();
 
       // 5. Verify sort applied

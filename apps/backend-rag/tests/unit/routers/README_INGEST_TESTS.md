@@ -1,15 +1,19 @@
 # Unit Tests for Ingest Router
 
 ## Overview
+
 Comprehensive unit tests for `backend/app/routers/ingest.py` achieving **~92% coverage**.
 
 ## Test File
+
 `test_ingest_router.py` - 35 test cases covering all 4 endpoints
 
 ## Coverage Summary
 
 ### POST /api/ingest/upload (9 tests)
+
 Tests file upload and ingestion functionality:
+
 - ✓ Successful PDF/EPUB upload
 - ✓ Custom tier override
 - ✓ File type validation
@@ -17,14 +21,18 @@ Tests file upload and ingestion functionality:
 - ✓ Optional parameter handling
 
 ### POST /api/ingest/file (5 tests)
+
 Tests local file ingestion:
+
 - ✓ Success scenarios
 - ✓ File validation
 - ✓ Service error handling
 - ✓ Request validation
 
 ### POST /api/ingest/batch (9 tests)
+
 Tests batch directory processing:
+
 - ✓ Multiple file ingestion
 - ✓ Mixed success/failure scenarios
 - ✓ Directory validation
@@ -34,13 +42,16 @@ Tests batch directory processing:
 **Known Bug**: Documents tier="Unknown" validation error when ingestion fails
 
 ### GET /api/ingest/stats (4 tests)
+
 Tests statistics retrieval:
+
 - ✓ Success scenarios
 - ✓ Missing data handling
 - ✓ Client error handling
 - ✓ Empty collection handling
 
 ## Edge Cases Tested
+
 - Very long filenames
 - Special characters (émojis, unicode)
 - Empty inputs
@@ -49,6 +60,7 @@ Tests statistics retrieval:
 - Case-sensitive extensions
 
 ## Integration Tests (2 tests)
+
 - Upload workflow verification
 - Service sharing between endpoints
 
@@ -71,6 +83,7 @@ pytest tests/unit/routers/test_ingest_router.py::TestUploadEndpoint::test_upload
 ## Test Structure
 
 ### Fixtures
+
 - `app` - FastAPI test application
 - `client` - TestClient for API calls
 - `mock_ingestion_service` - Mocked IngestionService
@@ -78,6 +91,7 @@ pytest tests/unit/routers/test_ingest_router.py::TestUploadEndpoint::test_upload
 - `sample_pdf_content` - Sample PDF bytes
 
 ### Test Classes
+
 1. `TestUploadEndpoint` - Upload endpoint tests
 2. `TestFileEndpoint` - Local file endpoint tests
 3. `TestBatchEndpoint` - Batch ingestion tests
@@ -86,6 +100,7 @@ pytest tests/unit/routers/test_ingest_router.py::TestUploadEndpoint::test_upload
 6. `TestEdgeCases` - Edge cases and unusual inputs
 
 ## Mocking Strategy
+
 - Uses `unittest.mock.patch` for service dependencies
 - Uses `AsyncMock` for async service methods
 - Uses `MagicMock` for synchronous operations
@@ -93,6 +108,7 @@ pytest tests/unit/routers/test_ingest_router.py::TestUploadEndpoint::test_upload
 - Overrides dependencies with `app.dependency_overrides`
 
 ## Key Testing Patterns
+
 1. **Arrange-Act-Assert** structure
 2. **Comprehensive error testing** (400, 404, 500)
 3. **Edge case coverage** for unusual inputs
@@ -100,12 +116,14 @@ pytest tests/unit/routers/test_ingest_router.py::TestUploadEndpoint::test_upload
 5. **Response validation** against Pydantic models
 
 ## Coverage Metrics
+
 - **Statement Coverage**: ~92%
 - **Branch Coverage**: ~90%
 - **Error Path Coverage**: ~95%
 - **Happy Path Coverage**: 100%
 
 ## Notes
+
 - All tests use proper sys.path setup for imports
 - Tests document known bugs in the router
 - Follows existing test patterns from `test_auth_router.py`

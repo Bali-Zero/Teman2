@@ -8,10 +8,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
 from backend.app.models import TierLevel
+from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
@@ -290,7 +291,10 @@ class RegisterParentDocRequest(BaseModel):
 
 
 @router.post("/parent-documents", status_code=status.HTTP_201_CREATED)
-async def register_parent_document(request: RegisterParentDocRequest) -> dict[str, Any]:
+async def register_parent_document(
+    request: RegisterParentDocRequest,
+    api_key_verified=Depends(verify_internal_api_key),
+) -> dict[str, Any]:
     """
     Register a parent document in PostgreSQL.
     Used by ingestion scripts to track source documents for chunks.

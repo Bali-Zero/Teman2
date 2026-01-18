@@ -9,14 +9,14 @@
 
 ### 1. Moduli Creati (6 moduli specializzati)
 
-| Modulo | Righe | Responsabilità | Test Coverage |
-|--------|-------|----------------|---------------|
-| `orchestrator_context.py` | ~150 | Context loading, history management | ✅ Test creati |
-| `orchestrator_routing.py` | ~130 | Intent classification, tier selection | ✅ Test creati |
-| `orchestrator_metrics.py` | ~180 | Metrics collection, timing | ✅ Test creati |
-| `orchestrator_response.py` | ~150 | Response formatting | ✅ Test creati |
-| `orchestrator_streaming.py` | ~200 | SSE event generation | ✅ Test creati |
-| `orchestrator_core.py` | ~350 | Coordinamento flusso principale | ✅ Test creati |
+| Modulo                      | Righe | Responsabilità                        | Test Coverage  |
+| --------------------------- | ----- | ------------------------------------- | -------------- |
+| `orchestrator_context.py`   | ~150  | Context loading, history management   | ✅ Test creati |
+| `orchestrator_routing.py`   | ~130  | Intent classification, tier selection | ✅ Test creati |
+| `orchestrator_metrics.py`   | ~180  | Metrics collection, timing            | ✅ Test creati |
+| `orchestrator_response.py`  | ~150  | Response formatting                   | ✅ Test creati |
+| `orchestrator_streaming.py` | ~200  | SSE event generation                  | ✅ Test creati |
+| `orchestrator_core.py`      | ~350  | Coordinamento flusso principale       | ✅ Test creati |
 
 ### 2. Test Unitari Creati
 
@@ -47,14 +47,14 @@
 
 ## 📊 METRICHE FINALI
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **Righe orchestrator.py** | 1,298 | ~300 (wrapper) | -77% |
-| **Responsabilità per modulo** | 27+ | 1 per modulo | -96% |
-| **Complessità max metodo** | 73 | < 20 | -73% |
-| **Dipendenze dirette** | 20+ | < 5 per modulo | -75% |
-| **Testabilità** | Bassa | Alta | +100% |
-| **Test cases creati** | 0 | 54+ | +∞ |
+| Metrica                       | Prima | Dopo           | Miglioramento |
+| ----------------------------- | ----- | -------------- | ------------- |
+| **Righe orchestrator.py**     | 1,298 | ~300 (wrapper) | -77%          |
+| **Responsabilità per modulo** | 27+   | 1 per modulo   | -96%          |
+| **Complessità max metodo**    | 73    | < 20           | -73%          |
+| **Dipendenze dirette**        | 20+   | < 5 per modulo | -75%          |
+| **Testabilità**               | Bassa | Alta           | +100%         |
+| **Test cases creati**         | 0     | 54+            | +∞            |
 
 ---
 
@@ -77,6 +77,7 @@
 **Obiettivo:** Refactorizzare completamente `stream_query()` per usare moduli specializzati
 
 **Piano:**
+
 1. Creare `orchestrator_streaming_core.py` che coordina streaming logic
 2. Estrarre logica comune tra streaming e non-streaming
 3. Usare `OrchestratorStreamingManager` per event validation
@@ -85,6 +86,7 @@
 6. Usare `OrchestratorMetricsManager` per metrics collection
 
 **Benefici attesi:**
+
 - Ridurre duplicazione codice (~40% → <5%)
 - Unificare logica comune
 - Migliorare testabilità streaming
@@ -146,6 +148,7 @@ pytest --cov=backend.services.rag.agentic.orchestrator_* --cov-report=html
 ### Import Verification
 
 Tutti i moduli sono importabili correttamente:
+
 - ✅ `orchestrator_context.py`
 - ✅ `orchestrator_routing.py`
 - ✅ `orchestrator_metrics.py`

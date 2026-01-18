@@ -8,6 +8,7 @@
 ## ✅ TASK COMPLETATI
 
 ### 1. Fix Mock CRM Router ✅
+
 - ✅ Migliorato `mock_db_pool` fixture
 - ✅ Fixato `test_app` fixture con `app.state.db_pool`
 - ✅ Fixato dependency overrides per `get_database_pool` e `get_current_user`
@@ -19,6 +20,7 @@
 ---
 
 ### 2. Fix Mock Identity Service ✅
+
 - ✅ Migliorato `_make_service` con documentazione
 - ✅ Migliorato `test_init_warns_on_default_secret` con docstring
 - ✅ Verificato jwt_secret validation
@@ -29,6 +31,7 @@
 ---
 
 ### 3. Skip Markers per File Non Trovati ✅
+
 - ✅ Aggiunto `pytest_collection_modifyitems` hook in `conftest.py`
 - ✅ Skip automatico per 14 file non trovati (~70 test)
 - ✅ Marker `skip_missing` aggiunto a `pytest.ini`
@@ -40,6 +43,7 @@
 ---
 
 ### 4. Fix Ambiente Pytest ⚠️
+
 - ✅ Pytest installato e funzionante (`pytest --version` OK)
 - ⚠️ Problema locale con xonsh plugin (non critico)
 - ✅ Test possono essere eseguiti in CI/CD
@@ -52,6 +56,7 @@
 ## 📊 RISULTATI
 
 ### Test Fixati/Skippati
+
 - ✅ **LLM Gateway:** ~38 test (mock aggiornati - già fatto prima)
 - ✅ **CRM Router:** ~54 test (mock aggiornati)
 - ✅ **Identity Service:** ~12 test (mock aggiornati)
@@ -60,6 +65,7 @@
 **Totale:** ~174 test fixati/skippati
 
 ### Test Rimanenti
+
 - ⏳ ~116 test rimanenti da fixare
 - ⏳ Principalmente: Team Activity Router, CRM Practices Router, altri vari
 
@@ -78,11 +84,13 @@
 ## 🎯 PROSSIMI PASSI
 
 ### FASE 2: Fix Critici (3-5 giorni)
+
 1. ⏳ Fixare Team Activity Router (~41 test)
 2. ⏳ Fixare CRM Practices Router (~27 test)
 3. ⏳ Fixare altri test vari (~25 test)
 
 ### FASE 3: Automazione (1 giorno)
+
 1. ⏳ Setup CI per eseguire test
 2. ⏳ Bloccare merge su test critici falliti
 3. ⏳ Generare report automatico

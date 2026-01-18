@@ -10,24 +10,28 @@
 ### Variabili Richieste:
 
 #### 1. Sentry DSN (Server-side):
+
 - **Nome:** `SENTRY_DSN`
 - **Formato:** `https://xxx@sentry.io/xxx`
 - **Scopo:** Error tracking server-side
 - **Required:** ✅ Sì (se Sentry è abilitato)
 
 #### 2. Sentry DSN (Client-side):
+
 - **Nome:** `NEXT_PUBLIC_SENTRY_DSN`
 - **Formato:** `https://xxx@sentry.io/xxx`
 - **Scopo:** Error tracking client-side
 - **Required:** ✅ Sì (se Sentry è abilitato)
 
 #### 3. Sentry Organization:
+
 - **Nome:** `SENTRY_ORG`
 - **Formato:** `your-org-name`
 - **Scopo:** Sentry organization per source maps
 - **Required:** ⚠️ Opzionale (per source maps upload)
 
 #### 4. Sentry Project:
+
 - **Nome:** `SENTRY_PROJECT`
 - **Formato:** `your-project-name`
 - **Scopo:** Sentry project per source maps
@@ -38,12 +42,14 @@
 ## 📋 CHECKLIST VERIFICA
 
 ### Step 1: Accesso Vercel Dashboard
+
 - [ ] Accedere a: https://vercel.com/dashboard
 - [ ] Selezionare progetto: `nuzantara-2026` o `mouth`
 - [ ] Andare su tab "Settings"
 - [ ] Andare su sezione "Environment Variables"
 
 ### Step 2: Verifica Sentry Variables
+
 - [ ] Verificare presenza `SENTRY_DSN`
 - [ ] Verificare presenza `NEXT_PUBLIC_SENTRY_DSN`
 - [ ] Verificare formato corretto (https://xxx@sentry.io/xxx)
@@ -53,11 +59,13 @@
   - [ ] Development (opzionale)
 
 ### Step 3: Verifica Opzionali (Source Maps)
+
 - [ ] Verificare presenza `SENTRY_ORG` (opzionale)
 - [ ] Verificare presenza `SENTRY_PROJECT` (opzionale)
 - [ ] Se presenti, verificare valori corretti
 
 ### Step 4: Verifica Altre Env Vars Critiche
+
 - [ ] `NEXT_PUBLIC_API_URL` - Backend API URL
 - [ ] `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL
 - [ ] `NEXT_PUBLIC_WS_URL` - WebSocket URL (se usato)
@@ -77,6 +85,7 @@
    - Click "Save"
 
 2. **Via CLI:**
+
    ```bash
    cd apps/mouth
    vercel env add SENTRY_DSN production
@@ -116,18 +125,21 @@
 ## 🚨 TROUBLESHOOTING
 
 ### Problema: Sentry non cattura errori
+
 - ✅ Verificare `SENTRY_DSN` e `NEXT_PUBLIC_SENTRY_DSN` configurati
 - ✅ Verificare formato corretto (https://...)
 - ✅ Verificare che siano per environment corretto (Production)
 - ✅ Verificare Sentry dashboard per eventuali rate limits
 
 ### Problema: Source maps non funzionano
+
 - ✅ Verificare `SENTRY_ORG` e `SENTRY_PROJECT` configurati
 - ✅ Verificare valori corretti (case-sensitive)
 - ✅ Verificare build logs per upload source maps
 - ✅ Verificare Sentry project settings
 
 ### Problema: Build fallisce con Sentry
+
 - ✅ Verificare che env vars siano presenti
 - ✅ Verificare formato corretto
 - ✅ Verificare che Sentry plugin sia installato: `@sentry/nextjs`
@@ -138,17 +150,20 @@
 ## 📊 CURRENT STATUS
 
 ### Verifica Completata:
-- [ ] Date: ___________
-- [ ] Verificato da: ___________
+
+- [ ] Date: ****\_\_\_****
+- [ ] Verificato da: ****\_\_\_****
 - [ ] Status: ✅/❌
 
 ### Variabili Presenti:
+
 - [ ] `SENTRY_DSN`: ✅/❌
 - [ ] `NEXT_PUBLIC_SENTRY_DSN`: ✅/❌
 - [ ] `SENTRY_ORG`: ✅/❌/N/A
 - [ ] `SENTRY_PROJECT`: ✅/❌/N/A
 
 ### Note:
+
 ```
 [Inserire note qui]
 ```

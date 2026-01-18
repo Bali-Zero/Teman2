@@ -84,10 +84,14 @@ def _load_module(monkeypatch):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
 
     monkeypatch.setitem(
-        sys.modules, "backend.services.portal", types.SimpleNamespace(PortalService=_PortalService, redis_url='redis://localhost:6379')
+        sys.modules,
+        "backend.services.portal",
+        types.SimpleNamespace(PortalService=_PortalService, redis_url="redis://localhost:6379"),
     )
     monkeypatch.setitem(
-        sys.modules, "backend.app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None, redis_url='redis://localhost:6379')
+        sys.modules,
+        "backend.app.dependencies",
+        types.SimpleNamespace(get_database_pool=lambda: None, redis_url="redis://localhost:6379"),
     )
 
     class _Logger:
@@ -97,7 +101,9 @@ def _load_module(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "backend.app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
+        types.SimpleNamespace(
+            get_logger=lambda _name: _Logger(), redis_url="redis://localhost:6379"
+        ),
     )
 
     app_pkg = types.ModuleType("app")
@@ -612,9 +618,7 @@ def test_update_preferences_error(monkeypatch):
             raise Exception("Service error")
 
     client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
-    response = client.patch(
-        "/api/portal/settings", json={"email_notifications": True}
-    )
+    response = client.patch("/api/portal/settings", json={"email_notifications": True})
     assert response.status_code == 500
 
 

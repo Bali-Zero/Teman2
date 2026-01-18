@@ -25,7 +25,7 @@ def _load_module(
         jwt_algorithm="HS256",
         zantara_allowed_origins=allowed_origin,
         dev_origins="",
-        redis_url='redis://localhost:6379'
+        redis_url="redis://localhost:6379",
     )
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub
@@ -45,7 +45,9 @@ def _load_module(
             return {"total": 1}
 
     monkeypatch.setitem(
-        sys.modules, "backend.app.services.api_key_auth", types.SimpleNamespace(APIKeyAuth=_APIKeyAuth, redis_url='redis://localhost:6379')
+        sys.modules,
+        "backend.app.services.api_key_auth",
+        types.SimpleNamespace(APIKeyAuth=_APIKeyAuth, redis_url="redis://localhost:6379"),
     )
 
     cookie_state = {"token": None, "csrf_valid": True, "csrf_exempt": False}
@@ -66,7 +68,7 @@ def _load_module(
             get_jwt_from_cookie=get_jwt_from_cookie,
             is_csrf_exempt=is_csrf_exempt,
             validate_csrf=validate_csrf,
-            redis_url='redis://localhost:6379'
+            redis_url="redis://localhost:6379",
         ),
     )
 

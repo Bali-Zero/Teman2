@@ -38,16 +38,16 @@ This directory contains database migration scripts for NUZANTARA PRIME. Migratio
 
 ### Current Migrations
 
-| Number | File | Description | Dependencies |
-|--------|------|-------------|--------------|
-| 001 | `001_fix_missing_tables.sql` | Create cultural_knowledge, query_clusters tables | None |
-| 007 | `007_crm_system_schema.sql` | Create CRM system tables | None |
-| 010 | `010_fix_team_members_schema.sql` | Fix team_members schema alignment | 007 |
-| 012 | `012_fix_production_schema.sql` | Add conversation_id to interactions | 007 |
-| 013 | `013_agentic_rag_tables.sql` | Create Agentic RAG tables | None |
-| 014 | `014_knowledge_graph_tables.sql` | Create Knowledge Graph tables | None |
-| 015 | `015_add_drive_columns.sql` | Add Drive columns to parent_documents | 013 |
-| 016 | `016_add_summary_to_parent_docs.sql` | Add summary to parent_documents | 013 |
+| Number | File                                 | Description                                      | Dependencies |
+| ------ | ------------------------------------ | ------------------------------------------------ | ------------ |
+| 001    | `001_fix_missing_tables.sql`         | Create cultural_knowledge, query_clusters tables | None         |
+| 007    | `007_crm_system_schema.sql`          | Create CRM system tables                         | None         |
+| 010    | `010_fix_team_members_schema.sql`    | Fix team_members schema alignment                | 007          |
+| 012    | `012_fix_production_schema.sql`      | Add conversation_id to interactions              | 007          |
+| 013    | `013_agentic_rag_tables.sql`         | Create Agentic RAG tables                        | None         |
+| 014    | `014_knowledge_graph_tables.sql`     | Create Knowledge Graph tables                    | None         |
+| 015    | `015_add_drive_columns.sql`          | Add Drive columns to parent_documents            | 013          |
+| 016    | `016_add_summary_to_parent_docs.sql` | Add summary to parent_documents                  | 013          |
 
 ### Dependency Graph
 
@@ -258,11 +258,13 @@ except MigrationError as e:
 If a migration shows as "already applied" but you need to re-run it:
 
 1. Check `schema_migrations` table:
+
 ```sql
 SELECT * FROM schema_migrations WHERE migration_name = '007_crm_system_schema';
 ```
 
 2. If needed, remove the entry (use with caution):
+
 ```sql
 DELETE FROM schema_migrations WHERE migration_name = '007_crm_system_schema';
 ```
@@ -337,28 +339,7 @@ pytest tests/test_migrations.py -v
 ## Support
 
 For issues or questions:
+
 1. Check migration logs
 2. Review `docs/CLEANUP_REPORT_MIGRATIONS.md`
 3. Contact DevOps team
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

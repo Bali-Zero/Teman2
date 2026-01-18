@@ -70,11 +70,7 @@ describe('ImageApi', () => {
 
       await imageApi.generateImage('test');
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        60000
-      );
+      expect(mockRequest).toHaveBeenCalledWith(expect.any(String), expect.any(Object), 60000);
     });
   });
 });

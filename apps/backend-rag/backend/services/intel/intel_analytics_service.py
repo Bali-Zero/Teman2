@@ -7,8 +7,7 @@ Handles analytics and metrics calculation for Intel articles.
 import json
 import logging
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any
 
 from backend.app.core.constants import IntelConstants
 from backend.app.metrics import intel_analytics_queries_total
@@ -35,7 +34,7 @@ class IntelAnalyticsService:
 
     def get_intelligence_analytics(
         self, days: int = IntelConstants.TRENDS_ANALYSIS_DAYS
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get historical analytics and trends for Intelligence Center.
 
@@ -90,12 +89,8 @@ class IntelAnalyticsService:
                                 )
                                 if ingested_dt >= cutoff_date:
                                     analytics["summary"]["total_approved"] += 1
-                                    analytics["type_breakdown"][archive_type][
-                                        "approved"
-                                    ] += 1
-                                    analytics["type_breakdown"][archive_type][
-                                        "processed"
-                                    ] += 1
+                                    analytics["type_breakdown"][archive_type]["approved"] += 1
+                                    analytics["type_breakdown"][archive_type]["processed"] += 1
                     except Exception:
                         continue
 
@@ -106,21 +101,15 @@ class IntelAnalyticsService:
                     try:
                         with open(file_path) as f:
                             data = json.load(f)
-                            rejected_at = data.get("rejected_at") or data.get(
-                                "ingested_at"
-                            )
+                            rejected_at = data.get("rejected_at") or data.get("ingested_at")
                             if rejected_at:
                                 rejected_dt = datetime.fromisoformat(
                                     rejected_at.replace("Z", "+00:00")
                                 )
                                 if rejected_dt >= cutoff_date:
                                     analytics["summary"]["total_rejected"] += 1
-                                    analytics["type_breakdown"][archive_type][
-                                        "rejected"
-                                    ] += 1
-                                    analytics["type_breakdown"][archive_type][
-                                        "processed"
-                                    ] += 1
+                                    analytics["type_breakdown"][archive_type]["rejected"] += 1
+                                    analytics["type_breakdown"][archive_type]["processed"] += 1
                     except Exception:
                         continue
 
@@ -139,15 +128,12 @@ class IntelAnalyticsService:
                                     )
                                     if published_dt >= cutoff_date:
                                         analytics["summary"]["total_published"] += 1
-                                        analytics["type_breakdown"]["news"][
-                                            "published"
-                                        ] += 1
+                                        analytics["type_breakdown"]["news"]["published"] += 1
                         except Exception:
                             continue
 
         analytics["summary"]["total_processed"] = (
-            analytics["summary"]["total_approved"]
-            + analytics["summary"]["total_rejected"]
+            analytics["summary"]["total_approved"] + analytics["summary"]["total_rejected"]
         )
 
         if analytics["summary"]["total_processed"] > 0:
@@ -175,7 +161,7 @@ class IntelAnalyticsService:
 
         return analytics
 
-    def _generate_daily_trends(self, days: int) -> List[Dict[str, Any]]:
+    def _generate_daily_trends(self, days: int) -> list[dict[str, Any]]:
         """
         Generate daily trends for the specified period.
 
@@ -210,9 +196,7 @@ class IntelAnalyticsService:
                             try:
                                 with open(file_path) as f:
                                     data = json.load(f)
-                                    item_date = data.get("ingested_at") or data.get(
-                                        "rejected_at"
-                                    )
+                                    item_date = data.get("ingested_at") or data.get("rejected_at")
                                     if item_date:
                                         item_dt = datetime.fromisoformat(
                                             item_date.replace("Z", "+00:00")

@@ -73,7 +73,9 @@ class TestStreamingRouter:
         """Test successful streaming"""
         mock_request.app.state.intelligent_router = mock_intelligent_router
 
-        with patch("backend.app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}):
+        with patch(
+            "backend.app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}
+        ):
             response = await bali_zero_chat_stream(
                 request=mock_request, query="test query", background_tasks=MagicMock()
             )

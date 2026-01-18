@@ -10,23 +10,23 @@ The frontend (`apps/mouth`) has been fully migrated from Fly.io to **Vercel** fo
 
 ## Production URLs
 
-| Domain | Points To | Status |
-|--------|-----------|--------|
-| `https://www.balizero.com` | Vercel (cname.vercel-dns.com) | ✅ Primary |
-| `https://balizero.com` | Redirects to www | ✅ Active |
-| `https://nuzantara-mouth.vercel.app` | Vercel | ✅ Active |
-| `https://nuzantara-mouth.fly.dev` | - | ❌ Deprecated (app stopped) |
+| Domain                               | Points To                     | Status                      |
+| ------------------------------------ | ----------------------------- | --------------------------- |
+| `https://www.balizero.com`           | Vercel (cname.vercel-dns.com) | ✅ Primary                  |
+| `https://balizero.com`               | Redirects to www              | ✅ Active                   |
+| `https://nuzantara-mouth.vercel.app` | Vercel                        | ✅ Active                   |
+| `https://nuzantara-mouth.fly.dev`    | -                             | ❌ Deprecated (app stopped) |
 
 ## DNS Configuration (Cloudflare)
 
 DNS records migrated on 2026-01-10:
 
-| Record | Name | Value |
-|--------|------|-------|
-| CNAME | balizero.com | cname.vercel-dns.com |
-| CNAME | www | cname.vercel-dns.com |
-| TXT | _vercel | vc-domain-verify=www.balizero.com,5f9ca2917d1baaafe5af |
-| TXT | _vercel | vc-domain-verify=balizero.com,b2db6436cf8719534754 |
+| Record | Name         | Value                                                  |
+| ------ | ------------ | ------------------------------------------------------ |
+| CNAME  | balizero.com | cname.vercel-dns.com                                   |
+| CNAME  | www          | cname.vercel-dns.com                                   |
+| TXT    | \_vercel     | vc-domain-verify=www.balizero.com,5f9ca2917d1baaafe5af |
+| TXT    | \_vercel     | vc-domain-verify=balizero.com,b2db6436cf8719534754     |
 
 ## Deployment
 
@@ -53,6 +53,7 @@ cd apps/backend-rag
 ### Vercel Environment Variables
 
 Set in Vercel dashboard:
+
 - `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - Other Next.js public env vars

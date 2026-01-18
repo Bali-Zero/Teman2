@@ -28,8 +28,14 @@ from typing import Any
 
 # Import Test Force services
 try:
-    from backend.agents.services.llm_adapter import LLMAdapter, LLMProvider, LLMRequest, get_llm_adapter
+    from backend.agents.services.llm_adapter import (
+        LLMAdapter,
+        LLMProvider,
+        LLMRequest,
+        get_llm_adapter,
+    )
     from backend.agents.services.test_metrics import get_metrics_collector
+
     TEST_FORCE_AVAILABLE = True
 except ImportError:
     # Fallback for standalone execution
@@ -42,10 +48,12 @@ except ImportError:
 # Import Nuzantara AI Client (fallback)
 try:
     from backend.llm.zantara_ai_client import ZantaraAIClient
+
     ZANTARA_AVAILABLE = True
 except ImportError:
     try:
         from backend.app.llm.zantara_ai_client import ZantaraAIClient
+
         ZANTARA_AVAILABLE = True
     except ImportError:
         ZantaraAIClient = None
@@ -101,7 +109,7 @@ class CodeContextAnalyzer(ast.NodeVisitor):
 class TestGuardian:
     """
     Enhanced Test Guardian with comprehensive metrics and logging.
-    
+
     Features:
     - LLM adapter integration (Ollama Qwen 2.5, Gemini, Mock)
     - Real-time metrics collection
@@ -109,23 +117,25 @@ class TestGuardian:
     - Detailed operation logging
     - Self-healing with retry logic
     """
-    
-    def __init__(self, provider: str = "local", local_model: str = "qwen2.5-coder:7b-instruct-q4_K_M"):
+
+    def __init__(
+        self, provider: str = "local", local_model: str = "qwen2.5-coder:7b-instruct-q4_K_M"
+    ):
         self.provider = provider
         self.local_model = local_model
-        
+
         # Initialize LLM Adapter (new system)
         if TEST_FORCE_AVAILABLE:
             self.llm_adapter = get_llm_adapter()
             self.metrics_collector = get_metrics_collector()
             self.agent_metrics = self.metrics_collector.register_agent("TestGuardian")
-            logger.info(f"🚀 TestGuardian initialized with Test Force services")
+            logger.info("🚀 TestGuardian initialized with Test Force services")
         else:
             # Fallback to legacy system
             self.llm_adapter = None
             self.metrics_collector = None
             self.agent_metrics = None
-            
+
             if ZANTARA_AVAILABLE:
                 self.ai_client = ZantaraAIClient()
                 if provider == "local":
@@ -143,69 +153,68 @@ class TestGuardian:
 
         logger.info(f"🛡️ TestGuardian ready with provider: {provider}")
 
-    async def _generate_text(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2) -> str:
+    async def _generate_text(
+        self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2
+    ) -> str:
         """
         Generate text using LLM with metrics tracking.
-        
+
         Args:
             prompt: Input prompt for LLM
             max_tokens: Maximum tokens to generate
             temperature: Generation temperature
-            
+
         Returns:
             Generated text
         """
         start_time = time.time()
-        
+
         try:
             if self.llm_adapter:
                 # Use new LLM adapter system
                 provider_map = {
                     "local": LLMProvider.OLLAMA,
                     "gemini": LLMProvider.GEMINI,
-                    "mock": LLMProvider.MOCK
+                    "mock": LLMProvider.MOCK,
                 }
-                
+
                 request = LLMRequest(
                     prompt=prompt,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    provider=provider_map.get(self.provider, LLMProvider.OLLAMA)
+                    provider=provider_map.get(self.provider, LLMProvider.OLLAMA),
                 )
-                
+
                 response = await self.llm_adapter.generate(request)
-                
+
                 # Record metrics
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        duration=response.response_time,
-                        success=True
+                        duration=response.response_time, success=True
                     )
                     self.metrics_collector.record_test_generation(
-                        duration=response.response_time,
-                        success=True
+                        duration=response.response_time, success=True
                     )
-                
-                logger.info(f"✅ LLM generation: {len(response.text)} chars, {response.response_time:.2f}s")
+
+                logger.info(
+                    f"✅ LLM generation: {len(response.text)} chars, {response.response_time:.2f}s"
+                )
                 return response.text
-                
+
             else:
                 # Fallback to legacy system
                 return await self._legacy_generate_text(prompt, max_tokens, temperature)
-                
+
         except Exception as e:
             # Record failure
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    duration=time.time() - start_time,
-                    success=False,
-                    error=str(e)
+                    duration=time.time() - start_time, success=False, error=str(e)
                 )
                 self.metrics_collector.record_test_generation(
-                    duration=time.time() - start_time,
-                    success=False
+                    duration=time.time() - start_time, success=False
                 )
-            
+
             logger.error(f"❌ LLM generation failed: {e}")
             return "# Mock Generated Test Code - Generation Failed"
 
@@ -215,9 +224,9 @@ class TestGuardian:
             return await self._call_local_ollama(prompt)
         elif self.ai_client:
             response = await self.ai_client.chat_async(
-                messages=[{"role": "user", "content": prompt}], 
-                max_tokens=max_tokens, 
-                temperature=temperature
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature,
             )
             return response["text"]
         else:
@@ -257,16 +266,16 @@ class TestGuardian:
             # Record operation start
             if self.agent_metrics:
                 self.agent_metrics.record_operation(0, success=False)  # Placeholder, will update
-            
+
             logger.info(f"🔄 Running coverage command: {' '.join(cmd)}")
-            
+
             result = subprocess.run(
                 cmd,
                 cwd=PROJECT_ROOT.parent,  # Run from app root
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=300.0  # 5 minute timeout
+                timeout=300.0,  # 5 minute timeout
             )
 
             # Log command output
@@ -280,9 +289,7 @@ class TestGuardian:
                 logger.error("❌ Coverage report not found!")
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        time.time() - start_time, 
-                        success=False, 
-                        error="Coverage report not found"
+                        time.time() - start_time, success=False, error="Coverage report not found"
                     )
                 return []
 
@@ -294,53 +301,59 @@ class TestGuardian:
             gaps = []
             total_files = 0
             files_below_threshold = 0
-            
+
             for file_path, data in report.get("files", {}).items():
                 total_files += 1
                 pct = data["summary"]["percent_covered"]
-                
+
                 if pct < COVERAGE_THRESHOLD:
                     files_below_threshold += 1
-                    gaps.append({
-                        "file": file_path, 
-                        "percent": pct, 
-                        "missing_lines": data["missing_lines"],
-                        "missing_lines_count": len(data["missing_lines"]),
-                        "priority": "high" if pct < 80 else "medium" if pct < 95 else "low"
-                    })
+                    gaps.append(
+                        {
+                            "file": file_path,
+                            "percent": pct,
+                            "missing_lines": data["missing_lines"],
+                            "missing_lines_count": len(data["missing_lines"]),
+                            "priority": "high" if pct < 80 else "medium" if pct < 95 else "low",
+                        }
+                    )
 
             # Sort by lowest coverage first, then by missing lines count
             gaps.sort(key=lambda x: (x["percent"], x["missing_lines_count"]))
 
             # Calculate overall coverage
             overall_coverage = report.get("totals", {}).get("percent_covered", 0.0)
-            
+
             # Record metrics
             duration = time.time() - start_time
             if self.agent_metrics:
                 self.agent_metrics.record_operation(duration, success=True)
-            
+
             if self.metrics_collector:
                 coverage_data = {
                     "coverage": overall_coverage,
                     "files_analyzed": total_files,
                     "gaps": gaps,
-                    "target": COVERAGE_THRESHOLD
+                    "target": COVERAGE_THRESHOLD,
                 }
                 self.metrics_collector.record_coverage_update(coverage_data)
 
             # Log comprehensive results
             logger.info(f"📊 Coverage analysis completed in {duration:.2f}s:")
-            logger.info(f"   Overall coverage: {overall_coverage:.1f}% (target: {COVERAGE_THRESHOLD}%)")
+            logger.info(
+                f"   Overall coverage: {overall_coverage:.1f}% (target: {COVERAGE_THRESHOLD}%)"
+            )
             logger.info(f"   Files analyzed: {total_files}")
             logger.info(f"   Files below threshold: {files_below_threshold}")
             logger.info(f"   Coverage gaps identified: {len(gaps)}")
-            
+
             if gaps:
                 logger.info("🎯 Top 5 coverage gaps:")
                 for i, gap in enumerate(gaps[:5], 1):
-                    logger.info(f"   {i}. {gap['file']} - {gap['percent']:.1f}% ({gap['missing_lines_count']} missing lines)")
-            
+                    logger.info(
+                        f"   {i}. {gap['file']} - {gap['percent']:.1f}% ({gap['missing_lines_count']} missing lines)"
+                    )
+
             # Check alerts
             if self.metrics_collector:
                 alerts = self.metrics_collector.check_alerts()
@@ -356,20 +369,16 @@ class TestGuardian:
             logger.error(f"❌ {error_msg}")
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, 
-                    success=False, 
-                    error=error_msg
+                    time.time() - start_time, success=False, error=error_msg
                 )
             return []
-            
+
         except Exception as e:
             error_msg = f"Error analyzing coverage: {e}"
             logger.error(f"❌ {error_msg}")
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, 
-                    success=False, 
-                    error=error_msg
+                    time.time() - start_time, success=False, error=error_msg
                 )
             return []
 

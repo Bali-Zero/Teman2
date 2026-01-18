@@ -166,12 +166,7 @@
             "In addition to exact location matching, job is returned when LocationFilter in search query is in the same country as this job. For example, if a `NATION_WIDE` job is posted in \"USA\", it's returned if LocationFilter has 'Mountain View'.",
             "Job allows employees to work remotely (telecommute). If locations are provided with this value, the job is considered as having a location, but telecommuting is allowed."
           ],
-          "enum": [
-            "POSTING_REGION_UNSPECIFIED",
-            "ADMINISTRATIVE_AREA",
-            "NATION",
-            "TELECOMMUTE"
-          ],
+          "enum": ["POSTING_REGION_UNSPECIFIED", "ADMINISTRATIVE_AREA", "NATION", "TELECOMMUTE"],
           "type": "string"
         },
         "postingPublishTime": {
@@ -434,15 +429,7 @@
           ],
           "type": "string",
           "description": "Optional. Type of the device.",
-          "enum": [
-            "DEVICE_TYPE_UNSPECIFIED",
-            "WEB",
-            "MOBILE_WEB",
-            "ANDROID",
-            "IOS",
-            "BOT",
-            "OTHER"
-          ]
+          "enum": ["DEVICE_TYPE_UNSPECIFIED", "WEB", "MOBILE_WEB", "ANDROID", "IOS", "BOT", "OTHER"]
         }
       },
       "type": "object",
@@ -1092,12 +1079,7 @@
           "$ref": "SpellingCorrection"
         },
         "jobView": {
-          "enum": [
-            "JOB_VIEW_UNSPECIFIED",
-            "SMALL",
-            "MINIMAL",
-            "FULL"
-          ],
+          "enum": ["JOB_VIEW_UNSPECIFIED", "SMALL", "MINIMAL", "FULL"],
           "type": "string",
           "description": "Corresponds to SearchJobsRequest.job_view.",
           "enumDescriptions": [
@@ -1758,12 +1740,7 @@
             "Search for a match with all queries.",
             "Negate the set of filter values for the search."
           ],
-          "enum": [
-            "FILTER_TYPE_UNSPECIFIED",
-            "OR",
-            "AND",
-            "NOT"
-          ]
+          "enum": ["FILTER_TYPE_UNSPECIFIED", "OR", "AND", "NOT"]
         },
         "queries": {
           "items": {
@@ -1896,12 +1873,7 @@
         },
         "jobView": {
           "description": "Optional. The number of job attributes returned for jobs in the search response. Defaults to JobView.SMALL if no value is specified.",
-          "enum": [
-            "JOB_VIEW_UNSPECIFIED",
-            "SMALL",
-            "MINIMAL",
-            "FULL"
-          ],
+          "enum": ["JOB_VIEW_UNSPECIFIED", "SMALL", "MINIMAL", "FULL"],
           "enumDescriptions": [
             "Default value.",
             "A small view of the job, with the following attributes in the search results: Job.name, Job.requisition_id, Job.job_title, Job.company_name, Job.job_locations, Job.description, Job.visibility. Note: Job.description is deprecated. It is scheduled to be removed from MatchingJob.Job objects in the SearchJobsResponse results on 12/31/2018.",
@@ -1966,12 +1938,7 @@
             "Only suggest company names.",
             "Suggest both job titles and company names."
           ],
-          "enum": [
-            "COMPLETION_TYPE_UNSPECIFIED",
-            "JOB_TITLE",
-            "COMPANY_NAME",
-            "COMBINED"
-          ]
+          "enum": ["COMPLETION_TYPE_UNSPECIFIED", "JOB_TITLE", "COMPANY_NAME", "COMBINED"]
         },
         "suggestion": {
           "type": "string",
@@ -2822,12 +2789,7 @@
           "description": "Required during job update. Resource name assigned to a job by the API, for example, \"/jobs/foo\". Use of this field in job queries and API calls is preferred over the use of requisition_id since this value is unique."
         },
         "visibility": {
-          "enum": [
-            "JOB_VISIBILITY_UNSPECIFIED",
-            "PRIVATE",
-            "GOOGLE",
-            "PUBLIC"
-          ],
+          "enum": ["JOB_VISIBILITY_UNSPECIFIED", "PRIVATE", "GOOGLE", "PUBLIC"],
           "type": "string",
           "enumDescriptions": [
             "Default value.",
@@ -2991,12 +2953,7 @@
             "In addition to exact location matching, job is returned when LocationFilter in search query is in the same country as this job. For example, if a `NATION_WIDE` job is posted in \"USA\", it is returned if LocationFilter has 'Mountain View'.",
             "Job allows employees to work remotely (telecommute). If locations are provided with this value, the job is considered as having a location, but telecommuting is allowed."
           ],
-          "enum": [
-            "REGION_UNSPECIFIED",
-            "STATE_WIDE",
-            "NATION_WIDE",
-            "TELECOMMUTE"
-          ],
+          "enum": ["REGION_UNSPECIFIED", "STATE_WIDE", "NATION_WIDE", "TELECOMMUTE"],
           "description": "Optional. The job Region (for example, state, country) throughout which the job is available. If this field is set, a LocationFilter in a search query within the job region finds this job if an exact location match is not specified. If this field is set, setting job locations to the same location level as this field is strongly recommended."
         },
         "responsibilities": {
@@ -3426,11 +3383,7 @@
         "roadTraffic": {
           "type": "string",
           "description": "Optional. Specifies the traffic density to use when calculating commute time. Must not be present if departure_hour_local is specified.",
-          "enum": [
-            "ROAD_TRAFFIC_UNSPECIFIED",
-            "TRAFFIC_FREE",
-            "BUSY_HOUR"
-          ],
+          "enum": ["ROAD_TRAFFIC_UNSPECIFIED", "TRAFFIC_FREE", "BUSY_HOUR"],
           "enumDescriptions": [
             "Road traffic situation is not specified.",
             "Optimal commute time without considering any traffic impact.",
@@ -3463,11 +3416,7 @@
           ],
           "type": "string",
           "description": "Required. The method of transportation for which to calculate the commute time.",
-          "enum": [
-            "COMMUTE_METHOD_UNSPECIFIED",
-            "DRIVING",
-            "TRANSIT"
-          ]
+          "enum": ["COMMUTE_METHOD_UNSPECIFIED", "DRIVING", "TRANSIT"]
         }
       },
       "id": "CommutePreference",
@@ -3576,15 +3525,9 @@
     "$.xgafv": {
       "location": "query",
       "type": "string",
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ]
+      "enum": ["1", "2"]
     },
     "upload_protocol": {
       "location": "query",
@@ -3621,11 +3564,7 @@
       ],
       "location": "query",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ]
+      "enum": ["json", "media", "proto"]
     },
     "prettyPrint": {
       "type": "boolean",
@@ -3674,9 +3613,7 @@
           "parameterOrder": []
         },
         "get": {
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "httpMethod": "GET",
           "path": "v2/{+name}",
           "scopes": [
@@ -3796,9 +3733,7 @@
         },
         "patch": {
           "path": "v2/{+name}",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "request": {
             "$ref": "UpdateJobRequest"
           },
@@ -3886,9 +3821,7 @@
             "$ref": "Empty"
           },
           "id": "jobs.jobs.delete",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "flatPath": "v2/jobs/{jobsId}",
           "httpMethod": "DELETE"
         }
@@ -3916,9 +3849,7 @@
             "https://www.googleapis.com/auth/jobs"
           ],
           "description": "Deletes the specified company.",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "httpMethod": "DELETE",
           "flatPath": "v2/companies/{companiesId}"
         },
@@ -3998,9 +3929,7 @@
           "request": {
             "$ref": "Company"
           },
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "response": {
             "$ref": "Company"
           },
@@ -4025,9 +3954,7 @@
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/jobs"
           ],
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "path": "v2/{+name}",
           "id": "jobs.companies.get",
           "response": {
@@ -4086,9 +4013,7 @@
                 "https://www.googleapis.com/auth/jobs"
               ],
               "path": "v2/{+companyName}/jobs",
-              "parameterOrder": [
-                "companyName"
-              ],
+              "parameterOrder": ["companyName"],
               "description": "Deprecated. Use ListJobs instead. Lists all jobs associated with a company."
             }
           }
@@ -4117,12 +4042,7 @@
               "location": "query",
               "type": "string",
               "description": "Optional. The completion topic. The default is CompletionType.COMBINED.",
-              "enum": [
-                "COMPLETION_TYPE_UNSPECIFIED",
-                "JOB_TITLE",
-                "COMPANY_NAME",
-                "COMBINED"
-              ]
+              "enum": ["COMPLETION_TYPE_UNSPECIFIED", "JOB_TITLE", "COMPANY_NAME", "COMBINED"]
             },
             "languageCode": {
               "location": "query",
@@ -4130,11 +4050,7 @@
               "type": "string"
             },
             "scope": {
-              "enum": [
-                "COMPLETION_SCOPE_UNSPECIFIED",
-                "TENANT",
-                "PUBLIC"
-              ],
+              "enum": ["COMPLETION_SCOPE_UNSPECIFIED", "TENANT", "PUBLIC"],
               "location": "query",
               "enumDescriptions": [
                 "Default value.",

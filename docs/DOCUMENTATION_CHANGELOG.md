@@ -44,6 +44,7 @@
 ### 📋 Contenuti Aggiunti
 
 **Best Practices Documentate:**
+
 - Virtualizzazione liste (>20-30 items)
 - Memoizzazione componenti (React.memo)
 - useMemo per valori derivati
@@ -51,6 +52,7 @@
 - Lazy loading componenti pesanti
 
 **Performance Targets:**
+
 - INP: < 200ms (good), < 500ms (needs-improvement)
 - LCP: < 2.5s
 - CLS: < 0.1
@@ -58,6 +60,7 @@
 - Scroll FPS: 60fps
 
 **Miglioramenti Documentati:**
+
 - INP: 70-80% miglioramento
 - Memory: 70-80% riduzione
 - Re-renders: 60-90% riduzione

@@ -3,7 +3,7 @@
  * Handles manual article creation with Bali Zero style enrichment
  */
 
-import { ApiClientBase } from "./client";
+import { ApiClientBase } from './client';
 
 // Use the base API URL from environment or default
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -105,13 +105,10 @@ export const articlesApi = {
    * Compose/enrich an article with Bali Zero style
    */
   async compose(request: ComposeRequest): Promise<ComposeResponse> {
-    const response = await apiClient.request<ComposeResponse>(
-      "/api/articles/compose",
-      {
-        method: "POST",
-        body: JSON.stringify(request),
-      }
-    );
+    const response = await apiClient.request<ComposeResponse>('/api/articles/compose', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
     return response;
   },
 
@@ -119,10 +116,9 @@ export const articlesApi = {
    * Check if article composer is configured
    */
   async getStatus(): Promise<ComposerStatus> {
-    const response = await apiClient.request<ComposerStatus>(
-      "/api/articles/compose/status",
-      { method: "GET" }
-    );
+    const response = await apiClient.request<ComposerStatus>('/api/articles/compose/status', {
+      method: 'GET',
+    });
     return response;
   },
 
@@ -130,13 +126,10 @@ export const articlesApi = {
    * Publish an enriched article to the site
    */
   async publish(request: PublishRequest): Promise<PublishResponse> {
-    const response = await apiClient.request<PublishResponse>(
-      "/api/articles/publish",
-      {
-        method: "POST",
-        body: JSON.stringify(request),
-      }
-    );
+    const response = await apiClient.request<PublishResponse>('/api/articles/publish', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
     return response;
   },
 
@@ -144,10 +137,9 @@ export const articlesApi = {
    * Check if article publishing is configured
    */
   async getPublishStatus(): Promise<PublishStatus> {
-    const response = await apiClient.request<PublishStatus>(
-      "/api/articles/publish/status",
-      { method: "GET" }
-    );
+    const response = await apiClient.request<PublishStatus>('/api/articles/publish/status', {
+      method: 'GET',
+    });
     return response;
   },
 };

@@ -40,6 +40,7 @@ except ImportError:
     class QdrantTimeoutError(Exception):
         pass
 
+
 try:
     from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
@@ -711,7 +712,7 @@ class QdrantClient:
                 # Try to detect if collection uses named vectors
                 points = []
                 use_named_vectors = False
-                
+
                 for j in range(len(batch_chunks)):
                     # Default: simple vector format
                     point = {
@@ -735,18 +736,26 @@ class QdrantClient:
                 except httpx.HTTPStatusError as e:
                     # Check if error is about named vectors
                     error_text = e.response.text if hasattr(e.response, "text") else ""
-                    if "Not existing vector name" in error_text or "vector name" in error_text.lower():
+                    if (
+                        "Not existing vector name" in error_text
+                        or "vector name" in error_text.lower()
+                    ):
                         # Retry with named vector format
-                        logger.info(f"Collection uses named vectors, retrying with 'dense' vector name")
+                        logger.info(
+                            "Collection uses named vectors, retrying with 'dense' vector name"
+                        )
                         points = []
                         for j in range(len(batch_chunks)):
                             point = {
                                 "id": batch_ids[j],
                                 "vector": {"dense": batch_embeddings[j]},
-                                "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                                "payload": {
+                                    "text": batch_chunks[j],
+                                    "metadata": batch_metadatas[j],
+                                },
                             }
                             points.append(point)
-                        
+
                         payload = {"points": points}
                         try:
                             response = await client.put(url, json=payload, params={"wait": "true"})
@@ -756,12 +765,14 @@ class QdrantClient:
                                 f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
                                 f"to Qdrant collection '{self.collection_name}' (with named vectors)"
                             )
-                        except Exception as retry_err:
+                        except Exception:
                             error_msg = f"HTTP {e.response.status_code}"
                             if hasattr(e.response, "text"):
                                 error_msg += f": {e.response.text}"
                             errors.append(error_msg)
-                            logger.error(f"Qdrant upsert batch failed even with named vectors: {error_msg}")
+                            logger.error(
+                                f"Qdrant upsert batch failed even with named vectors: {error_msg}"
+                            )
                     else:
                         error_msg = f"HTTP {e.response.status_code}"
                         if hasattr(e.response, "text"):

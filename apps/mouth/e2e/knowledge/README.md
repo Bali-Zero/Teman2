@@ -3,6 +3,7 @@
 ## Overview
 
 Questi test E2E coprono tutte le pagine della Knowledge Base con **100% coverage**:
+
 - Pagina principale (`/knowledge`)
 - Company & Licenses (`/knowledge/company-licenses`)
 - Our Journey (`/knowledge/our-journey`)
@@ -38,6 +39,7 @@ Questi test E2E coprono tutte le pagine della Knowledge Base con **100% coverage
 ## Prerequisiti
 
 1. **Installare i browser Playwright:**
+
    ```bash
    cd apps/mouth
    npx playwright install
@@ -53,22 +55,26 @@ Questi test E2E coprono tutte le pagine della Knowledge Base con **100% coverage
 ## Eseguire i Test
 
 ### Tutti i test knowledge:
+
 ```bash
 cd apps/mouth
 npm run test:e2e -- knowledge
 ```
 
 ### Un singolo file:
+
 ```bash
 npm run test:e2e -- knowledge/page.spec.ts
 ```
 
 ### Con UI mode (per debugging):
+
 ```bash
 npm run test:e2e -- knowledge --ui
 ```
 
 ### Solo Chromium (più veloce):
+
 ```bash
 npm run test:e2e -- knowledge --project=chromium
 ```
@@ -80,11 +86,13 @@ npm run test:e2e -- knowledge --project=chromium
 Tutti gli eventi vengono inviati a Google Analytics tramite `enhancedAnalytics`:
 
 #### Page Views:
+
 - `knowledge_page_view` - Visualizzazione pagina principale
 - `knowledge_company_licenses_view` - Visualizzazione Company & Licenses
 - `knowledge_our_journey_view` - Visualizzazione Our Journey
 
 #### User Interactions:
+
 - `knowledge_search` - Ricerca avviata
 - `knowledge_search_success` - Ricerca completata con successo
 - `knowledge_search_error` - Errore nella ricerca
@@ -96,6 +104,7 @@ Tutti gli eventi vengono inviati a Google Analytics tramite `enhancedAnalytics`:
 - `knowledge_new_document_click` - Click su New Document
 
 #### Performance Metrics:
+
 - `loadTime` - Tempo di caricamento pagina
 - `apiCallTime` - Tempo di chiamata API per ricerca
 - `errorCount` - Conteggio errori
@@ -126,22 +135,26 @@ Tutti gli eventi vengono anche loggati localmente tramite `logger`:
 - **Production:** Log salvati in `localStorage` (ultimi 50 errori)
 
 Per vedere i log in produzione:
+
 ```javascript
 // Nella console del browser
-JSON.parse(localStorage.getItem('error_logs'))
+JSON.parse(localStorage.getItem('error_logs'));
 ```
 
 ## Troubleshooting
 
 ### Test falliscono con "Connection Refused"
+
 - Assicurati che il server di sviluppo sia in esecuzione: `npm run dev`
 - Verifica che il server sia su `http://127.0.0.1:3000`
 
 ### Test falliscono con timeout
+
 - Aumenta il timeout nel `playwright.config.ts`
 - Verifica che il backend RAG sia accessibile
 
 ### Metriche non appaiono in GA
+
 - Verifica che `NEXT_PUBLIC_GA_ID` sia configurato nelle variabili d'ambiente
 - Verifica che lo script gtag sia caricato (controlla Network tab nel browser)
 - Verifica che non ci siano errori nella console del browser
@@ -149,6 +162,7 @@ JSON.parse(localStorage.getItem('error_logs'))
 ## Coverage
 
 ✅ **100% Coverage** delle funzionalità:
+
 - ✅ Caricamento pagine
 - ✅ Navigazione tra pagine
 - ✅ Ricerca e risultati
@@ -158,4 +172,3 @@ JSON.parse(localStorage.getItem('error_logs'))
 - ✅ Stati vuoti
 - ✅ Performance tracking
 - ✅ Analytics tracking
-

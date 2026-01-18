@@ -19,13 +19,13 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 
 ### Top Elementi per Dimensione
 
-| Elemento | Dimensione | % Totale | Azione |
-|----------|------------|----------|--------|
-| **CRM_READY** | 25 GB | 57% | ⚠️ Analizzare |
-| **Desktop - MacBook Air di Antonello** | 9.3 GB | 21% | ⚠️ Analizzare |
-| **nuzantara** | 8.0 GB | 18% | ✅ Progetto attivo |
-| **CRM_ORGANIZED** | 1.8 GB | 4% | ⚠️ Analizzare |
-| **Altri** | ~200 MB | <1% | - |
+| Elemento                               | Dimensione | % Totale | Azione             |
+| -------------------------------------- | ---------- | -------- | ------------------ |
+| **CRM_READY**                          | 25 GB      | 57%      | ⚠️ Analizzare      |
+| **Desktop - MacBook Air di Antonello** | 9.3 GB     | 21%      | ⚠️ Analizzare      |
+| **nuzantara**                          | 8.0 GB     | 18%      | ✅ Progetto attivo |
+| **CRM_ORGANIZED**                      | 1.8 GB     | 4%       | ⚠️ Analizzare      |
+| **Altri**                              | ~200 MB    | <1%      | -                  |
 
 **Totale:** 44 GB
 
@@ -39,23 +39,25 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 
 **Contenuto Principale:**
 
-| Elemento | Dimensione | Note |
-|----------|------------|------|
-| **Scan Kitas.zip** | 6.6 GB | ⚠️ DUPLICATO |
-| **Scan Kitas/** | 6.6 GB | ⚠️ DUPLICATO (stesso contenuto) |
-| **DAVID/** | 5.0 GB | Contiene ISO software (Office, Adobe) |
-| **ADITYA (3)/** | 4.9 GB | File client |
-| **DINOK/** | 863 MB | File client |
-| **LIA/** | 481 MB | File client |
-| **MEGI/** | 380 MB | File client |
-| **Altri** | ~1 GB | Varie cartelle client |
+| Elemento           | Dimensione | Note                                  |
+| ------------------ | ---------- | ------------------------------------- |
+| **Scan Kitas.zip** | 6.6 GB     | ⚠️ DUPLICATO                          |
+| **Scan Kitas/**    | 6.6 GB     | ⚠️ DUPLICATO (stesso contenuto)       |
+| **DAVID/**         | 5.0 GB     | Contiene ISO software (Office, Adobe) |
+| **ADITYA (3)/**    | 4.9 GB     | File client                           |
+| **DINOK/**         | 863 MB     | File client                           |
+| **LIA/**           | 481 MB     | File client                           |
+| **MEGI/**          | 380 MB     | File client                           |
+| **Altri**          | ~1 GB      | Varie cartelle client                 |
 
 **Problemi Identificati:**
+
 1. ⚠️ **DUPLICATO:** `Scan Kitas.zip` (6.6 GB) e `Scan Kitas/` (6.6 GB) - stesso contenuto!
 2. ⚠️ **ISO Software:** DAVID contiene ISO di Office e Adobe (probabilmente non necessari sul Desktop)
 3. ⚠️ **File Client:** Molti file client che potrebbero essere archiviati
 
-**Raccomandazione:** 
+**Raccomandazione:**
+
 - **Rimuovere duplicato:** Eliminare `Scan Kitas.zip` o `Scan Kitas/` (liberare 6.6 GB)
 - **Spostare ISO:** Spostare ISO software fuori dal Desktop
 - **Archiviare file client:** Spostare in posizione dedicata (non Desktop)
@@ -68,21 +70,23 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 
 **Contenuto Principale:**
 
-| Elemento | Dimensione | Note |
-|----------|------------|------|
-| **Desktop/** | 4.0 GB | Backup Desktop da altro Mac |
-| **Docker.app** | 2.1 GB | ⚠️ Applicazione Docker (duplicato?) |
-| **nuzantara_rail/** | 1.5 GB | Progetto (duplicato di nuzantara?) |
-| **NUZ_KB/** | 1.1 GB | Knowledge Base |
-| **0102 (2)(1)/** | 311 MB | Video/Media |
-| **Altri** | ~400 MB | Varie |
+| Elemento            | Dimensione | Note                                |
+| ------------------- | ---------- | ----------------------------------- |
+| **Desktop/**        | 4.0 GB     | Backup Desktop da altro Mac         |
+| **Docker.app**      | 2.1 GB     | ⚠️ Applicazione Docker (duplicato?) |
+| **nuzantara_rail/** | 1.5 GB     | Progetto (duplicato di nuzantara?)  |
+| **NUZ_KB/**         | 1.1 GB     | Knowledge Base                      |
+| **0102 (2)(1)/**    | 311 MB     | Video/Media                         |
+| **Altri**           | ~400 MB    | Varie                               |
 
 **Problemi Identificati:**
+
 1. ⚠️ **Backup Desktop:** 4.0 GB di backup Desktop da altro Mac
 2. ⚠️ **Docker.app:** 2.1 GB - applicazione Docker (probabilmente già installata)
 3. ⚠️ **Progetti duplicati:** `nuzantara_rail` potrebbe essere duplicato
 
 **Raccomandazione:**
+
 - **Verificare Docker:** Se Docker è già installato, rimuovere questo `.app`
 - **Archiviare backup Desktop:** Spostare backup Desktop in posizione dedicata
 - **Verificare duplicati:** Controllare se `nuzantara_rail` è duplicato di `nuzantara`
@@ -95,14 +99,15 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 
 **Componenti Principali:**
 
-| Componente | Dimensione | Note |
-|------------|------------|------|
-| **.git/** | 3.0 GB | Repository Git (include pack files) |
-| **backups/** | 1.5 GB | Backup database PostgreSQL |
-| **node_modules/** | 1.3 GB | Dipendenze Node.js |
-| **Altri** | ~2.2 GB | Codice sorgente, configurazioni |
+| Componente        | Dimensione | Note                                |
+| ----------------- | ---------- | ----------------------------------- |
+| **.git/**         | 3.0 GB     | Repository Git (include pack files) |
+| **backups/**      | 1.5 GB     | Backup database PostgreSQL          |
+| **node_modules/** | 1.3 GB     | Dipendenze Node.js                  |
+| **Altri**         | ~2.2 GB    | Codice sorgente, configurazioni     |
 
 **Raccomandazione:**
+
 - ✅ **Mantenere** (progetto attivo)
 - ⚠️ **Backup database:** Considerare spostamento in posizione dedicata (1.5 GB)
 - ⚠️ **Git pack:** Potrebbe essere ottimizzato con `git gc` (ma rischioso)
@@ -114,6 +119,7 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 **Dimensione:** 1.8 GB
 
 **Raccomandazione:**
+
 - Verificare contenuto
 - Se duplicato di CRM_READY, considerare rimozione
 
@@ -179,6 +185,7 @@ Il Desktop sta occupando quasi tutto lo spazio disponibile!
 Il Desktop occupa 44 GB su un disco con solo 4.7 GB disponibili. Questo è un problema critico.
 
 **Raccomandazione Immediata:**
+
 - Spostare file grandi fuori dal Desktop
 - Archiviare o rimuovere file non necessari
 - Liberare almeno 20-30 GB

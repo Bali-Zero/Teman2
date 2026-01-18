@@ -238,7 +238,9 @@ describe('ApiClient Integration Tests', () => {
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"sources","data":[{"title":"Source"}]}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"sources","data":[{"title":"Source"}]}\n'
+            ),
           })
           .mockResolvedValueOnce({
             done: false,

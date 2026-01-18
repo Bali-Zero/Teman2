@@ -8,6 +8,7 @@
 ## 📊 Problema Risolto
 
 **Prima dell'ottimizzazione:**
+
 ```
 dengue-alert.jpg       → 3.2 MB ❌
 maritime-chaos.jpg     → 3.5 MB ❌
@@ -15,6 +16,7 @@ indonesia-zero-tax.jpg → 575 KB ⚠️
 ```
 
 **Dopo l'ottimizzazione:**
+
 ```
 dengue-alert.jpg       → 70 KB ✅ (97.8% riduzione)
 maritime-chaos.jpg     → 155 KB ✅ (95.6% riduzione)
@@ -39,12 +41,14 @@ node scripts/optimize-images.cjs
 ```
 
 **Configurazione:**
+
 - **Target:** Max 300 KB per immagine
 - **Width:** 1200px (responsive)
 - **Quality:** 85 (progressive JPEG con mozjpeg)
 - **Backup:** Originali salvati come `*.backup`
 
 **Output:**
+
 ```
 ✅ your-image.jpg
    1500 KB → 280 KB (81% reduction, quality: 85)
@@ -65,6 +69,7 @@ images: {
 ```
 
 **Benefici:**
+
 - Conversione automatica AVIF/WebP (70% più leggero di JPEG)
 - Lazy loading built-in
 - Responsive srcset generato automaticamente
@@ -74,7 +79,7 @@ images: {
 
 ```tsx
 // ❌ VECCHIO - IMG tag statico
-<img src="/static/news/cover.jpg" alt="Cover" />
+<img src="/static/news/cover.jpg" alt="Cover" />;
 
 // ✅ NUOVO - Next.js Image con ottimizzazione
 import Image from 'next/image';
@@ -86,8 +91,8 @@ import Image from 'next/image';
   height={630}
   className="rounded-lg"
   quality={85}
-  priority  // Solo per above-the-fold images
-/>
+  priority // Solo per above-the-fold images
+/>;
 ```
 
 ---
@@ -179,13 +184,13 @@ git push origin main --no-verify
 
 ### Target Sizes (Pre-Ottimizzazione)
 
-| Tipo Immagine | Target Size | Dimensioni |
-|---------------|-------------|------------|
-| Hero/Cover | < 300 KB | 1200×630 px |
-| News Cards | < 200 KB | 800×450 px |
-| Blog Headers | < 250 KB | 1200×600 px |
-| Team Photos | < 150 KB | 400×400 px |
-| Icons | < 50 KB | 256×256 px |
+| Tipo Immagine | Target Size | Dimensioni  |
+| ------------- | ----------- | ----------- |
+| Hero/Cover    | < 300 KB    | 1200×630 px |
+| News Cards    | < 200 KB    | 800×450 px  |
+| Blog Headers  | < 250 KB    | 1200×600 px |
+| Team Photos   | < 150 KB    | 400×400 px  |
+| Icons         | < 50 KB     | 256×256 px  |
 
 ### Quality Guidelines
 
@@ -201,6 +206,7 @@ mozjpeg: true,              // Better compression
 ### Formato Source Files
 
 **Preferred input formats:**
+
 1. PNG (per immagini con testo/grafica)
 2. JPEG (per foto)
 3. Avoid: TIFF, BMP (troppo pesanti)
@@ -213,12 +219,12 @@ mozjpeg: true,              // Better compression
 
 ### Pagina `/news` (Before/After)
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| Total Images | 7.3 MB | 0.9 MB | **88%** ⬇️ |
-| Page Load (3G) | 8-12s | 2-3s | **75%** ⬇️ |
-| First Contentful Paint | 3.5s | 1.2s | **66%** ⬇️ |
-| Largest Contentful Paint | 6.8s | 2.1s | **69%** ⬇️ |
+| Metrica                  | Prima  | Dopo   | Miglioramento |
+| ------------------------ | ------ | ------ | ------------- |
+| Total Images             | 7.3 MB | 0.9 MB | **88%** ⬇️    |
+| Page Load (3G)           | 8-12s  | 2-3s   | **75%** ⬇️    |
+| First Contentful Paint   | 3.5s   | 1.2s   | **66%** ⬇️    |
+| Largest Contentful Paint | 6.8s   | 2.1s   | **69%** ⬇️    |
 
 ### Lighthouse Score
 
@@ -237,6 +243,7 @@ SEO: 98 → 100 (+2)
 **Location:** `/scripts/optimize-images.cjs`
 
 **Dependencies:**
+
 ```bash
 npm install sharp --save-dev
 ```
@@ -255,12 +262,14 @@ const TARGET_WIDTH = 1200;
 ```
 
 **Algorithm:**
+
 1. Resize to TARGET_WIDTH (mantenendo aspect ratio)
 2. Compressione JPEG progressiva con mozjpeg
 3. Quality auto-adjust (85 → 60) finché size < MAX_SIZE_KB
 4. Backup originale come `filename.jpg.backup`
 
 **Output:**
+
 - Optimized: `filename.jpg` (sovrascrive originale)
 - Backup: `filename.jpg.backup`
 
@@ -286,17 +295,20 @@ mv apps/mouth/public/static/news/*.backup backups/images/
 Se il sito cresce oltre 1000+ immagini, considera migrazione a CDN dedicato:
 
 ### Option A: Cloudflare Images ($5/mese)
+
 - Resize automatico on-the-fly
 - Global CDN
 - AVIF/WebP auto
 - Unlimited transformations
 
 ### Option B: Vercel Image Optimization (Gratis su Pro)
+
 - Già incluso in Vercel Pro plan
 - Automatic optimization
 - CDN built-in
 
 ### Option C: ImageKit.io (Free tier: 20GB)
+
 - Transformation API
 - Real-time resizing
 - Free tier sufficiente per small-medium sites
@@ -340,13 +352,15 @@ export default function cloudflareLoader({ src, width, quality }) {
 **Script Issues:** Check `/scripts/optimize-images.cjs` logs
 
 **Next.js Image Issues:**
+
 - Vercel Docs: https://nextjs.org/docs/api-reference/next/image
 - Image Optimization: https://vercel.com/docs/image-optimization
 
 **Performance Monitoring:**
+
 - Vercel Analytics: https://vercel.com/analytics
 - Lighthouse: Chrome DevTools → Lighthouse tab
 
 ---
 
-*Documento creato durante sessione di ottimizzazione 2026-01-16. Tutti i file immagini esistenti sono stati ottimizzati con 88% riduzione totale.*
+_Documento creato durante sessione di ottimizzazione 2026-01-16. Tutti i file immagini esistenti sono stati ottimizzati con 88% riduzione totale._

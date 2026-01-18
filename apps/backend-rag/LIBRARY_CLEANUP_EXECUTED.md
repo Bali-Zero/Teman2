@@ -9,39 +9,51 @@
 ## ✅ COMANDI ESEGUITI
 
 1. **Cache Yarn** (4.0 GB)
+
    ```bash
    yarn cache clean
    ```
+
    Status: ✅ Completato
 
 2. **Docker non usato** (4.5 GB)
+
    ```bash
    docker system prune -a --volumes -f
    ```
+
    Status: ✅ Completato
 
 3. **Cache pnpm** (213 MB)
+
    ```bash
    pnpm store prune
    ```
+
    Status: ✅ Completato
 
 4. **Cache pip** (135 MB)
+
    ```bash
    pip cache purge
    ```
+
    Status: ✅ Completato
 
 5. **Cache Playwright** (233 MB)
+
    ```bash
    rm -rf ~/Library/Caches/ms-playwright*
    ```
+
    Status: ✅ Completato
 
 6. **Cache Homebrew** (73 MB)
+
    ```bash
    brew cleanup --prune=all
    ```
+
    Status: ✅ Completato
 
 7. **Logs** (44 MB)
@@ -55,6 +67,7 @@
 ## 📊 RISULTATI
 
 ### Spazio Liberato
+
 - **Prima:** 4.6 GB disponibili (72% usato)
 - **Dopo:** 7.1 GB disponibili (62% usato)
 - **Spazio Liberato:** ~2.5 GB immediatamente visibile
@@ -94,11 +107,13 @@
 ---
 
 ### Verifica Spazio
+
 ```bash
 df -h /
 ```
 
 ### Verifica Docker (se necessario)
+
 ```bash
 docker system df
 ```

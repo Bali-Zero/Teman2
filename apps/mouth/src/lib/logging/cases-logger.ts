@@ -115,12 +115,16 @@ class CasesLogger {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(logData),
-      }).catch(err => console.error('Failed to send log:', err));
+      }).catch((err) => console.error('Failed to send log:', err));
     }
 
     if (this.isDevelopment) {
       // Pretty print in development
-      console.log(`[${logData.level}] [${logData.category}]`, logData.message, logData.metadata || '');
+      console.log(
+        `[${logData.level}] [${logData.category}]`,
+        logData.message,
+        logData.metadata || ''
+      );
     }
   }
 
@@ -142,30 +146,20 @@ class CasesLogger {
   }
 
   logFilterApplied(filterType: string, filterValue: string, resultCount: number) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.USER_ACTION,
-      'User applied filter',
-      {
-        filterType,
-        filterValue,
-        resultCount,
-        action: 'filter_applied',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User applied filter', {
+      filterType,
+      filterValue,
+      resultCount,
+      action: 'filter_applied',
+    });
     this.sendToLoggingService(logData);
   }
 
   logFilterRemoved(filterType: string) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.USER_ACTION,
-      'User removed filter',
-      {
-        filterType,
-        action: 'filter_removed',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User removed filter', {
+      filterType,
+      action: 'filter_removed',
+    });
     this.sendToLoggingService(logData);
   }
 
@@ -184,30 +178,20 @@ class CasesLogger {
   }
 
   logSortApplied(field: string, order: string) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.USER_ACTION,
-      'User applied sort',
-      {
-        field,
-        order,
-        action: 'sort_applied',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User applied sort', {
+      field,
+      order,
+      action: 'sort_applied',
+    });
     this.sendToLoggingService(logData);
   }
 
   logCaseClicked(caseId: number, caseType: string) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.USER_ACTION,
-      'User clicked on case',
-      {
-        caseId,
-        caseType,
-        action: 'case_clicked',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User clicked on case', {
+      caseId,
+      caseType,
+      action: 'case_clicked',
+    });
     this.sendToLoggingService(logData);
   }
 
@@ -224,21 +208,15 @@ class CasesLogger {
   }
 
   logPaginationChange(page: number, itemsPerPage: number) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.USER_ACTION,
-      'User changed page',
-      {
-        page,
-        itemsPerPage,
-        action: 'pagination_change',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User changed page', {
+      page,
+      itemsPerPage,
+      action: 'pagination_change',
+    });
     this.sendToLoggingService(logData);
   }
 
   // ===== API CALLS =====
-
 
   logApiRequest(endpoint: string, method: string, params?: ApiRequestParams) {
     const logData = this.formatLog(
@@ -309,10 +287,12 @@ class CasesLogger {
         oldStatus,
         newStatus,
         success,
-        error: error ? {
-          name: error.name,
-          message: error.message,
-        } : undefined,
+        error: error
+          ? {
+              name: error.name,
+              message: error.message,
+            }
+          : undefined,
       }
     );
     this.sendToLoggingService(logData);
@@ -353,15 +333,10 @@ class CasesLogger {
   // ===== PERFORMANCE =====
 
   logPageLoad(duration: number) {
-    const logData = this.formatLog(
-      LogLevel.INFO,
-      LogCategory.PERFORMANCE,
-      'Page loaded',
-      {
-        duration,
-        metric: 'page_load',
-      }
-    );
+    const logData = this.formatLog(LogLevel.INFO, LogCategory.PERFORMANCE, 'Page loaded', {
+      duration,
+      metric: 'page_load',
+    });
     this.sendToLoggingService(logData);
   }
 
@@ -412,29 +387,19 @@ class CasesLogger {
   // ===== ERRORS =====
 
   logError(message: string, error: Error, context?: LogMetadata) {
-    const logData = this.formatLog(
-      LogLevel.ERROR,
-      LogCategory.ERROR,
-      message,
-      {
-        error: {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        },
-        ...context,
-      }
-    );
+    const logData = this.formatLog(LogLevel.ERROR, LogCategory.ERROR, message, {
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      },
+      ...context,
+    });
     this.sendToLoggingService(logData);
   }
 
   logWarning(message: string, context?: LogMetadata) {
-    const logData = this.formatLog(
-      LogLevel.WARN,
-      LogCategory.ERROR,
-      message,
-      context
-    );
+    const logData = this.formatLog(LogLevel.WARN, LogCategory.ERROR, message, context);
     this.sendToLoggingService(logData);
   }
 

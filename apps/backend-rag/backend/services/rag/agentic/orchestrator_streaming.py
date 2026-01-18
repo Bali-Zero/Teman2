@@ -14,7 +14,6 @@ Questo modulo è testabile in isolamento mockando event sources.
 import asyncio
 import logging
 import time
-import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 

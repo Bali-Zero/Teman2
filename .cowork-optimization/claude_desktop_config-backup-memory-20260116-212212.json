@@ -10,8 +10,6 @@
   },
   "preferences": {
     "quickEntryDictationShortcut": "capslock",
-    "localAgentModeTrustedFolders": [
-      "/Users/antonellosiano"
-    ]
+    "localAgentModeTrustedFolders": ["/Users/antonellosiano"]
   }
 }

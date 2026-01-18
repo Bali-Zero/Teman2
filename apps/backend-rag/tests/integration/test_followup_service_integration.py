@@ -113,7 +113,9 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_followups_without_ai_client(self):
         """Gracefully fall back when AI client cannot be initialized"""
-        with patch("backend.services.followup_service.ZantaraAIClient", side_effect=Exception("boom")):
+        with patch(
+            "backend.services.followup_service.ZantaraAIClient", side_effect=Exception("boom")
+        ):
             from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
@@ -128,7 +130,9 @@ class TestFollowupServiceIntegration:
 
     def test_language_and_topic_detection_integration(self):
         """Detect Italian + tax topic and return localized followups"""
-        with patch("backend.services.followup_service.ZantaraAIClient", side_effect=Exception("skip ai")):
+        with patch(
+            "backend.services.followup_service.ZantaraAIClient", side_effect=Exception("skip ai")
+        ):
             from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()

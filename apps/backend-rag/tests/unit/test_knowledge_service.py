@@ -62,8 +62,12 @@ def mock_query_router():
 def knowledge_service(mock_settings, mock_embedder, mock_qdrant_client, mock_query_router):
     """Create KnowledgeService instance with mocks"""
     with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
-        with patch("backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
-            with patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_query_router):
+        with patch(
+            "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+        ):
+            with patch(
+                "backend.app.modules.knowledge.service.QueryRouter", return_value=mock_query_router
+            ):
                 service = KnowledgeService()
                 # Replace collections with mocked clients
                 for key in service.collections:
@@ -79,8 +83,12 @@ def knowledge_service(mock_settings, mock_embedder, mock_qdrant_client, mock_que
 def test_init_success(mock_settings, mock_embedder, mock_qdrant_client, mock_query_router):
     """Test KnowledgeService initialization"""
     with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
-        with patch("backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
-            with patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_query_router):
+        with patch(
+            "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+        ):
+            with patch(
+                "backend.app.modules.knowledge.service.QueryRouter", return_value=mock_query_router
+            ):
                 service = KnowledgeService()
                 assert service.embedder == mock_embedder
                 assert len(service.collections) > 0

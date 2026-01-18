@@ -62,14 +62,19 @@ test.describe('Streaming Responses', () => {
 
     const input = page.locator('textarea, input[type="text"]').first();
     await input.fill('Come aprire un PT PMA?');
-    await page.locator('button[aria-label="Send message"], button:has-text("Send"), button[type="submit"]').first().click();
+    await page
+      .locator('button[aria-label="Send message"], button:has-text("Send"), button[type="submit"]')
+      .first()
+      .click();
 
     // Wait for streaming to start
     await page.waitForTimeout(1000);
 
     // Verify that response appears (more robust than checking exact chunks)
     // Since we're testing against mocked response, check for key parts
-    await expect(page.locator('text=/PT PMA|passaggi|documenti|registrar|NIB/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/PT PMA|passaggi|documenti|registrar|NIB/i')).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should handle streaming errors gracefully', async ({ page }) => {

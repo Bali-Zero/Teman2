@@ -11,19 +11,23 @@ import re
 import sys
 from datetime import datetime
 from typing import Dict, List, Optional
-from pathlib import Path
 
 # Add backend path
-backend_path = os.path.join(os.path.dirname(__file__), "..", "..", "apps", "backend-rag")
+backend_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "apps", "backend-rag"
+)
 sys.path.insert(0, backend_path)
 sys.path.insert(0, os.path.join(backend_path, "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(backend_path, ".env"))
 
 from services.multimodal.pdf_vision_service import PDFVisionService
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 LAMPIRAN_DIR = os.path.join(PROJECT_ROOT, "lampiran")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_extraction")
 
@@ -81,16 +85,16 @@ async def extract_kbli_from_page(
     
     IMPORTANTE: Estrai TUTTE le righe della tabella, non solo alcune.
     """
-    
+
     try:
         result = await vision_service.analyze_page(
             pdf_path, page_num, prompt=prompt, is_drive_file=False
         )
-        
+
         # Estrai JSON dalla risposta
         if result:
             # Cerca array JSON
-            json_match = re.search(r'\[.*?\]', result, re.DOTALL)
+            json_match = re.search(r"\[.*?\]", result, re.DOTALL)
             if json_match:
                 try:
                     kbli_list = json.loads(json_match.group(0))
@@ -107,7 +111,11 @@ async def extract_kbli_from_page(
                                 return kbli_list
                         except json.JSONDecodeError:
                             # Prova a pulire e riprovare
-                            cleaned = result[json_start:json_end].replace('\n', ' ').replace('\r', '')
+                            cleaned = (
+                                result[json_start:json_end]
+                                .replace("\n", " ")
+                                .replace("\r", "")
+                            )
                             try:
                                 kbli_list = json.loads(cleaned)
                                 if isinstance(kbli_list, list):
@@ -116,46 +124,54 @@ async def extract_kbli_from_page(
                                 pass
     except Exception as e:
         print(f"    ⚠️  Errore pagina {page_num}: {e}")
-    
+
     return []
 
 
 async def extract_kbli_from_lampiran_file(
-    vision_service: PDFVisionService, lampiran_name: str, filename: str, 
-    start_page: int = 1, max_pages: Optional[int] = None
+    vision_service: PDFVisionService,
+    lampiran_name: str,
+    filename: str,
+    start_page: int = 1,
+    max_pages: Optional[int] = None,
 ) -> List[Dict]:
     """
     Estrae KBLI da un file Lampiran I specifico.
     """
     pdf_path = os.path.join(LAMPIRAN_DIR, filename)
-    
+
     if not os.path.exists(pdf_path):
         print(f"  ❌ File non trovato: {filename}")
         return []
-    
+
     print(f"\n📄 Analizzando: {lampiran_name}")
     print(f"   File: {filename}")
-    
+
     import pypdf
+
     reader = pypdf.PdfReader(pdf_path)
     total_pages = len(reader.pages)
-    end_page = min(start_page + max_pages - 1, total_pages) if max_pages else total_pages
+    end_page = (
+        min(start_page + max_pages - 1, total_pages) if max_pages else total_pages
+    )
     pages_to_analyze = end_page - start_page + 1
-    
+
     print(f"   Totale pagine: {total_pages}")
-    print(f"   Analizzerò: pagine {start_page}-{end_page} ({pages_to_analyze} pagine)\n")
-    
+    print(
+        f"   Analizzerò: pagine {start_page}-{end_page} ({pages_to_analyze} pagine)\n"
+    )
+
     all_kbli = []
     pages_with_data = 0
-    
+
     for page_num in range(start_page, end_page + 1):
         if page_num % 5 == 0 or page_num == start_page:
             print(f"  📄 Pagina {page_num}/{end_page}...", end=" ", flush=True)
-        
+
         kbli_list = await extract_kbli_from_page(
             vision_service, pdf_path, page_num, lampiran_name
         )
-        
+
         if kbli_list:
             all_kbli.extend(kbli_list)
             pages_with_data += 1
@@ -164,19 +180,21 @@ async def extract_kbli_from_lampiran_file(
         else:
             if page_num % 5 == 0 or page_num == start_page:
                 print("⏭️")
-    
-    print(f"\n  ✅ {lampiran_name}: {len(all_kbli)} KBLI totali da {pages_with_data} pagine")
+
+    print(
+        f"\n  ✅ {lampiran_name}: {len(all_kbli)} KBLI totali da {pages_with_data} pagine"
+    )
     return all_kbli
 
 
 async def main():
     """Main extraction function"""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    
+
     print("=" * 60)
     print("ESTRAZIONE KBLI DA LAMPIRAN I CON GEMINI VISION")
     print("=" * 60)
-    
+
     # Inizializza Vision Service
     print("\n🔧 Inizializzazione Vision Service...")
     vision_service = PDFVisionService()
@@ -184,51 +202,58 @@ async def main():
         print("❌ Vision service non disponibile. Verifica GOOGLE_API_KEY")
         return
     print("✅ Vision service pronto")
-    
+
     print(f"\n📁 Directory Lampiran: {LAMPIRAN_DIR}")
-    
+
     # Estrai da tutti i file Lampiran I
     all_kbli = {}
     all_kbli_list = []
-    
+
     # Per test iniziale, inizia con prime 10 pagine di ogni file
     # Poi si può espandere a tutte le pagine
     print("\n🎯 Strategia: Estrazione da Lampiran I (prime 10 pagine per test)")
     print("   Poi si può espandere a tutte le pagine\n")
-    
+
     for lampiran_name, filename in LAMPIRAN_I_FILES:
         kbli_list = await extract_kbli_from_lampiran_file(
             vision_service, lampiran_name, filename, start_page=1, max_pages=10
         )
-        
+
         # Rimuovi duplicati e aggiungi
         for kbli in kbli_list:
             code = kbli.get("kode")
             if code and code not in all_kbli:
                 all_kbli[code] = kbli
                 all_kbli_list.append(kbli)
-    
+
     # Salva risultati
     output_file = os.path.join(OUTPUT_DIR, "pp28_kbli_from_lampiran_i_vision.json")
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump({
-            "generated_at": datetime.now().isoformat(),
-            "source": "PP 28/2025 Lampiran I (Vision extraction - prime 10 pagine per file)",
-            "total_kbli": len(all_kbli),
-            "kbli_codes": list(all_kbli.values())
-        }, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n✅ Estrazione completata!")
+        json.dump(
+            {
+                "generated_at": datetime.now().isoformat(),
+                "source": "PP 28/2025 Lampiran I (Vision extraction - prime 10 pagine per file)",
+                "total_kbli": len(all_kbli),
+                "kbli_codes": list(all_kbli.values()),
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    print("\n✅ Estrazione completata!")
     print(f"   KBLI unici trovati: {len(all_kbli)}")
     print(f"📁 Salvato in: {output_file}")
-    
+
     # Mostra alcuni esempi
     if all_kbli:
-        print(f"\n📋 Primi 5 KBLI estratti:")
+        print("\n📋 Primi 5 KBLI estratti:")
         for i, (code, kbli) in enumerate(list(all_kbli.items())[:5], 1):
             print(f"   {i}. {code}: {kbli.get('judul', 'N/A')[:50]}")
             print(f"      Risk: {kbli.get('tingkat_risiko', 'N/A')}")
-            print(f"      PMA: {kbli.get('pma_allowed', 'N/A')} ({kbli.get('pma_max_percentage', 'N/A')})")
+            print(
+                f"      PMA: {kbli.get('pma_allowed', 'N/A')} ({kbli.get('pma_max_percentage', 'N/A')})"
+            )
             print(f"      Skala: {kbli.get('skala_usaha', [])}")
             print()
     else:

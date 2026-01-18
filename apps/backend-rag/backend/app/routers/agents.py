@@ -19,11 +19,11 @@ import logging
 from datetime import datetime
 from typing import Any
 
-# Import caching utilities
-from backend.core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+# Import caching utilities
+from backend.core.cache import cached
 from backend.services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
 from backend.services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
@@ -540,7 +540,9 @@ async def cross_oracle_synthesis(
 
     if not cross_oracle_service:
         # Try to get it directly from backend.app.state
-        from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+        from backend.services.oracle.cross_oracle_synthesis_service import (
+            CrossOracleSynthesisService,
+        )
 
         search_service = getattr(request.app.state, "search_service", None)
         ai_client = getattr(request.app.state, "ai_client", None)

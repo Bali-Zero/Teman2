@@ -8,6 +8,7 @@
 ## 🧪 TEST MANUALE CHAT STREAMING
 
 ### Prerequisiti:
+
 1. Accesso a produzione: https://zantara.balizero.com
 2. Account utente valido
 3. Browser con DevTools aperto
@@ -17,6 +18,7 @@
 ## 📋 CHECKLIST TEST
 
 ### 1. Preparazione:
+
 - [ ] Aprire browser (Chrome/Firefox/Safari)
 - [ ] Aprire DevTools (F12)
 - [ ] Andare su tab "Console"
@@ -24,11 +26,13 @@
 - [ ] Navigare a: https://zantara.balizero.com/chat
 
 ### 2. Login:
+
 - [ ] Eseguire login
 - [ ] Verificare nessun errore in console
 - [ ] Verificare chat page carica correttamente
 
 ### 3. Test Streaming Base:
+
 - [ ] Inviare messaggio di test: "Hello, test message"
 - [ ] **Verificare:**
   - ✅ Messaggio appare immediatamente (optimistic update)
@@ -38,6 +42,7 @@
   - ✅ Connection rimane stabile
 
 ### 4. Test Multiple Messages:
+
 - [ ] Inviare primo messaggio: "First message"
 - [ ] Attendere completamento streaming
 - [ ] Inviare secondo messaggio: "Second message"
@@ -47,6 +52,7 @@
   - ✅ Stato UI aggiornato correttamente
 
 ### 5. Test Error Handling:
+
 - [ ] Disconnettere internet temporaneamente
 - [ ] Inviare messaggio
 - [ ] **Verificare:**
@@ -56,6 +62,7 @@
   - ✅ Riconnessione automatica quando internet torna
 
 ### 6. Test Abort:
+
 - [ ] Inviare messaggio lungo
 - [ ] Durante streaming, cliccare "Stop" o chiudere tab
 - [ ] **Verificare:**
@@ -64,6 +71,7 @@
   - ✅ Stato UI aggiornato
 
 ### 7. Test Image Attachments:
+
 - [ ] Selezionare immagine da allegare
 - [ ] Inviare messaggio con immagine
 - [ ] **Verificare:**
@@ -72,6 +80,7 @@
   - ✅ Streaming funziona con immagini
 
 ### 8. Test TTS (Text-to-Speech):
+
 - [ ] Inviare messaggio
 - [ ] Cliccare su icona TTS
 - [ ] **Verificare:**
@@ -84,6 +93,7 @@
 ## 🔍 VERIFICA CONSOLE
 
 ### Errori da Cercare:
+
 - ❌ `TypeError`
 - ❌ `ReferenceError`
 - ❌ `NetworkError`
@@ -91,11 +101,13 @@
 - ❌ `Streaming error`
 
 ### Warnings da Notare:
+
 - ⚠️ `Deprecated API`
 - ⚠️ `Performance warning`
 - ⚠️ `Memory leak warning`
 
 ### Logs Positivi:
+
 - ✅ `Stream started`
 - ✅ `Stream completed`
 - ✅ `Message sent successfully`
@@ -105,6 +117,7 @@
 ## 📊 NETWORK TAB VERIFICA
 
 ### Richieste da Verificare:
+
 1. **SSE Connection:**
    - Tipo: `eventsource` o `fetch` con `text/event-stream`
    - Status: `200` o `200 OK`
@@ -124,18 +137,21 @@
 ## ✅ EXPECTED BEHAVIOR
 
 ### Streaming:
+
 - ✅ Messaggi streamano carattere per carattere
 - ✅ Nessun lag o delay eccessivo
 - ✅ UI aggiornata in real-time
 - ✅ Nessun flickering o glitch
 
 ### Error Handling:
+
 - ✅ Errori gestiti gracefully
 - ✅ Messaggi di errore chiari
 - ✅ Retry automatico quando possibile
 - ✅ Nessun crash o freeze
 
 ### Performance:
+
 - ✅ Response time < 500ms per primo chunk
 - ✅ Streaming smooth senza interruzioni
 - ✅ Nessun memory leak
@@ -146,6 +162,7 @@
 ## 📝 REPORT TEMPLATE
 
 ### Test Results:
+
 ```
 Date: [DATA]
 Tester: [NOME]
@@ -173,18 +190,21 @@ Notes:
 ## 🚨 ISSUES TO REPORT
 
 ### Critical:
+
 - Stream non parte
 - App crash durante streaming
 - Errori JavaScript non gestiti
 - Memory leak evidente
 
 ### High Priority:
+
 - Streaming interrotto frequentemente
 - Delay eccessivo nel primo chunk
 - Errori di rete non gestiti
 - UI non aggiornata correttamente
 
 ### Medium Priority:
+
 - Performance degradation
 - Warnings in console
 - UX issues minori

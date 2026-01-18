@@ -55,7 +55,9 @@ def mock_llm_gateway():
 @pytest.fixture
 def kg_extractor(mock_llm_gateway):
     """Create KGExtractor with mocked LLM"""
-    with patch("backend.services.knowledge_graph.kg_extractor.LLMGateway", return_value=mock_llm_gateway):
+    with patch(
+        "backend.services.knowledge_graph.kg_extractor.LLMGateway", return_value=mock_llm_gateway
+    ):
         extractor = KGExtractor()
         return extractor
 
@@ -126,7 +128,9 @@ class TestE2EKnowledgeGraphFlow:
         """
 
         # Mock coreference resolver
-        with patch("backend.services.knowledge_graph.coreference.CoreferenceResolver") as mock_resolver:
+        with patch(
+            "backend.services.knowledge_graph.coreference.CoreferenceResolver"
+        ) as mock_resolver:
             mock_resolver_instance = MagicMock()
             mock_resolver_instance.resolve = MagicMock(
                 return_value={

@@ -44,9 +44,12 @@ class TestPoliticsIngestionServiceIntegration:
     async def service(self, mock_qdrant_client, mock_embedder):
         """Create PoliticsIngestionService instance"""
         with patch(
-            "backend.services.politics_ingestion.create_embeddings_generator", return_value=mock_embedder
+            "backend.services.politics_ingestion.create_embeddings_generator",
+            return_value=mock_embedder,
         ):
-            with patch("backend.services.politics_ingestion.QdrantClient", return_value=mock_qdrant_client):
+            with patch(
+                "backend.services.politics_ingestion.QdrantClient", return_value=mock_qdrant_client
+            ):
                 from backend.services.politics_ingestion import PoliticsIngestionService
 
                 service = PoliticsIngestionService(qdrant_url="http://localhost:6333")

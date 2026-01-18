@@ -19,7 +19,10 @@ from pathlib import Path
 # Configuration
 API_URL = "https://nuzantara-rag.fly.dev/api/oracle/ingest"
 COLLECTION = "visa_oracle"
-TRAINING_FILE = Path(__file__).parent.parent.parent / "apps/backend-rag/training-data/visa/visa_015_c7_arts_culture_visas.md"
+TRAINING_FILE = (
+    Path(__file__).parent.parent.parent
+    / "apps/backend-rag/training-data/visa/visa_015_c7_arts_culture_visas.md"
+)
 
 
 def chunk_markdown(content: str) -> list[dict]:
@@ -27,7 +30,7 @@ def chunk_markdown(content: str) -> list[dict]:
     chunks = []
 
     # Split by ## headers
-    sections = re.split(r'\n(?=## )', content)
+    sections = re.split(r"\n(?=## )", content)
 
     for section in sections:
         section = section.strip()
@@ -35,7 +38,7 @@ def chunk_markdown(content: str) -> list[dict]:
             continue
 
         # Extract section title
-        title_match = re.match(r'^##\s+(.+?)(?:\n|$)', section)
+        title_match = re.match(r"^##\s+(.+?)(?:\n|$)", section)
         title = title_match.group(1) if title_match else "C7 Visa Information"
 
         # Determine visa code from content
@@ -56,8 +59,8 @@ def chunk_markdown(content: str) -> list[dict]:
                 "source_type": "training_data",
                 "source_file": "visa_015_c7_arts_culture_visas.md",
                 "category": "arts_culture",
-                "document_type": "visa_guide"
-            }
+                "document_type": "visa_guide",
+            },
         }
         chunks.append(chunk)
 
@@ -67,16 +70,13 @@ def chunk_markdown(content: str) -> list[dict]:
         content = chunk["content"]
         if len(content) > 2000:
             # Split long sections by ### headers or paragraphs
-            sub_sections = re.split(r'\n(?=### |\n\n)', content)
+            sub_sections = re.split(r"\n(?=### |\n\n)", content)
             for i, sub in enumerate(sub_sections):
                 sub = sub.strip()
                 if len(sub) > 100:
                     sub_chunk = {
                         "content": sub,
-                        "metadata": {
-                            **chunk["metadata"],
-                            "chunk_index": i
-                        }
+                        "metadata": {**chunk["metadata"], "chunk_index": i},
                     }
                     final_chunks.append(sub_chunk)
         else:
@@ -103,17 +103,13 @@ def main():
     # Show preview
     for i, chunk in enumerate(chunks[:3]):
         preview = chunk["content"][:100].replace("\n", " ")
-        print(f"   [{i+1}] {chunk['metadata']['visa_code']}: {preview}...")
+        print(f"   [{i + 1}] {chunk['metadata']['visa_code']}: {preview}...")
 
     if len(chunks) > 3:
         print(f"   ... and {len(chunks) - 3} more chunks")
 
     # Prepare API request
-    payload = {
-        "collection": COLLECTION,
-        "documents": chunks,
-        "batch_size": 100
-    }
+    payload = {"collection": COLLECTION, "documents": chunks, "batch_size": 100}
 
     print(f"\n🚀 Ingesting to {COLLECTION}...")
 
@@ -122,7 +118,7 @@ def main():
 
         if response.status_code == 200:
             result = response.json()
-            print(f"✅ Success!")
+            print("✅ Success!")
             print(f"   Documents ingested: {result.get('documents_ingested', 0)}")
             print(f"   Execution time: {result.get('execution_time_ms', 0):.0f}ms")
             print(f"   Message: {result.get('message', 'OK')}")

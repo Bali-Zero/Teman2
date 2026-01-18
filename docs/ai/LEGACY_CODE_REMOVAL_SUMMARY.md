@@ -18,11 +18,13 @@ Rimuovere completamente il codice legacy deprecato mantenendo solo l'implementaz
 **File:** `apps/mouth/src/app/chat/actions.ts`
 
 **Rimosso:**
+
 - ✅ Funzione `sendMessageStream()` completa (168 righe)
 - ✅ Funzione `cleanImageResponse()` duplicata (37 righe)
 - ✅ Type `StreamEvent` non più utilizzato
 
-**Risultato:** 
+**Risultato:**
+
 - File ridotto da 402 righe a 184 righe (-54%)
 - Eliminata duplicazione logica SSE
 - Eliminata duplicazione `cleanImageResponse()`
@@ -32,10 +34,12 @@ Rimuovere completamente il codice legacy deprecato mantenendo solo l'implementaz
 **File:** `apps/mouth/src/hooks/useOptimisticChat.ts`
 
 **Rimosso:**
+
 - ✅ File completo eliminato (286 righe)
 - ✅ Hook non utilizzato da nessun componente
 
 **Risultato:**
+
 - Eliminato codice morto
 - Nessun impatto su codice esistente
 
@@ -56,6 +60,7 @@ Rimuovere completamente il codice legacy deprecato mantenendo solo l'implementaz
 **File:** `apps/mouth/src/app/chat/actions.ts`
 
 Mantenute solo le server actions necessarie:
+
 - ✅ `saveConversation()` - Salvataggio conversazioni
 - ✅ `loadConversations()` - Caricamento lista conversazioni
 - ✅ `deleteConversation()` - Eliminazione conversazioni
@@ -66,6 +71,7 @@ Mantenute solo le server actions necessarie:
 **File:** `apps/mouth/src/app/chat/actions.ts`
 
 Tutti i tipi ancora utilizzati sono mantenuti:
+
 - ✅ `ChatMessage` - Usato in `page.tsx`, `StreamingMessageList.tsx`
 - ✅ `ChatImage` - Usato in `page.tsx`
 - ✅ `Source` - Usato in `page.tsx`, `StreamingMessageList.tsx`
@@ -78,18 +84,18 @@ Tutti i tipi ancora utilizzati sono mantenuti:
 
 ### File che Importano da `actions.ts`:
 
-| File | Import | Status |
-|------|--------|--------|
-| `apps/mouth/src/app/chat/page.tsx` | `saveConversation`, `ChatMessage`, `ChatImage`, `Source` | ✅ OK |
-| `apps/mouth/src/components/chat-v2/StreamingMessageList.tsx` | `ChatMessage`, `Source` | ✅ OK |
+| File                                                         | Import                                                   | Status |
+| ------------------------------------------------------------ | -------------------------------------------------------- | ------ |
+| `apps/mouth/src/app/chat/page.tsx`                           | `saveConversation`, `ChatMessage`, `ChatImage`, `Source` | ✅ OK  |
+| `apps/mouth/src/components/chat-v2/StreamingMessageList.tsx` | `ChatMessage`, `Source`                                  | ✅ OK  |
 
 ### File che Usano Client-Side Streaming:
 
-| File | Utilizzo | Status |
-|------|----------|--------|
-| `apps/mouth/src/app/chat/page.tsx` | `api.sendMessageStreaming()` | ✅ ATTIVO |
+| File                                       | Utilizzo                     | Status    |
+| ------------------------------------------ | ---------------------------- | --------- |
+| `apps/mouth/src/app/chat/page.tsx`         | `api.sendMessageStreaming()` | ✅ ATTIVO |
 | `apps/mouth/src/hooks/useChatStreaming.ts` | `api.sendMessageStreaming()` | ✅ ATTIVO |
-| `apps/mouth/src/lib/api/api-client.ts` | Wrapper | ✅ ATTIVO |
+| `apps/mouth/src/lib/api/api-client.ts`     | Wrapper                      | ✅ ATTIVO |
 
 ### Riferimenti Rimossi:
 
@@ -103,20 +109,20 @@ Tutti i tipi ancora utilizzati sono mantenuti:
 
 ### Codice Rimosso:
 
-| Metrica | Valore |
-|---------|--------|
-| **Righe rimosse** | ~454 righe |
-| **Funzioni rimosse** | 2 (`sendMessageStream`, `cleanImageResponse`) |
-| **File eliminati** | 1 (`useOptimisticChat.ts`) |
-| **Tipi rimossi** | 1 (`StreamEvent`) |
-| **Duplicazione eliminata** | 100% |
+| Metrica                    | Valore                                        |
+| -------------------------- | --------------------------------------------- |
+| **Righe rimosse**          | ~454 righe                                    |
+| **Funzioni rimosse**       | 2 (`sendMessageStream`, `cleanImageResponse`) |
+| **File eliminati**         | 1 (`useOptimisticChat.ts`)                    |
+| **Tipi rimossi**           | 1 (`StreamEvent`)                             |
+| **Duplicazione eliminata** | 100%                                          |
 
 ### Codice Mantenuto:
 
-| Metrica | Valore |
-|---------|--------|
-| **Server Actions attive** | 4 |
-| **Tipi esportati** | 5 |
+| Metrica                       | Valore     |
+| ----------------------------- | ---------- |
+| **Server Actions attive**     | 4          |
+| **Tipi esportati**            | 5          |
 | **Righe finali `actions.ts`** | 184 (-54%) |
 
 ---
@@ -137,12 +143,14 @@ Tutti i tipi ancora utilizzati sono mantenuti:
 ## 🚀 RISULTATO
 
 ### Prima:
+
 - ❌ 2 implementazioni SSE duplicate
 - ❌ 2 funzioni `cleanImageResponse()` duplicate
 - ❌ Hook non utilizzato
 - ❌ Codice deprecato con warnings
 
 ### Dopo:
+
 - ✅ 1 implementazione SSE (client-side) - Source of Truth
 - ✅ 1 funzione `cleanImageResponse()` (client-side) - Source of Truth
 - ✅ Nessun codice morto

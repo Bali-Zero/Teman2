@@ -96,9 +96,6 @@ export class ConversationsApi {
 
   // Get user memory context (profile facts, summary, counters)
   async getUserMemoryContext(): Promise<UserMemoryContext> {
-    return this.client.request<UserMemoryContext>(
-      '/api/bali-zero/conversations/memory/context'
-    );
+    return this.client.request<UserMemoryContext>('/api/bali-zero/conversations/memory/context');
   }
 }
-

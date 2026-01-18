@@ -210,7 +210,7 @@ class TestClientUpdateValidation:
 @pytest.fixture
 def mock_db_pool():
     """Create mock database pool with connection context manager.
-    
+
     Updated 2026-01-16: Enhanced mock to match actual asyncpg.Pool API.
     - Proper async context manager for acquire()
     - Mock connection methods (fetchrow, fetchval, fetch, execute)
@@ -264,7 +264,7 @@ def mock_client_row():
 @pytest.fixture
 def test_app(mock_db_pool):
     """Create FastAPI test app with mocked dependencies.
-    
+
     Updated 2026-01-16: Fixed dependency overrides to match actual API.
     - get_database_pool accepts Request parameter
     - get_current_user accepts Request and credentials parameters
@@ -290,7 +290,7 @@ def test_app(mock_db_pool):
     # Override get_database_pool - it accesses request.app.state.db_pool
     def get_db_pool_override(request):
         return mock_db_pool
-    
+
     # Override get_current_user - return mock user dict
     def get_user_override(request, credentials=None):
         return {
@@ -1264,9 +1264,7 @@ class TestFullWorkflow:
 
         # DELETE (soft)
         mock_conn.fetchrow.return_value = {"id": client_id}
-        delete_response = client.delete(
-            f"/api/crm/clients/{client_id}"
-        )
+        delete_response = client.delete(f"/api/crm/clients/{client_id}")
         assert delete_response.status_code == 200
 
     def test_create_and_get_summary_workflow(self, client, mock_db_pool, mock_client_row):

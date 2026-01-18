@@ -9,6 +9,7 @@ This document describes the complete deployment pipeline architecture for the Nu
 ### 1. GitHub Actions Workflows
 
 #### CI Workflow (`ci.yml`)
+
 - **Trigger**: Pull requests, pushes to main/develop
 - **Purpose**: Validate code quality and functionality
 - **Jobs**:
@@ -20,6 +21,7 @@ This document describes the complete deployment pipeline architecture for the Nu
   - Coverage gate enforcement
 
 #### CD Workflow (`deploy.yml`)
+
 - **Trigger**: Push to main, manual dispatch
 - **Purpose**: Automated deployment to Fly.io
 - **Jobs**:
@@ -30,6 +32,7 @@ This document describes the complete deployment pipeline architecture for the Nu
   - Automatic rollback on failure
 
 #### Monitoring Workflow (`monitoring.yml`)
+
 - **Trigger**: Hourly schedule, manual dispatch
 - **Purpose**: Continuous production monitoring
 - **Jobs**:
@@ -41,6 +44,7 @@ This document describes the complete deployment pipeline architecture for the Nu
 ### 2. Fly.io Configuration
 
 #### Backend RAG (`apps/backend-rag/fly.toml`)
+
 - **App Name**: nuzantara-rag
 - **Region**: Singapore (sin)
 - **Resources**: 2 CPUs, 2GB RAM
@@ -48,6 +52,7 @@ This document describes the complete deployment pipeline architecture for the Nu
 - **Strategy**: Rolling deployment
 
 #### Mouth Frontend (`apps/mouth/fly.toml`)
+
 - **App Name**: nuzantara-mouth
 - **Region**: Singapore (sin)
 - **Resources**: 2 CPUs, 1GB RAM
@@ -57,24 +62,28 @@ This document describes the complete deployment pipeline architecture for the Nu
 ### 3. Deployment Scripts
 
 #### `validate-deployment.sh`
+
 - Checks required tools
 - Validates configuration files
 - Verifies git status
 - Optional Docker build test
 
 #### `health-check.sh`
+
 - Tests all service endpoints
 - Measures response times
 - Runs integration tests
 - Reports status summary
 
 #### `rollback.sh`
+
 - Lists recent releases
 - Interactive rollback interface
 - Support for version-specific rollback
 - Post-rollback health validation
 
 #### `deploy-local.sh`
+
 - Local Docker Compose management
 - Service health monitoring
 - Log viewing
@@ -181,6 +190,7 @@ This document describes the complete deployment pipeline architecture for the Nu
 ### Automatic Rollback
 
 Triggered when:
+
 - Health check fails after deployment
 - Post-deployment validation fails
 - Manual trigger via workflow dispatch
@@ -271,13 +281,13 @@ flyctl monitor --app APP_NAME \
 
 ### Common Issues
 
-| Issue | Symptom | Solution |
-|-------|---------|----------|
-| Health check timeout | Deployment fails | Increase grace_period in fly.toml |
-| Out of memory | Container crashes | Scale memory in fly.toml |
-| Slow deployment | Takes >15 minutes | Check Docker layer caching |
-| Failed tests | CI pipeline fails | Review test logs, fix issues |
-| Secret not found | Runtime error | Verify secrets with `flyctl secrets list` |
+| Issue                | Symptom           | Solution                                  |
+| -------------------- | ----------------- | ----------------------------------------- |
+| Health check timeout | Deployment fails  | Increase grace_period in fly.toml         |
+| Out of memory        | Container crashes | Scale memory in fly.toml                  |
+| Slow deployment      | Takes >15 minutes | Check Docker layer caching                |
+| Failed tests         | CI pipeline fails | Review test logs, fix issues              |
+| Secret not found     | Runtime error     | Verify secrets with `flyctl secrets list` |
 
 ### Debug Commands
 

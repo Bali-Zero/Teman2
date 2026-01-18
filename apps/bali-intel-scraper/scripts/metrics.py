@@ -28,7 +28,6 @@ Author: BaliZero Team
 
 import time
 import json
-import os
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
@@ -46,18 +45,24 @@ from loguru import logger
 @dataclass
 class MetricValue:
     """Single metric value with timestamp"""
+
     name: str
     value: float
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     labels: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class LatencyMetric:
     """Latency tracking metric"""
+
     name: str
     duration_ms: float
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     success: bool = True
     labels: Dict[str, str] = field(default_factory=dict)
 
@@ -65,6 +70,7 @@ class LatencyMetric:
 @dataclass
 class PipelineMetrics:
     """Aggregated pipeline execution metrics"""
+
     # Counters
     total_articles_input: int = 0
     total_articles_processed: int = 0
@@ -154,7 +160,9 @@ class MetricsCollector:
             self._pipeline_metrics.total_pipeline_duration_ms = duration
         self._pipeline_metrics.completed_at = datetime.now(timezone.utc).isoformat()
         self._calculate_averages()
-        logger.info(f"Pipeline completed in {self._pipeline_metrics.total_pipeline_duration_ms:.0f}ms")
+        logger.info(
+            f"Pipeline completed in {self._pipeline_metrics.total_pipeline_duration_ms:.0f}ms"
+        )
 
     # -------------------------------------------------------------------------
     # COUNTER OPERATIONS
@@ -220,7 +228,9 @@ class MetricsCollector:
     # LATENCY TRACKING
     # -------------------------------------------------------------------------
 
-    def record_latency(self, name: str, duration_ms: float, labels: Dict[str, str] = None):
+    def record_latency(
+        self, name: str, duration_ms: float, labels: Dict[str, str] = None
+    ):
         """Record a latency measurement"""
         key = self._make_key(name, labels)
         with self._lock:
@@ -228,13 +238,23 @@ class MetricsCollector:
                 self._latencies[key] = []
             self._latencies[key].append(duration_ms)
 
-    def get_latency_stats(self, name: str, labels: Dict[str, str] = None) -> Dict[str, float]:
+    def get_latency_stats(
+        self, name: str, labels: Dict[str, str] = None
+    ) -> Dict[str, float]:
         """Get latency statistics for a metric"""
         key = self._make_key(name, labels)
         with self._lock:
             values = self._latencies.get(key, [])
             if not values:
-                return {"count": 0, "avg": 0, "min": 0, "max": 0, "p50": 0, "p95": 0, "p99": 0}
+                return {
+                    "count": 0,
+                    "avg": 0,
+                    "min": 0,
+                    "max": 0,
+                    "p50": 0,
+                    "p95": 0,
+                    "p99": 0,
+                }
 
             sorted_vals = sorted(values)
             count = len(sorted_vals)
@@ -244,8 +264,12 @@ class MetricsCollector:
                 "min": sorted_vals[0],
                 "max": sorted_vals[-1],
                 "p50": sorted_vals[int(count * 0.5)],
-                "p95": sorted_vals[int(count * 0.95)] if count > 20 else sorted_vals[-1],
-                "p99": sorted_vals[int(count * 0.99)] if count > 100 else sorted_vals[-1],
+                "p95": sorted_vals[int(count * 0.95)]
+                if count > 20
+                else sorted_vals[-1],
+                "p99": sorted_vals[int(count * 0.99)]
+                if count > 100
+                else sorted_vals[-1],
             }
 
     # -------------------------------------------------------------------------
@@ -266,7 +290,9 @@ class MetricsCollector:
             if error_type:
                 return self._errors.get(f"{component}:{error_type}", 0)
             # Sum all errors for component
-            return sum(v for k, v in self._errors.items() if k.startswith(f"{component}:"))
+            return sum(
+                v for k, v in self._errors.items() if k.startswith(f"{component}:")
+            )
 
     # -------------------------------------------------------------------------
     # HELPERS
@@ -309,7 +335,9 @@ class MetricsCollector:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "counters": dict(self._counters),
                 "gauges": dict(self._gauges),
-                "latencies": {k: self.get_latency_stats(k) for k in self._latencies.keys()},
+                "latencies": {
+                    k: self.get_latency_stats(k) for k in self._latencies.keys()
+                },
                 "errors": dict(self._errors),
                 "pipeline": asdict(self._pipeline_metrics),
             }
@@ -326,14 +354,14 @@ class MetricsCollector:
         # Counters
         for key, value in self._counters.items():
             name = key.split("{")[0]
-            labels = key[len(name):] if "{" in key else ""
+            labels = key[len(name) :] if "{" in key else ""
             lines.append(f"# TYPE {prefix}_{name} counter")
             lines.append(f"{prefix}_{name}{labels} {value}")
 
         # Gauges
         for key, value in self._gauges.items():
             name = key.split("{")[0]
-            labels = key[len(name):] if "{" in key else ""
+            labels = key[len(name) :] if "{" in key else ""
             lines.append(f"# TYPE {prefix}_{name} gauge")
             lines.append(f"{prefix}_{name}{labels} {value}")
 
@@ -342,9 +370,9 @@ class MetricsCollector:
             stats = self.get_latency_stats(key)
             name = key.split("{")[0]
             lines.append(f"# TYPE {prefix}_{name}_duration_ms summary")
-            lines.append(f'{prefix}_{name}_duration_ms_count {stats["count"]}')
-            lines.append(f'{prefix}_{name}_duration_ms_avg {stats["avg"]:.2f}')
-            lines.append(f'{prefix}_{name}_duration_ms_p95 {stats["p95"]:.2f}')
+            lines.append(f"{prefix}_{name}_duration_ms_count {stats['count']}")
+            lines.append(f"{prefix}_{name}_duration_ms_avg {stats['avg']:.2f}")
+            lines.append(f"{prefix}_{name}_duration_ms_p95 {stats['p95']:.2f}")
 
         return "\n".join(lines)
 
@@ -376,7 +404,9 @@ class MetricsCollector:
 
 
 @contextmanager
-def track_latency(collector: MetricsCollector, name: str, labels: Dict[str, str] = None):
+def track_latency(
+    collector: MetricsCollector, name: str, labels: Dict[str, str] = None
+):
     """
     Context manager to track operation latency.
 
@@ -388,7 +418,7 @@ def track_latency(collector: MetricsCollector, name: str, labels: Dict[str, str]
     error_occurred = False
     try:
         yield
-    except Exception as e:
+    except Exception:
         error_occurred = True
         collector.record_error(name)
         raise
@@ -494,6 +524,7 @@ if __name__ == "__main__":
 
     # Simulate latencies
     import random
+
     for _ in range(5):
         metrics.record_latency("llama_scoring", random.uniform(100, 500))
         metrics.record_latency("claude_validation", random.uniform(500, 2000))

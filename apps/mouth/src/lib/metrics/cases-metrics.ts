@@ -96,12 +96,7 @@ class CasesMetricsCollector {
   /**
    * Track case creation
    */
-  trackCaseCreation(
-    caseId: number,
-    caseType: string,
-    clientId: number,
-    userId?: string
-  ): void {
+  trackCaseCreation(caseId: number, caseType: string, clientId: number, userId?: string): void {
     this.sessionStats.casesCreated += 1;
 
     this.addMetric({
@@ -358,13 +353,13 @@ class CasesMetricsCollector {
    * Get performance summary
    */
   getPerformanceSummary(): CasePerformanceMetric {
-    const apiMetrics = this.metrics.filter(m => m.metricType === 'api_call');
-    const performanceMetrics = this.metrics.filter(m => m.metricType === 'performance');
+    const apiMetrics = this.metrics.filter((m) => m.metricType === 'api_call');
+    const performanceMetrics = this.metrics.filter((m) => m.metricType === 'performance');
 
-    const loadTimeMetric = performanceMetrics.find(m => m.action === 'case_page_load');
-    const renderTimeMetric = performanceMetrics.find(m => m.action === 'case_render');
+    const loadTimeMetric = performanceMetrics.find((m) => m.action === 'case_page_load');
+    const renderTimeMetric = performanceMetrics.find((m) => m.action === 'case_render');
 
-    const apiSuccessCount = apiMetrics.filter(m => m.action === 'api_success').length;
+    const apiSuccessCount = apiMetrics.filter((m) => m.action === 'api_success').length;
     const apiTotalCount = apiMetrics.length;
 
     return {
@@ -372,8 +367,8 @@ class CasesMetricsCollector {
       apiCallCount: apiTotalCount,
       apiSuccessRate: apiTotalCount > 0 ? (apiSuccessCount / apiTotalCount) * 100 : 100,
       renderTime: renderTimeMetric?.value || 0,
-      errorCount: this.metrics.filter(m => m.metricType === 'error').length,
-      caseActionCount: this.metrics.filter(m => m.metricType === 'user_action').length,
+      errorCount: this.metrics.filter((m) => m.metricType === 'error').length,
+      caseActionCount: this.metrics.filter((m) => m.metricType === 'user_action').length,
     };
   }
 
@@ -391,10 +386,10 @@ class CasesMetricsCollector {
    * Get button click statistics
    */
   getButtonClickStats(): Record<string, number> {
-    const buttonClicks = this.metrics.filter(m => m.metricType === 'button_click');
+    const buttonClicks = this.metrics.filter((m) => m.metricType === 'button_click');
     const stats: Record<string, number> = {};
 
-    buttonClicks.forEach(metric => {
+    buttonClicks.forEach((metric) => {
       const buttonName = metric.metadata?.buttonName as string;
       if (buttonName) {
         stats[buttonName] = (stats[buttonName] || 0) + 1;
@@ -408,10 +403,10 @@ class CasesMetricsCollector {
    * Get error statistics
    */
   getErrorStats(): Record<string, number> {
-    const errors = this.metrics.filter(m => m.metricType === 'error');
+    const errors = this.metrics.filter((m) => m.metricType === 'error');
     const stats: Record<string, number> = {};
 
-    errors.forEach(metric => {
+    errors.forEach((metric) => {
       const errorType = metric.metadata?.errorType as string;
       if (errorType) {
         stats[errorType] = (stats[errorType] || 0) + 1;
@@ -453,16 +448,20 @@ class CasesMetricsCollector {
    * Export metrics for analysis
    */
   exportMetrics(): string {
-    return JSON.stringify({
-      metrics: this.metrics,
-      sessionStats: this.getSessionStats(),
-      summary: {
-        performance: this.getPerformanceSummary(),
-        buttonClicks: this.getButtonClickStats(),
-        errors: this.getErrorStats(),
+    return JSON.stringify(
+      {
+        metrics: this.metrics,
+        sessionStats: this.getSessionStats(),
+        summary: {
+          performance: this.getPerformanceSummary(),
+          buttonClicks: this.getButtonClickStats(),
+          errors: this.getErrorStats(),
+        },
+        exportedAt: new Date().toISOString(),
       },
-      exportedAt: new Date().toISOString(),
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   /**
@@ -490,10 +489,14 @@ class CasesMetricsCollector {
 
         localStorage.setItem('cases_metrics', JSON.stringify(metrics));
       } catch (error) {
-        logger.error('Failed to store cases metrics in localStorage', {
-          component: 'CasesMetrics',
-          action: 'addMetric',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to store cases metrics in localStorage',
+          {
+            component: 'CasesMetrics',
+            action: 'addMetric',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
   }

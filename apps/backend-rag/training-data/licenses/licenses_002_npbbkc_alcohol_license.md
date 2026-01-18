@@ -16,8 +16,8 @@
 
 ## Prezzo Bali Zero 2025
 
-| Servizio | Prezzo | Timeline |
-|----------|--------|----------|
+| Servizio                  | Prezzo             | Timeline     |
+| ------------------------- | ------------------ | ------------ |
 | NPBBKC Golongan A + B + C | **IDR 15.000.000** | 45-60 giorni |
 
 **⚠️ ATTENZIONE:** La licenza alcolici è il processo PIÙ LUNGO. Inizia PRESTO!
@@ -26,11 +26,11 @@
 
 ## Golongan (Categorie Alcolici)
 
-| Golongan | Gradazione | Esempi |
-|----------|-----------|--------|
-| **A** | ≤ 5% | Birra, cider, wine cooler |
-| **B** | 5% - 20% | Vino, liquori leggeri, sake |
-| **C** | > 20% | Spirits, whisky, vodka, rum, gin |
+| Golongan | Gradazione | Esempi                           |
+| -------- | ---------- | -------------------------------- |
+| **A**    | ≤ 5%       | Birra, cider, wine cooler        |
+| **B**    | 5% - 20%   | Vino, liquori leggeri, sake      |
+| **C**    | > 20%      | Spirits, whisky, vodka, rum, gin |
 
 **Consiglio Bali Zero:** Applica per **tutti e tre** (A+B+C) insieme per massima flessibilità. Il prezzo è lo stesso.
 
@@ -39,6 +39,7 @@
 ## Chi deve avere NPBBKC?
 
 **Obbligatorio per:**
+
 - Ristoranti che servono alcolici
 - Bar e pub
 - Beach club
@@ -48,6 +49,7 @@
 - Import/export alcolici
 
 **Non richiesto per:**
+
 - Ristoranti senza alcolici (solo SLHS)
 - Minimarket (licenza separata)
 
@@ -56,12 +58,14 @@
 ## Requisiti per NPBBKC
 
 ### Requisiti aziendali:
+
 1. **PT PMA/PMDN** attiva con NIB
 2. **KBLI code** appropriato per F&B
 3. **SLHS** (igiene sanitaria) - spesso richiesto
 4. **Lokasi/sede** verificabile
 
 ### Documenti richiesti:
+
 - NIB (Nomor Induk Berusaha)
 - Akta pendirian e perubahan
 - NPWP perusahaan

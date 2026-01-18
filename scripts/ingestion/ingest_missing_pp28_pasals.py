@@ -13,9 +13,7 @@ This script:
 import os
 import re
 import uuid
-import json
 import requests
-from typing import Optional
 from openai import OpenAI
 
 # Configuration
@@ -31,7 +29,10 @@ BAB_RANGES = {
     "BAB III - PERIZINAN BERUSAHA": (125, 133),
     "BAB IV - PERIZINAN BERUSAHA UNTUK MENUNJANG KEGIATAN USAHA": (134, 137),
     "BAB V - NORMA, STANDAR, PROSEDUR, DAN KRITERIA": (138, 189),
-    "BAB VI - LAYANAN SISTEM PERIZINAN BERUSAHA TERINTEGRASI SECARA ELEKTRONIK": (190, 234),
+    "BAB VI - LAYANAN SISTEM PERIZINAN BERUSAHA TERINTEGRASI SECARA ELEKTRONIK": (
+        190,
+        234,
+    ),
     "BAB VII - PENGAWASAN": (235, 347),
     "BAB VIII - EVALUASI DAN REFORMASI KEBIJAKAN": (348, 349),
     "BAB IX - PENDANAAN": (350, 350),
@@ -68,9 +69,9 @@ def get_existing_pasals() -> set[int]:
                 "must": [
                     {"key": "metadata.legal_type", "match": {"value": "PP"}},
                     {"key": "metadata.legal_number", "match": {"value": "28"}},
-                    {"key": "metadata.legal_year", "match": {"value": "2025"}}
+                    {"key": "metadata.legal_year", "match": {"value": "2025"}},
                 ]
-            }
+            },
         }
         if offset:
             body["offset"] = offset
@@ -78,7 +79,7 @@ def get_existing_pasals() -> set[int]:
         resp = requests.post(
             f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points/scroll",
             json=body,
-            headers=headers
+            headers=headers,
         )
 
         if resp.status_code != 200:
@@ -113,7 +114,7 @@ def parse_pasals(text: str) -> dict[int, str]:
     pasals = {}
 
     # Split by "Pasal X" pattern
-    pasal_pattern = r'(Pasal\s+(\d+))'
+    pasal_pattern = r"(Pasal\s+(\d+))"
 
     # Find all pasal positions
     matches = list(re.finditer(pasal_pattern, text))
@@ -132,7 +133,7 @@ def parse_pasals(text: str) -> dict[int, str]:
         content = text[start_pos:end_pos].strip()
 
         # Clean up content
-        content = re.sub(r'\s+', ' ', content)  # Normalize whitespace
+        content = re.sub(r"\s+", " ", content)  # Normalize whitespace
         content = content[:3000]  # Limit length
 
         # Store only if we have meaningful content
@@ -144,10 +145,7 @@ def parse_pasals(text: str) -> dict[int, str]:
 
 def generate_embedding(text: str, client: OpenAI) -> list[float]:
     """Generate embedding using OpenAI."""
-    response = client.embeddings.create(
-        model="text-embedding-3-small",
-        input=text
-    )
+    response = client.embeddings.create(model="text-embedding-3-small", input=text)
     return response.data[0].embedding
 
 
@@ -158,18 +156,14 @@ def upload_to_qdrant(points: list[dict]) -> bool:
     # Format for named vectors
     formatted_points = []
     for p in points:
-        formatted_points.append({
-            "id": p["id"],
-            "vector": {
-                "dense": p["vector"]
-            },
-            "payload": p["payload"]
-        })
+        formatted_points.append(
+            {"id": p["id"], "vector": {"dense": p["vector"]}, "payload": p["payload"]}
+        )
 
     resp = requests.put(
         f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points",
         json={"points": formatted_points},
-        headers=headers
+        headers=headers,
     )
 
     return resp.status_code == 200
@@ -247,10 +241,7 @@ def main():
         point = {
             "id": str(uuid.uuid4()),
             "vector": embedding,
-            "payload": {
-                "text": content,
-                "metadata": metadata
-            }
+            "payload": {"text": content, "metadata": metadata},
         }
         points.append(point)
 
@@ -260,18 +251,18 @@ def main():
         if len(points) >= 50:
             print(f"  Uploading batch of {len(points)} points...")
             if upload_to_qdrant(points):
-                print(f"  Uploaded successfully!")
+                print("  Uploaded successfully!")
             else:
-                print(f"  Upload failed!")
+                print("  Upload failed!")
             points = []
 
     # Upload remaining
     if points:
         print(f"Uploading final batch of {len(points)} points...")
         if upload_to_qdrant(points):
-            print(f"Uploaded successfully!")
+            print("Uploaded successfully!")
         else:
-            print(f"Upload failed!")
+            print("Upload failed!")
 
     print(f"\n✅ Ingestion complete! Added {len(missing_nums)} missing pasals.")
 

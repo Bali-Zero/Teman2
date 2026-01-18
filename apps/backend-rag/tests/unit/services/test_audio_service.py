@@ -57,7 +57,9 @@ def _build_service(openai_key="key", http_client=None, openai_client=None):
 
     with patch("backend.app.services.audio_service.settings") as mock_settings:
         mock_settings.openai_api_key = openai_key
-        with patch("backend.app.services.audio_service.httpx.AsyncClient", return_value=http_client):
+        with patch(
+            "backend.app.services.audio_service.httpx.AsyncClient", return_value=http_client
+        ):
             with patch("backend.app.services.audio_service.AsyncOpenAI") as mock_openai:
                 mock_openai.return_value = openai_client
                 service = AudioService()

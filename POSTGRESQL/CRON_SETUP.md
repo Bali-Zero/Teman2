@@ -49,6 +49,7 @@ Crea il file `~/Library/LaunchAgents/com.nuzantara.excel-export.plist`:
 ```
 
 Attiva:
+
 ```bash
 launchctl load ~/Library/LaunchAgents/com.nuzantara.excel-export.plist
 ```
@@ -64,8 +65,8 @@ name: PostgreSQL Excel Export
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # Ogni giorno alle 6:00 UTC
-  workflow_dispatch:      # Esecuzione manuale
+    - cron: '0 6 * * *' # Ogni giorno alle 6:00 UTC
+  workflow_dispatch: # Esecuzione manuale
 
 jobs:
   export:
@@ -99,6 +100,7 @@ jobs:
 ```
 
 Richiede:
+
 1. Aggiungere `FLY_API_TOKEN` ai secrets del repo
 2. Dare permessi write al workflow
 
@@ -112,17 +114,20 @@ cd /Users/antonellosiano/Desktop/nuzantara/POSTGRESQL
 ## Troubleshooting
 
 **Errore "machine not running":**
+
 ```bash
 fly machine start -a nuzantara-rag
 ```
 
 **Errore "connection refused":**
+
 ```bash
 # Il proxy potrebbe non essere partito, riprova
 ./update_with_proxy.sh
 ```
 
 **Verificare log:**
+
 ```bash
 cat /tmp/postgresql_export.log
 ```

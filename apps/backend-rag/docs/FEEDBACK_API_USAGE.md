@@ -7,6 +7,7 @@ Salva un rating e feedback per una conversazione.
 ### Autenticazione
 
 L'endpoint richiede autenticazione tramite:
+
 - **API Key**: Header `X-API-Key: YOUR_API_KEY`
 - **JWT Token**: Header `Authorization: Bearer YOUR_JWT_TOKEN`
 
@@ -27,13 +28,13 @@ curl -X POST https://nuzantara-rag.fly.dev/api/feedback/rate-conversation \
 
 ### Parametri
 
-| Campo | Tipo | Obbligatorio | Descrizione |
-|-------|------|--------------|-------------|
-| `session_id` | string (UUID) | ✅ Sì | ID della sessione conversazione |
-| `rating` | integer (1-5) | ✅ Sì | Rating da 1 a 5 stelle |
-| `feedback_type` | string | ❌ No | Tipo: `"positive"`, `"negative"`, o `"issue"` |
-| `feedback_text` | string | ❌ No | Testo del feedback |
-| `turn_count` | integer | ❌ No | Numero di turni nella conversazione |
+| Campo           | Tipo          | Obbligatorio | Descrizione                                   |
+| --------------- | ------------- | ------------ | --------------------------------------------- |
+| `session_id`    | string (UUID) | ✅ Sì        | ID della sessione conversazione               |
+| `rating`        | integer (1-5) | ✅ Sì        | Rating da 1 a 5 stelle                        |
+| `feedback_type` | string        | ❌ No        | Tipo: `"positive"`, `"negative"`, o `"issue"` |
+| `feedback_text` | string        | ❌ No        | Testo del feedback                            |
+| `turn_count`    | integer       | ❌ No        | Numero di turni nella conversazione           |
 
 ### Response Success (200)
 
@@ -146,7 +147,7 @@ I ratings salvati vengono automaticamente utilizzati dal `ConversationTrainer` a
 ### Query Vista
 
 ```sql
-SELECT 
+SELECT
     conversation_id,
     rating,
     client_feedback,
@@ -201,4 +202,3 @@ asyncio.run(test_rating())
 ---
 
 **Ultimo aggiornamento**: 2025-01-22
-

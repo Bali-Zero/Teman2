@@ -39,7 +39,9 @@ except ImportError:
         PdfReader = _Wrapper
 
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 PDF_PP28_PATH = "/Users/antonellosiano/Desktop/PP Nomor 28 Tahun 2025 (1).pdf"
 PDF_BPS_PATH = "/Users/antonellosiano/Desktop/peraturan-bps-no-7-tahun-2025.pdf"
@@ -74,7 +76,9 @@ class KBLIComparison:
     notes: str
 
 
-def extract_kbli_from_pdf(pdf_path: str, max_codes: Optional[int] = None) -> Dict[str, PDFKBLIEntry]:
+def extract_kbli_from_pdf(
+    pdf_path: str, max_codes: Optional[int] = None
+) -> Dict[str, PDFKBLIEntry]:
     """
     Estrae KBLI da un PDF usando una regex semplice su linee di testo.
 
@@ -237,11 +241,19 @@ def title_similarity(a: str, b: str) -> float:
     return inter / union if union else 0.0
 
 
-def compare_kbli(pdf_entry: Optional[PDFKBLIEntry], qdrant_entry: Optional[QdrantKBLIEntry]) -> KBLIComparison:
+def compare_kbli(
+    pdf_entry: Optional[PDFKBLIEntry], qdrant_entry: Optional[QdrantKBLIEntry]
+) -> KBLIComparison:
     if not pdf_entry and not qdrant_entry:
-        return KBLIComparison(code="UNKNOWN", pdf=None, qdrant=None, title_match=None, notes="Nessun dato")
+        return KBLIComparison(
+            code="UNKNOWN", pdf=None, qdrant=None, title_match=None, notes="Nessun dato"
+        )
 
-    code = pdf_entry.code if pdf_entry else (qdrant_entry.code if qdrant_entry else "UNKNOWN")
+    code = (
+        pdf_entry.code
+        if pdf_entry
+        else (qdrant_entry.code if qdrant_entry else "UNKNOWN")
+    )
     notes: List[str] = []
     title_match: Optional[str] = None
 
@@ -293,10 +305,18 @@ def compare_kbli(pdf_entry: Optional[PDFKBLIEntry], qdrant_entry: Optional[Qdran
     elif not pdf_entry and qdrant_entry:
         notes.append("Codice presente in Qdrant ma non estratto dal PDF (campione PDF)")
 
-    return KBLIComparison(code=code, pdf=pdf_entry, qdrant=qdrant_entry, title_match=title_match, notes="; ".join(notes))
+    return KBLIComparison(
+        code=code,
+        pdf=pdf_entry,
+        qdrant=qdrant_entry,
+        title_match=title_match,
+        notes="; ".join(notes),
+    )
 
 
-def choose_sample_codes(pdf_entries: Dict[str, PDFKBLIEntry], sample_size: int = 10) -> List[str]:
+def choose_sample_codes(
+    pdf_entries: Dict[str, PDFKBLIEntry], sample_size: int = 10
+) -> List[str]:
     """
     Seleziona un campione di codici, semplicemente ordinando e prendendo i primi N.
     (Si può raffinare in futuro per diversità settori).
@@ -319,14 +339,14 @@ def generate_html_report(
         pdf_title = cmp.pdf.title if cmp.pdf else ""
         q_payload = cmp.qdrant.payload if cmp.qdrant else {}
         meta = q_payload.get("metadata", {}) or {}
-        q_title = (
-            q_payload.get("title")
-            or meta.get("title")
-            or meta.get("judul", "")
-        )
+        q_title = q_payload.get("title") or meta.get("title") or meta.get("judul", "")
         sector = q_payload.get("sector") or meta.get("sektor", meta.get("sector", ""))
         risk = q_payload.get("risk_level") or meta.get("risk_level", "")
-        pma = q_payload.get("pma_allowed") if "pma_allowed" in q_payload else meta.get("pma_allowed")
+        pma = (
+            q_payload.get("pma_allowed")
+            if "pma_allowed" in q_payload
+            else meta.get("pma_allowed")
+        )
         scales = q_payload.get("scales") or meta.get("scales", [])
 
         notes_class = "ok" if not cmp.notes else "warn"
@@ -371,10 +391,10 @@ def generate_html_report(
 
   <h2>Panoramica</h2>
   <ul>
-    <li><span class="badge badge-ok">Campione</span> {stats.get('sample_size', 0)} codici KBLI analizzati</li>
-    <li><span class="badge badge-ok">Match Qdrant</span> {stats.get('found_in_qdrant', 0)} trovati in `kbli_unified`</li>
-    <li><span class="badge badge-warn">Non trovati</span> {stats.get('missing_in_qdrant', 0)} non presenti/visibili in `kbli_unified`</li>
-    <li><span class="badge badge-warn">Differenze titolo</span> {stats.get('title_mismatch', 0)} con titolo divergente</li>
+    <li><span class="badge badge-ok">Campione</span> {stats.get("sample_size", 0)} codici KBLI analizzati</li>
+    <li><span class="badge badge-ok">Match Qdrant</span> {stats.get("found_in_qdrant", 0)} trovati in `kbli_unified`</li>
+    <li><span class="badge badge-warn">Non trovati</span> {stats.get("missing_in_qdrant", 0)} non presenti/visibili in `kbli_unified`</li>
+    <li><span class="badge badge-warn">Differenze titolo</span> {stats.get("title_mismatch", 0)} con titolo divergente</li>
   </ul>
 
   <h2>Dettaglio per codice</h2>
@@ -393,7 +413,7 @@ def generate_html_report(
       </tr>
     </thead>
     <tbody>
-      {''.join(rows_html)}
+      {"".join(rows_html)}
     </tbody>
   </table>
 
@@ -429,7 +449,9 @@ def main(sample_size: int = 10) -> None:
 
     # 2) Campione
     sample_codes = choose_sample_codes(combined, sample_size=sample_size)
-    print(f"\n🎯 Campione selezionato ({len(sample_codes)} codici): {', '.join(sample_codes)}")
+    print(
+        f"\n🎯 Campione selezionato ({len(sample_codes)} codici): {', '.join(sample_codes)}"
+    )
 
     # 3) Qdrant
     base_url, api_key = get_qdrant_config()
@@ -488,4 +510,3 @@ def main(sample_size: int = 10) -> None:
 
 if __name__ == "__main__":
     main()
-

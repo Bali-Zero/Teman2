@@ -22,6 +22,7 @@ tests/
 ## Test Categories
 
 ### 1. Unit Tests (`tests/unit/`)
+
 - **Purpose**: Fast, isolated tests with mocks
 - **Coverage**: Business logic, edge cases, error handling
 - **Run**: `pytest tests/unit -v`
@@ -29,6 +30,7 @@ tests/
 - **Dependencies**: None (all mocked)
 
 ### 2. Integration Tests (`tests/integration/`)
+
 - **Purpose**: Test service-database interactions with real databases
 - **Coverage**: Database operations, service layer interactions
 - **Run**: `pytest tests/integration -v -m integration`
@@ -36,6 +38,7 @@ tests/
 - **Dependencies**: PostgreSQL, Qdrant (via Docker or testcontainers)
 
 ### 3. API Tests (`tests/api/`)
+
 - **Purpose**: Test full request/response cycle
 - **Coverage**: Endpoints, middleware, authentication, error responses
 - **Run**: `pytest tests/api -v -m api`
@@ -47,6 +50,7 @@ tests/
 ### Prerequisites
 
 1. **Install dependencies**:
+
    ```bash
    pip install -r requirements.txt
    pip install -r requirements-test.txt
@@ -55,6 +59,7 @@ tests/
 2. **Start test databases** (choose one):
 
    **Option A: Docker Compose (Recommended)**
+
    ```bash
    docker-compose -f docker-compose.test.yml up -d
    export DATABASE_URL="postgresql://test:test@localhost:5433/test"
@@ -62,12 +67,14 @@ tests/
    ```
 
    **Option B: Testcontainers (Automatic)**
+
    ```bash
    # Testcontainers will start containers automatically
    # Just ensure Docker is running
    ```
 
    **Option C: Existing Services**
+
    ```bash
    export DATABASE_URL="postgresql://user:pass@localhost:5432/test_db"
    export QDRANT_URL="http://localhost:6333"
@@ -97,13 +104,13 @@ pytest tests/ --cov=backend --cov-report=html --cov-report=term
 
 ## Test Markers
 
-| Marker | Description | Usage |
-|--------|-------------|-------|
-| `@pytest.mark.unit` | Unit tests (fast, mocked) | Default |
+| Marker                     | Description                 | Usage                   |
+| -------------------------- | --------------------------- | ----------------------- |
+| `@pytest.mark.unit`        | Unit tests (fast, mocked)   | Default                 |
 | `@pytest.mark.integration` | Integration tests (real DB) | `pytest -m integration` |
-| `@pytest.mark.api` | API/E2E tests | `pytest -m api` |
-| `@pytest.mark.database` | Tests requiring PostgreSQL | `pytest -m database` |
-| `@pytest.mark.slow` | Long-running tests | `pytest -m "not slow"` |
+| `@pytest.mark.api`         | API/E2E tests               | `pytest -m api`         |
+| `@pytest.mark.database`    | Tests requiring PostgreSQL  | `pytest -m database`    |
+| `@pytest.mark.slow`        | Long-running tests          | `pytest -m "not slow"`  |
 
 ## Coverage Goals
 
@@ -118,6 +125,7 @@ pytest tests/ --cov=backend --cov-report=html --cov-report=term
 Automated testing configuration available.
 
 The testing pipeline runs:
+
 1. Unit tests (fast, no dependencies)
 2. Integration tests (with PostgreSQL and Qdrant services)
 3. API tests (with mocked services)
@@ -142,15 +150,18 @@ The following previously skipped tests have been converted to integration tests:
 ## Troubleshooting
 
 ### Tests Fail with "Connection Refused"
+
 - Ensure Docker containers are running: `docker-compose -f docker-compose.test.yml ps`
 - Check ports are not in use: `lsof -i :5433` and `lsof -i :6334`
 - Verify environment variables are set correctly
 
 ### Tests Fail with "testcontainers not available"
+
 - Install test dependencies: `pip install -r requirements-test.txt`
 - Or use Docker Compose instead: `docker-compose -f docker-compose.test.yml up -d`
 
 ### Integration Tests Timeout
+
 - Check database connection pool settings
 - Verify containers have enough resources
 - Increase timeout if needed (see `pytest.ini`)

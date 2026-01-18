@@ -26,13 +26,11 @@ export class ZantaraAIWriter {
   /**
    * Generate a complete article with Zantara AI
    */
-  static async generateArticle(
-    request: AIGenerationRequest
-  ): Promise<Partial<Article>> {
+  static async generateArticle(request: AIGenerationRequest): Promise<Partial<Article>> {
     const response = await fetch(`${ZANTARA_API}/api/blog/ai-generate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+        Authorization: `Bearer ${ZANTARA_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -132,7 +130,7 @@ export class ZantaraAIWriter {
           await fetch(`${ZANTARA_API}/api/blog/articles`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+              Authorization: `Bearer ${ZANTARA_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -172,7 +170,7 @@ export class ZantaraAIWriter {
   ): Promise<ArticleListItem[]> {
     // Fetch client profile from Zantara
     const clientResponse = await fetch(`${ZANTARA_API}/api/crm/clients/${clientId}`, {
-      headers: { 'Authorization': `Bearer ${ZANTARA_API_KEY}` },
+      headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
     });
 
     if (!clientResponse.ok) {
@@ -188,7 +186,7 @@ export class ZantaraAIWriter {
     const articlesResponse = await fetch(`${ZANTARA_API}/api/blog/articles/recommend`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+        Authorization: `Bearer ${ZANTARA_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -227,7 +225,7 @@ export class ZantaraAIWriter {
     const response = await fetch(`${ZANTARA_API}/api/blog/ai-translate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+        Authorization: `Bearer ${ZANTARA_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -322,7 +320,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       const response = await fetch(`${ZANTARA_API}/api/v1/image/generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -376,7 +374,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       const response = await fetch(`${ZANTARA_API}/api/blog/articles/similar`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ text: topic, category, limit: 5 }),
@@ -402,26 +400,28 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     try {
       const response = await fetch(`${ZANTARA_API}/api/intel/monitor/government`, {
-        headers: { 'Authorization': `Bearer ${ZANTARA_API_KEY}` },
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
       });
 
       if (response.ok) {
         const { updates } = await response.json();
-        return updates.map((update: {
-          title: string;
-          category: ArticleCategory;
-          urgency: 'low' | 'medium' | 'high';
-          sourceUrl: string;
-        }) => ({
-          id: crypto.randomUUID(),
-          source: 'government' as const,
-          topic: update.title,
-          category: update.category,
-          urgency: update.urgency,
-          sources: [update.sourceUrl],
-          detectedAt: new Date(),
-          processed: false,
-        }));
+        return updates.map(
+          (update: {
+            title: string;
+            category: ArticleCategory;
+            urgency: 'low' | 'medium' | 'high';
+            sourceUrl: string;
+          }) => ({
+            id: crypto.randomUUID(),
+            source: 'government' as const,
+            topic: update.title,
+            category: update.category,
+            urgency: update.urgency,
+            sources: [update.sourceUrl],
+            detectedAt: new Date(),
+            processed: false,
+          })
+        );
       }
     } catch (error) {
       console.error('Failed to check government sources:', error);
@@ -433,18 +433,14 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
   private static async checkNewsSources(): Promise<AIContentTrigger[]> {
     try {
       const response = await fetch(`${ZANTARA_API}/api/intel/monitor/news`, {
-        headers: { 'Authorization': `Bearer ${ZANTARA_API_KEY}` },
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
       });
 
       if (response.ok) {
         const { articles } = await response.json();
         return articles
           .filter((a: { relevanceScore: number }) => a.relevanceScore > 0.7)
-          .map((article: {
-            title: string;
-            category: ArticleCategory;
-            url: string;
-          }) => ({
+          .map((article: { title: string; category: ArticleCategory; url: string }) => ({
             id: crypto.randomUUID(),
             source: 'news' as const,
             topic: article.title,
@@ -465,25 +461,23 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
   private static async analyzeClientQuestions(): Promise<AIContentTrigger[]> {
     try {
       const response = await fetch(`${ZANTARA_API}/api/analytics/faq-gaps`, {
-        headers: { 'Authorization': `Bearer ${ZANTARA_API_KEY}` },
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
       });
 
       if (response.ok) {
         const { gaps } = await response.json();
-        return gaps.map((gap: {
-          question: string;
-          frequency: number;
-          category: ArticleCategory;
-        }) => ({
-          id: crypto.randomUUID(),
-          source: 'client_question' as const,
-          topic: gap.question,
-          category: gap.category,
-          urgency: gap.frequency > 10 ? 'high' : 'medium',
-          sources: [],
-          detectedAt: new Date(),
-          processed: false,
-        }));
+        return gaps.map(
+          (gap: { question: string; frequency: number; category: ArticleCategory }) => ({
+            id: crypto.randomUUID(),
+            source: 'client_question' as const,
+            topic: gap.question,
+            category: gap.category,
+            urgency: gap.frequency > 10 ? 'high' : 'medium',
+            sources: [],
+            detectedAt: new Date(),
+            processed: false,
+          })
+        );
       }
     } catch (error) {
       console.error('Failed to analyze client questions:', error);
@@ -497,7 +491,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       const response = await fetch(`${ZANTARA_API}/api/blog/articles/check-duplicate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ topic, similarityThreshold: 0.85 }),
@@ -522,7 +516,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       await fetch(`${ZANTARA_API}/api/notifications/editorial`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ZANTARA_API_KEY}`,
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -574,7 +568,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     // Add explicit interests
     if (client.interests) {
-      client.interests.forEach(interest => {
+      client.interests.forEach((interest) => {
         const categoryMap: Record<string, ArticleCategory> = {
           visa: 'immigration',
           immigration: 'immigration',
@@ -595,8 +589,8 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     // Analyze conversation topics
     if (client.conversations) {
-      client.conversations.forEach(conv => {
-        conv.topics?.forEach(topic => tags.add(topic.toLowerCase()));
+      client.conversations.forEach((conv) => {
+        conv.topics?.forEach((topic) => tags.add(topic.toLowerCase()));
       });
     }
 

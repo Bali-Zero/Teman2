@@ -7,9 +7,9 @@ Migrated from: backend/services/zantara_tools.py -> _get_team_members_list
 import logging
 from typing import Any
 
-from backend.core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from pydantic import Field
 
+from backend.core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from backend.services.crm.collaborator_service import CollaboratorService
 
 logger = logging.getLogger(__name__)

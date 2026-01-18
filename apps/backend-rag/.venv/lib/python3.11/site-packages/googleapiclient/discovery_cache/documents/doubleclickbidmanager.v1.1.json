@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -128,18 +118,14 @@
           "response": {
             "$ref": "Query"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         },
         "deletequery": {
           "description": "Deletes a stored query as well as the associated stored reports.",
           "flatPath": "query/{queryId}",
           "httpMethod": "DELETE",
           "id": "doubleclickbidmanager.queries.deletequery",
-          "parameterOrder": [
-            "queryId"
-          ],
+          "parameterOrder": ["queryId"],
           "parameters": {
             "queryId": {
               "description": "Query ID to delete.",
@@ -150,18 +136,14 @@
             }
           },
           "path": "query/{queryId}",
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         },
         "getquery": {
           "description": "Retrieves a stored query.",
           "flatPath": "query/{queryId}",
           "httpMethod": "GET",
           "id": "doubleclickbidmanager.queries.getquery",
-          "parameterOrder": [
-            "queryId"
-          ],
+          "parameterOrder": ["queryId"],
           "parameters": {
             "queryId": {
               "description": "Query ID to retrieve.",
@@ -175,9 +157,7 @@
           "response": {
             "$ref": "Query"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         },
         "listqueries": {
           "description": "Retrieves stored queries.",
@@ -202,18 +182,14 @@
           "response": {
             "$ref": "ListQueriesResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         },
         "runquery": {
           "description": "Runs a stored query to generate a report.",
           "flatPath": "query/{queryId}",
           "httpMethod": "POST",
           "id": "doubleclickbidmanager.queries.runquery",
-          "parameterOrder": [
-            "queryId"
-          ],
+          "parameterOrder": ["queryId"],
           "parameters": {
             "asynchronous": {
               "default": "false",
@@ -233,9 +209,7 @@
           "request": {
             "$ref": "RunQueryRequest"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         }
       }
     },
@@ -246,9 +220,7 @@
           "flatPath": "queries/{queryId}/reports",
           "httpMethod": "GET",
           "id": "doubleclickbidmanager.reports.listreports",
-          "parameterOrder": [
-            "queryId"
-          ],
+          "parameterOrder": ["queryId"],
           "parameters": {
             "pageSize": {
               "description": "Maximum number of results per page. Must be between 1 and 100. Defaults to 100 if unspecified.",
@@ -273,9 +245,7 @@
           "response": {
             "$ref": "ListReportsResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/doubleclickbidmanager"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/doubleclickbidmanager"]
         }
       }
     }
@@ -2669,16 +2639,8 @@
         },
         "pathMatchPosition": {
           "description": "Indicates the position of the path the filter should match to (first, last, or any event in path).",
-          "enum": [
-            "ANY",
-            "FIRST",
-            "LAST"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            ""
-          ],
+          "enum": ["ANY", "FIRST", "LAST"],
+          "enumDescriptions": ["", "", ""],
           "type": "string"
         }
       },
@@ -3304,20 +3266,8 @@
         },
         "match": {
           "description": "Indicates how the filter should be matched to the value.",
-          "enum": [
-            "UNKNOWN",
-            "EXACT",
-            "PARTIAL",
-            "BEGINS_WITH",
-            "WILDCARD_EXPRESSION"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            "",
-            "",
-            ""
-          ],
+          "enum": ["UNKNOWN", "EXACT", "PARTIAL", "BEGINS_WITH", "WILDCARD_EXPRESSION"],
+          "enumDescriptions": ["", "", "", "", ""],
           "type": "string"
         },
         "values": {
@@ -3426,16 +3376,8 @@
         },
         "format": {
           "description": "Format of the generated report.",
-          "enum": [
-            "CSV",
-            "EXCEL_CSV",
-            "XLSX"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            ""
-          ],
+          "enum": ["CSV", "EXCEL_CSV", "XLSX"],
+          "enumDescriptions": ["", "", ""],
           "type": "string"
         },
         "googleCloudStoragePathForLatestReport": {
@@ -3493,24 +3435,8 @@
         },
         "frequency": {
           "description": "How often the query is run.",
-          "enum": [
-            "ONE_TIME",
-            "DAILY",
-            "WEEKLY",
-            "SEMI_MONTHLY",
-            "MONTHLY",
-            "QUARTERLY",
-            "YEARLY"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ],
+          "enum": ["ONE_TIME", "DAILY", "WEEKLY", "SEMI_MONTHLY", "MONTHLY", "QUARTERLY", "YEARLY"],
+          "enumDescriptions": ["", "", "", "", "", "", ""],
           "type": "string"
         },
         "nextRunMinuteOfDay": {
@@ -3657,30 +3583,14 @@
         },
         "format": {
           "description": "The file type of the report.",
-          "enum": [
-            "CSV",
-            "EXCEL_CSV",
-            "XLSX"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            ""
-          ],
+          "enum": ["CSV", "EXCEL_CSV", "XLSX"],
+          "enumDescriptions": ["", "", ""],
           "type": "string"
         },
         "state": {
           "description": "The state of the report.",
-          "enum": [
-            "RUNNING",
-            "DONE",
-            "FAILED"
-          ],
-          "enumDescriptions": [
-            "",
-            "",
-            ""
-          ],
+          "enum": ["RUNNING", "DONE", "FAILED"],
+          "enumDescriptions": ["", "", ""],
           "type": "string"
         }
       },

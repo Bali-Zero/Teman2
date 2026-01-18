@@ -99,7 +99,8 @@ class TestReasoningComplexScenarios:
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                side_effect=mock_parse_tool_call,
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -169,7 +170,8 @@ class TestReasoningComplexScenarios:
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                return_value=mock_tool_call,
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -248,7 +250,8 @@ class TestReasoningComplexScenarios:
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                side_effect=mock_parse_tool_call,
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -349,7 +352,8 @@ class TestReasoningComplexScenarios:
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                return_value=mock_tool_call,
             ):
                 async for event in engine.execute_react_loop_stream(
                     state=state,

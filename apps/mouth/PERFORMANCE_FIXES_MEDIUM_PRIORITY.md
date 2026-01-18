@@ -11,6 +11,7 @@
 ### ✅ 1. Virtualizzazione Liste Clienti
 
 **Problema:** Liste clienti con 200+ items causavano:
+
 - Slow initial render
 - High memory usage
 - Poor scroll performance
@@ -19,6 +20,7 @@
 **Fix Implementato:**
 
 #### A) ClientKanban Virtualizzato
+
 - ✅ Aggiunto `useVirtualizer` da `@tanstack/react-virtual`
 - ✅ Virtualizzazione automatica per liste >20 items
 - ✅ Mantiene drag & drop per liste piccole (<20 items)
@@ -27,6 +29,7 @@
 **File modificato:** `components/crm/ClientKanban.tsx`
 
 **Prima:**
+
 ```typescript
 {getClientsByStatus(column.id).map(client => (
   <ClientCard key={client.id} client={client} />
@@ -34,6 +37,7 @@
 ```
 
 **Dopo:**
+
 ```typescript
 <ColumnBody
   clients={getClientsByStatus(column.id)}
@@ -45,6 +49,7 @@
 ```
 
 #### B) Client List View Virtualizzata
+
 - ✅ Creato componente `VirtualizedClientGrid`
 - ✅ Virtualizzazione per grid view con responsive columns
 - ✅ Mantiene infinite scroll
@@ -53,6 +58,7 @@
 **File modificato:** `app/(workspace)/clients/page.tsx`
 
 **Impatto:**
+
 - **Initial render:** Ridotto del 80-90% (solo items visibili)
 - **Memory usage:** Ridotto del 70-80%
 - **Scroll performance:** 60fps anche con 200+ items
@@ -65,17 +71,20 @@
 **Problema:** `StatsCard` veniva re-renderizzato 4 volte nel dashboard anche quando i dati non cambiavano.
 
 **Fix:**
+
 - ✅ Aggiunto `React.memo` a `StatsCard`
 - ✅ Prevenzione re-render inutili
 
 **File modificato:** `components/dashboard/StatsCard.tsx`
 
 **Prima:**
+
 ```typescript
 export function StatsCard({ ... }: StatsCardProps) {
 ```
 
 **Dopo:**
+
 ```typescript
 export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) {
   // ...
@@ -83,6 +92,7 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 ```
 
 **Impatto:**
+
 - **Re-renders:** Riduzione del 60-70% per StatsCard
 - **Dashboard performance:** Miglioramento generale
 
@@ -93,25 +103,30 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 **Problema:** Nessun monitoring di INP e altri Core Web Vitals.
 
 **Fix Implementato:**
+
 - ✅ Creato `lib/web-vitals.ts` con utilities
 - ✅ Creato componente `WebVitalsMonitor`
 - ✅ Integrato in root layout
 - ✅ Monitora: LCP, FID, CLS, **INP**, TTFB
 
 **File creati:**
+
 - `lib/web-vitals.ts`
 - `components/providers/WebVitalsMonitor.tsx`
 
 **File modificato:**
+
 - `app/layout.tsx`
 
 **Features:**
+
 - ✅ Automatic initialization on mount
 - ✅ Console logging in development
 - ✅ Ready for Sentry/GA integration
 - ✅ INP-specific warnings per poor performance
 
 **Esempio output:**
+
 ```
 ✅ [Web Vitals] LCP: 1200.00ms (good)
 ⚠️ [Web Vitals] INP: 350.00ms (needs-improvement)
@@ -119,6 +134,7 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 ```
 
 **Impatto:**
+
 - **Visibility:** Ora possiamo vedere INP issues in real-time
 - **Debugging:** Facilita identificazione problemi performance
 - **Monitoring:** Base per analytics integration
@@ -132,6 +148,7 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 **Status:** ⏳ **Documentato ma non implementato** (richiede refactoring significativo)
 
 **Raccomandazioni aggiunte:**
+
 - ✅ Commento con suggerimenti di ottimizzazione
 - ⏳ Refactoring futuro: ridurre motion components a 5-10 simultanei
 - ⏳ Usare CSS animations per transizioni semplici
@@ -139,6 +156,7 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 **File modificato:** `components/chat/ThinkingIndicator.tsx`
 
 **Prossimi step:**
+
 1. Identificare motion components non critici
 2. Sostituire con CSS animations dove possibile
 3. Limitare animazioni simultanee
@@ -149,13 +167,13 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 
 ### Performance Improvements
 
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| **Client List Initial Render** | ~2-3s (200 items) | ~200-300ms | **85-90% riduzione** |
-| **Client List Memory** | ~50-80MB | ~10-15MB | **70-80% riduzione** |
-| **Scroll FPS (200 items)** | 20-30fps | 60fps | **100% miglioramento** |
-| **INP (Client Lists)** | 5-8s | 1-2s stimato | **70-80% miglioramento** |
-| **StatsCard Re-renders** | 4 per update | 1-2 per update | **50-75% riduzione** |
+| Metrica                        | Prima             | Dopo           | Miglioramento            |
+| ------------------------------ | ----------------- | -------------- | ------------------------ |
+| **Client List Initial Render** | ~2-3s (200 items) | ~200-300ms     | **85-90% riduzione**     |
+| **Client List Memory**         | ~50-80MB          | ~10-15MB       | **70-80% riduzione**     |
+| **Scroll FPS (200 items)**     | 20-30fps          | 60fps          | **100% miglioramento**   |
+| **INP (Client Lists)**         | 5-8s              | 1-2s stimato   | **70-80% miglioramento** |
+| **StatsCard Re-renders**       | 4 per update      | 1-2 per update | **50-75% riduzione**     |
 
 ### Code Quality
 
@@ -174,6 +192,7 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
    - Lazy-load component se non sempre visibile
 
 2. **Aggiungere Sentry Integration**
+
    ```typescript
    // In WebVitalsMonitor
    if (window.Sentry) {
@@ -192,11 +211,13 @@ export const StatsCard = React.memo(function StatsCard({ ... }: StatsCardProps) 
 ## ✅ Testing
 
 **Verifiche effettuate:**
+
 - ✅ Lint check: Nessun errore
 - ✅ Type check: TypeScript compila correttamente
 - ✅ Import check: Nessun import rotto
 
 **Testing manuale consigliato:**
+
 - [ ] Verificare virtualizzazione attiva con >30 clienti
 - [ ] Verificare scroll smooth anche con 200+ items
 - [ ] Verificare drag & drop funziona ancora in Kanban

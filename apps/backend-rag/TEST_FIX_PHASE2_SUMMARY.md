@@ -8,9 +8,11 @@
 ## ✅ COMPLETATO FASE 2
 
 ### 1. Fix Mock Team Activity Router ✅
+
 **File:** `tests/unit/routers/test_team_activity_router.py`
 
 **Modifiche:**
+
 - ✅ Fixato `test_app` fixture:
   - `get_current_user` override accetta `request` parameter
   - `get_admin_user` override accetta `current_user` parameter (da dependency)
@@ -24,9 +26,11 @@
 ---
 
 ### 2. Fix Mock CRM Practices Router ✅
+
 **File:** `tests/unit/routers/test_crm_practices_router.py`
 
 **Modifiche:**
+
 - ✅ Fixato `client` fixture:
   - Set `app.state.db_pool` per `get_database_pool` dependency
   - Fixato `get_database_pool` override (accetta `request` parameter)
@@ -40,6 +44,7 @@
 ## 📊 RISULTATI FASE 2
 
 ### Test Fixati
+
 - ✅ **Team Activity Router:** ~41 test (mock aggiornati)
 - ✅ **CRM Practices Router:** ~27 test (mock aggiornati)
 
@@ -48,12 +53,14 @@
 ### Test Rimanenti (~128 test)
 
 **File Non Trovati (già skippati):**
+
 - `test_cultural_rag_service_comprehensive.py` - 23 test
 - `test_intelligent_router.py` - 20 test
 - `test_gemini_service_comprehensive.py` - 8 test
 - Altri file non trovati - ~19 test
 
 **File Esistenti da Fixare:**
+
 - `test_crm_shared_memory_coverage.py` - 12 test (usa monkeypatch complesso)
 - `test_intel_coverage.py` - 7 test (usa monkeypatch complesso)
 - `test_qdrant_db_95_coverage.py` - 7 test (usa importlib dinamico)
@@ -77,6 +84,7 @@
 ### Test Rimanenti da Fixare (~93 test in file esistenti)
 
 **Priorità Alta:**
+
 1. ⏳ `test_crm_shared_memory_coverage.py` (12 test)
    - Usa monkeypatch complesso
    - Verificare se moduli esistono ancora
@@ -92,11 +100,7 @@
    - Verificare se API QdrantClient sono cambiate
    - Aggiornare test se necessario
 
-**Priorità Media:**
-4. ⏳ `test_image_generation_router.py` (4 test)
-5. ⏳ `test_memory_orchestrator_race_conditions.py` (4 test)
-6. ⏳ `test_golden_router_service_comprehensive.py` (4 test)
-7. ⏳ `test_complete_error_handling_suite.py` (3 test)
+**Priorità Media:** 4. ⏳ `test_image_generation_router.py` (4 test) 5. ⏳ `test_memory_orchestrator_race_conditions.py` (4 test) 6. ⏳ `test_golden_router_service_comprehensive.py` (4 test) 7. ⏳ `test_complete_error_handling_suite.py` (3 test)
 
 **Altri Vari:** ~53 test
 
@@ -105,12 +109,14 @@
 ## 📊 METRICHE TOTALI
 
 ### Test Fixati Complessivi
+
 - ✅ **FASE 1:** ~174 test (LLM Gateway, CRM Clients, Identity, Skip markers)
 - ✅ **FASE 2:** ~68 test (Team Activity, CRM Practices)
 
 **Totale Fixati:** ~242 test
 
 ### Test Rimanenti
+
 - ⏳ **File Esistenti:** ~93 test
 - ✅ **File Non Trovati:** ~70 test (già skippati automaticamente)
 

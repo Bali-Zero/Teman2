@@ -37,9 +37,7 @@ describe('ConversationsApi', () => {
 
       const result = await conversationsApi.getConversationHistory();
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        '/api/bali-zero/conversations/history?limit=50'
-      );
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/history?limit=50');
       expect(result).toEqual(mockResponse);
     });
 
@@ -261,9 +259,7 @@ describe('ConversationsApi', () => {
 
       const result = await conversationsApi.getUserMemoryContext();
 
-      expect(mockRequest).toHaveBeenCalledWith(
-        '/api/bali-zero/conversations/memory/context'
-      );
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/memory/context');
       expect(result).toEqual(mockResponse);
     });
   });

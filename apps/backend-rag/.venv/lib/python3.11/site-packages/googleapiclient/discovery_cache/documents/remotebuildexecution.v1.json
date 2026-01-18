@@ -29,14 +29,8 @@
   "parameters": {
     "$.xgafv": {
       "description": "V1 error format.",
-      "enum": [
-        "1",
-        "2"
-      ],
-      "enumDescriptions": [
-        "v1 error format",
-        "v2 error format"
-      ],
+      "enum": ["1", "2"],
+      "enumDescriptions": ["v1 error format", "v2 error format"],
       "location": "query",
       "type": "string"
     },
@@ -48,11 +42,7 @@
     "alt": {
       "default": "json",
       "description": "Data format for response.",
-      "enum": [
-        "json",
-        "media",
-        "proto"
-      ],
+      "enum": ["json", "media", "proto"],
       "enumDescriptions": [
         "Responses with Content-Type of application/json",
         "Media download with context-dependent Content-Type",
@@ -112,9 +102,7 @@
           "flatPath": "v1/media/{mediaId}",
           "httpMethod": "GET",
           "id": "remotebuildexecution.media.download",
-          "parameterOrder": [
-            "resourceName"
-          ],
+          "parameterOrder": ["resourceName"],
           "parameters": {
             "resourceName": {
               "description": "Name of the media that is being downloaded. See ReadRequest.resource_name.",
@@ -128,9 +116,7 @@
           "response": {
             "$ref": "GoogleBytestreamMedia"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ],
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
           "supportsMediaDownload": true
         },
         "upload": {
@@ -139,9 +125,7 @@
           "httpMethod": "POST",
           "id": "remotebuildexecution.media.upload",
           "mediaUpload": {
-            "accept": [
-              "*/*"
-            ],
+            "accept": ["*/*"],
             "protocols": {
               "simple": {
                 "multipart": true,
@@ -149,9 +133,7 @@
               }
             }
           },
-          "parameterOrder": [
-            "resourceName"
-          ],
+          "parameterOrder": ["resourceName"],
           "parameters": {
             "resourceName": {
               "description": "Name of the media that is being downloaded. See ReadRequest.resource_name.",
@@ -168,9 +150,7 @@
           "response": {
             "$ref": "GoogleBytestreamMedia"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ],
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"],
           "supportsMediaUpload": true
         }
       }
@@ -182,9 +162,7 @@
           "flatPath": "v1/operations/{operationsId}:cancel",
           "httpMethod": "POST",
           "id": "remotebuildexecution.operations.cancel",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "The name of the operation resource to be cancelled.",
@@ -201,18 +179,14 @@
           "response": {
             "$ref": "GoogleProtobufEmpty"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "delete": {
           "description": "Deletes a long-running operation. This method indicates that the client is no longer interested in the operation result. It does not cancel the operation. If the server doesn't support this method, it returns `google.rpc.Code.UNIMPLEMENTED`.",
           "flatPath": "v1/operations/{operationsId}",
           "httpMethod": "DELETE",
           "id": "remotebuildexecution.operations.delete",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "name": {
               "description": "The name of the operation resource to be deleted.",
@@ -226,18 +200,14 @@
           "response": {
             "$ref": "GoogleProtobufEmpty"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         },
         "list": {
           "description": "Lists operations that match the specified filter in the request. If the server doesn't support this method, it returns `UNIMPLEMENTED`. NOTE: the `name` binding allows API services to override the binding to use different resource name schemes, such as `users/*/operations`. To override the binding, API services can add a binding such as `\"/v1/{name=users/*}/operations\"` to their service configuration. For backwards compatibility, the default name includes the operations collection id, however overriding users must ensure the name binding is the parent resource, without the operations collection id.",
           "flatPath": "v1/operations",
           "httpMethod": "GET",
           "id": "remotebuildexecution.operations.list",
-          "parameterOrder": [
-            "name"
-          ],
+          "parameterOrder": ["name"],
           "parameters": {
             "filter": {
               "description": "The standard list filter.",
@@ -267,9 +237,7 @@
           "response": {
             "$ref": "GoogleLongrunningListOperationsResponse"
           },
-          "scopes": [
-            "https://www.googleapis.com/auth/cloud-platform"
-          ]
+          "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
         }
       }
     },
@@ -282,9 +250,7 @@
               "flatPath": "v1/projects/{projectsId}/operations/{operationsId}",
               "httpMethod": "GET",
               "id": "remotebuildexecution.projects.operations.get",
-              "parameterOrder": [
-                "name"
-              ],
+              "parameterOrder": ["name"],
               "parameters": {
                 "name": {
                   "description": "The name of the operation resource.",
@@ -298,9 +264,7 @@
               "response": {
                 "$ref": "GoogleLongrunningOperation"
               },
-              "scopes": [
-                "https://www.googleapis.com/auth/cloud-platform"
-              ]
+              "scopes": ["https://www.googleapis.com/auth/cloud-platform"]
             }
           }
         }
@@ -556,13 +520,7 @@
         },
         "stage": {
           "description": "The current stage of execution.",
-          "enum": [
-            "UNKNOWN",
-            "CACHE_CHECK",
-            "QUEUED",
-            "EXECUTING",
-            "COMPLETED"
-          ],
+          "enum": ["UNKNOWN", "CACHE_CHECK", "QUEUED", "EXECUTING", "COMPLETED"],
           "enumDescriptions": [
             "Invalid value.",
             "Checking the result against the cache.",
@@ -1020,11 +978,7 @@
       "properties": {
         "cmUsage": {
           "description": "Indicates if and how Container Manager is being used for task execution.",
-          "enum": [
-            "CONFIG_NONE",
-            "CONFIG_MATCH",
-            "CONFIG_MISMATCH"
-          ],
+          "enum": ["CONFIG_NONE", "CONFIG_MATCH", "CONFIG_MISMATCH"],
           "enumDescriptions": [
             "Container Manager is disabled or not running for this execution.",
             "Container Manager is enabled and there was a matching container available for use during execution.",
@@ -1384,11 +1338,7 @@
         },
         "linuxIsolation": {
           "description": "linux_isolation allows overriding the docker runtime used for containers started on Linux.",
-          "enum": [
-            "LINUX_ISOLATION_UNSPECIFIED",
-            "GVISOR",
-            "OFF"
-          ],
+          "enum": ["LINUX_ISOLATION_UNSPECIFIED", "GVISOR", "OFF"],
           "enumDescriptions": [
             "Default value. Will be using Linux default runtime.",
             "Use gVisor runsc runtime.",
@@ -1412,12 +1362,7 @@
         },
         "policy": {
           "description": "The policy of the feature.",
-          "enum": [
-            "POLICY_UNSPECIFIED",
-            "ALLOWED",
-            "FORBIDDEN",
-            "RESTRICTED"
-          ],
+          "enum": ["POLICY_UNSPECIFIED", "ALLOWED", "FORBIDDEN", "RESTRICTED"],
           "enumDescriptions": [
             "Default value, if not explicitly set. Equivalent to FORBIDDEN, unless otherwise documented on a specific Feature.",
             "Feature is explicitly allowed.",
@@ -1473,12 +1418,7 @@
         },
         "state": {
           "description": "Output only. State of the instance.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The instance is in state `CREATING` once `CreateInstance` is called and before the instance is ready for use.",
@@ -1654,14 +1594,7 @@
         },
         "state": {
           "description": "Output only. State of the worker pool.",
-          "enum": [
-            "STATE_UNSPECIFIED",
-            "CREATING",
-            "RUNNING",
-            "UPDATING",
-            "DELETING",
-            "INACTIVE"
-          ],
+          "enum": ["STATE_UNSPECIFIED", "CREATING", "RUNNING", "UPDATING", "DELETING", "INACTIVE"],
           "enumDescriptions": [
             "Not a valid state, but the default value of the enum.",
             "The worker pool is in state `CREATING` once `CreateWorkerPool` is called and before all requested workers are ready.",
@@ -1694,13 +1627,7 @@
         },
         "command": {
           "description": "The admin action; see `Command` for legal values.",
-          "enum": [
-            "UNSPECIFIED",
-            "BOT_UPDATE",
-            "BOT_RESTART",
-            "BOT_TERMINATE",
-            "HOST_RESTART"
-          ],
+          "enum": ["UNSPECIFIED", "BOT_UPDATE", "BOT_RESTART", "BOT_TERMINATE", "HOST_RESTART"],
           "enumDescriptions": [
             "Illegal value.",
             "Download and run a new version of the bot. `arg` will be a resource accessible via `ByteStream.Read` to obtain the new bot code.",

@@ -24,6 +24,7 @@ python test_dedup_dry_run.py
 ### Opzione A: Test Locale (con .env)
 
 1. **Aggiungi le chiavi al `.env`:**
+
    ```bash
    cd apps/bali-intel-scraper
    echo "QDRANT_API_KEY=your_key_here" >> .env
@@ -31,6 +32,7 @@ python test_dedup_dry_run.py
    ```
 
 2. **Inizializza la collezione Qdrant:**
+
    ```bash
    cd scripts
    python init_news_collection.py
@@ -71,18 +73,22 @@ python apps/bali-intel-scraper/scripts/test_complete_setup.py
 ## 🧪 Test Cases
 
 ### Test Case 1: Articolo Nuovo
+
 - **Input:** Articolo mai visto prima
 - **Expected:** `is_duplicate = False`
 
 ### Test Case 2: Duplicato Esatto (URL)
+
 - **Input:** Stesso URL già salvato
 - **Expected:** `is_duplicate = True` (URL match)
 
 ### Test Case 3: Duplicato Semantico
+
 - **Input:** Articolo con stesso significato ma parole diverse
 - **Expected:** `is_duplicate = True` (similarity > 0.88)
 
 ### Test Case 4: Articolo Simile ma Diverso
+
 - **Input:** Articolo su argomento correlato ma non identico
 - **Expected:** `is_duplicate = False` (similarity < 0.88)
 
@@ -91,16 +97,21 @@ python apps/bali-intel-scraper/scripts/test_complete_setup.py
 ## 🐛 Troubleshooting
 
 ### Errore: "Collection not found"
+
 **Soluzione:** Esegui `python init_news_collection.py` prima del test.
 
 ### Errore: "OPENAI_API_KEY not set"
+
 **Soluzione:** Aggiungi la chiave al `.env` o esegui il test su Fly.io.
 
 ### Errore: "Qdrant connection failed"
+
 **Soluzione:** Verifica che `QDRANT_URL` e `QDRANT_API_KEY` siano corretti.
 
 ### Test passa ma duplicati non rilevati
+
 **Possibili cause:**
+
 - Threshold troppo alto (0.88) → Abbassa a 0.85 per test
 - Collezione vuota → Salva prima alcuni articoli
 - Embedding non generato → Verifica OPENAI_API_KEY

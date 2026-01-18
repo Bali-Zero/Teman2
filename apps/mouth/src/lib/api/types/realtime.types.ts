@@ -101,23 +101,25 @@ export type WebSocketMessageData =
 /**
  * Type-safe WebSocket message
  */
-export interface WebSocketMessage<T extends WebSocketMessageType = WebSocketMessageType> extends WebSocketMessageBase {
+export interface WebSocketMessage<
+  T extends WebSocketMessageType = WebSocketMessageType,
+> extends WebSocketMessageBase {
   type: T;
   data: T extends 'dashboard_update'
     ? DashboardUpdateData
     : T extends 'user_presence'
-    ? UserPresenceData
-    : T extends 'case_update'
-    ? CaseUpdateData
-    : T extends 'email_update'
-    ? EmailUpdateData
-    : T extends 'system_alert'
-    ? SystemAlertData
-    : T extends 'heartbeat'
-    ? HeartbeatData
-    : T extends 'connection_status'
-    ? ConnectionStatusData
-    : never;
+      ? UserPresenceData
+      : T extends 'case_update'
+        ? CaseUpdateData
+        : T extends 'email_update'
+          ? EmailUpdateData
+          : T extends 'system_alert'
+            ? SystemAlertData
+            : T extends 'heartbeat'
+              ? HeartbeatData
+              : T extends 'connection_status'
+                ? ConnectionStatusData
+                : never;
 }
 
 /**

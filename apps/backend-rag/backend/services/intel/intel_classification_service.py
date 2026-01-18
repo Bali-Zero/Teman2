@@ -49,9 +49,7 @@ class IntelClassificationService:
         else:
             # Keyword-based classification
             text_lower = f"{title} {content}".lower()
-            visa_mentions = sum(
-                1 for keyword in self.visa_keywords if keyword in text_lower
-            )
+            visa_mentions = sum(1 for keyword in self.visa_keywords if keyword in text_lower)
 
             # If minimum visa keywords found, classify as visa
             if visa_mentions >= self.min_visa_keywords:

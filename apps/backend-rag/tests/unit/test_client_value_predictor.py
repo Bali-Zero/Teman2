@@ -15,7 +15,10 @@ class TestClientValuePredictorSimple:
     def test_client_value_predictor_import(self):
         """Test that client value predictor can be imported"""
         try:
-            from backend.agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import (
+                ZANTARA_AVAILABLE,
+                ClientValuePredictor,
+            )
 
             assert ClientValuePredictor is not None
             assert isinstance(ZANTARA_AVAILABLE, bool)
@@ -42,7 +45,10 @@ class TestClientValuePredictorSimple:
     def test_zantara_availability_check(self):
         """Test ZANTARA_AVAILABLE constant and import handling"""
         try:
-            from backend.agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ZantaraAIClient
+            from backend.agents.agents.client_value_predictor import (
+                ZANTARA_AVAILABLE,
+                ZantaraAIClient,
+            )
 
             # Should be either True with client available or False with None
             if ZANTARA_AVAILABLE:
@@ -86,7 +92,9 @@ class TestClientValuePredictorSimple:
             mock_db_pool = MagicMock()
 
             with (
-                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch(
+                    "backend.agents.agents.client_value_predictor.ClientScoringService"
+                ) as mock_scoring,
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
@@ -145,7 +153,9 @@ class TestClientValuePredictorSimple:
 
             with (
                 patch("backend.app.main_cloud.app", create=True) as mock_app,
-                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch(
+                    "backend.agents.agents.client_value_predictor.ClientScoringService"
+                ) as mock_scoring,
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
@@ -207,7 +217,9 @@ class TestClientValuePredictorSimple:
             mock_db_pool = MagicMock()
 
             with (
-                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch(
+                    "backend.agents.agents.client_value_predictor.ClientScoringService"
+                ) as mock_scoring,
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
@@ -288,7 +300,9 @@ class TestClientValuePredictorSimple:
             mock_db_pool = MagicMock()
 
             with (
-                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch(
+                    "backend.agents.agents.client_value_predictor.ClientScoringService"
+                ) as mock_scoring,
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
@@ -488,6 +502,7 @@ class TestClientValuePredictorSimple:
         """Test run_daily_nurturing with database error"""
         try:
             import asyncpg
+
             from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()

@@ -20,21 +20,18 @@ Example:
 
 import argparse
 import asyncio
-import hashlib
 import json
 import logging
 import os
 import re
 import sys
 from datetime import datetime
-from typing import Any
 
 import httpx
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -48,12 +45,12 @@ API_URL = os.getenv("RAG_API_URL", "https://nuzantara-rag.fly.dev")
 
 # Entity types for Knowledge Graph
 VISA_ENTITY_TYPES = {
-    "A": "bebas_visa",          # Visa Free
-    "B": "voa",                 # Visa on Arrival
-    "C": "visa_kunjungan",      # Visit Visa (single entry)
-    "D": "visa_kunjungan_me",   # Visit Visa (multiple entry)
-    "E": "visa_tinggal",        # Stay Visa (ITAS/ITAP)
-    "F": "visa_diplomatik",     # Diplomatic Visa
+    "A": "bebas_visa",  # Visa Free
+    "B": "voa",  # Visa on Arrival
+    "C": "visa_kunjungan",  # Visit Visa (single entry)
+    "D": "visa_kunjungan_me",  # Visit Visa (multiple entry)
+    "E": "visa_tinggal",  # Stay Visa (ITAS/ITAP)
+    "F": "visa_diplomatik",  # Diplomatic Visa
 }
 
 # Relationship types for KG
@@ -94,7 +91,9 @@ class VisaKGIngestion:
             "errors": [],
         }
 
-    def _qdrant_request(self, method: str, endpoint: str, json_data: dict = None) -> dict:
+    def _qdrant_request(
+        self, method: str, endpoint: str, json_data: dict = None
+    ) -> dict:
         """Make HTTP request to Qdrant API."""
         url = f"{QDRANT_URL}{endpoint}"
         headers = {"api-key": QDRANT_API_KEY, "Content-Type": "application/json"}
@@ -112,7 +111,7 @@ class VisaKGIngestion:
         result = self._qdrant_request(
             "POST",
             f"/collections/{COLLECTION_NAME}/points/scroll",
-            {"limit": 200, "with_payload": True, "with_vector": False}
+            {"limit": 200, "with_payload": True, "with_vector": False},
         )
 
         codes = set()
@@ -156,7 +155,11 @@ class VisaKGIngestion:
                     # Get name from next non-empty line
                     for j in range(i + 1, min(i + 5, len(lines))):
                         next_line = lines[j].strip()
-                        if next_line and not next_line.startswith("=") and not next_line.startswith("("):
+                        if (
+                            next_line
+                            and not next_line.startswith("=")
+                            and not next_line.startswith("(")
+                        ):
                             name = next_line
                             break
                     break
@@ -228,22 +231,22 @@ class VisaKGIngestion:
 
         # Chunk 1: Overview
         overview_chunk = {
-            "content": f"""[CONTEXT: Immigration 2026 - Visa {code} - {visa['category'].replace('_', ' ').title()}]
+            "content": f"""[CONTEXT: Immigration 2026 - Visa {code} - {visa["category"].replace("_", " ").title()}]
 
 # {code} {name}
 
 ## Informasi Dasar
 - **Kode Visa**: {code}
-- **Kategori**: {visa['category'].replace('_', ' ').title()}
+- **Kategori**: {visa["category"].replace("_", " ").title()}
 - **Nama Resmi**: {name}
 
-{visa['sections'].get('jenis_visa', '')}
+{visa["sections"].get("jenis_visa", "")}
 
 ## Masa Tinggal
-{visa['sections'].get('masa_tinggal', 'Lihat ketentuan resmi.')}
+{visa["sections"].get("masa_tinggal", "Lihat ketentuan resmi.")}
 
 ## Biaya (PNBP)
-{visa['sections'].get('biaya', 'Lihat tarif resmi Kemenkumham.')}
+{visa["sections"].get("biaya", "Lihat tarif resmi Kemenkumham.")}
 """,
             "metadata": {
                 "visa_code": code,
@@ -254,12 +257,14 @@ class VisaKGIngestion:
                 "source_file": "tutti_visti_indonesia_2026.txt",
                 "chunk_type": "overview",
                 "ingested_at": datetime.utcnow().isoformat(),
-            }
+            },
         }
         chunks.append(overview_chunk)
 
         # Chunk 2: Requirements (if substantial content)
-        requirements = visa['sections'].get('persyaratan', '') or visa['sections'].get('pengajuan', '')
+        requirements = visa["sections"].get("persyaratan", "") or visa["sections"].get(
+            "pengajuan", ""
+        )
         if len(requirements) > 100:
             req_chunk = {
                 "content": f"""[CONTEXT: Immigration 2026 - Visa {code} Requirements]
@@ -270,10 +275,10 @@ class VisaKGIngestion:
 {requirements}
 
 ## Proses Pengajuan
-{visa['sections'].get('pengajuan', 'Melalui evisa.imigrasi.go.id atau Kedutaan RI.')}
+{visa["sections"].get("pengajuan", "Melalui evisa.imigrasi.go.id atau Kedutaan RI.")}
 
 ## Penjamin (Sponsor)
-{visa['sections'].get('penjamin', 'Lihat ketentuan sponsor untuk visa ini.')}
+{visa["sections"].get("penjamin", "Lihat ketentuan sponsor untuk visa ini.")}
 """,
                 "metadata": {
                     "visa_code": code,
@@ -283,12 +288,12 @@ class VisaKGIngestion:
                     "source_type": "imigrasi_official",
                     "chunk_type": "requirements",
                     "ingested_at": datetime.utcnow().isoformat(),
-                }
+                },
             }
             chunks.append(req_chunk)
 
         # Chunk 3: Legal basis (if present)
-        dasar_hukum = visa['sections'].get('dasar_hukum', '')
+        dasar_hukum = visa["sections"].get("dasar_hukum", "")
         if len(dasar_hukum) > 50:
             legal_chunk = {
                 "content": f"""[CONTEXT: Immigration 2026 - Visa {code} Legal Basis]
@@ -299,7 +304,7 @@ class VisaKGIngestion:
 {dasar_hukum}
 
 ## Ketentuan Lain
-{visa['sections'].get('ketentuan', '')}
+{visa["sections"].get("ketentuan", "")}
 """,
                 "metadata": {
                     "visa_code": code,
@@ -309,7 +314,7 @@ class VisaKGIngestion:
                     "source_type": "imigrasi_official",
                     "chunk_type": "legal_basis",
                     "ingested_at": datetime.utcnow().isoformat(),
-                }
+                },
             }
             chunks.append(legal_chunk)
 
@@ -342,64 +347,85 @@ class VisaKGIngestion:
 
         # Extract duration entity
         masa_tinggal = visa["sections"].get("masa_tinggal", "")
-        duration_match = re.search(r"(\d+)\s*(hari|bulan|tahun)", masa_tinggal, re.IGNORECASE)
+        duration_match = re.search(
+            r"(\d+)\s*(hari|bulan|tahun)", masa_tinggal, re.IGNORECASE
+        )
         if duration_match:
             duration = f"{duration_match.group(1)} {duration_match.group(2)}"
-            entities.append({
-                "entity_id": f"duration_{code.lower()}_{duration.replace(' ', '_')}",
-                "entity_type": "jangka_waktu",
-                "name": duration,
-                "description": f"Masa tinggal untuk visa {code}",
-                "properties": {"value": duration_match.group(1), "unit": duration_match.group(2)},
-                "confidence": 0.9,
-                "source_collection": COLLECTION_NAME,
-            })
+            entities.append(
+                {
+                    "entity_id": f"duration_{code.lower()}_{duration.replace(' ', '_')}",
+                    "entity_type": "jangka_waktu",
+                    "name": duration,
+                    "description": f"Masa tinggal untuk visa {code}",
+                    "properties": {
+                        "value": duration_match.group(1),
+                        "unit": duration_match.group(2),
+                    },
+                    "confidence": 0.9,
+                    "source_collection": COLLECTION_NAME,
+                }
+            )
 
         # Extract fee entity
         biaya = visa["sections"].get("biaya", "")
         fee_match = re.search(r"Rp\s*([\d.,]+)", biaya)
         if fee_match:
             fee_amount = fee_match.group(1).replace(".", "").replace(",", "")
-            entities.append({
-                "entity_id": f"fee_{code.lower()}_pnbp",
-                "entity_type": "biaya",
-                "name": f"PNBP Visa {code}",
-                "description": f"Biaya PNBP untuk visa {code}",
-                "properties": {"amount": fee_amount, "currency": "IDR"},
-                "confidence": 0.85,
-                "source_collection": COLLECTION_NAME,
-            })
+            entities.append(
+                {
+                    "entity_id": f"fee_{code.lower()}_pnbp",
+                    "entity_type": "biaya",
+                    "name": f"PNBP Visa {code}",
+                    "description": f"Biaya PNBP untuk visa {code}",
+                    "properties": {"amount": fee_amount, "currency": "IDR"},
+                    "confidence": 0.85,
+                    "source_collection": COLLECTION_NAME,
+                }
+            )
 
         # Extract legal references
         dasar_hukum = visa["sections"].get("dasar_hukum", "")
 
         # Find PP references
-        for match in re.finditer(r"PP\s*(?:Nomor\s*)?(\d+)\s*(?:tahun\s*)?(\d{4})?", dasar_hukum, re.IGNORECASE):
+        for match in re.finditer(
+            r"PP\s*(?:Nomor\s*)?(\d+)\s*(?:tahun\s*)?(\d{4})?",
+            dasar_hukum,
+            re.IGNORECASE,
+        ):
             pp_num = match.group(1)
             pp_year = match.group(2) or "2024"
-            entities.append({
-                "entity_id": f"pp_{pp_num}_{pp_year}",
-                "entity_type": "peraturan_pemerintah",
-                "name": f"PP {pp_num} Tahun {pp_year}",
-                "description": f"Peraturan Pemerintah terkait visa {code}",
-                "properties": {"number": pp_num, "year": pp_year},
-                "confidence": 0.9,
-                "source_collection": COLLECTION_NAME,
-            })
+            entities.append(
+                {
+                    "entity_id": f"pp_{pp_num}_{pp_year}",
+                    "entity_type": "peraturan_pemerintah",
+                    "name": f"PP {pp_num} Tahun {pp_year}",
+                    "description": f"Peraturan Pemerintah terkait visa {code}",
+                    "properties": {"number": pp_num, "year": pp_year},
+                    "confidence": 0.9,
+                    "source_collection": COLLECTION_NAME,
+                }
+            )
 
         # Find Permen references
-        for match in re.finditer(r"Permen\s*(?:kumham|hukum|imigrasi)?\s*(?:Nomor\s*)?(\d+)\s*(?:tahun\s*)?(\d{4})?", dasar_hukum, re.IGNORECASE):
+        for match in re.finditer(
+            r"Permen\s*(?:kumham|hukum|imigrasi)?\s*(?:Nomor\s*)?(\d+)\s*(?:tahun\s*)?(\d{4})?",
+            dasar_hukum,
+            re.IGNORECASE,
+        ):
             permen_num = match.group(1)
             permen_year = match.group(2) or "2024"
-            entities.append({
-                "entity_id": f"permen_{permen_num}_{permen_year}",
-                "entity_type": "permen",
-                "name": f"Permenkumham {permen_num} Tahun {permen_year}",
-                "description": f"Peraturan Menteri terkait visa {code}",
-                "properties": {"number": permen_num, "year": permen_year},
-                "confidence": 0.9,
-                "source_collection": COLLECTION_NAME,
-            })
+            entities.append(
+                {
+                    "entity_id": f"permen_{permen_num}_{permen_year}",
+                    "entity_type": "permen",
+                    "name": f"Permenkumham {permen_num} Tahun {permen_year}",
+                    "description": f"Peraturan Menteri terkait visa {code}",
+                    "properties": {"number": permen_num, "year": permen_year},
+                    "confidence": 0.9,
+                    "source_collection": COLLECTION_NAME,
+                }
+            )
 
         self.stats["entities_extracted"] += len(entities)
         return entities
@@ -420,65 +446,81 @@ class VisaKGIngestion:
 
             # Duration relationship
             if etype == "jangka_waktu":
-                relationships.append({
-                    "relationship_id": f"rel_{visa_entity_id}_duration_{eid}",
-                    "source_entity_id": visa_entity_id,
-                    "target_entity_id": eid,
-                    "relationship_type": "HAS_DURATION",
-                    "properties": {},
-                    "confidence": 0.9,
-                    "source_collection": COLLECTION_NAME,
-                })
+                relationships.append(
+                    {
+                        "relationship_id": f"rel_{visa_entity_id}_duration_{eid}",
+                        "source_entity_id": visa_entity_id,
+                        "target_entity_id": eid,
+                        "relationship_type": "HAS_DURATION",
+                        "properties": {},
+                        "confidence": 0.9,
+                        "source_collection": COLLECTION_NAME,
+                    }
+                )
 
             # Fee relationship
             elif etype == "biaya":
-                relationships.append({
-                    "relationship_id": f"rel_{visa_entity_id}_fee_{eid}",
-                    "source_entity_id": visa_entity_id,
-                    "target_entity_id": eid,
-                    "relationship_type": "HAS_FEE",
-                    "properties": {},
-                    "confidence": 0.85,
-                    "source_collection": COLLECTION_NAME,
-                })
+                relationships.append(
+                    {
+                        "relationship_id": f"rel_{visa_entity_id}_fee_{eid}",
+                        "source_entity_id": visa_entity_id,
+                        "target_entity_id": eid,
+                        "relationship_type": "HAS_FEE",
+                        "properties": {},
+                        "confidence": 0.85,
+                        "source_collection": COLLECTION_NAME,
+                    }
+                )
 
             # Legal reference relationship
             elif etype in ("peraturan_pemerintah", "permen", "undang_undang"):
-                relationships.append({
-                    "relationship_id": f"rel_{visa_entity_id}_legal_{eid}",
-                    "source_entity_id": visa_entity_id,
-                    "target_entity_id": eid,
-                    "relationship_type": "REFERENCES",
-                    "properties": {},
-                    "confidence": 0.9,
-                    "source_collection": COLLECTION_NAME,
-                })
+                relationships.append(
+                    {
+                        "relationship_id": f"rel_{visa_entity_id}_legal_{eid}",
+                        "source_entity_id": visa_entity_id,
+                        "target_entity_id": eid,
+                        "relationship_type": "REFERENCES",
+                        "properties": {},
+                        "confidence": 0.9,
+                        "source_collection": COLLECTION_NAME,
+                    }
+                )
 
         # Add KBLI relationships for work visas
         if code.startswith("E23") or code.startswith("E25"):
             kbli_prefixes = WORK_VISA_KBLI_PATTERNS.get(code[:3], [])
             for kbli_prefix in kbli_prefixes:
-                relationships.append({
-                    "relationship_id": f"rel_{visa_entity_id}_kbli_{kbli_prefix}",
-                    "source_entity_id": visa_entity_id,
-                    "target_entity_id": f"kbli_{kbli_prefix}xxx",
-                    "relationship_type": "LINKED_KBLI",
-                    "properties": {"kbli_prefix": kbli_prefix, "note": "Work visa applicable"},
-                    "confidence": 0.7,
-                    "source_collection": COLLECTION_NAME,
-                })
+                relationships.append(
+                    {
+                        "relationship_id": f"rel_{visa_entity_id}_kbli_{kbli_prefix}",
+                        "source_entity_id": visa_entity_id,
+                        "target_entity_id": f"kbli_{kbli_prefix}xxx",
+                        "relationship_type": "LINKED_KBLI",
+                        "properties": {
+                            "kbli_prefix": kbli_prefix,
+                            "note": "Work visa applicable",
+                        },
+                        "confidence": 0.7,
+                        "source_collection": COLLECTION_NAME,
+                    }
+                )
 
         # Add tax relationship for work/investor visas
         if code.startswith("E"):
-            relationships.append({
-                "relationship_id": f"rel_{visa_entity_id}_tax_npwp",
-                "source_entity_id": visa_entity_id,
-                "target_entity_id": "npwp_registration",
-                "relationship_type": "REQUIRES_TAX",
-                "properties": {"tax_type": "NPWP", "note": "Required for stay permit holders"},
-                "confidence": 0.8,
-                "source_collection": COLLECTION_NAME,
-            })
+            relationships.append(
+                {
+                    "relationship_id": f"rel_{visa_entity_id}_tax_npwp",
+                    "source_entity_id": visa_entity_id,
+                    "target_entity_id": "npwp_registration",
+                    "relationship_type": "REQUIRES_TAX",
+                    "properties": {
+                        "tax_type": "NPWP",
+                        "note": "Required for stay permit holders",
+                    },
+                    "confidence": 0.8,
+                    "source_collection": COLLECTION_NAME,
+                }
+            )
 
         self.stats["relationships_extracted"] += len(relationships)
         return relationships
@@ -491,6 +533,7 @@ class VisaKGIngestion:
 
         try:
             import openai
+
             openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
             # Generate embeddings for all chunks
@@ -501,7 +544,7 @@ class VisaKGIngestion:
             all_embeddings = []
             batch_size = 100
             for i in range(0, len(texts), batch_size):
-                batch = texts[i:i+batch_size]
+                batch = texts[i : i + batch_size]
                 response = openai_client.embeddings.create(
                     model="text-embedding-3-small",
                     input=batch,
@@ -511,19 +554,27 @@ class VisaKGIngestion:
 
             # Build Qdrant points with named vector "dense"
             import uuid
+
             points = []
             for idx, (chunk, embedding) in enumerate(zip(chunks, all_embeddings)):
                 # Generate UUID v5 from visa code for deterministic but unique IDs
-                point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"visa_oracle_{chunk['metadata']['visa_code']}_{idx}"))
-                points.append({
-                    "id": point_id,
-                    "vector": {"dense": embedding},  # Named vector format
-                    "payload": {
-                        "content": chunk["content"],
-                        **chunk["metadata"],
-                        "ingested_at": datetime.utcnow().isoformat(),
+                point_id = str(
+                    uuid.uuid5(
+                        uuid.NAMESPACE_DNS,
+                        f"visa_oracle_{chunk['metadata']['visa_code']}_{idx}",
+                    )
+                )
+                points.append(
+                    {
+                        "id": point_id,
+                        "vector": {"dense": embedding},  # Named vector format
+                        "payload": {
+                            "content": chunk["content"],
+                            **chunk["metadata"],
+                            "ingested_at": datetime.utcnow().isoformat(),
+                        },
                     }
-                })
+                )
 
             # Upsert to Qdrant
             logger.info(f"Upserting {len(points)} points to Qdrant...")
@@ -531,7 +582,10 @@ class VisaKGIngestion:
                 resp = await client.put(
                     f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points?wait=true",
                     json={"points": points},
-                    headers={"api-key": QDRANT_API_KEY, "Content-Type": "application/json"},
+                    headers={
+                        "api-key": QDRANT_API_KEY,
+                        "Content-Type": "application/json",
+                    },
                 )
                 if resp.status_code != 200:
                     logger.error(f"Qdrant response: {resp.text}")
@@ -544,10 +598,14 @@ class VisaKGIngestion:
             self.stats["errors"].append(f"Qdrant: {e}")
             return False
 
-    async def save_kg_to_db(self, entities: list[dict], relationships: list[dict]) -> bool:
+    async def save_kg_to_db(
+        self, entities: list[dict], relationships: list[dict]
+    ) -> bool:
         """Save KG entities and relationships to PostgreSQL directly."""
         if self.dry_run:
-            logger.info(f"[DRY RUN] Would save {len(entities)} entities, {len(relationships)} relationships to KG")
+            logger.info(
+                f"[DRY RUN] Would save {len(entities)} entities, {len(relationships)} relationships to KG"
+            )
             return True
 
         try:
@@ -557,7 +615,11 @@ class VisaKGIngestion:
             if not database_url:
                 logger.warning("DATABASE_URL not set, saving to file")
                 with open("/tmp/visa_kg_entities.json", "w") as f:
-                    json.dump({"entities": entities, "relationships": relationships}, f, indent=2)
+                    json.dump(
+                        {"entities": entities, "relationships": relationships},
+                        f,
+                        indent=2,
+                    )
                 return True
 
             conn = await asyncpg.connect(database_url)
@@ -566,7 +628,8 @@ class VisaKGIngestion:
                 # Insert entities
                 logger.info(f"Inserting {len(entities)} entities to kg_nodes...")
                 for entity in entities:
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties, confidence, source_collection)
                         VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
                         ON CONFLICT (entity_id) DO UPDATE SET
@@ -585,7 +648,9 @@ class VisaKGIngestion:
                     )
 
                 # Insert relationships (need target entities to exist)
-                logger.info(f"Inserting {len(relationships)} relationships to kg_edges...")
+                logger.info(
+                    f"Inserting {len(relationships)} relationships to kg_edges..."
+                )
                 inserted_rels = 0
                 skipped_rels = 0
                 for rel in relationships:
@@ -593,12 +658,18 @@ class VisaKGIngestion:
                         # Check if target entity exists, create placeholder if not
                         target_exists = await conn.fetchval(
                             "SELECT 1 FROM kg_nodes WHERE entity_id = $1",
-                            rel["target_entity_id"]
+                            rel["target_entity_id"],
                         )
                         if not target_exists:
                             # Create placeholder target entity
-                            target_type = "requirement" if "duration" in rel["target_entity_id"] or "fee" in rel["target_entity_id"] else "external_reference"
-                            await conn.execute("""
+                            target_type = (
+                                "requirement"
+                                if "duration" in rel["target_entity_id"]
+                                or "fee" in rel["target_entity_id"]
+                                else "external_reference"
+                            )
+                            await conn.execute(
+                                """
                                 INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties, confidence, source_collection)
                                 VALUES ($1, $2, $3, $4, '{}'::jsonb, 0.5, $5)
                                 ON CONFLICT (entity_id) DO NOTHING
@@ -606,11 +677,12 @@ class VisaKGIngestion:
                                 rel["target_entity_id"],
                                 target_type,
                                 rel["target_entity_id"].replace("_", " ").title(),
-                                f"Auto-created for relationship from visa ingestion",
+                                "Auto-created for relationship from visa ingestion",
                                 COLLECTION_NAME,
                             )
 
-                        await conn.execute("""
+                        await conn.execute(
+                            """
                             INSERT INTO kg_edges (relationship_id, source_entity_id, target_entity_id, relationship_type, properties, confidence, source_collection)
                             VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
                             ON CONFLICT (relationship_id) DO UPDATE SET
@@ -627,10 +699,14 @@ class VisaKGIngestion:
                         )
                         inserted_rels += 1
                     except Exception as rel_err:
-                        logger.warning(f"Skipped relationship {rel['relationship_id']}: {rel_err}")
+                        logger.warning(
+                            f"Skipped relationship {rel['relationship_id']}: {rel_err}"
+                        )
                         skipped_rels += 1
 
-                logger.info(f"KG save complete: {len(entities)} entities, {inserted_rels} relationships ({skipped_rels} skipped)")
+                logger.info(
+                    f"KG save complete: {len(entities)} entities, {inserted_rels} relationships ({skipped_rels} skipped)"
+                )
                 return True
 
             finally:
@@ -641,7 +717,9 @@ class VisaKGIngestion:
             self.stats["errors"].append(f"KG: {e}")
             # Save to file as backup
             with open("/tmp/visa_kg_entities.json", "w") as f:
-                json.dump({"entities": entities, "relationships": relationships}, f, indent=2)
+                json.dump(
+                    {"entities": entities, "relationships": relationships}, f, indent=2
+                )
             return False
 
     async def run(self, file_path: str) -> dict:
@@ -692,7 +770,9 @@ class VisaKGIngestion:
         await self.ingest_to_qdrant(all_chunks)
 
         # 6. Save KG to PostgreSQL
-        logger.info(f"Saving {len(all_entities)} entities, {len(all_relationships)} relationships to KG...")
+        logger.info(
+            f"Saving {len(all_entities)} entities, {len(all_relationships)} relationships to KG..."
+        )
         await self.save_kg_to_db(all_entities, all_relationships)
 
         # 7. Summary

@@ -8,9 +8,7 @@ Provides endpoints for:
 - Auto OCR for passport documents
 """
 
-import asyncio
 import base64
-import json
 import logging
 import re as regex
 from datetime import datetime
@@ -37,8 +35,9 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     Runs in background after document upload.
     Creates its own db connection to avoid pool lifecycle issues.
     """
-    import asyncpg
     import os
+
+    import asyncpg
     import httpx
 
     db_pool = None
@@ -60,9 +59,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
         # Get client name for verification
         async with db_pool.acquire() as conn:
-            client = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", client_id
-            )
+            client = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1", client_id)
             if not client:
                 return {"success": False, "error": "Client not found"}
             existing_name = client["full_name"]
@@ -82,7 +79,10 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if meta_response.status_code != 200:
-                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Metadata fetch failed: {meta_response.status_code}",
+                }
 
             metadata = meta_response.json()
             mime_type = metadata.get("mimeType", "image/jpeg")
@@ -93,7 +93,10 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if download_response.status_code != 200:
-                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Download failed: {download_response.status_code}",
+                }
 
             image_data = download_response.content
 
@@ -103,7 +106,12 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
         # Call Gemini Vision
         contents = [
             ocr_prompt,
-            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_data).decode(),
+                }
+            },
         ]
 
         result = await genai_client.generate_content(
@@ -118,15 +126,17 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
         # Parse JSON (handles code fences and chain-of-thought)
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"Auto OCR JSON parsing failed for client {client_id}. Raw: {response_text[:300]}")
+            logger.error(
+                f"Auto OCR JSON parsing failed for client {client_id}. Raw: {response_text[:300]}"
+            )
             return {"success": False, "error": "Could not parse OCR response"}
 
         # Normalize date formats (DD-MM-YYYY → YYYY-MM-DD)
         for date_field in ["expiry_date", "date_of_birth"]:
             if extracted.get(date_field):
                 date_str = extracted[date_field]
-                if regex.match(r'\d{2}-\d{2}-\d{4}', date_str):
-                    parts = date_str.split('-')
+                if regex.match(r"\d{2}-\d{2}-\d{4}", date_str):
+                    parts = date_str.split("-")
                     extracted[date_field] = f"{parts[2]}-{parts[1]}-{parts[0]}"
 
         # Normalize gender (MALE/FEMALE → M/F)
@@ -143,7 +153,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
             ratio = SequenceMatcher(
                 None,
                 existing_name.upper().replace(",", " ").split(),
-                extracted["full_name"].upper().replace(",", " ").split()
+                extracted["full_name"].upper().replace(",", " ").split(),
             ).ratio()
             name_match_ratio = ratio
 
@@ -204,12 +214,14 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
             params.append(client_id)
             update_sql = f"""
-                UPDATE clients SET {', '.join(update_parts)}, updated_at = NOW()
+                UPDATE clients SET {", ".join(update_parts)}, updated_at = NOW()
                 WHERE id = ${param_idx}
             """
             await conn.execute(update_sql, *params)
 
-        logger.info(f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}")
+        logger.info(
+            f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}"
+        )
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
@@ -218,6 +230,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     finally:
         if db_pool:
             await db_pool.close()
+
 
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced"])
 
@@ -846,10 +859,16 @@ async def create_document(
 
         # Auto-trigger OCR for passport documents
         if data.file_id and data.document_type and "passport" in data.document_type.lower():
-            logger.info(f"Auto-triggering OCR for passport upload: client={client_id}, file={data.file_id}")
+            logger.info(
+                f"Auto-triggering OCR for passport upload: client={client_id}, file={data.file_id}"
+            )
             background_tasks.add_task(_auto_ocr_passport, client_id, data.file_id)
 
-        return {"id": doc_id, "success": True, "ocr_triggered": "passport" in (data.document_type or "").lower()}
+        return {
+            "id": doc_id,
+            "success": True,
+            "ocr_triggered": "passport" in (data.document_type or "").lower(),
+        }
 
 
 @router.post("/clients/{client_id}/documents/bulk")
@@ -958,7 +977,11 @@ async def create_documents_bulk(
                     inserted_ids.append(doc_id)
 
                     # Queue OCR for passport documents
-                    if doc.file_id and doc.document_type and "passport" in doc.document_type.lower():
+                    if (
+                        doc.file_id
+                        and doc.document_type
+                        and "passport" in doc.document_type.lower()
+                    ):
                         background_tasks.add_task(_auto_ocr_passport, client_id, doc.file_id)
                         ocr_count += 1
 

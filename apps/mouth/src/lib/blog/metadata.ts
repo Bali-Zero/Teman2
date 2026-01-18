@@ -12,33 +12,75 @@ const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
 const CATEGORY_META: Record<string, { title: string; description: string; keywords: string[] }> = {
   immigration: {
     title: 'Indonesia Visa & Immigration Guides',
-    description: 'Expert guides on Indonesia visas: KITAS, KITAP, Golden Visa, work permits, retirement visa, digital nomad visa. Updated 2026 requirements and processes.',
-    keywords: ['indonesia visa', 'kitas', 'kitap', 'work permit indonesia', 'golden visa indonesia', 'retirement visa bali'],
+    description:
+      'Expert guides on Indonesia visas: KITAS, KITAP, Golden Visa, work permits, retirement visa, digital nomad visa. Updated 2026 requirements and processes.',
+    keywords: [
+      'indonesia visa',
+      'kitas',
+      'kitap',
+      'work permit indonesia',
+      'golden visa indonesia',
+      'retirement visa bali',
+    ],
   },
   business: {
     title: 'Starting a Business in Indonesia',
-    description: 'Complete guides to PT PMA company setup, business licenses, OSS registration, capital requirements. Expert advice for foreign entrepreneurs.',
-    keywords: ['pt pma', 'company setup indonesia', 'business license bali', 'oss registration', 'foreign investment indonesia'],
+    description:
+      'Complete guides to PT PMA company setup, business licenses, OSS registration, capital requirements. Expert advice for foreign entrepreneurs.',
+    keywords: [
+      'pt pma',
+      'company setup indonesia',
+      'business license bali',
+      'oss registration',
+      'foreign investment indonesia',
+    ],
   },
   'tax-legal': {
     title: 'Indonesia Tax & Legal Guides',
-    description: 'Tax compliance guides for expats and businesses in Indonesia. Personal tax, corporate tax, Coretax system, tax deadlines, legal requirements.',
-    keywords: ['indonesia tax', 'expat tax indonesia', 'corporate tax indonesia', 'coretax', 'tax deadline indonesia'],
+    description:
+      'Tax compliance guides for expats and businesses in Indonesia. Personal tax, corporate tax, Coretax system, tax deadlines, legal requirements.',
+    keywords: [
+      'indonesia tax',
+      'expat tax indonesia',
+      'corporate tax indonesia',
+      'coretax',
+      'tax deadline indonesia',
+    ],
   },
   property: {
     title: 'Property Investment in Bali & Indonesia',
-    description: 'Property guides for foreigners: Hak Pakai, leasehold, villa investment, Airbnb regulations, buying property in Bali. Expert real estate advice.',
-    keywords: ['property bali', 'villa investment bali', 'foreigner property indonesia', 'hak pakai', 'airbnb bali'],
+    description:
+      'Property guides for foreigners: Hak Pakai, leasehold, villa investment, Airbnb regulations, buying property in Bali. Expert real estate advice.',
+    keywords: [
+      'property bali',
+      'villa investment bali',
+      'foreigner property indonesia',
+      'hak pakai',
+      'airbnb bali',
+    ],
   },
   lifestyle: {
     title: 'Living in Bali - Expat Lifestyle Guides',
-    description: 'Guides for living in Bali: cost of living, healthcare, banking, culture, digital nomad life, expat community. Everything you need to know.',
-    keywords: ['living in bali', 'expat bali', 'cost of living bali', 'digital nomad bali', 'bali lifestyle'],
+    description:
+      'Guides for living in Bali: cost of living, healthcare, banking, culture, digital nomad life, expat community. Everything you need to know.',
+    keywords: [
+      'living in bali',
+      'expat bali',
+      'cost of living bali',
+      'digital nomad bali',
+      'bali lifestyle',
+    ],
   },
   'digital-nomad': {
     title: 'Digital Nomad Life in Bali',
-    description: 'Complete guide for digital nomads in Bali: visa options, coworking spaces, internet, banking, community. Work remotely from paradise.',
-    keywords: ['digital nomad bali', 'remote work indonesia', 'coworking bali', 'digital nomad visa'],
+    description:
+      'Complete guide for digital nomads in Bali: visa options, coworking spaces, internet, banking, community. Work remotely from paradise.',
+    keywords: [
+      'digital nomad bali',
+      'remote work indonesia',
+      'coworking bali',
+      'digital nomad visa',
+    ],
   },
 };
 
@@ -52,13 +94,7 @@ export function generateArticleMetadata(article: Article): Metadata {
     : `${baseUrl}${article.coverImage || '/static/og-image.jpg'}`;
 
   // Build keywords from tags and category
-  const keywords = [
-    ...article.tags,
-    article.category,
-    'bali',
-    'indonesia',
-    'bali zero',
-  ];
+  const keywords = [...article.tags, article.category, 'bali', 'indonesia', 'bali zero'];
 
   return {
     title: article.title,
@@ -160,7 +196,8 @@ export function generateCategoryMetadata(category: string): Metadata {
 export function generateInsightsMetadata(): Metadata {
   return {
     title: 'Bali Zero | Visa, Business & Immigration Experts in Bali, Indonesia',
-    description: 'Expert guides on Indonesia visas, company setup, tax compliance, property investment, and expat life in Bali. Updated 2026 information from Bali Zero.',
+    description:
+      'Expert guides on Indonesia visas, company setup, tax compliance, property investment, and expat life in Bali. Updated 2026 information from Bali Zero.',
     keywords: [
       'indonesia visa guide',
       'bali business',

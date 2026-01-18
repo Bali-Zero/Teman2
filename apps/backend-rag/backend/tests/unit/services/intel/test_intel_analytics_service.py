@@ -5,7 +5,7 @@ Unit tests for IntelAnalyticsService.
 import json
 import sys
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -103,9 +103,7 @@ class TestIntelAnalyticsService:
         assert result["summary"]["total_processed"] == 1
         assert result["type_breakdown"]["visa"]["rejected"] == 1
 
-    def test_get_intelligence_analytics_approval_rate(
-        self, analytics_service, staging_service
-    ):
+    def test_get_intelligence_analytics_approval_rate(self, analytics_service, staging_service):
         """Test approval rate calculation."""
         # Create approved items
         approved_dir = staging_service.visa_staging_dir / "archived" / "approved"

@@ -9,7 +9,6 @@ import time
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 # Add scripts directory to path
 scripts_dir = Path(__file__).parent.parent.parent / "scripts"
@@ -78,11 +77,18 @@ class TestPipelineMetrics:
         """Test all expected fields exist"""
         pm = PipelineMetrics()
         expected_fields = [
-            "total_articles_input", "total_articles_processed",
-            "total_articles_published", "total_articles_rejected",
-            "total_errors", "dedup_filtered", "llama_scored",
-            "claude_validated", "enriched", "images_generated",
-            "avg_llama_latency_ms", "total_pipeline_duration_ms",
+            "total_articles_input",
+            "total_articles_processed",
+            "total_articles_published",
+            "total_articles_rejected",
+            "total_errors",
+            "dedup_filtered",
+            "llama_scored",
+            "claude_validated",
+            "enriched",
+            "images_generated",
+            "avg_llama_latency_ms",
+            "total_pipeline_duration_ms",
         ]
         for field in expected_fields:
             assert hasattr(pm, field), f"Missing field: {field}"
@@ -445,7 +451,9 @@ class TestThreadSafety:
             for _ in range(increments_per_thread):
                 mc.increment("concurrent_test")
 
-        threads = [threading.Thread(target=increment_counter) for _ in range(num_threads)]
+        threads = [
+            threading.Thread(target=increment_counter) for _ in range(num_threads)
+        ]
         for t in threads:
             t.start()
         for t in threads:

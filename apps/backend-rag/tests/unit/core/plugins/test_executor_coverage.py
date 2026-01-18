@@ -3,12 +3,19 @@ from collections import deque
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from backend.core.plugins.executor import (
     CIRCUIT_BREAKER_COOLDOWN_SECONDS,
     CIRCUIT_BREAKER_FAILURE_THRESHOLD,
     PluginExecutor,
 )
-from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.plugin import (
+    Plugin,
+    PluginCategory,
+    PluginInput,
+    PluginMetadata,
+    PluginOutput,
+)
 
 
 class DummyInput(PluginInput):

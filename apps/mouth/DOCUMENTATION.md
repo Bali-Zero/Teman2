@@ -42,17 +42,17 @@
 
 ### Stack Tecnologico
 
-| Layer | Tecnologia | Versione |
-|-------|------------|----------|
-| Framework | Next.js | 16.1.1 |
-| Runtime | React | 19.2.1 |
-| Language | TypeScript | 5.x |
-| Styling | TailwindCSS | 4.x |
-| Animations | Framer Motion | 12.x |
-| AI SDK | Vercel AI SDK | 6.x |
-| MDX | next-mdx-remote | 5.x |
-| Testing | Vitest + Playwright | Latest |
-| Deployment | Vercel | Edge |
+| Layer      | Tecnologia          | Versione |
+| ---------- | ------------------- | -------- |
+| Framework  | Next.js             | 16.1.1   |
+| Runtime    | React               | 19.2.1   |
+| Language   | TypeScript          | 5.x      |
+| Styling    | TailwindCSS         | 4.x      |
+| Animations | Framer Motion       | 12.x     |
+| AI SDK     | Vercel AI SDK       | 6.x      |
+| MDX        | next-mdx-remote     | 5.x      |
+| Testing    | Vitest + Playwright | Latest   |
+| Deployment | Vercel              | Edge     |
 
 ### Connessioni Esterne
 
@@ -304,14 +304,14 @@ NEXT_PUBLIC_BUILD_ID=local
 
 ```typescript
 const nextConfig: NextConfig = {
-  output: 'standalone',  // Per Docker deployment
+  output: 'standalone', // Per Docker deployment
 
   images: {
     remotePatterns: [
       { hostname: '*.fly.dev' },
-      { hostname: 'oaidalleapiprodscus.blob.core.windows.net' },  // DALL-E
-      { hostname: 'image.pollinations.ai' },  // Image gen
-      { hostname: 'placehold.co' },  // Placeholders
+      { hostname: 'oaidalleapiprodscus.blob.core.windows.net' }, // DALL-E
+      { hostname: 'image.pollinations.ai' }, // Image gen
+      { hostname: 'placehold.co' }, // Placeholders
     ],
   },
 
@@ -335,6 +335,7 @@ vercel deploy --prod
 Or use Vercel dashboard/GitHub integration for automatic deployments.
 
 **Environment Variables (Vercel Dashboard):**
+
 - `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - `SENTRY_DSN` - Error tracking
@@ -394,11 +395,11 @@ CMD ["node", "server.js", "-H", "0.0.0.0"]
 
 ### Route Groups
 
-| Group | Prefix | Layout | Scopo |
-|-------|--------|--------|-------|
-| `(blog)` | `/insights` | Blog layout | Articoli pubblici |
-| `(workspace)` | `/` | Workspace layout | Area protetta |
-| `api` | `/api` | N/A | API Routes |
+| Group         | Prefix      | Layout           | Scopo             |
+| ------------- | ----------- | ---------------- | ----------------- |
+| `(blog)`      | `/insights` | Blog layout      | Articoli pubblici |
+| `(workspace)` | `/`         | Workspace layout | Area protetta     |
+| `api`         | `/api`      | N/A              | API Routes        |
 
 ### Mappa Routes
 
@@ -447,11 +448,11 @@ API Routes:
 
 ### Dynamic Routes Parameters
 
-| Route | Params | Valori |
-|-------|--------|--------|
-| `/insights/[category]` | category | `immigration`, `business`, `tax`, `property`, `lifestyle`, `digital-nomad` |
-| `/insights/[category]/[slug]` | slug | Qualsiasi slug articolo valido |
-| `/api/[...path]` | path | Array di segmenti URL |
+| Route                         | Params   | Valori                                                                     |
+| ----------------------------- | -------- | -------------------------------------------------------------------------- |
+| `/insights/[category]`        | category | `immigration`, `business`, `tax`, `property`, `lifestyle`, `digital-nomad` |
+| `/insights/[category]/[slug]` | slug     | Qualsiasi slug articolo valido                                             |
+| `/api/[...path]`              | path     | Array di segmenti URL                                                      |
 
 ---
 
@@ -491,42 +492,42 @@ App
 
 ### Componenti Chat
 
-| Componente | File | Props | Descrizione |
-|------------|------|-------|-------------|
-| `ChatHeader` | `chat/ChatHeader.tsx` | sessionId, onNewChat | Header con info sessione |
-| `ChatInputBar` | `chat/ChatInputBar.tsx` | input, isLoading, onSend, onImageGenerate | Input multimodale |
-| `ChatMessageList` | `chat/ChatMessageList.tsx` | messages, onFollowUp | Lista messaggi scrollabile |
-| `MessageBubble` | `chat/MessageBubble.tsx` | message, isLast, onFollowUp | Singolo messaggio |
-| `ChatSourcesPanel` | `chat/ChatSourcesPanel.tsx` | sources, isOpen | Panel sorgenti laterale |
-| `ThinkingIndicator` | `chat/ThinkingIndicator.tsx` | status | Indicatore elaborazione |
-| `FeedbackWidget` | `chat/FeedbackWidget.tsx` | messageId, onSubmit | Feedback thumbs |
+| Componente          | File                         | Props                                     | Descrizione                |
+| ------------------- | ---------------------------- | ----------------------------------------- | -------------------------- |
+| `ChatHeader`        | `chat/ChatHeader.tsx`        | sessionId, onNewChat                      | Header con info sessione   |
+| `ChatInputBar`      | `chat/ChatInputBar.tsx`      | input, isLoading, onSend, onImageGenerate | Input multimodale          |
+| `ChatMessageList`   | `chat/ChatMessageList.tsx`   | messages, onFollowUp                      | Lista messaggi scrollabile |
+| `MessageBubble`     | `chat/MessageBubble.tsx`     | message, isLast, onFollowUp               | Singolo messaggio          |
+| `ChatSourcesPanel`  | `chat/ChatSourcesPanel.tsx`  | sources, isOpen                           | Panel sorgenti laterale    |
+| `ThinkingIndicator` | `chat/ThinkingIndicator.tsx` | status                                    | Indicatore elaborazione    |
+| `FeedbackWidget`    | `chat/FeedbackWidget.tsx`    | messageId, onSubmit                       | Feedback thumbs            |
 
 ### Componenti Blog
 
-| Componente | File | Props | Descrizione |
-|------------|------|-------|-------------|
-| `ArticleCard` | `blog/ArticleCard.tsx` | article, index, variant | Card articolo |
-| `ArticleGrid` | `blog/ArticleGrid.tsx` | articles, variant | Griglia articoli |
-| `CategoryNav` | `blog/CategoryNav.tsx` | current, onChange | Filtri categoria |
-| `MDXContent` | `blog/MDXContent.tsx` | source | Renderer MDX |
-| `SearchBar` | `blog/SearchBar.tsx` | onSearch, placeholder | Ricerca articoli |
-| `TableOfContents` | `blog/TableOfContents.tsx` | content | TOC auto-generato |
-| `NewsletterForm` | `blog/NewsletterForm.tsx` | defaultCategories | Form iscrizione |
+| Componente        | File                       | Props                   | Descrizione       |
+| ----------------- | -------------------------- | ----------------------- | ----------------- |
+| `ArticleCard`     | `blog/ArticleCard.tsx`     | article, index, variant | Card articolo     |
+| `ArticleGrid`     | `blog/ArticleGrid.tsx`     | articles, variant       | Griglia articoli  |
+| `CategoryNav`     | `blog/CategoryNav.tsx`     | current, onChange       | Filtri categoria  |
+| `MDXContent`      | `blog/MDXContent.tsx`      | source                  | Renderer MDX      |
+| `SearchBar`       | `blog/SearchBar.tsx`       | onSearch, placeholder   | Ricerca articoli  |
+| `TableOfContents` | `blog/TableOfContents.tsx` | content                 | TOC auto-generato |
+| `NewsletterForm`  | `blog/NewsletterForm.tsx`  | defaultCategories       | Form iscrizione   |
 
 ### Componenti Interattivi Blog
 
-| Componente | Props | Uso in MDX |
-|------------|-------|------------|
-| `DecisionTree` | nodes, title, startNodeId | `<DecisionTree nodes={[...]} />` |
-| `Calculator` | fields, title, formula | `<Calculator fields={[...]} />` |
-| `ComparisonTable` | items, title | `<ComparisonTable items={[...]} />` |
-| `JourneyMap` | steps, title | `<JourneyMap steps={[...]} />` |
-| `InfoCard` | variant, title, children | `<InfoCard variant="warning">...</InfoCard>` |
-| `Checklist` | items, title | `<Checklist items={[...]} />` |
-| `ConfidenceMeter` | level, source, lastUpdated | `<ConfidenceMeter level="high" />` |
-| `LegalDecoder` | sections, title | `<LegalDecoder sections={[...]} />` |
-| `AskZantara` | context, placeholder | `<AskZantara context="visa" />` |
-| `GlossaryTerm` | term, definition | `<GlossaryTerm term="KITAS">...</GlossaryTerm>` |
+| Componente        | Props                      | Uso in MDX                                      |
+| ----------------- | -------------------------- | ----------------------------------------------- |
+| `DecisionTree`    | nodes, title, startNodeId  | `<DecisionTree nodes={[...]} />`                |
+| `Calculator`      | fields, title, formula     | `<Calculator fields={[...]} />`                 |
+| `ComparisonTable` | items, title               | `<ComparisonTable items={[...]} />`             |
+| `JourneyMap`      | steps, title               | `<JourneyMap steps={[...]} />`                  |
+| `InfoCard`        | variant, title, children   | `<InfoCard variant="warning">...</InfoCard>`    |
+| `Checklist`       | items, title               | `<Checklist items={[...]} />`                   |
+| `ConfidenceMeter` | level, source, lastUpdated | `<ConfidenceMeter level="high" />`              |
+| `LegalDecoder`    | sections, title            | `<LegalDecoder sections={[...]} />`             |
+| `AskZantara`      | context, placeholder       | `<AskZantara context="visa" />`                 |
+| `GlossaryTerm`    | term, definition           | `<GlossaryTerm term="KITAS">...</GlossaryTerm>` |
 
 ### Componenti UI Base
 
@@ -561,19 +562,16 @@ class ApiClientBase {
     this.token = localStorage.getItem('auth_token');
   }
 
-  protected async fetch<T>(
-    endpoint: string,
-    options?: RequestInit
-  ): Promise<T> {
+  protected async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': this.token ? `Bearer ${this.token}` : '',
+        Authorization: this.token ? `Bearer ${this.token}` : '',
         'X-Correlation-ID': generateCorrelationId(),
         ...options?.headers,
       },
-      credentials: 'include',  // Per cookies
+      credentials: 'include', // Per cookies
     });
 
     if (!response.ok) {
@@ -587,16 +585,16 @@ class ApiClientBase {
 
 ### Domain APIs
 
-| API Class | Endpoint Base | Metodi Principali |
-|-----------|---------------|-------------------|
-| `ChatApi` | `/api/agentic-rag` | `sendMessage()`, `sendMessageStreaming()` |
-| `ConversationsApi` | `/api/bali-zero/conversations` | `list()`, `get()`, `save()`, `delete()` |
-| `AuthApi` | `/api/auth` | `login()`, `logout()`, `register()` |
-| `CrmApi` | `/api/crm` | `getClients()`, `createClient()`, `getCases()` |
-| `KnowledgeApi` | `/api/knowledge` | `search()`, `getDocuments()`, `upload()` |
-| `EmailApi` | `/api/email` | `getEmails()`, `sendEmail()`, `attachZoho()` |
-| `TeamApi` | `/api/team` | `getMembers()`, `clockIn()`, `clockOut()` |
-| `PortalApi` | `/api/portal` | `getData()`, `inviteClient()` |
+| API Class          | Endpoint Base                  | Metodi Principali                              |
+| ------------------ | ------------------------------ | ---------------------------------------------- |
+| `ChatApi`          | `/api/agentic-rag`             | `sendMessage()`, `sendMessageStreaming()`      |
+| `ConversationsApi` | `/api/bali-zero/conversations` | `list()`, `get()`, `save()`, `delete()`        |
+| `AuthApi`          | `/api/auth`                    | `login()`, `logout()`, `register()`            |
+| `CrmApi`           | `/api/crm`                     | `getClients()`, `createClient()`, `getCases()` |
+| `KnowledgeApi`     | `/api/knowledge`               | `search()`, `getDocuments()`, `upload()`       |
+| `EmailApi`         | `/api/email`                   | `getEmails()`, `sendEmail()`, `attachZoho()`   |
+| `TeamApi`          | `/api/team`                    | `getMembers()`, `clockIn()`, `clockOut()`      |
+| `PortalApi`        | `/api/portal`                  | `getData()`, `inviteClient()`                  |
 
 ### API Proxy Route
 
@@ -637,7 +635,7 @@ type StreamEvent =
   | { type: 'sources'; data: Source[] }
   | { type: 'metadata'; data: MessageMetadata }
   | { type: 'image'; data: { url: string } }
-  | { type: 'content'; data: string }  // Chunk di risposta
+  | { type: 'content'; data: string } // Chunk di risposta
   | { type: 'error'; data: string }
   | { type: 'done'; data: null };
 ```
@@ -650,30 +648,13 @@ type StreamEvent =
 
 ```typescript
 // useChat - Main chat logic
-const {
-  input,
-  setInput,
-  messages,
-  isLoading,
-  handleSend,
-  generateSessionId,
-} = useChat();
+const { input, setInput, messages, isLoading, handleSend, generateSessionId } = useChat();
 
 // useChatMessages - Message state
-const {
-  messages,
-  setMessages,
-  addMessage,
-  updateMessage,
-  appendContent,
-} = useChatMessages();
+const { messages, setMessages, addMessage, updateMessage, appendContent } = useChatMessages();
 
 // useChatStreaming - Stream handling
-const {
-  isStreaming,
-  currentSteps,
-  sendStreamingMessage,
-} = useChatStreaming();
+const { isStreaming, currentSteps, sendStreamingMessage } = useChatStreaming();
 
 // useConversations - History
 const {
@@ -685,21 +666,10 @@ const {
 } = useConversations();
 
 // useMemoryContext - User memory
-const {
-  profileFacts,
-  summary,
-  counters,
-  refresh,
-} = useMemoryContext(userId);
+const { profileFacts, summary, counters, refresh } = useMemoryContext(userId);
 
 // useWebSocket - Real-time
-const {
-  isConnected,
-  connect,
-  disconnect,
-  send,
-  subscribe,
-} = useWebSocket();
+const { isConnected, connect, disconnect, send, subscribe } = useWebSocket();
 ```
 
 ### Providers
@@ -716,12 +686,12 @@ const { send, subscribe } = useWebSocketContext();
 
 ### Local Storage Keys
 
-| Key | Tipo | Descrizione |
-|-----|------|-------------|
-| `auth_token` | string | JWT token |
-| `user_profile` | object | Cached user info |
-| `chat_preferences` | object | Chat settings |
-| `recent_conversations` | array | Recent chat IDs |
+| Key                    | Tipo   | Descrizione      |
+| ---------------------- | ------ | ---------------- |
+| `auth_token`           | string | JWT token        |
+| `user_profile`         | object | Cached user info |
+| `chat_preferences`     | object | Chat settings    |
+| `recent_conversations` | array  | Recent chat IDs  |
 
 ---
 
@@ -731,33 +701,33 @@ const { send, subscribe } = useWebSocketContext();
 
 ```mdx
 ---
-id: "unique-id"
-slug: "article-slug"
-title: "Article Title"
-subtitle: "Optional Subtitle"
-excerpt: "200 character summary..."
-coverImage: "/images/blog/category/slug.jpg"
-coverImageAlt: "Image description"
-category: "immigration"
-tags: ["visa", "KITAS", "work-permit"]
+id: 'unique-id'
+slug: 'article-slug'
+title: 'Article Title'
+subtitle: 'Optional Subtitle'
+excerpt: '200 character summary...'
+coverImage: '/images/blog/category/slug.jpg'
+coverImageAlt: 'Image description'
+category: 'immigration'
+tags: ['visa', 'KITAS', 'work-permit']
 author:
-  id: "zantara-ai"
-  name: "Zantara AI"
-  avatar: "/images/zantara-avatar.png"
-  role: "AI Research Assistant"
+  id: 'zantara-ai'
+  name: 'Zantara AI'
+  avatar: '/images/zantara-avatar.png'
+  role: 'AI Research Assistant'
   isAI: true
-publishedAt: "2025-01-01T00:00:00Z"
-updatedAt: "2025-01-01T00:00:00Z"
-status: "published"
+publishedAt: '2025-01-01T00:00:00Z'
+updatedAt: '2025-01-01T00:00:00Z'
+status: 'published'
 featured: true
 trending: false
 readingTime: 12
 viewCount: 1500
 aiGenerated: true
 aiConfidenceScore: 0.92
-seoTitle: "SEO Title (60 chars max)"
-seoDescription: "SEO Description (160 chars max)"
-locale: "en"
+seoTitle: 'SEO Title (60 chars max)'
+seoDescription: 'SEO Description (160 chars max)'
+locale: 'en'
 ---
 
 import { InfoCard, DecisionTree, Calculator } from '@/components/blog/interactive';
@@ -765,12 +735,12 @@ import { InfoCard, DecisionTree, Calculator } from '@/components/blog/interactiv
 # Main Title
 
 <InfoCard variant="info" title="Important Note">
-This is highlighted information.
+  This is highlighted information.
 </InfoCard>
 
 ## Section 1
 
-Regular markdown content with **bold** and *italic*.
+Regular markdown content with **bold** and _italic_.
 
 <DecisionTree
   title="Which Option?"
@@ -782,28 +752,26 @@ Regular markdown content with **bold** and *italic*.
 ## Section 2
 
 | Column 1 | Column 2 |
-|----------|----------|
+| -------- | -------- |
 | Data     | Data     |
 
 <Calculator
   title="Cost Calculator"
-  fields={[
-    { name: "amount", label: "Amount", type: "number" }
-  ]}
+  fields={[{ name: 'amount', label: 'Amount', type: 'number' }]}
   formula="amount * 1.1"
 />
 ```
 
 ### Categorie e Articoli
 
-| Categoria | Slug | Articoli | Topics |
-|-----------|------|----------|--------|
-| Immigration | `immigration` | 26 | Visa, KITAS, work permits |
-| Business | `business` | 27 | PT PMA, NIB, OSS, licensing |
-| Tax | `tax` | 15 | NPWP, PPh, VAT, treaties |
-| Property | `property` | 12 | Land, ownership, rental |
-| Lifestyle | `lifestyle` | 14 | Banking, healthcare, living |
-| Digital Nomad | `digital-nomad` | 5 | Remote work, coworking |
+| Categoria     | Slug            | Articoli | Topics                      |
+| ------------- | --------------- | -------- | --------------------------- |
+| Immigration   | `immigration`   | 26       | Visa, KITAS, work permits   |
+| Business      | `business`      | 27       | PT PMA, NIB, OSS, licensing |
+| Tax           | `tax`           | 15       | NPWP, PPh, VAT, treaties    |
+| Property      | `property`      | 12       | Land, ownership, rental     |
+| Lifestyle     | `lifestyle`     | 14       | Banking, healthcare, living |
+| Digital Nomad | `digital-nomad` | 5        | Remote work, coworking      |
 
 ### MDX Processing Pipeline
 
@@ -819,16 +787,16 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 
 ### API Endpoints Blog
 
-| Endpoint | Method | Descrizione |
-|----------|--------|-------------|
-| `/api/blog/articles` | GET | Lista articoli con filtri |
-| `/api/blog/articles?category=X` | GET | Filtra per categoria |
-| `/api/blog/articles?featured=true` | GET | Solo featured |
-| `/api/blog/articles?q=search` | GET | Cerca articoli |
-| `/api/blog/articles/[cat]/[slug]` | GET | Singolo articolo |
-| `/api/blog/articles/[cat]/[slug]/views` | POST | Track view |
-| `/api/blog/newsletter` | POST | Subscribe |
-| `/api/blog/ai-generate` | POST | Genera con AI |
+| Endpoint                                | Method | Descrizione               |
+| --------------------------------------- | ------ | ------------------------- |
+| `/api/blog/articles`                    | GET    | Lista articoli con filtri |
+| `/api/blog/articles?category=X`         | GET    | Filtra per categoria      |
+| `/api/blog/articles?featured=true`      | GET    | Solo featured             |
+| `/api/blog/articles?q=search`           | GET    | Cerca articoli            |
+| `/api/blog/articles/[cat]/[slug]`       | GET    | Singolo articolo          |
+| `/api/blog/articles/[cat]/[slug]/views` | POST   | Track view                |
+| `/api/blog/newsletter`                  | POST   | Subscribe                 |
+| `/api/blog/ai-generate`                 | POST   | Genera con AI             |
 
 ---
 
@@ -849,7 +817,7 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
   --foreground-muted: rgba(255, 255, 255, 0.5);
 
   /* Brand */
-  --accent: #2251ff;         /* Primary blue */
+  --accent: #2251ff; /* Primary blue */
   --accent-hover: #4d73ff;
   --accent-light: rgba(34, 81, 255, 0.1);
 
@@ -871,31 +839,31 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 /* Fonts */
 --font-sans: 'Geist', system-ui, sans-serif;
 --font-mono: 'Geist Mono', monospace;
---font-serif: 'Georgia', serif;  /* Per headings blog */
+--font-serif: 'Georgia', serif; /* Per headings blog */
 
 /* Sizes */
---text-xs: 0.75rem;    /* 12px */
---text-sm: 0.875rem;   /* 14px */
---text-base: 1rem;     /* 16px */
---text-lg: 1.125rem;   /* 18px */
---text-xl: 1.25rem;    /* 20px */
---text-2xl: 1.5rem;    /* 24px */
---text-3xl: 1.875rem;  /* 30px */
---text-4xl: 2.25rem;   /* 36px */
+--text-xs: 0.75rem; /* 12px */
+--text-sm: 0.875rem; /* 14px */
+--text-base: 1rem; /* 16px */
+--text-lg: 1.125rem; /* 18px */
+--text-xl: 1.25rem; /* 20px */
+--text-2xl: 1.5rem; /* 24px */
+--text-3xl: 1.875rem; /* 30px */
+--text-4xl: 2.25rem; /* 36px */
 ```
 
 ### Spacing
 
 ```css
 /* 4px grid */
---space-1: 0.25rem;   /* 4px */
---space-2: 0.5rem;    /* 8px */
---space-3: 0.75rem;   /* 12px */
---space-4: 1rem;      /* 16px */
---space-6: 1.5rem;    /* 24px */
---space-8: 2rem;      /* 32px */
---space-12: 3rem;     /* 48px */
---space-16: 4rem;     /* 64px */
+--space-1: 0.25rem; /* 4px */
+--space-2: 0.5rem; /* 8px */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px */
+--space-12: 3rem; /* 48px */
+--space-16: 4rem; /* 64px */
 ```
 
 ### Component Variants
@@ -903,24 +871,24 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 ```typescript
 // Button variants (CVA pattern)
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
+  'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
   {
     variants: {
       variant: {
-        default: "bg-accent text-white hover:bg-accent-hover",
-        secondary: "bg-white/10 text-white hover:bg-white/20",
-        ghost: "hover:bg-white/5",
-        destructive: "bg-error text-white hover:bg-error/90",
+        default: 'bg-accent text-white hover:bg-accent-hover',
+        secondary: 'bg-white/10 text-white hover:bg-white/20',
+        ghost: 'hover:bg-white/5',
+        destructive: 'bg-error text-white hover:bg-error/90',
       },
       size: {
-        sm: "h-8 px-3 text-sm",
-        md: "h-10 px-4",
-        lg: "h-12 px-6 text-lg",
+        sm: 'h-8 px-3 text-sm',
+        md: 'h-10 px-4',
+        lg: 'h-12 px-6 text-lg',
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "md",
+      variant: 'default',
+      size: 'md',
     },
   }
 );
@@ -952,9 +920,9 @@ const buttonVariants = cva(
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0.05) 0%,
-    rgba(255,255,255,0.1) 50%,
-    rgba(255,255,255,0.05) 100%
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
   );
   animation: shimmer 2s infinite;
 }
@@ -1013,10 +981,10 @@ Sentry.init({
 
 ```typescript
 // Integrazione via backend
-POST /api/email/send           // Invia email
-GET  /api/email/inbox          // Lista email
-POST /api/email/zoho/connect   // Collega account
-GET  /api/crm/contacts         // Contatti CRM
+POST / api / email / send; // Invia email
+GET / api / email / inbox; // Lista email
+POST / api / email / zoho / connect; // Collega account
+GET / api / crm / contacts; // Contatti CRM
 ```
 
 ### Pollinations AI (Image Generation)
@@ -1211,6 +1179,7 @@ curl https://www.balizero.com/api/blog/articles
 ### Rollback
 
 Use Vercel dashboard to rollback to previous deployments:
+
 1. Go to Vercel dashboard
 2. Select project (nuzantara-mouth)
 3. Go to Deployments tab
@@ -1222,24 +1191,24 @@ Use Vercel dashboard to rollback to previous deployments:
 
 ### Ottimizzazioni Applicate
 
-| Area | Tecnica | Impatto |
-|------|---------|---------|
-| Images | Next.js Image + remote patterns | -60% bandwidth |
-| Code | Dynamic imports | -40% initial JS |
-| Lists | React Virtual | Smooth scroll 1000+ items |
-| Chat | SSE Streaming | Real-time response |
-| Cache | localStorage | Faster subsequent loads |
-| CSS | Tailwind purge | -80% CSS size |
-| Build | Standalone output | Minimal Docker image |
+| Area   | Tecnica                         | Impatto                   |
+| ------ | ------------------------------- | ------------------------- |
+| Images | Next.js Image + remote patterns | -60% bandwidth            |
+| Code   | Dynamic imports                 | -40% initial JS           |
+| Lists  | React Virtual                   | Smooth scroll 1000+ items |
+| Chat   | SSE Streaming                   | Real-time response        |
+| Cache  | localStorage                    | Faster subsequent loads   |
+| CSS    | Tailwind purge                  | -80% CSS size             |
+| Build  | Standalone output               | Minimal Docker image      |
 
 ### Metrics Target
 
-| Metrica | Target | Attuale |
-|---------|--------|---------|
-| LCP | < 2.5s | ~2.0s |
-| FID | < 100ms | ~50ms |
-| CLS | < 0.1 | ~0.05 |
-| TTI | < 3.8s | ~3.0s |
+| Metrica | Target  | Attuale |
+| ------- | ------- | ------- |
+| LCP     | < 2.5s  | ~2.0s   |
+| FID     | < 100ms | ~50ms   |
+| CLS     | < 0.1   | ~0.05   |
+| TTI     | < 3.8s  | ~3.0s   |
 
 ### Monitoring
 
@@ -1260,13 +1229,13 @@ performance.measure('chat-duration', 'chat-start', 'chat-end');
 
 ### Errori Comuni
 
-| Errore | Causa | Soluzione |
-|--------|-------|-----------|
+| Errore                      | Causa              | Soluzione                            |
+| --------------------------- | ------------------ | ------------------------------------ |
 | `EACCES: permission denied` | Docker permissions | `RUN chown -R nextjs:nodejs ./.next` |
-| `MDX parse error` | Complex JSX in MDX | Strip imports, use fallback |
-| `WebSocket disconnect` | Network issues | Auto-reconnect logic |
-| `401 Unauthorized` | Token expired | Refresh token or re-login |
-| `Image not found` | Missing in public/ | Add image to correct folder |
+| `MDX parse error`           | Complex JSX in MDX | Strip imports, use fallback          |
+| `WebSocket disconnect`      | Network issues     | Auto-reconnect logic                 |
+| `401 Unauthorized`          | Token expired      | Refresh token or re-login            |
+| `Image not found`           | Missing in public/ | Add image to correct folder          |
 
 ### Debug Commands
 
@@ -1355,5 +1324,5 @@ Images:        kebab-case.jpg     (e.g., golden-visa.jpg)
 
 ---
 
-*Documentazione generata automaticamente da Zantara AI*
-*Per aggiornamenti: modifica DOCUMENTATION.md nella root del progetto*
+_Documentazione generata automaticamente da Zantara AI_
+_Per aggiornamenti: modifica DOCUMENTATION.md nella root del progetto_

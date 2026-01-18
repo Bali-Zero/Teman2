@@ -838,7 +838,9 @@ class TestEmbeddings95Percent:
             pass
 
         # Test Sentence Transformers ImportError fallback
-        with patch("backend.core.embeddings.SentenceTransformer", side_effect=ImportError("Not available")):
+        with patch(
+            "backend.core.embeddings.SentenceTransformer", side_effect=ImportError("Not available")
+        ):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
                 generator = EmbeddingsGenerator(provider="sentence-transformers")
                 # Should fallback to OpenAI
@@ -1479,7 +1481,9 @@ class TestResponseHandler95Percent:
         assert response3 is not None
 
         # Test sanitize_response error handling
-        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch(
+            "backend.services.routing.response_handler.process_zantara_response"
+        ) as mock_process:
             mock_process.side_effect = Exception("Error")
             response4 = handler.sanitize_response("Test", query_type="business")
             assert response4 == "Test"  # Should return original on error
