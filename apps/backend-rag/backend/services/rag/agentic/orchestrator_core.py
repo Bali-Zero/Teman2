@@ -486,7 +486,7 @@ class OrchestratorCore:
             state.deep_think_mode = True
 
         # Extract KG context
-        system_context_for_prompt, _ = await self.extract_entities_and_kg_context(query)
+        _, system_context_for_prompt = await self.extract_entities_and_kg_context(query)
 
         # Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
