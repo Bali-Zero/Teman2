@@ -21,7 +21,37 @@ When starting a new session, verify you understand:
 
 ## 📋 THE GOLDEN RULES (MUST FOLLOW)
 
-### 1. NO ROOT EXECUTION
+### 1. VIRTUALENV IS MANDATORY
+
+**⚠️ CRITICAL:** Always use the project's virtualenv. Never use system Python or pyenv directly.
+
+```bash
+# ✅ CORRECT - Always activate virtualenv first
+cd apps/backend-rag
+source .venv/bin/activate  # or: . .venv/bin/activate
+
+# Verify you're in venv
+which python  # Should show: .../apps/backend-rag/.venv/bin/python
+
+# Install/update dependencies
+pip install -r requirements.txt
+
+# Run commands
+python -m backend.scripts.script_name
+```
+
+**Why:** Isolated dependencies prevent conflicts, ensure reproducibility, and match production Docker environment.
+
+**Setup (first time only):**
+```bash
+cd apps/backend-rag
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 2. NO ROOT EXECUTION
 
 ```bash
 # ❌ WRONG
@@ -29,10 +59,11 @@ python script.py
 
 # ✅ CORRECT
 cd apps/backend-rag
+source .venv/bin/activate  # MUST activate venv first
 python -m backend.scripts.script_name
 ```
 
-### 2. PATH DISCIPLINE
+### 3. PATH DISCIPLINE
 
 ```python
 # ❌ WRONG - Relative imports
@@ -42,9 +73,9 @@ from ..core import config
 from backend.core import config
 ```
 
-**Always run from `apps/backend-rag` root with `PYTHONPATH=.`**
+**Always run from `apps/backend-rag` root with virtualenv activated and `PYTHONPATH=.`**
 
-### 3. ASYNC FIRST
+### 4. ASYNC FIRST
 
 ```python
 # ❌ WRONG - Blocking requests
@@ -57,7 +88,7 @@ async with httpx.AsyncClient() as client:
     response = await client.get(url)
 ```
 
-### 4. TYPE HINTS REQUIRED
+### 5. TYPE HINTS REQUIRED
 
 ```python
 # ❌ WRONG
@@ -69,7 +100,7 @@ def process_query(query: str) -> dict[str, Any]:
     return result
 ```
 
-### 5. NO HARDCODING
+### 6. NO HARDCODING
 
 ```python
 # ❌ WRONG
@@ -81,7 +112,7 @@ if not api_key:
     raise ValueError("OPENAI_API_KEY not set")
 ```
 
-### 6. SEPARATION OF DATA AND LOGIC
+### 7. SEPARATION OF DATA AND LOGIC
 
 - **Volatile Data** (prices, names, addresses) → Knowledge Base (Qdrant/Postgres) or `settings`
 - **Business Logic** → `backend/services/`
@@ -270,9 +301,35 @@ fly ssh console -a nuzantara-rag
 
 ## 🚀 COMMON WORKFLOWS
 
+### Setup Environment (First Time)
+
+```bash
+# 1. Create virtualenv
+cd apps/backend-rag
+python3 -m venv .venv
+
+# 2. Activate virtualenv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Verify setup
+which python  # Should show: .../apps/backend-rag/.venv/bin/python
+python --version  # Should show: Python 3.11.x
+```
+
+**⚠️ IMPORTANT:** Always activate venv before any Python command:
+```bash
+cd apps/backend-rag
+source .venv/bin/activate  # Do this EVERY time
+```
+
 ### Adding a New API Endpoint
 
-1. **Create router** in `backend/app/routers/`
+1. **Activate virtualenv** (if not already active)
+2. **Create router** in `backend/app/routers/`
 
    ```python
    from fastapi import APIRouter
@@ -299,7 +356,8 @@ fly ssh console -a nuzantara-rag
    ```
 
 4. **Add tests** in `backend/tests/api/`
-5. **Run Sentinel** before committing
+5. **Run tests** (with venv active): `source .venv/bin/activate && pytest tests/...`
+6. **Run Sentinel** before committing (with venv active)
 
 ### Modifying RAG Pipeline
 
@@ -315,6 +373,7 @@ fly ssh console -a nuzantara-rag
 
 ```bash
 cd apps/backend-rag
+source .venv/bin/activate  # MUST activate venv first
 PYTHONPATH=. pytest backend/tests/services/rag/agentic/ -v
 ```
 
@@ -368,12 +427,13 @@ fly secrets list -a nuzantara-rag
 
 Before asking for review:
 
+- [ ] **Virtualenv activated** (`source .venv/bin/activate`)
 - [ ] Ran `./sentinel` and it passed
 - [ ] All new functions have type hints
 - [ ] No hardcoded secrets or URLs
 - [ ] Used async/await (no blocking calls)
 - [ ] Absolute imports only
-- [ ] Tests added/updated
+- [ ] Tests added/updated (run with venv active)
 - [ ] Documentation updated (if needed)
 
 ---
@@ -409,7 +469,7 @@ Before asking for review:
 A: Business logic → `backend/services/`, API endpoints → `backend/app/routers/`
 
 **Q: How do I test locally?**  
-A: `docker compose up -d` for services, then `cd apps/backend-rag && PYTHONPATH=. python -m backend.app.main_cloud`
+A: `docker compose up -d` for services, then `cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m backend.app.main_cloud`
 
 **Q: How do I deploy?**  
 A: See `docs/operations/DEPLOY_CHECKLIST.md`
