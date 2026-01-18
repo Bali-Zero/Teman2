@@ -16,6 +16,19 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
 import importlib.util
+import types
+
+# Mock qdrant_client and numpy BEFORE importing the module
+numpy_mock = types.ModuleType("numpy")
+numpy_mock._typing = types.ModuleType("numpy._typing")
+numpy_mock._typing._char_codes = types.ModuleType("numpy._typing._char_codes")
+sys.modules["numpy"] = numpy_mock
+sys.modules["numpy._typing"] = numpy_mock._typing
+sys.modules["numpy._typing._char_codes"] = numpy_mock._typing._char_codes
+
+qdrant_client_mock = types.ModuleType("qdrant_client")
+qdrant_client_mock.QdrantClient = MagicMock()
+sys.modules["qdrant_client"] = qdrant_client_mock
 
 qdrant_db_path = backend_path / "core" / "qdrant_db.py"
 spec = importlib.util.spec_from_file_location("qdrant_db", qdrant_db_path)

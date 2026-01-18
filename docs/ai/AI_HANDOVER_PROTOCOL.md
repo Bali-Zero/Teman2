@@ -42,6 +42,74 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 6.  **NO HARDCODING:** Secrets and URLs come from `os.getenv()`. Never commit keys.
 7.  **SEPARATION OF DATA AND LOGIC:** Never hardcode "Volatile Data" (Prices, Employee names, specific Law details, Addresses) in the logic. These belong in the Knowledge Base (Qdrant/Postgres) or `settings`.
 
+8.  **PRODUCTION-READY STANDARD (MANDATORY):**
+
+**⚠️ CRITICAL:** Every implementation MUST follow the Production-Ready Standard.
+
+This is NOT optional - it's the baseline for enterprise code quality:
+
+```
+Code that works ✅
+Code testable ✅
+Code debuggable ✅
+Code documented ✅
+Code maintainable ✅
+```
+
+**The 5 Pillars:**
+
+| Pillar | Requirement | Why |
+|--------|-------------|-----|
+| **1. Test Coverage** | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
+| **2. Structured Logging** | INFO/WARNING/ERROR logs at key steps | Debuggability in production |
+| **3. Metrics & KPIs** | Track performance + success rates | Measurability, optimization |
+| **4. Complete Documentation** | Code comments + Technical docs + Session notes | Maintainability for future team |
+| **5. Error Handling** | Try/except + graceful degradation | Resilience, no silent failures |
+
+**Example: Lead Assignment Agent (2026-01-18)**
+
+When implementing the Lead Assignment Agent, the complete deliverable included:
+
+- ✅ **340 lines** of production code (`lead_assignment_agent.py`)
+- ✅ **345 lines** of tests (7 unit + 1 integration test)
+- ✅ **450 lines** of technical documentation
+- ✅ **Structured logging** at every workflow step
+- ✅ **Performance metrics** defined (assignment time, notification rate, etc.)
+- ✅ **Error handling** with graceful degradation
+
+**Total: 1,500+ lines for a feature that could be "done" in 150 lines.**
+
+**This 10x effort multiplier is THE STANDARD for Nuzantara.**
+
+#### When to Apply Production-Ready Standard:
+
+**ALWAYS apply for:**
+- New features (workflows, services, agents)
+- Production systems (CRM, RAG, Auth)
+- Multi-team code (will be maintained by others)
+- Critical paths (client data, payments, compliance)
+
+**Can skip for:**
+- Quick debugging scripts (one-time use)
+- Prototypes explicitly marked as "experimental"
+- Trivial helper functions (<10 lines)
+
+#### Production-Ready Checklist:
+
+Before marking a feature "complete":
+
+- [ ] **Tests written** - Unit tests for each function, integration test for full flow
+- [ ] **Logging added** - INFO logs for success paths, WARNING for edge cases, ERROR for failures
+- [ ] **Metrics defined** - Performance KPIs, success rates, error rates
+- [ ] **Documentation created**:
+  - [ ] Code docstrings with examples
+  - [ ] Technical doc in `docs/` with architecture, deployment, troubleshooting
+  - [ ] Session notes in `CLAUDE.md` or relevant memory file
+- [ ] **Error handling** - Try/except blocks, graceful fallbacks, clear error messages
+- [ ] **Type safety** - Type hints on all functions, TypedDict for complex state
+
+**Remember:** "Leave it better than you found it" is not just philosophy - it's project policy.
+
 ### 2. TECH STACK
 
 - **Backend:** Python 3.11, FastAPI, Uvicorn.

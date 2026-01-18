@@ -3,6 +3,7 @@ Unit tests for Auto CRM Service
 """
 
 import sys
+import types
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -10,9 +11,43 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).resolve().parents[2] / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
+
+# Aggressively mock problematic modules before any backend imports
+def mock_problematic_modules():
+    # Mock NumPy and PIL
+    numpy_mock = types.ModuleType("numpy")
+    numpy_mock.__path__ = []
+    sys.modules["numpy"] = numpy_mock
+    sys.modules["numpy.typing"] = MagicMock()
+    sys.modules["numpy._typing"] = MagicMock()
+    sys.modules["numpy._typing._char_codes"] = MagicMock()
+
+    for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
+        mock = types.ModuleType(m)
+        if m == "PIL":
+            mock.__version__ = "10.0.0"
+            mock.Image = types.ModuleType("PIL.Image")
+            mock.Image.Image = MagicMock
+        sys.modules[m] = mock
+
+    # Mock backend.services package to prevent its __init__.py from running
+    # but allow submodules to be loaded from disk
+    svc_mock = types.ModuleType("backend.services")
+    svc_mock.__path__ = [str(backend_path / "services")]
+    sys.modules["backend.services"] = svc_mock
+
+    # Also mock problematic sister-modules
+    for m in ["backend.services.oracle", "backend.services.search", "backend.services.routing", 
+              "backend.services.rag", "backend.services.rag.agentic", "backend.services.misc",
+              "backend.services.ingestion", "backend.services.analytics",
+              "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
+              "qdrant_client"]:
+        sys.modules[m] = MagicMock()
+
+mock_problematic_modules()
 
 from backend.services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service
 
