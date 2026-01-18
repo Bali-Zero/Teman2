@@ -868,9 +868,9 @@ async def get_client_summary(
 @router.get("/stats/overview")
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_clients_stats")
 async def get_clients_stats(
-    request: Request,
+    _request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
 ):
     """
     Get overall client statistics
@@ -930,7 +930,7 @@ async def get_clients_stats(
 
 @router.get("/{client_id}/audit-trail")
 async def get_client_audit_trail(
-    request: Request,
+    _request: Request,
     client_id: int = Path(..., gt=0, description="Client ID"),
     limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -982,7 +982,7 @@ async def get_client_audit_trail(
 @router.get("/metrics/summary")
 async def get_crm_metrics_summary(
     current_user: dict = Depends(get_current_user),
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    _db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Get CRM metrics summary for dashboard
@@ -1004,7 +1004,7 @@ async def get_crm_metrics_summary(
 @router.post("/metrics/refresh")
 async def refresh_crm_metrics(
     current_user: dict = Depends(get_current_user),
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    _db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Force refresh of CRM metrics (Admin only)
@@ -1052,7 +1052,7 @@ class PassportExtractResponse(BaseModel):
 @router.post("/extract-passport", response_model=PassportExtractResponse)
 async def extract_passport_data(
     request: PassportExtractRequest,
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -1221,7 +1221,7 @@ class PassportEnhancedResponse(BaseModel):
 @router.post("/extract-passport-enhanced", response_model=PassportEnhancedResponse)
 async def extract_passport_enhanced(
     request: PassportEnhancedRequest,
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
