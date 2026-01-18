@@ -1,16 +1,16 @@
 /**
  * Chat Page - Refactored Modular Architecture
- * 
+ *
  * This is a lightweight orchestrator that composes:
  * - Custom hooks for business logic
  * - UI components for rendering
- * 
+ *
  * Responsibilities:
  * - Layout and composition
  * - Initial data loading
  * - User profile management
  * - Toast notifications
- * 
+ *
  * @module ChatPage
  */
 
@@ -83,7 +83,7 @@ const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(
 
 /**
  * Chat Page Component - Modular Architecture
- * 
+ *
  * Composes custom hooks and UI components to provide
  * a complete chat experience with streaming, TTS, and more.
  */
@@ -95,7 +95,7 @@ export default function ChatPage() {
   // Session state
   const [sessionId, setSessionId] = useState(() => generateSessionId());
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  
+
   // User profile state
   const [userName, setUserName] = useState<string>('');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
@@ -294,7 +294,8 @@ export default function ChatPage() {
       }
     };
     loadInitialData();
-  }, [router, loadConversationList, loadClockStatus, loadUserProfile, isMountedRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Execute only once on mount
 
   // Load avatar from localStorage
   useEffect(() => {
@@ -350,19 +351,20 @@ export default function ChatPage() {
           setMessages(
             conv.messages.map((m, index): Message => {
               // Validate and convert role
-              const role: 'user' | 'assistant' = 
+              const role: 'user' | 'assistant' =
                 m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant';
-              
+
               // Generate timestamp (messages from API don't have timestamp, use index-based approximation)
               const timestamp = new Date(Date.now() - (conv.messages.length - index) * 60000);
 
               // Convert sources to Source[] format
-              const sources = m.sources?.map((s: { title?: string; content?: string }) => ({
-                title: s.title || '',
-                content: s.content,
-                url: undefined,
-                score: undefined,
-              })) || [];
+              const sources =
+                m.sources?.map((s: { title?: string; content?: string }) => ({
+                  title: s.title || '',
+                  content: s.content,
+                  url: undefined,
+                  score: undefined,
+                })) || [];
 
               return {
                 id: `msg_${id}_${index}_${Date.now()}`,
@@ -381,12 +383,20 @@ export default function ChatPage() {
           logger.info('Conversation loaded successfully', {
             component: 'ChatPage',
             action: 'handleConversationClick',
-            metadata: { conversationId: id, messageCount: conv.messages.length, sessionId: conv.session_id },
+            metadata: {
+              conversationId: id,
+              messageCount: conv.messages.length,
+              sessionId: conv.session_id,
+            },
           });
 
           const { trackEvent } = require('@/lib/analytics');
           const userProfile = api.getUserProfile();
-          trackEvent('chat_conversation_loaded', { conversationId: id, messageCount: conv.messages.length }, userProfile?.email);
+          trackEvent(
+            'chat_conversation_loaded',
+            { conversationId: id, messageCount: conv.messages.length },
+            userProfile?.email
+          );
         }
       } catch (error) {
         logger.error(
@@ -510,13 +520,19 @@ export default function ChatPage() {
         try {
           if (audioBlob.size < 1000) {
             chatInput.setInput('');
-            setToast({ message: 'Recording too short. Please hold the mic button longer.', type: 'error' });
+            setToast({
+              message: 'Recording too short. Please hold the mic button longer.',
+              type: 'error',
+            });
             return;
           }
 
           if (!audioBlob.type.startsWith('audio/') && !audioMimeType.startsWith('audio/')) {
             chatInput.setInput('');
-            setToast({ message: 'Invalid audio format. Please try recording again.', type: 'error' });
+            setToast({
+              message: 'Invalid audio format. Please try recording again.',
+              type: 'error',
+            });
             return;
           }
 
@@ -568,7 +584,10 @@ export default function ChatPage() {
             });
 
             chatInput.setInput('');
-            setToast({ message: 'No speech detected. Please speak clearly and try again.', type: 'error' });
+            setToast({
+              message: 'No speech detected. Please speak clearly and try again.',
+              type: 'error',
+            });
           }
         } catch (error) {
           if (!isMountedRef.current) return;
@@ -586,15 +605,24 @@ export default function ChatPage() {
           );
 
           if (errorMessage.includes('Unrecognized file format')) {
-            setToast({ message: 'Audio format not supported. Try a different browser.', type: 'error' });
+            setToast({
+              message: 'Audio format not supported. Try a different browser.',
+              type: 'error',
+            });
           } else if (errorMessage.includes('400')) {
             setToast({ message: 'Invalid audio. Please try recording again.', type: 'error' });
           } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
             setToast({ message: 'Authentication error. Please refresh the page.', type: 'error' });
           } else if (errorMessage.includes('413')) {
-            setToast({ message: 'Audio file too large. Please record a shorter message.', type: 'error' });
+            setToast({
+              message: 'Audio file too large. Please record a shorter message.',
+              type: 'error',
+            });
           } else if (errorMessage.includes('429')) {
-            setToast({ message: 'Too many requests. Please wait a moment and try again.', type: 'error' });
+            setToast({
+              message: 'Too many requests. Please wait a moment and try again.',
+              type: 'error',
+            });
           } else if (errorMessage.includes('timeout')) {
             setToast({ message: 'Transcription timeout. Please try again.', type: 'error' });
           } else {
@@ -630,13 +658,7 @@ export default function ChatPage() {
       />
 
       {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Sidebar */}
       <ChatSidebar
@@ -721,7 +743,9 @@ export default function ChatPage() {
           setShowAttachMenu={() => {}}
           attachMenuRef={chatInput.imageInputRef}
           fileInputRef={chatInput.imageInputRef}
-          onFileChange={async (e) => { chatInput.handleImageAttach(e); }}
+          onFileChange={async (e) => {
+            chatInput.handleImageAttach(e);
+          }}
           isRecording={isRecording}
           recordingTime={recordingTime}
           onStartRecording={startRecording}
@@ -736,7 +760,8 @@ export default function ChatPage() {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 if (errorMessage.includes('Permission denied')) {
                   setToast({
-                    message: 'Microphone access denied. Please allow microphone access in your browser settings.',
+                    message:
+                      'Microphone access denied. Please allow microphone access in your browser settings.',
                     type: 'error',
                   });
                 } else if (errorMessage.includes('NotFoundError')) {
@@ -745,7 +770,10 @@ export default function ChatPage() {
                     type: 'error',
                   });
                 } else {
-                  setToast({ message: 'Failed to access microphone. Please try again.', type: 'error' });
+                  setToast({
+                    message: 'Failed to access microphone. Please try again.',
+                    type: 'error',
+                  });
                 }
               }
             }
