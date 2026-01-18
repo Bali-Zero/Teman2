@@ -54,21 +54,21 @@ else
     log "✅ Ollama running - Test Force can proceed"
 fi
 
-cd "$BACKEND_DIR" || exit 1
-
-# Set PYTHONPATH
-export PYTHONPATH="$BACKEND_DIR:${PYTHONPATH:-}"
+# Set PYTHONPATH - MUST point to backend-rag directory (parent of backend module)
+export PYTHONPATH="$PROJECT_ROOT/apps/backend-rag/backend:${PYTHONPATH:-}"
 export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
 export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
 
 echo -e "${BLUE}🤖 Running Test Force Orchestrator...${NC}"
 log "Starting Test Force Orchestrator with provider=local"
+log "PYTHONPATH=$PYTHONPATH"
+log "Working directory: $PROJECT_ROOT/apps/backend-rag"
 
-# Run Test Force Orchestrator
-# Mode: auto (full scan)
+# Run Test Force Orchestrator using Python wrapper
+# Mode: scan (full scan)
 # Provider: local (Ollama Qwen)
-if python3 -m backend.agents.agents.test_force_orchestrator \
-    --mode=auto \
+if python3 "$SCRIPT_DIR/run_test_force.py" \
+    --mode=scan \
     --provider=local \
     --coverage-target=99.0 \
     >> "$LOG_FILE" 2>&1; then

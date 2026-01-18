@@ -4,14 +4,14 @@ Unit tests for Article Composer router.
 Tests article composition, enrichment, and publishing endpoints.
 """
 
+import base64
+import json
+import os
 import sys
 import types
-import json
-import base64
-import os
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -42,17 +42,41 @@ def mock_problematic_modules():
         sys.modules[m] = mock
 
     # Mock backend services to avoid cascade
-    for m in ["backend.services.oracle", "backend.services.search", 
-              "backend.services.rag", "backend.services.rag.agentic", 
+    svc_mock = types.ModuleType("backend.services")
+    svc_mock.__path__ = []
+    sys.modules["backend.services"] = svc_mock
+
+    for m in ["backend.services.oracle", "backend.services.search",
+              "backend.services.rag", "backend.services.rag.agentic",
               "backend.services.ingestion", "backend.services.analytics",
               "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
               "qdrant_client"]:
         sys.modules[m] = MagicMock()
 
+    # Special handling for integrations (needed by other tests if this runs first)
+    integrations_mock = types.ModuleType("backend.services.integrations")
+    integrations_mock.__path__ = []
+    integrations_mock.messaging_identity_service = MagicMock()
+    integrations_mock.whatsapp_service = MagicMock()
+    integrations_mock.whatsapp_triage_service = MagicMock()
+    integrations_mock.github_publisher = MagicMock()
+    sys.modules["backend.services.integrations"] = integrations_mock
+    sys.modules["backend.services.integrations.messaging_identity_service"] = MagicMock()
+    sys.modules["backend.services.integrations.github_publisher"] = MagicMock()
+    sys.modules["backend.services.integrations.telegram_bot_service"] = MagicMock()
+    sys.modules["backend.services.integrations.whatsapp_service"] = MagicMock()
+    sys.modules["backend.services.integrations.whatsapp_triage_service"] = MagicMock()
+
+    # Special handling for memory
+    memory_mock = types.ModuleType("backend.services.memory")
+    memory_mock.__path__ = []
+    memory_mock.MemoryServicePostgres = MagicMock()
+    sys.modules["backend.services.memory"] = memory_mock
+
     # Special handling for misc to allow submodule imports
     misc_mock = types.ModuleType("backend.services.misc")
     misc_mock.__path__ = []
-    
+
     # Add commonly imported classes from misc
     misc_mock.AdvancedContextWindowManager = MagicMock()
     misc_mock.AutonomousResearchService = MagicMock()
@@ -86,9 +110,9 @@ def mock_problematic_modules():
     misc_mock.EntityType = MagicMock()
     misc_mock.Relationship = MagicMock()
     misc_mock.RelationType = MagicMock()
-    
+
     sys.modules["backend.services.misc"] = misc_mock
-    
+
     # Special handling for search to allow submodule imports
     search_mock = types.ModuleType("backend.services.search")
     search_mock.__path__ = []
@@ -118,7 +142,7 @@ def mock_problematic_modules():
     # Special handling for ingestion to allow submodule imports
     ingestion_mock = types.ModuleType("backend.services.ingestion")
     ingestion_mock.__path__ = []
-    
+
     # Add all ingestion services
     ingestion_mock.AutoIngestionOrchestrator = MagicMock()
     ingestion_mock.CollectionHealthService = MagicMock()
@@ -136,14 +160,14 @@ def mock_problematic_modules():
     ingestion_mock.SourceType = MagicMock()
     ingestion_mock.StalenessSeverity = MagicMock()
     ingestion_mock.UpdateType = MagicMock()
-    
+
     sys.modules["backend.services.ingestion"] = ingestion_mock
     sys.modules["backend.services.ingestion.ingestion_service"] = MagicMock()
 
     # Special handling for routing to allow submodule imports
     routing_mock = types.ModuleType("backend.services.routing")
     routing_mock.__path__ = []
-    
+
     routing_mock.ConfidenceCalculatorService = MagicMock()
     routing_mock.ConflictResolver = MagicMock()
     routing_mock.FallbackManagerService = MagicMock()
@@ -154,13 +178,13 @@ def mock_problematic_modules():
     routing_mock.QueryRouter = MagicMock()
     routing_mock.QueryRouterIntegration = MagicMock()
     routing_mock.RoutingStatsService = MagicMock()
-    
+
     sys.modules["backend.services.routing"] = routing_mock
     sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
 
 mock_problematic_modules()
 
-from backend.app.routers.article_composer import (
+from backend.app.routers.article_composer import (  # noqa: E402
     BaliZeroTake,
     EnrichedArticle,
     NextSteps,
@@ -570,7 +594,7 @@ class TestPublishStatusEndpoint:
 
                 with patch("backend.app.core.config.settings") as mock_settings:
                     mock_settings.github_token = None
-                    
+
                     response = client.get("/api/articles/publish/status")
 
                     data = response.json()

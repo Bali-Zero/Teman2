@@ -200,8 +200,8 @@ Deploy considerato riuscito se:
 
 ---
 
-**Data Deploy**: ******\_\_\_******
-**Deployato da**: ******\_\_\_******
+**Data Deploy**: **\*\***\_\_\_**\*\***
+**Deployato da**: **\*\***\_\_\_**\*\***
 **Status**: ☐ Success ☐ Failed ☐ Rollback
 
 ---

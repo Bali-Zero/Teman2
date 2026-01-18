@@ -5,20 +5,26 @@ echo "🔍 Running pre-commit hooks..."
 
 # Check for print statements in Python files
 echo "🐍 Checking for print() statements in Python files..."
-if git diff --cached --name-only | grep -E '\.py$' | xargs grep -l 'print(' 2>/dev/null; then
-    echo "❌ ERROR: Found print() statements in staged Python files."
-    echo "   Please replace print() with logger.info/debug/error()"
-    echo "   Use logger = logging.getLogger(__name__) at the top of your file"
-    exit 1
+PY_FILES=$(git diff --cached --name-only | grep -E '\.py$' || true)
+if [ -n "$PY_FILES" ]; then
+    if echo "$PY_FILES" | xargs grep -l 'print(' 2>/dev/null; then
+        echo "❌ ERROR: Found print() statements in staged Python files."
+        echo "   Please replace print() with logger.info/debug/error()"
+        echo "   Use logger = logging.getLogger(__name__) at the top of your file"
+        exit 1
+    fi
 fi
 
 # Check for console.log in TypeScript/JavaScript files
 echo "📜 Checking for console.log statements in TypeScript/JavaScript files..."
-if git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
-    echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."
-    echo "   Please replace console.* with logger from src/lib/logger.ts"
-    echo "   Example: import { logger } from '@/lib/logger'; logger.info('message');"
-    exit 1
+JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' || true)
+if [ -n "$JS_FILES" ]; then
+    if echo "$JS_FILES" | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
+        echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."
+        echo "   Please replace console.* with logger from src/lib/logger.ts"
+        echo "   Example: import { logger } from '@/lib/logger'; logger.info('message');"
+        exit 1
+    fi
 fi
 
 # Run linting
@@ -37,9 +43,18 @@ npm run typecheck 2>/dev/null || {
 
 # Run Python linting
 echo "🐍 Running Python linting..."
-cd apps/backend-rag && ruff check . 2>/dev/null || {
-    echo "❌ Python linting failed. Please fix ruff issues."
-    exit 1
-}
+PY_FILES=$(git diff --cached --name-only | grep -E '^apps/backend-rag/.*\.py$' || true)
+if [ -n "$PY_FILES" ]; then
+    # Make paths relative to apps/backend-rag
+    RELATIVE_FILES=$(echo "$PY_FILES" | sed 's|^apps/backend-rag/||')
+    
+    cd apps/backend-rag
+    # Run ruff only on changed files
+    echo "$RELATIVE_FILES" | xargs ruff check 2>/dev/null || {
+        echo "❌ Python linting failed on staged files. Please fix ruff issues."
+        exit 1
+    }
+    cd ../..
+fi
 
 echo "✅ All pre-commit checks passed!"

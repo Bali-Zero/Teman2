@@ -206,6 +206,10 @@ def get_database_pool(request: Request) -> asyncpg.Pool | None:
     return db_pool
 
 
+# Alias for backward compatibility
+get_database = get_database_pool
+
+
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),

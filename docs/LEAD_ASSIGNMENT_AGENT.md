@@ -9,6 +9,7 @@
 ## Overview
 
 The Lead Assignment Agent is an **agentic LangGraph workflow** that automatically:
+
 1. **Assigns new clients** to team members (specialty matching + load balancing)
 2. **Sends Telegram notifications** to assigned leads with action buttons
 3. **Syncs CRM ↔ Memory** so frontend reads from unified `user_stats` table
@@ -58,17 +59,17 @@ Flow: AUTO CRM → Lead Assignment Agent → Telegram Notification
 
 ### **New Files:**
 
-| File | Purpose |
-|------|---------|
-| `backend/services/crm/lead_assignment_agent.py` | LangGraph workflow (3 steps: check duplicates, assign lead, notify) |
-| `backend/migrations/migration_050_client_memory_sync.py` | PostgreSQL trigger: `clients` → `user_stats` sync |
-| `backend/tests/test_lead_assignment_flow.py` | Unit + integration tests (7 test cases) |
-| `docs/LEAD_ASSIGNMENT_AGENT.md` | This documentation |
+| File                                                     | Purpose                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------- |
+| `backend/services/crm/lead_assignment_agent.py`          | LangGraph workflow (3 steps: check duplicates, assign lead, notify) |
+| `backend/migrations/migration_050_client_memory_sync.py` | PostgreSQL trigger: `clients` → `user_stats` sync                   |
+| `backend/tests/test_lead_assignment_flow.py`             | Unit + integration tests (7 test cases)                             |
+| `docs/LEAD_ASSIGNMENT_AGENT.md`                          | This documentation                                                  |
 
 ### **Modified Files:**
 
-| File | Changes |
-|------|---------|
+| File                                       | Changes                                                                                             |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | `backend/services/crm/auto_crm_service.py` | Added Lead Assignment Agent trigger (line 242-265), added `_trigger_lead_assignment_async()` method |
 
 ---
@@ -78,6 +79,7 @@ Flow: AUTO CRM → Lead Assignment Agent → Telegram Notification
 ### **Step 1: Entity Resolution (Deduplication)**
 
 Checks if the new client is a duplicate using:
+
 - **Email**: Exact match (case-insensitive)
 - **Phone**: Normalized match (removes spaces, dashes, + prefix)
 
@@ -94,6 +96,7 @@ Auto-assigns using **2-tier strategy**:
 3. **Fallback**: If no specialty match, use round-robin by workload
 
 **SQL Query:**
+
 ```sql
 SELECT email, full_name, active_practices
 FROM lead_workload
@@ -107,6 +110,7 @@ LIMIT 1
 ### **Step 3: Telegram Notification**
 
 Sends notification with:
+
 - Client details (name, email, phone, practice type)
 - Assignment reason (specialty + workload)
 - Inline keyboard with action buttons:
@@ -195,12 +199,14 @@ user_stats.preferences = {
 ### **Frontend Usage:**
 
 Instead of:
+
 ```typescript
 // ❌ OLD: Query CRM directly
-const client = await fetch('/api/crm/clients/123')
+const client = await fetch('/api/crm/clients/123');
 ```
 
 Use:
+
 ```typescript
 // ✅ NEW: Read from unified memory
 const userStats = await fetch('/api/memory/user-stats/john@example.com')
@@ -216,6 +222,7 @@ const clientInfo = userStats.preferences.crm_*
 Team members must have:
 
 1. **Telegram Account Linked** (`messaging_users` table):
+
    ```sql
    INSERT INTO messaging_users (user_id, telegram_chat_id, channel, active)
    VALUES (
@@ -263,21 +270,22 @@ python apps/backend-rag/backend/tests/test_lead_assignment_flow.py
 
 ### **Test Coverage:**
 
-| Test | Description | Status |
-|------|-------------|--------|
-| `test_check_duplicates_no_match` | No duplicate → proceed | ✅ |
-| `test_check_duplicates_email_match` | Email match → use existing | ✅ |
-| `test_assign_lead_specialty_match` | Specialty matching works | ✅ |
-| `test_assign_lead_duplicate_uses_existing` | Duplicate uses existing assignment | ✅ |
-| `test_send_telegram_notification_success` | Notification sent successfully | ✅ |
-| `test_send_telegram_notification_no_chat_id` | Graceful fail when no chat_id | ✅ |
-| `test_full_lead_assignment_workflow` | End-to-end integration | ✅ |
+| Test                                         | Description                        | Status |
+| -------------------------------------------- | ---------------------------------- | ------ |
+| `test_check_duplicates_no_match`             | No duplicate → proceed             | ✅     |
+| `test_check_duplicates_email_match`          | Email match → use existing         | ✅     |
+| `test_assign_lead_specialty_match`           | Specialty matching works           | ✅     |
+| `test_assign_lead_duplicate_uses_existing`   | Duplicate uses existing assignment | ✅     |
+| `test_send_telegram_notification_success`    | Notification sent successfully     | ✅     |
+| `test_send_telegram_notification_no_chat_id` | Graceful fail when no chat_id      | ✅     |
+| `test_full_lead_assignment_workflow`         | End-to-end integration             | ✅     |
 
 ---
 
 ## Deployment Checklist
 
 - [ ] **Run Migration 050**
+
   ```bash
   cd apps/backend-rag
   python -m backend.db.migrate apply
@@ -292,6 +300,7 @@ python apps/backend-rag/backend/tests/test_lead_assignment_flow.py
   - Example: `UPDATE team_members SET permissions = '{"specialties": ["kitas", "pt_pma"]}' WHERE email = 'specialist@balizero.com'`
 
 - [ ] **Initialize AUTO CRM with Telegram Service**
+
   ```python
   telegram_service = TelegramBotService()
   auto_crm = AutoCRMService(
@@ -311,14 +320,14 @@ python apps/backend-rag/backend/tests/test_lead_assignment_flow.py
 
 ### **Key Log Messages:**
 
-| Message | Meaning |
-|---------|---------|
-| `🎯 Lead assignment agent triggered for client {id}` | Workflow started |
-| `🔍 Duplicate detected: client_id={id} matches existing client_id={id}` | Duplicate found |
-| `✅ Assigned client #{id} to {email} ({workload} active practices)` | Assignment successful |
-| `📨 Telegram notification sent to {email} (chat_id: {id})` | Notification sent |
-| `⚠️ Cannot notify {email}: no Telegram chat_id found` | Team member not linked to Telegram |
-| `❌ Lead assignment workflow failed for client #{id}` | Workflow error |
+| Message                                                                 | Meaning                            |
+| ----------------------------------------------------------------------- | ---------------------------------- |
+| `🎯 Lead assignment agent triggered for client {id}`                    | Workflow started                   |
+| `🔍 Duplicate detected: client_id={id} matches existing client_id={id}` | Duplicate found                    |
+| `✅ Assigned client #{id} to {email} ({workload} active practices)`     | Assignment successful              |
+| `📨 Telegram notification sent to {email} (chat_id: {id})`              | Notification sent                  |
+| `⚠️ Cannot notify {email}: no Telegram chat_id found`                   | Team member not linked to Telegram |
+| `❌ Lead assignment workflow failed for client #{id}`                   | Workflow error                     |
 
 ### **Metrics to Monitor:**
 
@@ -335,11 +344,13 @@ python apps/backend-rag/backend/tests/test_lead_assignment_flow.py
 
 **Symptom:** Client created but no Telegram notification
 **Causes:**
+
 1. Team member not linked to Telegram → Link via `messaging_users` table
 2. `telegram_service` not passed to AUTO CRM → Check initialization
 3. Telegram API error → Check bot token and network
 
 **Check:**
+
 ```sql
 SELECT tm.email, mu.telegram_chat_id
 FROM team_members tm
@@ -353,10 +364,12 @@ WHERE tm.email = 'lead@balizero.com';
 
 **Symptom:** `clients.assigned_to` is NULL after creation
 **Causes:**
+
 1. No active team members → Add team members to `team_members` table
 2. Workflow error → Check logs for exceptions
 
 **Check:**
+
 ```sql
 SELECT email, full_name, active, role
 FROM team_members
@@ -367,10 +380,12 @@ WHERE active = true AND role IN ('agent', 'manager');
 
 **Symptom:** `user_stats.preferences` doesn't contain CRM data
 **Causes:**
+
 1. Migration 050 not applied → Run migration
 2. Trigger disabled → Check trigger status
 
 **Check:**
+
 ```sql
 SELECT trigger_name, event_manipulation, action_statement
 FROM information_schema.triggers
@@ -402,12 +417,14 @@ WHERE event_object_table = 'clients';
 ## References
 
 **Best Practices Research:**
+
 - [Agentic workflows: The ultimate guide | Box Blog](https://blog.box.com/agentic-workflows)
 - [AI Agents for Enterprise Workflows: 2025 Guide](https://www.ampcome.com/post/ai-agents-enterprise-workflows-2025-guide)
 - [LangGraph: Multi-Agent Workflows](https://www.blog.langchain.com/langgraph-multi-agent-workflows/)
 - [Understanding Entity Resolution for Data Management](https://www.dnb.com/en-us/resources/master-data/entity-resolution.html)
 
 **Related Documentation:**
+
 - [CRM_SYSTEM.md](./CRM_SYSTEM.md) - CRM system overview
 - [AUTO_CRM_FLOW.md](./AUTO_CRM_FLOW.md) - AUTO CRM extraction flow (if exists)
 - [CLAUDE.md](../apps/backend-rag/CLAUDE.md) - Session notes

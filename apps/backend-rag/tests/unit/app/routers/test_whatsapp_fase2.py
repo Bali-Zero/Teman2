@@ -12,6 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Ensure module is loaded for patching
+import backend.app.routers.whatsapp_chat  # noqa: F401
+
 
 class TestWhatsAppStatusUpdates:
     """Test FASE 2.1: Status updates per WhatsApp (10s intervals)"""
@@ -25,14 +28,30 @@ class TestWhatsAppStatusUpdates:
         mock_whatsapp_service = AsyncMock()
 
         # Simulate orchestrator events with status changes
-        async def mock_stream():
+        async def mock_stream_generator(*args, **kwargs):
             yield {"type": "status", "data": {"status": "processing"}}
             yield {"type": "token", "data": "Hello"}
             yield {"type": "status", "data": {"status": "searching"}}
             yield {"type": "token", "data": " world"}
             yield {"type": "status", "data": {"status": "analyzing"}}
 
-        mock_orchestrator.stream_query = mock_stream
+        mock_orchestrator.stream_query = MagicMock(side_effect=mock_stream_generator)
+
+        # Mock triage service to return BUSINESS decision (None)
+        mock_triage = MagicMock()
+        mock_triage.should_escalate = AsyncMock(return_value=(None, "business_query"))
+        # get_escalation_message is synchronous in the source code
+        mock_triage.get_escalation_message = MagicMock()
+
+        # Mock identity service
+        mock_identity_service = MagicMock()
+        mock_identity_service.get_user_by_phone = AsyncMock(return_value={"user_id": 123, "verified": True})
+        mock_identity_service.update_last_message = AsyncMock()
+
+        # Mock whatsapp service methods
+        mock_whatsapp_service.mark_message_read = AsyncMock()
+        mock_whatsapp_service.send_message = AsyncMock()
+        mock_whatsapp_service.chunk_message = MagicMock(return_value=["response chunk"])
 
         with patch(
             "backend.app.routers.whatsapp_chat.get_orchestrator",
@@ -42,17 +61,24 @@ class TestWhatsAppStatusUpdates:
                 "backend.app.routers.whatsapp_chat.whatsapp_service",
                 mock_whatsapp_service,
             ):
-                with patch("backend.app.routers.whatsapp_chat.get_messaging_identity_service"):
-                    mock_request = MagicMock()
-                    mock_request.app.state.database_pool = MagicMock()
+                with patch(
+                    "backend.app.routers.whatsapp_chat.whatsapp_triage_service",
+                    mock_triage,
+                ):
+                    with patch(
+                        "backend.app.routers.whatsapp_chat.get_messaging_identity_service",
+                        return_value=mock_identity_service
+                    ):
+                        mock_request = MagicMock()
+                        mock_request.app.state.database_pool = MagicMock()
 
-                    await process_whatsapp_message(
-                        phone="+1234567890",
-                        message_text="test query",
-                        sender_name="Test User",
-                        message_id="msg123",
-                        request=mock_request,
-                    )
+                        await process_whatsapp_message(
+                            phone="+1234567890",
+                            message_text="test query",
+                            sender_name="Test User",
+                            message_id="msg123",
+                            request=mock_request,
+                        )
 
         # Verify orchestrator was called
         assert mock_orchestrator.stream_query.called
@@ -77,7 +103,6 @@ class TestWhatsAppStatusUpdates:
     @pytest.mark.asyncio
     async def test_status_update_interval_10_seconds(self):
         """Should send status updates every 10 seconds"""
-        mock_whatsapp_service = AsyncMock()
         status_update_interval = 10.0
 
         # Simulate time passing
@@ -237,9 +262,6 @@ class TestWhatsAppIntegration:
     @pytest.mark.asyncio
     async def test_accumulated_text_sent_after_timeout_if_partial(self):
         """Should send accumulated text even if timeout occurs mid-stream"""
-        accumulated_text = "Partial response before timeout"
-        mock_whatsapp_service = AsyncMock()
-
         # Simulate timeout with partial content
         try:
             async with asyncio.timeout(0.1):

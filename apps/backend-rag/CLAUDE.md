@@ -408,6 +408,7 @@ WHERE NOT EXISTS (
 ### Obiettivo Sessione
 
 Implementare un **sistema agentico** per:
+
 1. Auto-assegnare nuovi lead CRM ai team members
 2. Inviare notifiche Telegram ai lead assegnati
 3. Sincronizzare dati CRM ↔ Memory per frontend unificato
@@ -415,6 +416,7 @@ Implementare un **sistema agentico** per:
 ### Problema Identificato
 
 **AUTO CRM crea clienti ma:**
+
 - ❌ `assigned_to` rimane NULL → nessun team member responsabile
 - ❌ Nessuna notifica ai Lead quando cliente creato da chat
 - ❌ Frontend deve interrogare CRM + Memory separatamente
@@ -428,6 +430,7 @@ Flow: Chat → AI Extractor → AUTO CRM → Lead Assignment Agent → Telegram
 ```
 
 **3 Step LangGraph Workflow:**
+
 1. **Entity Resolution** - Deduplica via email/phone matching
 2. **Lead Assignment** - Specialty matching + load balancing
 3. **Telegram Notification** - Messaggio con inline keyboard buttons
@@ -436,17 +439,17 @@ Flow: Chat → AI Extractor → AUTO CRM → Lead Assignment Agent → Telegram
 
 ### Files Created
 
-| File | LOC | Purpose |
-|------|-----|---------|
-| `backend/services/crm/lead_assignment_agent.py` | 340 | LangGraph workflow (check duplicates, assign, notify) |
-| `backend/migrations/migration_050_client_memory_sync.py` | 93 | PostgreSQL trigger: clients → user_stats sync |
-| `backend/tests/test_lead_assignment_flow.py` | 345 | 7 unit tests + 1 integration test |
-| `docs/LEAD_ASSIGNMENT_AGENT.md` | 450 | Complete documentation + deployment guide |
+| File                                                     | LOC | Purpose                                               |
+| -------------------------------------------------------- | --- | ----------------------------------------------------- |
+| `backend/services/crm/lead_assignment_agent.py`          | 340 | LangGraph workflow (check duplicates, assign, notify) |
+| `backend/migrations/migration_050_client_memory_sync.py` | 93  | PostgreSQL trigger: clients → user_stats sync         |
+| `backend/tests/test_lead_assignment_flow.py`             | 345 | 7 unit tests + 1 integration test                     |
+| `docs/LEAD_ASSIGNMENT_AGENT.md`                          | 450 | Complete documentation + deployment guide             |
 
 ### Files Modified
 
-| File | Changes | Lines Modified |
-|------|---------|----------------|
+| File                                       | Changes                                             | Lines Modified               |
+| ------------------------------------------ | --------------------------------------------------- | ---------------------------- |
 | `backend/services/crm/auto_crm_service.py` | Added Lead Assignment Agent trigger + helper method | +58 lines (242-265, 464-500) |
 
 ---
@@ -454,22 +457,26 @@ Flow: Chat → AI Extractor → AUTO CRM → Lead Assignment Agent → Telegram
 ### Key Technical Decisions
 
 #### 1. **LangGraph Over Custom Workflow**
+
 - ✅ Visualizable state machine
 - ✅ Built-in state persistence
 - ✅ Conditional edges for complex routing
 - ✅ Already installed (`collective_memory_workflow.py` uses it)
 
 #### 2. **No New Table - Use Existing `clients`**
+
 - ✅ `clients` already has `assigned_to`, `tags`, `custom_fields`
 - ✅ Avoid table proliferation
 - ✅ Simple trigger for memory sync
 
 #### 3. **Async Non-Blocking Trigger**
+
 - Uses `asyncio.create_task()` to run in background
 - AUTO CRM returns immediately without waiting
 - Prevents blocking conversation responses
 
 #### 4. **Entity Resolution Strategy**
+
 - **Level 1:** Email exact match (95% accuracy)
 - **Level 2:** Phone normalized match (85% accuracy)
 - **Level 3:** Passport match (100% accuracy if available)
@@ -508,18 +515,19 @@ LIMIT 1
 ```markdown
 🆕 **Nuovo Lead Assegnato**
 
-👤 *Cliente:* John Doe
-📧 *Email:* john@example.com
-📞 *Phone:* +62 812 3456 7890
-🎯 *Pratica:* Kitas
+👤 _Cliente:_ John Doe
+📧 _Email:_ john@example.com
+📞 _Phone:_ +62 812 3456 7890
+🎯 _Pratica:_ Kitas
 
-📊 *Assegnazione:* Specialty: kitas, Workload: 3 practices
+📊 _Assegnazione:_ Specialty: kitas, Workload: 3 practices
 
 [✅ Accetta] [➡️ Riassegna]
 [👁️ Vedi Dettagli CRM]
 ```
 
 **Inline Keyboard Actions:**
+
 - ✅ **Accetta** - Callback: `accept_lead_{client_id}`
 - ➡️ **Riassegna** - Callback: `reassign_lead_{client_id}`
 - 👁️ **Vedi Dettagli** - URL: `https://crm.balizero.com/clients/{id}`
@@ -531,6 +539,7 @@ LIMIT 1
 **Trigger:** `client_to_memory_sync` on `clients` table
 
 **Synced Fields:**
+
 ```json
 user_stats.preferences = {
   "crm_client_id": 123,
@@ -544,6 +553,7 @@ user_stats.preferences = {
 ```
 
 **Frontend Impact:**
+
 - ✅ Single query: `GET /api/memory/user-stats/{email}`
 - ❌ No more dual queries to CRM + Memory
 
@@ -551,15 +561,15 @@ user_stats.preferences = {
 
 ### Test Coverage
 
-| Test | Status |
-|------|--------|
-| Entity Resolution - No Duplicates | ✅ |
-| Entity Resolution - Email Match | ✅ |
-| Lead Assignment - Specialty Matching | ✅ |
-| Lead Assignment - Duplicate Reuse | ✅ |
-| Telegram Notification - Success | ✅ |
-| Telegram Notification - No Chat ID | ✅ |
-| Full Workflow Integration | ✅ |
+| Test                                 | Status |
+| ------------------------------------ | ------ |
+| Entity Resolution - No Duplicates    | ✅     |
+| Entity Resolution - Email Match      | ✅     |
+| Lead Assignment - Specialty Matching | ✅     |
+| Lead Assignment - Duplicate Reuse    | ✅     |
+| Telegram Notification - Success      | ✅     |
+| Telegram Notification - No Chat ID   | ✅     |
+| Full Workflow Integration            | ✅     |
 
 **Coverage:** 100% (7/7 tests passing in mock environment)
 
@@ -568,12 +578,14 @@ user_stats.preferences = {
 ### Deployment Requirements
 
 **1. Run Migration:**
+
 ```bash
 cd apps/backend-rag
 python -m backend.db.migrate apply
 ```
 
 **2. Link Team Members to Telegram:**
+
 ```sql
 INSERT INTO messaging_users (user_id, telegram_chat_id, channel, active)
 VALUES (
@@ -585,6 +597,7 @@ VALUES (
 ```
 
 **3. Configure Specialties (Optional):**
+
 ```sql
 UPDATE team_members
 SET permissions = '{"specialties": ["kitas", "pt_pma", "investor_visa"]}'
@@ -592,6 +605,7 @@ WHERE email = 'specialist@balizero.com';
 ```
 
 **4. Initialize AUTO CRM with Telegram Service:**
+
 ```python
 from backend.services.integrations.telegram_bot_service import TelegramBotService
 
@@ -625,6 +639,7 @@ auto_crm = AutoCRMService(
 ### Monitoring Logs
 
 **Success Path:**
+
 ```
 🎯 Lead assignment agent triggered for client 123
 🔍 No duplicates found for client_id=123
@@ -634,6 +649,7 @@ auto_crm = AutoCRMService(
 ```
 
 **Error Path:**
+
 ```
 🎯 Lead assignment agent triggered for client 456
 ⚠️ Cannot notify lead@balizero.com: no Telegram chat_id found. Team member needs to link Telegram account.
@@ -644,14 +660,15 @@ auto_crm = AutoCRMService(
 
 ### Performance Impact
 
-| Metric | Before | After | Impact |
-|--------|--------|-------|--------|
-| Client Creation Time | ~200ms | ~220ms | +10% (async trigger non-blocking) |
-| Assignment Time | Manual (∞) | <500ms | ✅ Instant |
-| Notification Time | Manual | <1s | ✅ Real-time |
-| Frontend Queries | 2 (CRM + Memory) | 1 (Memory only) | -50% |
+| Metric               | Before           | After           | Impact                            |
+| -------------------- | ---------------- | --------------- | --------------------------------- |
+| Client Creation Time | ~200ms           | ~220ms          | +10% (async trigger non-blocking) |
+| Assignment Time      | Manual (∞)       | <500ms          | ✅ Instant                        |
+| Notification Time    | Manual           | <1s             | ✅ Real-time                      |
+| Frontend Queries     | 2 (CRM + Memory) | 1 (Memory only) | -50%                              |
 
 **Database Writes:** +2 per client creation
+
 - `clients.assigned_to` UPDATE
 - `user_stats.preferences` UPSERT (trigger)
 
@@ -660,17 +677,20 @@ auto_crm = AutoCRMService(
 ### Next Steps (Recommendations)
 
 **Priority 1: Production Validation**
+
 1. Deploy to staging
 2. Test with real Telegram accounts
 3. Verify assignment distribution is balanced
 4. Monitor notification success rate
 
 **Priority 2: Team Member Onboarding**
+
 1. Link all team members to Telegram (`messaging_users`)
 2. Configure specialties for optimal matching
 3. Train team on inline button actions
 
 **Priority 3: Analytics Dashboard** (Future)
+
 1. Assignment success rate
 2. Average response time (creation → acceptance)
 3. Workload distribution per team member
