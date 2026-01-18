@@ -53,15 +53,20 @@ echo "📅 Adding automation cron jobs..."
 # Daily Monitoring - Daily at 8:00 AM (after all night processes)
 0 8 * * * $PROJECT_ROOT/scripts/daily-monitoring.sh >> $PROJECT_ROOT/logs/daily_monitoring.log 2>&1
 
-# Ollama Start - Daily at 3:25 AM (5 min before agent tests)
-25 3 * * * $PROJECT_ROOT/scripts/ollama_cron_window.sh start >> $PROJECT_ROOT/logs/ollama_cron.log 2>&1
+# Ollama Start - Daily at 2:00 AM (for Test Force - needs 2 hours window)
+0 2 * * * $PROJECT_ROOT/scripts/ollama_cron_window.sh start >> $PROJECT_ROOT/logs/ollama_cron.log 2>&1
 
-# Agent Tests - Daily at 3:30 AM (after Sentinel, before data collection)
-# Ollama should already be running from 3:25am cron
+# Test Force Orchestrator - Daily at 2:15 AM (intelligent test generation/maintenance)
+# Uses Qwen to: analyze coverage, generate tests, modify tests, delete obsolete tests
+# Estimated duration: 45-90 minutes
+15 2 * * * $PROJECT_ROOT/scripts/auto_test_force.sh >> $PROJECT_ROOT/logs/test_force.log 2>&1
+
+# Agent Tests - Daily at 3:30 AM (after Test Force, before data collection)
+# Ollama should already be running from 2:00am cron
 30 3 * * * $PROJECT_ROOT/scripts/auto_agent_test.sh >> $PROJECT_ROOT/logs/agent_test.log 2>&1
 
-# Ollama Stop - Daily at 3:35 AM (5 min after tests start - they finish quickly)
-35 3 * * * $PROJECT_ROOT/scripts/ollama_cron_window.sh stop >> $PROJECT_ROOT/logs/ollama_cron.log 2>&1
+# Ollama Stop - Daily at 4:00 AM (after Test Force and Agent Tests complete)
+0 4 * * * $PROJECT_ROOT/scripts/ollama_cron_window.sh stop >> $PROJECT_ROOT/logs/ollama_cron.log 2>&1
 
 # Intel Scraper - Daily at 4:00 AM and 4:00 PM
 0 4 * * * $PROJECT_ROOT/scripts/auto_intel_scraper.sh >> $PROJECT_ROOT/logs/intel_scraper.log 2>&1
@@ -96,11 +101,12 @@ echo "📁 Backup saved to: $BACKUP_FILE"
 echo ""
 echo "📊 Schedule Overview:"
 echo "  1:00 AM  - DB Backup"
+echo "  2:00 AM  - Ollama Start (for Test Force - 2 hour window)"
 echo "  2:00 AM  - Scribe (Documentation)"
+echo "  2:15 AM  - Test Force Orchestrator (Qwen: generate/modify/delete tests)"
 echo "  3:00 AM  - Sentinel (Quality Control)"
-echo "  3:25 AM  - Ollama Start (for agent tests)"
 echo "  3:30 AM  - Agent Tests (Agentic RAG with Ollama Qwen)"
-echo "  3:35 AM  - Ollama Stop (after tests complete)"
+echo "  4:00 AM  - Ollama Stop (after Test Force and Agent Tests)"
 echo "  4:00 AM  - Intel Scraper + Visa Agent + Unified Scraper"
 echo "  5:00 AM  - KB Ingest"
 echo "  8:00 AM  - Daily Monitoring"

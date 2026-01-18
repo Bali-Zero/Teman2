@@ -29,9 +29,13 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ collections: collectionsWithStats });
+    return NextResponse.json({ collections: response.result });
   } catch (error: any) {
-    logger.error('Qdrant Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    logger.error('Qdrant Collections Error:', error);
+    return NextResponse.json({ 
+        error: error.message,
+        details: error.cause ? String(error.cause) : undefined,
+        url: process.env.QDRANT_URL 
+    }, { status: 500 });
   }
 }
