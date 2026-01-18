@@ -276,6 +276,7 @@ async def get_portal_preview(
     client_id: int,
     current_user: dict = Depends(require_team_auth),
     portal_service: PortalService = Depends(get_portal_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Get client's portal view data (for "View as Client" feature).
@@ -326,7 +327,7 @@ async def get_portal_preview(
 
 @router.get("/messages/unread-count")
 async def get_unread_messages_count(
-    current_user: dict = Depends(require_team_auth),
+    _current_user: dict = Depends(require_team_auth),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -385,6 +386,7 @@ async def get_client_messages(
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_team_auth),
     portal_service: PortalService = Depends(get_portal_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Get message thread for a client (team view).
@@ -470,7 +472,7 @@ async def send_message_to_client(
 async def mark_client_message_read(
     client_id: int,
     message_id: int,
-    current_user: dict = Depends(require_team_auth),
+    _current_user: dict = Depends(require_team_auth),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -478,7 +480,7 @@ async def mark_client_message_read(
     """
     try:
         async with db_pool.acquire() as conn:
-            result = await conn.execute(
+            await conn.execute(
                 """
                 UPDATE portal_messages
                 SET read_at = NOW()
