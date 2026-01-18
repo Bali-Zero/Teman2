@@ -52,6 +52,7 @@ vi.mock('@/components/dashboard', () => ({
   NusantaraHealthWidget: () => <div data-testid="nusantara-widget">Health</div>,
   AutoCRMWidget: () => <div data-testid="auto-crm-widget">Auto CRM</div>,
   GrafanaWidget: () => <div data-testid="grafana-widget">Grafana</div>,
+  FeaturedArticlesWidget: () => <div data-testid="featured-articles-widget">Featured Articles</div>,
 }));
 
 // Create a wrapper with QueryClientProvider for tests
