@@ -110,6 +110,7 @@ class LLMRequest:
     temperature: float = 0.2
     provider: LLMProvider | None = None
     context: dict[str, Any] | None = None
+    system: str | None = None  # System prompt (defines model behavior)
 
 
 @dataclass
@@ -389,10 +390,7 @@ class LLMAdapter:
                 # Permanent errors - don't retry
                 if last_error_type == ErrorType.PERMANENT:
                     self.metrics.permanent_errors += 1
-                    logger.error(
-                        f"❌ Permanent error (no retry): {e}. "
-                        f"Returning mock response."
-                    )
+                    logger.error(f"❌ Permanent error (no retry): {e}. Returning mock response.")
                     break  # Exit retry loop immediately
 
                 # Check circuit breaker again (might have opened during retries)
@@ -444,7 +442,9 @@ class LLMAdapter:
                 # Check if model is available
                 models = response.json().get("models", [])
                 model_names = [m.get("name", "") for m in models]
-                if any(self.ollama_model in name or name in self.ollama_model for name in model_names):
+                if any(
+                    self.ollama_model in name or name in self.ollama_model for name in model_names
+                ):
                     logger.debug("✅ Ollama is running and model available")
                     return
                 else:
@@ -499,6 +499,10 @@ class LLMAdapter:
             },
         }
 
+        # Add system prompt if provided (Qwen/Ollama supports system prompts)
+        if request.system:
+            payload["system"] = request.system
+
         try:
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
@@ -529,7 +533,6 @@ class LLMAdapter:
         except Exception as e:
             raise RuntimeError(f"Ollama call failed: {e}") from e
 
-
     async def _call_mock(self, request: LLMRequest) -> LLMResponse:
         """Mock response for testing"""
         start_time = time.time()
@@ -548,7 +551,6 @@ class LLMAdapter:
             response_time=time.time() - start_time,
             provider=LLMProvider.MOCK,
         )
-
 
     def _get_cache_key(self, request: LLMRequest) -> str:
         """Generate cache key for request"""
@@ -625,8 +627,7 @@ class LLMAdapter:
                 models = response.json().get("models", [])
                 model_names = [m.get("name", "") for m in models]
                 health["ollama"] = any(
-                    self.ollama_model in name or name in self.ollama_model
-                    for name in model_names
+                    self.ollama_model in name or name in self.ollama_model for name in model_names
                 )
                 if not health["ollama"]:
                     logger.warning(f"⚠️ Ollama running but model {self.ollama_model} not found")
@@ -653,6 +654,7 @@ _llm_adapter: LLMAdapter | None = None
 def get_llm_adapter() -> LLMAdapter:
     """Get singleton LLM adapter instance"""
     import os
+
     global _llm_adapter
     if _llm_adapter is None:
         # Read from environment if available

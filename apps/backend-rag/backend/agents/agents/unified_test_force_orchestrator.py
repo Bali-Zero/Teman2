@@ -22,6 +22,19 @@ from backend.agents.services.differential_coverage_analyzer import (
     DifferentialCoverageAnalyzer,
 )
 from backend.agents.services.llm_adapter import LLMProvider, LLMRequest, get_llm_adapter
+
+# Import system prompts configuration
+try:
+    from backend.agents.config.qwen_system_prompts import (
+        SYSTEM_PROMPTS,
+        TEST_GENERATION_SYSTEM_PROMPT_BACKEND,
+        TEST_GENERATION_SYSTEM_PROMPT_FRONTEND,
+    )
+except ImportError:
+    # Fallback if config not available
+    TEST_GENERATION_SYSTEM_PROMPT_BACKEND = None
+    TEST_GENERATION_SYSTEM_PROMPT_FRONTEND = None
+    SYSTEM_PROMPTS = {}
 from backend.agents.services.test_metrics import get_metrics_collector
 from backend.agents.services.unified_coverage_collector import (
     UnifiedCoverageCollector,
@@ -145,6 +158,7 @@ class UnifiedTestForceOrchestrator:
             error_msg = f"Unified analysis failed: {e}"
             logger.error(f"❌ {error_msg}")
             import traceback
+
             traceback.print_exc()
             self.orchestrator_metrics.record_operation(time.time() - start_time, False, error_msg)
             # Try to return partial results if available
@@ -234,7 +248,7 @@ Generate complete test file."""
             prompt = f"""Generate comprehensive Vitest unit tests for this TypeScript/React file to improve coverage from {coverage:.1f}% to 99%+.
 
 File: {file_path}
-Missing lines count: {gap.get('missing_lines_count', 0)}
+Missing lines count: {gap.get("missing_lines_count", 0)}
 
 Requirements:
 1. Use Vitest and @testing-library/react
@@ -245,11 +259,19 @@ Requirements:
 
 Generate complete test file."""
 
+        # Select appropriate system prompt based on component type
+        system_prompt = (
+            TEST_GENERATION_SYSTEM_PROMPT_BACKEND
+            if component_type == "backend"
+            else TEST_GENERATION_SYSTEM_PROMPT_FRONTEND
+        )
+
         request = LLMRequest(
             prompt=prompt,
             max_tokens=2000,  # Reduced to avoid timeouts - can generate multiple smaller requests if needed
             temperature=0.2,
             provider=LLMProvider.OLLAMA,
+            system=system_prompt,  # Add system prompt to define Qwen behavior
         )
 
         try:
@@ -272,7 +294,9 @@ Generate complete test file."""
             "overall_coverage": results.get("coverage_report", {}).get("overall_coverage", 0.0),
             "tests_generated": results.get("test_generation", {}).get("tests_generated", 0),
             "regressions": differential_report.get("regressions", 0) if differential_report else 0,
-            "improvements": differential_report.get("improvements", 0) if differential_report else 0,
+            "improvements": differential_report.get("improvements", 0)
+            if differential_report
+            else 0,
         }
         return summary
 
@@ -303,7 +327,9 @@ async def main():
     parser.add_argument("--project-root", default=".", help="Project root directory")
     parser.add_argument("--provider", default="local", choices=["local", "mock"])
     parser.add_argument("--save-baseline", action="store_true", help="Save current as baseline")
-    parser.add_argument("--generate-tests", action="store_true", default=True, help="Generate tests")
+    parser.add_argument(
+        "--generate-tests", action="store_true", default=True, help="Generate tests"
+    )
     parser.add_argument("--max-tests", type=int, default=5, help="Max tests per component")
     parser.add_argument("--output", help="Output JSON report file")
 
