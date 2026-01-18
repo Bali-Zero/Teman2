@@ -335,13 +335,15 @@ export function useChatPage(): UseChatPageReturn {
     try {
       const storedProfile = api.getUserProfile();
       if (storedProfile && isMountedRef.current) {
-        setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
+        const name = storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
+        setUserName(name);
         if (storedProfile.avatar) setUserAvatar(storedProfile.avatar);
         return;
       }
       const profile = await api.getProfile();
       if (isMountedRef.current) {
-        setUserName(profile.name || profile.email.split('@')[0]);
+        const name = profile.name || (profile.email ? profile.email.split('@')[0] : 'User');
+        setUserName(name);
         if (profile.avatar) setUserAvatar(profile.avatar);
       }
     } catch (error) {
@@ -350,6 +352,10 @@ export function useChatPage(): UseChatPageReturn {
         { component: 'useChatPage', action: 'loadUserProfile' },
         error instanceof Error ? error : new Error(String(error))
       );
+      // Set default user name on error
+      if (isMountedRef.current) {
+        setUserName('User');
+      }
     }
   }, []);
 
