@@ -99,7 +99,7 @@ googleapis-common-protos>=1.63.0  # Fix pkg_resources deprecation warning
 # Data Processing
 datasets>=2.19.0
 pandas>=2.0.0
-numpy<2.0.0  # Required for torch/sentence-transformers compatibility
+numpy>=2.0.0,<3.0.0  # Updated for compatibility with scipy/sklearn
 psutil>=5.9.0  # Required by metrics module/tests
 
 # PDF Processing - UPGRADED
