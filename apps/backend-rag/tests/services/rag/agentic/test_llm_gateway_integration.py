@@ -266,24 +266,24 @@ class TestAPICompatibility:
             return gateway.api_versions.get(version, {"supported": False, "deprecated": False})
 
         # Test supported versions
-        assert is_api_version_supported("v1") == True
-        assert is_api_version_supported("v2") == True
-        assert is_api_version_supported("v3") == True
+        assert is_api_version_supported("v1")
+        assert is_api_version_supported("v2")
+        assert is_api_version_supported("v3")
 
         # Test deprecated version
-        assert is_api_version_supported("v0") == False
+        assert not is_api_version_supported("v0")
 
         # Test non-existent version
-        assert is_api_version_supported("v99") == False
+        assert not is_api_version_supported("v99")
 
         # Test version status
         v1_status = get_api_version_status("v1")
-        assert v1_status["supported"] == True
-        assert v1_status["deprecated"] == False
+        assert v1_status["supported"]
+        assert not v1_status["deprecated"]
 
         v0_status = get_api_version_status("v0")
-        assert v0_status["supported"] == False
-        assert v0_status["deprecated"] == True
+        assert not v0_status["supported"]
+        assert v0_status["deprecated"]
 
     def test_backward_compatibility(self, api_gateway):
         """Test backward compatibility."""
@@ -381,17 +381,17 @@ class TestAPICompatibility:
 
         # Test valid request
         is_valid, message = validate_request_format(valid_request, "v1")
-        assert is_valid == True
+        assert is_valid
 
         is_valid, message = validate_request_format(valid_request, "v2")
-        assert is_valid == True
+        assert is_valid
 
         is_valid, message = validate_request_format(valid_request, "v3")
-        assert is_valid == True
+        assert is_valid
 
         # Test invalid request
         is_valid, message = validate_request_format(invalid_request, "v1")
-        assert is_valid == False
+        assert not is_valid
         assert "Missing required field" in message
 
 
@@ -448,8 +448,8 @@ class TestDatabaseIntegration:
         gateway.database_connections["postgresql"] = pg_connection
 
         # Test connection
-        assert pg_connection.connect() == True
-        assert pg_connection.connected == True
+        assert pg_connection.connect()
+        assert pg_connection.connected
 
         # Test query execution
         result = pg_connection.execute_query("SELECT * FROM test_table")
@@ -462,7 +462,7 @@ class TestDatabaseIntegration:
 
         # Test connection close
         pg_connection.close()
-        assert pg_connection.connected == False
+        assert not pg_connection.connected
 
     def test_mongodb_integration(self, db_gateway):
         """Test MongoDB integration."""
@@ -540,8 +540,8 @@ class TestDatabaseIntegration:
         gateway.database_connections["mongodb"] = mongo_connection
 
         # Test connection
-        assert mongo_connection.connect() == True
-        assert mongo_connection.connected == True
+        assert mongo_connection.connect()
+        assert mongo_connection.connected
 
         # Test document operations
         doc_id = mongo_connection.insert_document("users", {"name": "John", "age": 30})
@@ -625,22 +625,22 @@ class TestDatabaseIntegration:
         gateway.database_connections["redis"] = redis_connection
 
         # Test connection
-        assert redis_connection.connect() == True
-        assert redis_connection.connected == True
+        assert redis_connection.connect()
+        assert redis_connection.connected
 
         # Test cache operations
-        assert redis_connection.set("test_key", "test_value") == True
+        assert redis_connection.set("test_key", "test_value")
         assert redis_connection.get("test_key") == "test_value"
-        assert redis_connection.exists("test_key") == True
+        assert redis_connection.exists("test_key")
 
         # Test expiry
-        assert redis_connection.set("expiry_key", "expiry_value", expiry=1) == True
+        assert redis_connection.set("expiry_key", "expiry_value", expiry=1)
         assert redis_connection.get("expiry_key") == "expiry_value"
 
         # Test delete
-        assert redis_connection.delete("test_key") == True
+        assert redis_connection.delete("test_key")
         assert redis_connection.get("test_key") == None
-        assert redis_connection.exists("test_key") == False
+        assert not redis_connection.exists("test_key")
 
 
 class TestCloudPlatformCompatibility:

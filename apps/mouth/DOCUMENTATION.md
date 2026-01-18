@@ -414,6 +414,7 @@ CMD ["node", "server.js", "-H", "0.0.0.0"]
 │   └── /analytics          → Analytics view
 ├── /chat                   → Chat Zantara
 ├── /whatsapp               → Integrazione WhatsApp
+├── /omnichannel            → Gestione unificata (WA, TG, IG, X)
 ├── /email                  → Email (Zoho)
 ├── /clients                → Lista clienti
 │   └── /new                → Nuovo cliente
@@ -595,6 +596,10 @@ class ApiClientBase {
 | `EmailApi`         | `/api/email`                   | `getEmails()`, `sendEmail()`, `attachZoho()`   |
 | `TeamApi`          | `/api/team`                    | `getMembers()`, `clockIn()`, `clockOut()`      |
 | `PortalApi`        | `/api/portal`                  | `getData()`, `inviteClient()`                  |
+| `WhatsAppApi`      | `/webhook/whatsapp`            | `getConversations()`, `sendMessage()`          |
+| `TelegramApi`      | `/api/telegram`                | `getConversations()`, `sendMessage()`          |
+| `InstagramApi`     | `/api/instagram`               | `getConversations()`, `sendMessage()`          |
+| `TwitterApi`       | `/api/twitter`                 | `getConversations()`, `sendMessage()`          |
 
 ### API Proxy Route
 

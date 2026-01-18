@@ -339,7 +339,7 @@ async def list_files(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error listing files: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/files/{file_id}")
@@ -357,7 +357,7 @@ async def get_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error getting file {file_id}: {e}")
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="File not found") from e
 
 
 @router.get("/files/{file_id}/download")
@@ -390,7 +390,7 @@ async def download_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error downloading file {file_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/folders/{folder_id}/path", response_model=list[BreadcrumbItem])
@@ -439,7 +439,7 @@ async def search_files(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error searching: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # =========================================================================
@@ -513,7 +513,7 @@ async def upload_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error uploading file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/folders", response_model=OperationResponse)
@@ -546,7 +546,7 @@ async def create_folder(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error creating folder: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/files/create", response_model=OperationResponse)
@@ -587,10 +587,10 @@ async def create_doc(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error creating doc: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.patch("/files/{file_id}/rename", response_model=OperationResponse)
@@ -619,7 +619,7 @@ async def rename_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error renaming file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/files/{file_id}")
@@ -647,7 +647,7 @@ async def delete_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error deleting file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.patch("/files/{file_id}/move", response_model=OperationResponse)
@@ -682,7 +682,7 @@ async def move_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error moving file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/files/{file_id}/copy", response_model=OperationResponse)
@@ -718,7 +718,7 @@ async def copy_file(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error copying file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # =========================================================================
@@ -794,7 +794,7 @@ async def list_permissions(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error listing permissions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/files/{file_id}/permissions", response_model=PermissionItem)
@@ -825,7 +825,7 @@ async def add_permission(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error adding permission: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.patch("/files/{file_id}/permissions/{permission_id}", response_model=PermissionItem)
@@ -856,7 +856,7 @@ async def update_permission(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error updating permission: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/files/{file_id}/permissions/{permission_id}")
@@ -883,4 +883,4 @@ async def remove_permission(
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error removing permission: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

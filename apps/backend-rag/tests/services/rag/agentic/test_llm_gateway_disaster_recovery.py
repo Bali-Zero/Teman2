@@ -155,7 +155,7 @@ class TestDisasterRecoveryPlanning:
         # Execute DR plan
         execution_result = execute_dr_plan("primary_site_failure")
 
-        assert execution_result["success"] == True
+        assert execution_result["success"]
         assert execution_result["actual_rto_minutes"] <= execution_result["target_rto_minutes"]
         assert len(execution_result["results"]) == 5
 
@@ -219,9 +219,9 @@ class TestDisasterRecoveryPlanning:
         )
 
         # Verify RTO compliance
-        assert simple_result["compliance"] == True
-        assert complex_result["compliance"] == True
-        assert catastrophic_result["compliance"] == True
+        assert simple_result["compliance"]
+        assert complex_result["compliance"]
+        assert catastrophic_result["compliance"]
 
         # Verify step completion
         assert simple_result["steps_completed"] == 3
@@ -288,9 +288,9 @@ class TestDisasterRecoveryPlanning:
         )
 
         # Verify RPO compliance
-        assert strict_rpo["rpo_compliance"] == True
-        assert moderate_rpo["rpo_compliance"] == True
-        assert relaxed_rpo["rpo_compliance"] == True
+        assert strict_rpo["rpo_compliance"]
+        assert moderate_rpo["rpo_compliance"]
+        assert relaxed_rpo["rpo_compliance"]
 
         # Verify data loss is within acceptable range
         assert strict_rpo["actual_data_loss_minutes"] <= strict_rpo["rpo_target_minutes"]
@@ -397,10 +397,10 @@ class TestBusinessContinuityValidation:
         # Test business impact calculation
         chat_impact = calculate_business_impact("customer_chat_support", 10)
         assert chat_impact["revenue_impact"] == 1666.67  # 10/60 * 10000
-        assert chat_impact["sla_breach"] == True  # 10 > 5 minutes
+        assert chat_impact["sla_breach"]  # 10 > 5 minutes
 
         auth_impact = calculate_business_impact("user_authentication", 1)
-        assert auth_impact["sla_breach"] == False  # 1 <= 2 minutes
+        assert not auth_impact["sla_breach"]  # 1 <= 2 minutes
 
     def test_service_level_agreement_compliance(self, bc_gateway):
         """Test Service Level Agreement (SLA) compliance."""
@@ -484,9 +484,9 @@ class TestBusinessContinuityValidation:
         user_compliance = check_sla_compliance("user_service")
         content_compliance = check_sla_compliance("content_service")
 
-        assert api_compliance["overall_compliant"] == True
-        assert user_compliance["overall_compliant"] == True
-        assert content_compliance["overall_compliant"] == False  # 99.4% < 99.5%
+        assert api_compliance["overall_compliant"]
+        assert user_compliance["overall_compliant"]
+        assert not content_compliance["overall_compliant"]  # 99.4% < 99.5%
 
     def test_business_impact_analysis(self, bc_gateway):
         """Test business impact analysis for disaster scenarios."""
@@ -704,7 +704,7 @@ class TestHighAvailabilityAndFailover:
         # Trigger failover
         failover_result = trigger_failover("main_cluster")
 
-        assert failover_result["success"] == True
+        assert failover_result["success"]
         assert failover_result["old_active"] == "node1"
         assert failover_result["new_active"] == "node2"
         assert failover_result["failover_count"] == 1
@@ -793,7 +793,7 @@ class TestHighAvailabilityAndFailover:
         # Route requests
         for i in range(10):
             result = route_request("main_lb")
-            assert result["success"] == True
+            assert result["success"]
 
         # Verify round-robin distribution
         lb = gateway.ha_system["load_balancers"]["main_lb"]
@@ -808,7 +808,7 @@ class TestHighAvailabilityAndFailover:
         # Continue routing requests
         for i in range(6):
             result = route_request("main_lb")
-            assert result["success"] == True
+            assert result["success"]
             assert result["routed_to"] in ["node1", "node3"]  # Should not route to failed node
 
         # Verify failover handling
@@ -928,7 +928,7 @@ class TestHighAvailabilityAndFailover:
         # Trigger failover to backup site
         failover_result = trigger_geo_failover("us-west-2")
 
-        assert failover_result["success"] == True
+        assert failover_result["success"]
         assert failover_result["from_site"] == "us-east-1"
         assert failover_result["to_site"] == "us-west-2"
 

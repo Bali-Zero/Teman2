@@ -7,16 +7,46 @@ improving engagement and helping users discover what they can ask next.
 
 Author: ZANTARA Development Team
 Date: 2025-10-16
+Updated: 2026-01-19 - Added comprehensive logging and metrics
 """
 
 import asyncio
 import inspect
 import logging
+import time
 from typing import Any
 
+from backend.app.metrics import metrics_collector
 from backend.llm.zantara_ai_client import ZantaraAIClient
+from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
+
+# Prometheus Metrics for FollowupService
+followup_requests_total = Counter(
+    "zantara_followup_requests_total",
+    "Total follow-up generation requests",
+    ["method", "topic", "language", "status"],
+)
+
+followup_generation_duration = Histogram(
+    "zantara_followup_generation_duration_seconds",
+    "Time taken to generate follow-ups",
+    ["method", "topic", "language"],
+    buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0],
+)
+
+followup_ai_generation_total = Counter(
+    "zantara_followup_ai_generation_total",
+    "Total AI-generated follow-ups",
+    ["status"],  # success, failure, fallback
+)
+
+followup_topic_based_total = Counter(
+    "zantara_followup_topic_based_total",
+    "Total topic-based follow-ups (fallback)",
+    ["topic", "language"],
+)
 
 
 class FollowupService:
@@ -34,12 +64,45 @@ class FollowupService:
         """
         Initialize follow-up service with ZANTARA AI
         """
+        self._init_start_time = time.time()
+        self._ai_available = False
+        self._total_requests = 0
+        self._ai_generation_count = 0
+        self._fallback_count = 0
+        
         try:
             self.zantara_client = ZantaraAIClient()
-            logger.info("✅ FollowupService initialized with ZANTARA AI")
+            self._ai_available = True
+            logger.info(
+                "✅ [FollowupService] Initialized with ZANTARA AI",
+                extra={
+                    "component": "FollowupService",
+                    "action": "init",
+                    "ai_available": True,
+                },
+            )
         except Exception as e:
-            logger.warning(f"⚠️ FollowupService: ZANTARA AI not available: {e}")
+            logger.warning(
+                f"⚠️ [FollowupService] ZANTARA AI not available: {e}",
+                extra={
+                    "component": "FollowupService",
+                    "action": "init",
+                    "ai_available": False,
+                    "error": str(e),
+                },
+            )
             self.zantara_client = None
+        
+        init_duration = time.time() - self._init_start_time
+        logger.info(
+            f"📊 [FollowupService] Initialization completed in {init_duration:.3f}s",
+            extra={
+                "component": "FollowupService",
+                "action": "init_complete",
+                "duration_seconds": init_duration,
+                "ai_available": self._ai_available,
+            },
+        )
 
     def generate_followups(
         self, query: str, response: str, topic: str | None = "business", language: str | None = None
@@ -212,8 +275,19 @@ class FollowupService:
 
         selected = random.sample(followups, min(3, len(followups)))
 
+        # Record metrics
+        followup_topic_based_total.labels(topic=topic, language=language).inc()
+
         logger.info(
-            f"📝 [Follow-ups] Generated {len(selected)} topic-based follow-ups ({topic}, {language})"
+            f"📝 [Followups] Generated {len(selected)} topic-based follow-ups (topic={topic}, language={language})",
+            extra={
+                "component": "FollowupService",
+                "action": "get_topic_based_followups",
+                "topic": topic,
+                "language": language,
+                "followup_count": len(selected),
+                "available_followups": len(followups),
+            },
         )
         return selected
 
@@ -236,10 +310,19 @@ class FollowupService:
         Returns:
             List of 3-4 AI-generated follow-up questions
         """
+        start_time = time.time()
+        
         if not self.zantara_client:
             logger.warning(
-                "⚠️ [Follow-ups] ZANTARA AI client not available, cannot generate dynamic follow-ups"
+                "⚠️ [Followups] ZANTARA AI client not available, cannot generate dynamic follow-ups",
+                extra={
+                    "component": "FollowupService",
+                    "action": "generate_dynamic_followups",
+                    "status": "ai_unavailable",
+                    "language": language,
+                },
             )
+            followup_ai_generation_total.labels(status="ai_unavailable").inc()
             # Fallback to topic-based
             return self.get_topic_based_followups(query, response, "business", language)
 
@@ -250,27 +333,70 @@ class FollowupService:
 
         try:
             logger.info(
-                f"🤖 [Follow-ups] Generating dynamic follow-ups using ZANTARA AI ({language})"
+                f"🤖 [Followups] Generating dynamic follow-ups using ZANTARA AI (language={language})",
+                extra={
+                    "component": "FollowupService",
+                    "action": "generate_dynamic_followups_start",
+                    "language": language,
+                    "prompt_length": len(prompt),
+                },
             )
 
             # Call ZANTARA AI for fast follow-up generation
+            ai_start_time = time.time()
             ai_response = await self.zantara_client.chat_async(
                 messages=[{"role": "user", "content": prompt}], max_tokens=8192
             )
+            ai_duration = time.time() - ai_start_time
 
             # Parse response (expecting numbered list)
             text = ai_response["text"].strip()
             followups = self._parse_followup_list(text)
 
+            total_duration = time.time() - start_time
+
             if followups:
-                logger.info(f"✅ [Follow-ups] Generated {len(followups)} dynamic follow-ups")
+                followup_ai_generation_total.labels(status="success").inc()
+                logger.info(
+                    f"✅ [Followups] Generated {len(followups)} dynamic follow-ups in {total_duration:.3f}s (AI: {ai_duration:.3f}s)",
+                    extra={
+                        "component": "FollowupService",
+                        "action": "generate_dynamic_followups_success",
+                        "language": language,
+                        "followup_count": len(followups),
+                        "total_duration_seconds": total_duration,
+                        "ai_duration_seconds": ai_duration,
+                        "response_length": len(text),
+                    },
+                )
                 return followups[:4]  # Max 4
             else:
-                logger.warning("⚠️ [Follow-ups] Failed to parse AI follow-ups, using fallback")
+                followup_ai_generation_total.labels(status="parse_failure").inc()
+                logger.warning(
+                    "⚠️ [Followups] Failed to parse AI follow-ups, using fallback",
+                    extra={
+                        "component": "FollowupService",
+                        "action": "generate_dynamic_followups_parse_failure",
+                        "language": language,
+                        "response_text": text[:200],  # First 200 chars for debugging
+                    },
+                )
                 return self.get_topic_based_followups(query, response, "business", language)
 
         except Exception as e:
-            logger.error(f"❌ [Follow-ups] Dynamic generation failed: {e}")
+            total_duration = time.time() - start_time
+            followup_ai_generation_total.labels(status="error").inc()
+            logger.error(
+                f"❌ [Followups] Dynamic generation failed: {e}",
+                extra={
+                    "component": "FollowupService",
+                    "action": "generate_dynamic_followups_error",
+                    "language": language,
+                    "duration_seconds": total_duration,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
             # Fallback to topic-based
             return self.get_topic_based_followups(query, response, "business", language)
 
@@ -471,23 +597,123 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
         Returns:
             List of 3-4 follow-up question strings
         """
+        start_time = time.time()
+        self._total_requests += 1
+        
         # Detect language and topic
         language = self.detect_language_from_query(query)
         topic = self.detect_topic_from_query(query)
 
-        logger.info(f"📊 [Follow-ups] Detected: topic={topic}, language={language}")
+        logger.info(
+            f"📊 [Followups] Request #{self._total_requests}: topic={topic}, language={language}, use_ai={use_ai}",
+            extra={
+                "component": "FollowupService",
+                "action": "get_followups",
+                "request_id": self._total_requests,
+                "topic": topic,
+                "language": language,
+                "use_ai": use_ai,
+                "query_length": len(query),
+                "response_length": len(response),
+            },
+        )
 
-        # Use AI if available and requested
-        if use_ai and self.zantara_client:
-            return await self.generate_dynamic_followups(
-                query=query,
-                response=response,
-                conversation_context=conversation_context,
-                language=language,
+        method = "ai" if (use_ai and self.zantara_client) else "topic_based"
+        status = "pending"
+
+        try:
+            # Use AI if available and requested
+            if use_ai and self.zantara_client:
+                result = await self.generate_dynamic_followups(
+                    query=query,
+                    response=response,
+                    conversation_context=conversation_context,
+                    language=language,
+                )
+                status = "success"
+                self._ai_generation_count += 1
+            else:
+                # Use topic-based fallback
+                result = self.get_topic_based_followups(query, response, topic, language)
+                status = "fallback"
+                self._fallback_count += 1
+            
+            duration = time.time() - start_time
+            
+            # Record metrics
+            followup_requests_total.labels(
+                method=method, topic=topic, language=language, status=status
+            ).inc()
+            followup_generation_duration.labels(
+                method=method, topic=topic, language=language
+            ).observe(duration)
+            
+            logger.info(
+                f"✅ [Followups] Generated {len(result)} follow-ups in {duration:.3f}s (method={method}, status={status})",
+                extra={
+                    "component": "FollowupService",
+                    "action": "get_followups_complete",
+                    "request_id": self._total_requests,
+                    "method": method,
+                    "status": status,
+                    "topic": topic,
+                    "language": language,
+                    "followup_count": len(result),
+                    "duration_seconds": duration,
+                },
             )
-        else:
-            # Use topic-based fallback
-            return self.get_topic_based_followups(query, response, topic, language)
+            
+            return result
+            
+        except Exception as e:
+            duration = time.time() - start_time
+            status = "error"
+            
+            # Record error metrics
+            followup_requests_total.labels(
+                method=method, topic=topic, language=language, status=status
+            ).inc()
+            followup_generation_duration.labels(
+                method=method, topic=topic, language=language
+            ).observe(duration)
+            
+            logger.error(
+                f"❌ [Followups] Failed to generate follow-ups: {e}",
+                extra={
+                    "component": "FollowupService",
+                    "action": "get_followups_error",
+                    "request_id": self._total_requests,
+                    "method": method,
+                    "topic": topic,
+                    "language": language,
+                    "duration_seconds": duration,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            
+            # Fallback to topic-based on error
+            try:
+                fallback_result = self.get_topic_based_followups(query, response, topic, language)
+                logger.info(
+                    f"🔄 [Followups] Using fallback after error: {len(fallback_result)} follow-ups",
+                    extra={
+                        "component": "FollowupService",
+                        "action": "fallback_after_error",
+                        "followup_count": len(fallback_result),
+                    },
+                )
+                return fallback_result
+            except Exception as fallback_error:
+                logger.error(
+                    f"❌ [Followups] Fallback also failed: {fallback_error}",
+                    extra={
+                        "component": "FollowupService",
+                        "action": "fallback_error",
+                        "error": str(fallback_error),
+                    },
+                )
+                return []
 
     async def health_check(self) -> dict[str, Any]:
         """
@@ -497,10 +723,11 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
             {
                 "status": "healthy",
                 "ai_available": bool,
-                "features": {...}
+                "features": {...},
+                "metrics": {...}
             }
         """
-        return {
+        health_data = {
             "status": "healthy",
             "ai_available": self.zantara_client is not None,
             "features": {
@@ -509,4 +736,25 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                 "supported_languages": ["en", "it", "id"],
                 "supported_topics": ["business", "immigration", "tax", "casual", "technical"],
             },
+            "metrics": {
+                "total_requests": self._total_requests,
+                "ai_generation_count": self._ai_generation_count,
+                "fallback_count": self._fallback_count,
+                "ai_usage_rate": (
+                    self._ai_generation_count / self._total_requests
+                    if self._total_requests > 0
+                    else 0.0
+                ),
+            },
         }
+        
+        logger.debug(
+            "🏥 [Followups] Health check",
+            extra={
+                "component": "FollowupService",
+                "action": "health_check",
+                "health_data": health_data,
+            },
+        )
+        
+        return health_data

@@ -27,7 +27,7 @@ def test_classify_timeout_error(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.TIMEOUT
-    assert retryable == True
+    assert retryable
 
 
 def test_classify_connection_error(classifier):
@@ -36,7 +36,7 @@ def test_classify_connection_error(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.CONNECTION
-    assert retryable == True
+    assert retryable
 
 
 def test_classify_client_error(classifier):
@@ -47,7 +47,7 @@ def test_classify_client_error(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.CLIENT_ERROR
-    assert retryable == False
+    assert not retryable
 
 
 def test_classify_server_error_retryable(classifier):
@@ -58,7 +58,7 @@ def test_classify_server_error_retryable(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.SERVER_ERROR
-    assert retryable == True
+    assert retryable
 
 
 def test_classify_502_error_retryable(classifier):
@@ -69,7 +69,7 @@ def test_classify_502_error_retryable(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.SERVER_ERROR
-    assert retryable == True
+    assert retryable
 
 
 def test_classify_404_error_non_retryable(classifier):
@@ -80,7 +80,7 @@ def test_classify_404_error_non_retryable(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.CLIENT_ERROR
-    assert retryable == False
+    assert not retryable
 
 
 def test_classify_unknown_error_non_retryable(classifier):
@@ -89,4 +89,4 @@ def test_classify_unknown_error_non_retryable(classifier):
     error_type, retryable = classifier.classify(error)
 
     assert error_type == QdrantErrorType.NON_RETRYABLE
-    assert retryable == False
+    assert not retryable
