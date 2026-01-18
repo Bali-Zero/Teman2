@@ -144,7 +144,8 @@ export default function ChatPage() {
     chatTTS.setShowToast((message, type) => {
       setToast({ message, type });
     });
-  }, [chatInput, chatTTS]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← Run only once on mount to avoid infinite loop
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
