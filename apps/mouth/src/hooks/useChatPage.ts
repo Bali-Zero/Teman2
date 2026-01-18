@@ -333,66 +333,26 @@ export function useChatPage(): UseChatPageReturn {
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
-    // #region agent log
-    const logEntry = {location:'useChatPage.ts:335',message:'loadUserProfile entry',data:{isMounted:isMountedRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-    console.log('[DEBUG]', logEntry);
-    if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logEntry)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-    // #endregion
     try {
       const storedProfile = api.getUserProfile();
-      // #region agent log
-      const logStored = {location:'useChatPage.ts:338',message:'storedProfile check',data:{hasStoredProfile:!!storedProfile,hasEmail:!!storedProfile?.email,hasName:!!storedProfile?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-      console.log('[DEBUG]', logStored);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logStored)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       if (storedProfile && isMountedRef.current) {
         const name =
           storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
-        // #region agent log
-        const logSetName = {location:'useChatPage.ts:342',message:'setUserName from stored',data:{name,email:storedProfile.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-        console.log('[DEBUG]', logSetName);
-        if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logSetName)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-        // #endregion
         setUserName(name);
         if (storedProfile.avatar) setUserAvatar(storedProfile.avatar);
         return;
       }
-      // #region agent log
-      const logApiCall = {location:'useChatPage.ts:349',message:'api.getProfile call',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-      console.log('[DEBUG]', logApiCall);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logApiCall)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       const profile = await api.getProfile();
-      // #region agent log
-      const logProfile = {location:'useChatPage.ts:351',message:'api.getProfile success',data:{hasProfile:!!profile,hasEmail:!!profile?.email,hasName:!!profile?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-      console.log('[DEBUG]', logProfile);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logProfile)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       if (isMountedRef.current) {
         if (!profile || !profile.email) {
-          // #region agent log
-          const logError = {location:'useChatPage.ts:355',message:'profile missing email',data:{hasProfile:!!profile},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-          console.error('[DEBUG] ERROR:', logError);
-          if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logError)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-          // #endregion
           setUserName('User');
           return;
         }
         const name = profile.name || (profile.email ? profile.email.split('@')[0] : 'User');
-        // #region agent log
-        const logSetName2 = {location:'useChatPage.ts:362',message:'setUserName from API',data:{name,email:profile.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-        console.log('[DEBUG]', logSetName2);
-        if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logSetName2)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-        // #endregion
         setUserName(name);
         if (profile.avatar) setUserAvatar(profile.avatar);
       }
     } catch (error) {
-      // #region agent log
-      const errorLog = {location:'useChatPage.ts:369',message:'loadUserProfile error',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown',stack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-      console.error('[DEBUG] ERROR:', errorLog);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(errorLog)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       logger.error(
         'Failed to load user profile',
         { component: 'useChatPage', action: 'loadUserProfile' },
@@ -435,27 +395,12 @@ export function useChatPage(): UseChatPageReturn {
 
   // Initial data load
   useEffect(() => {
-    // #region agent log
-    const logInit = {location:'useChatPage.ts:393',message:'initial data load useEffect',data:{isAuthenticated:api.isAuthenticated()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-    console.log('[DEBUG]', logInit);
-    if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logInit)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-    // #endregion
     if (!api.isAuthenticated()) {
-      // #region agent log
-      const logRedirect = {location:'useChatPage.ts:396',message:'not authenticated, redirecting',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-      console.log('[DEBUG]', logRedirect);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logRedirect)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       router.push('/login');
       return;
     }
 
     const loadInitialData = async () => {
-      // #region agent log
-      const logLoadStart = {location:'useChatPage.ts:401',message:'loadInitialData start',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-      console.log('[DEBUG]', logLoadStart);
-      if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logLoadStart)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-      // #endregion
       setIsInitialLoading(true);
       try {
         await Promise.all([
@@ -463,18 +408,8 @@ export function useChatPage(): UseChatPageReturn {
           teamStatus.loadClockStatus(),
           loadUserProfile(),
         ]);
-        // #region agent log
-        const logLoadSuccess = {location:'useChatPage.ts:409',message:'loadInitialData success',data:{isMounted:isMountedRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-        console.log('[DEBUG]', logLoadSuccess);
-        if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logLoadSuccess)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-        // #endregion
         if (isMountedRef.current) setIsInitialLoading(false);
       } catch (error) {
-        // #region agent log
-        const logLoadError = {location:'useChatPage.ts:414',message:'loadInitialData error',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown',stack:error instanceof Error?error.stack:undefined,isMounted:isMountedRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-        console.error('[DEBUG] ERROR:', logLoadError);
-        if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logLoadError)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-        // #endregion
         if (isMountedRef.current) setIsInitialLoading(false);
         logger.error(
           'Failed to load initial data',
