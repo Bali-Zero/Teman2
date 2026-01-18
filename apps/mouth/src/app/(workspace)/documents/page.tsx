@@ -403,7 +403,7 @@ export default function DocumentsPage() {
             try {
               await api.drive.downloadFile(file.id, file.name);
             } catch (error) {
-              logger.error('Download failed:', error);
+              logger.error('Download failed:', { metadata: { error } });
               // Fallback to window.open if fetch fails
               window.open(api.drive.getDownloadUrl(file.id), '_blank');
             }
@@ -453,7 +453,15 @@ export default function DocumentsPage() {
           try {
             await api.drive.downloadFile(file.id, file.name);
           } catch (error) {
-            logger.error('Download failed:', error);
+            logger.error(
+              'Download failed',
+              {
+                component: 'DocumentsPage',
+                action: 'downloadFile',
+                metadata: { fileId: file.id, fileName: file.name },
+              },
+              error instanceof Error ? error : new Error(String(error))
+            );
             window.open(api.drive.getDownloadUrl(file.id), '_blank');
           }
         }}

@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 
 // Custom Hooks
 import { useChatPage } from '@/hooks/useChatPage';
+import type { Message, AgentStep } from '@/types';
 
 // Components
 import { ChatHeader } from '@/components/chat/ChatHeader';
@@ -117,7 +118,7 @@ export default function ChatPage() {
         open={sidebar.isSearchDocsOpen}
         onClose={sidebar.closeSearchDocs}
         onInsert={(text) => {
-          chatInput.setInput((prev) => (prev ? `${prev}\n${text}` : text));
+          chatInput.setInput(chatInput.input ? `${chatInput.input}\n${text}` : text);
         }}
         initialQuery={chatInput.input}
       />
@@ -151,7 +152,22 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <ChatMessageList
-          messages={displayMessages}
+          messages={displayMessages.map((m): Message => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp,
+            sources: m.sources,
+            imageUrl: m.imageUrl,
+            steps: m.steps ? m.steps.map(step => ({
+              type: step.type as AgentStep['type'],
+              data: step.data,
+              timestamp: step.timestamp,
+            })) as AgentStep[] : undefined,
+            currentStatus: m.isPending || m.isStreaming ? currentStatus : undefined,
+            verification_score: undefined,
+            metadata: m.metadata,
+          }))}
           isLoading={isPending}
           thinkingElapsedTime={0}
           userAvatar={userAvatar}
@@ -177,7 +193,7 @@ export default function ChatPage() {
           setShowAttachMenu={() => {}}
           attachMenuRef={chatInput.imageInputRef}
           fileInputRef={chatInput.imageInputRef}
-          onFileChange={chatInput.handleImageAttach}
+          onFileChange={async (e) => { chatInput.handleImageAttach(e); }}
           isRecording={audioRecorder.isRecording}
           recordingTime={audioRecorder.recordingTime}
           onStartRecording={audioRecorder.startRecording}

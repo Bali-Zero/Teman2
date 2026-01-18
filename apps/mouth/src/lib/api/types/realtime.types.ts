@@ -20,7 +20,9 @@ export type WebSocketMessageType =
   | 'user_presence'
   | 'case_update'
   | 'email_update'
-  | 'system_alert';
+  | 'system_alert'
+  | 'heartbeat'
+  | 'connection_status';
 
 /**
  * Dashboard update message data
@@ -71,6 +73,20 @@ export interface SystemAlertData {
 }
 
 /**
+ * Heartbeat message data
+ */
+export interface HeartbeatData {
+  timestamp: number;
+}
+
+/**
+ * Connection status message data
+ */
+export interface ConnectionStatusData {
+  connected: boolean;
+}
+
+/**
  * Union type for all message data types
  */
 export type WebSocketMessageData =
@@ -78,7 +94,9 @@ export type WebSocketMessageData =
   | UserPresenceData
   | CaseUpdateData
   | EmailUpdateData
-  | SystemAlertData;
+  | SystemAlertData
+  | HeartbeatData
+  | ConnectionStatusData;
 
 /**
  * Type-safe WebSocket message
@@ -95,6 +113,10 @@ export interface WebSocketMessage<T extends WebSocketMessageType = WebSocketMess
     ? EmailUpdateData
     : T extends 'system_alert'
     ? SystemAlertData
+    : T extends 'heartbeat'
+    ? HeartbeatData
+    : T extends 'connection_status'
+    ? ConnectionStatusData
     : never;
 }
 
