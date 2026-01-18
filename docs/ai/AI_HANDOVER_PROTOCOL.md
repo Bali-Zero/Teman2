@@ -23,14 +23,24 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
 
-1.  **NO ROOT EXECUTION:** Never run apps as root. Always use `python -m module`.
-2.  **PATH DISCIPLINE:**
+1.  **VIRTUALENV IS MANDATORY:** ⚠️ **CRITICAL** - Always activate `.venv` before running any Python command. Never use system Python or pyenv directly.
+   
+   ```bash
+   cd apps/backend-rag
+   source .venv/bin/activate  # MUST DO THIS FIRST
+   # Verify: which python should show .../.venv/bin/python
+   ```
+
+   **Why:** Isolated dependencies prevent conflicts, ensure reproducibility, match production Docker environment.
+
+2.  **NO ROOT EXECUTION:** Never run apps as root. Always use `python -m module` with venv activated.
+3.  **PATH DISCIPLINE:**
     - All imports MUST be absolute: `from backend.core import config` (NOT `from ..core import config`).
-    - Always run scripts from `apps/backend-rag` root.
-3.  **ASYNC FIRST:** This is a FastAPI project. Use `async def`, `await`, and `asyncpg`. Do NOT introduce blocking `requests` calls in endpoints; use `httpx`.
-4.  **TYPE HINTS:** Every new function MUST have type hints (`def func(x: int) -> str:`).
-5.  **NO HARDCODING:** Secrets and URLs come from `os.getenv()`. Never commit keys.
-6.  **SEPARATION OF DATA AND LOGIC:** Never hardcode "Volatile Data" (Prices, Employee names, specific Law details, Addresses) in the logic. These belong in the Knowledge Base (Qdrant/Postgres) or `settings`.
+    - Always run scripts from `apps/backend-rag` root with venv activated.
+4.  **ASYNC FIRST:** This is a FastAPI project. Use `async def`, `await`, and `asyncpg`. Do NOT introduce blocking `requests` calls in endpoints; use `httpx`.
+5.  **TYPE HINTS:** Every new function MUST have type hints (`def func(x: int) -> str:`).
+6.  **NO HARDCODING:** Secrets and URLs come from `os.getenv()`. Never commit keys.
+7.  **SEPARATION OF DATA AND LOGIC:** Never hardcode "Volatile Data" (Prices, Employee names, specific Law details, Addresses) in the logic. These belong in the Knowledge Base (Qdrant/Postgres) or `settings`.
 
 ### 2. TECH STACK
 
@@ -63,7 +73,9 @@ apps/backend-rag/
 
 ### 4. COMMON PITFALLS TO AVOID
 
-- **ImportError:** Happens because you forget `PYTHONPATH`. Assume `PYTHONPATH=.` when running from `apps/backend-rag`.
+- **Virtualenv Not Activated:** ⚠️ **MOST COMMON ERROR** - Always check `which python` shows `.venv/bin/python`. If not, run `source .venv/bin/activate`.
+- **ImportError:** Happens because you forget `PYTHONPATH` or venv not activated. Always: `source .venv/bin/activate && PYTHONPATH=. python -m ...`
+- **Dependency Conflicts:** If you see conflicts, ensure venv is clean: `pip install -r requirements.txt --force-reinstall`
 - **Fly.io Crash:** Usually due to missing `PORT` or `QDRANT_URL` env vars. Check `fly.toml` first.
 - **Spaghetti:** Do not put business logic in routers. Put it in `services/`.
 
