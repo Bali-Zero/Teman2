@@ -33,6 +33,7 @@
    - Problema probabile: Mock di `settings` non funzionante
 
 3. **LLM Gateway Tests**
+
    ```python
    from backend.services.rag.agentic.llm_gateway import LLMGateway
    ```
@@ -73,6 +74,7 @@
    - Potrebbe mancare configurazione per nuovi metodi
 
 3. **Settings Mock**
+
    ```python
    monkeypatch.setattr("backend.app.modules.identity.service.settings", mock_settings)
    ```

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         WHERE e.source_entity_id = $1 OR e.target_entity_id = $1
         LIMIT 100
       `;
-      
+
       const result = await client.query(query, [nodeId]);
       return NextResponse.json({ edges: result.rows });
     } finally {

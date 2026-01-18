@@ -151,8 +151,8 @@
 
 ### Verifica Completata:
 
-- [ ] Date: ****\_\_\_****
-- [ ] Verificato da: ****\_\_\_****
+- [ ] Date: \***\*\_\_\_\*\***
+- [ ] Verificato da: \***\*\_\_\_\*\***
 - [ ] Status: ✅/❌
 
 ### Variabili Presenti:

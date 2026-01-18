@@ -35,11 +35,13 @@
 ### 1. **Circuit Breaker Pattern** ❌ MANCA
 
 **Problema Attuale:**
+
 - Retry continuano anche se Ollama è completamente down
 - Nessuna protezione contro cascading failures
 - Wasted resources su chiamate destinate a fallire
 
 **Best Practice 2026:**
+
 ```python
 # Implementare Circuit Breaker
 class CircuitBreaker:
@@ -50,6 +52,7 @@ class CircuitBreaker:
 ```
 
 **Benefici:**
+
 - Evita chiamate inutili quando Ollama è down
 - Recupero automatico quando Ollama torna online
 - Riduce latenza complessiva
@@ -61,11 +64,13 @@ class CircuitBreaker:
 ### 2. **Adaptive Retry con Jitter** ⚠️ PARZIALE
 
 **Problema Attuale:**
+
 - Exponential backoff fisso (1.5^x)
 - Nessun jitter per evitare thundering herd
 - Retry count fisso (10) non adattivo
 
 **Best Practice 2026:**
+
 ```python
 # Adaptive Retry con Jitter
 wait_time = base ** attempt + random.uniform(0, jitter)
@@ -73,6 +78,7 @@ max_retries = adaptive_based_on_error_type(error)
 ```
 
 **Miglioramenti:**
+
 - Jitter per evitare sincronizzazione
 - Retry adattivi basati su tipo di errore
 - Backoff più intelligente (non sempre esponenziale)
@@ -84,11 +90,13 @@ max_retries = adaptive_based_on_error_type(error)
 ### 3. **Request Prioritization** ❌ MANCA
 
 **Problema Attuale:**
+
 - Tutte le richieste hanno stessa priorità
 - Coverage gaps critici aspettano come quelli minori
 - Nessuna coda prioritaria
 
 **Best Practice 2026:**
+
 ```python
 # Priority Queue
 Priority Levels:
@@ -99,6 +107,7 @@ Priority Levels:
 ```
 
 **Benefici:**
+
 - Coverage critici risolti prima
 - Migliore utilizzo risorse
 - ROI più alto
@@ -110,11 +119,13 @@ Priority Levels:
 ### 4. **Batch Processing per LLM** ❌ MANCA
 
 **Problema Attuale:**
+
 - Chiamate LLM una alla volta
 - Overhead per ogni chiamata
 - Non sfrutta capacità batch di Ollama
 
 **Best Practice 2026:**
+
 ```python
 # Batch Processing
 - Raggruppa richieste simili
@@ -124,6 +135,7 @@ Priority Levels:
 ```
 
 **Benefici:**
+
 - Throughput 3-5x superiore
 - Riduzione overhead
 - Migliore utilizzo GPU
@@ -135,11 +147,13 @@ Priority Levels:
 ### 5. **Distributed Tracing** ❌ MANCA
 
 **Problema Attuale:**
+
 - Logging base
 - Nessuna traccia end-to-end
 - Difficile debug di problemi complessi
 
 **Best Practice 2026:**
+
 ```python
 # OpenTelemetry Integration
 - Trace ID per ogni operazione
@@ -149,6 +163,7 @@ Priority Levels:
 ```
 
 **Benefici:**
+
 - Debug più facile
 - Performance analysis
 - Observability completa
@@ -160,11 +175,13 @@ Priority Levels:
 ### 6. **Error Classification Intelligente** ⚠️ PARZIALE
 
 **Problema Attuale:**
+
 - Tutti gli errori trattati ugualmente
 - Nessuna distinzione transient vs permanent
 - Retry anche per errori non recuperabili
 
 **Best Practice 2026:**
+
 ```python
 # Error Classification
 TRANSIENT_ERRORS:
@@ -179,6 +196,7 @@ PERMANENT_ERRORS:
 ```
 
 **Benefici:**
+
 - Retry solo quando utile
 - Alerting migliore
 - Meno risorse sprecate
@@ -190,11 +208,13 @@ PERMANENT_ERRORS:
 ### 7. **Parallel Execution** ⚠️ PARZIALE
 
 **Problema Attuale:**
+
 - Agenti eseguiti sequenzialmente
 - Coverage analysis blocca tutto
 - Nessun parallelismo tra file
 
 **Best Practice 2026:**
+
 ```python
 # Parallel Execution
 - Coverage analysis: Parallel per directory
@@ -204,6 +224,7 @@ PERMANENT_ERRORS:
 ```
 
 **Benefici:**
+
 - Tempo esecuzione 3-5x inferiore
 - Migliore utilizzo CPU
 - Throughput superiore
@@ -215,11 +236,13 @@ PERMANENT_ERRORS:
 ### 8. **Dynamic Rate Limiting** ⚠️ BASICO
 
 **Problema Attuale:**
+
 - Rate limit fisso (10/min)
 - Non adattivo al carico
 - Non considera capacità Ollama
 
 **Best Practice 2026:**
+
 ```python
 # Dynamic Rate Limiting
 - Monitora response time Ollama
@@ -229,6 +252,7 @@ PERMANENT_ERRORS:
 ```
 
 **Benefici:**
+
 - Migliore throughput
 - Protezione Ollama
 - Adattamento automatico
@@ -240,11 +264,13 @@ PERMANENT_ERRORS:
 ### 9. **Prompt Versioning & A/B Testing** ❌ MANCA
 
 **Problema Attuale:**
+
 - Prompt hardcoded
 - Nessun versioning
 - Nessun A/B testing
 
 **Best Practice 2026:**
+
 ```python
 # Prompt Management
 - Prompt versioning (v1, v2, ...)
@@ -254,6 +280,7 @@ PERMANENT_ERRORS:
 ```
 
 **Benefici:**
+
 - Miglioramento continuo prompt
 - Data-driven optimization
 - Quality assurance
@@ -265,11 +292,13 @@ PERMANENT_ERRORS:
 ### 10. **Graceful Degradation Graduale** ⚠️ BINARIO
 
 **Problema Attuale:**
+
 - Fallback binario: Qwen → Mock
 - Nessuna degradazione graduale
 - Perde funzionalità completamente
 
 **Best Practice 2026:**
+
 ```python
 # Gradual Degradation
 1. Qwen full (tutti gli agenti)
@@ -279,6 +308,7 @@ PERMANENT_ERRORS:
 ```
 
 **Benefici:**
+
 - Mantiene funzionalità core
 - Migliore UX anche in degradazione
 - Recovery più graduale
@@ -290,6 +320,7 @@ PERMANENT_ERRORS:
 ## 🎯 PRIORITÀ DI IMPLEMENTAZIONE
 
 ### **Fase 1: Critical (Implementare Subito)**
+
 1. ✅ Circuit Breaker Pattern
 2. ✅ Error Classification Intelligente
 3. ✅ Parallel Execution base
@@ -299,6 +330,7 @@ PERMANENT_ERRORS:
 **ROI:** 🔴 ALTO
 
 ### **Fase 2: High Value (Prossimi 2-4 settimane)**
+
 4. ✅ Request Prioritization
 5. ✅ Adaptive Retry con Jitter
 6. ✅ Distributed Tracing base
@@ -308,6 +340,7 @@ PERMANENT_ERRORS:
 **ROI:** 🟡 MEDIO
 
 ### **Fase 3: Optimization (Prossimi 1-2 mesi)**
+
 7. ✅ Batch Processing
 8. ✅ Dynamic Rate Limiting
 9. ✅ Graceful Degradation Graduale
@@ -322,18 +355,21 @@ PERMANENT_ERRORS:
 ## 📈 METRICHE DI SUCCESSO
 
 ### **Prima dei Miglioramenti:**
+
 - Tempo esecuzione: ~45-90 minuti
 - Success rate: ~85-90%
 - Retry rate: ~15-20%
 - Resource waste: ~10-15%
 
 ### **Dopo Fase 1:**
+
 - Tempo esecuzione: ~30-60 minuti (-33%)
 - Success rate: ~92-95% (+5%)
 - Retry rate: ~8-12% (-40%)
 - Resource waste: ~3-5% (-70%)
 
 ### **Dopo Fase 2:**
+
 - Tempo esecuzione: ~20-40 minuti (-55%)
 - Success rate: ~95-98% (+10%)
 - Retry rate: ~5-8% (-60%)
@@ -346,12 +382,14 @@ PERMANENT_ERRORS:
 ### **Il workflow attuale è SOLIDO ma può essere migliorato**
 
 **Punti di Forza da Mantenere:**
+
 - ✅ Qwen-First architecture
 - ✅ Retry aggressivi
 - ✅ Self-healing
 - ✅ Metrics collection
 
 **Miglioramenti Critici da Implementare:**
+
 1. 🔴 Circuit Breaker (evita waste quando Ollama è down)
 2. 🔴 Error Classification (retry solo quando utile)
 3. 🟡 Parallel Execution (riduce tempo esecuzione)

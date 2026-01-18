@@ -27,8 +27,8 @@ export async function GET(request: Request) {
   } catch (error: any) {
     logger.error('Activity Log Error:', error);
     // If table doesn't exist, return empty to avoid breaking UI
-    if (error.code === '42P01') { 
-        return NextResponse.json({ activities: [], warning: 'Table activity_log not found' });
+    if (error.code === '42P01') {
+      return NextResponse.json({ activities: [], warning: 'Table activity_log not found' });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

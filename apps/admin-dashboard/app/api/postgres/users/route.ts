@@ -23,24 +23,24 @@ export async function GET(request: Request) {
         const userQuery = `SELECT * FROM users WHERE id = $1`;
 
         const [userRes, factsRes, memoriesRes] = await Promise.all([
-           client.query(userQuery, [userId]),
-           client.query(factsQuery, [userId]),
-           client.query(memoriesQuery, [userId])
+          client.query(userQuery, [userId]),
+          client.query(factsQuery, [userId]),
+          client.query(memoriesQuery, [userId]),
         ]);
 
         return NextResponse.json({
           user: userRes.rows[0],
           facts: factsRes.rows,
-          memories: memoriesRes.rows
+          memories: memoriesRes.rows,
         });
       } else {
         // List users
         let query = `SELECT id, email, full_name, created_at FROM users ORDER BY created_at DESC LIMIT 50`;
         let params: any[] = [];
-        
+
         if (search) {
-           query = `SELECT id, email, full_name, created_at FROM users WHERE email ILIKE $1 OR full_name ILIKE $1 ORDER BY created_at DESC LIMIT 50`;
-           params = [`%${search}%`];
+          query = `SELECT id, email, full_name, created_at FROM users WHERE email ILIKE $1 OR full_name ILIKE $1 ORDER BY created_at DESC LIMIT 50`;
+          params = [`%${search}%`];
         }
 
         const result = await client.query(query, params);
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     logger.error('User Context Error:', error);
     // Handle missing tables gracefully
     if (error.code === '42P01') {
-       return NextResponse.json({ users: [], warning: 'User tables not found or schema mismatch' });
+      return NextResponse.json({ users: [], warning: 'User tables not found or schema mismatch' });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

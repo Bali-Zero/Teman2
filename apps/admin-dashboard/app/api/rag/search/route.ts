@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,13 +36,12 @@ export async function POST(request: Request) {
       with_payload: true,
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       results: searchResult,
-      vector_preview: vector.slice(0, 5) // Show first 5 dims for debug
+      vector_preview: vector.slice(0, 5), // Show first 5 dims for debug
     });
-
   } catch (error: any) {
-    console.error('RAG Search Error:', error);
+    logger.error('RAG Search Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

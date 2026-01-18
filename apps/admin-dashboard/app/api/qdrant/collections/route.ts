@@ -32,10 +32,13 @@ export async function GET() {
     return NextResponse.json({ collections: response.result });
   } catch (error: any) {
     logger.error('Qdrant Collections Error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json(
+      {
         error: error.message,
         details: error.cause ? String(error.cause) : undefined,
-        url: process.env.QDRANT_URL 
-    }, { status: 500 });
+        url: process.env.QDRANT_URL,
+      },
+      { status: 500 }
+    );
   }
 }

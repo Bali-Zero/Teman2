@@ -44,6 +44,7 @@ python -m backend.scripts.script_name
 **Why:** Isolated dependencies prevent conflicts, ensure reproducibility, and match production Docker environment.
 
 **Setup (first time only):**
+
 ```bash
 cd apps/backend-rag
 python3 -m venv .venv
@@ -135,13 +136,13 @@ Code maintainable ✅
 
 **The 5 Pillars:**
 
-| Pillar | Requirement | Why |
-|--------|-------------|-----|
-| **1. Test Coverage** | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
-| **2. Structured Logging** | INFO/WARNING/ERROR logs at key steps | Debuggability in production |
-| **3. Metrics & KPIs** | Track performance + success rates | Measurability, optimization |
-| **4. Complete Documentation** | Code comments + Technical docs + Session notes | Maintainability for future team |
-| **5. Error Handling** | Try/except + graceful degradation | Resilience, no silent failures |
+| Pillar                        | Requirement                                         | Why                                   |
+| ----------------------------- | --------------------------------------------------- | ------------------------------------- |
+| **1. Test Coverage**          | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
+| **2. Structured Logging**     | INFO/WARNING/ERROR logs at key steps                | Debuggability in production           |
+| **3. Metrics & KPIs**         | Track performance + success rates                   | Measurability, optimization           |
+| **4. Complete Documentation** | Code comments + Technical docs + Session notes      | Maintainability for future team       |
+| **5. Error Handling**         | Try/except + graceful degradation                   | Resilience, no silent failures        |
 
 **Example: Lead Assignment Agent (2026-01-18)**
 
@@ -159,6 +160,7 @@ When implementing the Lead Assignment Agent, the complete deliverable included:
 **This 10x effort multiplier is THE STANDARD for Nuzantara.**
 
 **Note:** For simpler features (e.g., a single API endpoint), you might have:
+
 - 50 lines of code
 - 80 lines of tests
 - 100 lines of documentation
@@ -169,12 +171,14 @@ The key is: **every feature should be testable, debuggable, documented, and main
 #### When to Apply Production-Ready Standard:
 
 **ALWAYS apply for:**
+
 - New features (workflows, services, agents)
 - Production systems (CRM, RAG, Auth)
 - Multi-team code (will be maintained by others)
 - Critical paths (client data, payments, compliance)
 
 **Can skip for:**
+
 - Quick debugging scripts (one-time use)
 - Prototypes explicitly marked as "experimental"
 - Trivial helper functions (<10 lines)
@@ -406,6 +410,7 @@ python --version  # Should show: Python 3.11.x
 ```
 
 **⚠️ IMPORTANT:** Always activate venv before any Python command:
+
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate  # Do this EVERY time
@@ -425,7 +430,7 @@ source .venv/bin/activate  # Do this EVERY time
        # Implementation
    ```
 
-2. **Add business logic** in `backend/services/`
+3. **Add business logic** in `backend/services/`
 
    ```python
    # backend/services/my_service.py
@@ -433,16 +438,16 @@ source .venv/bin/activate  # Do this EVERY time
        # Business logic here
    ```
 
-3. **Register router** in `backend/app/main_cloud.py`
+4. **Register router** in `backend/app/main_cloud.py`
 
    ```python
    from backend.app.routers import my_router
    app.include_router(my_router.router)
    ```
 
-4. **Add tests** in `backend/tests/api/`
-5. **Run tests** (with venv active): `source .venv/bin/activate && pytest tests/...`
-6. **Run Sentinel** before committing (with venv active)
+5. **Add tests** in `backend/tests/api/`
+6. **Run tests** (with venv active): `source .venv/bin/activate && pytest tests/...`
+7. **Run Sentinel** before committing (with venv active)
 
 ### Modifying RAG Pipeline
 
@@ -513,6 +518,7 @@ fly secrets list -a nuzantara-rag
 Before asking for review:
 
 ### Basic Requirements
+
 - [ ] **Virtualenv activated** (`source .venv/bin/activate`)
 - [ ] Ran `./sentinel` and it passed
 - [ ] All new functions have type hints
@@ -521,6 +527,7 @@ Before asking for review:
 - [ ] Absolute imports only
 
 ### Production-Ready Standard (for non-trivial features)
+
 - [ ] **Tests written** - Unit tests for each function, integration test for full flow
 - [ ] **Logging added** - INFO logs for success paths, WARNING for edge cases, ERROR for failures
 - [ ] **Metrics defined** - Performance KPIs, success rates, error rates documented

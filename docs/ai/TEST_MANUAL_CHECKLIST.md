@@ -208,9 +208,9 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 
 ### Ambiente:
 
-- Browser: ******\_\_\_******
-- OS: ******\_\_\_******
-- Network: ******\_\_\_******
+- Browser: **\*\***\_\_\_**\*\***
+- OS: **\*\***\_\_\_**\*\***
+- Network: **\*\***\_\_\_**\*\***
 
 ### Risultati:
 
@@ -226,6 +226,6 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 
 ---
 
-**Test Started:** ******\_\_\_******  
-**Test Completed:** ******\_\_\_******  
+**Test Started:** **\*\***\_\_\_**\*\***  
+**Test Completed:** **\*\***\_\_\_**\*\***  
 **Status:** ☐ Pass ☐ Fail ☐ Partial

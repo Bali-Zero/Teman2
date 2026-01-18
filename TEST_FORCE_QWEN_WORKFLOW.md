@@ -11,6 +11,7 @@
 **SÌ!** Ecco la prova:
 
 ### 1. LLM Adapter Configuration
+
 ```python
 # backend/agents/services/llm_adapter.py
 - Provider disponibili: SOLO ['ollama', 'mock']
@@ -21,6 +22,7 @@
 ```
 
 ### 2. Test Eseguiti
+
 ```
 ✅ Qwen Health Check: PASS
 ✅ Qwen Generation: PASS (15-16s response time)
@@ -30,9 +32,11 @@
 ```
 
 ### 3. Agenti Configurati
+
 Tutti gli agenti usano `provider="local"` che significa **QWEN**:
+
 - ✅ TestGuardian → Qwen
-- ✅ TestCreator → Qwen  
+- ✅ TestCreator → Qwen
 - ✅ TestMaintainer → Qwen
 - ✅ TestCleaner → Qwen
 - ✅ TestForceOrchestrator → Qwen
@@ -54,6 +58,7 @@ Tutti gli agenti usano `provider="local"` che significa **QWEN**:
 ### 🔄 WORKFLOW ESECUZIONE
 
 #### **FASE 1: PREPARAZIONE** (2:00 AM)
+
 ```bash
 1. Ollama Start
    └─> Verifica Ollama disponibile
@@ -63,6 +68,7 @@ Tutti gli agenti usano `provider="local"` che significa **QWEN**:
 ```
 
 #### **FASE 2: TEST FORCE ORCHESTRATOR** (2:15 AM)
+
 ```bash
 # scripts/auto_test_force.sh
 python3 -m backend.agents.agents.test_force_orchestrator \
@@ -104,6 +110,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 #### **FASE 3: AGENTI DETTAGLIATI**
 
 ##### 🛡️ **TestGuardian** (Coverage Analysis)
+
 ```
 1. Analizza coverage con pytest --cov
 2. Identifica file < 99% coverage
@@ -120,6 +127,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 ##### 🎯 **TestCreator** (New Code Tests)
+
 ```
 1. Monitora git diff per nuovo codice
 2. Per ogni file nuovo/modificato:
@@ -132,6 +140,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 ##### 🔧 **TestMaintainer** (Update Tests)
+
 ```
 1. Mappa source → test files
 2. Per ogni file sorgente modificato:
@@ -144,6 +153,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 ##### 🧹 **TestCleaner** (Remove Obsolete)
+
 ```
 1. Scansiona tutti i test
 2. Identifica:
@@ -157,6 +167,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 #### **FASE 4: AGENT TESTS** (3:30 AM)
+
 ```bash
 # scripts/auto_agent_test.sh
 - Test agentic RAG con Qwen reale
@@ -165,6 +176,7 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 #### **FASE 5: CLEANUP** (4:00 AM)
+
 ```bash
 1. Ollama Stop
 2. Logs archiviati
@@ -189,10 +201,11 @@ python3 -m backend.agents.agents.test_force_orchestrator \
 ```
 
 ### **Retry Strategy**
+
 ```
 Attempt 1: Immediate
 Attempt 2: Wait 1.5s
-Attempt 3: Wait 2.25s  
+Attempt 3: Wait 2.25s
 Attempt 4: Wait 3.38s
 ...
 Attempt 10: Wait ~57s
@@ -200,6 +213,7 @@ Total max wait: ~2 minuti prima di fallback a Mock
 ```
 
 ### **Auto-Recovery**
+
 ```
 Se Ollama non risponde:
 1. Health check Ollama
@@ -215,6 +229,7 @@ Se Ollama non risponde:
 ## 📊 METRICHE E MONITORING
 
 ### **LLM Adapter Metrics**
+
 ```python
 {
     "total_requests": 150,
@@ -228,6 +243,7 @@ Se Ollama non risponde:
 ```
 
 ### **Agent Metrics**
+
 - Test generati: X
 - Test passati: Y
 - Coverage improvement: +Z%
@@ -239,12 +255,14 @@ Se Ollama non risponde:
 ## 🎯 CONFIGURAZIONE
 
 ### **Environment Variables**
+
 ```bash
 export OLLAMA_MODEL="qwen2.5:latest"  # Default
 export OLLAMA_URL="http://localhost:11434"  # Default
 ```
 
 ### **Script Configuration**
+
 ```bash
 # scripts/auto_test_force.sh
 --provider=local  # ← QWEN! (non "gemini")
@@ -253,6 +271,7 @@ export OLLAMA_URL="http://localhost:11434"  # Default
 ```
 
 ### **Agent Configuration**
+
 ```python
 # Tutti gli agenti
 provider="local"  # ← QWEN!
@@ -266,11 +285,13 @@ provider="local"  # ← QWEN!
 ### **Come verificare che stiamo usando Qwen:**
 
 1. **Check logs:**
+
 ```bash
 tail -f logs/test_force.log | grep -i "qwen\|ollama"
 ```
 
 2. **Check metrics:**
+
 ```python
 from backend.agents.services.llm_adapter import get_llm_adapter
 adapter = get_llm_adapter()
@@ -279,6 +300,7 @@ print(metrics)  # Dovrebbe mostrare success_rate > 0
 ```
 
 3. **Check provider enum:**
+
 ```python
 from backend.agents.services.llm_adapter import LLMProvider
 print([p.value for p in LLMProvider])
@@ -286,6 +308,7 @@ print([p.value for p in LLMProvider])
 ```
 
 4. **Test diretto:**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",

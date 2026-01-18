@@ -56,10 +56,11 @@ echo "📅 Adding automation cron jobs..."
 # Ollama Start - Daily at 2:00 AM (for Test Force - needs 2 hours window)
 0 2 * * * $PROJECT_ROOT/scripts/ollama_cron_window.sh start >> $PROJECT_ROOT/logs/ollama_cron.log 2>&1
 
-# Test Force Orchestrator - Daily at 2:15 AM (intelligent test generation/maintenance)
-# Uses Qwen to: analyze coverage, generate tests, modify tests, delete obsolete tests
-# Estimated duration: 45-90 minutes
-15 2 * * * $PROJECT_ROOT/scripts/auto_test_force.sh >> $PROJECT_ROOT/logs/test_force.log 2>&1
+# Unified Test Force Orchestrator - Daily at 2:15 AM (COMPLETE SYSTEM TESTING)
+# Tests ENTIRE system: Backend + Frontend + Integration
+# Uses Qwen to: analyze unified coverage, calculate differential, generate tests for all components
+# Estimated duration: 60-120 minutes
+15 2 * * * $PROJECT_ROOT/scripts/unified_test_force.sh >> $PROJECT_ROOT/logs/unified_test_force.log 2>&1
 
 # Agent Tests - Daily at 3:30 AM (after Test Force, before data collection)
 # Ollama should already be running from 2:00am cron

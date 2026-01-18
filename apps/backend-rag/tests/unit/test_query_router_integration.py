@@ -6,8 +6,8 @@ Tests query routing and collection selection logic in isolation.
 
 import sys
 import types
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
 from pathlib import Path
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -22,14 +22,14 @@ def mock_problematic_modules():
     numpy_mock = types.ModuleType("numpy")
     numpy_mock.__version__ = "1.26.4"  # Needed by scipy
     numpy_mock.__path__ = []
-    
+
     # Create submodules
     numpy_typing_mock = types.ModuleType("numpy.typing")
     numpy_typing_mock.__path__ = []
-    
+
     # Attach submodules
     numpy_mock.typing = numpy_typing_mock
-    
+
     # Register in sys.modules
     sys.modules["numpy"] = numpy_mock
     sys.modules["numpy.typing"] = numpy_typing_mock
@@ -40,7 +40,7 @@ def mock_problematic_modules():
     scipy_mock = types.ModuleType("scipy")
     sys.modules["scipy"] = scipy_mock
     sys.modules["scipy.sparse"] = MagicMock()
-    
+
     # Mock sklearn
     sklearn_mock = types.ModuleType("sklearn")
     sys.modules["sklearn"] = sklearn_mock
@@ -56,8 +56,8 @@ def mock_problematic_modules():
         sys.modules[m] = mock
 
     # Mock backend services to avoid cascade
-    for m in ["backend.services.oracle", "backend.services.search", 
-              "backend.services.rag", "backend.services.rag.agentic", 
+    for m in ["backend.services.oracle", "backend.services.search",
+              "backend.services.rag", "backend.services.rag.agentic",
               "backend.services.ingestion", "backend.services.analytics",
               "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
               "qdrant_client"]:
@@ -70,7 +70,7 @@ def mock_problematic_modules():
     sys.modules["backend.services.misc.clarification_service"] = MagicMock()
     sys.modules["backend.services.misc.context_suggestion_service"] = MagicMock()
     sys.modules["backend.services.misc.followup_service"] = MagicMock()
-    
+
     # Special handling for routing to allow submodule imports
     routing_mock = types.ModuleType("backend.services.routing")
     routing_mock.__path__ = []
@@ -79,7 +79,7 @@ def mock_problematic_modules():
 
 mock_problematic_modules()
 
-from backend.services.routing.query_router_integration import QueryRouterIntegration
+from backend.services.routing.query_router_integration import QueryRouterIntegration  # noqa: E402
 
 
 class TestQueryRouterIntegration:

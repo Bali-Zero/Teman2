@@ -15,6 +15,7 @@ from ..autonomous_agents.knowledge_graph_builder import (
 )
 
 # Eager imports - these don't cause circular imports
+from . import autonomous_scheduler
 from .autonomous_research_service import AutonomousResearchService
 from .autonomous_scheduler import AutonomousScheduler
 from .clarification_service import ClarificationService

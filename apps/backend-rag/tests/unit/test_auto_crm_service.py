@@ -40,7 +40,7 @@ def mock_problematic_modules():
     sys.modules["backend.services"] = svc_mock
 
     # Also mock problematic sister-modules
-    for m in ["backend.services.oracle", "backend.services.search", "backend.services.routing", 
+    for m in ["backend.services.oracle", "backend.services.search", "backend.services.routing",
               "backend.services.rag", "backend.services.rag.agentic", "backend.services.misc",
               "backend.services.ingestion", "backend.services.analytics",
               "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
@@ -49,7 +49,7 @@ def mock_problematic_modules():
 
 mock_problematic_modules()
 
-from backend.services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service
+from backend.services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service  # noqa: E402
 
 # ============================================================================
 # Fixtures

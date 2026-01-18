@@ -327,8 +327,8 @@ Issues Found: _____
 - [ ] Nessun regressione funzionale
 - [ ] Pronto per produzione
 
-**Tester:** ********\_********  
-**Data:** ********\_********  
+**Tester:** **\*\*\*\***\_**\*\*\*\***  
+**Data:** **\*\*\*\***\_**\*\*\*\***  
 **Status:** ☐ PASSED ☐ FAILED ☐ NEEDS REVIEW
 
 ---

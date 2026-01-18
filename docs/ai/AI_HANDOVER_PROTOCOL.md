@@ -24,14 +24,14 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
 
 1.  **VIRTUALENV IS MANDATORY:** ⚠️ **CRITICAL** - Always activate `.venv` before running any Python command. Never use system Python or pyenv directly.
-   
-   ```bash
-   cd apps/backend-rag
-   source .venv/bin/activate  # MUST DO THIS FIRST
-   # Verify: which python should show .../.venv/bin/python
-   ```
 
-   **Why:** Isolated dependencies prevent conflicts, ensure reproducibility, match production Docker environment.
+```bash
+cd apps/backend-rag
+source .venv/bin/activate  # MUST DO THIS FIRST
+# Verify: which python should show .../.venv/bin/python
+```
+
+**Why:** Isolated dependencies prevent conflicts, ensure reproducibility, match production Docker environment.
 
 2.  **NO ROOT EXECUTION:** Never run apps as root. Always use `python -m module` with venv activated.
 3.  **PATH DISCIPLINE:**
@@ -58,13 +58,13 @@ Code maintainable ✅
 
 **The 5 Pillars:**
 
-| Pillar | Requirement | Why |
-|--------|-------------|-----|
-| **1. Test Coverage** | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
-| **2. Structured Logging** | INFO/WARNING/ERROR logs at key steps | Debuggability in production |
-| **3. Metrics & KPIs** | Track performance + success rates | Measurability, optimization |
-| **4. Complete Documentation** | Code comments + Technical docs + Session notes | Maintainability for future team |
-| **5. Error Handling** | Try/except + graceful degradation | Resilience, no silent failures |
+| Pillar                        | Requirement                                         | Why                                   |
+| ----------------------------- | --------------------------------------------------- | ------------------------------------- |
+| **1. Test Coverage**          | Unit tests + Integration test for every new feature | Confidence in code, catch regressions |
+| **2. Structured Logging**     | INFO/WARNING/ERROR logs at key steps                | Debuggability in production           |
+| **3. Metrics & KPIs**         | Track performance + success rates                   | Measurability, optimization           |
+| **4. Complete Documentation** | Code comments + Technical docs + Session notes      | Maintainability for future team       |
+| **5. Error Handling**         | Try/except + graceful degradation                   | Resilience, no silent failures        |
 
 **Example: Lead Assignment Agent (2026-01-18)**
 
@@ -84,12 +84,14 @@ When implementing the Lead Assignment Agent, the complete deliverable included:
 #### When to Apply Production-Ready Standard:
 
 **ALWAYS apply for:**
+
 - New features (workflows, services, agents)
 - Production systems (CRM, RAG, Auth)
 - Multi-team code (will be maintained by others)
 - Critical paths (client data, payments, compliance)
 
 **Can skip for:**
+
 - Quick debugging scripts (one-time use)
 - Prototypes explicitly marked as "experimental"
 - Trivial helper functions (<10 lines)

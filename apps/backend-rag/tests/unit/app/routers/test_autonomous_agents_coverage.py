@@ -4,6 +4,7 @@ Tests the autonomous agents HTTP endpoints for orchestration.
 """
 
 import sys
+import types
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +14,128 @@ from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4] / "backend"
-sys.path.insert(0, str(backend_path))
+if str(backend_path) not in sys.path:
+    sys.path.insert(0, str(backend_path))
+
+# Aggressively mock problematic modules before any backend imports
+def mock_problematic_modules():
+    # Mock NumPy and PIL
+    numpy_mock = types.ModuleType("numpy")
+    numpy_mock.__version__ = "1.26.4"
+    numpy_mock.__path__ = []
+    sys.modules["numpy"] = numpy_mock
+    sys.modules["numpy.typing"] = MagicMock()
+    sys.modules["numpy._typing"] = MagicMock()
+    sys.modules["numpy._typing._char_codes"] = MagicMock()
+
+    for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
+        mock = types.ModuleType(m)
+        if m == "PIL":
+            mock.__version__ = "10.0.0"
+            mock.Image = types.ModuleType("PIL.Image")
+            mock.Image.Image = MagicMock
+        sys.modules[m] = mock
+
+    # Mock backend services to avoid cascade
+    svc_mock = types.ModuleType("backend.services")
+    svc_mock.__path__ = []
+    sys.modules["backend.services"] = svc_mock
+
+    for m in ["backend.services.oracle", "backend.services.search",
+              "backend.services.rag", "backend.services.rag.agentic",
+              "backend.services.ingestion", "backend.services.analytics",
+              "backend.services.llm_clients", "backend.services.monitoring", "backend.services.pricing",
+              "qdrant_client"]:
+        sys.modules[m] = MagicMock()
+
+    # Special handling for misc to allow submodule imports
+    misc_mock = types.ModuleType("backend.services.misc")
+    misc_mock.__path__ = []
+    # Add attributes that might be accessed directly
+    misc_mock.AutonomousScheduler = MagicMock()
+    misc_mock.AdvancedContextWindowManager = MagicMock()
+    misc_mock.AutonomousResearchService = MagicMock()
+    misc_mock.ClarificationService = MagicMock()
+
+    sys.modules["backend.services.misc"] = misc_mock
+    sys.modules["backend.services.misc.autonomous_scheduler"] = MagicMock()
+
+    # Special handling for search
+    sys.modules["backend.services.search.search_service"] = MagicMock()
+
+    # Special handling for ingestion to allow submodule imports
+    ingestion_mock = types.ModuleType("backend.services.ingestion")
+    ingestion_mock.__path__ = []
+    ingestion_mock.IngestionService = MagicMock()
+    ingestion_mock.AutoIngestionOrchestrator = MagicMock()
+    ingestion_mock.IngestionStatus = MagicMock()
+    ingestion_mock.CollectionHealthService = MagicMock()
+    ingestion_mock.CollectionManager = MagicMock()
+    ingestion_mock.CollectionMetrics = MagicMock()
+    ingestion_mock.CollectionWarmupService = MagicMock()
+    ingestion_mock.HealthStatus = MagicMock()
+    ingestion_mock.IngestionJob = MagicMock()
+    ingestion_mock.LegalIngestionService = MagicMock()
+    ingestion_mock.MonitoredSource = MagicMock()
+    ingestion_mock.PoliticsIngestionService = MagicMock()
+    ingestion_mock.ScrapedContent = MagicMock()
+    ingestion_mock.SourceType = MagicMock()
+    ingestion_mock.StalenessSeverity = MagicMock()
+    ingestion_mock.UpdateType = MagicMock()
+
+    sys.modules["backend.services.ingestion"] = ingestion_mock
+    sys.modules["backend.services.ingestion.ingestion_service"] = MagicMock()
+
+    # Special handling for memory
+    memory_mock = types.ModuleType("backend.services.memory")
+    memory_mock.__path__ = []
+    memory_mock.MemoryServicePostgres = MagicMock()
+    sys.modules["backend.services.memory"] = memory_mock
+
+    # Special handling for communication
+    comm_mock = types.ModuleType("backend.services.communication")
+    comm_mock.__path__ = []
+    comm_mock.detect_language = MagicMock()
+    comm_mock.get_language_instruction = MagicMock()
+    sys.modules["backend.services.communication"] = comm_mock
+
+    # Special handling for autonomous_agents
+    auto_agents_mock = types.ModuleType("backend.services.autonomous_agents")
+    auto_agents_mock.__path__ = []
+    sys.modules["backend.services.autonomous_agents"] = auto_agents_mock
+    sys.modules["backend.services.autonomous_agents.knowledge_graph_builder"] = MagicMock()
+
+    # Special handling for integrations (needed by other tests if this runs first)
+    integrations_mock = types.ModuleType("backend.services.integrations")
+    integrations_mock.__path__ = []
+    integrations_mock.messaging_identity_service = MagicMock()
+    integrations_mock.whatsapp_service = MagicMock()
+    integrations_mock.whatsapp_triage_service = MagicMock()
+    integrations_mock.github_publisher = MagicMock()
+    sys.modules["backend.services.integrations"] = integrations_mock
+    sys.modules["backend.services.integrations.messaging_identity_service"] = MagicMock()
+    sys.modules["backend.services.integrations.github_publisher"] = MagicMock()
+    sys.modules["backend.services.integrations.telegram_bot_service"] = MagicMock()
+
+    # Special handling for routing to allow submodule imports
+    routing_mock = types.ModuleType("backend.services.routing")
+    routing_mock.__path__ = []
+
+    routing_mock.ConfidenceCalculatorService = MagicMock()
+    routing_mock.ConflictResolver = MagicMock()
+    routing_mock.FallbackManagerService = MagicMock()
+    routing_mock.GoldenRouterService = MagicMock()
+    routing_mock.IntelligentRouter = MagicMock()
+    routing_mock.KeywordMatcherService = MagicMock()
+    routing_mock.PriorityOverrideService = MagicMock()
+    routing_mock.QueryRouter = MagicMock()
+    routing_mock.QueryRouterIntegration = MagicMock()
+    routing_mock.RoutingStatsService = MagicMock()
+
+    sys.modules["backend.services.routing"] = routing_mock
+    sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
+
+mock_problematic_modules()
 
 
 @pytest.fixture
