@@ -45,6 +45,7 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/dashboard': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
   '/intelligence': { cssClass: 'nav-icon-orange', activeColor: '#FB923C' },
   '/chat': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
+  '/omnichannel': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
   '/clients': { cssClass: 'nav-icon-teal', activeColor: '#2DD4BF' },
@@ -83,7 +84,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
   const renderNavItem = (item: NavItem) => {
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
-    const badge = item.href === '/whatsapp' ? unreadWhatsApp : item.badge;
+    const badge = (item.href === '/whatsapp' || item.href === '/omnichannel') ? unreadWhatsApp : item.badge;
     const colors = navColors[item.href] || { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' };
 
     return (
