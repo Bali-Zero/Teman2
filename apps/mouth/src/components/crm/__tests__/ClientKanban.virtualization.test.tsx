@@ -24,6 +24,8 @@ describe('ClientKanban Virtualization', () => {
     email: `client${i + 1}@example.com`,
     status: (i % 5 === 0 ? 'active' : 'lead') as Client['status'],
     client_type: 'individual' as const,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   }));
 
   it('should render without errors', () => {
