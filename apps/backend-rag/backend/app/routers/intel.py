@@ -492,7 +492,7 @@ async def publish_staging_item(type: str, item_id: str):
 
     try:
         title = data.get("title", "Untitled")
-        source_url = data.get("source_url", data.get("url", ""))
+        data.get("source_url", data.get("url", ""))
         category = data.get("category", type)
 
         logger.info("Publishing article", extra={"type": type, "item_id": item_id, "title": title})
@@ -666,7 +666,7 @@ async def get_system_metrics():
 
         # Check Qdrant health
         try:
-            visa_client = QdrantClient(collection_name="visa_oracle")
+            QdrantClient(collection_name="visa_oracle")
             metrics["qdrant_health"] = "healthy"
         except Exception as e:
             logger.warning(f"Qdrant health check failed: {e}", exc_info=True)

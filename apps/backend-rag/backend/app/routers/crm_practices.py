@@ -868,17 +868,14 @@ async def get_practices_stats(
     try:
         # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
         if user_id:
-            user_email = user_id.lower()
-            user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+            user_id.lower()
         elif isinstance(current_user, dict):
             # API Call
-            user_email = current_user.get("email", "").lower()
-            user_is_admin = is_crm_admin(current_user)
+            current_user.get("email", "").lower()
+            is_crm_admin(current_user)
         else:
             # Fallback
             logger.warning("get_practices_stats called without valid user context")
-            user_email = ""
-            user_is_admin = False
 
         async with db_pool.acquire() as conn:
             # Stats are currently global but we could filter by team_member

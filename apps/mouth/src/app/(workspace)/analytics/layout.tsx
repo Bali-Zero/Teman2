@@ -22,6 +22,10 @@ export default function AnalyticsLayout({
     const checkAccess = async () => {
       try {
         const profile = await api.getProfile();
+        if (!profile?.email) {
+          router.push('/login');
+          return;
+        }
         setUserEmail(profile.email);
 
         if (profile.email.toLowerCase() === FOUNDER_EMAIL) {

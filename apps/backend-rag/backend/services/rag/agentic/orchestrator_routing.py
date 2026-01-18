@@ -78,7 +78,7 @@ class OrchestratorRoutingManager:
             Tuple di (model_tier, deep_think_mode)
         """
         suggested_ai = intent.get("suggested_ai", "FLASH")
-        deep_think_mode = bool(intent.get("deep_think_mode", False))
+        bool(intent.get("deep_think_mode", False))
 
         if suggested_ai == "deep_think":
             return TIER_PRO, True

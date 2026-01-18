@@ -159,7 +159,7 @@ class AnalyticsAggregator:
             try:
                 from backend.app.metrics import MetricsCollector
 
-                collector = MetricsCollector()
+                MetricsCollector()
                 # These would come from actual Prometheus metrics
                 stats.cache_hit_rate = 0.65  # Placeholder
             except Exception:

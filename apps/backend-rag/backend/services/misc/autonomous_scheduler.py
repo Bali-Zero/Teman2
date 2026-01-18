@@ -353,7 +353,7 @@ async def create_and_start_scheduler(
         try:
             from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
-            predictor = ClientValuePredictor(
+            ClientValuePredictor(
                 db_pool=db_pool,
                 ai_client=ai_client,
             )

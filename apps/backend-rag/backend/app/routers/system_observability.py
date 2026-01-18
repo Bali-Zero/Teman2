@@ -151,7 +151,7 @@ async def get_qdrant_collections(
     from backend.core.qdrant_db import QdrantClient
 
     try:
-        client = QdrantClient(qdrant_url=settings.qdrant_url)
+        QdrantClient(qdrant_url=settings.qdrant_url)
         # Using raw REST API via client because methods might vary
         # Or usually client.client.get_collections()
         # For simplicity, we assume standard qdrant_client usage if available,

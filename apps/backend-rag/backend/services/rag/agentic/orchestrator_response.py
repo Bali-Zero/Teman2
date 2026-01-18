@@ -68,7 +68,7 @@ class OrchestratorResponseBuilder:
         Returns:
             CoreResult completo
         """
-        execution_time = timings.get("total", 0.0)
+        timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
         evidence_score = getattr(state, "evidence_score", 0.0)
 

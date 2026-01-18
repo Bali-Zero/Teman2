@@ -149,7 +149,7 @@ class LegalIngestionService:
 
                     try:
                         # Check if we're in async context
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # We're in async context, use async version
                         raw_text = await extract_text_from_pdf_async(file_path, use_ocr=True)
                         ocr_used = True

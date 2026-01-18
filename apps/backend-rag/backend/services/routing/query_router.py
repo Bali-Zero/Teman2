@@ -557,8 +557,8 @@ class QueryRouter:
         query_lower = query.lower()
 
         # Calculate modifier scores
-        update_score = sum(1 for kw in self.UPDATE_KEYWORDS if kw in query_lower)
-        tax_genius_score = sum(1 for kw in self.TAX_GENIUS_KEYWORDS if kw in query_lower)
+        sum(1 for kw in self.UPDATE_KEYWORDS if kw in query_lower)
+        sum(1 for kw in self.TAX_GENIUS_KEYWORDS if kw in query_lower)
 
         primary_domain = max(domain_scores, key=domain_scores.get)
         primary_score = domain_scores[primary_domain]
@@ -763,7 +763,7 @@ class QueryRouter:
         Returns:
             Dictionary with routing analysis including all domain scores
         """
-        query_lower = query.lower()
+        query.lower()
 
         # Calculate all domain scores (use shared method)
         domain_scores = self._calculate_domain_scores(query)

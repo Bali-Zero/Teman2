@@ -16,11 +16,12 @@ export async function GET(request: Request) {
   try {
     const client = await pool.connect();
     try {
-      if (userId) {
-        // Fetch details for a specific user
-        const factsQuery = `SELECT * FROM user_facts WHERE user_id = $1 ORDER BY created_at DESC`;
-        const memoriesQuery = `SELECT * FROM memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`;
-        const userQuery = `SELECT * FROM users WHERE id = $1`;
+        // Note: In production, users are stored in 'team_members' or 'clients'
+        // 'user_facts' likely references these via UUID.
+        const factsQuery = `SELECT * FROM user_facts WHERE user_id = $1 ORDER BY learned_at DESC`;
+        const memoriesQuery = `SELECT * FROM episodic_memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`;
+        // Try getting user from team_members first
+        const userQuery = `SELECT id, email, name as full_name, created_at FROM team_members WHERE id = $1`;
 
         const [userRes, factsRes, memoriesRes] = await Promise.all([
           client.query(userQuery, [userId]),
@@ -34,12 +35,12 @@ export async function GET(request: Request) {
           memories: memoriesRes.rows,
         });
       } else {
-        // List users
-        let query = `SELECT id, email, full_name, created_at FROM users ORDER BY created_at DESC LIMIT 50`;
+        // List users from team_members
+        let query = `SELECT id, email, name as full_name, created_at FROM team_members ORDER BY created_at DESC LIMIT 50`;
         let params: any[] = [];
 
         if (search) {
-          query = `SELECT id, email, full_name, created_at FROM users WHERE email ILIKE $1 OR full_name ILIKE $1 ORDER BY created_at DESC LIMIT 50`;
+          query = `SELECT id, email, name as full_name, created_at FROM team_members WHERE email ILIKE $1 OR name ILIKE $1 ORDER BY created_at DESC LIMIT 50`;
           params = [`%${search}%`];
         }
 
