@@ -392,12 +392,12 @@ import type { MobileOptimizationReturn } from './types/mobile-optimization.types
 
 // Higher-order component for mobile optimization
 export function withMobileOptimization<P extends object>(
-  Component: React.ComponentType<P & { mobile?: MobileOptimizationReturn }>
+  Component: React.ComponentType<P & { mobile?: ReturnType<typeof useMobileOptimization> }>
 ) {
   const WrappedComponent = (props: P) => {
     const mobile = useMobileOptimization();
 
-    return <Component {...props} mobile={mobile} />;
+    return <Component {...(props as P & { mobile?: ReturnType<typeof useMobileOptimization> })} mobile={mobile} />;
   };
 
   WrappedComponent.displayName = `withMobileOptimization(${Component.displayName || Component.name})`;

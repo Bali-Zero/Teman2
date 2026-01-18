@@ -415,7 +415,7 @@ export function useFunnelAnalytics() {
 
 // Higher-order component for funnel tracking
 export function withFunnelTracking<P extends object>(
-  Component: React.ComponentType<P & { funnel?: FunnelAnalyticsReturn }>,
+  Component: React.ComponentType<P & { funnel?: ReturnType<typeof useFunnelAnalytics> }>,
   funnelId: string
 ) {
   const WrappedComponent = (props: P) => {
@@ -429,7 +429,7 @@ export function withFunnelTracking<P extends object>(
       }
     }, []);
 
-    return <Component {...props} funnel={funnel} />;
+    return <Component {...(props as P & { funnel?: ReturnType<typeof useFunnelAnalytics> })} funnel={funnel} />;
   };
 
   WrappedComponent.displayName = `withFunnelTracking(${Component.displayName || Component.name})`;
