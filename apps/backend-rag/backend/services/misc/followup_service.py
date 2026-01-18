@@ -16,9 +16,9 @@ import logging
 import time
 from typing import Any
 
-from backend.app.metrics import metrics_collector
-from backend.llm.zantara_ai_client import ZantaraAIClient
 from prometheus_client import Counter, Histogram
+
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class FollowupService:
         self._total_requests = 0
         self._ai_generation_count = 0
         self._fallback_count = 0
-        
+
         try:
             self.zantara_client = ZantaraAIClient()
             self._ai_available = True
@@ -92,7 +92,7 @@ class FollowupService:
                 },
             )
             self.zantara_client = None
-        
+
         init_duration = time.time() - self._init_start_time
         logger.info(
             f"📊 [FollowupService] Initialization completed in {init_duration:.3f}s",
@@ -311,7 +311,7 @@ class FollowupService:
             List of 3-4 AI-generated follow-up questions
         """
         start_time = time.time()
-        
+
         if not self.zantara_client:
             logger.warning(
                 "⚠️ [Followups] ZANTARA AI client not available, cannot generate dynamic follow-ups",
@@ -406,10 +406,12 @@ class FollowupService:
         """Build prompt for AI to generate follow-up questions in the user's language"""
 
         # CRITICAL: Generate follow-ups in the SAME language as the user's query
+        # Use the detected language parameter explicitly in the prompt
         prompt = f"""Analyze this conversation and generate 3-4 follow-up questions.
 
 IMPORTANT: Generate the questions in the SAME LANGUAGE as the user's original question.
-User's question language: Detect from the query below and match it exactly.
+Detected language: {language.upper()} (en=English, it=Italian, id=Indonesian)
+You MUST generate all follow-up questions in {language.upper()} language.
 
 User asked: "{query}"
 
@@ -418,7 +420,7 @@ AI responded: "{response[:300]}..."
 {f"Previous context: {conversation_context[:200]}..." if conversation_context else ""}
 
 Generate 3-4 short, specific follow-up questions that:
-1. Are written in the SAME LANGUAGE as the user's query above
+1. Are written in {language.upper()} language (the same language as the user's query)
 2. Help the user dig deeper into the topic
 3. Explore related areas they might be interested in
 4. Are natural continuations of the conversation
@@ -431,7 +433,7 @@ Format as a numbered list:
 4. Fourth question? (optional)
 
 Keep questions concise (max 10 words each).
-REMEMBER: Questions MUST be in the same language as the user's original query."""
+CRITICAL: All questions MUST be in {language.upper()} language."""
 
         return prompt
 
@@ -599,7 +601,7 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
         """
         start_time = time.time()
         self._total_requests += 1
-        
+
         # Detect language and topic
         language = self.detect_language_from_query(query)
         topic = self.detect_topic_from_query(query)
@@ -637,9 +639,9 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                 result = self.get_topic_based_followups(query, response, topic, language)
                 status = "fallback"
                 self._fallback_count += 1
-            
+
             duration = time.time() - start_time
-            
+
             # Record metrics
             followup_requests_total.labels(
                 method=method, topic=topic, language=language, status=status
@@ -647,7 +649,7 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
             followup_generation_duration.labels(
                 method=method, topic=topic, language=language
             ).observe(duration)
-            
+
             logger.info(
                 f"✅ [Followups] Generated {len(result)} follow-ups in {duration:.3f}s (method={method}, status={status})",
                 extra={
@@ -662,13 +664,13 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                     "duration_seconds": duration,
                 },
             )
-            
+
             return result
-            
+
         except Exception as e:
             duration = time.time() - start_time
             status = "error"
-            
+
             # Record error metrics
             followup_requests_total.labels(
                 method=method, topic=topic, language=language, status=status
@@ -676,7 +678,7 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
             followup_generation_duration.labels(
                 method=method, topic=topic, language=language
             ).observe(duration)
-            
+
             logger.error(
                 f"❌ [Followups] Failed to generate follow-ups: {e}",
                 extra={
@@ -691,7 +693,7 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                 },
                 exc_info=True,
             )
-            
+
             # Fallback to topic-based on error
             try:
                 fallback_result = self.get_topic_based_followups(query, response, topic, language)
@@ -747,7 +749,7 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                 ),
             },
         }
-        
+
         logger.debug(
             "🏥 [Followups] Health check",
             extra={
@@ -756,5 +758,5 @@ REMEMBER: Questions MUST be in the same language as the user's original query.""
                 "health_data": health_data,
             },
         )
-        
+
         return health_data

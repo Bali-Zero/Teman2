@@ -17,7 +17,7 @@ import logging
 import time
 from typing import Any
 
-from backend.services.rag.agentic.kg_enhanced_retrieval import KGEnhancedRetrieval
+from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.llm_clients.pricing import TokenUsage
@@ -464,12 +464,12 @@ class OrchestratorCore:
 
         return None
 
-    async def prepare_react_execution(
+    async def _prepare_react_loop(
         self,
         query: str,
         user_context: dict[str, Any],
         history: list[dict],
-        extracted_entities: dict[str, Any],
+        extracted_entities: dict[str, Any],  # TODO: Remove if not needed (legacy parameter)
         deep_think_mode: bool = False,
     ) -> tuple[str, bool, AgentState, str]:
         """
