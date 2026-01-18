@@ -73,9 +73,6 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarProps) {
   const pathname = usePathname();
-  // #region agent log
-  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppSidebar.tsx:75',message:'AppSidebar render',data:{pathname,hasUser:!!user},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {

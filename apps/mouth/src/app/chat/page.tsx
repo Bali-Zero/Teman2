@@ -36,11 +36,6 @@ import { Toast } from '@/components/chat/Toast';
  * - No business logic (all in hooks)
  */
 export default function ChatPage() {
-  // #region agent log
-  const logRender = {location:'chat/page.tsx:38',message:'ChatPage render entry',data:{pathname:typeof window!=='undefined'?window.location.pathname:'SSR'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
-  console.log('[DEBUG]', logRender);
-  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logRender)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-  // #endregion
   const {
     // State
     isInitialLoading,
@@ -78,11 +73,6 @@ export default function ChatPage() {
     setToast,
     setImageModalOpen,
   } = useChatPage();
-  // #region agent log
-  const logAfterHook = {location:'chat/page.tsx:75',message:'useChatPage hook completed',data:{isInitialLoading,userName,hasUserAvatar:!!userAvatar,displayMessagesCount:displayMessages.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
-  console.log('[DEBUG]', logAfterHook);
-  if(typeof window!=='undefined')fetch('http://127.0.0.1:7244/ingest/c653ea36-ca67-44be-acf7-89137013d04b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logAfterHook)}).catch((e)=>console.error('[DEBUG] Log failed:',e));
-  // #endregion
 
   // Loading state
   if (isInitialLoading) {
