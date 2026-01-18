@@ -68,8 +68,8 @@ export interface UseChatPageReturn {
   imageModalOpen: boolean;
   
   // Refs
-  messagesEndRef: React.RefObject<HTMLDivElement>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   isMountedRef: React.MutableRefObject<boolean>;
   
   // Hooks
@@ -402,13 +402,21 @@ export function useChatPage(): UseChatPageReturn {
           setMessages(
             conv.messages
               .filter(isApiConversationMessage)
-              .map((m): ChatMessage => ({
-                id: m.id || generateId(),
-                role: (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as 'user' | 'assistant',
-                content: m.content || '',
-                timestamp: m.timestamp ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date) : new Date(),
-                sources: m.sources,
-            }))
+              .map((m): ChatMessage => {
+                const role = (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as 'user' | 'assistant';
+                const timestamp = m.timestamp ? (typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp as Date) : new Date();
+                const sources: Source[] | undefined = m.sources?.map((s: { title?: string; content?: string }) => ({
+                  title: s.title || '',
+                  content: s.content,
+                }));
+                return {
+                  id: m.id || generateId(),
+                  role,
+                  content: m.content || '',
+                  timestamp,
+                  sources,
+                };
+              })
           );
           if (conv.session_id) setSessionId(conv.session_id);
 

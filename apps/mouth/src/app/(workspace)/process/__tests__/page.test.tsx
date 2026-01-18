@@ -61,9 +61,11 @@ const mockPractices: Practice[] = [
     client_id: 101,
     client_name: 'John Doe',
     client_lead: 'zero@balizero.com',
+    practice_type_id: 1,
     practice_type_code: 'kitas_application',
     status: 'inquiry',
     priority: 'normal',
+    payment_status: 'pending',
     notes: 'KITAS application for tech startup founder',
     created_at: '2026-01-01T10:00:00Z',
     updated_at: '2026-01-01T10:00:00Z',
@@ -73,9 +75,11 @@ const mockPractices: Practice[] = [
     client_id: 102,
     client_name: 'Jane Smith',
     client_lead: 'dea@balizero.com',
+    practice_type_id: 2,
     practice_type_code: 'kitap_application',
     status: 'quotation_sent',
     priority: 'high',
+    payment_status: 'pending',
     notes: 'KITAP renewal for long-term resident',
     created_at: '2026-01-02T10:00:00Z',
     updated_at: '2026-01-02T10:00:00Z',
@@ -85,9 +89,11 @@ const mockPractices: Practice[] = [
     client_id: 103,
     client_name: 'Bob Johnson',
     client_lead: 'anton@balizero.com',
+    practice_type_id: 3,
     practice_type_code: 'property_purchase',
     status: 'in_progress',
     priority: 'normal',
+    payment_status: 'pending',
     notes: 'Villa purchase in Canggu',
     created_at: '2026-01-03T10:00:00Z',
     updated_at: '2026-01-03T10:00:00Z',
@@ -97,9 +103,11 @@ const mockPractices: Practice[] = [
     client_id: 104,
     client_name: 'Alice Williams',
     client_lead: 'zero@balizero.com',
+    practice_type_id: 4,
     practice_type_code: 'pt_pma_setup',
     status: 'completed',
     priority: 'high',
+    payment_status: 'paid',
     notes: 'PT PMA for consulting business',
     created_at: '2026-01-04T10:00:00Z',
     updated_at: '2026-01-04T10:00:00Z',
@@ -112,7 +120,12 @@ describe('Cases Page', () => {
     mockPush.mockClear();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(api.crm.getPractices).mockResolvedValue(mockPractices);
-    vi.mocked(api.getProfile).mockResolvedValue({ email: 'zero@balizero.com' });
+    vi.mocked(api.getProfile).mockResolvedValue({
+      id: '1',
+      email: 'zero@balizero.com',
+      name: 'Test User',
+      role: 'admin'
+    });
     (analytics.initializeAnalytics as any) = vi.fn();
     (analytics.trackViewModeChange as any) = vi.fn();
     (analytics.trackFilterApplied as any) = vi.fn();

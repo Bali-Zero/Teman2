@@ -19,10 +19,11 @@ vi.mock('@tanstack/react-virtual', () => ({
 describe('ClientKanban Virtualization', () => {
   const mockClients: Client[] = Array.from({ length: 25 }, (_, i) => ({
     id: i + 1,
+    uuid: `uuid-${i + 1}`,
     full_name: `Client ${i + 1}`,
     email: `client${i + 1}@example.com`,
-    status: i % 5 === 0 ? 'active' : 'lead',
-    created_at: new Date().toISOString(),
+    status: (i % 5 === 0 ? 'active' : 'lead') as Client['status'],
+    client_type: 'individual' as const,
   }));
 
   it('should render without errors', () => {
