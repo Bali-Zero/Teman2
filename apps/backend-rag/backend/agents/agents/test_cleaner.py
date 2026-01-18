@@ -819,7 +819,12 @@ async def main():
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--no-dry-run", action="store_true", help="Perform actual cleanup")
     parser.add_argument("--aggressive", action="store_true", help="Use aggressive cleanup criteria")
-    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
+    parser.add_argument(
+        "--provider",
+        default="local",
+        choices=["local", "mock"],
+        help="LLM Provider (local=Qwen, mock=Mock)",
+    )
     parser.add_argument("--report", help="Save report to file")
 
     args = parser.parse_args()
@@ -842,20 +847,20 @@ async def main():
         if args.report:
             with open(args.report, "w") as f:
                 f.write(report)
-            print(f"📄 Report saved to: {args.report}")
+            logger.info(f"📄 Report saved to: {args.report}")
         else:
-            print("\n" + report)
+            logger.info("\n" + report)
 
         # Print summary
-        print("\n🧹 Test Cleanup Summary:")
-        print(f"Files analyzed: {result['files_analyzed']}")
-        print(f"Orphans found: {result['orphans_found']}")
-        print(f"Duplicates found: {result['duplicates_found']}")
-        print(f"Useless tests: {result['useless_tests_found']}")
-        print(f"Recommendations: {len(result['recommendations'])}")
+        logger.info("\n🧹 Test Cleanup Summary:")
+        logger.info(f"Files analyzed: {result['files_analyzed']}")
+        logger.info(f"Orphans found: {result['orphans_found']}")
+        logger.info(f"Duplicates found: {result['duplicates_found']}")
+        logger.info(f"Useless tests: {result['useless_tests_found']}")
+        logger.info(f"Recommendations: {len(result['recommendations'])}")
         if not args.no_dry_run:
-            print(f"Files archived: {agent.stats['files_archived']}")
-            print(f"Space freed: {agent.stats['space_freed']} bytes")
+            logger.info(f"Files archived: {agent.stats['files_archived']}")
+            logger.info(f"Space freed: {agent.stats['space_freed']} bytes")
 
         # Save metrics if available
         if agent.metrics_collector:

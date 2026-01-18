@@ -37,13 +37,13 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_initialize(self, unified_health_service):
         """Test initializing HTTP and Redis clients"""
-        with patch("httpx.AsyncClient") as mock_client:
-            with patch(
-                "backend.services.monitoring.unified_health_service.settings"
-            ) as mock_settings:
-                mock_settings.redis_url = None
-                await unified_health_service.initialize()
-                assert unified_health_service.http_client is not None
+        with (
+            patch("httpx.AsyncClient") as mock_client,
+            patch("backend.services.monitoring.unified_health_service.settings") as mock_settings,
+        ):
+            mock_settings.redis_url = None
+            await unified_health_service.initialize()
+            assert unified_health_service.http_client is not None
 
     @pytest.mark.asyncio
     async def test_close(self, unified_health_service):

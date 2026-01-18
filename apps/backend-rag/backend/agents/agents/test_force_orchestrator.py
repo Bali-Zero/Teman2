@@ -32,7 +32,7 @@ try:
 
     TEST_FORCE_AVAILABLE = True
 except ImportError as e:
-    print(f"❌ Test Force imports failed: {e}")
+    logger.info(f"❌ Test Force imports failed: {e}")
     TEST_FORCE_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -201,7 +201,9 @@ class TestForceOrchestrator:
 
                 # Execute all tasks in parallel
                 if tasks:
-                    task_results = await asyncio.gather(*[task[1] for task in tasks], return_exceptions=True)
+                    task_results = await asyncio.gather(
+                        *[task[1] for task in tasks], return_exceptions=True
+                    )
                     for (agent_name, _), result in zip(tasks, task_results):
                         if isinstance(result, Exception):
                             logger.error(f"❌ {agent_name} failed: {result}")
@@ -497,7 +499,12 @@ async def main():
 
     parser = argparse.ArgumentParser(description="Test Force Orchestrator")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
-    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
+    parser.add_argument(
+        "--provider",
+        default="local",
+        choices=["local", "mock"],
+        help="LLM Provider (local=Qwen, mock=Mock)",
+    )
     parser.add_argument(
         "--coverage-target", type=float, default=99.0, help="Coverage target percentage"
     )
@@ -592,22 +599,22 @@ async def main():
         if args.output:
             with open(args.output, "w") as f:
                 f.write(report)
-            print(f"📄 Report saved to: {args.output}")
+            logger.info(f"📄 Report saved to: {args.output}")
         else:
-            print("\n" + report)
+            logger.info("\n" + report)
 
         # Save metrics if requested
         if args.save_metrics and orchestrator.metrics_collector:
             snapshot_file = orchestrator.metrics_collector.save_snapshot()
-            print(f"📊 Metrics saved to: {snapshot_file}")
+            logger.info(f"📊 Metrics saved to: {snapshot_file}")
 
         # Print summary
         if args.mode == "scan":
             summary = result.get("summary", {})
-            print("\n🎭 Test Force Summary:")
-            print(f"Duration: {summary.get('total_duration', 0):.2f}s")
-            print(f"Agents run: {summary.get('agents_run', 0)}")
-            print(f"Success: {summary.get('overall_success', False)}")
+            logger.info("\n🎭 Test Force Summary:")
+            logger.info(f"Duration: {summary.get('total_duration', 0):.2f}s")
+            logger.info(f"Agents run: {summary.get('agents_run', 0)}")
+            logger.info(f"Success: {summary.get('overall_success', False)}")
 
     finally:
         await orchestrator.cleanup()

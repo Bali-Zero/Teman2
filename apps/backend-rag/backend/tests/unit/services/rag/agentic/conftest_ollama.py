@@ -52,21 +52,18 @@ else:
 @pytest.fixture(scope="session")
 def ollama_available():
     """Check if Ollama is available - always try to ensure it's ready"""
-    import subprocess
     import os
-    
+    import subprocess
+
     # Try to ensure Ollama is ready
     script_dir = Path(__file__).parent.parent.parent.parent.parent.parent.parent / "scripts"
     ensure_script = script_dir / "ensure_ollama_ready.sh"
-    
+
     if ensure_script.exists():
         try:
             # Run ensure script (non-blocking check)
             result = subprocess.run(
-                [str(ensure_script)],
-                capture_output=True,
-                timeout=10,
-                cwd=str(script_dir.parent)
+                [str(ensure_script)], capture_output=True, timeout=10, cwd=str(script_dir.parent)
             )
             if result.returncode == 0:
                 # Ollama is ready
@@ -74,7 +71,7 @@ def ollama_available():
         except Exception:
             # Script failed, try direct check
             pass
-    
+
     # Check if Ollama is available
     try:
         provider = OllamaProvider(model=os.getenv("OLLAMA_MODEL", "qwen2.5:latest"))
@@ -97,15 +94,16 @@ def llm_gateway_with_ollama(ollama_available, ollama_provider):
     if ollama_available and ollama_provider:
         # Use real Ollama provider wrapped in LLMGateway-like interface
         gateway = MagicMock(spec=LLMGateway)
-        
+
         async def send_message_real(*args, **kwargs):
             """Real Ollama call"""
             messages = kwargs.get("conversation_messages", [])
             if not messages and args:
                 # Convert to LLMMessage format
                 from backend.llm.base import LLMMessage
+
                 messages = [LLMMessage(role="user", content=str(args[1]))]
-            
+
             response = await ollama_provider.generate(messages)
             return (
                 response.content,
@@ -113,7 +111,7 @@ def llm_gateway_with_ollama(ollama_available, ollama_provider):
                 MagicMock(),
                 MagicMock(total_tokens=response.total_tokens),
             )
-        
+
         gateway.send_message = send_message_real
         gateway.create_chat_with_history = MagicMock(return_value=MagicMock())
         return gateway

@@ -6,7 +6,6 @@ Uses local Qwen LLM to analyze codebase and generate comprehensive test coverage
 
 import ast
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -36,7 +35,8 @@ class IntelligentCoverageGenerator:
                     models = response.json().get("models", [])
                     model_names = [m.get("name", "") for m in models]
                     self.ollama_available = any(
-                        OLLAMA_MODEL in name or name in OLLAMA_MODEL for name in model_names
+                        OLLAMA_MODEL in name or name in OLLAMA_MODEL
+                        for name in model_names
                     )
                     if self.ollama_available:
                         print(f"✅ Ollama available with model: {OLLAMA_MODEL}")
@@ -101,7 +101,9 @@ class IntelligentCoverageGenerator:
                             methods[node.name].append(item.name)
                 elif isinstance(node, ast.FunctionDef):
                     # Check if it's a top-level function
-                    if not any(isinstance(parent, ast.ClassDef) for parent in ast.walk(tree)):
+                    if not any(
+                        isinstance(parent, ast.ClassDef) for parent in ast.walk(tree)
+                    ):
                         functions.append(node.name)
 
             return {
@@ -129,10 +131,10 @@ class IntelligentCoverageGenerator:
 
         prompt = f"""Generate comprehensive pytest unit tests for this Python module:
 
-File: {module_info['file']}
-Classes: {', '.join(module_info.get('classes', []))}
-Functions: {', '.join(module_info.get('functions', []))}
-Methods: {json.dumps(module_info.get('methods', {}), indent=2)}
+File: {module_info["file"]}
+Classes: {", ".join(module_info.get("classes", []))}
+Functions: {", ".join(module_info.get("functions", []))}
+Methods: {json.dumps(module_info.get("methods", {}), indent=2)}
 
 Requirements:
 1. 100% code coverage target
@@ -194,7 +196,9 @@ Focus on:
         print(f"\n📊 Found {len(gaps)} modules without tests")
 
         for i, module_info in enumerate(gaps[:limit]):
-            print(f"\n[{i+1}/{min(len(gaps), limit)}] Generating test for {module_info['file']}...")
+            print(
+                f"\n[{i + 1}/{min(len(gaps), limit)}] Generating test for {module_info['file']}..."
+            )
 
             test_code = self.generate_test_with_qwen(module_info)
             if test_code:

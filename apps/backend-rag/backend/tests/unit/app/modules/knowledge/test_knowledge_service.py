@@ -43,25 +43,23 @@ def mock_router():
 @pytest.fixture
 def knowledge_service(mock_qdrant_client, mock_router):
     """Create KnowledgeService instance with mocked dependencies"""
-    with patch(
-        "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+    with (
+        patch(
+            "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+        ),
+        patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+        patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router),
     ):
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            with patch(
-                "backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router
-            ):
-                mock_embedder_instance = MagicMock()
-                mock_embedder_instance.provider = "test"
-                mock_embedder_instance.dimensions = 384
-                mock_embedder_instance.generate_query_embedding = MagicMock(
-                    return_value=[0.1] * 384
-                )
-                mock_embedder.return_value = mock_embedder_instance
-                service = KnowledgeService()
-                # Replace all collections with mocked client
-                for key in service.collections:
-                    service.collections[key] = mock_qdrant_client
-                return service
+        mock_embedder_instance = MagicMock()
+        mock_embedder_instance.provider = "test"
+        mock_embedder_instance.dimensions = 384
+        mock_embedder_instance.generate_query_embedding = MagicMock(return_value=[0.1] * 384)
+        mock_embedder.return_value = mock_embedder_instance
+        service = KnowledgeService()
+        # Replace all collections with mocked client
+        for key in service.collections:
+            service.collections[key] = mock_qdrant_client
+        return service
 
 
 class TestKnowledgeService:

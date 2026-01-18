@@ -483,11 +483,11 @@ def generate_html_report(comparison: Dict, output_path: str) -> None:
       <tr><td>Scales</td><td>{", ".join(qdrant.get("scales", [])) if qdrant.get("scales") else "N/A"}</td></tr>
       <tr><td>Sources</td><td>{", ".join(qdrant.get("sources", [])) if qdrant.get("sources") else "N/A"}</td></tr>
       <tr><td>Persyaratan (count)</td><td>{len(qdrant.get("persyaratan", []))}</td></tr>
-      <tr><td>Kewajiban (count)</td><td>{len(qdrant.get('kewajiban', []))}</td></tr>
-      <tr><td>Kewenangan (count)</td><td>{len(qdrant.get('kewenangan', []))}</td></tr>
+      <tr><td>Kewajiban (count)</td><td>{len(qdrant.get("kewajiban", []))}</td></tr>
+      <tr><td>Kewenangan (count)</td><td>{len(qdrant.get("kewenangan", []))}</td></tr>
     </table>
-    {f"<h3>Persyaratan da Qdrant ({len(qdrant.get('persyaratan', []))}):</h3><ol>{''.join([f'<li>{p}</li>' for p in qdrant.get('persyaratan', [])[:10]])}</ol>" if qdrant.get('persyaratan') else ""}
-    {f"<h3>Kewajiban da Qdrant ({len(qdrant.get('kewajiban', []))}):</h3><ol>{''.join([f'<li>{k}</li>' for k in qdrant.get('kewajiban', [])[:10]])}</ol>" if qdrant.get('kewajiban') else ""}
+    {f"<h3>Persyaratan da Qdrant ({len(qdrant.get('persyaratan', []))}):</h3><ol>{''.join([f'<li>{p}</li>' for p in qdrant.get('persyaratan', [])[:10]])}</ol>" if qdrant.get("persyaratan") else ""}
+    {f"<h3>Kewajiban da Qdrant ({len(qdrant.get('kewajiban', []))}):</h3><ol>{''.join([f'<li>{k}</li>' for k in qdrant.get('kewajiban', [])[:10]])}</ol>" if qdrant.get("kewajiban") else ""}
   </div>
 
   <div class="source-section">

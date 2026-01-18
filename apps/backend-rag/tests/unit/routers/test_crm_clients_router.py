@@ -52,7 +52,7 @@ def mock_dependencies(monkeypatch):
     monkeypatch.setitem(sys.modules, "scipy", scipy_mock)
     scipy_sparse_mock = types.ModuleType("scipy.sparse")
     monkeypatch.setitem(sys.modules, "scipy.sparse", scipy_sparse_mock)
-    
+
     sklearn_mock = types.ModuleType("sklearn")
     monkeypatch.setitem(sys.modules, "sklearn", sklearn_mock)
     sklearn_metrics_mock = types.ModuleType("sklearn.metrics")
@@ -65,31 +65,35 @@ def mock_dependencies(monkeypatch):
     google_mock = types.ModuleType("google")
     google_mock.__path__ = []
     monkeypatch.setitem(sys.modules, "google", google_mock)
-    
+
     google_api_core_mock = types.ModuleType("google.api_core")
     google_api_core_mock.__path__ = []
     monkeypatch.setitem(sys.modules, "google.api_core", google_api_core_mock)
-    
+
     google_api_core_exceptions_mock = types.ModuleType("google.api_core.exceptions")
-    google_api_core_exceptions_mock.ResourceExhausted = type('ResourceExhausted', (Exception,), {})
-    google_api_core_exceptions_mock.ServiceUnavailable = type('ServiceUnavailable', (Exception,), {})
+    google_api_core_exceptions_mock.ResourceExhausted = type("ResourceExhausted", (Exception,), {})
+    google_api_core_exceptions_mock.ServiceUnavailable = type(
+        "ServiceUnavailable", (Exception,), {}
+    )
     monkeypatch.setitem(sys.modules, "google.api_core.exceptions", google_api_core_exceptions_mock)
 
     google_protobuf_mock = types.ModuleType("google.protobuf")
     google_protobuf_mock.message_factory = MagicMock()
     google_protobuf_mock.symbol_database = MagicMock()
     monkeypatch.setitem(sys.modules, "google.protobuf", google_protobuf_mock)
-    monkeypatch.setitem(sys.modules, "google.protobuf.symbol_database", google_protobuf_mock.symbol_database)
+    monkeypatch.setitem(
+        sys.modules, "google.protobuf.symbol_database", google_protobuf_mock.symbol_database
+    )
 
     # Mock other nested dependencies
     attr_mock = types.ModuleType("attr")
     attr_mock.converters = MagicMock()
     monkeypatch.setitem(sys.modules, "attr", attr_mock)
     monkeypatch.setitem(sys.modules, "attr.converters", attr_mock.converters)
-    
+
     attrs_mock = types.ModuleType("attrs")
     monkeypatch.setitem(sys.modules, "attrs", attrs_mock)
-    
+
     jsonschema_mock = types.ModuleType("jsonschema")
     monkeypatch.setitem(sys.modules, "jsonschema", jsonschema_mock)
 
@@ -103,10 +107,13 @@ def mock_dependencies(monkeypatch):
         def decorator(f):
             # For functions being bypassed with .__wrapped__ in tests
             import functools
+
             @functools.wraps(f)
             async def wrapper(*args, **kwargs):
                 return await f(*args, **kwargs)
+
             return wrapper
+
         return decorator
 
     # Mock Metrics
@@ -127,11 +134,19 @@ def mock_dependencies(monkeypatch):
 
     # Mock Dependencies to avoid cascading imports
     deps_mock = types.ModuleType("backend.app.dependencies")
-    def get_current_user_mock(): pass
-    def get_database_pool_mock(): pass
-    def get_optional_database_pool_mock(): pass
-    def get_orchestrator_mock(): pass
-    
+
+    def get_current_user_mock():
+        pass
+
+    def get_database_pool_mock():
+        pass
+
+    def get_optional_database_pool_mock():
+        pass
+
+    def get_orchestrator_mock():
+        pass
+
     deps_mock.get_current_user = get_current_user_mock
     deps_mock.get_database_pool = get_database_pool_mock
     deps_mock.get_optional_database_pool = get_optional_database_pool_mock
@@ -175,11 +190,10 @@ def mock_dependencies(monkeypatch):
         "SessionService",
     ]:
         setattr(services_misc_mock, service, MagicMock())
-    
+
     monkeypatch.setitem(sys.modules, "backend.services.misc", services_misc_mock)
     # Also mock the top-level services package to prevent its __init__.py from running
     monkeypatch.setitem(sys.modules, "backend.services", MagicMock())
-
 
     crm_metrics_mock = types.ModuleType("backend.app.services.crm.metrics")
     crm_metrics_mock.metrics_collector = MagicMock()
@@ -199,17 +213,22 @@ def mock_dependencies(monkeypatch):
     monkeypatch.setitem(sys.modules, "backend.app.utils.crm_utils", crm_utils_mock)
 
     error_handlers_mock = types.ModuleType("backend.app.utils.error_handlers")
+
     def handle_database_error_mock(e):
         import asyncpg
+
         if isinstance(e, HTTPException):
             return e
         if isinstance(e, asyncpg.UniqueViolationError):
-            return HTTPException(status_code=400, detail="A record with this information already exists")
+            return HTTPException(
+                status_code=400, detail="A record with this information already exists"
+            )
         if isinstance(e, asyncpg.ForeignKeyViolationError):
             return HTTPException(status_code=400, detail="Referenced record does not exist")
         if isinstance(e, asyncpg.PostgresError):
             return HTTPException(status_code=503, detail="Database service temporarily unavailable")
         return HTTPException(status_code=500, detail="Internal server error")
+
     error_handlers_mock.handle_database_error = handle_database_error_mock
     monkeypatch.setitem(sys.modules, "backend.app.utils.error_handlers", error_handlers_mock)
 
@@ -228,7 +247,6 @@ def mock_dependencies(monkeypatch):
     cache_mock.cached = mock_decorator
     monkeypatch.setitem(sys.modules, "backend.core.cache", cache_mock)
 
-
     # Mock redis_client
     redis_mock = types.ModuleType("backend.core.redis_client")
     redis_mock.redis_client = MagicMock()
@@ -246,6 +264,7 @@ class TestClientCreateValidation:
     def test_valid_client_create(self):
         """Test creating valid ClientCreate instance"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(
@@ -263,6 +282,7 @@ class TestClientCreateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
@@ -275,6 +295,7 @@ class TestClientCreateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
@@ -287,6 +308,7 @@ class TestClientCreateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         long_name = "A" * 201
@@ -298,6 +320,7 @@ class TestClientCreateValidation:
     def test_client_create_name_trimmed(self):
         """Test full_name is trimmed of whitespace"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="  John Doe  ")
@@ -306,6 +329,7 @@ class TestClientCreateValidation:
     def test_client_create_defaults(self):
         """Test default values are set correctly"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="John Doe")
@@ -316,6 +340,7 @@ class TestClientCreateValidation:
     def test_client_create_empty_email_to_none(self):
         """Test empty email string is converted to None"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="John Doe", email="")
@@ -324,6 +349,7 @@ class TestClientCreateValidation:
     def test_client_create_whitespace_email_to_none(self):
         """Test whitespace-only email is converted to None"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="John Doe", email="   ")
@@ -332,6 +358,7 @@ class TestClientCreateValidation:
     def test_client_create_empty_passport_expiry_to_none(self):
         """Test empty passport_expiry string is converted to None"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="John Doe", passport_expiry="")
@@ -340,6 +367,7 @@ class TestClientCreateValidation:
     def test_client_create_empty_date_of_birth_to_none(self):
         """Test empty date_of_birth string is converted to None"""
         import backend.app.routers.crm_clients
+
         ClientCreate = backend.app.routers.crm_clients.ClientCreate
 
         client = ClientCreate(full_name="John Doe", date_of_birth="")
@@ -352,6 +380,7 @@ class TestClientUpdateValidation:
     def test_valid_client_update(self):
         """Test creating valid ClientUpdate instance"""
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         update = ClientUpdate(full_name="Jane Doe", email="jane@example.com", status="active")
@@ -363,6 +392,7 @@ class TestClientUpdateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
@@ -375,6 +405,7 @@ class TestClientUpdateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
@@ -387,6 +418,7 @@ class TestClientUpdateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
@@ -399,6 +431,7 @@ class TestClientUpdateValidation:
         from pydantic import ValidationError
 
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         long_name = "A" * 201
@@ -410,6 +443,7 @@ class TestClientUpdateValidation:
     def test_client_update_name_trimmed(self):
         """Test full_name is trimmed of whitespace"""
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         update = ClientUpdate(full_name="  Jane Doe  ")
@@ -418,6 +452,7 @@ class TestClientUpdateValidation:
     def test_client_update_all_fields_none(self):
         """Test all fields can be None"""
         import backend.app.routers.crm_clients
+
         ClientUpdate = backend.app.routers.crm_clients.ClientUpdate
 
         update = ClientUpdate()
@@ -494,7 +529,9 @@ def test_app(mock_db_pool):
     - get_current_user accepts Request and credentials parameters
     - Set app.state.db_pool for get_database_pool to access
     """
-    from backend.app.routers.crm_clients import router, get_current_user as router_get_current_user, get_database_pool as router_get_database_pool
+    from backend.app.routers.crm_clients import get_current_user as router_get_current_user
+    from backend.app.routers.crm_clients import get_database_pool as router_get_database_pool
+    from backend.app.routers.crm_clients import router
 
     app = FastAPI()
     app.include_router(router)
@@ -555,7 +592,7 @@ class TestCreateClient:
 
         # Assertions
         if response.status_code == 422:
-            print(f"DEBUG: 422 Error Detail: {response.json()}")
+            logger.info(f"DEBUG: 422 Error Detail: {response.json()}")
         assert response.status_code == 200
         data = response.json()
         assert data["full_name"] == "John Doe"

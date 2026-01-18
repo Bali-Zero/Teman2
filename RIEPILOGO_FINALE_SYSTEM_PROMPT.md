@@ -3,21 +3,25 @@
 ## 🎯 COSA È STATO FATTO
 
 ### **1. System Prompt Support Aggiunto** ✅
+
 - ✅ Campo `system` aggiunto a `LLMRequest`
 - ✅ System prompt inviato a Ollama/Qwen
 - ✅ File di configurazione creato
 
 ### **2. File di Configurazione** ✅
+
 ```
 apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ```
 
 Contiene:
+
 - `TEST_GENERATION_SYSTEM_PROMPT_BACKEND` - Per test Python
 - `TEST_GENERATION_SYSTEM_PROMPT_FRONTEND` - Per test TypeScript/React
 - `DEFAULT_SYSTEM_PROMPT` - Generico
 
 ### **3. Integrazione nel Sistema** ✅
+
 - ✅ Unified Test Force Orchestrator usa system prompt
 - ✅ LLM Adapter invia system prompt a Ollama
 - ✅ System prompt selezionato automaticamente per tipo componente
@@ -27,11 +31,13 @@ Contiene:
 ## 📝 COME MODIFICARE
 
 ### **Modifica System Prompt:**
+
 ```bash
 code apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ```
 
 ### **Modifica le regole che vuoi:**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """Sei un esperto sviluppatore Python...
 
@@ -42,6 +48,7 @@ TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """Sei un esperto sviluppatore Python...
 ```
 
 ### **Riavvia sistema:**
+
 ```bash
 ./scripts/unified_test_force.sh
 ```
@@ -67,6 +74,7 @@ TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """Sei un esperto sviluppatore Python...
 ## ✅ TUTTO PRONTO!
 
 Il sistema ora:
+
 - ✅ Supporta system prompt
 - ✅ System prompt configurabile
 - ✅ Documentazione completa

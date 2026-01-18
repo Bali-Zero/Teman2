@@ -50,7 +50,7 @@ export default function PostgresPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredTables = tables.filter(t => (t.table_name || '').toLowerCase().includes(search.toLowerCase()));
+  const filteredTables = tables.filter(t => (t.name || '').toLowerCase().includes(search.toLowerCase()));
 
   // Group tables
   const grouped: Record<string, typeof tables> = {
@@ -62,7 +62,7 @@ export default function PostgresPage() {
   };
 
   filteredTables.forEach(table => {
-    const name = (table.table_name || '').toLowerCase();
+    const name = (table.name || '').toLowerCase();
     if (CATEGORIES.crm.match(name)) grouped.crm.push(table);
     else if (CATEGORIES.ops.match(name)) grouped.ops.push(table);
     else if (CATEGORIES.knowledge.match(name)) grouped.knowledge.push(table);
@@ -80,6 +80,7 @@ export default function PostgresPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
+      {/* ... Header ... */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">PostgreSQL Tables</h1>
@@ -125,17 +126,17 @@ export default function PostgresPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sectionTables.map((table: any) => (
-                    <Link key={table.table_name} href={`/postgres/${table.table_name}`} className="block group">
+                    <Link key={table.name} href={`/postgres/${table.name}`} className="block group">
                       <Card className="hover:border-primary/50 transition-colors h-full">
                         <CardContent className="p-4 flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Database className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <span className="font-medium truncate max-w-[180px]" title={table.table_name}>
-                              {table.table_name}
+                            <span className="font-medium truncate max-w-[180px] text-foreground" title={table.name}>
+                              {table.name}
                             </span>
                           </div>
                           <Badge variant="outline" className="text-xs font-mono">
-                            {parseInt(table.row_count) > 1000 ? `${(parseInt(table.row_count)/1000).toFixed(1)}k` : table.row_count} rows
+                            {parseInt(table.count) > 1000 ? `${(parseInt(table.count)/1000).toFixed(1)}k` : table.count} rows
                           </Badge>
                         </CardContent>
                       </Card>

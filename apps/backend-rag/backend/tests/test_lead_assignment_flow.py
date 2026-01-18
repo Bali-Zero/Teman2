@@ -19,7 +19,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
@@ -27,7 +27,6 @@ import pytest
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.services.crm.auto_crm_service import AutoCRMService
 from backend.services.crm.lead_assignment_agent import (
     LeadAssignmentState,
     assign_lead,
@@ -62,9 +61,7 @@ async def db_pool():
 def telegram_service():
     """Mock Telegram service"""
     service = AsyncMock()
-    service.send_message = AsyncMock(
-        return_value={"ok": True, "result": {"message_id": 123}}
-    )
+    service.send_message = AsyncMock(return_value={"ok": True, "result": {"message_id": 123}})
     return service
 
 
@@ -131,9 +128,7 @@ async def test_check_duplicates_email_match(db_pool):
 
     # Mock: existing client found with same email
     conn = await db_pool.acquire().__aenter__()
-    conn.fetchrow = AsyncMock(
-        return_value={"id": 1, "assigned_to": "lead@balizero.com"}
-    )
+    conn.fetchrow = AsyncMock(return_value={"id": 1, "assigned_to": "lead@balizero.com"})
 
     result = await check_duplicates(state, db_pool)
 
@@ -285,12 +280,21 @@ async def test_full_lead_assignment_workflow(db_pool, telegram_service, sample_c
     conn = await db_pool.acquire().__aenter__()
 
     # Step 1: No duplicates
-    conn.fetchrow = AsyncMock(side_effect=[
-        None,  # check email duplicate
-        None,  # check phone duplicate
-        {"email": "specialist@balizero.com", "full_name": "KITAS Specialist", "active_practices": 2},  # assign lead
-        {"telegram_chat_id": 987654321, "full_name": "KITAS Specialist"},  # get telegram chat_id
-    ])
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            None,  # check email duplicate
+            None,  # check phone duplicate
+            {
+                "email": "specialist@balizero.com",
+                "full_name": "KITAS Specialist",
+                "active_practices": 2,
+            },  # assign lead
+            {
+                "telegram_chat_id": 987654321,
+                "full_name": "KITAS Specialist",
+            },  # get telegram chat_id
+        ]
+    )
     conn.execute = AsyncMock()
 
     # Execute workflow
@@ -353,8 +357,14 @@ async def run_manual_tests():
         ("Specialty Matching", test_assign_lead_specialty_match(db_pool)),
         ("Duplicate Assignment", test_assign_lead_duplicate_uses_existing(db_pool)),
         ("Telegram Success", test_send_telegram_notification_success(db_pool, telegram_service)),
-        ("Telegram No Chat ID", test_send_telegram_notification_no_chat_id(db_pool, telegram_service)),
-        ("Full Workflow", test_full_lead_assignment_workflow(db_pool, telegram_service, sample_client_data)),
+        (
+            "Telegram No Chat ID",
+            test_send_telegram_notification_no_chat_id(db_pool, telegram_service),
+        ),
+        (
+            "Full Workflow",
+            test_full_lead_assignment_workflow(db_pool, telegram_service, sample_client_data),
+        ),
     ]
 
     passed = 0

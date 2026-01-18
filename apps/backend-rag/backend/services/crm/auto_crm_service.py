@@ -138,203 +138,196 @@ class AutoCRMService:
 
         try:
             async with pool.acquire() as conn, conn.transaction():
-                    # Step 1: Batch query - Check client and get practice type in parallel
-                    # Use extracted email if not provided (will be set after extraction)
-                    check_email = user_email
+                # Step 1: Batch query - Check client and get practice type in parallel
+                # Use extracted email if not provided (will be set after extraction)
+                check_email = user_email
 
-                    # Step 2: Extract data using AI
-                    logger.info(f"🧠 Extracting CRM data from conversation {conversation_id}...")
+                # Step 2: Extract data using AI
+                logger.info(f"🧠 Extracting CRM data from conversation {conversation_id}...")
 
-                    # First check if client exists (if email provided)
-                    existing_client = None
-                    if check_email:
-                        existing_client = await conn.fetchrow(
-                            "SELECT * FROM clients WHERE email = $1", check_email
-                        )
-
-                    extracted = await self.extractor.extract_from_conversation(
-                        messages=messages,
-                        existing_client_data=dict(existing_client) if existing_client else None,
+                # First check if client exists (if email provided)
+                existing_client = None
+                if check_email:
+                    existing_client = await conn.fetchrow(
+                        "SELECT * FROM clients WHERE email = $1", check_email
                     )
 
-                    logger.info(
-                        f"📊 Extraction result: client_confidence={extracted['client']['confidence']:.2f}, practice_detected={extracted['practice_intent']['detected']}"
+                extracted = await self.extractor.extract_from_conversation(
+                    messages=messages,
+                    existing_client_data=dict(existing_client) if existing_client else None,
+                )
+
+                logger.info(
+                    f"📊 Extraction result: client_confidence={extracted['client']['confidence']:.2f}, practice_detected={extracted['practice_intent']['detected']}"
+                )
+
+                # Use extracted email if not provided
+                if not check_email and extracted["client"]["email"]:
+                    check_email = extracted["client"]["email"]
+
+                # Re-check with extracted email if needed
+                if check_email and not existing_client:
+                    existing_client = await conn.fetchrow(
+                        "SELECT * FROM clients WHERE email = $1", check_email
                     )
 
-                    # Use extracted email if not provided
-                    if not check_email and extracted["client"]["email"]:
-                        check_email = extracted["client"]["email"]
+                # Step 3: Create or update client
+                client_id = None
+                client_created = False
+                client_updated = False
 
-                    # Re-check with extracted email if needed
-                    if check_email and not existing_client:
-                        existing_client = await conn.fetchrow(
-                            "SELECT * FROM clients WHERE email = $1", check_email
-                        )
+                if existing_client:
+                    # Update existing client if extraction confidence is good
+                    client_id = existing_client["id"]
 
-                    # Step 3: Create or update client
-                    client_id = None
-                    client_created = False
-                    client_updated = False
+                    if extracted["client"]["confidence"] >= self.CLIENT_CONFIDENCE_THRESHOLD_UPDATE:
+                        # Build update query dynamically
+                        update_fields = []
+                        update_values = []
 
-                    if existing_client:
-                        # Update existing client if extraction confidence is good
-                        client_id = existing_client["id"]
+                        for field in ["full_name", "phone", "whatsapp", "nationality"]:
+                            extracted_value = extracted["client"].get(field)
+                            if extracted_value and not existing_client.get(field):
+                                update_fields.append(f"{field} = ${len(update_values) + 1}")
+                                update_values.append(extracted_value)
 
-                        if (
-                            extracted["client"]["confidence"]
-                            >= self.CLIENT_CONFIDENCE_THRESHOLD_UPDATE
-                        ):
-                            # Build update query dynamically
-                            update_fields = []
-                            update_values = []
-
-                            for field in ["full_name", "phone", "whatsapp", "nationality"]:
-                                extracted_value = extracted["client"].get(field)
-                                if extracted_value and not existing_client.get(field):
-                                    update_fields.append(f"{field} = ${len(update_values) + 1}")
-                                    update_values.append(extracted_value)
-
-                            if update_fields:
-                                update_values.append(client_id)
-                                # Fields are from hardcoded list, values are parameterized
-                                # nosemgrep: sqlalchemy-execute-raw-query
-                                update_query = f"""
+                        if update_fields:
+                            update_values.append(client_id)
+                            # Fields are from hardcoded list, values are parameterized
+                            # nosemgrep: sqlalchemy-execute-raw-query
+                            update_query = f"""
                                     UPDATE clients
                                     SET {", ".join(update_fields)}, updated_at = NOW()
                                     WHERE id = ${len(update_values)}
                                 """
-                                await conn.execute(update_query, *update_values)  # nosemgrep
-                                client_updated = True
-                                logger.info(f"✅ Updated client {client_id} with extracted data")
+                            await conn.execute(update_query, *update_values)  # nosemgrep
+                            client_updated = True
+                            logger.info(f"✅ Updated client {client_id} with extracted data")
 
-                    else:
-                        # Create new client if we have minimum data
-                        if extracted["client"][
-                            "confidence"
-                        ] >= self.CLIENT_CONFIDENCE_THRESHOLD_CREATE and (
-                            extracted["client"]["email"]
-                            or extracted["client"]["phone"]
-                            or check_email
-                        ):
-                            client_id = await conn.fetchval(
-                                """
+                else:
+                    # Create new client if we have minimum data
+                    if extracted["client"][
+                        "confidence"
+                    ] >= self.CLIENT_CONFIDENCE_THRESHOLD_CREATE and (
+                        extracted["client"]["email"] or extracted["client"]["phone"] or check_email
+                    ):
+                        client_id = await conn.fetchval(
+                            """
                                 INSERT INTO clients (
                                     full_name, email, phone, whatsapp, nationality,
                                     status, first_contact_date, created_by, last_interaction_date
                                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                                 RETURNING id
                             """,
-                                extracted["client"]["full_name"]
-                                or (check_email.split("@")[0] if check_email else "Unknown"),
-                                extracted["client"]["email"] or check_email,
-                                extracted["client"]["phone"],
-                                extracted["client"]["whatsapp"],
-                                extracted["client"]["nationality"],
-                                "prospect",
-                                datetime.now(),
-                                team_member,
-                                datetime.now(),
+                            extracted["client"]["full_name"]
+                            or (check_email.split("@")[0] if check_email else "Unknown"),
+                            extracted["client"]["email"] or check_email,
+                            extracted["client"]["phone"],
+                            extracted["client"]["whatsapp"],
+                            extracted["client"]["nationality"],
+                            "prospect",
+                            datetime.now(),
+                            team_member,
+                            datetime.now(),
+                        )
+                        client_created = True
+                        logger.info(f"✅ Created new client {client_id} from conversation")
+
+                        # NEW: Trigger Lead Assignment Agent (async, non-blocking)
+                        if self.telegram_service and pool:
+                            asyncio.create_task(
+                                self._trigger_lead_assignment_async(
+                                    client_id=client_id,
+                                    client_data={
+                                        "email": extracted["client"]["email"] or check_email,
+                                        "phone": extracted["client"]["phone"],
+                                        "full_name": extracted["client"]["full_name"]
+                                        or (
+                                            check_email.split("@")[0] if check_email else "Unknown"
+                                        ),
+                                        "practice_type_code": extracted["practice_intent"].get(
+                                            "practice_type_code"
+                                        ),
+                                    },
+                                    db_pool=pool,
+                                )
                             )
-                            client_created = True
-                            logger.info(f"✅ Created new client {client_id} from conversation")
+                            logger.info(
+                                f"🎯 Lead assignment agent triggered for client {client_id}"
+                            )
 
-                            # NEW: Trigger Lead Assignment Agent (async, non-blocking)
-                            if self.telegram_service and pool:
-                                asyncio.create_task(
-                                    self._trigger_lead_assignment_async(
-                                        client_id=client_id,
-                                        client_data={
-                                            "email": extracted["client"]["email"] or check_email,
-                                            "phone": extracted["client"]["phone"],
-                                            "full_name": extracted["client"]["full_name"]
-                                            or (
-                                                check_email.split("@")[0]
-                                                if check_email
-                                                else "Unknown"
-                                            ),
-                                            "practice_type_code": extracted["practice_intent"].get(
-                                                "practice_type_code"
-                                            ),
-                                        },
-                                        db_pool=pool,
-                                    )
-                                )
-                                logger.info(
-                                    f"🎯 Lead assignment agent triggered for client {client_id}"
-                                )
+                # Step 4: Create practice if intent detected
+                practice_id = None
+                practice_created = False
 
-                    # Step 4: Create practice if intent detected
-                    practice_id = None
-                    practice_created = False
+                if client_id and await self.extractor.should_create_practice(extracted):
+                    practice_intent = extracted["practice_intent"]
 
-                    if client_id and await self.extractor.should_create_practice(extracted):
-                        practice_intent = extracted["practice_intent"]
+                    # Batch query: Get practice type and check existing practice
+                    practice_type = await conn.fetchrow(
+                        "SELECT id, base_price FROM practice_types WHERE code = $1",
+                        practice_intent["practice_type_code"],
+                    )
 
-                        # Batch query: Get practice type and check existing practice
-                        practice_type = await conn.fetchrow(
-                            "SELECT id, base_price FROM practice_types WHERE code = $1",
-                            practice_intent["practice_type_code"],
+                    if practice_type:
+                        practice_type_id = practice_type["id"]
+                        # Convert Decimal to float if needed (asyncpg returns Decimal)
+                        base_price = (
+                            float(practice_type["base_price"])
+                            if practice_type["base_price"]
+                            else None
                         )
 
-                        if practice_type:
-                            practice_type_id = practice_type["id"]
-                            # Convert Decimal to float if needed (asyncpg returns Decimal)
-                            base_price = (
-                                float(practice_type["base_price"])
-                                if practice_type["base_price"]
-                                else None
-                            )
-
-                            # Check if similar practice already exists (avoid duplicates)
-                            existing_practice = await conn.fetchrow(
-                                """
+                        # Check if similar practice already exists (avoid duplicates)
+                        existing_practice = await conn.fetchrow(
+                            """
                                 SELECT id FROM practices
                                 WHERE client_id = $1
                                 AND practice_type_id = $2
                                 AND status IN ('inquiry', 'quotation_sent', 'payment_pending', 'in_progress')
                                 AND created_at >= NOW() - INTERVAL '7 days'
                             """,
-                                client_id,
-                                practice_type_id,
-                            )
+                            client_id,
+                            practice_type_id,
+                        )
 
-                            if not existing_practice:
-                                # Create new practice
-                                practice_id = await conn.fetchval(
-                                    """
+                        if not existing_practice:
+                            # Create new practice
+                            practice_id = await conn.fetchval(
+                                """
                                     INSERT INTO practices (
                                         client_id, practice_type_id, status, priority,
                                         quoted_price, notes, inquiry_date, created_by
                                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                                     RETURNING id
                                 """,
-                                    client_id,
-                                    practice_type_id,
-                                    "inquiry",
-                                    "high" if extracted.get("urgency") == "urgent" else "normal",
-                                    base_price,
-                                    practice_intent.get("details"),
-                                    datetime.now(),
-                                    team_member,
-                                )
-                                practice_created = True
-                                logger.info(
-                                    f"✅ Created practice {practice_id} ({practice_intent['practice_type_code']})"
-                                )
-                            else:
-                                practice_id = existing_practice["id"]
-                                logger.info(f"ℹ️  Practice already exists: {practice_id}")
+                                client_id,
+                                practice_type_id,
+                                "inquiry",
+                                "high" if extracted.get("urgency") == "urgent" else "normal",
+                                base_price,
+                                practice_intent.get("details"),
+                                datetime.now(),
+                                team_member,
+                            )
+                            practice_created = True
+                            logger.info(
+                                f"✅ Created practice {practice_id} ({practice_intent['practice_type_code']})"
+                            )
+                        else:
+                            practice_id = existing_practice["id"]
+                            logger.info(f"ℹ️  Practice already exists: {practice_id}")
 
-                    # Step 5: Log interaction and update client in single transaction
-                    conversation_summary = extracted.get("summary") or "Chat conversation"
-                    full_content = "\n\n".join(
-                        [f"{msg['role'].upper()}: {msg['content']}" for msg in messages]
-                    )
+                # Step 5: Log interaction and update client in single transaction
+                conversation_summary = extracted.get("summary") or "Chat conversation"
+                full_content = "\n\n".join(
+                    [f"{msg['role'].upper()}: {msg['content']}" for msg in messages]
+                )
 
-                    # Insert interaction
-                    # Note: 'type' and 'content' are NOT NULL columns in the DB schema
-                    interaction_id = await conn.fetchval(
-                        """
+                # Insert interaction
+                # Note: 'type' and 'content' are NOT NULL columns in the DB schema
+                interaction_id = await conn.fetchval(
+                    """
                         INSERT INTO interactions (
                             client_id, practice_id,
                             type, interaction_type, channel,
@@ -344,45 +337,45 @@ class AutoCRMService:
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                         RETURNING id
                     """,
+                    client_id,
+                    practice_id,
+                    "chat",  # type (NOT NULL)
+                    "chat",  # interaction_type
+                    "web_chat",
+                    conversation_summary[: self.SUMMARY_MAX_LENGTH],  # content (NOT NULL)
+                    conversation_summary[: self.SUMMARY_MAX_LENGTH],
+                    full_content,
+                    extracted.get("sentiment"),
+                    team_member,
+                    "inbound",
+                    extracted.get("extracted_entities", {}),
+                    extracted.get("action_items", []),
+                    datetime.now(),
+                )
+
+                # Update client last interaction if client exists
+                if client_id:
+                    await conn.execute(
+                        "UPDATE clients SET last_interaction_date = NOW() WHERE id = $1",
                         client_id,
-                        practice_id,
-                        "chat",  # type (NOT NULL)
-                        "chat",  # interaction_type
-                        "web_chat",
-                        conversation_summary[: self.SUMMARY_MAX_LENGTH],  # content (NOT NULL)
-                        conversation_summary[: self.SUMMARY_MAX_LENGTH],
-                        full_content,
-                        extracted.get("sentiment"),
-                        team_member,
-                        "inbound",
-                        extracted.get("extracted_entities", {}),
-                        extracted.get("action_items", []),
-                        datetime.now(),
                     )
 
-                    # Update client last interaction if client exists
-                    if client_id:
-                        await conn.execute(
-                            "UPDATE clients SET last_interaction_date = NOW() WHERE id = $1",
-                            client_id,
-                        )
+                result = {
+                    "success": True,
+                    "client_id": client_id,
+                    "client_created": client_created,
+                    "client_updated": client_updated,
+                    "practice_id": practice_id,
+                    "practice_created": practice_created,
+                    "interaction_id": interaction_id,
+                    "extracted_data": extracted,
+                }
 
-                    result = {
-                        "success": True,
-                        "client_id": client_id,
-                        "client_created": client_created,
-                        "client_updated": client_updated,
-                        "practice_id": practice_id,
-                        "practice_created": practice_created,
-                        "interaction_id": interaction_id,
-                        "extracted_data": extracted,
-                    }
+                logger.info(
+                    f"✅ Auto-CRM complete: client_id={client_id}, practice_id={practice_id}"
+                )
 
-                    logger.info(
-                        f"✅ Auto-CRM complete: client_id={client_id}, practice_id={practice_id}"
-                    )
-
-                    return result
+                return result
 
         except Exception as e:
             logger.error(f"❌ Auto-CRM processing failed: {e}", exc_info=True)

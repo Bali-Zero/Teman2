@@ -619,7 +619,12 @@ async def main():
     parser = argparse.ArgumentParser(description="Test Creator Agent")
     parser.add_argument("--repo", default="apps/backend-rag", help="Repository path")
     parser.add_argument("--max-files", type=int, default=10, help="Maximum files to process")
-    parser.add_argument("--provider", default="local", choices=["local", "mock"], help="LLM Provider (local=Qwen, mock=Mock)")
+    parser.add_argument(
+        "--provider",
+        default="local",
+        choices=["local", "mock"],
+        help="LLM Provider (local=Qwen, mock=Mock)",
+    )
     parser.add_argument(
         "--coverage-target", type=float, default=99.0, help="Coverage target percentage"
     )
@@ -640,11 +645,11 @@ async def main():
         result = await agent.scan_and_generate(max_files=args.max_files)
 
         # Print summary
-        print("\n🎯 Test Creation Summary:")
-        print(f"Files processed: {result['files_processed']}/{result['files_scanned']}")
-        print(f"Tests generated: {agent.stats['tests_generated']}")
-        print(f"Tests passed: {agent.stats['tests_passed']}")
-        print(f"Duration: {result['duration']:.2f}s")
+        logger.info("\n🎯 Test Creation Summary:")
+        logger.info(f"Files processed: {result['files_processed']}/{result['files_scanned']}")
+        logger.info(f"Tests generated: {agent.stats['tests_generated']}")
+        logger.info(f"Tests passed: {agent.stats['tests_passed']}")
+        logger.info(f"Duration: {result['duration']:.2f}s")
 
         # Save metrics if available
         if agent.metrics_collector:

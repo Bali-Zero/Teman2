@@ -3,6 +3,7 @@
 ## 📍 DOVE MODIFICARE
 
 **File di configurazione:**
+
 ```
 apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ```
@@ -14,21 +15,27 @@ Questo file contiene tutti i system prompt che definiscono il comportamento di Q
 ## 🔧 SYSTEM PROMPTS DISPONIBILI
 
 ### **1. Test Generation Backend (Python)**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND
 ```
+
 Usato quando genera test per codice Python/Backend.
 
 ### **2. Test Generation Frontend (TypeScript/React)**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_FRONTEND
 ```
+
 Usato quando genera test per codice TypeScript/React.
 
 ### **3. Default**
+
 ```python
 DEFAULT_SYSTEM_PROMPT
 ```
+
 Usato per altri task generici.
 
 ---
@@ -38,11 +45,13 @@ Usato per altri task generici.
 ### **Esempio: Modificare System Prompt per Backend**
 
 1. **Apri il file:**
+
 ```bash
 code apps/backend-rag/backend/agents/config/qwen_system_prompts.py
 ```
 
 2. **Modifica il prompt:**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """Sei un esperto sviluppatore Python e tester professionista.
 
@@ -72,14 +81,16 @@ REGOLE FONDAMENTALI:
 ## 🎨 ESEMPI DI MODIFICHE
 
 ### **Esempio 1: Enfatizzare Coverage**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """...
-PRIORITÀ ASSOLUTA: Raggiungi 100% coverage. 
+PRIORITÀ ASSOLUTA: Raggiungi 100% coverage.
 Ogni riga di codice deve essere testata almeno una volta.
 """
 ```
 
 ### **Esempio 2: Enfatizzare Performance**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """...
 Includi sempre test di performance per funzioni critiche.
@@ -88,6 +99,7 @@ Usa pytest-benchmark per misurare tempi di esecuzione.
 ```
 
 ### **Esempio 3: Stile Specifico**
+
 ```python
 TEST_GENERATION_SYSTEM_PROMPT_BACKEND = """...
 STILE RICHIESTO:
@@ -103,6 +115,7 @@ STILE RICHIESTO:
 ## 🔍 DOVE VENGONO USATI
 
 ### **Unified Test Force Orchestrator:**
+
 ```python
 # apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py
 
@@ -115,6 +128,7 @@ request = LLMRequest(
 ```
 
 ### **LLM Adapter:**
+
 ```python
 # apps/backend-rag/backend/agents/services/llm_adapter.py
 
@@ -134,6 +148,7 @@ payload = {
 ### **1. Modifica system prompt nel file di config**
 
 ### **2. Testa direttamente con Ollama:**
+
 ```bash
 curl http://localhost:11434/api/generate -d '{
   "model": "qwen2.5:latest",
@@ -144,6 +159,7 @@ curl http://localhost:11434/api/generate -d '{
 ```
 
 ### **3. Riavvia sistema per applicare:**
+
 ```bash
 ./scripts/unified_test_force.sh
 ```
@@ -155,11 +171,13 @@ curl http://localhost:11434/api/generate -d '{
 ### **System Prompt vs User Prompt:**
 
 **System Prompt:**
+
 - Definisce il **comportamento** del modello
 - Esempio: "Sei un esperto sviluppatore Python"
 - Rimane costante per tipo di task
 
 **User Prompt:**
+
 - Contiene il **task specifico**
 - Esempio: "Genera test per questo file: ..."
 - Cambia per ogni richiesta

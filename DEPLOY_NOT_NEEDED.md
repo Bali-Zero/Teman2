@@ -5,12 +5,14 @@
 Il sistema Unified Test Force è **completamente locale**:
 
 ### **Componenti Locali:**
+
 - ✅ **Ollama/Qwen** - Eseguito localmente sul Mac
 - ✅ **Python scripts** - Eseguiti localmente
 - ✅ **Coverage collection** - Eseguita localmente
 - ✅ **Test generation** - Eseguita localmente
 
 ### **Nessun Servizio Esterno:**
+
 - ❌ Nessuna API esterna
 - ❌ Nessun database cloud
 - ❌ Nessuna configurazione server
@@ -21,14 +23,16 @@ Il sistema Unified Test Force è **completamente locale**:
 ## 📦 COSA È STATO COMMITTATO
 
 ### **Nuovi File:**
+
 - ✅ Unified Coverage Collector
-- ✅ Differential Coverage Analyzer  
+- ✅ Differential Coverage Analyzer
 - ✅ Unified Test Force Orchestrator
 - ✅ Qwen System Prompts (362 righe)
 - ✅ Scripts di utilità
 - ✅ Documentazione completa
 
 ### **Modifiche:**
+
 - ✅ LLM Adapter con system prompt support
 - ✅ Circuit breaker migliorato
 - ✅ Timeout aumentati
@@ -55,6 +59,7 @@ Tutto funziona **localmente sul tuo Mac**:
 Il commit è stato fatto con successo. Tutti i cambiamenti sono salvati nel repository locale.
 
 **Per applicare su altri computer:**
+
 ```bash
 git pull
 # Poi installa dipendenze se necessario

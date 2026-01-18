@@ -164,11 +164,11 @@ class TestCollaboratorService:
 
     def test_init_file_not_found(self):
         """Test initialization with missing file"""
-        with patch(
-            "backend.services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")
+        with (
+            patch("backend.services.crm.collaborator_service.DATA_PATH", Path("/nonexistent.json")),
+            pytest.raises(FileNotFoundError),
         ):
-            with pytest.raises(FileNotFoundError):
-                CollaboratorService()
+            CollaboratorService()
 
     def test_get_member_success(self, collaborator_service):
         """Test getting collaborator by email"""
