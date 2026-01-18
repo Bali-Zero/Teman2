@@ -93,6 +93,9 @@ export default function NewClientPage() {
     setIsLoading(true);
     try {
       const user = await api.getProfile();
+      if (!user?.email) {
+        throw new Error('User email not available');
+      }
       // Clean up empty arrays and undefined values
       const cleanData = {
         ...formData,
