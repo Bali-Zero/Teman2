@@ -638,6 +638,7 @@ class MetricsCollector:
     search_hybrid_failed_total = search_hybrid_failed_total
     search_dense_only_total = search_dense_only_total
     search_failed_total = search_failed_total
+    stream_fatal_error_total = stream_fatal_error_total
 
     def __init__(self):
         self.session_count = 0
