@@ -70,6 +70,7 @@ function getVisibleClients(clients: Client[], currentUserEmail: string): Client[
   if (userName === 'ruslana') {
     return clients.filter((client) => {
       if (!client.assigned_to) return true; // Unassigned visible to Ruslana
+      if (!client.assigned_to.includes('@')) return false; // Invalid email format
       const assignedTo = client.assigned_to.toLowerCase().split('@')[0];
       return ACCESS_RULES.ruslanaCanSee.includes(assignedTo);
     });
@@ -78,6 +79,7 @@ function getVisibleClients(clients: Client[], currentUserEmail: string): Client[
   // Other members can only see their own contacts
   return clients.filter((client) => {
     if (!client.assigned_to) return false; // Unassigned not visible
+    if (!client.assigned_to.includes('@')) return false; // Invalid email format
     const assignedTo = client.assigned_to.toLowerCase().split('@')[0];
     return assignedTo === userName;
   });
