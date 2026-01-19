@@ -55,7 +55,7 @@ async def main():
     print("🚀 Starting Daily Report (Lightweight)...")
     
     # Get configuration from Environment (Fly Secrets)
-    ADMIN_CHAT_ID = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "8290313965")
+    ADMIN_CHAT_ID = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
     DB_URL = os.getenv("DATABASE_URL")
     
     if not DB_URL:
@@ -264,7 +264,7 @@ fly machine run "$IMAGE_REF" \
   --region "$REGION" \
   --name "manual-fix-test-$(date +%s)" \
   --vm-memory "2048" \
-  --env TELEGRAM_ADMIN_CHAT_ID=8290313965 \
+  --env TELEGRAM_ADMIN_CHAT_ID=1125336968 \
   --env FORCE_RUN=1 \
   --entrypoint "sh" \
   --detach \
