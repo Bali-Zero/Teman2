@@ -15,10 +15,44 @@ from typing import Any
 
 import anthropic
 from fastapi import APIRouter, HTTPException
+from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/articles", tags=["Article Composer"])
 logger = logging.getLogger(__name__)
+
+# --- PROMETHEUS METRICS ---
+
+article_compose_requests = Counter(
+    "article_compose_requests_total",
+    "Total article compose requests",
+    ["status", "category"],
+)
+
+article_compose_duration = Histogram(
+    "article_compose_duration_seconds",
+    "Article composition duration",
+    buckets=[1.0, 2.0, 5.0, 10.0, 30.0],
+)
+
+article_enrichment_word_count = Histogram(
+    "article_enrichment_word_count",
+    "Word count in facts section",
+    ["priority"],
+    buckets=[300, 400, 500, 600, 700],
+)
+
+article_publish_requests = Counter(
+    "article_publish_requests_total",
+    "Total article publish requests",
+    ["status", "has_cover_image"],
+)
+
+claude_api_cost_cents = Histogram(
+    "claude_api_cost_cents",
+    "Claude API cost per article (cents)",
+    buckets=[1, 2, 5, 10, 20, 50],
+)
 
 # --- PYDANTIC MODELS ---
 
@@ -191,9 +225,14 @@ async def compose_article(request: ComposeRequest):
     - AI tags and summary
     - Image generation prompt
     """
+    import time
+
+    start_time = time.time()
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         logger.error("ANTHROPIC_API_KEY not set")
+        article_compose_requests.labels(status="error", category=request.category).inc()
         raise HTTPException(status_code=500, detail="API key not configured")
 
     logger.info(f"Composing article: {request.title[:50]}...")
@@ -274,17 +313,30 @@ async def compose_article(request: ComposeRequest):
         logger.info(f"✅ Article enriched: {enriched.headline[:50]}...")
         logger.info(f"   Cost: ${cost_cents / 100:.4f} ({input_tokens} in, {output_tokens} out)")
 
+        # Track metrics
+        duration = time.time() - start_time
+        article_compose_requests.labels(status="success", category=request.category).inc()
+        article_compose_duration.observe(duration)
+        claude_api_cost_cents.observe(cost_cents)
+
+        # Track word count by priority
+        facts_word_count = len(enriched.facts.split())
+        article_enrichment_word_count.labels(priority=enriched.priority).observe(facts_word_count)
+
         return ComposeResponse(success=True, article=enriched, api_cost_cents=round(cost_cents, 2))
 
     except json.JSONDecodeError as e:
         logger.error(f"JSON parse error: {e}")
         logger.debug(f"Raw response: {response_text[:500] if 'response_text' in dir() else 'N/A'}")
+        article_compose_requests.labels(status="json_error", category=request.category).inc()
         return ComposeResponse(success=False, error=f"Failed to parse Claude response: {str(e)}")
     except anthropic.APIError as e:
         logger.error(f"Anthropic API error: {e}")
+        article_compose_requests.labels(status="api_error", category=request.category).inc()
         return ComposeResponse(success=False, error=f"Claude API error: {str(e)}")
     except Exception as e:
         logger.error(f"Enrichment failed: {e}")
+        article_compose_requests.labels(status="error", category=request.category).inc()
         return ComposeResponse(success=False, error=str(e))
 
 
@@ -469,8 +521,11 @@ async def publish_article(request: PublishRequest):
         github_publisher,
     )
 
+    has_cover_image = bool(request.cover_image_base64)
+
     if not github_publisher.is_configured:
         logger.error("GitHub publisher not configured")
+        article_publish_requests.labels(status="error", has_cover_image=str(has_cover_image)).inc()
         return PublishResponse(
             success=False,
             message="GitHub API not configured",
@@ -539,6 +594,9 @@ async def publish_article(request: PublishRequest):
         logger.info(f"✅ Article published: {article_url}")
         logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
 
+        # Track metrics
+        article_publish_requests.labels(status="success", has_cover_image=str(has_cover_image)).inc()
+
         return PublishResponse(
             success=True,
             message="Article published successfully. Vercel will auto-deploy in ~1 minute.",
@@ -550,9 +608,11 @@ async def publish_article(request: PublishRequest):
 
     except GitHubPublisherError as e:
         logger.error(f"GitHub publish error: {e}")
+        article_publish_requests.labels(status="github_error", has_cover_image=str(has_cover_image)).inc()
         return PublishResponse(success=False, message="Failed to publish to GitHub", error=str(e))
     except Exception as e:
         logger.error(f"Publish failed: {e}", exc_info=True)
+        article_publish_requests.labels(status="error", has_cover_image=str(has_cover_image)).inc()
         return PublishResponse(success=False, message="Failed to publish article", error=str(e))
 
 
