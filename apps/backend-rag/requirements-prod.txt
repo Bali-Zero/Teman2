@@ -30,11 +30,10 @@ langchain-core>=0.1.0
 langgraph>=0.0.1
 
 # Document Processing (lightweight)
-openpyxl==3.1.2
-email-validator==2.1.0
-pypdf==3.17.1
-PyPDF2==3.0.1
-beautifulsoup4==4.12.2
+openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
+email-validator>=2.2.0
+pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+beautifulsoup4>=4.14.3  # Security and stability updates
 pdfplumber>=0.11.0
 pdfminer.six>=20251107
 ebooklib>=0.18
@@ -48,21 +47,22 @@ urllib3>=2.0.0
 
 # Authentication
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
-bcrypt==4.0.1
-passlib[bcrypt]==1.7.4
+bcrypt>=5.0.0  # Security and performance improvements
+passlib[bcrypt]>=1.7.4
 
 # Database
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
-redis==5.0.1
-sqlmodel==0.0.14
+asyncpg>=0.31.0  # Performance and security improvements
+psycopg2-binary>=2.9.9
+redis>=7.1.0  # Security updates and new features
+sqlmodel>=0.0.31  # Bug fixes and compatibility updates
 
 # Utilities
-python-dotenv==1.0.0
-loguru==0.7.2
+python-dotenv>=1.0.0
+loguru>=0.7.2
 pytz>=2024.2
-packaging>=23.2,<25
+packaging>=23.2,<26
 psutil>=5.9.0  # Required for app/metrics.py performance monitoring
+structlog>=25.5.0  # Security and feature updates
 
 # Observability
 prometheus-fastapi-instrumentator>=6.1.0
@@ -82,4 +82,3 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # - fake-useragent (not needed)
 # - pre-commit, ruff, pytest (dev tools)
 # - pandas (large, optional for this app)
-structlog==23.2.0
