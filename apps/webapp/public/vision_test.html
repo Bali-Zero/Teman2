@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaPipe Vision Test - Object Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .file-input-label:active {
+            transform: translateY(0);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .image-section, .results-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        #imageCanvas {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            background: #fff;
+            display: none;
+        }
+
+        #imageCanvas.show {
+            display: block;
+        }
+
+        #results {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+
+        .result-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background: #f0f0f0;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item strong {
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        .model-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 MediaPipe Vision Test</h1>
+        <p class="subtitle">Object Detection con EfficientDet Lite0</p>
+
+        <div class="model-info">
+            <strong>Modello:</strong> efficientdet_lite0.tflite<br>
+            <strong>Libreria:</strong> @mediapipe/tasks-vision (CDN)
+        </div>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <input type="file" id="imageInput" accept="image/*">
+                <label for="imageInput" class="file-input-label">
+                    📷 Carica Immagine
+                </label>
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+
+        <div class="content-grid">
+            <div class="image-section">
+                <h2 class="section-title">Immagine</h2>
+                <canvas id="imageCanvas"></canvas>
+            </div>
+
+            <div class="results-section">
+                <h2 class="section-title">Risultati Detection</h2>
+                <div id="results">
+                    <div class="empty-state">
+                        Carica un'immagine per iniziare l'analisi...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MediaPipe Tasks Vision CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3"></script>
+
+    <script>
+        const { ObjectDetector, FilesetResolver } = window.MediaPipeTasksVision;
+
+        let objectDetector = null;
+        let isModelLoading = false;
+        let isDetecting = false;
+
+        const imageInput = document.getElementById('imageInput');
+        const imageCanvas = document.getElementById('imageCanvas');
+        const resultsDiv = document.getElementById('results');
+        const statusDiv = document.getElementById('status');
+
+        // URL del modello EfficientDet Lite0 da Google Storage
+        const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
+
+        // Inizializza il detector
+        async function initializeDetector() {
+            if (isModelLoading || objectDetector) return;
+
+            try {
+                isModelLoading = true;
+                showStatus('Caricamento modello...', 'loading');
+
+                const vision = await FilesetResolver.forVisionTasks(
+                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+                );
+
+                objectDetector = await ObjectDetector.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: MODEL_URL,
+                        delegate: 'GPU'
+                    },
+                    scoreThreshold: 0.3,
+                    runningMode: 'IMAGE'
+                });
+
+                showStatus('Modello caricato con successo! ✅', 'success');
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+
+                isModelLoading = false;
+            } catch (error) {
+                console.error('Errore nel caricamento del modello:', error);
+                showStatus(`Errore: ${error.message}`, 'error');
+                isModelLoading = false;
+            }
+        }
+
+        // Mostra stato
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        // Processa l'immagine
+        async function processImage(file) {
+            if (isDetecting) return;
+            if (!objectDetector) {
+                await initializeDetector();
+                if (!objectDetector) {
+                    showStatus('Impossibile caricare il modello. Riprova.', 'error');
+                    return;
+                }
+            }
+
+            try {
+                isDetecting = true;
+                showStatus('Analisi in corso...', 'loading');
+
+                // Crea URL dell'immagine
+                const imageUrl = URL.createObjectURL(file);
+                const img = new Image();
+                
+                img.onload = async () => {
+                    try {
+                        // Imposta dimensioni canvas
+                        imageCanvas.width = img.width;
+                        imageCanvas.height = img.height;
+                        imageCanvas.classList.add('show');
+
+                        // Ottieni contesto canvas
+                        const ctx = imageCanvas.getContext('2d');
+                        
+                        // Pulisci canvas
+                        ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                        
+                        // Disegna immagine sul canvas
+                        ctx.drawImage(img, 0, 0);
+
+                        // Esegui detection
+                        const detections = objectDetector.detect(img);
+
+                        // Mostra risultati
+                        displayResults(detections);
+
+                        // Disegna bounding boxes sul canvas (sopra l'immagine)
+                        drawDetections(detections, ctx);
+
+                        showStatus(`Rilevati ${detections.detections.length} oggetti! ✅`, 'success');
+                        setTimeout(() => {
+                            statusDiv.style.display = 'none';
+                        }, 3000);
+
+                        // Libera URL
+                        URL.revokeObjectURL(imageUrl);
+                    } catch (error) {
+                        console.error('Errore durante la detection:', error);
+                        showStatus(`Errore: ${error.message}`, 'error');
+                    } finally {
+                        isDetecting = false;
+                    }
+                };
+
+                img.onerror = () => {
+                    showStatus('Errore nel caricamento dell\'immagine', 'error');
+                    isDetecting = false;
+                    URL.revokeObjectURL(imageUrl);
+                };
+
+                img.src = imageUrl;
+            } catch (error) {
+                console.error('Errore:', error);
+                showStatus(`Errore: ${error.message}`, 'error');
+                isDetecting = false;
+            }
+        }
+
+        // Mostra risultati
+        function displayResults(detections) {
+            if (!detections || !detections.detections || detections.detections.length === 0) {
+                resultsDiv.innerHTML = '<div class="empty-state">Nessun oggetto rilevato</div>';
+                return;
+            }
+
+            // Ordina per confidence (dal più alto al più basso)
+            const sortedDetections = [...detections.detections].sort((a, b) => 
+                b.categories[0].score - a.categories[0].score
+            );
+
+            resultsDiv.innerHTML = sortedDetections.map((detection, index) => {
+                const category = detection.categories[0];
+                const score = category.score;
+                const label = category.categoryName;
+                const percentage = Math.round(score * 100);
+
+                return `
+                    <div class="result-item">
+                        <strong>${index + 1}. ${label}</strong>
+                        <div style="margin-top: 5px;">
+                            Confidence: ${percentage}%
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Disegna bounding boxes sul canvas
+        function drawDetections(detections, ctx) {
+            if (!detections || !detections.detections) return;
+
+            detections.detections.forEach(detection => {
+                const bbox = detection.boundingBox;
+                const category = detection.categories[0];
+                const label = category.categoryName;
+                const score = category.score;
+
+                // Disegna bounding box
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(bbox.originX, bbox.originY, bbox.width, bbox.height);
+
+                // Disegna background per il label
+                const labelText = `${label} ${Math.round(score * 100)}%`;
+                ctx.font = '16px Arial';
+                ctx.textBaseline = 'top';
+                const textMetrics = ctx.measureText(labelText);
+                const textWidth = textMetrics.width;
+                const textHeight = 20;
+                
+                // Background del label
+                ctx.fillStyle = 'rgba(102, 126, 234, 0.9)';
+                ctx.fillRect(bbox.originX, bbox.originY - textHeight - 4, textWidth + 8, textHeight + 4);
+                
+                // Testo del label
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(labelText, bbox.originX + 4, bbox.originY - textHeight);
+            });
+        }
+
+        // Event listener per il file input
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    showStatus('Per favore, carica un file immagine valido', 'error');
+                    return;
+                }
+                processImage(file);
+            }
+        });
+
+        // Inizializza il modello al caricamento della pagina
+        window.addEventListener('load', () => {
+            initializeDetector();
+        });
+    </script>
+</body>
+</html>

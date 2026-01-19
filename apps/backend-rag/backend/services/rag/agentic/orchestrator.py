@@ -344,19 +344,7 @@ class AgenticRAGOrchestrator:
         if images:
             logger.info(f"🖼️ Vision mode: {len(images)} images attached to query")
 
-        # Prepare context using common logic (for early gates)
-        user_context, history_to_use, _ = await self.core.prepare_query_context(
-            query=query,
-            user_id=user_id,
-            conversation_history=conversation_history,
-            session_id=session_id,
-        )
-
-        logger.info(
-            f"🧠 [Stream Context] Loaded context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)"
-        )
-
-        # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
+        # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST! NO CONTEXT NEEDED)
         is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
         if is_injection:
             logger.warning("🛡️ [Security Stream] Blocked prompt injection/off-topic request")
@@ -366,6 +354,25 @@ class AgenticRAGOrchestrator:
                 await asyncio.sleep(0.01)
             yield {"type": "done", "data": None}
             return
+
+        # 0. FAST CONTEXT LOADING (Basic Profile + History ONLY)
+        # Avoids heavy Memory/Entity extraction unless needed
+        user_context, history_to_use = await self.core.context_manager.get_basic_context(
+            user_id=user_id, 
+            session_id=session_id
+        )
+        
+        # If conversation_history passed explicitly, prefer it or merge?
+        # get_basic_context logic usually respects conversation_history if passed to prepare_conversation_history.
+        # But here we called it without passing history.
+        # Ideally, we should respect the explicit history if provided.
+        if conversation_history:
+            # Overwrite history_to_use if explicit history provided
+             history_to_use = conversation_history
+
+        logger.info(
+            f"🧠 [Stream Context] Loaded BASIC context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)"
+        )
 
         # Check Greetings first (skip RAG for simple greetings)
         # INJECT CONTEXT
@@ -406,7 +413,7 @@ class AgenticRAGOrchestrator:
         # 0.1 CLARIFICATION GATE (Ambiguity Detection - Stream)
         if self.clarification_service:
             ambiguity_info = self.clarification_service.detect_ambiguity(
-                query, conversation_history or user_context.get("history", [])
+                query, conversation_history or history_to_use
             )
             if (
                 ambiguity_info["is_ambiguous"]
@@ -564,14 +571,16 @@ Respond in the SAME language the user is using."""
         full_answer = ""
         try:
             # Delegate to OrchestratorStreamingCore for main processing
+            # PASS THE LOADED BASIC CONTEXT FOR ENRICHMENT
             async for event in self.streaming_core.stream_query_core(
                 query=query,
                 user_id=user_id,
-                conversation_history=conversation_history,
+                conversation_history=history_to_use,  # Pass optimized history
                 session_id=session_id,
                 images=images,
                 tool_execution_counter=tool_execution_counter,
                 correlation_id=correlation_id,
+                initial_user_context=user_context, # NEW: Pass basic context for late binding
             ):
                 # Accumulate tokens for memory saving
                 if event.get("type") == "token":

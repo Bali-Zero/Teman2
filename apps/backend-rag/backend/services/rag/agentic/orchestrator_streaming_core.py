@@ -60,6 +60,7 @@ class OrchestratorStreamingCore:
         images: list[dict] | None,
         tool_execution_counter: dict[str, int],
         correlation_id: str,
+        initial_user_context: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict, None]:
         """
         Core streaming query processing logic.
@@ -72,6 +73,7 @@ class OrchestratorStreamingCore:
             images: Optional vision images
             tool_execution_counter: Tool execution counter dict
             correlation_id: Correlation ID for tracing
+            initial_user_context: Optional pre-loaded basic context (Profile/History)
 
         Yields:
             Stream events (dict)
@@ -87,14 +89,61 @@ class OrchestratorStreamingCore:
         # IMMEDIATE: Yield thinking indicator for user feedback
         yield thinking_service.create_thinking_event(ThinkingPhase.ANALYZING)
 
-        # 1. Prepare context (common logic)
-        yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
-        user_context, optimized_history, extracted_entities = await self.core.prepare_query_context(
-            query=query,
-            user_id=user_id,
-            conversation_history=conversation_history,
-            session_id=session_id,
-        )
+        # 1. Prepare context (TIERED LOADING)
+        user_context = None
+        optimized_history = []
+        extracted_entities = {}
+
+        if initial_user_context:
+            # FAST PATH: Using pre-loaded basic context
+            # We need to enrich it with Memory + Entities (Heavy Lifting)
+            user_context = initial_user_context
+            # History should already be in user_context or passed clearly
+            # Re-run history optimization just to be sure if not done?
+            # Basic context from get_basic_context returns (user_context, optimized_history)
+            # But here we only passed user_context dict.
+            # We should probably pass optimized_history too or assume it's in context.
+            # Let's assume conversation_history passed to this func is the optimized one if available.
+            # But wait, get_basic_context returns user_context, history.
+            # We should update signature to accept optimized_history too?
+            # Or just re-use conversation_history arg.
+            optimized_history = conversation_history or user_context.get("history", [])
+
+            # ENRICHMENT PHASE (The latency we saved is now spent here, but visible!)
+            yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
+            
+            # Parallel Enrichment: Memory + Entities
+            async def _enrich_memory():
+                return await self.core.context_manager.enrich_user_context(
+                    user_context, user_id, query
+                )
+
+            async def _extract_entities():
+                return await self.core.entity_extractor.extract_entities(query)
+
+            enrich_results = await asyncio.gather(
+                _enrich_memory(),
+                _extract_entities(),
+                return_exceptions=True
+            )
+
+            # Process Memory result
+            if not isinstance(enrich_results[0], Exception):
+                user_context = enrich_results[0]
+            
+            # Process Entity result
+            if not isinstance(enrich_results[1], Exception):
+                extracted_entities = enrich_results[1]
+            
+        else:
+            # LEGACY / FULL LOAD PATH
+            yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
+            user_context, optimized_history, extracted_entities = await self.core.prepare_query_context(
+                query=query,
+                user_id=user_id,
+                conversation_history=conversation_history,
+                session_id=session_id,
+            )
 
         # Yield metadata for extracted entities
         if any(extracted_entities.values()):
