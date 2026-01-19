@@ -258,12 +258,12 @@ class GoogleNewsRSSFetcher:
 
 async def send_to_balizero(
     items: List[Dict],
-    api_url: str = "https://balizero.com",
+    api_url: str = "https://nuzantara-rag.fly.dev",
     api_key: str = None,
     dry_run: bool = False,
 ):
-    """Send items to BaliZero API"""
-    endpoint = f"{api_url}/api/news"
+    """Send items to Intel Scraper API"""
+    endpoint = f"{api_url}/api/intel/scraper/submit"
 
     if dry_run:
         logger.warning("🔍 DRY RUN MODE - Not sending to API")
@@ -284,15 +284,15 @@ async def send_to_balizero(
     async with httpx.AsyncClient(timeout=30.0) as client:
         for item in items:
             try:
-                # Prepare payload (remove internal scoring fields)
+                # Prepare payload for /api/intel/scraper/submit endpoint
+                # Map fields to ScraperSubmission model
                 payload = {
                     "title": item["title"],
-                    "summary": item.get("summary"),
-                    "content": item.get("content"),
-                    "source": item["source"],
-                    "source_url": item.get("sourceUrl"),
+                    "content": item.get("content") or item.get("summary", ""),  # content is required
+                    "source_url": item.get("sourceUrl", ""),
+                    "source_name": item["source"],  # source -> source_name
                     "category": item["category"],
-                    "priority": item["priority"],
+                    "relevance_score": item.get("relevance_score", 50),  # Use actual score, fallback to 50
                     "published_at": item.get("publishedAt"),
                 }
 
@@ -336,7 +336,7 @@ async def main():
     )
     parser.add_argument("--limit", type=int, default=5, help="Items per topic")
     parser.add_argument("--min-score", type=int, default=35, help="Min score (0-100)")
-    parser.add_argument("--api-url", default="https://balizero.com", help="API URL")
+    parser.add_argument("--api-url", default="https://nuzantara-rag.fly.dev", help="API URL")
     parser.add_argument("--api-key", default=None, help="API key")
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview without sending"
