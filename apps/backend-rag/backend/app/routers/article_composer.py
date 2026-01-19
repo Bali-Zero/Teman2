@@ -71,7 +71,6 @@ class EnrichedArticle(BaseModel):
     ai_tags: list[str]
     suggested_components: list[str]
     cover_image: str | None = None
-    image_prompt: str | None = None
     source: str
     source_url: str | None
     enriched_at: str
@@ -143,7 +142,7 @@ def build_enrichment_prompt(title: str, content: str, category: str) -> str:
     "risk_level": "<High|Medium|Low>"
   }},
 
-  "facts": "<Pure journalism section. What happened, dates, numbers, sources. No opinions. 200-300 words. In English.>",
+  "facts": "<Pure journalism section. What happened, dates, numbers, sources. No opinions. 400-600 words based on news relevance (high priority = 600 words, medium = 500, low = 400). In English.>",
 
   "bali_zero_take": {{
     "hidden_insight": "<What they don't tell you - 2-3 sentences>",
@@ -173,41 +172,6 @@ NOTES:
 - For business topics, mention relevant government bodies (BKPM, OSS, etc.)
 - Be SPECIFIC with numbers, dates, and requirements
 """
-
-
-# --- IMAGE GENERATION ---
-
-
-async def generate_cover_image(headline: str, category: str, summary: str) -> dict[str, Any]:
-    """
-    Generate cover image using available image generation service.
-    Returns dict with image_path and prompt_used.
-    """
-    # For now, we'll return a placeholder and let frontend handle image generation
-    # In production, this would call Imagen API or similar
-
-    # Build a prompt that could be used for image generation
-    image_prompt = f"""Professional editorial cover image for article about: {headline}
-
-Style: Modern, clean, editorial photography style
-Theme: {category} in Indonesia/Bali context
-Mood: Professional, trustworthy, insightful
-Format: 16:9 landscape, suitable for blog header
-
-Key elements to include based on topic:
-- If immigration/visa: passport, documents, Indonesia landmarks
-- If business: modern office, Jakarta skyline, business meeting
-- If tax: financial documents, calculator, professional setting
-- If property: Bali villa, real estate, tropical architecture
-- If lifestyle: Bali scenery, expat life, tropical living
-- If tech: modern devices, digital nomad setup
-
-No text overlays. High quality, photorealistic."""
-
-    return {
-        "image_path": None,  # Frontend will generate
-        "prompt": image_prompt,
-    }
 
 
 # --- API ENDPOINTS ---
@@ -267,13 +231,6 @@ async def compose_article(request: ComposeRequest):
         # Parse JSON
         data = json.loads(response_text)
 
-        # Generate image prompt
-        image_result = await generate_cover_image(
-            headline=data.get("headline", request.title),
-            category=data.get("category", request.category),
-            summary=data.get("ai_summary", ""),
-        )
-
         # Calculate approximate cost (Claude Sonnet: $3/$15 per 1M tokens)
         input_tokens = message.usage.input_tokens
         output_tokens = message.usage.output_tokens
@@ -308,8 +265,7 @@ async def compose_article(request: ComposeRequest):
             ai_summary=data.get("ai_summary", ""),
             ai_tags=data.get("ai_tags", []),
             suggested_components=data.get("suggested_components", []),
-            cover_image=image_result.get("image_path"),
-            image_prompt=image_result.get("prompt"),
+            cover_image=None,  # Will be provided by frontend during publish
             source=request.author,
             source_url=request.source_url,
             enriched_at=datetime.utcnow().isoformat(),
@@ -395,6 +351,8 @@ def generate_slug(headline: str) -> str:
 
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
     """Generate MDX file content from enriched article"""
+    import json as json_module
+
     # Map category to URL-friendly format
     category_map = {
         "immigration": "immigration",
@@ -412,8 +370,12 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     word_count = len(article.facts.split()) + len(article.bali_zero_take.our_analysis.split())
     reading_time = max(3, word_count // 200 + 1)
 
-    # Build tags string
+    # Build tags string for frontmatter
     tags_str = ", ".join([f'"{tag}"' for tag in article.ai_tags])
+
+    # Convert next steps to JSON strings for components
+    expat_steps_json = json_module.dumps(article.next_steps.expat)
+    investor_steps_json = json_module.dumps(article.next_steps.investor)
 
     # Cover image path
     cover_img = cover_image_path or f"/static/news/{slug}.jpg"
@@ -479,8 +441,8 @@ seoDescription: "{article.ai_summary}"
 <Checklist
   title="Action Items"
   items={{[
-    {{ text: "For Expats", subItems: {article.next_steps.expat} }},
-    {{ text: "For Investors", subItems: {article.next_steps.investor} }},
+    {{ text: "For Expats", subItems: {expat_steps_json} }},
+    {{ text: "For Investors", subItems: {investor_steps_json} }},
   ]}}
 />
 
