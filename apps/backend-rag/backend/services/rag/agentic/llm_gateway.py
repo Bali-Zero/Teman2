@@ -24,7 +24,7 @@ Example:
     ...     message="What is KITAS?",
     ...     tier=TIER_FLASH,
     ... )
-    >>> print(f"Response from {model}: {response}")
+    >>> logger.info(f"Response from {model}: {response}")
 
 Author: Nuzantara Team
 Date: 2025-12-17
@@ -50,6 +50,8 @@ from backend.app.utils.tracing import set_span_attribute, set_span_status, trace
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
+
+from .chat_session import ChatSession, MockChatSession
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +183,57 @@ class LLMGateway:
                 return None
         return self._openrouter_client
 
+    def create_chat_with_history(
+        self,
+        history_to_use: list[dict] | None,
+        model_tier: int = TIER_FLASH,
+        system_instruction: str = "",
+    ) -> "ChatSession":
+        """
+        Create a ChatSession with conversation history for multi-turn chat.
+
+        Best Practice 2026: Use startChat() with history for context persistence.
+
+        Args:
+            history_to_use: Previous conversation messages [{role, content}, ...]
+            model_tier: Model tier (TIER_FLASH, TIER_PRO, etc.)
+            system_instruction: System prompt for the session
+
+        Returns:
+            ChatSession object with history
+        """
+        if not self._genai_client or not self._available:
+            logger.warning("GenAI client not available, returning mock session")
+            return MockChatSession(history=history_to_use or [])
+
+        # Convert history to Gemini format
+        gemini_history = []
+        for msg in (history_to_use or []):
+            role = "user" if msg.get("role") == "user" else "model"
+            gemini_history.append({
+                "role": role,
+                "parts": [{"text": msg.get("content", "")}]
+            })
+
+        # Create chat session with history
+        model_name = self._get_model_for_tier(model_tier)
+
+        return ChatSession(
+            client=self._genai_client,
+            model=model_name,
+            history=gemini_history,
+            system_instruction=system_instruction,
+        )
+
+    def _get_model_for_tier(self, tier: int) -> str:
+        """Get model name for given tier."""
+        if tier == TIER_PRO:
+            return self.model_name_pro
+        elif tier in (TIER_LITE, TIER_FALLBACK):
+            return self.model_name_fallback
+        else:
+            return self.model_name_flash
+
     async def send_message(
         self,
         chat: Any,
@@ -227,7 +280,7 @@ class LLMGateway:
             ...     message="What is the capital of Indonesia?",
             ...     tier=TIER_FLASH,
             ... )
-            >>> print(f"[{model}] {response} (cost: ${usage.cost_usd:.6f})")
+            >>> logger.info(f"[{model}] {response} (cost: ${usage.cost_usd:.6f})")
         """
         query_cost_tracker = {"cost": 0.0, "depth": 0}
         try:
@@ -256,7 +309,7 @@ class LLMGateway:
                 llm_all_models_failed_total.inc()
             except ImportError:
                 pass
-            raise RuntimeError(f"All LLM models failed: {e}")
+            raise RuntimeError(f"All LLM models failed: {e}") from None
 
     def _get_circuit_breaker(self, model_name: str) -> CircuitBreaker:
         """Get or create circuit breaker for model."""
@@ -357,17 +410,16 @@ class LLMGateway:
             - OpenRouter uses regex fallback (no function calling)
             - Vision mode: pass images for multimodal Gemini support
 
-        Example:
-            >>> response, model, resp_obj = await self._send_with_fallback(
-            ...     chat, "What is KITAS?", system_prompt, TIER_PRO, True, []
-            ... )
-            >>> # Check for function calls in resp_obj.candidates[0].content.parts
-            >>> print(f"Response from {model}: {response}")
-        """
+    Example:
+        >>> response = await gateway.generate_content("Hello", tier=TIER_FLASH)
+        >>> logger.info(f"Response from {model}: {response}")
+    """
 
-        # Helper to build config with optional tools
-        def _build_config(with_tools: bool = False) -> Any:
-            """Build GenerateContentConfig with optional function calling tools."""
+    # Helper to build config with optional tools
+    def _build_config(with_tools: bool = False) -> Any:
+        """Build GenerateContentConfig with optional function calling tools."""
+        if not GENAI_AVAILABLE or types is None:
+            return None
             if not GENAI_AVAILABLE or types is None:
                 return None
 
@@ -698,12 +750,7 @@ class LLMGateway:
         try:
             # Extract user query from message for OpenRouter
             # Build messages list for OpenRouter (it expects role/content format)
-            openrouter_messages = []
-            if conversation_messages:
-                openrouter_messages = conversation_messages
-            else:
-                # Fallback: create message from current query
-                openrouter_messages = [{"role": "user", "content": message}]
+            openrouter_messages = conversation_messages or [{"role": "user", "content": message}]
 
             openrouter_response = await self._call_openrouter(openrouter_messages, system_prompt)
             # Return OpenRouter response with mock token usage
@@ -716,7 +763,7 @@ class LLMGateway:
         except Exception as openrouter_error:
             logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
             # All fallbacks exhausted
-            raise RuntimeError("All models in fallback chain failed (including OpenRouter)")
+            raise RuntimeError("All models in fallback chain failed (including OpenRouter)") from None
 
     async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> str:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
@@ -761,71 +808,6 @@ class LLMGateway:
         logger.info(f"✅ LLMGateway: OpenRouter fallback used: {result.model_name}")
         return result.content
 
-    def create_chat_with_history(
-        self,
-        history_to_use: list[dict] | None = None,
-        model_tier: int = TIER_FLASH,
-        system_instruction: str | None = None,
-    ) -> Any:
-        """Create a chat session with conversation history.
-
-        Args:
-            history_to_use: Conversation history in format [{"role": "user|assistant", "content": "..."}]
-            model_tier: Model tier to use (TIER_PRO, TIER_FLASH, TIER_LITE)
-
-        Returns:
-            ChatSession object from genai_client or None
-
-        Note:
-            - Converts generic conversation history to Gemini format
-            - Returns None if no suitable model is available
-            - Uses new google-genai SDK via GenAIClient wrapper
-        """
-        if not self._genai_client or not self._available:
-            logger.warning("⚠️ LLMGateway: GenAI client not available for chat creation")
-            return None
-
-        # Select model name based on tier (primary: gemini-3-flash-preview, fallback: gemini-2.0-flash)
-        selected_model_name = self.model_name_flash  # Default: gemini-3-flash-preview
-
-        if model_tier == TIER_PRO:
-            selected_model_name = self.model_name_pro  # Same as flash (gemini-3-flash-preview)
-        # TIER_LITE and TIER_FLASH both use model_name_flash
-
-        # Convert conversation history to Gemini format
-        gemini_history = []
-        if history_to_use:
-            # Defensive: ensure history_to_use is a list
-            if not isinstance(history_to_use, list):
-                logger.warning(
-                    f"⚠️ history_to_use is not a list (type: {type(history_to_use)}), resetting to empty"
-                )
-                history_to_use = []
-
-            for msg in history_to_use:
-                # Defensive: skip if msg is not a dict
-                if not isinstance(msg, dict):
-                    logger.warning(f"⚠️ Skipping non-dict message in history: {type(msg)}")
-                    continue
-
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role == "user":
-                    gemini_history.append({"role": "user", "content": content})
-                elif role == "assistant":
-                    gemini_history.append({"role": "assistant", "content": content})
-
-        # Create and return chat session using GenAIClient wrapper
-        logger.debug(
-            f"LLMGateway: Created chat session with {len(gemini_history)} history messages"
-            f"{' and system instruction' if system_instruction else ''}"
-        )
-        return self._genai_client.create_chat_session(
-            model=selected_model_name,
-            system_instruction=system_instruction,
-            history=gemini_history,
-        )
-
     async def health_check(self) -> dict[str, bool]:
         """Check health of all LLM providers.
 
@@ -844,9 +826,9 @@ class LLMGateway:
         Example:
             >>> status = await gateway.health_check()
             >>> if status["gemini_flash"]:
-            ...     print("Flash is available")
+            ...     logger.info("Flash is available")
             >>> else:
-            ...     print("Flash is down, will use fallback")
+            ...     logger.warning("Flash is down, will use fallback")
         """
         status = {
             "gemini_pro": False,
