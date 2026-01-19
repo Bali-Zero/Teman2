@@ -12,13 +12,13 @@ Il backend è stato configurato per usare **Vertex AI come PRIMARY** con il serv
 
 ## 🎯 Credenziali Configurate
 
-| Proprietà | Valore |
-|-----------|--------|
-| **Project ID** | `nuzantara` |
-| **Service Account** | `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` |
-| **Credito disponibile** | 16.663.501 Rp (~$1,000 USD) |
-| **Validità credito** | Copre modelli Gemini 2.0+ su Vertex AI |
-| **Durata stimata** | ~7 mesi con Gemini 3 Flash Preview |
+| Proprietà               | Valore                                                  |
+| ----------------------- | ------------------------------------------------------- |
+| **Project ID**          | `nuzantara`                                             |
+| **Service Account**     | `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` |
+| **Credito disponibile** | 16.663.501 Rp (~$1,000 USD)                             |
+| **Validità credito**    | Copre modelli Gemini 2.0+ su Vertex AI                  |
+| **Durata stimata**      | ~7 mesi con Gemini 3 Flash Preview                      |
 
 ---
 
@@ -44,6 +44,7 @@ Il backend è stato configurato per usare **Vertex AI come PRIMARY** con il serv
 ```
 
 **Codice di inizializzazione** (`genai_client.py:206-232`):
+
 ```python
 # Try Service Account first (Vertex AI mode) - PREFERRED for production
 if _sa_configured and _sa_project_id:
@@ -66,16 +67,19 @@ if self.api_key:
 ## 🤖 Modelli Configurati (2026-01-19)
 
 **Primary Model:** `gemini-3-flash-preview`
+
 - Fast & cost-effective
 - $0.50/1M input tokens
 - $3.00/1M output tokens
 
 **Fallback Model:** `gemini-2.0-flash`
+
 - Stable & reliable
 - $0.075/1M input tokens (6.6x cheaper)
 - $0.30/1M output tokens (10x cheaper)
 
 **Strategia fallback modelli:**
+
 ```
 gemini-3-flash-preview → gemini-2.0-flash → OpenRouter
 ```
@@ -109,11 +113,11 @@ All'avvio del backend (`genai_client.py:64-135`):
 
 ### File Modificati
 
-| File | Modifiche | Commit |
-|------|-----------|--------|
+| File                          | Modifiche                                  | Commit   |
+| ----------------------------- | ------------------------------------------ | -------- |
 | `backend/llm/genai_client.py` | Supporto per `GOOGLE_SERVICE_ACCOUNT_JSON` | 9c2adf1a |
-| `backend/app/core/config.py` | Validator per alias secret names | 9c2adf1a |
-| `apps/backend-rag/Dockerfile` | Fix host :: → 0.0.0.0 (IPv4) | a97bd0c8 |
+| `backend/app/core/config.py`  | Validator per alias secret names           | 9c2adf1a |
+| `apps/backend-rag/Dockerfile` | Fix host :: → 0.0.0.0 (IPv4)               | a97bd0c8 |
 
 ---
 
@@ -124,6 +128,7 @@ All'avvio del backend (`genai_client.py:64-135`):
 **Problema:** Backend non raggiungibile (502 error)
 
 **Root Cause:**
+
 ```dockerfile
 # PRIMA (SBAGLIATO)
 CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "::", ...]
@@ -131,6 +136,7 @@ CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "::", ...]
 ```
 
 **Fix:**
+
 ```dockerfile
 # DOPO (CORRETTO)
 CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", ...]
@@ -142,6 +148,7 @@ CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", ...]
 ### Fix 2: Service Account Support (2026-01-18)
 
 **Aggiunto supporto per alias secret names:**
+
 - `GOOGLE_SERVICE_ACCOUNT_JSON` (Fly.io standard)
 - `GOOGLE_CREDENTIALS_JSON` (legacy)
 - `GEMINI_SA_TOKEN` (alias legacy)
@@ -153,18 +160,21 @@ CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", ...]
 ## ✅ Verifica Funzionamento
 
 ### 1. Health Check
+
 ```bash
 curl https://nuzantara-rag.fly.dev/health
 # {"status":"healthy","database":{"status":"connected"},...}
 ```
 
 ### 2. Logs Backend
+
 ```bash
 fly logs -a nuzantara-rag | grep "GenAI"
 # ✅ GenAI client initialized with Vertex AI (project: nuzantara)
 ```
 
 ### 3. Status Machines
+
 ```bash
 fly status -a nuzantara-rag
 # 2/2 machines running, 1 total check passing
@@ -177,10 +187,12 @@ fly status -a nuzantara-rag
 ### Con Gemini 3 Flash Preview (attuale)
 
 **Assunzioni:**
+
 - 150K input tokens/giorno
 - 30K output tokens/giorno
 
 **Costo mensile:**
+
 ```
 Input:  150K × 30 giorni = 4.5M tokens × $0.50  = $67.50
 Output: 30K  × 30 giorni = 0.9M tokens × $3.00  = $67.50
@@ -188,6 +200,7 @@ TOTALE: $135/mese
 ```
 
 **Durata credito:**
+
 ```
 $1,000 ÷ $135/mese = 7.4 mesi (~7 mesi)
 ```
@@ -195,6 +208,7 @@ $1,000 ÷ $135/mese = 7.4 mesi (~7 mesi)
 ### Se si usasse Gemini 2.0 Flash (10x più economico)
 
 **Costo mensile:**
+
 ```
 Input:  4.5M tokens × $0.075 = $6.75
 Output: 0.9M tokens × $0.30  = $6.75
@@ -202,6 +216,7 @@ TOTALE: $13.50/mese (10x cheaper!)
 ```
 
 **Durata credito:**
+
 ```
 $1,000 ÷ $13.50/mese = 74 mesi (~6 anni!)
 ```

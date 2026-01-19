@@ -42,6 +42,7 @@ https://console.cloud.google.com/billing
 ### Step 2: What to Look For
 
 **✅ GOOD - Credits cover Vertex AI:**
+
 ```
 Credit Name: "Google Cloud Platform Credit"
              OR "Google Developer Program - AI Credit"
@@ -51,6 +52,7 @@ Remaining: $XXX / $1,000
 ```
 
 **❌ BAD - Credits DON'T cover Vertex AI:**
+
 ```
 Credit Name: "AI Studio API Free Tier"
 Applicable to: Google AI Studio only (API Key usage)
@@ -69,15 +71,16 @@ In the Credits tab, look for **"Restrictions"** section:
 
 ## 📊 Vertex AI vs AI Studio Billing
 
-| Aspect | AI Studio API Key | Vertex AI (Service Account) |
-|--------|-------------------|------------------------------|
-| **Authentication** | API Key (simple) | Service Account (project-based) |
-| **Billing Method** | AI Studio quota/credits | GCP Billing Account |
-| **Credits Applicable** | AI Studio credits only | GCP credits (if eligible) |
-| **Pricing (Gemini 2.0)** | $0.075/1M input tokens | $0.075/1M input tokens |
-| **Quota** | 1,500 RPM | 2,000 RPM (higher) |
+| Aspect                   | AI Studio API Key       | Vertex AI (Service Account)     |
+| ------------------------ | ----------------------- | ------------------------------- |
+| **Authentication**       | API Key (simple)        | Service Account (project-based) |
+| **Billing Method**       | AI Studio quota/credits | GCP Billing Account             |
+| **Credits Applicable**   | AI Studio credits only  | GCP credits (if eligible)       |
+| **Pricing (Gemini 2.0)** | $0.075/1M input tokens  | $0.075/1M input tokens          |
+| **Quota**                | 1,500 RPM               | 2,000 RPM (higher)              |
 
 **Key Difference:**
+
 - **AI Studio API Key** = Uses separate quota, may have separate credits
 - **Vertex AI** = Uses GCP billing account, shares GCP-wide credits
 
@@ -88,6 +91,7 @@ In the Credits tab, look for **"Restrictions"** section:
 ### Method 1: Check via Web Console
 
 1. **Go to Billing:**
+
    ```
    https://console.cloud.google.com/billing?project=nuzantara
    ```
@@ -144,6 +148,7 @@ Based on research, **Vertex AI CAN use Google Cloud credits** ✅
 > "With express mode, you can still use any existing credits on your account."
 
 **Google Developer Program Credits:**
+
 > "This credit may only be used in Google AI Studio and Google Cloud Vertex AI.
 > Specifically, for Google Cloud Vertex AI, the credit can only be applied to
 > Google GenAI models including Gemini 2.0+ models."
@@ -155,12 +160,14 @@ Based on research, **Vertex AI CAN use Google Cloud credits** ✅
 ## ⚠️ IMPORTANT: What Vertex AI Credits Cover
 
 **✅ COVERED by Vertex AI Credits:**
+
 - Gemini 2.0+ models (Flash, Pro)
 - Imagen (image generation)
 - Veo (video generation)
 - Text embeddings (if using Vertex AI Embeddings API)
 
 **❌ NOT COVERED:**
+
 - Google Maps Platform
 - Cloud Storage (separate charges)
 - Compute Engine (if used)
@@ -203,12 +210,13 @@ gcloud projects add-iam-policy-binding nuzantara \
 
 **Scenario:** 10M tokens input, 2M tokens output per month
 
-| Method | Cost Calculation | Total |
-|--------|------------------|-------|
+| Method        | Cost Calculation                            | Total         |
+| ------------- | ------------------------------------------- | ------------- |
 | **AI Studio** | (10M × $0.075) + (2M × $0.30) = $750 + $600 | **$1,350/mo** |
 | **Vertex AI** | (10M × $0.075) + (2M × $0.30) = $750 + $600 | **$1,350/mo** |
 
 **Pricing is identical**, but:
+
 - ✅ Vertex AI: Uses your 16M IDR credit (if applicable)
 - ❌ AI Studio: May use separate quota/credit
 
@@ -219,21 +227,25 @@ gcloud projects add-iam-policy-binding nuzantara \
 **Based on your 16M IDR credit, here's what to do:**
 
 ### ✅ IF credit covers Vertex AI:
+
 1. **Primary:** Use Vertex AI (save AI Studio quota)
 2. **Fallback:** Use AI Studio API Key
 3. **Last Resort:** OpenRouter
 
 **Why?**
+
 - Maximize use of 16M IDR credit
 - Higher quota (2,000 RPM vs 1,500 RPM)
 - Enterprise features (audit logs, VPC-SC)
 
 ### ❌ IF credit is AI Studio only:
+
 1. **Primary:** Use AI Studio API Key (utilize credit)
 2. **Fallback:** Vertex AI (paid, but higher quota)
 3. **Last Resort:** OpenRouter
 
 **Why?**
+
 - Maximize free tier usage first
 - Vertex AI as paid backup when quota exceeded
 
@@ -256,19 +268,20 @@ gcloud projects add-iam-policy-binding nuzantara \
 
 **Risultati:**
 
-| Item | Status | Details |
-|------|--------|---------|
-| **Credito verificato** | ✅ | 16.663.501 Rp (~$1,000 USD) al 100% |
-| **Copertura Vertex AI** | ✅ | "Google GenAI models including Gemini 2.0+ models" |
-| **Service Account** | ✅ | `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` |
-| **Project ID** | ✅ | `nuzantara` |
-| **API abilitata** | ✅ | Vertex AI API attiva |
-| **Backend deployed** | ✅ | Version 1668, 2/2 machines running |
-| **Health check** | ✅ | Passing |
-| **Vertex AI PRIMARY** | ✅ | Usa credito come primary (non fallback) |
-| **Model attivo** | ✅ | `gemini-3-flash-preview` |
+| Item                    | Status | Details                                                 |
+| ----------------------- | ------ | ------------------------------------------------------- |
+| **Credito verificato**  | ✅     | 16.663.501 Rp (~$1,000 USD) al 100%                     |
+| **Copertura Vertex AI** | ✅     | "Google GenAI models including Gemini 2.0+ models"      |
+| **Service Account**     | ✅     | `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` |
+| **Project ID**          | ✅     | `nuzantara`                                             |
+| **API abilitata**       | ✅     | Vertex AI API attiva                                    |
+| **Backend deployed**    | ✅     | Version 1668, 2/2 machines running                      |
+| **Health check**        | ✅     | Passing                                                 |
+| **Vertex AI PRIMARY**   | ✅     | Usa credito come primary (non fallback)                 |
+| **Model attivo**        | ✅     | `gemini-3-flash-preview`                                |
 
 **Durata stimata credito:**
+
 - Con Gemini 3 Flash Preview: ~7 mesi
 - Con Gemini 2.0 Flash: ~74 mesi (6 anni)
 

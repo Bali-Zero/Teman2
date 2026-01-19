@@ -30,7 +30,7 @@ The "Frontend" is not a single Next.js app. It is a **ubiquitous layer of intera
 **Role:** Notifications, Approvals, Quick Tasks, Intelligence Feed.
 
 - **Tech:** Telegram Bot API (Webhooks) + `apps/bali-intel-scraper` pipeline.
-- **Bot:** `@zantara_bot`
+- **Bot:** `@Balizerobot` (Zantara - Bali Zero)
 - **Use Cases:**
   - **Approval Flows:** Reviewing Intel articles (Approve/Reject/Edit buttons).
   - **Daily Briefing:** Morning push of critical stats/news.
