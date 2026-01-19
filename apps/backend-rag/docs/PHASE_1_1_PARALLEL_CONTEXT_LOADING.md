@@ -9,12 +9,14 @@ This document describes the parallel context loading optimization implemented in
 **File Modified:** `backend/services/rag/agentic/context_manager.py`
 
 **Changes:**
+
 - Extracted `_fetch_profile_and_history()` helper function for DB queries
 - Extracted `_fetch_memory_facts()` helper function for Memory orchestrator
 - Refactored `get_user_context()` to use `asyncio.gather()` for parallel execution
 - Added timing metrics to measure speedup
 
 **Expected Improvement:**
+
 - **Baseline (Sequential):** ~500-700ms (DB: 200-300ms + Memory: 300-400ms)
 - **Optimized (Parallel):** ~300-400ms (max of DB and Memory)
 - **Speedup:** 200-400ms reduction (~30-50% faster)
@@ -22,11 +24,13 @@ This document describes the parallel context loading optimization implemented in
 ## How It Works
 
 ### Before (Sequential)
+
 ```
 Start → DB Query (300ms) → Wait → Memory Fetch (400ms) → Return (700ms total)
 ```
 
 ### After (Parallel)
+
 ```
 Start → DB Query (300ms) ┐
       → Memory Fetch (400ms) ┘ → Wait for both → Return (400ms total)
@@ -45,6 +49,7 @@ PYTHONPATH=. pytest backend/tests/unit/services/rag/agentic/test_context_manager
 ```
 
 Expected output:
+
 ```
 ⚡ Performance Test Results:
    Parallel time: 0.250s
@@ -57,6 +62,7 @@ Expected output:
 Check application logs for timing metrics. Look for these log patterns:
 
 **Success Pattern:**
+
 ```
 ⏱️  [ContextManager] Profile fetch: 0.234s
 ⏱️  [ContextManager] Memory fetch: 0.312s
@@ -64,6 +70,7 @@ Check application logs for timing metrics. Look for these log patterns:
 ```
 
 **Failure Pattern (graceful degradation):**
+
 ```
 ❌ Profile fetch failed: ...
 ⚡ [ContextManager] PARALLEL LOADING completed in 0.250s (one or more tasks failed)
@@ -84,6 +91,7 @@ fly logs -a nuzantara-rag --limit 100 | grep "PARALLEL LOADING"
 #### Grafana Dashboard
 
 If observability stack is running, check:
+
 - **Metric:** `zantara_context_loading_duration_seconds`
 - **Label:** `method=parallel`
 - Compare with baseline (if available)
@@ -93,12 +101,14 @@ If observability stack is running, check:
 Time-to-First-Token (TTFT) improvement can be measured at the API level:
 
 **Before Optimization:**
+
 ```
 TTFT = Context Loading (700ms) + Entity Extraction (100ms) + Gates (50ms) + ...
      = ~850ms baseline
 ```
 
 **After Optimization:**
+
 ```
 TTFT = Context Loading (400ms) + Entity Extraction (100ms) + Gates (50ms) + ...
      = ~550ms optimized
@@ -140,11 +150,12 @@ if speedups:
 If issues occur, the optimization can be easily rolled back:
 
 1. **Quick Fix:** Comment out the `asyncio.gather()` call and restore sequential execution:
+
    ```python
    # profile_result = await _fetch_profile_and_history(...)
    # memory_result = await _fetch_memory_facts(...)
    # results = await asyncio.gather(...)
-   
+
    # Sequential fallback:
    profile_result = await _fetch_profile_and_history(db_pool, user_id, session_id)
    memory_result = await _fetch_memory_facts(memory_orchestrator, original_user_id, query)
@@ -158,16 +169,19 @@ If issues occur, the optimization can be easily rolled back:
 ## Success Criteria
 
 ✅ **Performance:**
+
 - Average speedup > 200ms
 - No increase in error rate
 - TTFT reduction visible in production metrics
 
 ✅ **Reliability:**
+
 - Graceful degradation when one task fails
 - No race conditions
 - All existing tests pass
 
 ✅ **Observability:**
+
 - Timing metrics logged correctly
 - Speedup calculation accurate
 - Logs searchable and parseable
@@ -175,6 +189,7 @@ If issues occur, the optimization can be easily rolled back:
 ## Next Steps (Phase 1.2)
 
 After verifying Phase 1.1 success:
+
 - **Phase 1.2:** Parallel Entity Extraction + KG Retrieval
 - **Phase 1.3:** Parallel Tool Execution in Reasoning Engine
 - **Phase 3:** Speculative Follow-up Generation

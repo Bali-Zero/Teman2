@@ -8,7 +8,7 @@
 ## ✅ Dipendenze Installate
 
 - ✅ `langgraph` - Installato nel virtualenv
-- ✅ `asyncpg` - Installato nel virtualenv  
+- ✅ `asyncpg` - Installato nel virtualenv
 - ✅ `qdrant-client` - Installato nel virtualenv
 - ✅ `pypdf` - Installato nel virtualenv
 - ⏳ `requirements.txt` - Installazione in corso (può richiedere tempo)
@@ -24,6 +24,7 @@
 **Status:** ⚠️ **Bloccato da dipendenze mancanti**
 
 **Test inclusi:**
+
 1. `test_degraded_mode_on_non_critical_failure`
 2. `test_unavailable_on_critical_failure`
 3. `test_healthy_status_on_success`
@@ -35,6 +36,7 @@
 **Problema:** Import chain richiede molte dipendenze (`ebooklib`, ecc.)
 
 **Soluzione:** Installare tutte le dipendenze da `requirements.txt`:
+
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate
@@ -50,6 +52,7 @@ pip install -r requirements.txt
 **Status:** ⚠️ **Bloccato da dipendenze mancanti** (stesso problema)
 
 **Test creati:**
+
 1. ✅ `test_memory_orchestrator_unavailable_returns_none`
 2. ✅ `test_save_memory_gracefully_handles_unavailable_orchestrator`
 3. ✅ `test_save_memory_timing_metrics_recorded`
@@ -71,12 +74,14 @@ pip install -r requirements.txt
 **Status:** ✅ **Funzionante**
 
 **Funzionalità:**
+
 - Analizza log per timing metrics
 - Rileva errori memory orchestrator
 - Mostra statistiche lock contention
 - Supporta log locali e Fly.io
 
 **Utilizzo:**
+
 ```bash
 # Log locale
 python scripts/check_memory_timing_logs.py --log-file logs/app.log
@@ -86,6 +91,7 @@ python scripts/check_memory_timing_logs.py --fly-logs --app-name nuzantara-rag
 ```
 
 **Output atteso:**
+
 ```
 ================================================================================
 MEMORY ORCHESTRATOR TIMING & ERROR ANALYSIS
@@ -134,11 +140,13 @@ memory_context_failed_total
 ### Log Timing
 
 Il `MemoryHandler` registra:
+
 - **Lock contention**: Tempo di attesa per lock (>10ms)
 - **Processing time**: Tempo elaborazione facts (ms)
 - **Lock timeout**: Eventi di timeout
 
 **Pattern log:**
+
 ```
 INFO: Saved 2/2 facts for user@example.com (150.5ms)
 WARNING: Memory save lock timeout for user@example.com (timeout: 5.0s)
@@ -178,6 +186,7 @@ async def get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
 ## 🚀 Prossimi Passi
 
 1. **Completare installazione dipendenze:**
+
    ```bash
    cd apps/backend-rag
    source .venv/bin/activate
@@ -185,12 +194,14 @@ async def get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
    ```
 
 2. **Eseguire test:**
+
    ```bash
    pytest tests/unit/services/memory/test_memory_orchestrator_error_handling.py -v
    pytest tests/unit/services/rag/agentic/test_memory_handler_error_scenario.py -v
    ```
 
 3. **Verificare log produzione:**
+
    ```bash
    python scripts/check_memory_timing_logs.py --fly-logs
    ```

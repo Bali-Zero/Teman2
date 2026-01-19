@@ -381,7 +381,7 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_CHAT_ID" -a nuzant
 
 | Setting          | Value                                                   |
 | ---------------- | ------------------------------------------------------- |
-| Telegram Bot     | @zantara_bot                                            |
+| Telegram Bot     | @Balizerobot (Zantara - Bali Zero)                      |
 | Approvers        | Zero (8290313965), Dea (6217157548), Damar (1813875994) |
 | Bot Token Secret | TELEGRAM_BOT_TOKEN                                      |
 | Chat ID Secret   | TELEGRAM_APPROVAL_CHAT_ID                               |

@@ -12,6 +12,7 @@
 **File:** `tests/unit/services/memory/test_memory_orchestrator_error_handling.py`
 
 **Test inclusi:**
+
 1. `test_degraded_mode_on_non_critical_failure` - Verifica degraded mode su errori non critici
 2. `test_unavailable_on_critical_failure` - Verifica unavailable status su errori critici
 3. `test_healthy_status_on_success` - Verifica healthy status quando tutto funziona
@@ -59,11 +60,13 @@ memory_context_failed_total = Counter(
 #### Timing Logs (`backend/services/rag/agentic/memory_handler.py`)
 
 Il `MemoryHandler` registra timing per:
+
 - **Lock contention**: Tempo di attesa per acquisire lock per-user
 - **Processing time**: Tempo di elaborazione dei fatti (ms)
 - **Lock timeout**: Quando il lock non viene acquisito entro il timeout
 
 **Pattern di log:**
+
 ```python
 logger.info(
     f"Saved {result.facts_saved}/{result.facts_extracted} "
@@ -72,6 +75,7 @@ logger.info(
 ```
 
 **Lock contention metric:**
+
 ```python
 lock_wait_time = time.time() - lock_start_time
 if lock_wait_time > 0.01 and metrics_collector:  # Only record if waited > 10ms
@@ -115,6 +119,7 @@ async def get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
 **File:** `tests/unit/services/rag/agentic/test_memory_handler_error_scenario.py`
 
 **Test inclusi:**
+
 1. ✅ `test_memory_orchestrator_unavailable_returns_none` - Verifica che ritorna None
 2. ✅ `test_save_memory_gracefully_handles_unavailable_orchestrator` - Verifica graceful handling
 3. ✅ `test_save_memory_timing_metrics_recorded` - Verifica timing metrics
@@ -136,6 +141,7 @@ async def get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
 ### Funzionalità
 
 Lo script analizza i log per:
+
 - Timing metrics (valori in ms)
 - Errori di memory orchestrator
 - Lock contention
@@ -196,6 +202,7 @@ MEMORY ORCHESTRATOR TIMING & ERROR ANALYSIS
 ## 🚀 Prossimi Passi
 
 1. **Installare dipendenze mancanti:**
+
    ```bash
    cd apps/backend-rag
    source .venv/bin/activate
@@ -203,12 +210,14 @@ MEMORY ORCHESTRATOR TIMING & ERROR ANALYSIS
    ```
 
 2. **Eseguire i test:**
+
    ```bash
    pytest tests/unit/services/memory/test_memory_orchestrator_error_handling.py -v
    pytest tests/unit/services/rag/agentic/test_memory_handler_error_scenario.py -v
    ```
 
 3. **Verificare log:**
+
    ```bash
    python scripts/check_memory_timing_logs.py --fly-logs
    ```
