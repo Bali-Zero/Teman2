@@ -103,19 +103,26 @@ class MetricsCollector {
       // Send to backend metrics endpoint
       const { api } = await import('./api');
       const token = api.getToken();
+      const csrfToken = api.getCsrfToken();
 
       if (!token) return;
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       await fetch('/api/metrics/frontend', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ metrics: metricsToSend }),
       });
     } catch (error) {
-      console.error('Failed to flush metrics:', error);
+      // Silently fail - metrics are not critical
       // Re-add metrics if flush failed
       this.metrics.unshift(...metricsToSend);
     }
