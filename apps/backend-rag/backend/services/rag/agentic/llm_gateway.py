@@ -684,7 +684,7 @@ class LLMGateway:
 
             try:
                 # Try model
-                text_content, response, token_usage = await _call_model(
+                text_content, response, token_usage = await self._call_model(
                     model_name,
                     with_tools=enable_function_calling,
                 )

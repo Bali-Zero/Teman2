@@ -74,7 +74,8 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
     creds_json = (
         getattr(settings, "google_credentials_json", None)
         or os.environ.get("GOOGLE_CREDENTIALS_JSON")
-        or os.environ.get("GEMINI_SA_TOKEN")  # Support GEMINI_SA_TOKEN alias
+        or os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")  # Fly.io secret name
+        or os.environ.get("GEMINI_SA_TOKEN")  # Legacy alias
     )
 
     if not creds_json:
