@@ -524,7 +524,12 @@ class LLMGateway:
 
         # Helper to call model
         async def _call_model(
-            model_name: str, with_tools: bool = False
+            model_name: str, 
+            with_tools: bool = False,
+            chat: Any = None,
+            message: str = "",
+            images: list[dict] | None = None,
+            system_prompt: str = ""
         ) -> tuple[str, Any, TokenUsage]:
             """Call a specific model and return (text, response, token_usage)."""
             if not self._genai_client or not self._genai_client.is_available:
@@ -687,6 +692,10 @@ class LLMGateway:
                 text_content, response, token_usage = await _call_model(
                     model_name,
                     with_tools=enable_function_calling,
+                    chat=chat,
+                    message=message,
+                    images=images,
+                    system_prompt=system_prompt,
                 )
 
                 # Success - reset circuit breaker
