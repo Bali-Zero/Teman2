@@ -164,3 +164,104 @@ class MemoryProcessResult(BaseModel):
     def success(self) -> bool:
         """Check if processing was successful"""
         return self.error is None
+
+
+# ==========================================
+# DATABASE MAPPING (SQLModel)
+# ==========================================
+
+from sqlalchemy import Column, Text, JSON
+from sqlmodel import SQLModel, Field, Relationship
+
+
+class UserFactModel(SQLModel, table=True):
+    """
+    User Fact model - Semantic truths about a user
+    Maps to existing 'user_facts' table
+    """
+
+    __tablename__ = "user_facts"
+    __table_args__ = {"extend_existing": True}
+
+    id: str | None = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True, max_length=36)
+
+    # Core Content
+    fact_type: str = Field(default="general", max_length=50)
+    fact_key: str | None = Field(default=None, max_length=100)
+    fact_value: str = Field(sa_column=Column(Text))
+
+    # Metadata
+    confidence: float = Field(default=1.0)
+    source_message_id: str | None = Field(default=None, max_length=255)
+    extraction_method: str = Field(default="pattern", max_length=50)
+
+    # Status
+    is_active: bool = Field(default=True)
+    superseded_by: str | None = Field(default=None, max_length=36)
+    invalidated_at: datetime | None = Field(default=None)
+
+    # Timestamps
+    learned_at: datetime = Field(default_factory=datetime.utcnow)
+    last_confirmed: datetime = Field(default_factory=datetime.utcnow)
+
+
+class EpisodicMemoryModel(SQLModel, table=True):
+    """
+    Episodic Memory model - Event logs and interactions
+    Maps to existing 'episodic_memories' table
+    """
+
+    __tablename__ = "episodic_memories"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True, max_length=36)
+
+    # Event Details
+    event_type: str = Field(default="general", max_length=50)
+    title: str = Field(max_length=255)
+    description: str | None = Field(default=None, sa_column=Column(Text))
+    emotion: str | None = Field(default=None, max_length=50)
+
+    # Entity Links
+    related_entities: list[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    kg_entity_ids: list[int] = Field(default_factory=list, sa_column=Column(JSON))
+
+    # Event Metadata (renamed to avoid SQLModel conflict)
+    event_metadata: dict = Field(default_factory=dict, sa_column=Column("metadata", JSON))
+    source: str = Field(default="auto", max_length=50)
+    
+    # Timestamps
+    occurred_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CollectiveMemoryModel(SQLModel, table=True):
+    """
+    Collective Memory model - Global knowledge shared across users
+    Maps to existing 'collective_memory' table
+    """
+
+    __tablename__ = "collective_memory"
+    __table_args__ = {"extend_existing": True}
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    # Content
+    content: str = Field(sa_column=Column(Text))
+    category: str = Field(default="general", max_length=50)
+    tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+
+    # Vector Search
+    # Note: embedding column is vector(1536), handled by pgvector, simplified here
+    # embedding: list[float] | None = Field(default=None, sa_column=Column(Vector(1536)))
+
+    # Stats
+    verify_count: int = Field(default=0)
+    last_verified_at: datetime | None = Field(default=None)
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
