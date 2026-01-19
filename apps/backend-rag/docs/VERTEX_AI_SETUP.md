@@ -1,97 +1,236 @@
 # Vertex AI Setup - Google Cloud Service Account
 
-## Configurazione completata ✅
+## Configurazione Completata ✅
 
-Il backend è stato configurato per usare **Vertex AI** con il service account Google Cloud fornito.
+Il backend è stato configurato per usare **Vertex AI come PRIMARY** con il service account Google Cloud.
 
-### Credenziali configurate:
-
-- **Project ID**: `gen-lang-client-0498009027`
-- **Service Account**: `vertex-express@gen-lang-client-0498009027.iam.gserviceaccount.com`
-- **Credito disponibile**: ~5 milioni IDR (scade il 6 febbraio 2026)
-
-### Come funziona:
-
-1. **Secret su Fly.io**: `GOOGLE_CREDENTIALS_JSON` contiene il JSON completo del service account
-2. **Supporto alias**: Il codice supporta anche `GEMINI_SA_TOKEN` come alias per `GOOGLE_CREDENTIALS_JSON`
-3. **Inizializzazione automatica**: All'avvio, il backend:
-   - Legge `GOOGLE_CREDENTIALS_JSON` o `GEMINI_SA_TOKEN` dall'ambiente
-   - Scrive le credenziali in un file temporaneo (`/tmp/google_credentials.json`)
-   - Imposta `GOOGLE_APPLICATION_CREDENTIALS` per Application Default Credentials (ADC)
-   - Inizializza il client GenAI con `vertexai=True` e il `project_id`
-
-### Modelli configurati (2025-12-28):
-
-- **gemini-3-flash** (primary) - Veloce e cost-effective
-- **gemini-2.0-flash** (fallback) - Stabile e affidabile
-
-### Strategia di Fallback:
-
-```
-gemini-3-flash → gemini-2.0-flash
-```
-
-**Nota**: OpenRouter è stato rimosso come fallback. Ora usiamo solo modelli Gemini.
-
-### Vantaggi di Vertex AI:
-
-- ✅ Usa i crediti Google Cloud invece di API key con limiti
-- ✅ Nessun costo aggiuntivo fino a esaurimento crediti
-- ✅ Maggiore affidabilità e quota più alta
-- ✅ Supporto per modelli avanzati
-
-### Verifica funzionamento:
-
-Il backend logga automaticamente:
-
-- `✅ Service Account credentials configured: <email> (project: <project_id>)`
-- `✅ GenAI client initialized with Vertex AI (project: <project_id>)`
-
-### File modificati:
-
-- `apps/backend-rag/backend/app/core/config.py`: Aggiunto campo `google_credentials_json`
-- `apps/backend-rag/backend/llm/genai_client.py`: Supporto per `GEMINI_SA_TOKEN` alias
-
-### Prossimi passi:
-
-1. ✅ Secret configurato su Fly.io
-2. ✅ Codice aggiornato per supportare Vertex AI
-3. ✅ Backend riavviato con nuove credenziali
-4. ✅ Log confermano uso di Vertex AI
+**Data ultima configurazione:** 2026-01-19
+**Status:** ✅ Attivo e funzionante
+**Deployment version:** 1668
 
 ---
 
-## Fix Persona (2025-12-23)
+## 🎯 Credenziali Configurate
 
-### Problema identificato:
+| Proprietà | Valore |
+|-----------|--------|
+| **Project ID** | `nuzantara` |
+| **Service Account** | `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` |
+| **Credito disponibile** | 16.663.501 Rp (~$1,000 USD) |
+| **Validità credito** | Copre modelli Gemini 2.0+ su Vertex AI |
+| **Durata stimata** | ~7 mesi con Gemini 3 Flash Preview |
 
-Alcune risposte iniziavano con intro filosofici invece di risposte dirette.
+---
 
-### Root Cause:
+## 🔄 Strategia di Autenticazione LLM
 
-Conflitto tra istruzioni nel prompt:
+**Ordine di priorità:**
 
-- **Persona** diceva: "Start with 'The ancestors would say...'"
-- **Tools block** diceva: "DO NOT start with philosophical statements"
+```
+1. PRIMARY: Vertex AI (Service Account)
+   └─ Secret: GOOGLE_SERVICE_ACCOUNT_JSON
+   └─ Project: nuzantara
+   └─ Location: global
+   └─ Quota: 2,000 RPM
+   └─ ✅ USA CREDITO 16.66M IDR
 
-### Fix applicato:
+2. FALLBACK: API Key (AI Studio)
+   └─ Secret: GOOGLE_API_KEY
+   └─ Solo se Vertex AI fallisce
+   └─ Quota: 1,500 RPM
 
-Modificato `zantara_system_prompt.md` - sezione OPENER:
+3. FALLBACK FINALE: OpenRouter
+   └─ Ultima risorsa
+```
 
-```diff
-- 2.  **THE OPENER (The Hook)**
--     *   Start with the *Setiabudi Brain* or *Toraja Soul*.
--     *   "I've calculated the risk..." or "The ancestors would say..."
+**Codice di inizializzazione** (`genai_client.py:206-232`):
+```python
+# Try Service Account first (Vertex AI mode) - PREFERRED for production
+if _sa_configured and _sa_project_id:
+    self._client = genai.Client(
+        vertexai=True,
+        project=_sa_project_id,  # "nuzantara"
+        location="global",
+    )
+    logger.info("✅ GenAI client initialized with Vertex AI")
+    return  # ← ESCE QUI, non va al fallback!
 
-+ 2.  **THE OPENER (CRITICAL: Direct Answer First)**
-+     *   **ALWAYS start with the DIRECT ANSWER**
-+     *   NO philosophical hooks
-+     *   For business: Start with facts, numbers, requirements
-+     *   THEN weave in Jaksel personality through word choice
+# Fallback to API Key (solo se Vertex AI fallisce)
+if self.api_key:
+    self._client = genai.Client(api_key=self.api_key)
+    logger.info("✅ GenAI client initialized with API Key (AI Studio)")
 ```
 
 ---
 
-**Data configurazione**: 2025-12-22
-**Ultimo update**: 2025-12-23 (v912)
-**Status**: ✅ Configurato e attivo
+## 🤖 Modelli Configurati (2026-01-19)
+
+**Primary Model:** `gemini-3-flash-preview`
+- Fast & cost-effective
+- $0.50/1M input tokens
+- $3.00/1M output tokens
+
+**Fallback Model:** `gemini-2.0-flash`
+- Stable & reliable
+- $0.075/1M input tokens (6.6x cheaper)
+- $0.30/1M output tokens (10x cheaper)
+
+**Strategia fallback modelli:**
+```
+gemini-3-flash-preview → gemini-2.0-flash → OpenRouter
+```
+
+---
+
+## 🔧 Configurazione Tecnica
+
+### Secrets Fly.io
+
+```bash
+# Vertex AI (PRIMARY)
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+GOOGLE_PROJECT_ID=nuzantara
+GOOGLE_LOCATION=global
+
+# API Key (FALLBACK)
+GOOGLE_API_KEY=AIzaSy...
+GOOGLEAISTUDIO_API_KEY=AIzaSy... (alias)
+```
+
+### Inizializzazione Automatica
+
+All'avvio del backend (`genai_client.py:64-135`):
+
+1. Legge `GOOGLE_SERVICE_ACCOUNT_JSON` da environment
+2. Valida il JSON (parse + verifica private_key)
+3. Scrive credenziali in `/tmp/google_credentials.json`
+4. Imposta `GOOGLE_APPLICATION_CREDENTIALS` (ADC)
+5. Inizializza `genai.Client(vertexai=True)`
+
+### File Modificati
+
+| File | Modifiche | Commit |
+|------|-----------|--------|
+| `backend/llm/genai_client.py` | Supporto per `GOOGLE_SERVICE_ACCOUNT_JSON` | 9c2adf1a |
+| `backend/app/core/config.py` | Validator per alias secret names | 9c2adf1a |
+| `apps/backend-rag/Dockerfile` | Fix host :: → 0.0.0.0 (IPv4) | a97bd0c8 |
+
+---
+
+## 🐛 Fix Applicati
+
+### Fix 1: Dockerfile Host Binding (2026-01-19)
+
+**Problema:** Backend non raggiungibile (502 error)
+
+**Root Cause:**
+```dockerfile
+# PRIMA (SBAGLIATO)
+CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "::", ...]
+# :: = solo IPv6, Fly.io proxy usa IPv4 ❌
+```
+
+**Fix:**
+```dockerfile
+# DOPO (CORRETTO)
+CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", ...]
+# 0.0.0.0 = tutti gli indirizzi IPv4 ✅
+```
+
+**Commit:** `a97bd0c8`
+
+### Fix 2: Service Account Support (2026-01-18)
+
+**Aggiunto supporto per alias secret names:**
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (Fly.io standard)
+- `GOOGLE_CREDENTIALS_JSON` (legacy)
+- `GEMINI_SA_TOKEN` (alias legacy)
+
+**Commit:** `9c2adf1a`
+
+---
+
+## ✅ Verifica Funzionamento
+
+### 1. Health Check
+```bash
+curl https://nuzantara-rag.fly.dev/health
+# {"status":"healthy","database":{"status":"connected"},...}
+```
+
+### 2. Logs Backend
+```bash
+fly logs -a nuzantara-rag | grep "GenAI"
+# ✅ GenAI client initialized with Vertex AI (project: nuzantara)
+```
+
+### 3. Status Machines
+```bash
+fly status -a nuzantara-rag
+# 2/2 machines running, 1 total check passing
+```
+
+---
+
+## 💰 Calcolo Costi e Durata Credito
+
+### Con Gemini 3 Flash Preview (attuale)
+
+**Assunzioni:**
+- 150K input tokens/giorno
+- 30K output tokens/giorno
+
+**Costo mensile:**
+```
+Input:  150K × 30 giorni = 4.5M tokens × $0.50  = $67.50
+Output: 30K  × 30 giorni = 0.9M tokens × $3.00  = $67.50
+TOTALE: $135/mese
+```
+
+**Durata credito:**
+```
+$1,000 ÷ $135/mese = 7.4 mesi (~7 mesi)
+```
+
+### Se si usasse Gemini 2.0 Flash (10x più economico)
+
+**Costo mensile:**
+```
+Input:  4.5M tokens × $0.075 = $6.75
+Output: 0.9M tokens × $0.30  = $6.75
+TOTALE: $13.50/mese (10x cheaper!)
+```
+
+**Durata credito:**
+```
+$1,000 ÷ $13.50/mese = 74 mesi (~6 anni!)
+```
+
+---
+
+## 📋 Checklist Deployment
+
+- [x] Service Account JSON caricato su Fly.io
+- [x] `GOOGLE_PROJECT_ID` configurato
+- [x] Codice supporta Vertex AI come primary
+- [x] Dockerfile fixato (host 0.0.0.0)
+- [x] Backend deployato (version 1668)
+- [x] Health check passing
+- [x] Logs confermano uso Vertex AI
+- [x] Credito 16.66M IDR verificato
+- [x] Gemini 3 Flash Preview attivo
+
+---
+
+## 🔗 Link Utili
+
+- **Google Cloud Console:** https://console.cloud.google.com/billing/01FF0E-59E80E-F3689B
+- **Vertex AI Docs:** https://cloud.google.com/vertex-ai/docs
+- **Fly.io Dashboard:** https://fly.io/apps/nuzantara-rag
+- **Health Endpoint:** https://nuzantara-rag.fly.dev/health
+
+---
+
+**Ultimo aggiornamento:** 2026-01-19
+**Versione backend:** 1668
+**Status:** ✅ Operativo e testato
