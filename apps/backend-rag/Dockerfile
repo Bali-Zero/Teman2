@@ -88,6 +88,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Start uvicorn from root directory using module path
-# Bind to :: (all interfaces, IPv4 and IPv6) for optimal Fly.io reachability
+# Bind to 0.0.0.0 (all IPv4 interfaces, Fly.io compatible)
 # Use 2 workers to leverage 2 CPUs per VM
-CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "::", "--port", "8080", "--workers", "2"]
+CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
