@@ -23,6 +23,7 @@ from backend.app.utils.tracing import add_span_event
 from .orchestrator_core import OrchestratorCore
 from .orchestrator_streaming import OrchestratorStreamingManager
 from .query_helpers import wrap_query_with_language_instruction
+from .thinking_indicators import ThinkingIndicatorService, ThinkingPhase
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -77,10 +78,17 @@ class OrchestratorStreamingCore:
         """
         start_time = time.time()
 
+        # Initialize thinking service
+        thinking_service = ThinkingIndicatorService()
+
         # Yield initial status
         yield self.streaming_manager.create_initial_status_event(correlation_id)
 
+        # IMMEDIATE: Yield thinking indicator for user feedback
+        yield thinking_service.create_thinking_event(ThinkingPhase.ANALYZING)
+
         # 1. Prepare context (common logic)
+        yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
         user_context, optimized_history, extracted_entities = await self.core.prepare_query_context(
             query=query,
             user_id=user_id,
@@ -141,6 +149,9 @@ class OrchestratorStreamingCore:
             },
         )
 
+        # Show reasoning indicator before ReAct loop
+        yield thinking_service.create_thinking_event(ThinkingPhase.REASONING)
+
         try:
             # Stream ReAct loop events
             async for raw_event in self.core.reasoning_engine.execute_react_loop_stream(
@@ -155,6 +166,14 @@ class OrchestratorStreamingCore:
                 tool_execution_counter=tool_execution_counter,
                 images=images,
             ):
+                # Check if this is a tool call event
+                if raw_event and raw_event.get("type") == "tool_call":
+                    tool_name = raw_event.get("data", {}).get("tool_name", "unknown tool")
+                    yield thinking_service.create_thinking_event(
+                        ThinkingPhase.TOOL_CALLING,
+                        tool_name=tool_name
+                    )
+
                 # Process and validate events
                 async for event in self.streaming_manager.process_event_stream(
                     event_generator=self._single_event_generator(raw_event),
@@ -162,6 +181,9 @@ class OrchestratorStreamingCore:
                     user_id=user_id,
                 ):
                     yield event
+
+            # Clear thinking state when done
+            yield thinking_service.create_done_event()
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
