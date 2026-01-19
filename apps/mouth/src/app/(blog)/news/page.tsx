@@ -21,7 +21,7 @@ export default function NewsPage() {
   const mainNews1 = articles.find(a => a.slug === 'constitutional-clash-bank-statements'); // RIGHT - large - MAIN FEATURE
   const mainNews2 = articles.find(a => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
   const mainNews3 = articles.find(a => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
-  const mainNews4 = articles.find(a => a.slug === 'pajak-hiburan-tax-shock'); // MIDDLE bottom - Tax Shock
+  const mainNews4 = articles.find(a => a.slug === 'nominee-crackdown-badung-2026'); // MIDDLE bottom - NOMINEE CRACKDOWN
   const mainNews5 = articles.find(a => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
 
   // Get IDs of main news articles to exclude them from other sections
@@ -463,9 +463,25 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     coverImage: '/static/news/constitutional-clash-koster.jpg',
     category: 'immigration',
     author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
-    publishedAt: new Date('2026-01-15'),
+    publishedAt: new Date('2026-01-19'),
     readingTime: 7,
     viewCount: 12580,
+    featured: true,
+    trending: true,
+    aiGenerated: false,
+  },
+  // === NOMINEE CRACKDOWN - SECOND FEATURE (Jan 2026) ===
+  {
+    id: '201',
+    slug: 'nominee-crackdown-badung-2026',
+    title: "Audit Wave: 'Nominee Agreement' Task Force Deployed in Badung",
+    excerpt: "Tax-Immigration Joint Task Force Seals 12 Villas in Nominee Crackdown",
+    coverImage: '/static/news/villa_pererenan.jpg',
+    category: 'business',
+    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    publishedAt: new Date('2026-01-18'),
+    readingTime: 8,
+    viewCount: 9240,
     featured: true,
     trending: true,
     aiGenerated: false,
