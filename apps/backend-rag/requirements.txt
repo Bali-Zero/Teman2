@@ -33,12 +33,11 @@ sentence-transformers==2.7.0
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
 # Document Processing
-openpyxl==3.1.2
-email-validator==2.1.0
-pypdf==3.17.1
-PyPDF2==3.0.1
-EbookLib==0.17.1
-beautifulsoup4==4.12.2
+openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
+email-validator>=2.2.0
+pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+EbookLib>=0.18
+beautifulsoup4>=4.14.3  # Security and stability updates
 
 # LangChain Ecosystem
 langgraph>=0.0.1
@@ -53,31 +52,31 @@ urllib3>=2.0.0  # Required by selenium, types-requests
 sse-starlette>=1.8.0  # For Server-Sent Events (Streaming)
 
 # Web Scraping (Peraturan Spider & Putusan Spider)
-playwright==1.40.0
-fake-useragent==1.4.0
+playwright>=1.57.0  # Security and browser updates
+fake-useragent>=2.2.0  # Updated user agent database
 selenium>=4.15.0
 webdriver-manager>=4.0.0
 
 # Authentication
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
-bcrypt==4.0.1
-passlib[bcrypt]==1.7.4
+bcrypt>=5.0.0  # Security and performance improvements
+passlib[bcrypt]>=1.7.4
 
 # Database
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
-redis==5.0.1
-sqlmodel==0.0.14
+asyncpg>=0.31.0  # Performance and security improvements
+psycopg2-binary>=2.9.9
+redis>=7.1.0  # Security updates and new features
+sqlmodel>=0.0.31  # Bug fixes and compatibility updates
 sqlalchemy>=2.0.0
 
 # Utilities - UPGRADED VERSIONS
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 # loguru removed - using standard logging instead
 pytz>=2024.2  # Required by dateparser
-packaging>=23.2,<25  # Compatible with langchain-core if needed
+packaging>=23.2,<26  # Compatible with langchain-core if needed
 
 # Development & Quality Tools
-pre-commit==3.6.0
+pre-commit>=4.5.1  # Security and performance updates
 ruff>=0.5.3
 pytest>=9.0.0  # Upgraded for better async support
 pytest-asyncio>=1.3.0  # Major upgrade for improved async testing
