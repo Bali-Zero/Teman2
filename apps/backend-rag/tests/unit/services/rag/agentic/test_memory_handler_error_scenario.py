@@ -38,11 +38,11 @@ def mock_metrics_collector():
 @pytest.mark.asyncio
 async def test_memory_orchestrator_unavailable_returns_none(memory_handler):
     """Test che get_memory_orchestrator ritorna None quando non disponibile."""
-    # Mock initialization failure
-    mock_error = Exception("Database connection failed")
+    # Mock initialization failure - patch the import inside get_memory_orchestrator
+    # MemoryOrchestrator is imported inside the method, so we patch backend.services.memory
     with patch(
-        "backend.services.rag.agentic.memory_handler.MemoryOrchestrator",
-        side_effect=mock_error,
+        "backend.services.memory.MemoryOrchestrator",
+        side_effect=RuntimeError("Database connection failed"),
     ):
         orchestrator = await memory_handler.get_memory_orchestrator()
         assert orchestrator is None

@@ -98,7 +98,7 @@ class ClientIdentityResolver:
             client_id = await conn.fetchval("""
                 SELECT client_id
                 FROM messaging_users
-                WHERE whatsapp_number = $1
+                WHERE phone = $1
                   AND client_id IS NOT NULL
             """, normalized)
 
@@ -167,7 +167,7 @@ class ClientIdentityResolver:
                 result = await conn.execute("""
                     UPDATE messaging_users
                     SET client_id = $1
-                    WHERE whatsapp_number = $2
+                    WHERE phone = $2
                       AND client_id IS NULL
                 """, client_id, normalized)
             else:
@@ -266,7 +266,7 @@ class ClientIdentityResolver:
             rows = await conn.fetch("""
                 SELECT
                     channel,
-                    COALESCE(telegram_chat_id, whatsapp_number) as identifier,
+                    COALESCE(telegram_chat_id::text, phone) as identifier,
                     active,
                     created_at,
                     last_message_at
