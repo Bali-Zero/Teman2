@@ -18,19 +18,19 @@ export default function NewsPage() {
   const [articles] = React.useState<ArticleListItem[]>(MOCK_ARTICLES);
 
   // Get specific articles for the asymmetric collage - CONSTITUTIONAL CLASH FEATURED
-  const mainNews1 = articles.find(a => a.slug === 'constitutional-clash-bank-statements'); // RIGHT - large - MAIN FEATURE
-  const mainNews2 = articles.find(a => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
-  const mainNews3 = articles.find(a => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
-  const mainNews4 = articles.find(a => a.slug === 'nominee-crackdown-badung-2026'); // MIDDLE bottom - NOMINEE CRACKDOWN
-  const mainNews5 = articles.find(a => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
+  const mainNews1 = articles.find((a) => a.slug === 'constitutional-clash-bank-statements'); // RIGHT - large - MAIN FEATURE
+  const mainNews2 = articles.find((a) => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
+  const mainNews3 = articles.find((a) => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
+  const mainNews4 = articles.find((a) => a.slug === 'ota-data-crackdown-bali-2026'); // MIDDLE bottom - OTA TAX CRACKDOWN
+  const mainNews5 = articles.find((a) => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
 
   // Get IDs of main news articles to exclude them from other sections
-  const mainNewsIds = new Set([
-    mainNews1?.id, mainNews2?.id, mainNews3?.id, mainNews4?.id, mainNews5?.id
-  ].filter(Boolean));
+  const mainNewsIds = new Set(
+    [mainNews1?.id, mainNews2?.id, mainNews3?.id, mainNews4?.id, mainNews5?.id].filter(Boolean)
+  );
 
   // Other articles for sections below
-  const otherArticles = articles.filter(a => !mainNewsIds.has(a.id));
+  const otherArticles = articles.filter((a) => !mainNewsIds.has(a.id));
 
   return (
     <>
@@ -42,7 +42,6 @@ export default function NewsPage() {
           <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
             {/* Asymmetric Grid Layout - Enlarged for strong first impression */}
             <div className="grid grid-cols-12 gap-3 min-h-[850px] lg:min-h-[950px]">
-
               {/* LEFT COLUMN: Headline + News 2 + News 5 */}
               <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
                 {/* Headline Area with Indonesian Flag Drape */}
@@ -57,16 +56,14 @@ export default function NewsPage() {
                       style={{
                         mixBlendMode: 'screen',
                         transform: 'scale(1.3) rotate(-5deg)',
-                        transformOrigin: 'center center'
+                        transformOrigin: 'center center',
                       }}
                       priority
                     />
                   </div>
                   <div className="relative z-10">
                     <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-4">
-                      Decode Indonesia.{' '}
-                      <span className="text-red-500">Thrive</span>{' '}
-                      here
+                      Decode Indonesia. <span className="text-red-500">Thrive</span> here
                     </h1>
                     <p className="text-lg text-white/70">
                       Legal, immigration, fiscal & business intelligence for Indonesia.{' '}
@@ -76,35 +73,25 @@ export default function NewsPage() {
                 </div>
 
                 {/* Main News 2 - Taller - NO MONEY NO BALI */}
-                {mainNews2 && (
-                  <CollageCard article={mainNews2} className="flex-[1.4]" />
-                )}
+                {mainNews2 && <CollageCard article={mainNews2} className="flex-[1.4]" />}
 
                 {/* Main News 5 - Under News 2, shorter than News 4 */}
-                {mainNews5 && (
-                  <CollageCard article={mainNews5} className="flex-[1.1]" />
-                )}
+                {mainNews5 && <CollageCard article={mainNews5} className="flex-[1.1]" />}
               </div>
 
               {/* MIDDLE COLUMN: News 3 (offset top) + News 4 (extends down) */}
               <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:pt-28">
                 {/* Main News 3 - Gemini 3, offset from top */}
-                {mainNews3 && (
-                  <CollageCard article={mainNews3} className="flex-[1]" />
-                )}
+                {mainNews3 && <CollageCard article={mainNews3} className="flex-[1]" />}
 
                 {/* Main News 4 - Coretax, extends down past newsletter */}
-                {mainNews4 && (
-                  <CollageCard article={mainNews4} className="flex-[1.6]" />
-                )}
+                {mainNews4 && <CollageCard article={mainNews4} className="flex-[1.6]" />}
               </div>
 
               {/* RIGHT COLUMN: News 1 (large) + Newsletter */}
               <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
                 {/* Main News 1 - Large, Global Citizenship - extends to headline height */}
-                {mainNews1 && (
-                  <CollageCard article={mainNews1} className="flex-[2.4]" showCTA />
-                )}
+                {mainNews1 && <CollageCard article={mainNews1} className="flex-[2.4]" showCTA />}
 
                 {/* Newsletter Box */}
                 <div className="bg-[#0a2540] p-6 flex-[0.6]">
@@ -177,7 +164,11 @@ export default function NewsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {otherArticles.slice(0, 3).map((article, index) => (
-                <div key={article.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
+                <div
+                  key={article.id}
+                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
                   <Link href={`/${article.category}/${article.slug}`}>
                     <article className="group">
                       <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
@@ -233,7 +224,8 @@ export default function NewsPage() {
                   The Complete Guide to Living in Bali
                 </h2>
                 <p className="text-white/80 text-lg mb-8 leading-relaxed max-w-md">
-                  Everything you need: visas, banking, housing, healthcare, community, and insider tips.
+                  Everything you need: visas, banking, housing, healthcare, community, and insider
+                  tips.
                 </p>
                 <Link
                   href="/lifestyle"
@@ -251,7 +243,12 @@ export default function NewsPage() {
                   <Link key={article.id} href={`/${article.category}/${article.slug}`}>
                     <article className="group flex gap-5 p-6 lg:p-8 hover:bg-white/5 transition-colors">
                       <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden relative">
-                        <Image src={article.coverImage} alt={article.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <Image
+                          src={article.coverImage}
+                          alt={article.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-1 block">
@@ -279,7 +276,10 @@ export default function NewsPage() {
           <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
             <div className="flex items-center justify-between mb-10">
               <h2 className="text-2xl font-serif text-white">Watch & Listen</h2>
-              <Link href="/lifestyle" className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors">
+              <Link
+                href="/lifestyle"
+                className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
+              >
                 All media
                 <ChevronRight className="w-4 h-4" />
               </Link>
@@ -288,7 +288,12 @@ export default function NewsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="group relative rounded-xl overflow-hidden">
                 <div className="aspect-video relative">
-                  <Image src="/assets/blog/golden-visa.jpg" alt="Video thumbnail" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <Image
+                    src="/assets/blog/golden-visa.jpg"
+                    alt="Video thumbnail"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -296,8 +301,12 @@ export default function NewsPage() {
                     </div>
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">Video • 12 min</span>
-                    <h3 className="font-serif text-xl text-white leading-snug">Golden Visa Explained: Is It Right for You?</h3>
+                    <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                      Video • 12 min
+                    </span>
+                    <h3 className="font-serif text-xl text-white leading-snug">
+                      Golden Visa Explained: Is It Right for You?
+                    </h3>
                   </div>
                 </div>
               </div>
@@ -307,14 +316,20 @@ export default function NewsPage() {
                   <div className="flex items-start gap-5">
                     <div className="w-20 h-20 rounded-lg bg-[#2251ff] flex items-center justify-center flex-shrink-0">
                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                       </svg>
                     </div>
                     <div>
-                      <span className="text-[#e85c41] text-xs font-semibold uppercase tracking-wider mb-2 block">Podcast • Episode 24</span>
-                      <h3 className="font-serif text-xl text-white mb-3 leading-snug">Tax Strategies for Digital Nomads in Indonesia</h3>
-                      <p className="text-white/60 text-sm mb-4">Our tax experts discuss the latest regulations and how to stay compliant.</p>
+                      <span className="text-[#e85c41] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                        Podcast • Episode 24
+                      </span>
+                      <h3 className="font-serif text-xl text-white mb-3 leading-snug">
+                        Tax Strategies for Digital Nomads in Indonesia
+                      </h3>
+                      <p className="text-white/60 text-sm mb-4">
+                        Our tax experts discuss the latest regulations and how to stay compliant.
+                      </p>
                       <div className="flex items-center gap-4">
                         <button className="flex items-center gap-2 text-white text-sm font-medium hover:text-[#2251ff] transition-colors">
                           <Play className="w-4 h-4" fill="currentColor" />
@@ -337,7 +352,10 @@ export default function NewsPage() {
               <div className="lg:col-span-1">
                 <h2 className="font-serif text-3xl text-white mb-4">Our Services</h2>
                 <p className="text-white/60 mb-6">Expert assistance for your Indonesia journey</p>
-                <Link href="/services" className="inline-flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] font-medium transition-colors">
+                <Link
+                  href="/services"
+                  className="inline-flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] font-medium transition-colors"
+                >
                   View all services
                   <ChevronRight className="w-4 h-4" />
                 </Link>
@@ -350,7 +368,9 @@ export default function NewsPage() {
                       <div className="w-12 h-12 rounded-lg bg-[#2251ff]/10 flex items-center justify-center mb-4 group-hover:bg-[#2251ff]/20 transition-colors">
                         <service.icon className="w-6 h-6 text-[#2251ff]" />
                       </div>
-                      <h3 className="font-serif text-lg text-white mb-2 group-hover:text-[#2251ff] transition-colors">{service.name}</h3>
+                      <h3 className="font-serif text-lg text-white mb-2 group-hover:text-[#2251ff] transition-colors">
+                        {service.name}
+                      </h3>
                       <p className="text-white/60 text-sm">{service.description}</p>
                     </div>
                   </Link>
@@ -370,14 +390,17 @@ export default function NewsPage() {
 function CollageCard({
   article,
   className = '',
-  showCTA = false
+  showCTA = false,
 }: {
   article: ArticleListItem;
   className?: string;
   showCTA?: boolean;
 }) {
   return (
-    <Link href={`/${article.category}/${article.slug}`} className={`block group relative overflow-hidden ${className}`}>
+    <Link
+      href={`/${article.category}/${article.slug}`}
+      className={`block group relative overflow-hidden ${className}`}
+    >
       <article className="relative w-full h-full min-h-[220px]">
         <Image
           src={article.coverImage}
@@ -419,12 +442,12 @@ function CollageCard({
 
 function formatCategory(category: string): string {
   const categoryMap: Record<string, string> = {
-    'immigration': 'Immigration',
-    'business': 'Business',
+    immigration: 'Immigration',
+    business: 'Business',
     'tax-legal': 'Tax & Legal',
-    'property': 'Property',
-    'lifestyle': 'Lifestyle',
-    'tech': 'Tech & AI',
+    property: 'Property',
+    lifestyle: 'Lifestyle',
+    tech: 'Tech & AI',
   };
   return categoryMap[category] || category.replace('-', ' & ');
 }
@@ -448,9 +471,24 @@ function formatViewCount(count: number): string {
 import { Plane, Building2, Calculator } from 'lucide-react';
 
 const SERVICES = [
-  { name: 'Visa & Immigration', slug: 'visa', description: 'KITAS, KITAP, Golden Visa, and all permit types', icon: Plane },
-  { name: 'Company Setup', slug: 'company', description: 'PT PMA, PT Local, and business licensing', icon: Building2 },
-  { name: 'Tax & Compliance', slug: 'tax', description: 'Personal and corporate tax services', icon: Calculator },
+  {
+    name: 'Visa & Immigration',
+    slug: 'visa',
+    description: 'KITAS, KITAP, Golden Visa, and all permit types',
+    icon: Plane,
+  },
+  {
+    name: 'Company Setup',
+    slug: 'company',
+    description: 'PT PMA, PT Local, and business licensing',
+    icon: Building2,
+  },
+  {
+    name: 'Tax & Compliance',
+    slug: 'tax',
+    description: 'Personal and corporate tax services',
+    icon: Calculator,
+  },
 ];
 
 const MOCK_ARTICLES: ArticleListItem[] = [
@@ -458,11 +496,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '200',
     slug: 'constitutional-clash-bank-statements',
-    title: "The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?",
-    excerpt: "Governor Koster wants 'quality tourists' to prove their wealth. But Jakarta might have the final say.",
+    title: 'The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?',
+    excerpt:
+      "Governor Koster wants 'quality tourists' to prove their wealth. But Jakarta might have the final say.",
     coverImage: '/static/news/constitutional-clash-koster.jpg',
     category: 'immigration',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-19'),
     readingTime: 7,
     viewCount: 12580,
@@ -470,18 +515,25 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     trending: true,
     aiGenerated: false,
   },
-  // === NOMINEE CRACKDOWN - SECOND FEATURE (Jan 2026) ===
+  // === OTA TAX CRACKDOWN - SECOND FEATURE (Jan 2026) ===
   {
     id: '201',
-    slug: 'nominee-crackdown-badung-2026',
-    title: "Audit Wave: 'Nominee Agreement' Task Force Deployed in Badung",
-    excerpt: "Tax-Immigration Joint Task Force Seals 12 Villas in Nominee Crackdown",
+    slug: 'ota-data-crackdown-bali-2026',
+    title: 'Villa Owners Tremble: OTAs Will Share Tax Data Next March',
+    excerpt:
+      'Governor Koster demands Airbnb share tax data. 39,000+ unlicensed listings could be delisted by March 2026.',
     coverImage: '/static/news/villa_pererenan.jpg',
     category: 'business',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-18'),
-    readingTime: 8,
-    viewCount: 9240,
+    readingTime: 9,
+    viewCount: 15420,
     featured: true,
     trending: true,
     aiGenerated: false,
@@ -491,10 +543,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '100',
     slug: 'perfect-storm-bali-2026',
     title: "Bali's Perfect Storm: Why 2026 Demands a New Playbook",
-    excerpt: "Waste crisis, dengue surge, maritime blockade, tax shock, property crackdown — all hitting at once. Here's how to navigate.",
+    excerpt:
+      "Waste crisis, dengue surge, maritime blockade, tax shock, property crackdown — all hitting at once. Here's how to navigate.",
     coverImage: '/static/news/perfect-storm-bali.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 5,
     viewCount: 8420,
@@ -506,10 +565,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '101',
     slug: 'suwung-landfill-crisis',
     title: "Suwung Landfill Closure: The Waste Crisis Hitting Bali's Tourist Zones",
-    excerpt: "Bali's main landfill is closing. No clear Plan B. If you're in hospitality or events, this affects you.",
+    excerpt:
+      "Bali's main landfill is closing. No clear Plan B. If you're in hospitality or events, this affects you.",
     coverImage: '/static/news/suwung-landfill.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 4,
     viewCount: 5230,
@@ -520,11 +586,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '102',
     slug: 'dengue-alert-2026',
-    title: "Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know",
-    excerpt: "Dengue cases are up 636 in Bali this year. Know the symptoms, get insurance, and protect your family.",
+    title: 'Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know',
+    excerpt:
+      'Dengue cases are up 636 in Bali this year. Know the symptoms, get insurance, and protect your family.',
     coverImage: '/static/news/dengue-alert.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 4,
     viewCount: 7150,
@@ -535,11 +608,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '103',
     slug: 'maritime-chaos-komodo',
-    title: "Maritime Chaos: Komodo Blockade Strands Thousands — Plan Your Buffer",
-    excerpt: "Fishermen blocked Labuan Bajo port for 3 days. If you're planning East Indonesia travel, build in buffer days.",
+    title: 'Maritime Chaos: Komodo Blockade Strands Thousands — Plan Your Buffer',
+    excerpt:
+      "Fishermen blocked Labuan Bajo port for 3 days. If you're planning East Indonesia travel, build in buffer days.",
     coverImage: '/static/news/maritime-chaos.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 3,
     viewCount: 4320,
@@ -550,11 +630,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '104',
     slug: 'pajak-hiburan-tax-shock',
-    title: "The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife",
-    excerpt: "Indonesia's new entertainment tax hits 40-75%. Beach clubs, bars, and karaoke venues are scrambling.",
+    title: 'The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife',
+    excerpt:
+      "Indonesia's new entertainment tax hits 40-75%. Beach clubs, bars, and karaoke venues are scrambling.",
     coverImage: '/static/news/pajak-hiburan.jpg',
     category: 'tax-legal',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 5,
     viewCount: 6890,
@@ -565,11 +652,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '105',
     slug: 'property-green-zone-alert',
-    title: "Property Alert: Green Zone Crackdown and the End of Easy Villa Permits",
-    excerpt: "Building permits frozen in green zones. If you're eyeing land in Canggu or Ubud outskirts, read this first.",
+    title: 'Property Alert: Green Zone Crackdown and the End of Easy Villa Permits',
+    excerpt:
+      "Building permits frozen in green zones. If you're eyeing land in Canggu or Ubud outskirts, read this first.",
     coverImage: '/static/news/property-green-zone.jpg',
     category: 'property',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-13'),
     readingTime: 5,
     viewCount: 9120,
@@ -582,10 +676,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '19',
     slug: 'indonesia-zero-tax-foreign-income-2026',
     title: "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know",
-    excerpt: "Living in Indonesia while earning abroad? Under PMK 18/2021, your foreign income may be taxed at 0%.",
+    excerpt:
+      'Living in Indonesia while earning abroad? Under PMK 18/2021, your foreign income may be taxed at 0%.',
     coverImage: '/static/news/indonesia-zero-tax-expat.jpg',
     category: 'tax-legal',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-04'),
     readingTime: 6,
     viewCount: 15320,
@@ -596,11 +697,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '1',
     slug: 'global-citizenship-indonesia',
-    title: "Global Citizenship of Indonesia: The Long-Awaited Embrace",
+    title: 'Global Citizenship of Indonesia: The Long-Awaited Embrace',
     excerpt: 'After decades of "choose us or them," Indonesia finally opens its arms.',
     coverImage: '/static/blog/global-citizenship.jpg',
     category: 'immigration',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-01'),
     readingTime: 8,
     viewCount: 24150,
@@ -615,7 +722,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: "Indonesia's new Coretax system launched January 1st — and it's causing headaches.",
     coverImage: '/static/news/coretax-kpp-queue.jpg',
     category: 'tax-legal',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-03'),
     readingTime: 6,
     viewCount: 12450,
@@ -626,11 +739,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '11',
     slug: 'claude-opus-revolutionizes-ai',
-    title: "Claude 4.5 Opus: How Anthropic Just Redefined What AI Can Do",
-    excerpt: "Claude 4.5 Opus sets a new benchmark for AI. Extended thinking, deeper reasoning.",
+    title: 'Claude 4.5 Opus: How Anthropic Just Redefined What AI Can Do',
+    excerpt: 'Claude 4.5 Opus sets a new benchmark for AI. Extended thinking, deeper reasoning.',
     coverImage: '/static/insights/tech/claude-opus-revolutionizes-ai.jpg',
     category: 'tech',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-02'),
     readingTime: 6,
     viewCount: 18420,
@@ -641,11 +760,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '18',
     slug: 'gemini-3-native-intelligence',
-    title: "Gemini 3: Google Redefines AI with Native Intelligence",
-    excerpt: "Gemini 3 doesn't answer: it anticipates. It doesn't assist: it acts. The first AI that thinks like a human.",
+    title: 'Gemini 3: Google Redefines AI with Native Intelligence',
+    excerpt:
+      "Gemini 3 doesn't answer: it anticipates. It doesn't assist: it acts. The first AI that thinks like a human.",
     coverImage: '/static/news/gemini-3-ai.jpg',
     category: 'tech',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-04'),
     readingTime: 5,
     viewCount: 28540,
@@ -656,11 +782,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '15',
     slug: 'bali-tourist-savings-check-2026',
-    title: "NO MONEY, NO BALI: Tourist Bank Account Checks Coming in 2026",
-    excerpt: "Governor Koster announces financial screening for tourists entering Bali.",
+    title: 'NO MONEY, NO BALI: Tourist Bank Account Checks Coming in 2026',
+    excerpt: 'Governor Koster announces financial screening for tourists entering Bali.',
     coverImage: '/static/news/bank-screening-clean.jpg',
     category: 'immigration',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-02'),
     readingTime: 8,
     viewCount: 45230,
@@ -671,11 +803,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '17',
     slug: 'immigration-lounge-bali-malls-2026',
-    title: "Immigration Lounges Coming to Bali Malls in 2026",
-    excerpt: "No more queuing at Kantor Imigrasi? Bali plans to open immigration service lounges in shopping malls.",
+    title: 'Immigration Lounges Coming to Bali Malls in 2026',
+    excerpt:
+      'No more queuing at Kantor Imigrasi? Bali plans to open immigration service lounges in shopping malls.',
     coverImage: '/static/news/immigration-lounge-mall.jpg',
     category: 'immigration',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-03'),
     readingTime: 5,
     viewCount: 8920,
@@ -686,11 +825,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '2',
     slug: 'bali-rules-respect',
-    title: "Bali Is Not a Playground: The Rules You Must Respect",
+    title: 'Bali Is Not a Playground: The Rules You Must Respect',
     excerpt: "Bali welcomes visitors. What it doesn't welcome is arrogance.",
     coverImage: '/static/blog/bali-rules-behavior.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-01'),
     readingTime: 5,
     viewCount: 31200,
@@ -701,11 +846,18 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '3',
     slug: 'kerobokan-traffic-trial',
-    title: "Bali Takes Bold Action: The Kerobokan Kelod Traffic Trial",
-    excerpt: "With 2.8M tourists arriving for Christmas and New Year, Bali experiments with radical traffic changes.",
+    title: 'Bali Takes Bold Action: The Kerobokan Kelod Traffic Trial',
+    excerpt:
+      'With 2.8M tourists arriving for Christmas and New Year, Bali experiments with radical traffic changes.',
     coverImage: '/static/blog/kerobokan-traffic.jpg',
     category: 'lifestyle',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-01'),
     readingTime: 4,
     viewCount: 8920,
@@ -717,10 +869,16 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '10',
     slug: 'golden-visa-2026-updates',
     title: "Golden Visa 2026: One Year Later – What We've Learned",
-    excerpt: 'After 12 months of Indonesia\'s Golden Visa program, we analyze approval rates.',
+    excerpt: "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
     coverImage: '/static/blog/golden-visa.jpg',
     category: 'immigration',
-    author: { id: 'zantara-ai', name: 'Zantara AI', avatar: '/static/zantara-lotus.png', role: 'AI Research', isAI: true },
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
     publishedAt: new Date('2025-12-30'),
     readingTime: 12,
     viewCount: 15420,
@@ -735,7 +893,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: 'Key dates for personal and corporate tax filings.',
     coverImage: '/static/blog/tax-calendar.jpg',
     category: 'tax-legal',
-    author: { id: 'zantara-ai', name: 'Zantara AI', avatar: '/static/zantara-lotus.png', role: 'AI Research', isAI: true },
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
     publishedAt: new Date('2025-12-28'),
     readingTime: 8,
     viewCount: 6234,
@@ -750,7 +914,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: "Panic spread online: 'Bali banned Airbnb!' But that's not true.",
     coverImage: '/static/blog/airbnb-bali-rules.jpg',
     category: 'property',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-01'),
     readingTime: 5,
     viewCount: 18750,
@@ -765,7 +935,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: 'After years of delays, ground-breaking ceremonies scheduled for Q2 2026.',
     coverImage: '/static/blog/north-bali.jpg',
     category: 'property',
-    author: { id: '2', name: 'Property Team', avatar: '/static/team/property.jpg', role: 'Property Specialist', isAI: false },
+    author: {
+      id: '2',
+      name: 'Property Team',
+      avatar: '/static/team/property.jpg',
+      role: 'Property Specialist',
+      isAI: false,
+    },
     publishedAt: new Date('2025-12-22'),
     readingTime: 10,
     viewCount: 4521,
@@ -780,7 +956,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: 'The long-awaited Digital Nomad Visa is here.',
     coverImage: '/static/blog/nomad-comparison.jpg',
     category: 'lifestyle',
-    author: { id: 'zantara-ai', name: 'Zantara AI', avatar: '/static/zantara-lotus.png', role: 'AI Research', isAI: true },
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
     publishedAt: new Date('2025-12-18'),
     readingTime: 14,
     viewCount: 7845,
@@ -795,7 +977,13 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt: 'The real story of getting your stay permit.',
     coverImage: '/static/blog/kitas-guide.jpg',
     category: 'immigration',
-    author: { id: '1', name: 'Immigration Team', avatar: '/static/team/immigration.jpg', role: 'Immigration Specialist', isAI: false },
+    author: {
+      id: '1',
+      name: 'Immigration Team',
+      avatar: '/static/team/immigration.jpg',
+      role: 'Immigration Specialist',
+      isAI: false,
+    },
     publishedAt: new Date('2025-12-20'),
     readingTime: 18,
     viewCount: 12340,
@@ -806,11 +994,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: '12',
     slug: 'ai-agents-autonomous-era',
-    title: "The Rise of AI Agents: When Software Does Your Job (For Real)",
-    excerpt: "AI agents now book travel, manage emails, file permits, and run businesses.",
+    title: 'The Rise of AI Agents: When Software Does Your Job (For Real)',
+    excerpt: 'AI agents now book travel, manage emails, file permits, and run businesses.',
     coverImage: '/static/insights/tech/ai-agents-autonomous-era.jpg',
     category: 'tech',
-    author: { id: 'zantara-ai', name: 'Zantara AI', avatar: '/static/zantara-lotus.png', role: 'AI Research', isAI: true },
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
     publishedAt: new Date('2026-01-02'),
     readingTime: 6,
     viewCount: 3890,
@@ -822,10 +1016,17 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '13',
     slug: 'midjourney-v7-photorealism',
     title: "Midjourney v7: Photorealism So Perfect It's Breaking Reality",
-    excerpt: "Midjourney v7's photorealism is so precise that professional photographers are pivoting to AI.",
+    excerpt:
+      "Midjourney v7's photorealism is so precise that professional photographers are pivoting to AI.",
     coverImage: '/static/insights/tech/midjourney-v7-photorealism.jpg',
     category: 'tech',
-    author: { id: 'editorial', name: 'Bali Zero Editorial', avatar: '/static/team/editorial.jpg', role: 'Editorial', isAI: false },
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/static/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
     publishedAt: new Date('2026-01-02'),
     readingTime: 5,
     viewCount: 4210,
@@ -837,10 +1038,16 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: '14',
     slug: 'sora-video-generation',
     title: "Sora Has Arrived: OpenAI's Video Generator Changes Everything",
-    excerpt: "Sora creates cinematic videos from text prompts.",
+    excerpt: 'Sora creates cinematic videos from text prompts.',
     coverImage: '/static/insights/tech/sora-video-generation.jpg',
     category: 'tech',
-    author: { id: 'zantara-ai', name: 'Zantara AI', avatar: '/static/zantara-lotus.png', role: 'AI Research', isAI: true },
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
     publishedAt: new Date('2026-01-02'),
     readingTime: 5,
     viewCount: 6120,
