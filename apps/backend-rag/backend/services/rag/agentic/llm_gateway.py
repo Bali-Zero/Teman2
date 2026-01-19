@@ -416,231 +416,149 @@ class LLMGateway:
     """
 
     # Helper to build config with optional tools
-    def _build_config(with_tools: bool = False) -> Any:
+    def _build_config(self, with_tools: bool = False) -> Any:
         """Build GenerateContentConfig with optional function calling tools."""
         if not GENAI_AVAILABLE or types is None:
             return None
-            if not GENAI_AVAILABLE or types is None:
-                return None
 
-            config_kwargs = {
-                "max_output_tokens": 8192,
-                "temperature": 0.4,
-            }
+        config_kwargs = {
+            "max_output_tokens": 8192,
+            "temperature": 0.4,
+        }
 
-            if system_prompt:
-                config_kwargs["system_instruction"] = system_prompt
-
-            if with_tools and self.gemini_tools:
-                # Convert tool dicts to proper FunctionDeclaration format for new SDK
-                function_declarations = []
-                for tool_dict in self.gemini_tools:
-                    # Create FunctionDeclaration with correct Schema format
-                    params = tool_dict.get("parameters", {})
-                    func_decl = types.FunctionDeclaration(
-                        name=tool_dict["name"],
-                        description=tool_dict["description"],
-                        parameters=types.Schema(
-                            type=params.get("type", "OBJECT"),
-                            properties={
-                                k: types.Schema(
-                                    type=v.get("type", "STRING"),
-                                    description=v.get("description", ""),
-                                )
-                                for k, v in params.get("properties", {}).items()
-                            },
-                            required=params.get("required", []),
-                        ),
-                    )
-                    function_declarations.append(func_decl)
-
-                # NOTE: Gemini doesn't allow mixing function declarations with Google Search tool
-                # Error: "Multiple tools are supported only when they are all search tools"
-                # So we use function declarations only, and web search via WebSearchTool (Brave)
-                config_kwargs["tools"] = [types.Tool(function_declarations=function_declarations)]
-
-                # CRITICAL: Add tool_config to encourage function calling
-                # Mode "AUTO" lets model decide, but with tools registered it will use them
-                # FunctionCallingConfig ensures the model knows it should use tools
-                try:
-                    config_kwargs["tool_config"] = types.ToolConfig(
-                        function_calling_config=types.FunctionCallingConfig(mode="AUTO")
-                    )
-                    logger.debug(
-                        f"🔧 [LLMGateway] Tool config set with {len(function_declarations)} functions"
-                    )
-                except (AttributeError, TypeError) as e:
-                    logger.warning(f"⚠️ [LLMGateway] Could not set tool_config: {e}")
-
-            return types.GenerateContentConfig(**config_kwargs)
-
-        # Helper to build multimodal content with images
-        def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
-            """Build content with text and optional images for Gemini vision."""
-            if not imgs:
-                return text  # Plain text, no images
-
-            # Build multimodal content with images
-            parts = []
-
-            # Add text part first
-            if text:
-                parts.append({"text": text})
-
-            # Add image parts
-            for img in imgs:
-                try:
-                    base64_data = img.get("base64", "")
-                    # Parse data URI: data:image/jpeg;base64,/9j/4AAQ...
-                    if base64_data.startswith("data:"):
-                        # Extract mime type and base64 data
-                        header, b64_content = base64_data.split(",", 1)
-                        # header = "data:image/jpeg;base64"
-                        mime_type = header.split(":")[1].split(";")[0]
-                    else:
-                        # Assume JPEG if no prefix
-                        b64_content = base64_data
-                        mime_type = "image/jpeg"
-
-                    parts.append(
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": b64_content,
-                            }
-                        }
-                    )
-                    logger.debug(
-                        f"🖼️ Added image to content: {img.get('name', 'unknown')} ({mime_type})"
-                    )
-                except Exception as img_err:
-                    logger.warning(f"⚠️ Failed to process image: {img_err}")
-
-            if not parts:
-                return text  # Fallback to plain text if no parts built
-
-            # Return as content structure for Gemini
-            return [{"parts": parts}]
-
-        # Helper to call model
-        async def _call_model(
-            model_name: str, 
-            with_tools: bool = False,
-            chat: Any = None,
-            message: str = "",
-            images: list[dict] | None = None,
-            system_prompt: str = ""
-        ) -> tuple[str, Any, TokenUsage]:
-            """Call a specific model and return (text, response, token_usage)."""
-            if not self._genai_client or not self._genai_client.is_available:
-                raise RuntimeError("GenAI client not available")
-
-            # CRITICAL: Use chat session if available to maintain conversation context
-            # This ensures Gemini 3 maintains full conversation history across ReAct loop steps
-            if chat and hasattr(chat, "_format_contents"):
-                # Use ChatSession's history-aware content formatting
-                # This preserves conversation context while maintaining compatibility with function calling
-                logger.debug(f"💬 Using ChatSession with {len(chat.history)} history messages")
-                # Format contents with full conversation history
-                contents = chat._format_contents(message)
-                # Update chat history after we get response (ChatSession will do this)
-                # But we need to call generate_content directly to get full response object for function calls
-                response = await self._genai_client._client.aio.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=_build_config(with_tools),
+        if with_tools and self._gemini_tools:
+            # Convert tool dicts to proper FunctionDeclaration format for new SDK
+            function_declarations = []
+            for tool_dict in self._gemini_tools:
+                # Create FunctionDeclaration with correct Schema format
+                params = tool_dict.get("parameters", {})
+                func_decl = types.FunctionDeclaration(
+                    name=tool_dict["name"],
+                    description=tool_dict["description"],
+                    parameters=types.Schema(
+                        type=params.get("type", "OBJECT"),
+                        properties={
+                            k: types.Schema(
+                                type=v.get("type", "STRING"),
+                                description=v.get("description", ""),
+                            )
+                            for k, v in params.get("properties", {}).items()
+                        },
+                        required=params.get("required", []),
+                    ),
                 )
-                # Update chat history manually since we bypassed send_message
-                text_content = response.text if hasattr(response, "text") else ""
-                if text_content is None:
-                    text_content = ""
-                chat._history.append({"role": "user", "content": message})
-                chat._history.append({"role": "assistant", "content": text_content})
-                # Extract token usage
-                prompt_tokens = 0
-                completion_tokens = 0
-                if hasattr(response, "usage_metadata") and response.usage_metadata:
-                    prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                    completion_tokens = (
-                        getattr(response.usage_metadata, "candidates_token_count", 0) or 0
-                    )
-                token_usage = create_token_usage(
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    model=model_name,
+                function_declarations.append(func_decl)
+
+            # NOTE: Gemini doesn't allow mixing function declarations with Google Search tool
+            # Error: "Multiple tools are supported only when they are all search tools"
+            # So we use function declarations only, and web search via WebSearchTool (Brave)
+            config_kwargs["tools"] = [types.Tool(function_declarations=function_declarations)]
+
+            # CRITICAL: Add tool_config to encourage function calling
+            # Mode "AUTO" lets model decide, but with tools registered it will use them
+            # FunctionCallingConfig ensures the model knows it should use tools
+            try:
+                config_kwargs["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="AUTO")
                 )
-                return text_content, response, token_usage
-
-            # Fallback: Build content directly (for backward compatibility or when chat is None)
-            # Build content (plain text or multimodal with images)
-            content = _build_multimodal_content(message, images)
-            has_images = images is not None and len(images) > 0
-
-            # 🔍 TRACING: Span for LLM call
-            with trace_span(
-                "backend.llm.call",
-                {
-                    "model": model_name,
-                    "with_tools": with_tools,
-                    "message_length": len(message),
-                    "has_images": has_images,
-                    "image_count": len(images) if images else 0,
-                },
-            ):
-                config = _build_config(with_tools)
-
-                if has_images:
-                    logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
-
-                response = await self._genai_client._client.aio.models.generate_content(
-                    model=model_name,
-                    contents=content,
-                    config=config,
-                )
-
-                # Extract token usage from response
-                prompt_tokens = 0
-                completion_tokens = 0
-                if hasattr(response, "usage_metadata") and response.usage_metadata:
-                    prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                    completion_tokens = (
-                        getattr(response.usage_metadata, "candidates_token_count", 0) or 0
-                    )
-
-                token_usage = create_token_usage(
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    model=model_name,
-                )
-
-                # Log token usage for monitoring
                 logger.debug(
-                    f"📊 [LLMGateway] Token usage: {prompt_tokens} prompt + {completion_tokens} completion "
-                    f"= {token_usage.total_tokens} total (${token_usage.cost_usd:.6f})"
+                    f"🔧 [LLMGateway] Tool config set with {len(function_declarations)} functions"
                 )
-                set_span_attribute("prompt_tokens", prompt_tokens)
-                set_span_attribute("completion_tokens", completion_tokens)
-                set_span_attribute("cost_usd", token_usage.cost_usd)
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"⚠️ [LLMGateway] Could not set tool_config: {e}")
 
-                # Extract text, handling function call responses
-                try:
-                    text_content = response.text if hasattr(response, "text") else ""
-                    # text_content can be None if Gemini returns a function call
-                    if text_content is None:
-                        text_content = ""
-                        set_span_attribute("has_function_call", "true")
-                    else:
-                        set_span_attribute("has_function_call", "false")
-                    set_span_attribute("response_length", len(text_content))
-                except ValueError:
-                    # Function call detected - reasoning.py will extract it from response_obj
-                    text_content = ""
-                    set_span_attribute("has_function_call", "true")
-                    set_span_attribute("response_length", 0)
+        return types.GenerateContentConfig(**config_kwargs)
 
-                set_span_status("ok")
-                return text_content, response, token_usage
+    # Helper to build multimodal content with images
+    def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
+        """Build content with text and optional images for Gemini vision."""
+        if not imgs:
+            return text  # Plain text, no images
 
+        # Build multimodal content with images
+        parts = []
+
+        # Add text part first
+        if text:
+            parts.append({"text": text})
+
+        # Add image parts
+        for img in imgs:
+            try:
+                base64_data = img.get("base64", "")
+                # Parse data URI: data:image/jpeg;base64,/9j/4AAQ...
+                if base64_data.startswith("data:"):
+                    # Extract mime type and base64 data
+                    header, b64_content = base64_data.split(",", 1)
+                    # header = "data:image/jpeg;base64"
+                    mime_type = header.split(":")[1].split(";")[0]
+                else:
+                    # Assume JPEG if no prefix
+                    b64_content = base64_data
+                    mime_type = "image/jpeg"
+
+                parts.append(
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_content,
+                        }
+                    }
+                )
+                logger.debug(
+                    f"🖼️ Added image to content: {img.get('name', 'unknown')} ({mime_type})"
+                )
+            except Exception as img_err:
+                logger.warning(f"⚠️ Failed to process image: {img_err}")
+
+        if not parts:
+            return text  # Fallback to plain text if no parts built
+
+        # Return as content structure for Gemini
+        return [{"parts": parts}]
+
+    async def _send_with_fallback(
+        self,
+        chat: Any,
+        message: str,
+        system_prompt: str,
+        model_tier: int,
+        enable_function_calling: bool,
+        conversation_messages: list[dict],
+        query_cost_tracker: dict,
+        images: list[dict] | None = None,
+    ) -> tuple[str, str, Any, TokenUsage]:
+        """Send message with tier-based routing, native function calling, and cascade fallback.
+
+        Implements intelligent model selection with automatic degradation:
+        1. Try requested tier (Pro/Flash/Lite) with native function calling
+        2. On quota/error: cascade to next cheaper tier
+        3. Final fallback: OpenRouter (third-party) with regex parsing
+
+        This ensures high availability while optimizing costs.
+
+        Args:
+            chat: Active chat session (unused in new SDK, kept for API compatibility)
+            message: User message or continuation prompt
+            system_prompt: System instructions (used for OpenRouter fallback)
+            model_tier: Requested tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
+            enable_function_calling: Whether to enable native function calling (default: True)
+            conversation_messages: Message history for OpenRouter
+            images: Optional list of images for vision capability
+
+        Returns:
+            Tuple of (response_text, model_name_used, response_object)
+            response_object contains parts that may include function_call
+
+        Raises:
+            RuntimeError: If all models fail (including OpenRouter)
+
+        Note:
+            - Uses new google-genai SDK with client.aio.models.generate_content
+            - Logs all tier transitions for monitoring
+            - Extracts user query from structured prompts for OpenRouter
+            - Native function calling enabled for Gemini models
+        """
         # Get fallback chain
         models_to_try = self._get_fallback_chain(model_tier)
 
@@ -689,13 +607,13 @@ class LLMGateway:
 
             try:
                 # Try model
-                text_content, response, token_usage = await _call_model(
+                text_content, response, token_usage = await self._call_model(
                     model_name,
                     with_tools=enable_function_calling,
                     chat=chat,
                     message=message,
                     images=images,
-                    system_prompt=system_prompt,
+                    _system_prompt=system_prompt,
                 )
 
                 # Success - reset circuit breaker
@@ -773,6 +691,170 @@ class LLMGateway:
             logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
             # All fallbacks exhausted
             raise RuntimeError("All models in fallback chain failed (including OpenRouter)") from None
+
+    async def _call_model(
+        self,
+        model_name: str,
+        with_tools: bool = False,
+        chat: Any = None,
+        message: str = "",
+        images: list[dict] | None = None,
+        _system_prompt: str = ""
+    ) -> tuple[str, Any, TokenUsage]:
+        """Call a specific model and return (text, response, token_usage)."""
+        if not self._genai_client or not self._genai_client.is_available:
+            raise RuntimeError("GenAI client not available")
+
+        # Helper function to build multimodal content
+        def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
+            """Build content structure for multimodal input (text + images)."""
+            parts = [{"text": text}]
+
+            if imgs:
+                for img in imgs:
+                    try:
+                        # Handle different image formats
+                        if img.get("format") == "base64":
+                            import base64
+                            image_data = base64.b64decode(img["data"])
+                        else:
+                            # Assume raw bytes
+                            image_data = img["data"]
+
+                        import mimetypes
+                        mime_type = img.get("mime_type", mimetypes.guess_type(img.get("filename", ""))[0] or "image/jpeg")
+
+                        # Import Part inline to avoid circular imports
+                        from google.genai.types import Part
+
+                        parts.append(
+                            Part.from_data(
+                                data=image_data,
+                                mime_type=mime_type,
+                            )
+                        )
+                    except Exception as img_err:
+                        logger.warning(f"⚠️ Failed to process image: {img_err}")
+
+            if not parts:
+                return text  # Fallback to plain text if no parts built
+
+            # Return as content structure for Gemini
+            return [{"parts": parts}]
+
+        # Helper function to build config
+        def _build_config(with_tools: bool = False) -> Any:
+            """Build configuration for model generation."""
+            config = {}
+            if with_tools and self._gemini_tools:
+                config["tools"] = self._gemini_tools
+            return config
+
+        # CRITICAL: Use chat session if available to maintain conversation context
+        # This ensures Gemini 3 maintains full conversation history across ReAct loop steps
+        if chat and hasattr(chat, "_format_contents"):
+            # Use ChatSession's history-aware content formatting
+            # This preserves conversation context while maintaining compatibility with function calling
+            logger.debug(f"💬 Using ChatSession with {len(chat.history)} history messages")
+            # Format contents with full conversation history
+            contents = chat._format_contents(message)
+            # Update chat history after we get response (ChatSession will do this)
+            # But we need to call generate_content directly to get full response object for function calls
+            response = await self._genai_client._client.aio.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=self._build_config(with_tools),
+            )
+            # Update chat history manually since we bypassed send_message
+            text_content = response.text if hasattr(response, "text") else ""
+            if text_content is None:
+                text_content = ""
+            chat._history.append({"role": "user", "content": message})
+            chat._history.append({"role": "assistant", "content": text_content})
+            # Extract token usage
+            prompt_tokens = 0
+            completion_tokens = 0
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                completion_tokens = (
+                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                )
+            token_usage = create_token_usage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                model=model_name,
+            )
+            return text_content, response, token_usage
+
+        # Fallback: Build content directly (for backward compatibility or when chat is None)
+        # Build content (plain text or multimodal with images)
+        content = _build_multimodal_content(message, images)
+        has_images = images is not None and len(images) > 0
+
+        # 🔍 TRACING: Span for LLM call
+        with trace_span(
+            "backend.llm.call",
+            {
+                "model": model_name,
+                "with_tools": with_tools,
+                "message_length": len(message),
+                "has_images": has_images,
+                "image_count": len(images) if images else 0,
+            },
+        ):
+            config = self._build_config(with_tools)
+
+            if has_images:
+                logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
+
+            response = await self._genai_client._client.aio.models.generate_content(
+                model=model_name,
+                contents=content,
+                config=config,
+            )
+
+            # Extract token usage from response
+            prompt_tokens = 0
+            completion_tokens = 0
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                completion_tokens = (
+                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                )
+
+            token_usage = create_token_usage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                model=model_name,
+            )
+
+            # Log token usage for monitoring
+            logger.debug(
+                f"📊 [LLMGateway] Token usage: {prompt_tokens} prompt + {completion_tokens} completion "
+                f"= {token_usage.total_tokens} total (${token_usage.cost_usd:.6f})"
+            )
+            set_span_attribute("prompt_tokens", prompt_tokens)
+            set_span_attribute("completion_tokens", completion_tokens)
+            set_span_attribute("cost_usd", token_usage.cost_usd)
+
+            # Extract text, handling function call responses
+            try:
+                text_content = response.text if hasattr(response, "text") else ""
+                # text_content can be None if Gemini returns a function call
+                if text_content is None:
+                    text_content = ""
+                    set_span_attribute("has_function_call", "true")
+                else:
+                    set_span_attribute("has_function_call", "false")
+                set_span_attribute("response_length", len(text_content))
+            except ValueError:
+                # Function call detected - reasoning.py will extract it from response_obj
+                text_content = ""
+                set_span_attribute("has_function_call", "true")
+                set_span_attribute("response_length", 0)
+
+            set_span_status("ok")
+            return text_content, response, token_usage
 
     async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> str:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
