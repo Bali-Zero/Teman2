@@ -51,12 +51,14 @@ function VirtualizedClientGrid({
   isLoadingMore,
   hasMore,
   totalClients,
+  isMounted,
 }: {
   clients: Client[];
   loadMoreRef: React.RefObject<HTMLDivElement | null>;
   isLoadingMore: boolean;
   hasMore: boolean;
   totalClients: number;
+  isMounted: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const shouldVirtualize = clients.length > VIRTUALIZATION_THRESHOLD;
@@ -106,7 +108,7 @@ function VirtualizedClientGrid({
           )}
           {!hasMore && totalClients > PAGE_SIZE && (
             <span className="text-sm text-[var(--foreground-muted)]">
-              All {totalClients.toLocaleString()} clients loaded
+              All {isMounted ? totalClients.toLocaleString() : totalClients} clients loaded
             </span>
           )}
         </div>
@@ -174,7 +176,7 @@ function VirtualizedClientGrid({
         )}
         {!hasMore && totalClients > PAGE_SIZE && (
           <span className="text-sm text-[var(--foreground-muted)]">
-            All {totalClients.toLocaleString()} clients loaded
+            All {isMounted ? totalClients.toLocaleString() : totalClients} clients loaded
           </span>
         )}
       </div>
@@ -311,7 +313,7 @@ export default function ClientiPage() {
 
   // Filtering (all clients visible to all users)
   // Prevent hydration mismatch by only showing clients after client-side mount
-  const visibleClients = (profileLoaded && isMounted) ? clients : [];
+  const visibleClients = profileLoaded && isMounted ? clients : [];
   const uniqueAssignees = Array.from(
     new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean))
   );
@@ -370,10 +372,11 @@ export default function ClientiPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Clients</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            {filteredClients.length.toLocaleString()} client
+            {isMounted ? filteredClients.length.toLocaleString() : filteredClients.length} client
             {filteredClients.length !== 1 ? 's' : ''}
             {hasMore && ' (scroll for more)'}
-            {activeFiltersCount > 0 && ` • filtered from ${visibleClients.length.toLocaleString()}`}
+            {activeFiltersCount > 0 &&
+              ` • filtered from ${isMounted ? visibleClients.length.toLocaleString() : visibleClients.length}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -553,6 +556,7 @@ export default function ClientiPage() {
               isLoadingMore={isLoadingMore}
               hasMore={hasMore}
               totalClients={clients.length}
+              isMounted={isMounted}
             />
           ) : (
             <ClientKanban clients={filteredClients} onStatusChange={handleStatusChange} />
