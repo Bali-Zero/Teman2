@@ -18,12 +18,21 @@ Key features:
 import json
 import logging
 import re
+import time
 from typing import Any
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.config import settings
 from backend.app.core.constants import EvidenceScoreConstants
+from backend.app.metrics import (
+    abstain_decision_total,
+    strict_abstain_critical_total,
+    tier1_fallback_activated_total,
+    tier1_fallback_failed_total,
+    tier1_fallback_success_total,
+    tier1_response_duration,
+)
 from backend.app.utils.tracing import (
     add_span_event,
     set_span_attribute,
@@ -37,6 +46,82 @@ from .response_processor import post_process_response
 from .tool_executor import execute_tool, parse_tool_call
 
 logger = logging.getLogger(__name__)
+
+
+def _get_critical_domain_type(query: str) -> str:
+    """
+    Determine the type of critical domain for metrics.
+
+    Returns:
+        Domain type: "visa", "legal", "pricing", "procedure", or "business_complex"
+    """
+    query_lower = query.lower()
+
+    visa_keywords = {"visa", "kitas", "kitap", "immigration", "imigrasi", "stay permit", "residence permit", "b211", "e33", "e28", "d1", "d2"}
+    legal_keywords = {"legge", "law", "contract", "contratto", "compliance", "regolamento", "regulation", "pasal", "ayat", "legal", "legale"}
+    pricing_keywords = {"prezzo", "price", "costo", "cost", "tariffa", "fee", "fees", "quanto costa", "how much", "harga", "biaya"}
+    procedure_keywords = {"documento", "document", "procedura", "procedure", "requisito", "requirement", "documentazione", "documentation"}
+
+    if any(kw in query_lower for kw in visa_keywords):
+        return "visa"
+    elif any(kw in query_lower for kw in legal_keywords):
+        return "legal"
+    elif any(kw in query_lower for kw in pricing_keywords):
+        return "pricing"
+    elif any(kw in query_lower for kw in procedure_keywords):
+        return "procedure"
+    else:
+        return "business_complex"
+
+
+def _is_critical_domain(query: str, intent_type: str) -> bool:
+    """
+    Determine if a query is in a critical domain that requires strict ABSTAIN.
+
+    Critical domains (must use ABSTAIN, not Tier 1 fallback):
+    - Visa/Immigration (KITAS, visa types, immigration procedures)
+    - Legal (laws, contracts, compliance, regulations)
+    - Pricing (service costs, fees)
+    - Business complex/strategic queries
+    - Document procedures (critical document requirements)
+
+    Non-critical domains (can use Tier 1: General Intelligence fallback):
+    - General knowledge questions
+    - Casual questions
+    - Out-of-domain queries
+    - Simple informational queries
+
+    Args:
+        query: User query string
+        intent_type: Intent category from classifier
+
+    Returns:
+        True if query is in critical domain (must ABSTAIN), False if can use Tier 1 fallback
+    """
+    query_lower = query.lower()
+
+    # Business complex/strategic queries always require strict verification
+    if intent_type in {"business_complex", "business_strategic"}:
+        return True
+
+    # Critical domain keywords
+    critical_keywords = {
+        # Visa/Immigration
+        "visa", "kitas", "kitap", "immigration", "imigrasi", "stay permit",
+        "residence permit", "b211", "e33", "e28", "d1", "d2",
+        # Legal
+        "legge", "law", "contract", "contratto", "compliance", "regolamento",
+        "regulation", "pasal", "ayat", "legal", "legale",
+        # Pricing
+        "prezzo", "price", "costo", "cost", "tariffa", "fee", "fees",
+        "quanto costa", "how much", "harga", "biaya",
+        # Critical procedures
+        "documento", "document", "procedura", "procedure", "requisito", "requirement",
+        "documentazione", "documentation",
+    }
+
+    # Check if query contains critical keywords
+    return any(keyword in query_lower for keyword in critical_keywords)
 
 
 def is_valid_tool_call(tool_call: Any) -> bool:
@@ -61,9 +146,7 @@ def is_valid_tool_call(tool_call: Any) -> bool:
     if not hasattr(tool_call, "arguments"):
         return False
     # arguments can be empty dict {} but not None
-    if tool_call.arguments is None:
-        return False
-    return True
+    return tool_call.arguments is not None
 
 
 def calculate_evidence_score(
@@ -424,7 +507,7 @@ class ReasoningEngine:
                                     tc = parse_tool_call(part, use_native=True)
                                     if tc and is_valid_tool_call(tc):
                                         tool_calls.append(tc)
-                                
+
                                 # If we found native calls, stop looking in this candidate
                                 if tool_calls:
                                     logger.info(
@@ -447,7 +530,7 @@ class ReasoningEngine:
 
                     # EXECUTE TOOL CALLS (PARALLEL)
                     turn_observations = []
-                    
+
                     if tool_calls:
                         # Define async wrapper for parallel execution
                         async def _exec_tool_wrapper(tc, step_idx):
@@ -486,12 +569,12 @@ class ReasoningEngine:
                         results = await asyncio.gather(
                             *[_exec_tool_wrapper(tc, i) for i, tc in enumerate(tool_calls)]
                         )
-                        
+
                         # Process results
                         for i, (tool_call, tool_result, tool_duration) in enumerate(results):
                             # Store tool timing for metrics
                             tool_call.execution_time = tool_duration
-                            
+
                             # --- CITATION HANDLING ---
                             # FIX Edge Case 3: Handle empty content from vector_search
                             if tool_call.tool_name == "vector_search":
@@ -510,7 +593,7 @@ class ReasoningEngine:
                                             set_span_attribute("sources_collected", len(new_sources))
                                         else:
                                             logger.warning(
-                                                f"⚠️ [Agent] Vector search empty content. Keeping original."
+                                                "⚠️ [Agent] Vector search empty content. Keeping original."
                                             )
                                             if new_sources:
                                                 if not hasattr(state, "sources"):
@@ -536,11 +619,11 @@ class ReasoningEngine:
 
                             # Update tool call result
                             tool_call.result = tool_result
-                            
+
                             # Add Step
                             # For the first tool, use the actual thought. For others, indicate parallel exec.
                             step_thought = text_response if i == 0 else f"(Parallel execution with {tool_calls[0].tool_name})"
-                            
+
                             step = AgentStep(
                                 step_number=state.current_step + i,
                                 thought=step_thought,
@@ -548,17 +631,17 @@ class ReasoningEngine:
                                 observation=tool_result,
                             )
                             state.steps.append(step)
-                            
+
                             # Add to accumulated context gathered
                             if tool_result and len(tool_result.strip()) > 0:
                                 state.context_gathered.append(tool_result)
-                            
+
                             turn_observations.append(f"Output from {tool_call.tool_name}: {tool_result}")
 
                         # Update step counter if we ran multiple tools
                         if len(tool_calls) > 1:
                             state.current_step += (len(tool_calls) - 1)
-                            
+
                         # Context Quality Validation (Aggregate)
                         if state.context_gathered:
                             quality_score = self._validate_context_quality(
@@ -703,19 +786,87 @@ class ReasoningEngine:
             and not state.skip_rag
             and not trusted_tools_used
         ):
-            logger.warning(
-                f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
-            )
-            # Proactive message: Suggest alternatives
-            state.final_answer = (
-                "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-                "Posso aiutarti con:\n"
-                "• Informazioni su visti e KITAS\n"
-                "• Setup aziendale (PT PMA)\n"
-                "• Questioni fiscali e legali\n"
-                "• Procedure e documentazione\n\n"
-                "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
-            )
+            # TIER 1 vs STRICT ABSTAIN logic
+            intent_type = getattr(state, "intent_type", "simple")
+            is_critical = _is_critical_domain(query, intent_type)
+
+            if is_critical:
+                domain_type = _get_critical_domain_type(query)
+                logger.warning(
+                    f"🛡️ [Uncertainty] Overriding existing answer due to low evidence for critical domain "
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                )
+                strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                state.final_answer = (
+                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                    "Posso aiutarti con:\n"
+                    "• Informazioni su visti e KITAS\n"
+                    "• Setup aziendale (PT PMA)\n"
+                    "• Questioni fiscali e legali\n"
+                    "• Procedure e documentazione\n\n"
+                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+                )
+            else:
+                # TIER 1: Regenerate with Transparency Protocol
+                has_context = bool(state.context_gathered)
+                tier1_fallback_activated_total.labels(intent_type=intent_type, has_context=str(has_context).lower()).inc()
+                logger.info(
+                    f"🌊 [Tier 1] Regenerating answer with Transparency Protocol "
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})"
+                )
+                transparency_instruction = """
+[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
+CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+"""
+
+                context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
+                newline = "\n"
+                context_section = f"Retrieved Context (limited):{newline}{context}" if context else "No verified documents found in internal knowledge base."
+                final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+{context_section}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                tier1_start_time = time.time()
+                try:
+                    (
+                        state.final_answer,
+                        model_used_name,
+                        _,
+                        final_usage,
+                    ) = await llm_gateway.send_message(
+                        chat,
+                        final_prompt,
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                    accumulated_usage = accumulated_usage + final_usage
+                    tier1_duration = time.time() - tier1_start_time
+                    tier1_response_duration.observe(tier1_duration)
+                    tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                    logger.info(f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)")
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    tier1_duration = time.time() - tier1_start_time
+                    tier1_response_duration.observe(tier1_duration)
+                    error_type = type(e).__name__
+                    tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                    logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
+                    state.final_answer = (
+                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                        "Posso aiutarti con altro?"
+                    )
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
@@ -728,18 +879,94 @@ class ReasoningEngine:
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
             if evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD and not state.skip_rag and not trusted_tools_used:
-                # ABSTAIN: Skip LLM generation, return proactive uncertainty message
-                logger.warning(f"🛡️ [Uncertainty] Triggered ABSTAIN (Score: {evidence_score:.2f})")
-                # Proactive message: Suggest alternatives instead of just asking "altro?"
-                state.final_answer = (
-                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-                    "Posso aiutarti con:\n"
-                    "• Informazioni su visti e KITAS\n"
-                    "• Setup aziendale (PT PMA)\n"
-                    "• Questioni fiscali e legali\n"
-                    "• Procedure e documentazione\n\n"
-                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
-                )
+                # TIER 1: Fluid Fallback (General Intelligence) vs STRICT ABSTAIN
+                intent_type = getattr(state, "intent_type", "simple")
+                is_critical = _is_critical_domain(query, intent_type)
+
+                if is_critical:
+                    # CRITICAL DOMAIN: Strict ABSTAIN (no fallback to general knowledge)
+                    domain_type = _get_critical_domain_type(query)
+                    logger.warning(
+                        f"🛡️ [Uncertainty] Triggered STRICT ABSTAIN for critical domain "
+                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                    )
+                    strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    state.final_answer = (
+                        "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                        "Posso aiutarti con:\n"
+                        "• Informazioni su visti e KITAS\n"
+                        "• Setup aziendale (PT PMA)\n"
+                        "• Questioni fiscali e legali\n"
+                        "• Procedure e documentazione\n\n"
+                        "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+                    )
+                else:
+                    # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
+                    has_context = bool(state.context_gathered)
+                    tier1_fallback_activated_total.labels(intent_type=intent_type, has_context=str(has_context).lower()).inc()
+                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    logger.info(
+                        f"🌊 [Tier 1] Low evidence ({evidence_score:.2f}) for non-critical query, "
+                        f"using General Intelligence fallback"
+                    )
+                    # Inject Transparency Protocol instruction into prompt
+                    transparency_instruction = """
+[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
+CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with this EXACT phrase (translated to user's language):
+   "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+5. If the question is about Bali Zero services, pricing, or specific procedures, suggest contacting the team for verified information.
+"""
+
+                    # Use minimal context (what we have) but allow LLM to use general knowledge
+                    context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
+                    context_section = f"Retrieved Context (limited):\n{context}" if context else "No verified documents found in internal knowledge base."
+
+                    final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+{context_section}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                    tier1_start_time = time.time()
+                    try:
+                        (
+                            state.final_answer,
+                            model_used_name,
+                            _,
+                            final_usage,
+                        ) = await llm_gateway.send_message(
+                            chat,
+                            final_prompt,
+                            system_prompt,
+                            tier=model_tier,
+                            enable_function_calling=False,
+                        )
+                        accumulated_usage = accumulated_usage + final_usage
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        logger.info(f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)")
+                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        error_type = type(e).__name__
+                        tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                        logger.error(f"Failed to generate Tier 1 fallback answer: {error_type}", exc_info=True)
+                        # Fallback to ABSTAIN if LLM fails
+                        state.final_answer = (
+                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                            "Posso aiutarti con altro?"
+                        )
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
@@ -808,12 +1035,76 @@ Make it feel natural and helpful, not forced.
                         "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
                     )
             else:
-                logger.warning("🛡️ [Uncertainty] No context gathered, triggering ABSTAIN")
-                state.final_answer = (
-                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                    "Posso aiutarti con altro?"
-                )
+                # No context gathered - apply same Tier 1 vs ABSTAIN logic
+                intent_type = getattr(state, "intent_type", "simple")
+                is_critical = _is_critical_domain(query, intent_type)
+
+                if is_critical:
+                    domain_type = _get_critical_domain_type(query)
+                    logger.warning(f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})")
+                    strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    state.final_answer = (
+                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                        "Posso aiutarti con altro?"
+                    )
+                else:
+                    # TIER 1: No context but non-critical - use General Intelligence
+                    tier1_fallback_activated_total.labels(intent_type=intent_type, has_context="false").inc()
+                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    logger.info(
+                        "🌊 [Tier 1] No context gathered for non-critical query, "
+                        "using General Intelligence fallback"
+                    )
+                    transparency_instruction = """
+[SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
+CRITICAL INSTRUCTION: No verified documents were found in the internal knowledge base.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+"""
+
+                    final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                    tier1_start_time = time.time()
+                    try:
+                        (
+                            state.final_answer,
+                            model_used_name,
+                            _,
+                            final_usage,
+                        ) = await llm_gateway.send_message(
+                            chat,
+                            final_prompt,
+                            system_prompt,
+                            tier=model_tier,
+                            enable_function_calling=False,
+                        )
+                        accumulated_usage = accumulated_usage + final_usage
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        logger.info(f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)")
+                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        error_type = type(e).__name__
+                        tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                        logger.error(f"Failed to generate Tier 1 fallback answer: {error_type}", exc_info=True)
+                        state.final_answer = (
+                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                            "Posso aiutarti con altro?"
+                        )
 
         # Filter out stub responses
         if state.final_answer and (
@@ -1174,14 +1465,77 @@ Do not invent information. If the context is insufficient, admit it.
             and not state.skip_rag
             and not trusted_tools_used
         ):
-            logger.warning(
-                f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
-            )
-            state.final_answer = (
-                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                "Posso aiutarti con altro?"
-            )
+            # TIER 1 vs STRICT ABSTAIN logic
+            intent_type = getattr(state, "intent_type", "simple")
+            is_critical = _is_critical_domain(query, intent_type)
+
+            if is_critical:
+                domain_type = _get_critical_domain_type(query)
+                logger.warning(
+                    f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence for critical domain "
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                )
+                strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                state.final_answer = (
+                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                    "Posso aiutarti con altro?"
+                )
+            else:
+                # TIER 1: Regenerate with Transparency Protocol (streaming)
+                has_context = bool(state.context_gathered)
+                tier1_fallback_activated_total.labels(intent_type=intent_type, has_context=str(has_context).lower()).inc()
+                abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                logger.info(
+                    f"🌊 [Tier 1 Stream] Regenerating answer with Transparency Protocol "
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})"
+                )
+                transparency_instruction = """
+[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
+CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+"""
+
+                context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
+                context_section = f"Retrieved Context (limited):\n{context}" if context else "No verified documents found in internal knowledge base."
+                final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+{context_section}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                tier1_start_time = time.time()
+                try:
+                    state.final_answer, _, _, _ = await llm_gateway.send_message(
+                        chat,
+                        final_prompt,
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                    tier1_duration = time.time() - tier1_start_time
+                    tier1_response_duration.observe(tier1_duration)
+                    tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                    logger.info(f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)")
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    tier1_duration = time.time() - tier1_start_time
+                    tier1_response_duration.observe(tier1_duration)
+                    error_type = type(e).__name__
+                    tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                    logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
+                    state.final_answer = (
+                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                        "Posso aiutarti con altro?"
+                    )
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
@@ -1195,20 +1549,88 @@ Do not invent information. If the context is insufficient, admit it.
             # Skip for general tasks (translation, summarization, etc.)
             # Also skip if trusted tools were used successfully
             if evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD and not state.skip_rag and not trusted_tools_used:
-                # ABSTAIN: Skip LLM generation, return proactive uncertainty message
-                logger.warning(
-                    f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})"
-                )
-                # Proactive message: Suggest alternatives
-                state.final_answer = (
-                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-                    "Posso aiutarti con:\n"
-                    "• Informazioni su visti e KITAS\n"
-                    "• Setup aziendale (PT PMA)\n"
-                    "• Questioni fiscali e legali\n"
-                    "• Procedure e documentazione\n\n"
-                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
-                )
+                # TIER 1: Fluid Fallback (General Intelligence) vs STRICT ABSTAIN
+                intent_type = getattr(state, "intent_type", "simple")
+                is_critical = _is_critical_domain(query, intent_type)
+
+                if is_critical:
+                    # CRITICAL DOMAIN: Strict ABSTAIN (no fallback to general knowledge)
+                    domain_type = _get_critical_domain_type(query)
+                    logger.warning(
+                        f"🛡️ [Uncertainty Stream] Triggered STRICT ABSTAIN for critical domain "
+                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                    )
+                    strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    state.final_answer = (
+                        "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
+                        "Posso aiutarti con:\n"
+                        "• Informazioni su visti e KITAS\n"
+                        "• Setup aziendale (PT PMA)\n"
+                        "• Questioni fiscali e legali\n"
+                        "• Procedure e documentazione\n\n"
+                        "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+                    )
+                else:
+                    # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
+                    has_context = bool(state.context_gathered)
+                    tier1_fallback_activated_total.labels(intent_type=intent_type, has_context=str(has_context).lower()).inc()
+                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    logger.info(
+                        f"🌊 [Tier 1 Stream] Low evidence ({evidence_score:.2f}) for non-critical query, "
+                        f"using General Intelligence fallback"
+                    )
+                    # Inject Transparency Protocol instruction into prompt
+                    transparency_instruction = """
+[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
+CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with this EXACT phrase (translated to user's language):
+   "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+5. If the question is about Bali Zero services, pricing, or specific procedures, suggest contacting the team for verified information.
+"""
+
+                    # Use minimal context (what we have) but allow LLM to use general knowledge
+                    context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
+                    context_section = f"Retrieved Context (limited):\n{context}" if context else "No verified documents found in internal knowledge base."
+
+                    final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+{context_section}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                    tier1_start_time = time.time()
+                    try:
+                        state.final_answer, _, _, _ = await llm_gateway.send_message(
+                            chat,
+                            final_prompt,
+                            system_prompt,
+                            tier=model_tier,
+                            enable_function_calling=False,
+                        )
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        logger.info(f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)")
+                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        error_type = type(e).__name__
+                        tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                        logger.error(f"Failed to generate Tier 1 fallback answer: {error_type}", exc_info=True)
+                        # Fallback to ABSTAIN if LLM fails
+                        state.final_answer = (
+                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                            "Posso aiutarti con altro?"
+                        )
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
@@ -1265,12 +1687,70 @@ Make it feel natural and helpful, not forced.
                         "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
                     )
             else:
-                logger.warning("🛡️ [Uncertainty Stream] No context gathered, triggering ABSTAIN")
-                state.final_answer = (
-                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                    "Posso aiutarti con altro?"
-                )
+                # No context gathered - apply same Tier 1 vs ABSTAIN logic
+                intent_type = getattr(state, "intent_type", "simple")
+                is_critical = _is_critical_domain(query, intent_type)
+
+                if is_critical:
+                    domain_type = _get_critical_domain_type(query)
+                    logger.warning(f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})")
+                    strict_abstain_critical_total.labels(intent_type=intent_type, domain_type=domain_type).inc()
+                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    state.final_answer = (
+                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                        "Posso aiutarti con altro?"
+                    )
+                else:
+                    # TIER 1: No context but non-critical - use General Intelligence
+                    tier1_fallback_activated_total.labels(intent_type=intent_type, has_context="false").inc()
+                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    logger.info(
+                        "🌊 [Tier 1 Stream] No context gathered for non-critical query, "
+                        "using General Intelligence fallback"
+                    )
+                    transparency_instruction = """
+[SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
+CRITICAL INSTRUCTION: No verified documents were found in the internal knowledge base.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+"""
+
+                    final_prompt = f"""
+{transparency_instruction}
+
+User Query: {query}
+
+Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
+"""
+
+                    tier1_start_time = time.time()
+                    try:
+                        state.final_answer, _, _, _ = await llm_gateway.send_message(
+                            chat,
+                            final_prompt,
+                            system_prompt,
+                            tier=model_tier,
+                            enable_function_calling=False,
+                        )
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        logger.info(f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)")
+                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                        tier1_duration = time.time() - tier1_start_time
+                        tier1_response_duration.observe(tier1_duration)
+                        error_type = type(e).__name__
+                        tier1_fallback_failed_total.labels(intent_type=intent_type, error_type=error_type).inc()
+                        logger.error(f"Failed to generate Tier 1 fallback answer: {error_type}", exc_info=True)
+                        state.final_answer = (
+                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                            "Posso aiutarti con altro?"
+                        )
 
         # Filter stub responses
         if state.final_answer and (
