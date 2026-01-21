@@ -21,6 +21,14 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 **Role:** Senior Python Engineer & SRE.
 **Current State:** The codebase is a Monorepo. We use `apps/backend-rag` (FastAPI) and `apps/mouth` (Frontend).
 
+**System Stats (Updated 2026-01-21):**
+- Router Files: 61
+- Services: 204 Python files
+- Test Files: 278
+- Migrations: 51
+- API Endpoints: 393
+- Test Cases: ~4255
+
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
 
 1.  **VIRTUALENV IS MANDATORY:** ⚠️ **CRITICAL** - Always activate `.venv` before running any Python command. Never use system Python or pyenv directly.
@@ -388,4 +396,4 @@ Maintain code quality. If you see legacy code violating these rules, **refactor 
 
 ---
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-21
