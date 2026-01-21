@@ -4,6 +4,7 @@
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats (Updated 2026-01-21):**
+
 - Router Files: 61
 - Services: 204 Python files
 - Test Files: 278

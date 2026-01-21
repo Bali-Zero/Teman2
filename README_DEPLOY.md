@@ -3,12 +3,14 @@
 ## 📋 Quick Start
 
 ### Frontend (Vercel)
+
 ```bash
 # Push a GitHub triggera deploy automatico
 git push origin main
 ```
 
 ### Backend (Fly.io)
+
 ```bash
 cd apps/backend-rag
 flyctl deploy
@@ -25,11 +27,13 @@ flyctl deploy
 ## 🔧 Configurazione
 
 ### Frontend (Vercel)
+
 - **Deploy automatico**: Push su `main` branch
 - **Build command**: Automatico (Next.js)
 - **Environment**: Configurato su Vercel dashboard
 
 ### Backend (Fly.io)
+
 - **Port**: Usa variabile `PORT` (default: 8080)
 - **Host**: `0.0.0.0` (tutti gli indirizzi IPv4)
 - **Health check**: `/health` endpoint
@@ -39,6 +43,7 @@ flyctl deploy
 ## 📊 Status Deploy
 
 ### Ultimo Deploy
+
 - **Data**: 2026-01-21
 - **Commit**: `8b731041`
 - **Frontend**: ✅ Deploy automatico Vercel
@@ -48,16 +53,21 @@ flyctl deploy
 ## ⚠️ Troubleshooting
 
 ### Warning Fly.io "app not listening"
+
 **Risolto**: Il Dockerfile ora usa `${PORT:-8080}` invece di hardcodare `8080`.
 
 ### Test Falliti
+
 **Risolto**: Tutti i test ora passano (29/29). Se falliscono, verificare:
+
 1. Import logger presenti
 2. Mock configurati correttamente
 3. Console calls per test compatibility
 
 ### Vulnerabilità NPM
+
 **Risolto**: Tutte le vulnerabilità sono state risolte. Se ne appaiono nuove:
+
 ```bash
 npm audit fix --force
 ```

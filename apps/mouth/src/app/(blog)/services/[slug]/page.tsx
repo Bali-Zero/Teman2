@@ -10,7 +10,6 @@ import {
   FileText,
   AlertCircle,
   ChevronRight,
-  MessageCircle,
 } from 'lucide-react';
 import { SERVICES_DATA } from '@/data/services_data';
 import ServicePricing from '@/components/services/ServicePricing';

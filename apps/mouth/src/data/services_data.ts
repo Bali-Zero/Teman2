@@ -1,10 +1,5 @@
 import * as React from 'react';
-import {
-  Plane,
-  Building2,
-  Calculator,
-  Home,
-} from 'lucide-react';
+import { Plane, Building2, Calculator, Home } from 'lucide-react';
 
 export interface ServicePackage {
   name: string;
@@ -42,7 +37,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     name: 'Visa & Immigration',
     slug: 'visa',
     tagline: 'Complete visa solutions for living and working in Indonesia',
-    description: 'Navigate Indonesia\'s immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.',
+    description:
+      "Navigate Indonesia's immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.",
     icon: Plane,
     bgColor: 'bg-rose-500/10',
     iconColor: 'text-rose-400',
@@ -90,11 +86,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'C4 - Journalism/Film',
         description: 'Journalists, film crews, media production',
         price: 'Contact',
-        features: [
-          '60 days validity',
-          'Press credentials required',
-          'Ministry approval needed',
-        ],
+        features: ['60 days validity', 'Press credentials required', 'Ministry approval needed'],
         popular: false,
       },
       {
@@ -123,11 +115,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'C7/C7AB - Professional Events',
         description: 'Chefs, artists, musicians, performers',
         price: '4.500.000',
-        features: [
-          '30 days validity',
-          'Event-based permit',
-          'Including urgent processing',
-        ],
+        features: ['30 days validity', 'Event-based permit', 'Including urgent processing'],
         popular: false,
       },
       {
@@ -145,11 +133,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'C18 - Work Trial',
         description: 'Job trials and skill assessments',
         price: '5.500.000',
-        features: [
-          '90 days validity',
-          'Company sponsorship required',
-          'Path to Working KITAS',
-        ],
+        features: ['90 days validity', 'Company sponsorship required', 'Path to Working KITAS'],
         popular: false,
       },
       {
@@ -181,11 +165,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'D1 - Multiple Entry Tourism',
         description: 'Frequent visitors for tourism',
         price: 'Contact',
-        features: [
-          '1 or 2 years validity',
-          'Multiple entries allowed',
-          '60 days per stay',
-        ],
+        features: ['1 or 2 years validity', 'Multiple entries allowed', '60 days per stay'],
         popular: false,
       },
       {
@@ -203,11 +183,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'D12 - Business Investigation',
         description: 'Pre-investment research visits',
         price: '7.500.000',
-        features: [
-          '1 year (or 10M for 2 years)',
-          '7-10 days processing',
-          'Path to Investor KITAS',
-        ],
+        features: ['1 year (or 10M for 2 years)', '7-10 days processing', 'Path to Investor KITAS'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -239,22 +215,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E23 - Freelance KITAS (Offshore)',
         description: 'Self-employed professionals',
         price: '25.800.000',
-        features: [
-          '6 months validity',
-          '4-6 weeks (RPTKA + IMTA)',
-          'Work permit (IMTA) included',
-        ],
+        features: ['6 months validity', '4-6 weeks (RPTKA + IMTA)', 'Work permit (IMTA) included'],
         popular: false,
       },
       {
         name: 'E23 - Freelance KITAS (Onshore)',
         description: 'Convert from within Indonesia',
         price: '27.500.000',
-        features: [
-          '6 months validity',
-          '4-6 weeks (RPTKA + IMTA)',
-          'Full conversion assistance',
-        ],
+        features: ['6 months validity', '4-6 weeks (RPTKA + IMTA)', 'Full conversion assistance'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -264,33 +232,21 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E28A - Investor KITAS (Offshore)',
         description: 'PT PMA directors & shareholders',
         price: '17.000.000',
-        features: [
-          '2 years validity',
-          '7-10 days processing',
-          'Company ownership required',
-        ],
+        features: ['2 years validity', '7-10 days processing', 'Company ownership required'],
         popular: true,
       },
       {
         name: 'E28A - Investor KITAS (Onshore)',
         description: 'Convert from within Indonesia',
         price: '19.000.000',
-        features: [
-          '2 years validity',
-          '7-10 days processing',
-          'Extension: 18.000.000 IDR',
-        ],
+        features: ['2 years validity', '7-10 days processing', 'Extension: 18.000.000 IDR'],
         popular: false,
       },
       {
         name: 'E28E - KEK Investor KITAS',
         description: 'Special Economic Zone investors',
         price: 'Contact',
-        features: [
-          '2 years validity',
-          'KEK location required',
-          'Special incentives available',
-        ],
+        features: ['2 years validity', 'KEK location required', 'Special incentives available'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -300,44 +256,28 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E31A - Spouse KITAS 1 Year (Offshore)',
         description: 'Married to Indonesian citizen',
         price: '11.000.000',
-        features: [
-          '1 year validity',
-          '7-10 days processing',
-          'Marriage certificate required',
-        ],
+        features: ['1 year validity', '7-10 days processing', 'Marriage certificate required'],
         popular: false,
       },
       {
         name: 'E31A - Spouse KITAS 2 Years (Offshore)',
         description: 'Married to Indonesian citizen',
         price: '15.000.000',
-        features: [
-          '2 years validity',
-          '7-10 days processing',
-          'Extension: 15.000.000 IDR',
-        ],
+        features: ['2 years validity', '7-10 days processing', 'Extension: 15.000.000 IDR'],
         popular: false,
       },
       {
         name: 'E31B/F - Dependent KITAS 1 Year',
         description: 'Family of KITAS holders',
         price: '11.000.000',
-        features: [
-          '1 year validity',
-          '7-10 days processing',
-          'Extension: 9.000.000 IDR',
-        ],
+        features: ['1 year validity', '7-10 days processing', 'Extension: 9.000.000 IDR'],
         popular: false,
       },
       {
         name: 'E31B/F - Dependent KITAS 2 Years',
         description: 'Family of KITAS holders',
         price: '15.000.000',
-        features: [
-          '2 years validity',
-          '7-10 days processing',
-          'Extension: 15.000.000 IDR',
-        ],
+        features: ['2 years validity', '7-10 days processing', 'Extension: 15.000.000 IDR'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -347,55 +287,35 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E33G - Digital Nomad KITAS (Offshore)',
         description: 'Remote workers with foreign income',
         price: '13.000.000',
-        features: [
-          '1 year validity',
-          '7-10 days processing',
-          'No work permit (IMTA) needed',
-        ],
+        features: ['1 year validity', '7-10 days processing', 'No work permit (IMTA) needed'],
         popular: true,
       },
       {
         name: 'E33G - Digital Nomad KITAS (Onshore)',
         description: 'Convert from within Indonesia',
         price: '14.000.000',
-        features: [
-          '1 year validity',
-          '7-10 days processing',
-          'Extension: 10.000.000 IDR',
-        ],
+        features: ['1 year validity', '7-10 days processing', 'Extension: 10.000.000 IDR'],
         popular: false,
       },
       {
         name: 'E33E/F - Retirement KITAS (Offshore)',
         description: 'Retirees aged 55+',
         price: '14.000.000',
-        features: [
-          '1-5 years validity',
-          '7-10 days processing',
-          'Pension proof required',
-        ],
+        features: ['1-5 years validity', '7-10 days processing', 'Pension proof required'],
         popular: false,
       },
       {
         name: 'E33E/F - Retirement KITAS (Onshore)',
         description: 'Convert from within Indonesia',
         price: '16.000.000',
-        features: [
-          '1-5 years validity',
-          '7-10 days processing',
-          'Extension: 10.000.000 IDR',
-        ],
+        features: ['1-5 years validity', '7-10 days processing', 'Extension: 10.000.000 IDR'],
         popular: false,
       },
       {
         name: 'E33A/B/C - Research/Education KITAS',
         description: 'Researchers, students, educators',
         price: 'Contact',
-        features: [
-          '1-2 years validity',
-          'Institution sponsorship',
-          'Academic documentation',
-        ],
+        features: ['1-2 years validity', 'Institution sponsorship', 'Academic documentation'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -405,22 +325,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E35 - Second Home Visa',
         description: 'Long-term residence (USD 130k+ deposit)',
         price: 'Contact',
-        features: [
-          '5-10 years validity',
-          'No sponsor required',
-          'Bring family members',
-        ],
+        features: ['5-10 years validity', 'No sponsor required', 'Bring family members'],
         popular: false,
       },
       {
         name: 'E35A - Working Holiday',
         description: 'Australia bilateral agreement',
         price: 'Contact',
-        features: [
-          '1 year validity',
-          'Age 18-30 only',
-          'Australian citizens only',
-        ],
+        features: ['1 year validity', 'Age 18-30 only', 'Australian citizens only'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -474,22 +386,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'MERP Only (1 Year)',
         description: 'Multiple Exit Re-entry Permit',
         price: '4.000.000',
-        features: [
-          '1 year validity',
-          'Unlimited exits/entries',
-          'For KITAP holders',
-        ],
+        features: ['1 year validity', 'Unlimited exits/entries', 'For KITAP holders'],
         popular: false,
       },
       {
         name: 'MERP Only (2 Years)',
         description: 'Multiple Exit Re-entry Permit',
         price: '5.000.000',
-        features: [
-          '2 years validity',
-          'Unlimited exits/entries',
-          'For KITAP holders',
-        ],
+        features: ['2 years validity', 'Unlimited exits/entries', 'For KITAP holders'],
         popular: false,
       },
       // ═══════════════════════════════════════════════════════════
@@ -499,33 +403,21 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'EPO (Exit Permit Only)',
         description: 'One-way exit from Indonesia',
         price: '700.000',
-        features: [
-          'Exit without re-entry',
-          '1-3 days processing',
-          'Urgent +300k IDR',
-        ],
+        features: ['Exit without re-entry', '1-3 days processing', 'Urgent +300k IDR'],
         popular: false,
       },
       {
         name: 'ERP (Exit Re-entry Permit)',
         description: 'Travel abroad and return',
         price: '800.000',
-        features: [
-          'Preserves KITAS validity',
-          '1-3 days processing',
-          'Urgent +500k IDR',
-        ],
+        features: ['Preserves KITAS validity', '1-3 days processing', 'Urgent +500k IDR'],
         popular: false,
       },
       {
         name: 'Mutation Passport',
         description: 'Update KITAS with new passport',
         price: '500.000',
-        features: [
-          'Required when passport renewed',
-          '5-7 days processing',
-          'Urgent +350k IDR',
-        ],
+        features: ['Required when passport renewed', '5-7 days processing', 'Urgent +350k IDR'],
         popular: false,
       },
       {
@@ -554,11 +446,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'Reset Molina',
         description: 'Immigration online account reset',
         price: '1.000.000',
-        features: [
-          'Fix login/account issues',
-          '1-3 days processing',
-          'Urgent +400k IDR',
-        ],
+        features: ['Fix login/account issues', '1-3 days processing', 'Urgent +400k IDR'],
         popular: false,
       },
       {
@@ -576,11 +464,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'SKCK (Police Clearance)',
         description: 'Indonesian police clearance',
         price: '2.000.000',
-        features: [
-          'Clean record certificate',
-          '5-7 days processing',
-          'Valid 6 months',
-        ],
+        features: ['Clean record certificate', '5-7 days processing', 'Valid 6 months'],
         popular: false,
       },
       {
@@ -598,11 +482,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'Domicile + SKTT Package',
         description: 'Combined residence documents',
         price: '1.600.000',
-        features: [
-          'Both documents together',
-          'Save 700k IDR',
-          '7-10 days processing',
-        ],
+        features: ['Both documents together', 'Save 700k IDR', '7-10 days processing'],
         popular: false,
       },
       {
@@ -623,11 +503,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'Indonesian Passport 5 Years',
         description: 'Standard passport renewal',
         price: '1.300.000',
-        features: [
-          '5 years validity',
-          '7-14 days processing',
-          'Indonesian citizens only',
-        ],
+        features: ['5 years validity', '7-14 days processing', 'Indonesian citizens only'],
         popular: false,
       },
       {
@@ -645,22 +521,14 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
         name: 'E-Passport 5 Years',
         description: 'Biometric electronic passport',
         price: '2.000.000',
-        features: [
-          'Biometric chip included',
-          '5 years validity',
-          'Faster immigration clearance',
-        ],
+        features: ['Biometric chip included', '5 years validity', 'Faster immigration clearance'],
         popular: false,
       },
       {
         name: 'E-Passport 10 Years',
         description: 'Premium biometric passport',
         price: '2.500.000',
-        features: [
-          'Biometric chip included',
-          '10 years validity',
-          'Premium travel document',
-        ],
+        features: ['Biometric chip included', '10 years validity', 'Premium travel document'],
         popular: false,
       },
     ],
@@ -695,27 +563,33 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     faqs: [
       {
         question: 'How long does KITAS processing take?',
-        answer: 'Most visas and KITAS (C, D, E series) take 7-10 days from application to e-visa issuance. Only Working and Freelance KITAS (E23) take 4-6 weeks due to RPTKA and IMTA work permit approval process.',
+        answer:
+          'Most visas and KITAS (C, D, E series) take 7-10 days from application to e-visa issuance. Only Working and Freelance KITAS (E23) take 4-6 weeks due to RPTKA and IMTA work permit approval process.',
       },
       {
-        question: 'What\'s the difference between offshore and onshore?',
-        answer: 'Offshore means applying from outside Indonesia (before arrival), onshore means converting from within Indonesia while on another visa. Onshore is typically 2-4 million IDR more due to additional processing.',
+        question: "What's the difference between offshore and onshore?",
+        answer:
+          'Offshore means applying from outside Indonesia (before arrival), onshore means converting from within Indonesia while on another visa. Onshore is typically 2-4 million IDR more due to additional processing.',
       },
       {
         question: 'Do I need a work permit (IMTA) for all KITAS?',
-        answer: 'No. Only Working KITAS (E23) requires IMTA. Digital Nomad (E33G), Investor (E28), Retirement (E33E/F), and Family visas (E31) do NOT require IMTA - they use different legal frameworks.',
+        answer:
+          'No. Only Working KITAS (E23) requires IMTA. Digital Nomad (E33G), Investor (E28), Retirement (E33E/F), and Family visas (E31) do NOT require IMTA - they use different legal frameworks.',
       },
       {
         question: 'What is the Digital Nomad KITAS (E33G)?',
-        answer: 'E33G is for remote workers earning foreign income while living in Indonesia. No IMTA needed, 1-year validity, 7-10 days processing. You cannot work for Indonesian companies - only foreign employers/clients.',
+        answer:
+          'E33G is for remote workers earning foreign income while living in Indonesia. No IMTA needed, 1-year validity, 7-10 days processing. You cannot work for Indonesian companies - only foreign employers/clients.',
       },
       {
         question: 'What is the path to permanent residency (KITAP)?',
-        answer: 'After holding KITAS for 3-5 consecutive years (depending on category), you can apply for KITAP. Investor KITAP requires 3 consecutive Investor KITAS; Working KITAP requires 4 consecutive years.',
+        answer:
+          'After holding KITAS for 3-5 consecutive years (depending on category), you can apply for KITAP. Investor KITAP requires 3 consecutive Investor KITAS; Working KITAP requires 4 consecutive years.',
       },
       {
         question: 'What is the Second Home Visa (E35)?',
-        answer: 'E35 is a 5-10 year visa for high-net-worth individuals. Requires USD 130,000+ deposit in Indonesian bank, or proof of property ownership. No sponsor needed, can bring family members.',
+        answer:
+          'E35 is a 5-10 year visa for high-net-worth individuals. Requires USD 130,000+ deposit in Indonesian bank, or proof of property ownership. No sponsor needed, can bring family members.',
       },
     ],
   },
@@ -723,7 +597,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     name: 'Company Setup & Licenses',
     slug: 'company',
     tagline: 'From licenses to structure — launch your business fast',
-    description: 'Start your Indonesian business the right way. We handle PT PMA/PMDN formation, business licensing through OSS, special permits like alcohol licenses, and ongoing compliance so you can focus on growth.',
+    description:
+      'Start your Indonesian business the right way. We handle PT PMA/PMDN formation, business licensing through OSS, special permits like alcohol licenses, and ongoing compliance so you can focus on growth.',
     icon: Building2,
     bgColor: 'bg-orange-500/10',
     iconColor: 'text-orange-400',
@@ -814,19 +689,23 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     faqs: [
       {
         question: 'What is the minimum capital for PT PMA?',
-        answer: 'The minimum investment is IDR 10 billion (~USD 650,000), with IDR 2.5 billion (~USD 160,000) paid-up capital. Some sectors have different requirements.',
+        answer:
+          'The minimum investment is IDR 10 billion (~USD 650,000), with IDR 2.5 billion (~USD 160,000) paid-up capital. Some sectors have different requirements.',
       },
       {
         question: 'Can foreigners own 100% of a PT PMA?',
-        answer: 'Yes, for most business sectors. Some sectors have foreign ownership restrictions. We\'ll advise on your specific case.',
+        answer:
+          "Yes, for most business sectors. Some sectors have foreign ownership restrictions. We'll advise on your specific case.",
       },
       {
         question: 'How long does PT PMA setup take?',
-        answer: 'Typically 4-8 weeks for full registration including all licenses. Expedited processing available.',
+        answer:
+          'Typically 4-8 weeks for full registration including all licenses. Expedited processing available.',
       },
       {
         question: 'Do I need a physical office for my company?',
-        answer: 'Yes, Indonesian law requires a registered business address. We can help with virtual office solutions that meet legal requirements.',
+        answer:
+          'Yes, Indonesian law requires a registered business address. We can help with virtual office solutions that meet legal requirements.',
       },
     ],
   },
@@ -834,7 +713,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     name: 'Tax & BPJS Services',
     slug: 'tax',
     tagline: "Navigate Indonesia's tax system with confidence",
-    description: 'Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, BPJS enrollment to monthly reporting — we handle it all with expert precision.',
+    description:
+      'Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, BPJS enrollment to monthly reporting — we handle it all with expert precision.',
     icon: Calculator,
     bgColor: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
@@ -980,19 +860,23 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     faqs: [
       {
         question: 'When is the tax filing deadline?',
-        answer: 'Personal tax (SPT) is due March 31. Corporate tax is due April 30. Monthly taxes are due by the 15th of the following month.',
+        answer:
+          'Personal tax (SPT) is due March 31. Corporate tax is due April 30. Monthly taxes are due by the 15th of the following month.',
       },
       {
         question: 'Do expats need to file Indonesian taxes?',
-        answer: 'Yes, if you stay 183+ days in Indonesia, you\'re a tax resident and must file. KITAS holders are automatically tax residents. We can help determine your status.',
+        answer:
+          "Yes, if you stay 183+ days in Indonesia, you're a tax resident and must file. KITAS holders are automatically tax residents. We can help determine your status.",
       },
       {
         question: 'What are the tax rates in Indonesia?',
-        answer: 'Personal income tax ranges from 5-35%. Corporate tax is 22% (20% for public companies). We can help optimize your structure.',
+        answer:
+          'Personal income tax ranges from 5-35%. Corporate tax is 22% (20% for public companies). We can help optimize your structure.',
       },
       {
         question: 'What is the difference between PPh 21, 23, and 26?',
-        answer: 'PPh 21 is employee income tax, PPh 23 is withholding on services/royalties, and PPh 26 is withholding for non-residents. Each has different rates and filing requirements.',
+        answer:
+          'PPh 21 is employee income tax, PPh 23 is withholding on services/royalties, and PPh 26 is withholding for non-residents. Each has different rates and filing requirements.',
       },
     ],
   },
@@ -1000,7 +884,8 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     name: 'Real Estate Services',
     slug: 'property',
     tagline: 'Secure property with legal clarity and guidance',
-    description: 'Navigate Indonesian property law with confidence. From due diligence to leasehold agreements, building permits to ownership structures — we protect your investment every step of the way.',
+    description:
+      'Navigate Indonesian property law with confidence. From due diligence to leasehold agreements, building permits to ownership structures — we protect your investment every step of the way.',
     icon: Home,
     bgColor: 'bg-emerald-500/10',
     iconColor: 'text-emerald-400',
@@ -1090,19 +975,23 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     faqs: [
       {
         question: 'Can foreigners own property in Indonesia?',
-        answer: 'Foreigners cannot own freehold (Hak Milik) but can hold long-term leases (Hak Sewa up to 80 years), Hak Pakai (Right of Use), or own through a PT PMA company.',
+        answer:
+          'Foreigners cannot own freehold (Hak Milik) but can hold long-term leases (Hak Sewa up to 80 years), Hak Pakai (Right of Use), or own through a PT PMA company.',
       },
       {
         question: 'What is Hak Guna Bangunan (HGB)?',
-        answer: 'HGB is a right to build and own structures on land. PT PMA companies can hold HGB for 30+20+20 years (70 years total), renewable.',
+        answer:
+          'HGB is a right to build and own structures on land. PT PMA companies can hold HGB for 30+20+20 years (70 years total), renewable.',
       },
       {
         question: 'Is nominee ownership safe?',
-        answer: 'Nominee arrangements are legally risky and can result in total loss of your investment. We strongly recommend proper structures like PT PMA or notarized leases.',
+        answer:
+          'Nominee arrangements are legally risky and can result in total loss of your investment. We strongly recommend proper structures like PT PMA or notarized leases.',
       },
       {
         question: 'What is the difference between IMB and PBG?',
-        answer: 'IMB (Izin Mendirikan Bangunan) is the old building permit system. PBG (Persetujuan Bangunan Gedung) is the new system under OSS. We handle both.',
+        answer:
+          'IMB (Izin Mendirikan Bangunan) is the old building permit system. PBG (Persetujuan Bangunan Gedung) is the new system under OSS. We handle both.',
       },
     ],
   },
