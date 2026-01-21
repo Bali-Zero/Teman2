@@ -15,21 +15,27 @@ interface ServicePricingProps {
 function getVisaPackageColor(name: string): { bg: string; border: string; badge: string } {
   const lowerName = name.toLowerCase();
   // KITAS, KITAP, Working, Freelance, Investor KITAS, Spouse, Dependent, Retirement KITAS = Orange
-  if (lowerName.includes('kitas') || lowerName.includes('kitap') ||
-      lowerName.includes('working') || lowerName.includes('freelance') ||
-      lowerName.includes('spouse') || lowerName.includes('dependent') ||
-      lowerName.includes('retirement') || lowerName.includes('investor kitas')) {
+  if (
+    lowerName.includes('kitas') ||
+    lowerName.includes('kitap') ||
+    lowerName.includes('working') ||
+    lowerName.includes('freelance') ||
+    lowerName.includes('spouse') ||
+    lowerName.includes('dependent') ||
+    lowerName.includes('retirement') ||
+    lowerName.includes('investor kitas')
+  ) {
     return {
       bg: 'bg-orange-500/20',
       border: 'border-orange-500/40 hover:border-orange-400',
-      badge: 'bg-orange-500'
+      badge: 'bg-orange-500',
     };
   }
   // Visit visas (C, D series) = Blue
   return {
     bg: 'bg-sky-500/20',
     border: 'border-sky-500/40 hover:border-sky-400',
-    badge: 'bg-sky-500'
+    badge: 'bg-sky-500',
   };
 }
 
@@ -70,9 +76,11 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                   onClick={() => setSelectedPackage(pkg)}
                 >
                   {pkg.popular && (
-                    <span className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
-                      slug === 'visa' && visaColors ? visaColors.badge : 'bg-[#2251ff]'
-                    }`}>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
+                        slug === 'visa' && visaColors ? visaColors.badge : 'bg-[#2251ff]'
+                      }`}
+                    >
                       Most Popular
                     </span>
                   )}
@@ -177,7 +185,9 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
               {/* Additional Info */}
               <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-                <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">Our Service Includes:</h4>
+                <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">
+                  Our Service Includes:
+                </h4>
                 <ul className="text-white/70 text-sm space-y-1">
                   <li>• Document preparation & review</li>
                   <li>• Government submission & liaison</li>
