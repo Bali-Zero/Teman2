@@ -1,10 +1,10 @@
+'use client';
+
 import { logger } from '@/lib/logger';
 /**
  * Web Vitals Monitoring
  * Tracks Core Web Vitals (LCP, CLS, INP, TTFB) and sends to analytics
  */
-
-'use client';
 
 // Web Vitals monitoring disabled temporarily due to Vercel build issues
 // Status: Tracked in backlog - Re-enable when dependency resolution is fixed
@@ -32,7 +32,10 @@ export function initWebVitals(_options: WebVitalsOptions = {}) {
   // Disabled - web-vitals package has resolution issues on Vercel
   // Will be re-enabled when fixed
   if (process.env.NODE_ENV === 'development') {
-    logger.debug('[Web Vitals] Monitoring temporarily disabled', { component: "AUTO", action: "log" });
+    logger.debug('[Web Vitals] Monitoring temporarily disabled', {
+      component: 'AUTO',
+      action: 'log',
+    });
   }
 }
 

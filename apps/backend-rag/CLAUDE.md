@@ -9,6 +9,7 @@ Risolvere le **67 vulnerabilità di sicurezza** segnalate da GitHub Dependabot d
 ### Problema Identificato
 
 **GitHub Alert:**
+
 ```
 GitHub found 67 vulnerabilities on Balizero1987/Teman2's default branch
 - 2 critical
@@ -26,6 +27,7 @@ Le vulnerabilità provenivano da pacchetti Python obsoleti in `requirements-prod
 **Strategia:** Aggiornamento sistematico di tutti i pacchetti con versioni obsolete alle ultime versioni stabili, mantenendo compatibilità con le dipendenze esistenti.
 
 **Metodo:**
+
 1. Identificazione pacchetti pinned (`==`) vs flexible (`>=`)
 2. Check latest versions con `python3 -m pip index versions`
 3. Aggiornamento a latest con `>=` per permettere patch updates
@@ -37,26 +39,26 @@ Le vulnerabilità provenivano da pacchetti Python obsoleti in `requirements-prod
 
 #### Critical Security Updates
 
-| Package | Before | After | Reason |
-|---------|--------|-------|--------|
-| **openpyxl** | 3.1.2 | 3.1.5 | CVE-2023-43515 fixed |
-| **pypdf** | 3.17.1 | 6.6.0 | Security updates + PyPDF2 merge |
-| **beautifulsoup4** | 4.12.2 | 4.14.3 | Security patches |
-| **bcrypt** | 4.0.1 | 5.0.0 | Security improvements |
-| **structlog** | 23.2.0 | 25.5.0 | Multiple security fixes |
+| Package            | Before | After  | Reason                          |
+| ------------------ | ------ | ------ | ------------------------------- |
+| **openpyxl**       | 3.1.2  | 3.1.5  | CVE-2023-43515 fixed            |
+| **pypdf**          | 3.17.1 | 6.6.0  | Security updates + PyPDF2 merge |
+| **beautifulsoup4** | 4.12.2 | 4.14.3 | Security patches                |
+| **bcrypt**         | 4.0.1  | 5.0.0  | Security improvements           |
+| **structlog**      | 23.2.0 | 25.5.0 | Multiple security fixes         |
 
 #### Version Updates (Performance + Security)
 
-| Package | Before | After | Impact |
-|---------|--------|-------|--------|
-| **asyncpg** | 0.29.0 | 0.31.0 | PostgreSQL performance |
-| **redis** | 5.0.1 | 7.1.0 | Security + new features |
-| **sqlmodel** | 0.0.14 | 0.0.31 | Bug fixes |
-| **playwright** | 1.40.0 | 1.57.0 | Browser security |
-| **fake-useragent** | 1.4.0 | 2.2.0 | Updated UA database |
-| **pre-commit** | 3.6.0 | 4.5.1 | Dev security |
-| **email-validator** | 2.1.0 | 2.2.0 | Validation improvements |
-| **python-dotenv** | 1.0.0 | >=1.0.0 | Flexibility |
+| Package             | Before | After   | Impact                  |
+| ------------------- | ------ | ------- | ----------------------- |
+| **asyncpg**         | 0.29.0 | 0.31.0  | PostgreSQL performance  |
+| **redis**           | 5.0.1  | 7.1.0   | Security + new features |
+| **sqlmodel**        | 0.0.14 | 0.0.31  | Bug fixes               |
+| **playwright**      | 1.40.0 | 1.57.0  | Browser security        |
+| **fake-useragent**  | 1.4.0  | 2.2.0   | Updated UA database     |
+| **pre-commit**      | 3.6.0  | 4.5.1   | Dev security            |
+| **email-validator** | 2.1.0  | 2.2.0   | Validation improvements |
+| **python-dotenv**   | 1.0.0  | >=1.0.0 | Flexibility             |
 
 #### Deprecated Package Removed
 
@@ -66,10 +68,10 @@ Le vulnerabilità provenivano da pacchetti Python obsoleti in `requirements-prod
 
 ### Files Modified
 
-| File | Changes | LOC |
-|------|---------|-----|
+| File                                     | Changes             | LOC     |
+| ---------------------------------------- | ------------------- | ------- |
 | `apps/backend-rag/requirements-prod.txt` | 16 packages updated | -16 +16 |
-| `apps/backend-rag/requirements.txt` | 14 packages updated | -16 +16 |
+| `apps/backend-rag/requirements.txt`      | 14 packages updated | -16 +16 |
 
 **Total:** 2 files, 30 packages updated
 
@@ -168,18 +170,21 @@ collected 0 items
 ### Verification
 
 **NPM Audit (Node.js):**
+
 ```bash
 npm audit --workspaces
 # found 0 vulnerabilities ✅
 ```
 
 **Python Syntax:**
+
 ```bash
 python3 -m py_compile backend/app/routers/article_composer.py
 # No errors ✅
 ```
 
 **Requirements Syntax:**
+
 ```python
 # Custom validation script
 # ✅ requirements-prod.txt syntax OK
@@ -191,11 +196,13 @@ python3 -m py_compile backend/app/routers/article_composer.py
 ### GitHub Dependabot Status
 
 **Expected Behavior:**
+
 - GitHub security scan requires 5-15 minutes to update after push
 - Vulnerabilities count should decrease from 67 to ~0 automatically
 - Dependabot alerts will close when rescan completes
 
 **Monitoring:**
+
 ```
 https://github.com/Balizero1987/Teman2/security/dependabot
 ```
@@ -205,14 +212,17 @@ https://github.com/Balizero1987/Teman2/security/dependabot
 ### Next Steps (Recommendations)
 
 **Priority 1: Monitor Dependabot**
+
 - Check alerts decrease within 15 minutes
 - Verify all critical/high alerts resolved
 
 **Priority 2: Fix Pytest Configuration**
+
 - Investigate why pytest collects 0 items
 - Ensure tests can run in pre-push hook
 
 **Priority 3: Update .prettierignore**
+
 ```
 # Add to .prettierignore
 *.txt
@@ -220,6 +230,7 @@ requirements*.txt
 ```
 
 **Priority 4: Update Husky (Optional)**
+
 ```bash
 # Current version shows deprecation warning
 npm install husky@latest --save-dev
@@ -1021,6 +1032,7 @@ Ottimizzare Article Composer API con:
 #### 1. Rimosso Image Generation Backend
 
 **Prima:**
+
 ```python
 class EnrichedArticle(BaseModel):
     cover_image: str | None = None
@@ -1039,6 +1051,7 @@ image_prompt=image_result.get("prompt"),  # ← RIMOSSO
 ```
 
 **Dopo:**
+
 ```python
 class EnrichedArticle(BaseModel):
     cover_image: str | None = None
@@ -1056,16 +1069,19 @@ cover_image=None,  # Will be provided by frontend during publish
 #### 2. Aumentato Enrichment (Dynamic Word Count)
 
 **Prima:**
+
 ```python
 "facts": "<Pure journalism section. 200-300 words. In English.>"
 ```
 
 **Dopo:**
+
 ```python
 "facts": "<Pure journalism section. 400-600 words based on news relevance (high priority = 600 words, medium = 500, low = 400). In English.>"
 ```
 
 **Impatto:**
+
 - **High priority:** 600 words (~2x contenuto precedente)
 - **Medium priority:** 500 words
 - **Low priority:** 400 words
@@ -1073,6 +1089,7 @@ cover_image=None,  # Will be provided by frontend during publish
 #### 3. Fixed MDX Template JSON Serialization
 
 **Prima (BROKEN):**
+
 ```python
 def generate_mdx_content(article: EnrichedArticle, ...):
     # Python lists inserite direttamente nel template JSX
@@ -1089,6 +1106,7 @@ def generate_mdx_content(article: EnrichedArticle, ...):
 **Risultato runtime:** `subItems: ['item1', 'item2']` (sintassi Python, non JSON!)
 
 **Dopo (FIXED):**
+
 ```python
 import json as json_module
 
@@ -1119,27 +1137,29 @@ def generate_mdx_content(article: EnrichedArticle, ...):
 
 **Test Suite (23 tests):**
 
-| Category | Tests | Coverage |
-|----------|-------|----------|
+| Category             | Tests   | Coverage                                                   |
+| -------------------- | ------- | ---------------------------------------------------------- |
 | **Compose Endpoint** | 8 tests | Success, priority word count, JSON cleanup, error handling |
-| **Publish Endpoint** | 6 tests | With/without image, GitHub errors, atomic commits |
-| **Helper Functions** | 7 tests | Slug generation, MDX JSON serialization, prompt building |
-| **Integration** | 2 tests | Full compose→publish flow, status endpoints |
+| **Publish Endpoint** | 6 tests | With/without image, GitHub errors, atomic commits          |
+| **Helper Functions** | 7 tests | Slug generation, MDX JSON serialization, prompt building   |
+| **Integration**      | 2 tests | Full compose→publish flow, status endpoints                |
 
 **Key Test Cases:**
 
 1. **test_compose_article_priority_word_count** - Verifica 400/500/600 words per low/medium/high
-2. **test_compose_article_json_cleanup** - Testa parsing con ```json e ```
+2. **test_compose_article_json_cleanup** - Testa parsing con `json e `
 3. **test_publish_article_with_cover_image** - Verifica atomic commit (MDX + image)
 4. **test_generate_mdx_content_json_serialization** - Verifica JSON arrays per React
 5. **test_full_compose_and_publish_flow** - Integration test completo
 
 **Mocking Strategy:**
+
 - Anthropic API: Mock con `unittest.mock.patch`
 - GitHub Publisher: Mock con `AsyncMock` per metodi async
 - Environment variables: `patch.dict("os.environ", ...)`
 
 **Coverage verificata:**
+
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate
@@ -1219,6 +1239,7 @@ claude_api_cost_cents = Histogram(
 ```
 
 **Grafana Queries (Examples):**
+
 ```promql
 # Success rate
 rate(article_compose_requests_total{status="success"}[5m])
@@ -1262,6 +1283,7 @@ article_publish_requests.labels(
 ```
 
 **Verifica Produzione:**
+
 ```bash
 curl https://nuzantara-rag.fly.dev/metrics | grep article_
 # ✅ All 5 metrics exposed and collecting data
@@ -1272,6 +1294,7 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 **Session Notes:** CLAUDE.md aggiornato (460+ righe) ✅
 
 **API Documentation:** `docs/ARTICLE_COMPOSER_API.md` creato (520 righe) ✅
+
 - Endpoint specifications (compose, publish, status)
 - Request/response examples with JSON
 - Error handling guide
@@ -1286,10 +1309,12 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 **Status:** ✅ DEPLOYED to Production (Fly.io)
 
 **Commits:**
+
 1. `fb4e5ed3` - Initial fixes (image_prompt removal, enrichment increase, MDX fix)
 2. `86423e1d` - Production-Ready Standard (tests, metrics, docs)
 
 **Final Deployment:**
+
 - **Version:** 1671 (deployed 2026-01-19 12:25 UTC)
 - **Branch:** main
 - **Region:** Singapore (sin)
@@ -1299,6 +1324,7 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 - **Migrations:** ✅ Applied successfully
 
 **Verification:**
+
 ```bash
 # Backend health
 curl https://nuzantara-rag.fly.dev/health
@@ -1320,6 +1346,7 @@ fly status -a nuzantara-rag
 #### 1. ⚠️ Sentinel Non Eseguito
 
 **Issue:** Pre-commit hooks falliscono per file TypeScript corrotto:
+
 ```
 apps/backend-rag/apps/mouth-frontend/tests/layout.test.ts:
 SyntaxError: Unterminated template literal. (319:6)
@@ -1338,6 +1365,7 @@ SyntaxError: Unterminated template literal. (319:6)
 **Reason:** Local execution successful, but pre-push hook pytest configuration issues
 
 **Manual Execution:**
+
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate
@@ -1354,11 +1382,13 @@ PYTHONPATH=. pytest backend/tests/unit/routers/test_article_composer.py -v
 **Manual Tests:**
 
 1. ✅ Python syntax validation:
+
    ```bash
    python3 -m py_compile backend/app/routers/article_composer.py
    ```
 
 2. ✅ GitHub config verification:
+
    ```bash
    fly secrets list -a nuzantara-rag | grep -i github
    # GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN all present
@@ -1380,6 +1410,7 @@ PYTHONPATH=. pytest backend/tests/unit/routers/test_article_composer.py -v
 ```
 
 **Prometheus Metrics Verification:**
+
 ```bash
 curl https://nuzantara-rag.fly.dev/metrics | grep article_
 # ✅ All 5 metrics exposed and collecting data
@@ -1389,12 +1420,12 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 
 ### Files Modified/Created
 
-| File | Type | Lines | Purpose |
-|------|------|-------|---------|
-| `backend/app/routers/article_composer.py` | Modified | +46 -34 | Metrics, MDX fix, enrichment increase, image_prompt removal |
-| `backend/tests/unit/routers/test_article_composer.py` | Created | +380 | Complete test suite (24 tests) |
-| `docs/ARTICLE_COMPOSER_API.md` | Created | +520 | Complete API documentation |
-| `apps/backend-rag/CLAUDE.md` | Modified | +460 | Session notes with technical details |
+| File                                                  | Type     | Lines   | Purpose                                                     |
+| ----------------------------------------------------- | -------- | ------- | ----------------------------------------------------------- |
+| `backend/app/routers/article_composer.py`             | Modified | +46 -34 | Metrics, MDX fix, enrichment increase, image_prompt removal |
+| `backend/tests/unit/routers/test_article_composer.py` | Created  | +380    | Complete test suite (24 tests)                              |
+| `docs/ARTICLE_COMPOSER_API.md`                        | Created  | +520    | Complete API documentation                                  |
+| `apps/backend-rag/CLAUDE.md`                          | Modified | +460    | Session notes with technical details                        |
 
 **Total:** 2 modified, 2 created, ~1,400 lines (code + tests + docs)
 
@@ -1426,6 +1457,7 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 **After:** 400-600 words based on priority (high/medium/low)
 
 **Result:**
+
 - High priority news = contenuto più dettagliato (600 words)
 - Low priority news = contenuto conciso (400 words)
 - Better alignment tra relevance e content depth
@@ -1455,18 +1487,14 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 **Future Improvements (Optional):**
 
 **Priority 1 - Operations:**
+
 1. Monitor production metrics (compose success rate, enrichment quality)
 2. Grafana dashboard per Article Composer
 3. Execute test suite in CI/CD (fix pytest hooks)
 
-**Priority 2 - Features:**
-4. A/B testing per word count optimization
-5. Analytics: word count → engagement correlation
-6. Image generation via Replicate/Stability AI (se richiesto)
+**Priority 2 - Features:** 4. A/B testing per word count optimization 5. Analytics: word count → engagement correlation 6. Image generation via Replicate/Stability AI (se richiesto)
 
-**Priority 3 - Tech Debt:**
-7. Fix TypeScript file corrotto (layout.test.ts)
-8. Run Sentinel without --no-verify
+**Priority 3 - Tech Debt:** 7. Fix TypeScript file corrotto (layout.test.ts) 8. Run Sentinel without --no-verify
 
 ---
 
@@ -1474,16 +1502,16 @@ curl https://nuzantara-rag.fly.dev/metrics | grep article_
 
 **Golden Rules:**
 
-| Rule | Status | Note |
-|------|--------|------|
-| 1. Virtualenv | ✅ | Usato per validazione + tests |
-| 2. No Root Execution | ✅ | Test via `python -m pytest` |
-| 3. Absolute Imports | ✅ | `from backend.app.routers...` |
-| 4. Async First | ✅ | `async def`, `httpx.AsyncClient` |
-| 5. Type Hints | ✅ | Tutte le funzioni hanno type hints |
-| 6. No Hardcoding | ✅ | API keys da `os.getenv()` |
-| 7. Data/Logic Separation | ✅ | Config in settings, logic in routers |
-| 8. **Production-Ready Standard** | ✅ **COMPLETE** | Tests ✅, Docs ✅, Metrics ✅ |
+| Rule                             | Status          | Note                                 |
+| -------------------------------- | --------------- | ------------------------------------ |
+| 1. Virtualenv                    | ✅              | Usato per validazione + tests        |
+| 2. No Root Execution             | ✅              | Test via `python -m pytest`          |
+| 3. Absolute Imports              | ✅              | `from backend.app.routers...`        |
+| 4. Async First                   | ✅              | `async def`, `httpx.AsyncClient`     |
+| 5. Type Hints                    | ✅              | Tutte le funzioni hanno type hints   |
+| 6. No Hardcoding                 | ✅              | API keys da `os.getenv()`            |
+| 7. Data/Logic Separation         | ✅              | Config in settings, logic in routers |
+| 8. **Production-Ready Standard** | ✅ **COMPLETE** | Tests ✅, Docs ✅, Metrics ✅        |
 
 **Production-Ready Standard Checklist:**
 

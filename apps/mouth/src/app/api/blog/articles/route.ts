@@ -41,7 +41,12 @@ export async function GET(request: NextRequest) {
       hasMore: offset + articles.length < total,
     });
   } catch (error) {
-    logger.error('Failed to fetch articles:', error, { component: "AUTO", action: "error" }, toError('Failed to fetch articles:', error));
+    logger.error(
+      'Failed to fetch articles:',
+      error,
+      { component: 'AUTO', action: 'error' },
+      toError('Failed to fetch articles:', error)
+    );
 
     // Return mock data as fallback
     return NextResponse.json({

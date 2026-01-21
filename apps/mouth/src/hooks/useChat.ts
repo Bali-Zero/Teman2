@@ -94,7 +94,13 @@ export function useChat() {
             imageUrl: m.imageUrl,
           }));
           api.saveConversation(messagesToSave, sessionId!, metadata).catch((err) => {
-            if (isMountedRef.current) logger.error('Failed to save conversation:', err, { component: "AUTO", action: "error" }, toError('Failed to save conversation:', err));
+            if (isMountedRef.current)
+              logger.error(
+                'Failed to save conversation:',
+                err,
+                { component: 'AUTO', action: 'error' },
+                toError('Failed to save conversation:', err)
+              );
           });
         }
       },
@@ -146,7 +152,12 @@ export function useChat() {
       addMessages([assistantMessage]);
     } catch (error) {
       if (!isMountedRef.current) return;
-      logger.error('Failed to generate image:', error, { component: "AUTO", action: "error" }, toError('Failed to generate image:', error));
+      logger.error(
+        'Failed to generate image:',
+        error,
+        { component: 'AUTO', action: 'error' },
+        toError('Failed to generate image:', error)
+      );
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, failed to generate the image. Please try again.',
@@ -190,7 +201,12 @@ export function useChat() {
         }
       } catch (error) {
         if (!isMountedRef.current) return;
-        logger.error('Failed to load conversation:', error, { component: "AUTO", action: "error" }, toError('Failed to load conversation:', error));
+        logger.error(
+          'Failed to load conversation:',
+          error,
+          { component: 'AUTO', action: 'error' },
+          toError('Failed to load conversation:', error)
+        );
       } finally {
         if (isMountedRef.current) {
           setIsStreaming(false);
@@ -208,7 +224,12 @@ export function useChat() {
       return response;
     } catch (error) {
       if (!isMountedRef.current) return null;
-      logger.error('Failed to upload file:', error, { component: "AUTO", action: "error" }, toError('Failed to upload file:', error));
+      logger.error(
+        'Failed to upload file:',
+        error,
+        { component: 'AUTO', action: 'error' },
+        toError('Failed to upload file:', error)
+      );
       return null;
     } finally {
       if (isMountedRef.current) {

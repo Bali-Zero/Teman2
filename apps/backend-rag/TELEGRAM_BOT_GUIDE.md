@@ -1,9 +1,11 @@
 # 🤖 Guida Rapida - Configurazione Bot Telegram Zantara
 
 ## 🎯 OBIETTIVO
+
 Attivare il bot Telegram Zantara per rispondere alle domande degli utenti usando l'AI.
 
 ## 📋 PREREQUISITI
+
 - Account Telegram
 - Accesso a Fly.io (per configurare secrets)
 - Token del bot da @BotFather
@@ -11,6 +13,7 @@ Attivare il bot Telegram Zantara per rispondere alle domande degli utenti usando
 ## 🔧 PASSAGGI
 
 ### 1️⃣ CREAZIONE BOT SU TELEGRAM
+
 1. Apri Telegram e cerca **@BotFather**
 2. Invia `/start`
 3. Invia `/newbot`
@@ -19,6 +22,7 @@ Attivare il bot Telegram Zantara per rispondere alle domande degli utenti usando
 6. **Copia il token** che ricevi (es: `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`)
 
 ### 2️⃣ CONFIGURAZIONE AUTOMATICA
+
 ```bash
 # Esegui lo script di configurazione
 cd /Users/antonellosiano/Desktop/nuzantara/apps/backend-rag
@@ -26,6 +30,7 @@ cd /Users/antonellosiano/Desktop/nuzantara/apps/backend-rag
 ```
 
 Lo script ti chiederà:
+
 - **Incolla il token** del bot
 - Verificherà il formato
 - Configurerà su Fly.io
@@ -33,6 +38,7 @@ Lo script ti chiederà:
 - Imposterà il webhook
 
 ### 3️⃣ CONFIGURAZIONE MANUALE (se preferisci)
+
 ```bash
 # 1. Configura token su Fly.io
 fly secrets set TELEGRAM_BOT_TOKEN="IL_TUO_TOKEN_QUI" --app nuzantara-rag
@@ -49,6 +55,7 @@ curl -X POST "https://api.telegram.org/botIL_TUO_TOKEN_QUI/setWebhook" \
 ## ✅ VERIFICA
 
 ### Test Bot Status
+
 ```bash
 python3 -c "
 import httpx
@@ -64,6 +71,7 @@ asyncio.run(check())
 ```
 
 ### Test Webhook
+
 ```bash
 curl -X POST "https://api.telegram.org/botIL_TUO_TOKEN_QUI/getWebhookInfo"
 ```
@@ -78,22 +86,26 @@ curl -X POST "https://api.telegram.org/botIL_TUO_TOKEN_QUI/getWebhookInfo"
 ## 🚨 RISOLUZIONE PROBLEMI
 
 ### Bot non risponde?
+
 1. **Verifica token**: `curl "https://api.telegram.org/botTOKEN/getMe"`
 2. **Verifica webhook**: `curl "https://api.telegram.org/botTOKEN/getWebhookInfo"`
 3. **Controlla logs**: `fly logs --app nuzantara-rag`
 
 ### Token non valido?
+
 - Ricrea il bot su @BotFather
 - Copia il nuovo token
 - Riconfigura su Fly.io
 
 ### Webhook non funziona?
+
 - Verifica URL: `https://nuzantara-rag.fly.dev/api/telegram/webhook`
 - Controlla secret token: `fly secrets list --app nuzantara-rag`
 
 ## 📞 SUPPORTO
 
 Se hai problemi:
+
 1. Controlla i log dell'app: `fly logs --app nuzantara-rag`
 2. Verifica configurazione secrets: `fly secrets list --app nuzantara-rag`
 3. Testa API manualmente con curl
@@ -101,6 +113,7 @@ Se hai problemi:
 ## 🎯 RISULTATO FINALE
 
 Bot Telegram attivo che:
+
 - ✅ Risponde alle domande degli utenti
 - ✅ Usa l'AI di Nuzantara
 - ✅ È integrato con il sistema CRM

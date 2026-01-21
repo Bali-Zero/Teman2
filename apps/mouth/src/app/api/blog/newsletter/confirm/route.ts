@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
     // Redirect to success page
     return NextResponse.redirect(new URL('/insights?newsletter=confirmed', request.url));
   } catch (error) {
-    logger.error('Newsletter confirmation error:', error, { component: "AUTO", action: "error" }, toError('Newsletter confirmation error:', error));
+    logger.error(
+      'Newsletter confirmation error:',
+      error,
+      { component: 'AUTO', action: 'error' },
+      toError('Newsletter confirmation error:', error)
+    );
     return NextResponse.redirect(
       new URL('/insights?newsletter=error&message=server-error', request.url)
     );

@@ -30,7 +30,9 @@ export type ErrorLike = Error | { message?: string; name?: string; stack?: strin
  * Type guard to check if value is an Error
  */
 export function isError(value: unknown): value is Error {
-  return value instanceof Error || (typeof value === 'object' && value !== null && 'message' in value);
+  return (
+    value instanceof Error || (typeof value === 'object' && value !== null && 'message' in value)
+  );
 }
 
 /**

@@ -18,6 +18,7 @@
 ### Opzione 1: Redirect Page Rule (Consigliato)
 
 **Vantaggi:**
+
 - Redirect HTTP 301 automatico
 - Funziona a livello DNS/CDN
 - Più veloce del redirect applicativo
@@ -108,14 +109,17 @@ curl -I https://mo.balizero.com
 ## 🚀 Raccomandazione
 
 **Usa Opzione 1 (Page Rule)** se:
+
 - Hai Page Rules disponibili
 - Vuoi redirect veloce a livello CDN
 
 **Usa Opzione 2 (CNAME)** se:
+
 - `mo.balizero.com` è un sottodominio esistente
 - Vuoi mantenere il sottodominio ma redirectare tutto il traffico
 
 **Usa Opzione 3 (A Record)** se:
+
 - Vuoi semplicemente che il DNS risolva
 - Il redirect applicativo è sufficiente
 

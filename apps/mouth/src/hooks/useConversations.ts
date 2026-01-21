@@ -105,7 +105,12 @@ export function useConversations() {
         setCurrentConversationId(null);
       }
     } catch (error) {
-      logger.error('Failed to delete conversation:', error, { component: "AUTO", action: "error" }, toError('Failed to delete conversation:', error));
+      logger.error(
+        'Failed to delete conversation:',
+        error,
+        { component: 'AUTO', action: 'error' },
+        toError('Failed to delete conversation:', error)
+      );
     }
   };
 
@@ -114,7 +119,12 @@ export function useConversations() {
       await clearHistoryMutation.mutateAsync(undefined);
       setCurrentConversationId(null);
     } catch (error) {
-      logger.error('Failed to clear history:', error, { component: "AUTO", action: "error" }, toError('Failed to clear history:', error));
+      logger.error(
+        'Failed to clear history:',
+        error,
+        { component: 'AUTO', action: 'error' },
+        toError('Failed to clear history:', error)
+      );
     }
   };
 
