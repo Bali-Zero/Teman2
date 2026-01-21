@@ -152,18 +152,8 @@ async def create_interaction(
     - in_person: Face-to-face meeting
     """
     user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
 
-    # RBAC: If client_id provided, check access
-    if interaction.client_id:
-        async with db_pool.acquire() as conn:
-            check = await conn.fetchrow(
-                "SELECT assigned_to FROM clients WHERE id = $1", interaction.client_id
-            )
-            if not check:
-                raise HTTPException(status_code=404, detail="Client not found")
-            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-                raise HTTPException(status_code=403, detail="You don't have access to this client")
+    # RBAC REMOVED: All authenticated users can create interactions for any client
     try:
         async with db_pool.acquire() as conn:
             # Insert interaction
@@ -380,22 +370,15 @@ async def get_client_timeline(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
-    Get complete interaction timeline for a client
+    Get complete interaction timeline for a client.
+    RBAC REMOVED: All authenticated users can view all client timelines.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     try:
         async with db_pool.acquire() as conn:
-            # Check access to client
-            check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+            # Check client exists
+            check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
             if not check:
                 raise HTTPException(status_code=404, detail="Client not found")
-
-            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-                raise HTTPException(
-                    status_code=403, detail="You don't have access to this client's timeline"
-                )
 
             rows = await conn.fetch(
                 """
@@ -433,31 +416,15 @@ async def get_practice_history(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
-    Get all interactions related to a specific practice
+    Get all interactions related to a specific practice.
+    RBAC REMOVED: All authenticated users can view all practice histories.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     try:
         async with db_pool.acquire() as conn:
-            # Check access to practice via client
-            check = await conn.fetchrow(
-                """
-                SELECT c.assigned_to 
-                FROM practices p 
-                JOIN clients c ON p.client_id = c.id 
-                WHERE p.id = $1
-            """,
-                practice_id,
-            )
-
+            # Check practice exists
+            check = await conn.fetchrow("SELECT id FROM practices WHERE id = $1", practice_id)
             if not check:
                 raise HTTPException(status_code=404, detail="Practice not found")
-
-            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-                raise HTTPException(
-                    status_code=403, detail="You don't have access to this practice history"
-                )
 
             rows = await conn.fetch(
                 """
