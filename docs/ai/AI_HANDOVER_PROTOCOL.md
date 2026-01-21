@@ -22,6 +22,7 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 **Current State:** The codebase is a Monorepo. We use `apps/backend-rag` (FastAPI) and `apps/mouth` (Frontend).
 
 **System Stats (Updated 2026-01-21):**
+
 - Router Files: 61
 - Services: 204 Python files
 - Test Files: 278
