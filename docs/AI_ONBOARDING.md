@@ -1,7 +1,15 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-01-18  
+**Last Updated:** 2026-01-21  
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
+
+**System Stats (Updated 2026-01-21):**
+- Router Files: 61
+- Services: 204 Python files
+- Test Files: 278
+- Migrations: 51
+- API Endpoints: 393
+- Test Cases: ~4255
 
 > **READ THIS FIRST** before making any changes to the codebase.
 

@@ -588,7 +588,7 @@ export class CrmApi {
       body: JSON.stringify({
         ...data,
         direction: data.direction || 'outbound',
-        channel: 'workspace',
+        channel: 'in_person',
       }),
     });
   }
