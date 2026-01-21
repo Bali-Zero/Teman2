@@ -216,6 +216,13 @@ search_failed_total = Counter(
     "Number of complete search failures",
 )
 
+# Telegram Metrics (Jan 2026 - Stone Age Regression Tracking)
+telegram_identity_resolution_total = Counter(
+    "zantara_telegram_identity_resolution_total",
+    "Telegram identity resolution results",
+    ["status"],  # mapped, unmapped
+)
+
 # Memory Extraction Metrics (Jan 2026 - Fact Extraction Quality)
 memory_facts_extracted_total = Counter(
     "zantara_memory_facts_extracted_total",

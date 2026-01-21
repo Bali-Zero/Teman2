@@ -17,7 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -74,7 +74,6 @@ export function DriveFolderStructure({
   } | null>(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkFolderId, setLinkFolderId] = useState('');
-  const { toast } = useToast();
 
   // Check existing folder on mount
   useEffect(() => {
@@ -119,11 +118,11 @@ export function DriveFolderStructure({
             last_synced: statsData.last_synced,
           });
         } catch (error) {
-          logger.error('Failed to load stats:', error);
+          logger.error('Failed to load stats:', {}, error as Error);
         }
       }
     } catch (error) {
-      logger.error('Failed to check folder status:', error);
+      logger.error('Failed to check folder status:', {}, error as Error);
     } finally {
       setIsChecking(false);
     }
@@ -134,10 +133,24 @@ export function DriveFolderStructure({
     try {
       const data = await api.crm.createDriveFolder(clientId);
 
+      // Map the response to ensure it matches FolderInfo
+      const foldersMap: Record<string, FolderInfo> = {};
+      if (data.folders) {
+        Object.entries(data.folders).forEach(([name, info]: [string, any]) => {
+          foldersMap[name] = {
+            id: info.id,
+            url: info.url,
+            name: name,
+            file_count: 0,
+            total_size_bytes: 0,
+          };
+        });
+      }
+
       setFolderInfo({
         root_folder_id: data.root_folder_id,
         root_folder_url: data.root_folder_url,
-        folders: data.folders,
+        folders: foldersMap,
       });
 
       toast.success('Folder structure created successfully');
@@ -163,9 +176,14 @@ export function DriveFolderStructure({
         : linkFolderId.trim();
 
       // Update client with folder ID
-      await api.crm.updateClient(clientId, {
-        google_drive_folder_id: folderId,
-      });
+      const user = api.getUserProfile();
+      await api.crm.updateClient(
+        clientId,
+        {
+          google_drive_folder_id: folderId,
+        },
+        user?.email || 'system'
+      );
 
       setFolderInfo({
         root_folder_id: folderId,

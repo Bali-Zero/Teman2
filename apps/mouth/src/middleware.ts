@@ -42,6 +42,7 @@ const PUBLIC_CATEGORIES = [
 // Domains
 const PUBLIC_DOMAIN = 'balizero.com';
 const APP_DOMAIN = 'zantara.balizero.com';
+const MOBILE_DOMAIN = 'mo.balizero.com';
 
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
@@ -55,6 +56,14 @@ export function middleware(request: NextRequest) {
     pathname.includes('.') // files with extensions
   ) {
     return NextResponse.next();
+  }
+
+  // === REDIRECT 301: mo.balizero.com → balizero.com ===
+  // SEO: Prevent duplicate content and consolidate domain authority
+  if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
+    const redirectUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
+    redirectUrl.search = request.nextUrl.search;
+    return NextResponse.redirect(redirectUrl, 301); // Permanent redirect
   }
 
   // Determine if we're on the public domain

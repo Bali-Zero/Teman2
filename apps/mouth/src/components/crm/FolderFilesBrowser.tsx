@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
 interface FileInfo {
@@ -83,7 +83,6 @@ export function FolderFilesBrowser({
   const [total, setTotal] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
-  const { toast } = useToast();
 
   const folderInfo = STANDARD_FOLDERS[folderName] || { label: folderLabel, icon: '📁' };
 

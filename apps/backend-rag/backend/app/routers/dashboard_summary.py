@@ -86,6 +86,127 @@ async def _get_email_stats(db_pool: asyncpg.Pool, user_id: str) -> dict:
         return {"connected": False, "unread_count": 0}
 
 
+async def _get_critical_deadlines(db_pool: asyncpg.Pool, user_id: str, is_admin: bool) -> int:
+    """
+    Get count of practices with critical deadlines (expiring within 7 days).
+    
+    Critical deadlines are practices with expiry_date within 7 days from today.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            # Build query based on user role
+            if is_admin:
+                # Admin sees all practices
+                query = """
+                    SELECT COUNT(*) as count
+                    FROM practices
+                    WHERE expiry_date IS NOT NULL
+                    AND expiry_date > CURRENT_DATE
+                    AND expiry_date <= CURRENT_DATE + INTERVAL '7 days'
+                    AND status NOT IN ('completed', 'cancelled')
+                """
+                result = await conn.fetchrow(query)
+            else:
+                # Team members see only assigned practices
+                query = """
+                    SELECT COUNT(*) as count
+                    FROM practices
+                    WHERE expiry_date IS NOT NULL
+                    AND expiry_date > CURRENT_DATE
+                    AND expiry_date <= CURRENT_DATE + INTERVAL '7 days'
+                    AND status NOT IN ('completed', 'cancelled')
+                    AND assigned_to = $1
+                """
+                result = await conn.fetchrow(query, user_id)
+            
+            return result["count"] if result else 0
+    except Exception as e:
+        logger.warning(f"Failed to get critical deadlines for user {user_id}: {e}")
+        return 0
+
+
+async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
+    """
+    Get revenue statistics (total, paid, outstanding).
+    
+    Returns revenue from all practices with actual_price set.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            revenue_row = await conn.fetchrow(
+                """
+                SELECT
+                    COALESCE(SUM(actual_price), 0) as total_revenue,
+                    COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN actual_price ELSE 0 END), 0) as paid_revenue,
+                    COALESCE(SUM(CASE WHEN payment_status IN ('unpaid', 'partial') THEN actual_price - COALESCE(paid_amount, 0) ELSE 0 END), 0) as outstanding_revenue
+                FROM practices
+                WHERE actual_price IS NOT NULL
+                """
+            )
+            
+            if revenue_row:
+                return {
+                    "total_revenue": float(revenue_row["total_revenue"] or 0),
+                    "paid_revenue": float(revenue_row["paid_revenue"] or 0),
+                    "outstanding_revenue": float(revenue_row["outstanding_revenue"] or 0),
+                }
+            return {
+                "total_revenue": 0,
+                "paid_revenue": 0,
+                "outstanding_revenue": 0,
+            }
+    except Exception as e:
+        logger.warning(f"Failed to get revenue stats: {e}")
+        return {
+            "total_revenue": 0,
+            "paid_revenue": 0,
+            "outstanding_revenue": 0,
+        }
+
+
+async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
+    """
+    Calculate revenue growth percentage (current month vs previous month).
+    
+    Returns growth percentage as float (e.g., 5.5 for 5.5% growth).
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            # Get current month revenue
+            current_month = await conn.fetchrow(
+                """
+                SELECT COALESCE(SUM(actual_price), 0) as revenue
+                FROM practices
+                WHERE actual_price IS NOT NULL
+                AND payment_status = 'paid'
+                AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)
+                """
+            )
+            
+            # Get previous month revenue
+            previous_month = await conn.fetchrow(
+                """
+                SELECT COALESCE(SUM(actual_price), 0) as revenue
+                FROM practices
+                WHERE actual_price IS NOT NULL
+                AND payment_status = 'paid'
+                AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+                """
+            )
+            
+            current_revenue = float(current_month["revenue"] or 0) if current_month else 0
+            previous_revenue = float(previous_month["revenue"] or 0) if previous_month else 0
+            
+            if previous_revenue == 0:
+                return 0.0 if current_revenue == 0 else 100.0
+            
+            growth = ((current_revenue - previous_revenue) / previous_revenue) * 100
+            return round(growth, 1)
+    except Exception as e:
+        logger.warning(f"Failed to calculate revenue growth: {e}")
+        return 0.0
+
+
 @router.get("/summary")
 async def get_dashboard_summary(
     current_user: dict = Depends(get_current_user),
@@ -107,14 +228,15 @@ async def get_dashboard_summary(
             list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool),
             list_interactions(interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool),
             _get_email_stats(db_pool, user_id),
+            _get_critical_deadlines(db_pool, user_id, is_admin),
         ]
 
         # Add admin-only tasks
         if is_admin:
             tasks.extend(
                 [
-                    # TODO: Add revenue growth when implemented
-                    asyncio.sleep(0),  # Placeholder for revenue growth
+                    _get_revenue_stats(db_pool),
+                    _calculate_revenue_growth(db_pool),
                 ]
             )
 
@@ -134,6 +256,18 @@ async def get_dashboard_summary(
             results[4]
             if not isinstance(results[4], Exception)
             else {"connected": False, "unread_count": 0}
+        )
+        critical_deadlines = (
+            results[5] if not isinstance(results[5], Exception) else 0
+        )
+        
+        # Admin-only results
+        revenue_stats = (
+            results[6] if is_admin and not isinstance(results[6], Exception)
+            else {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0}
+        )
+        revenue_growth = (
+            results[7] if is_admin and not isinstance(results[7], Exception) else 0.0
         )
 
         # Check system health
@@ -193,7 +327,7 @@ async def get_dashboard_summary(
         # Calculate stats
         hours_worked = float(interaction_stats.get("total_interactions", 0) * 0.25)  # Estimate
 
-        return {
+        response = {
             "user": {
                 "email": current_user.get("email", ""),
                 "role": current_user.get("role", ""),
@@ -201,7 +335,7 @@ async def get_dashboard_summary(
             },
             "stats": {
                 "activeCases": practice_stats.get("active_practices", 0),
-                "criticalDeadlines": 0,  # TODO: Implement renewals
+                "criticalDeadlines": critical_deadlines,
                 "whatsappUnread": interaction_stats.get("by_type", {}).get("whatsapp", 0),
                 "emailUnread": email_stats.get("unread_count", 0),
                 "hoursWorked": f"{int(hours_worked)}h {int((hours_worked % 1) * 60)}m",
@@ -214,6 +348,13 @@ async def get_dashboard_summary(
             "system_status": system_status,
             "last_updated": asyncio.get_event_loop().time(),
         }
+        
+        # Add admin-only data
+        if is_admin:
+            response["revenue"] = revenue_stats
+            response["revenue_growth"] = revenue_growth
+        
+        return response
 
     except Exception as e:
         logger.error(f"Failed to get dashboard summary for user {user_id}: {e}")
@@ -239,6 +380,17 @@ async def get_dashboard_summary(
             "system_status": "degraded",
             "last_updated": asyncio.get_event_loop().time(),
         }
+        
+        # Add admin-only data even in error case
+        if is_admin:
+            error_response["revenue"] = {
+                "total_revenue": 0,
+                "paid_revenue": 0,
+                "outstanding_revenue": 0,
+            }
+            error_response["revenue_growth"] = 0.0
+        
+        return error_response
 
 
 @router.get("/neural-pulse")

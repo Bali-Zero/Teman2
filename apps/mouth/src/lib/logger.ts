@@ -16,6 +16,9 @@ export interface LogContext {
   user?: string;
   itemId?: string;
   itemType?: 'visa' | 'news' | 'all';
+  code?: number | string;
+  reason?: string;
+  note?: string;
   metadata?: Record<string, any>;
 }
 

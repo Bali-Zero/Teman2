@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface FeaturedArticle {
   id: string;
@@ -14,12 +16,11 @@ interface FeaturedArticle {
   isFeatured?: boolean;
 }
 
-// Featured articles from balizero.com - using local static images
-// NOTE: This should match the layout in /apps/mouth/src/app/(blog)/news/page.tsx
-const featuredArticles: FeaturedArticle[] = [
+// Fallback articles (used if API fails)
+const fallbackArticles: FeaturedArticle[] = [
   {
     id: '1',
-    title: 'Suwung Landfill Closure: The Waste Crisis Hitting Bali\'s Tourist Zones',
+    title: "Suwung Landfill Closure: The Waste Crisis Hitting Bali's Tourist Zones",
     category: 'LIFESTYLE',
     categoryColor: 'text-red-400',
     imageUrl: '/static/news/suwung-landfill.jpg',
@@ -60,7 +61,11 @@ const featuredArticles: FeaturedArticle[] = [
   },
 ];
 
-function ArticleCard({ article, className = '', size = 'normal' }: {
+function ArticleCard({
+  article,
+  className = '',
+  size = 'normal',
+}: {
   article: FeaturedArticle;
   className?: string;
   size?: 'normal' | 'large';
@@ -83,13 +88,19 @@ function ArticleCard({ article, className = '', size = 'normal' }: {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
       </div>
 
-      <div className={`relative flex flex-col justify-end p-4 ${size === 'large' ? 'min-h-[400px] md:min-h-full' : 'min-h-[200px]'}`}>
-        <span className={`text-xs font-semibold uppercase tracking-wider ${article.categoryColor} mb-2`}>
+      <div
+        className={`relative flex flex-col justify-end p-4 ${size === 'large' ? 'min-h-[400px] md:min-h-full' : 'min-h-[200px]'}`}
+      >
+        <span
+          className={`text-xs font-semibold uppercase tracking-wider ${article.categoryColor} mb-2`}
+        >
           {article.category}
         </span>
-        <h3 className={`font-semibold text-white leading-tight group-hover:text-[var(--accent)] transition-colors ${
-          size === 'large' ? 'text-xl md:text-2xl' : 'text-sm md:text-base'
-        }`}>
+        <h3
+          className={`font-semibold text-white leading-tight group-hover:text-[var(--accent)] transition-colors ${
+            size === 'large' ? 'text-xl md:text-2xl' : 'text-sm md:text-base'
+          }`}
+        >
           {article.title}
         </h3>
 
@@ -105,16 +116,43 @@ function ArticleCard({ article, className = '', size = 'normal' }: {
 }
 
 export function FeaturedArticlesWidget() {
+  const [articles, setArticles] = useState<FeaturedArticle[]>(fallbackArticles);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const response = await api.get<{ articles: FeaturedArticle[] }>(
+          '/api/dashboard/featured-articles'
+        );
+        if (response.articles && response.articles.length > 0) {
+          setArticles(response.articles);
+        }
+      } catch (error) {
+        logger.warn(
+          'Failed to fetch featured articles, using fallback',
+          {
+            component: 'FeaturedArticlesWidget',
+            action: 'fetchArticles',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
+        // Use fallback articles
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
+
   return (
     <div className="rounded-xl border border-[#FFB347]/60 bg-[#FFB347]/25 p-6 overflow-hidden">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">
-          Decode Indonesia.
-        </h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-white">Decode Indonesia.</h2>
         <h2 className="text-2xl md:text-3xl font-bold">
-          <span className="text-red-500">Thrive</span>{' '}
-          <span className="text-white">here</span>
+          <span className="text-red-500">Thrive</span> <span className="text-white">here</span>
         </h2>
         <p className="text-gray-400 mt-2 text-sm md:text-base">
           Legal, immigration, fiscal & business intelligence for Indonesia.{' '}
@@ -130,40 +168,32 @@ export function FeaturedArticlesWidget() {
       </div>
 
       {/* Articles Grid - matching balizero.com layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Left Column - 2 stacked articles */}
-        <div className="flex flex-col gap-4">
-          <ArticleCard
-            article={featuredArticles[0]}
-            className="flex-1"
-          />
-          <ArticleCard
-            article={featuredArticles[1]}
-            className="flex-1"
-          />
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="animate-pulse bg-white/10 rounded-xl h-64" />
+          ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Left Column - 2 stacked articles */}
+          <div className="flex flex-col gap-4">
+            {articles[0] && <ArticleCard article={articles[0]} className="flex-1" />}
+            {articles[1] && <ArticleCard article={articles[1]} className="flex-1" />}
+          </div>
 
-        {/* Middle Column - 2 stacked articles */}
-        <div className="flex flex-col gap-4">
-          <ArticleCard
-            article={featuredArticles[2]}
-            className="flex-1"
-          />
-          <ArticleCard
-            article={featuredArticles[3]}
-            className="flex-1"
-          />
-        </div>
+          {/* Middle Column - 2 stacked articles */}
+          <div className="flex flex-col gap-4">
+            {articles[2] && <ArticleCard article={articles[2]} className="flex-1" />}
+            {articles[3] && <ArticleCard article={articles[3]} className="flex-1" />}
+          </div>
 
-        {/* Right Column - 1 tall featured article */}
-        <div className="flex flex-col">
-          <ArticleCard
-            article={featuredArticles[4]}
-            className="flex-1"
-            size="large"
-          />
+          {/* Right Column - 1 tall featured article */}
+          <div className="flex flex-col">
+            {articles[4] && <ArticleCard article={articles[4]} className="flex-1" size="large" />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

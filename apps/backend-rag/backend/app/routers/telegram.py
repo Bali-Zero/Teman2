@@ -18,10 +18,10 @@ from backend.app.dependencies import get_database, get_orchestrator
 from backend.app.metrics import (
     intel_items_approved,
     intel_items_rejected,
-    intel_qdrant_ingestion_duration,
     intel_qdrant_ingestion_total,
     intel_votes_cast,
     intel_voting_duration,
+    telegram_identity_resolution_total,
 )
 from backend.services.integrations.messaging_identity_service import (
     get_messaging_identity_service,
@@ -571,14 +571,18 @@ async def process_telegram_message(
             await identity_service.update_last_message(telegram_chat_id=chat_id)
 
             logger.info(
-                f"🔗 Telegram {chat_id} mapped to user {telegram_user_id} "
+                f"🔗 [Identity] Telegram {chat_id} MAPPED to user {telegram_user_id} "
                 f"(verified: {mapping['verified']})"
             )
+            telegram_identity_resolution_total.labels(status="mapped").inc()
         else:
             # Fallback: channel-specific user_id (original behavior)
             telegram_user_id = f"telegram_{chat_id}"
             session_id = f"telegram_session_{chat_id}"
-            logger.info(f"📱 Telegram {chat_id} NOT mapped, using channel-specific ID")
+            logger.warning(
+                f"🗿 [Identity] Telegram {chat_id} UNMAPPED (Stone Age Mode). Using ephemeral ID: {telegram_user_id}"
+            )
+            telegram_identity_resolution_total.labels(status="unmapped").inc()
 
         # 3. Send placeholder message
         logger.info(
@@ -734,8 +738,15 @@ async def process_telegram_message(
         if len(final_text) > 4000:
             final_text = final_text[:3950] + "\n\n_...risposta troncata_"
 
+            logger.info(
+                f"📱 [Telegram Streaming] Sending final update: chat_id={chat_id}, text_length={len(final_text)}"
+            )
+
+        # Extended Logging for Stone Age diagnosis
         logger.info(
-            f"📱 [Telegram Streaming] Sending final update: chat_id={chat_id}, text_length={len(final_text)}"
+            f"📝 [RAG Interaction] ChatID: {chat_id} | UserID: {telegram_user_id} | "
+            f"Query: '{message_text}' | "
+            f"Answer: '{final_text[:200]}...' (Total: {len(final_text)} chars)"
         )
 
         await telegram_bot.edit_message_text(

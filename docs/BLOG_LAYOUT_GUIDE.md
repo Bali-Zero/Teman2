@@ -3,6 +3,8 @@
 **App**: `apps/mouth` (Next.js Frontend)
 **Last Updated**: 2026-01-13
 
+> **⚡ Quick Publishing:** For a fast-track guide to publish articles in 5-10 minutes, see [QUICK_ARTICLE_PUBLISHING.md](../apps/mouth/QUICK_ARTICLE_PUBLISHING.md)
+
 ---
 
 ## Article Page Layout

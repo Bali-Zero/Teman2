@@ -408,15 +408,12 @@ class ReasoningEngine:
                         break
 
                     # Parse for tool calls - try native function calling first, then regex fallback
-                    tool_call = None
+                    tool_calls = []
 
                     # Check for function call in response parts (native mode)
                     if hasattr(response_obj, "candidates") and response_obj.candidates:
                         for candidate in response_obj.candidates:
                             # FIX Edge Case 1: Proper None check for candidate.content
-                            # The old check `hasattr(candidate.content, "parts")` fails when
-                            # candidate.content is None because hasattr(None, "parts") = False
-                            # but we still try to iterate. Now we explicitly check for None.
                             if (
                                 hasattr(candidate, "content")
                                 and candidate.content is not None
@@ -424,152 +421,150 @@ class ReasoningEngine:
                                 and candidate.content.parts  # Ensure parts is not None/empty
                             ):
                                 for part in candidate.content.parts:
-                                    tool_call = parse_tool_call(part, use_native=True)
-                                    if tool_call:
-                                        logger.info(
-                                            "✅ [Native Function Call] Detected in response"
-                                        )
-                                        set_span_attribute("function_call_mode", "native")
-                                        break
-                                if tool_call:
+                                    tc = parse_tool_call(part, use_native=True)
+                                    if tc and is_valid_tool_call(tc):
+                                        tool_calls.append(tc)
+                                
+                                # If we found native calls, stop looking in this candidate
+                                if tool_calls:
+                                    logger.info(
+                                        f"✅ [Native Function Call] Detected {len(tool_calls)} calls in response"
+                                    )
+                                    set_span_attribute("function_call_mode", "native")
+                                    set_span_attribute("tool_calls_count", len(tool_calls))
                                     break
 
-                    # FIX Edge Case 2: Validate tool call before using
-                    # A partially parsed tool_call (e.g., with None arguments) would
-                    # pass the `if tool_call` check but fail in execute_tool.
-                    # Use is_valid_tool_call to ensure all required fields are present.
-
                     # Fallback to regex parsing if no valid native function call found
-                    if not is_valid_tool_call(tool_call):
-                        tool_call = parse_tool_call(text_response, use_native=False)
-                        if is_valid_tool_call(tool_call):
+                    if not tool_calls:
+                        tc = parse_tool_call(text_response, use_native=False)
+                        if is_valid_tool_call(tc):
+                            tool_calls.append(tc)
                             set_span_attribute("function_call_mode", "regex")
+                            set_span_attribute("tool_calls_count", 1)
                         else:
                             # Neither native nor regex produced a valid tool call
-                            tool_call = None
+                            pass
 
-                    if is_valid_tool_call(tool_call):
-                        set_span_attribute("tool_name", tool_call.tool_name)
-                        add_span_event(
-                            "tool.call",
-                            {"tool": tool_call.tool_name, "args": str(tool_call.arguments)[:200]},
-                        )
-
-                        logger.info(
-                            f"🔧 [Agent] Calling tool: {tool_call.tool_name}",
-                            extra={
-                                "context": {
-                                    "tool": tool_call.tool_name,
-                                    "arguments": tool_call.arguments,
-                                    "step": state.current_step,
-                                    "user_id": user_id,
-                                }
-                            },
-                        )
-                        tool_result, tool_duration = await execute_tool(
-                            self.tool_map,
-                            tool_call.tool_name,
-                            tool_call.arguments,
-                            user_id,
-                            tool_execution_counter,
-                        )
-
-                        # Store tool timing for metrics (attached to step later)
-                        tool_call.execution_time = tool_duration
-                        set_span_attribute(
-                            "tool_result_length", len(tool_result) if tool_result else 0
-                        )
-                        set_span_attribute("tool_duration_ms", int(tool_duration * 1000))
-
-                        # --- CITATION HANDLING ---
-                        # FIX Edge Case 3: Handle empty content from vector_search
-                        # If content is empty but sources exist, we should:
-                        # 1. Log a warning (sources without content are less useful)
-                        # 2. Keep the original tool_result (JSON string) if content is empty
-                        # 3. Only add non-empty content to context_gathered
-                        if tool_call.tool_name == "vector_search":
+                    # EXECUTE TOOL CALLS (PARALLEL)
+                    turn_observations = []
+                    
+                    if tool_calls:
+                        # Define async wrapper for parallel execution
+                        async def _exec_tool_wrapper(tc, step_idx):
                             try:
-                                parsed_result = json.loads(tool_result)
-                                if isinstance(parsed_result, dict) and "sources" in parsed_result:
-                                    content = parsed_result.get("content", "")
-                                    new_sources = parsed_result.get("sources", [])
+                                set_span_attribute("tool_name", tc.tool_name)
+                                add_span_event(
+                                    "tool.call",
+                                    {"tool": tc.tool_name, "args": str(tc.arguments)[:200]},
+                                )
 
-                                    # Only extract content if it's meaningful (>10 chars after strip)
-                                    if content and len(content.strip()) > 10:
-                                        tool_result = content
-                                        if not hasattr(state, "sources"):
-                                            state.sources = []
-                                        state.sources.extend(new_sources)
-                                        set_span_attribute("sources_collected", len(new_sources))
-                                        logger.info(
-                                            f"📚 [Agent] Collected {len(new_sources)} sources from vector_search"
-                                        )
-                                    else:
-                                        # Empty content - log warning and keep original result
-                                        logger.warning(
-                                            f"⚠️ [Agent] Vector search returned empty content with "
-                                            f"{len(new_sources)} sources. Keeping original result."
-                                        )
-                                        set_span_attribute("empty_content_warning", "true")
-                                        # Still collect sources for evidence scoring even if content is empty
-                                        if new_sources:
+                                logger.info(
+                                    f"🔧 [Agent] Calling tool: {tc.tool_name} (Parallel)",
+                                    extra={
+                                        "context": {
+                                            "tool": tc.tool_name,
+                                            "arguments": tc.arguments,
+                                            "step": state.current_step + step_idx,
+                                            "user_id": user_id,
+                                        }
+                                    },
+                                )
+                                result, duration = await execute_tool(
+                                    self.tool_map,
+                                    tc.tool_name,
+                                    tc.arguments,
+                                    user_id,
+                                    tool_execution_counter,
+                                )
+                                return tc, result, duration
+                            except Exception as e:
+                                logger.error(f"Error executing tool {tc.tool_name}: {e}")
+                                return tc, f"Error: {str(e)}", 0.0
+
+                        # Run all tools in parallel
+                        import asyncio
+                        results = await asyncio.gather(
+                            *[_exec_tool_wrapper(tc, i) for i, tc in enumerate(tool_calls)]
+                        )
+                        
+                        # Process results
+                        for i, (tool_call, tool_result, tool_duration) in enumerate(results):
+                            # Store tool timing for metrics
+                            tool_call.execution_time = tool_duration
+                            
+                            # --- CITATION HANDLING ---
+                            # FIX Edge Case 3: Handle empty content from vector_search
+                            if tool_call.tool_name == "vector_search":
+                                try:
+                                    parsed_result = json.loads(tool_result)
+                                    if isinstance(parsed_result, dict) and "sources" in parsed_result:
+                                        content = parsed_result.get("content", "")
+                                        new_sources = parsed_result.get("sources", [])
+
+                                        # Only extract content if it's meaningful (>10 chars)
+                                        if content and len(content.strip()) > 10:
+                                            tool_result = content
                                             if not hasattr(state, "sources"):
                                                 state.sources = []
                                             state.sources.extend(new_sources)
-                            except json.JSONDecodeError:
-                                pass
-                            except (KeyError, ValueError, TypeError) as e:
-                                logger.warning(
-                                    f"Failed to parse vector_search result: {e}", exc_info=True
-                                )
+                                            set_span_attribute("sources_collected", len(new_sources))
+                                        else:
+                                            logger.warning(
+                                                f"⚠️ [Agent] Vector search empty content. Keeping original."
+                                            )
+                                            if new_sources:
+                                                if not hasattr(state, "sources"):
+                                                    state.sources = []
+                                                state.sources.extend(new_sources)
+                                except json.JSONDecodeError:
+                                    pass
+                                except (KeyError, ValueError, TypeError) as e:
+                                    logger.warning(f"Failed to parse vector_search: {e}")
 
-                        # Handle image generation results
-                        if tool_call.tool_name == "generate_image":
-                            try:
-                                parsed_result = json.loads(tool_result)
-                                if isinstance(parsed_result, dict) and parsed_result.get("success"):
-                                    # Extract image URL or base64 data
-                                    image_url = parsed_result.get("image_url") or parsed_result.get(
-                                        "image_data"
-                                    )
-                                    if image_url:
-                                        logger.info(
-                                            f"🖼️ [Agent] Image generated: {parsed_result.get('service')}"
-                                        )
-                                        # Store in state for final response
-                                        if not hasattr(state, "generated_images"):
-                                            state.generated_images = []
-                                        state.generated_images.append(image_url)
-                            except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
-                                logger.warning(f"Failed to parse generate_image result: {e}")
+                            # Handle image generation
+                            if tool_call.tool_name == "generate_image":
+                                try:
+                                    parsed_result = json.loads(tool_result)
+                                    if isinstance(parsed_result, dict) and parsed_result.get("success"):
+                                        image_url = parsed_result.get("image_url") or parsed_result.get("image_data")
+                                        if image_url:
+                                            if not hasattr(state, "generated_images"):
+                                                state.generated_images = []
+                                            state.generated_images.append(image_url)
+                                except Exception:
+                                    pass
 
-                        # Update the tool call with the result
-                        tool_call.result = tool_result
-
-                        step = AgentStep(
-                            step_number=state.current_step,
-                            thought=text_response,
-                            action=tool_call,
-                            observation=tool_result,
-                        )
-                        state.steps.append(step)
-
-                        # FIX Edge Case 3: Only append non-empty context
-                        # Empty strings pollute context_gathered and affect evidence scoring
-                        if tool_result and len(tool_result.strip()) > 0:
-                            state.context_gathered.append(tool_result)
-                        else:
-                            logger.warning(
-                                "⚠️ [Agent] Skipping empty tool_result for context_gathered"
+                            # Update tool call result
+                            tool_call.result = tool_result
+                            
+                            # Add Step
+                            # For the first tool, use the actual thought. For others, indicate parallel exec.
+                            step_thought = text_response if i == 0 else f"(Parallel execution with {tool_calls[0].tool_name})"
+                            
+                            step = AgentStep(
+                                step_number=state.current_step + i,
+                                thought=step_thought,
+                                action=tool_call,
+                                observation=tool_result,
                             )
+                            state.steps.append(step)
+                            
+                            # Add to accumulated context gathered
+                            if tool_result and len(tool_result.strip()) > 0:
+                                state.context_gathered.append(tool_result)
+                            
+                            turn_observations.append(f"Output from {tool_call.tool_name}: {tool_result}")
 
-                        # Validate context quality before using
+                        # Update step counter if we ran multiple tools
+                        if len(tool_calls) > 1:
+                            state.current_step += (len(tool_calls) - 1)
+                            
+                        # Context Quality Validation (Aggregate)
                         if state.context_gathered:
                             quality_score = self._validate_context_quality(
                                 query=query,
                                 context_items=state.context_gathered,
                             )
-
                             if quality_score < self._min_context_quality_score:
                                 logger.warning(
                                     f"⚠️ Context quality too low ({quality_score:.2f} < {self._min_context_quality_score})",

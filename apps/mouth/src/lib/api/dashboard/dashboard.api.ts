@@ -45,6 +45,13 @@ export interface DashboardData {
   };
   system_status: 'healthy' | 'degraded';
   last_updated: number;
+  // Admin-only fields
+  revenue?: {
+    total_revenue: number;
+    paid_revenue: number;
+    outstanding_revenue: number;
+  };
+  revenue_growth?: number;
 }
 
 export const dashboardApi = {

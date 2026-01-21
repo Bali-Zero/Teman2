@@ -26,6 +26,7 @@ from backend.app.routers import (
     crm_portal_integration,
     crm_practices,
     crm_shared_memory,
+    dashboard_featured_articles,
     dashboard_summary,
     debug,
     documents_proxy,
@@ -185,4 +186,5 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(admin_team_activity.router)
 
     # Dashboard aggregation router
+    api.include_router(dashboard_featured_articles.router)
     api.include_router(dashboard_summary.router)

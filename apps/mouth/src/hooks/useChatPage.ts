@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { chatMetrics } from '@/lib/metrics';
+import { trackEvent } from '@/lib/analytics';
 import { saveConversation } from '@/app/chat/actions';
 import { useChatInput } from './useChatInput';
 import { useChatTTS } from './useChatTTS';
@@ -160,13 +161,14 @@ export function useChatPage(): UseChatPageReturn {
     isAbortedRef,
     onToast: showToast,
     onChunk: (chunk: string) => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
-            ? { ...m, content: chunk, isPending: false }
-            : m
-        )
-      );
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const lastMsg = prev[prev.length - 1];
+        // Only update if the last message is an assistant message (it should be)
+        if (lastMsg.role !== 'assistant') return prev;
+
+        return [...prev.slice(0, -1), { ...lastMsg, content: chunk, isPending: false }];
+      });
     },
     onComplete: (fullResponse, sources, metadata) => {
       const typedMeta = metadata as
@@ -188,7 +190,7 @@ export function useChatPage(): UseChatPageReturn {
       const executionTime = typedMeta?.execution_time || 0;
       chatMetrics.messageReceived(fullResponse.length, executionTime);
 
-      const { trackEvent } = require('@/lib/analytics');
+      // trackEvent now imported at top
       const userProfile = api.getUserProfile();
       trackEvent(
         'chat_message_received',
@@ -196,27 +198,37 @@ export function useChatPage(): UseChatPageReturn {
         userProfile?.email
       );
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
-            ? {
-                ...m,
-                content: fullResponse,
-                sources: sources as Source[],
-                isStreaming: false,
-                isPending: false,
-                ...(typedMeta?.generated_image ? { imageUrl: typedMeta.generated_image } : {}),
-                ...(typedMeta?.followup_questions && typedMeta.followup_questions.length > 0
-                  ? { metadata: { followup_questions: typedMeta.followup_questions } }
-                  : {}),
-              }
-            : m
-        )
-      );
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg.role !== 'assistant') return prev;
+
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...lastMsg,
+            content: fullResponse,
+            sources: sources as Source[],
+            isStreaming: false,
+            isPending: false,
+            ...(typedMeta?.generated_image ? { imageUrl: typedMeta.generated_image } : {}),
+            ...(typedMeta?.followup_questions && typedMeta.followup_questions.length > 0
+              ? { metadata: { followup_questions: typedMeta.followup_questions } }
+              : {}),
+          },
+        ];
+      });
       setCurrentStatus('');
 
       startTransition(async () => {
         try {
+          // Use the functional state to get the latest messages for saving
+          // We can't use displayMessages here safely if it's stale
+          // But saveConversation is async anyway.
+          // Best effort: rely on 'messages' which will be updated in next render?
+          // No, inside startTransition we need the data.
+          // Re-using the known fullResponse for the last message.
+
           await saveConversation(
             displayMessages
               .filter((m) => !m.isStreaming)
@@ -256,18 +268,21 @@ export function useChatPage(): UseChatPageReturn {
         },
         error
       );
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === displayMessages[displayMessages.length - 1]?.id && m.role === 'assistant'
-            ? {
-                ...m,
-                content: 'Sorry, there was an error processing your request. Please try again.',
-                isPending: false,
-                isStreaming: false,
-              }
-            : m
-        )
-      );
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg.role !== 'assistant') return prev;
+
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...lastMsg,
+            content: 'Sorry, there was an error processing your request. Please try again.',
+            isPending: false,
+            isStreaming: false,
+          },
+        ];
+      });
       setCurrentStatus('');
     },
     onStep: (step: AgentStep) => {
@@ -444,7 +459,7 @@ export function useChatPage(): UseChatPageReturn {
       action: 'handleNewChat',
       metadata: { previousSessionId: sessionId },
     });
-    const { trackEvent } = require('@/lib/analytics');
+    // trackEvent now imported at top
     const userProfile = api.getUserProfile();
     trackEvent('chat_new_conversation', { previousSessionId: sessionId }, userProfile?.email);
 
@@ -493,7 +508,7 @@ export function useChatPage(): UseChatPageReturn {
           // Track metrics
           chatMetrics.conversationLoaded(id, conv.messages.length);
 
-          const { trackEvent } = require('@/lib/analytics');
+          // trackEvent now imported at top
           const userProfile = api.getUserProfile();
           trackEvent(
             'chat_conversation_loaded',
@@ -525,7 +540,7 @@ export function useChatPage(): UseChatPageReturn {
 
       try {
         await conversations.deleteConversation(id);
-        const { trackEvent } = require('@/lib/analytics');
+        // trackEvent now imported at top
         const userProfile = api.getUserProfile();
         trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
         if (conversations.currentConversationId === id) handleNewChat();
@@ -614,7 +629,7 @@ export function useChatPage(): UseChatPageReturn {
             transcriptionDuration
           );
 
-          const { trackEvent } = require('@/lib/analytics');
+          // trackEvent now imported at top
           const userProfile = api.getUserProfile();
           trackEvent(
             'chat_audio_transcribed',

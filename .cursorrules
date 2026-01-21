@@ -4,6 +4,7 @@
 ## 📋 MANDATORY FIRST READ
 **BEFORE STARTING ANY WORK, ALWAYS READ:**
 - `/Users/antonellosiano/SAFE_DEPLOYMENT_WORKFLOW.md` - Complete 18-step deployment pipeline
+- `apps/backend-rag/CLAUDE.md` - Backend system architecture & session notes
 
 This workflow is NON-NEGOTIABLE. Every step must pass its safety check before proceeding.
 
@@ -37,7 +38,7 @@ Each workflow step must pass its safety check before proceeding:
 
 ### NUZANTARA/ZANTARA Projects
 **Context Files (Read for full system understanding):**
-- `/Users/antonellosiano/CLAUDE.md` - Complete system architecture & status
+- `apps/backend-rag/CLAUDE.md` - Backend RAG architecture & session notes
 
 **Key Technologies:**
 - Backend: Python FastAPI (Fly.io)
@@ -67,7 +68,7 @@ Each workflow step must pass its safety check before proceeding:
 
 ## 📚 Reference Documentation
 - **Deployment Workflow**: ~/SAFE_DEPLOYMENT_WORKFLOW.md (⭐ MUST READ FIRST)
-- **System Status**: ~/CLAUDE.md
+- **Backend System Status**: apps/backend-rag/CLAUDE.md
 - **Local Setup**: ~/Desktop/COOKING-LAB/SETUP_SAFE_WORKFLOW.md
 
 ## 🚨 EMERGENCY PROCEDURES
@@ -78,6 +79,13 @@ If production issues occur:
 4. Execute rollback if critical (see Step 18 in workflow)
 5. Document incident
 
+## 🚫 IGNORE PATTERNS
+Files and directories to ignore during code analysis:
+- `.cursor/` - Cursor IDE internal files
+- `node_modules/` - Node.js dependencies
+- `.git/` - Git repository metadata
+- `*.log` - Log files
+
 ---
-**Last Updated**: 2025-11-15
-**Version**: 1.0
+**Last Updated**: 2026-01-21
+**Version**: 1.1

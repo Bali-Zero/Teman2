@@ -2,6 +2,15 @@
 # NUZANTARA PRIME - ROOT .GITIGNORE
 # ========================================
 
+# IDE Files
+.cursor/
+.idea/
+
+# VSCode (allow settings.json for team, exclude personal files)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
 # Python
 __pycache__/
 *.py[cod]

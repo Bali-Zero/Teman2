@@ -294,21 +294,18 @@ class FollowupService:
     async def generate_dynamic_followups(
         self,
         query: str,
-        response: str,
+        response: str | None,
         conversation_context: str | None = None,
         language: str = "en",
     ) -> list[str]:
         """
         Generate dynamic, contextually relevant follow-up questions using AI
-
+        
         Args:
             query: User's original question
-            response: AI's response
+            response: AI's response (Optional, if None, generates based on prediction)
             conversation_context: Optional previous conversation context
             language: Language code (en, it, id)
-
-        Returns:
-            List of 3-4 AI-generated follow-up questions
         """
         start_time = time.time()
 
@@ -324,7 +321,7 @@ class FollowupService:
             )
             followup_ai_generation_total.labels(status="ai_unavailable").inc()
             # Fallback to topic-based
-            return self.get_topic_based_followups(query, response, "business", language)
+            return self.get_topic_based_followups(query, response or "", "business", language)
 
         # Build prompt for ZANTARA AI
         prompt = self._build_followup_generation_prompt(
@@ -339,6 +336,7 @@ class FollowupService:
                     "action": "generate_dynamic_followups_start",
                     "language": language,
                     "prompt_length": len(prompt),
+                    "is_speculative": response is None,
                 },
             )
 
@@ -367,6 +365,7 @@ class FollowupService:
                         "total_duration_seconds": total_duration,
                         "ai_duration_seconds": ai_duration,
                         "response_length": len(text),
+                        "is_speculative": response is None,
                     },
                 )
                 return followups[:4]  # Max 4
@@ -381,7 +380,7 @@ class FollowupService:
                         "response_text": text[:200],  # First 200 chars for debugging
                     },
                 )
-                return self.get_topic_based_followups(query, response, "business", language)
+                return self.get_topic_based_followups(query, response or "", "business", language)
 
         except Exception as e:
             total_duration = time.time() - start_time
@@ -398,16 +397,21 @@ class FollowupService:
                 exc_info=True,
             )
             # Fallback to topic-based
-            return self.get_topic_based_followups(query, response, "business", language)
+            return self.get_topic_based_followups(query, response or "", "business", language)
 
     def _build_followup_generation_prompt(
-        self, query: str, response: str, conversation_context: str | None, language: str
+        self, query: str, response: str | None, conversation_context: str | None, language: str
     ) -> str:
         """Build prompt for AI to generate follow-up questions in the user's language"""
+        
+        # LOGIC: If response is None, we are in SPECULATIVE mode (generating while reasoning)
+        speculative_mode = response is None
+        response_text = f'AI responded: "{response[:300]}..."' if response else "AI response: (In progress...)"
 
         # CRITICAL: Generate follow-ups in the SAME language as the user's query
         # Use the detected language parameter explicitly in the prompt
-        prompt = f"""Analyze this conversation and generate 3-4 follow-up questions.
+        prompt = f"""Analyze this conversation and generate 3-4 likely follow-up questions.
+{"[SPECULATIVE MODE] The AI answer is currently being generated. Predict the most relevant next questions based on the USER QUERY." if speculative_mode else ""}
 
 IMPORTANT: Generate the questions in the SAME LANGUAGE as the user's original question.
 Detected language: {language.upper()} (en=English, it=Italian, id=Indonesian)
@@ -415,7 +419,7 @@ You MUST generate all follow-up questions in {language.upper()} language.
 
 User asked: "{query}"
 
-AI responded: "{response[:300]}..."
+{response_text}
 
 {f"Previous context: {conversation_context[:200]}..." if conversation_context else ""}
 

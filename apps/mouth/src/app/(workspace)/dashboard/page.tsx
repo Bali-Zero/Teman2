@@ -16,6 +16,8 @@ import {
 } from '@/components/dashboard';
 import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '@/lib/api/dashboard/dashboard.api';
 import { useEnhancedAnalytics, enhancedAnalytics } from '@/lib/enhanced-analytics';
 import { useABTesting, initializeABTesting } from '@/lib/ab-testing';
 import { useRealtime } from '@/lib/realtime';
@@ -40,6 +42,8 @@ export default function DashboardPage() {
     error,
     totalUnread,
     isHealthy,
+    revenue,
+    revenueGrowth,
   } = useDashboardData();
 
   // Analytics and A/B testing hooks
@@ -109,7 +113,7 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (!isLoading && user?.email) {
       const loadTime = performance.now() - startTime.current;
-      trackPerformance({ 
+      trackPerformance({
         loadTime,
         errorCount: isError ? 1 : 0,
       });
@@ -133,7 +137,7 @@ export default function DashboardPage() {
     if (!isLoading && user?.email) {
       const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', user.email);
       dashboardMetrics.trackPageView(user.email);
-      
+
       logger.info('Dashboard loaded successfully', {
         component: 'DashboardPage',
         action: 'loadDashboardData',
@@ -148,7 +152,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="h-24 bg-[var(--muted)] rounded-lg"></div>
             </div>
@@ -204,159 +208,168 @@ export default function DashboardPage() {
         {mobile.isMobile && (
           <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-3">
             <p className="text-sm text-purple-500">
-              📱 Mobile optimized • {mobile.getNavigationStyle()} navigation • {mobile.getInteractionMode()} interactions
+              📱 Mobile optimized • {mobile.getNavigationStyle()} navigation •{' '}
+              {mobile.getInteractionMode()} interactions
             </p>
           </div>
         )}
 
-      {/* Admin-only widgets */}
-      {isZero && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-            <div className="flex flex-col gap-6">
-              <Link
-                href="/dashboard/analytics"
-                className="group aspect-square flex flex-col items-center justify-center p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300"
-              >
-                <div className="p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-4">
-                  <BarChart3 className="w-10 h-10 text-sky-400" />
-                </div>
-                <h3 className="font-semibold text-[var(--foreground)] text-center">Analytics Dashboard</h3>
-                <p className="text-sm text-[var(--foreground-muted)] text-center mt-1">
-                  Full system metrics
-                </p>
-                <div className="text-sky-400 mt-4 group-hover:translate-x-1 transition-transform">
-                  →
-                </div>
-              </Link>
+        {/* Admin-only widgets */}
+        {isZero && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+              <div className="flex flex-col gap-6">
+                <Link
+                  href="/dashboard/analytics"
+                  className="group aspect-square flex flex-col items-center justify-center p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300"
+                >
+                  <div className="p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-4">
+                    <BarChart3 className="w-10 h-10 text-sky-400" />
+                  </div>
+                  <h3 className="font-semibold text-[var(--foreground)] text-center">
+                    Analytics Dashboard
+                  </h3>
+                  <p className="text-sm text-[var(--foreground-muted)] text-center mt-1">
+                    Full system metrics
+                  </p>
+                  <div className="text-sky-400 mt-4 group-hover:translate-x-1 transition-transform">
+                    →
+                  </div>
+                </Link>
 
-              <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
-                <AiPulseWidget
-                  systemAppStatus={systemStatus}
-                  oracleStatus={isHealthy ? 'active' : 'inactive'}
-                />
+                <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
+                  <AiPulseWidget
+                    systemAppStatus={systemStatus}
+                    oracleStatus={isHealthy ? 'active' : 'inactive'}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1 h-fit">
+                <AutoCRMWidget />
               </div>
             </div>
 
-            <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1 h-fit">
-              <AutoCRMWidget />
-            </div>
+            {revenue && <FinancialRealityWidget revenue={revenue} growth={revenueGrowth || 0} />}
+          </>
+        )}
+
+        {/* Team widgets */}
+        {!isZero && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+            <AutoCRMWidget />
           </div>
+        )}
 
-          <FinancialRealityWidget 
-            revenue={{
-              total_revenue: 0,
-              paid_revenue: 0,
-              outstanding_revenue: 0,
-            }} 
-            growth={0} 
-          />
-        </>
-      )}
-
-      {/* Team widgets */}
-      {!isZero && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-          <AutoCRMWidget />
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <div onClick={() => trackWidgetInteraction('stats_card', 'active_cases')}>
-          <StatsCard
-            title="Active Cases"
-            value={stats.activeCases}
-            icon={FolderKanban}
-            href="/process"
-            accentColor="amber"
-          />
-        </div>
-        <div onClick={() => trackWidgetInteraction('stats_card', 'critical_deadlines')}>
-          <StatsCard
-            title="Critical Deadlines"
-            value={stats.criticalDeadlines}
-            icon={AlertTriangle}
-            href="/process"
-            variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
-            accentColor="purple"
-          />
-        </div>
-        <div onClick={() => trackWidgetInteraction('stats_card', 'unread_signals')}>
-          <StatsCard
-            title="Unread Signals"
-            value={totalUnread}
-            icon={MessageCircle}
-            href="/whatsapp"
-            variant={totalUnread > 0 ? 'danger' : 'default'}
-            accentColor="emerald"
-          />
-        </div>
-        <div onClick={() => trackWidgetInteraction('stats_card', 'session_time')}>
-          <StatsCard
-            title="Session Time"
-            value={stats.hoursWorked}
-            icon={Clock}
-            href="/team"
-            accentColor="cyan"
-          />
-        </div>
-      </div>
-
-      {/* Email Stats Card (if connected) */}
-      {emailStats.connected && (
-        <div className="grid grid-cols-1 gap-6">
-          <div onClick={() => {
-            trackWidgetInteraction('email_stats', 'unread_emails');
-            trackEmailAction('read', emailStats.unread_count);
-          }}>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div onClick={() => trackWidgetInteraction('stats_card', 'active_cases')}>
             <StatsCard
-              title="Unread Emails"
-              value={emailStats.unread_count}
-              icon={Mail}
-              href="/email"
-              variant={emailStats.unread_count > 0 ? 'danger' : 'default'}
-              accentColor="blue"
+              title="Active Cases"
+              value={stats.activeCases}
+              icon={FolderKanban}
+              href="/process"
+              accentColor="amber"
+            />
+          </div>
+          <div onClick={() => trackWidgetInteraction('stats_card', 'critical_deadlines')}>
+            <StatsCard
+              title="Critical Deadlines"
+              value={stats.criticalDeadlines}
+              icon={AlertTriangle}
+              href="/process"
+              variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
+              accentColor="purple"
+            />
+          </div>
+          <div onClick={() => trackWidgetInteraction('stats_card', 'unread_signals')}>
+            <StatsCard
+              title="Unread Signals"
+              value={totalUnread}
+              icon={MessageCircle}
+              href="/whatsapp"
+              variant={totalUnread > 0 ? 'danger' : 'default'}
+              accentColor="emerald"
+            />
+          </div>
+          <div onClick={() => trackWidgetInteraction('stats_card', 'session_time')}>
+            <StatsCard
+              title="Session Time"
+              value={stats.hoursWorked}
+              icon={Clock}
+              href="/team"
+              accentColor="cyan"
             />
           </div>
         </div>
-      )}
 
-      {/* Data Previews */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <PratichePreview 
-          pratiche={practices as any} 
-          isLoading={isLoading}
-        />
-        <WhatsAppPreview
-          messages={interactions}
-          isLoading={isLoading}
-          onDelete={async (id) => {
-            try {
-              trackWidgetInteraction('whatsapp_preview', `message_${id}`);
-              await api.crm.deleteInteraction(Number.parseInt(id, 10), user?.email || '');
-              trackUserInteraction('delete_message', 'whatsapp', id);
-              // Track funnel step completion
-              if (user?.email) funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
-              // Send real-time update
-              realtime.sendDashboardUpdate('delete', 'case', id);
-              // Note: In a real implementation, you'd want to refetch the data
-              // For now, this is handled by React Query's cache invalidation
-            } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              trackError(error instanceof Error ? error : new Error(String(error)), 'delete_interaction');
-              if (user?.email) funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', false, errorMessage);
-              logger.error('Failed to delete interaction', {
-                component: 'DashboardPage',
-                action: 'deleteInteraction',
-                user: user?.email || 'unknown',
-                metadata: { interactionId: id },
-              }, error instanceof Error ? error : new Error(String(error)));
-            }
-          }}
-        />
-      </div>
+        {/* Email Stats Card (if connected) */}
+        {emailStats.connected && (
+          <div className="grid grid-cols-1 gap-6">
+            <div
+              onClick={() => {
+                trackWidgetInteraction('email_stats', 'unread_emails');
+                trackEmailAction('read', emailStats.unread_count);
+              }}
+            >
+              <StatsCard
+                title="Unread Emails"
+                value={emailStats.unread_count}
+                icon={Mail}
+                href="/email"
+                variant={emailStats.unread_count > 0 ? 'danger' : 'default'}
+                accentColor="blue"
+              />
+            </div>
+          </div>
+        )}
 
+        {/* Data Previews */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <PratichePreview pratiche={practices as any} isLoading={isLoading} />
+          <WhatsAppPreview
+            messages={interactions}
+            isLoading={isLoading}
+            onDelete={async (id) => {
+              try {
+                trackWidgetInteraction('whatsapp_preview', `message_${id}`);
+                await api.crm.deleteInteraction(Number.parseInt(id, 10), user?.email || '');
+                trackUserInteraction('delete_message', 'whatsapp', id);
+                // Track funnel step completion
+                if (user?.email)
+                  funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
+                // Send real-time update
+                realtime.sendDashboardUpdate('delete', 'case', id);
+                // Note: In a real implementation, you'd want to refetch the data
+                // For now, this is handled by React Query's cache invalidation
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                trackError(
+                  error instanceof Error ? error : new Error(String(error)),
+                  'delete_interaction'
+                );
+                if (user?.email)
+                  funnel.completeStep(
+                    user.email,
+                    'dashboard_engagement',
+                    'delete_message',
+                    false,
+                    errorMessage
+                  );
+                logger.error(
+                  'Failed to delete interaction',
+                  {
+                    component: 'DashboardPage',
+                    action: 'deleteInteraction',
+                    user: user?.email || 'unknown',
+                    metadata: { interactionId: id },
+                  },
+                  error instanceof Error ? error : new Error(String(error))
+                );
+              }
+            }}
+          />
+        </div>
       </div>
     </DashboardErrorBoundary>
   );

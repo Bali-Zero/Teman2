@@ -12,6 +12,7 @@ CRM_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "admin@balizero.com",
     "admin@zantara.io",
+    "damar@balizero.com",
 }
 
 # Super admins (by username prefix/email)

@@ -327,14 +327,13 @@ class OrchestratorCore:
         Core query processing logic coordinando tutti i moduli.
 
         Questo è il metodo principale che orchestra tutto il flusso:
-        1. Load context
+        1. Load context + Extract Entities/KG (PARALLEL)
         2. Check gates
         3. Check cache
-        4. Extract entities/KG
-        5. Route query
-        6. Execute ReAct loop
-        7. Build response
-        8. Record metrics
+        4. Route query
+        5. Execute ReAct loop
+        6. Build response
+        7. Record metrics
 
         Args:
             query: Query string
@@ -350,10 +349,16 @@ class OrchestratorCore:
         if tool_execution_counter is None:
             tool_execution_counter = {"count": 0}
 
-        # 1. Load context
-        user_context, optimized_history = await self.context_manager.get_full_context(
-            user_id=user_id,
+        # 1. Load context and Extract Entities/KG in PARALLEL
+        # This reduces TTFT by overlapping DB calls with NLP/Graph calls
+        (
+            user_context,
+            optimized_history,
+            extracted_entities,
+            system_context_for_prompt,
+        ) = await self.prepare_query_context(
             query=query,
+            user_id=user_id,
             conversation_history=conversation_history,
             session_id=session_id,
         )
@@ -365,14 +370,12 @@ class OrchestratorCore:
             conversation_history=optimized_history,
         )
         if gate_result.triggered:
-            return self.query_gates.gate_result_to_core_result(gate_result, start_time)
+            return self.query_gates.gate_result_to_core_result(
+                gate_result, start_time, extracted_entities=extracted_entities
+            )
 
-        # 3. Extract entities and KG context
-        extracted_entities, system_context_for_prompt = await self.extract_entities_and_kg_context(
-            query
-        )
-
-        # 4. Check semantic cache
+        # 3. Check semantic cache
+        # (Already have entities from parallel step 1)
         cached_result = await self.check_semantic_cache(
             query=query,
             extracted_entities=extracted_entities,
@@ -381,10 +384,10 @@ class OrchestratorCore:
         if cached_result:
             return cached_result
 
-        # 5. Route query (intent classification + tier selection)
+        # 4. Route query (intent classification + tier selection)
         model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)
 
-        # 6. Build system prompt
+        # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
             user_id=user_id or "anonymous",
             context=user_context,
@@ -393,14 +396,14 @@ class OrchestratorCore:
             conversation_history=optimized_history,
         )
 
-        # 7. Create chat session
+        # 6. Create chat session
         chat = self.llm_gateway.create_chat_with_history(
             history_to_use=optimized_history,
             model_tier=model_tier,
             system_instruction=system_prompt,
         )
 
-        # 8. Execute ReAct loop
+        # 7. Execute ReAct loop
         logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
         state, model_used_name, token_usage, reasoning_duration = await self.execute_react_loop(
             state=state,
@@ -412,7 +415,7 @@ class OrchestratorCore:
             tool_execution_counter=tool_execution_counter,
         )
 
-        # 9. Extract metrics data
+        # 8. Extract metrics data
         timings = self.metrics_manager.extract_timings_from_state(
             state=state,
             reasoning_duration=reasoning_duration,
@@ -422,7 +425,7 @@ class OrchestratorCore:
         sources = self.metrics_manager.extract_sources_from_state(state)
         context_used = self.metrics_manager.calculate_context_used(state)
 
-        # 10. Record metrics
+        # 9. Record metrics
         self.metrics_manager.record_rag_metrics(
             state=state,
             collections_used=collections_used,
@@ -446,7 +449,7 @@ class OrchestratorCore:
             token_usage=token_usage,
         )
 
-        # 11. Build and return response
+        # 10. Build and return response
         return self.response_builder.build_core_result(
             state=state,
             sources=sources,
@@ -465,25 +468,55 @@ class OrchestratorCore:
         user_id: str | None,
         conversation_history: list[dict] | None,
         session_id: str | None = None,
-    ) -> tuple[dict[str, Any], list[dict], dict[str, Any]]:
+    ) -> tuple[dict[str, Any], list[dict], dict[str, Any], str]:
         """
         Common context preparation for both streaming and non-streaming.
+        Executes Context Loading and Entity/KG Extraction in PARALLEL.
 
         Returns:
-            Tuple of (user_context, optimized_history, extracted_entities)
+            Tuple of (user_context, optimized_history, extracted_entities, kg_context_str)
         """
-        # Load user context and optimize history
-        user_context, optimized_history = await self.context_manager.get_full_context(
-            user_id=user_id,
-            query=query,
-            conversation_history=conversation_history,
-            session_id=session_id,
+        import asyncio
+
+        # Definisci i task da eseguire in parallelo
+        async def _load_context():
+            return await self.context_manager.get_full_context(
+                user_id=user_id,
+                query=query,
+                conversation_history=conversation_history,
+                session_id=session_id,
+            )
+
+        async def _extract_entities_kg():
+            return await self.extract_entities_and_kg_context(query)
+
+        # Esegui in parallelo con gather
+        # Questo riduce la latenza totale al tempo del task più lento (solitamente DB)
+        results = await asyncio.gather(
+            _load_context(),
+            _extract_entities_kg(),
+            return_exceptions=True,
         )
 
-        # Extract entities
-        extracted_entities = await self.entity_extractor.extract_entities(query)
+        ctx_result, kg_result = results
 
-        return user_context, optimized_history, extracted_entities
+        # Handle Context Result
+        if isinstance(ctx_result, Exception):
+            logger.error(f"❌ Context loading failed: {ctx_result}", exc_info=True)
+            user_context = {}
+            optimized_history = []
+        else:
+            user_context, optimized_history = ctx_result
+
+        # Handle KG Result
+        if isinstance(kg_result, Exception):
+            logger.error(f"❌ KG extraction failed: {kg_result}", exc_info=True)
+            extracted_entities = {}
+            system_context_for_prompt = ""
+        else:
+            extracted_entities, system_context_for_prompt = kg_result
+
+        return user_context, optimized_history, extracted_entities, system_context_for_prompt
 
     async def check_gates_and_cache(
         self,
@@ -529,8 +562,9 @@ class OrchestratorCore:
         query: str,
         user_context: dict[str, Any],
         history: list[dict],
-        extracted_entities: dict[str, Any],  # TODO: Remove if not needed (legacy parameter)
+        extracted_entities: dict[str, Any],  # Not explicitly used but kept for signature
         deep_think_mode: bool = False,
+        kg_context_str: str = "",  # New argument to pass pre-fetched KG context
     ) -> tuple[str, bool, AgentState, str]:
         """
         Common ReAct loop preparation.
@@ -545,8 +579,10 @@ class OrchestratorCore:
         if deep_think_mode:
             state.deep_think_mode = True
 
-        # Extract KG context
-        _, system_context_for_prompt = await self.extract_entities_and_kg_context(query)
+        # Use pre-fetched KG context if available, otherwise fetch it (fallback)
+        system_context_for_prompt = kg_context_str
+        if not system_context_for_prompt:
+            _, system_context_for_prompt = await self.extract_entities_and_kg_context(query)
 
         # Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
@@ -567,6 +603,7 @@ class OrchestratorCore:
         history: list[dict],
         extracted_entities: dict[str, Any],
         deep_think_mode: bool = False,
+        kg_context_str: str = "",
     ) -> tuple[str, bool, AgentState, str]:
         """
         Prepare ReAct execution (alias for _prepare_react_loop for streaming compatibility).
@@ -580,4 +617,5 @@ class OrchestratorCore:
             history=history,
             extracted_entities=extracted_entities,
             deep_think_mode=deep_think_mode,
+            kg_context_str=kg_context_str,
         )

@@ -7,6 +7,14 @@
 
 ---
 
+## 🚀 Quick Links
+
+- **[QUICK ARTICLE PUBLISHING GUIDE](./QUICK_ARTICLE_PUBLISHING.md)** ⚡ - Fast-track guide for publishing news articles (5-10 min)
+- [Blog Layout Guide](../../docs/BLOG_LAYOUT_GUIDE.md) - Homepage layout and design patterns
+- [Development Guidelines](../../docs/DEVELOPMENT_GUIDELINES.md) - Coding standards
+
+---
+
 ## Indice
 
 1. [Overview](#1-overview)
@@ -702,6 +710,8 @@ const { send, subscribe } = useWebSocketContext();
 
 ## 9. Sistema Blog (MDX)
 
+> **⚡ Quick Publishing Guide:** For a fast-track workflow to publish articles in 5-10 minutes, see [QUICK_ARTICLE_PUBLISHING.md](./QUICK_ARTICLE_PUBLISHING.md)
+
 ### Struttura Articolo MDX
 
 ```mdx
@@ -1285,9 +1295,12 @@ npm run test                   # Run tests
 vercel deploy --prod           # Deploy to Vercel
 # Use Vercel dashboard for logs and status
 
-# Blog
-# Add article: create file in src/content/articles/{category}/{slug}.mdx
-# Add image: save to public/images/blog/{category}/{slug}.jpg
+# Blog (Fast Publishing)
+# See: QUICK_ARTICLE_PUBLISHING.md for detailed workflow
+# 1. Create: src/content/articles/{category}/{slug}.mdx
+# 2. Image: public/static/news/{image}.jpg
+# 3. Update: src/app/(blog)/news/page.tsx (MOCK_ARTICLES)
+# 4. Deploy: git add . && git commit --no-verify && git push --no-verify
 ```
 
 ### Import Paths

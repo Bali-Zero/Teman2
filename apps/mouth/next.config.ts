@@ -8,6 +8,23 @@ const nextConfig: NextConfig = {
     // Allow build to complete despite pre-existing TypeScript errors
     ignoreBuildErrors: true,
   },
+  // Redirect 301: mo.balizero.com → balizero.com
+  // SEO: Prevent duplicate content and consolidate domain authority
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'mo.balizero.com',
+          },
+        ],
+        destination: 'https://balizero.com/:path*',
+        permanent: true, // 301 redirect
+      },
+    ];
+  },
   images: {
     // 🖼️ Image Optimization - Auto AVIF/WebP conversion
     formats: ['image/avif', 'image/webp'], // Modern formats (70% smaller)
