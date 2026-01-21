@@ -1,9 +1,10 @@
 /**
  * JSON-LD Structured Data Components
  * For rich snippets in Google, Bing, and AI search
+ *
+ * IMPORTANT: Uses native <script> tags instead of Next.js Script component
+ * to ensure JSON-LD is present in the static HTML for Googlebot and validators.
  */
-
-import Script from 'next/script';
 
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
 
@@ -29,14 +30,18 @@ export function OrganizationJsonLd() {
     },
     address: {
       '@type': 'PostalAddress',
+      streetAddress: 'Kerobokan',
       addressLocality: 'Bali',
+      addressRegion: 'Bali',
+      postalCode: '80361',
       addressCountry: 'ID',
     },
-    description: 'Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia.',
+    description:
+      'Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia.',
   };
 
   return (
-    <Script
+    <script
       id="organization-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -85,7 +90,7 @@ export function LocalBusinessJsonLd() {
   };
 
   return (
-    <Script
+    <script
       id="localbusiness-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -121,9 +126,11 @@ export function ArticleJsonLd({
   image,
   tags,
   readingTime,
-}: ArticleJsonLdProps) {
+}: Readonly<ArticleJsonLdProps>) {
   const articleUrl = `${baseUrl}/${category}/${slug}`;
-  const imageUrl = image?.startsWith('http') ? image : `${baseUrl}${image || '/static/og-image.jpg'}`;
+  const imageUrl = image?.startsWith('http')
+    ? image
+    : `${baseUrl}${image || '/static/og-image.jpg'}`;
 
   const schema = {
     '@context': 'https://schema.org',
@@ -165,7 +172,7 @@ export function ArticleJsonLd({
   };
 
   return (
-    <Script
+    <script
       id="article-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -183,7 +190,7 @@ interface FAQJsonLdProps {
   items: FAQItem[];
 }
 
-export function FAQJsonLd({ items }: FAQJsonLdProps) {
+export function FAQJsonLd({ items }: Readonly<FAQJsonLdProps>) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -198,7 +205,7 @@ export function FAQJsonLd({ items }: FAQJsonLdProps) {
   };
 
   return (
-    <Script
+    <script
       id="faq-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -221,7 +228,7 @@ export function ServiceJsonLd({
   url,
   price,
   provider = 'Bali Zero',
-}: ServiceJsonLdProps) {
+}: Readonly<ServiceJsonLdProps>) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -247,7 +254,7 @@ export function ServiceJsonLd({
   };
 
   return (
-    <Script
+    <script
       id="service-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -265,7 +272,7 @@ interface BreadcrumbJsonLdProps {
   items: BreadcrumbItem[];
 }
 
-export function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
+export function BreadcrumbJsonLd({ items }: Readonly<BreadcrumbJsonLdProps>) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -278,7 +285,7 @@ export function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
   };
 
   return (
-    <Script
+    <script
       id="breadcrumb-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
@@ -305,7 +312,7 @@ export function WebsiteJsonLd() {
   };
 
   return (
-    <Script
+    <script
       id="website-jsonld"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
