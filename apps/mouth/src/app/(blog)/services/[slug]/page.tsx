@@ -11,9 +11,10 @@ import { logger } from '@/lib/logger';
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const service = SERVICES_DATA[params.slug];
+  const { slug } = await params;
+  const service = SERVICES_DATA[slug];
   if (!service) {
     return {
       title: 'Service Not Found | Bali Zero',
@@ -26,18 +27,19 @@ export async function generateMetadata({
   };
 }
 
-export default async function ServiceDetailPage({ params }: { params: { slug: string } }) {
-  const service = SERVICES_DATA[params.slug];
+export default async function ServiceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const service = SERVICES_DATA[slug];
 
   if (!service) {
     notFound();
   }
 
   // Structured logging for SEO monitoring
-  logger.info(`Service Page View: ${params.slug}`, {
+  logger.info(`Service Page View: ${slug}`, {
     component: 'ServiceDetailPage',
     action: 'page_view',
-    metadata: { service: params.slug, userAgent: 'server-side' },
+    metadata: { service: slug, userAgent: 'server-side' },
   });
 
   const IconComponent = service.icon;
@@ -225,7 +227,7 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
       </section>
 
       {/* Pricing Table - Client Component for Interactivity */}
-      <ServicePricing service={service} slug={params.slug} />
+      <ServicePricing service={service} slug={slug} />
 
       {/* What's Included */}
       <section className="border-b border-white/10">
