@@ -370,6 +370,7 @@ export default function ClientDetailPage() {
   const [activeModal, setActiveModal] = useState<ModalType>('none');
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
   const [viewingFolder, setViewingFolder] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -401,6 +402,11 @@ export default function ClientDetailPage() {
     }
   };
 
+  // Fix hydration mismatch: only render dates on client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   useEffect(() => {
     if (clientId) {
       loadData();
@@ -417,6 +423,8 @@ export default function ClientDetailPage() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
+    // Return placeholder during SSR to avoid hydration mismatch
+    if (!isMounted) return '...';
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -426,6 +434,8 @@ export default function ClientDetailPage() {
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return '';
+    // Return placeholder during SSR to avoid hydration mismatch
+    if (!isMounted) return '...';
     return new Date(dateStr).toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
