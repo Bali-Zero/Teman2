@@ -358,13 +358,11 @@ async def list_clients(
     """
     List clients with pagination and search.
 
-    Access Control:
-    - Admin users: See ALL clients
-    - Team members: See only clients assigned to them (assigned_to = email)
+    All authenticated users can see ALL clients.
 
     FILTERS:
     - **status**: Filter by client status
-    - **assigned_to**: Filter by assigned team member (only works for admin)
+    - **assigned_to**: Filter by assigned team member (optional)
     - **search**: Search in name, email, phone fields
     - **limit**: Max results (default: 50, max: 200)
     - **offset**: For pagination
@@ -378,17 +376,9 @@ async def list_clients(
         if not current_user_email:
             raise HTTPException(status_code=401, detail="Authentication required to view clients")
 
-        # ============================================
-        # ACCESS CONTROL RULES
-        # ============================================
-        # Use centralized CRM RBAC logic
-        # is_crm_admin covers 'zero@balizero.com' and users with 'admin' role
-        # ============================================
-        is_admin = is_crm_admin(current_user)
-
         logger.info(
             f"📋 [CRM Clients] User {current_user_email} requesting clients list "
-            f"(is_admin={is_admin}, assigned_to_filter={assigned_to})"
+            f"(assigned_to_filter={assigned_to})"
         )
 
         async with db_pool.acquire() as conn:
@@ -420,25 +410,11 @@ async def list_clients(
                 params.append(status)
                 param_index += 1
 
-            # Access control based on user role
-            if is_admin:
-                # Admins can see ALL clients (no filter)
-                if assigned_to:
-                    # Admin can optionally filter by assigned_to using query param
-                    query_parts.append(f" AND c.assigned_to = ${param_index}")
-                    params.append(assigned_to)
-                    param_index += 1
-                logger.info(
-                    f"🔓 [CRM Clients] CRM Admin ({current_user_email}) - viewing all clients"
-                )
-            else:
-                # Regular members can ONLY see clients assigned to them
+            # Optional filter by assigned_to (all users can see all clients)
+            if assigned_to:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
-                params.append(current_user_email)
+                params.append(assigned_to)
                 param_index += 1
-                logger.info(
-                    f"🔒 [CRM Clients] Regular member - filtered to assigned_to={current_user_email}"
-                )
 
             if search:
                 search_pattern = f"%{search}%"
@@ -513,14 +489,9 @@ async def get_client_by_email(
     """
     Get client by email address
 
-    Access Control:
-    - Admin users: Can view any client
-    - Team members: Can only view clients assigned to them
+    All authenticated users can view any client.
     """
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
@@ -531,10 +502,6 @@ async def get_client_by_email(
 
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
-
-            # RBAC: Check if non-admin user has access to this client
-            if not user_is_admin and (row["assigned_to"] or "").lower() != user_email:
-                raise HTTPException(status_code=403, detail="Access denied to this client")
 
             return ClientResponse(**dict(row))
 
@@ -557,30 +524,11 @@ async def update_client(
 
     Only provided fields will be updated. Other fields remain unchanged.
 
-    Access Control:
-    - Admin users: Can update any client
-    - Team members: Can only update clients assigned to them
+    All authenticated users can update any client.
     """
     time.time()
     try:
-        user_is_admin = is_crm_admin(current_user)
-        user_email = current_user.get("email", "").lower()
-
         async with db_pool.acquire() as conn:
-            # RBAC: First check if user has access to this client
-            if not user_is_admin:
-                check_row = await conn.fetchrow(
-                    "SELECT assigned_to FROM clients WHERE id = $1", client_id
-                )
-                if not check_row:
-                    raise HTTPException(status_code=404, detail="Client not found")
-
-                if (check_row["assigned_to"] or "").lower() != user_email:
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access denied: You can only update your assigned clients",
-                    )
-
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -696,30 +644,13 @@ async def delete_client(
 
     This doesn't permanently delete the client, just marks them as inactive.
 
-    Access Control:
-    - Admin users: Can delete any client
-    - Team members: Can only delete clients assigned to them
+    All authenticated users can delete any client.
     """
     time.time()
     try:
         user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
-            # RBAC Check
-            if not user_is_admin:
-                check_row = await conn.fetchrow(
-                    "SELECT assigned_to FROM clients WHERE id = $1", client_id
-                )
-                if not check_row:
-                    raise HTTPException(status_code=404, detail="Client not found")
-
-                if (check_row["assigned_to"] or "").lower() != user_email:
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access denied: You can only delete your assigned clients",
-                    )
-
             # Soft delete (mark as inactive)
             row = await conn.fetchrow(
                 """
@@ -780,9 +711,6 @@ async def get_client_summary(
     - Upcoming renewals
     """
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
             # Get client basic info
             client_row = await conn.fetchrow(
@@ -794,10 +722,6 @@ async def get_client_summary(
 
             if not client_row:
                 raise HTTPException(status_code=404, detail="Client not found")
-
-            # RBAC: Check if non-admin user has access to this client
-            if not user_is_admin and (client_row["assigned_to"] or "").lower() != user_email:
-                raise HTTPException(status_code=403, detail="Access denied to this client summary")
 
             # Get practices
             practices_rows = await conn.fetch(
@@ -937,12 +861,11 @@ async def get_client_audit_trail(
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Get audit trail for a specific client
+    Get audit trail for a specific client.
+
+    All authenticated users can view audit trails for any client.
     """
     try:
-        user_email = current_user.get("email", "")
-        user_is_admin = is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
             client = await conn.fetchrow(
                 "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id
@@ -950,13 +873,6 @@ async def get_client_audit_trail(
 
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
-
-            # Check access permissions
-            if not user_is_admin and (client["assigned_to"] or "").lower() != user_email.lower():
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied: You can only view audit trails for your assigned clients",
-                )
 
         # Get audit trail
         trail = await audit_logger.get_audit_trail(
