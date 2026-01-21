@@ -44,10 +44,10 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
   const IconComponent = service.icon;
   const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
-  const serviceUrl = `${baseUrl}/services/${params.slug}`;
+  const serviceUrl = `${baseUrl}/services/${slug}`;
 
   // Determine service type: GovernmentService for visa, ProfessionalService for others
-  const serviceType = params.slug === 'visa' ? 'GovernmentService' : 'ProfessionalService';
+  const serviceType = slug === 'visa' ? 'GovernmentService' : 'ProfessionalService';
 
   // Generate GovernmentService/ProfessionalService schema
   const serviceSchema = {
@@ -304,7 +304,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {Object.entries(SERVICES_DATA)
-              .filter(([key]) => key !== params.slug)
+              .filter(([key]) => key !== slug)
               .slice(0, 3)
               .map(([key, svc]) => {
                 const SvcIcon = svc.icon;
