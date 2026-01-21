@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  MessageCircle, 
-  Clock, 
-  MoreHorizontal, 
+import {
+  MessageCircle,
+  Clock,
+  MoreHorizontal,
   TrendingUp,
   AlertCircle,
   CheckCircle2,
@@ -77,6 +77,12 @@ const getCountryFlag = (nationality: string | undefined): string | null => {
 
 export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) => {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Fix hydration mismatch: only render dates on client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Determine sentiment aura
   const sentiment = (client.last_sentiment || 'none').toLowerCase() as keyof typeof SENTIMENT_COLORS;
@@ -158,8 +164,10 @@ export const ClientCard = React.memo(({ client, isDragging }: ClientCardProps) =
             <div className="flex items-center gap-1.5" title="Last Contact">
               <Clock className="w-3 h-3" />
               <span>
-                {client.last_interaction_date 
-                  ? new Date(client.last_interaction_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'}) 
+                {client.last_interaction_date
+                  ? (isMounted
+                      ? new Date(client.last_interaction_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})
+                      : '...')
                   : 'Never'}
               </span>
             </div>
