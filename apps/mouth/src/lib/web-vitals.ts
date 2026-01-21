@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Web Vitals Monitoring
  * Tracks Core Web Vitals (LCP, CLS, INP, TTFB) and sends to analytics
@@ -31,7 +32,7 @@ export function initWebVitals(_options: WebVitalsOptions = {}) {
   // Disabled - web-vitals package has resolution issues on Vercel
   // Will be re-enabled when fixed
   if (process.env.NODE_ENV === 'development') {
-    console.log('[Web Vitals] Monitoring temporarily disabled');
+    logger.debug('[Web Vitals] Monitoring temporarily disabled', { component: "AUTO", action: "log" });
   }
 }
 

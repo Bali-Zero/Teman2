@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface FileInfo {
   id: string;
@@ -125,8 +126,9 @@ export function FolderFilesBrowser({
       setTotal(data.total);
       setHasMore(data.has_more);
       setOffset(currentOffset + data.files.length);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load files');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load files';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -155,8 +157,9 @@ export function FolderFilesBrowser({
       window.URL.revokeObjectURL(url);
 
       toast.success(`Downloaded ${file.name}`);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to download file');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download file';
+      toast.error(errorMessage);
     }
   };
 
@@ -175,7 +178,8 @@ export function FolderFilesBrowser({
 
       toast.success(`Downloaded ${selectedFiles.size} file(s)`);
       setSelectedFiles(new Set());
-    } catch (error: any) {
+    } catch (error: unknown) {
+      logger.error('Failed to download files', { component: 'FolderFilesBrowser', action: 'handleDownloadMultiple' }, error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to download files');
     }
   };

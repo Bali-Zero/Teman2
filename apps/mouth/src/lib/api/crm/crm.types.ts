@@ -23,6 +23,8 @@ export interface Practice {
   updated_at?: string;
 }
 
+import type { JsonObject } from '../../types/common';
+
 export interface Interaction {
   id: number;
   client_id?: number;
@@ -42,7 +44,7 @@ export interface Interaction {
   read_receipt?: boolean; // [NEW] Real read receipt status
   read_at?: string; // [NEW] When interaction was marked as read
   read_by?: string; // [NEW] Who marked it as read
-  extracted_entities?: Record<string, any>; // [NEW] AI extracted entities
+  extracted_entities?: JsonObject; // [NEW] AI extracted entities
 }
 
 export interface PracticeStats {
@@ -142,11 +144,13 @@ export interface FamilyMemberCreate {
 // DOCUMENTS
 // ============================================
 
+export type DocumentCategoryType = 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
+
 export interface ClientDocument {
   id: number;
   client_id: number;
   document_type: string;
-  document_category?: 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
+  document_category?: DocumentCategoryType;
   file_name?: string;
   file_id?: string;
   file_url?: string;
@@ -165,7 +169,7 @@ export interface ClientDocument {
 
 export interface DocumentCreate {
   document_type: string;
-  document_category?: string;
+  document_category?: DocumentCategoryType;
   file_name?: string;
   file_id?: string;
   file_url?: string;

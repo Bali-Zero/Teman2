@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.NUZANTARA_API_KEY;
 
     if (!apiKey) {
-      console.error('CRITICAL: NUZANTARA_API_KEY is not set in environment variables');
+      logger.error('CRITICAL: NUZANTARA_API_KEY is not set in environment variables', { component: "AUTO", action: "error" }, toError('CRITICAL: NUZANTARA_API_KEY is not set in environment variables'));
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('AI generation error:', error);
+    logger.error('AI generation error:', error, { component: "AUTO", action: "error" }, toError('AI generation error:', error));
 
     // Return mock generated content for demo
     return NextResponse.json({
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Failed to fetch AI triggers:', error);
+    logger.error('Failed to fetch AI triggers:', error, { component: "AUTO", action: "error" }, toError('Failed to fetch AI triggers:', error));
     return NextResponse.json({ triggers: [] });
   }
 }

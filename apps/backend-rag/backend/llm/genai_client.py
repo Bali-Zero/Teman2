@@ -399,6 +399,33 @@ class GenAIClient:
             history=history,
         )
 
+    def start_chat(
+        self,
+        model: str | None = None,
+        history: list[dict] | None = None,
+        system_instruction: str | None = None,
+    ) -> Any:
+        """
+        Start a chat session using the underlying SDK.
+        This provides direct access to the SDK's chat object.
+        Required for backward compatibility with Agentic RAG services.
+        """
+        if not self.is_available:
+            raise RuntimeError("GenAI client not available")
+
+        model = model or self.DEFAULT_MODEL
+
+        # Prepare config
+        config = self._get_config(system_instruction=system_instruction)
+
+        # Create chat using the new SDK interface
+        # We use the synchronous client here as ChatSession expects sync calls
+        return self._client.chats.create(
+            model=model,
+            history=history,
+            config=config,
+        )
+
 
 class ChatSession:
     """

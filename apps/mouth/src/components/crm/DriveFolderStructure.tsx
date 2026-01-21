@@ -155,8 +155,9 @@ export function DriveFolderStructure({
 
       toast.success('Folder structure created successfully');
       onFolderCreated?.(data.root_folder_id);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create folder structure');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create folder structure';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -195,8 +196,9 @@ export function DriveFolderStructure({
       setShowLinkModal(false);
       setLinkFolderId('');
       onFolderLinked?.(folderId);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to link folder');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to link folder';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -265,7 +265,7 @@ export class DriveApi {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('[DriveApi] Download error:', error);
+      logger.error('[DriveApi] Download error:', error, { component: "AUTO", action: "error" }, toError('[DriveApi] Download error:', error));
       throw error;
     }
   }

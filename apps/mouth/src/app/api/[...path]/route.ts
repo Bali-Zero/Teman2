@@ -1,4 +1,6 @@
 import type { NextRequest } from 'next/server';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 function normalizeBackendBaseUrl(url: string): string {
   return url.replace(/\/+$/, '').replace(/\/api$/, '');
@@ -23,14 +25,21 @@ async function proxy(req: NextRequest): Promise<Response> {
 
   // Log requests in development
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[Proxy] ${req.method} ${url.pathname} -> ${targetUrl}`);
+    logger.debug(`[Proxy] ${req.method} ${url.pathname} -> ${targetUrl}`, {
+      component: 'AUTO',
+      action: 'log',
+    });
   }
 
   // Log streaming requests
   if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
-    console.log(
-      `[Proxy] SSE request start: ${req.method} ${url.pathname} (correlation_id=${correlationId})`
-    );
+    logger.debug(`[Proxy] SSE request start: ${req.method} ${url.pathname}`, {
+      component: 'AUTO',
+      action: 'log',
+      metadata: {
+        correlationId,
+      },
+    });
   }
 
   const headers = new Headers(req.headers);
@@ -82,13 +91,17 @@ async function proxy(req: NextRequest): Promise<Response> {
   try {
     // Debug logging for DELETE with body
     if (req.method === 'DELETE' && body) {
-      console.log('🔍 [PROXY] DELETE with body detected:', {
-        method: req.method,
-        path: url.pathname,
-        hasBody: !!body,
-        bodySize: body ? (typeof body === 'string' ? body.length : 'binary') : 'none',
-        contentType: headers.get('content-type'),
-        targetUrl,
+      logger.debug('🔍 [PROXY] DELETE with body detected:', {
+        component: 'AUTO',
+        action: 'log',
+        metadata: {
+          method: req.method,
+          path: url.pathname,
+          hasBody: !!body,
+          bodySize: body ? (typeof body === 'string' ? body.length : 'binary') : 'none',
+          contentType: headers.get('content-type'),
+          targetUrl,
+        },
       });
     }
 
@@ -104,10 +117,14 @@ async function proxy(req: NextRequest): Promise<Response> {
     // Only add body if it exists and method supports it
     if (body && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
       requestInit.body = body;
-      console.log('🔍 [PROXY] Body added to request:', {
-        method: req.method,
-        bodyIncluded: true,
-        bodyLength: typeof body === 'string' ? body.length : 'binary',
+      logger.debug('🔍 [PROXY] Body added to request:', {
+        component: 'AUTO',
+        action: 'log',
+        metadata: {
+          method: req.method,
+          bodyIncluded: true,
+          bodyLength: typeof body === 'string' ? body.length : 'binary',
+        },
       });
     }
 
@@ -150,10 +167,14 @@ async function proxy(req: NextRequest): Promise<Response> {
 
     // Log streaming response status
     if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
-      console.log(
-        `[Proxy] SSE upstream response: ${upstream.status} (correlation_id=${correlationId}, ` +
-          `duration_ms=${upstreamDuration})`
-      );
+      logger.debug(`[Proxy] SSE upstream response: ${upstream.status}`, {
+        component: 'AUTO',
+        action: 'log',
+        metadata: {
+          correlationId,
+          durationMs: upstreamDuration,
+        },
+      });
     }
 
     // Log errors in development and production (for auth errors)
@@ -162,23 +183,39 @@ async function proxy(req: NextRequest): Promise<Response> {
 
       // Always log auth errors (critical for debugging)
       if (isAuthError) {
-        console.error(`[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`, {
-          cookies: {
-            authCookie: !!authCookie,
-            csrfCookie: !!csrfCookie,
-            authCookieValue: authCookie ? `${authCookie.value.substring(0, 20)}...` : 'missing',
-            csrfCookieValue: csrfCookie ? `${csrfCookie.value.substring(0, 20)}...` : 'missing',
+        logger.error(
+          `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
+          {
+            component: 'AUTO',
+            action: 'error',
+            metadata: {
+              cookies: {
+                authCookie: !!authCookie,
+                csrfCookie: !!csrfCookie,
+                authCookieValue: authCookie ? `${authCookie.value.substring(0, 20)}...` : 'missing',
+                csrfCookieValue: csrfCookie ? `${csrfCookie.value.substring(0, 20)}...` : 'missing',
+              },
+              targetUrl,
+              correlationId,
+              userAgent: req.headers.get('user-agent')?.substring(0, 50),
+            },
           },
-          targetUrl,
-          correlationId,
-          userAgent: req.headers.get('user-agent')?.substring(0, 50),
-        });
+          toError(`[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`)
+        );
       } else if (process.env.NODE_ENV !== 'production') {
         // Log other errors only in development
-        console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`, {
-          targetUrl,
-          correlationId,
-        });
+        logger.error(
+          `[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`,
+          {
+            component: 'AUTO',
+            action: 'error',
+            metadata: {
+              targetUrl,
+              correlationId,
+            },
+          },
+          toError(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`)
+        );
       }
     }
 
@@ -213,7 +250,19 @@ async function proxy(req: NextRequest): Promise<Response> {
       headers: respHeaders,
     });
   } catch (error) {
-    console.error(`[Proxy] Fetch error for ${req.method} ${url.pathname}:`, error);
+    logger.error(
+      `[Proxy] Fetch error for ${req.method} ${url.pathname}`,
+      {
+        component: 'AUTO',
+        action: 'error',
+        metadata: {
+          method: req.method,
+          pathname: url.pathname,
+          targetUrl,
+        },
+      },
+      toError(error)
+    );
     return new Response(
       JSON.stringify({
         error: 'Proxy error',
