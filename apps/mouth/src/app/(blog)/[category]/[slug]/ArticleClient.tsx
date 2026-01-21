@@ -28,7 +28,7 @@ import {
   NewsletterSidebar,
   ArticleEngagement,
 } from '@/components/blog';
-import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo';
+// JSON-LD schemas are now injected in <head> by root layout for better SEO
 import { cn } from '@/lib/utils';
 import type { Article, ArticleListItem } from '@/lib/blog/types';
 
@@ -59,7 +59,19 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
   const [copied, setCopied] = React.useState(false);
 
   // Reserved workspace paths - redirect to workspace if accessed
-  const RESERVED_PATHS = ['cases', 'clients', 'dashboard', 'documents', 'knowledge', 'team', 'analytics', 'intelligence', 'whatsapp', 'email', 'chat'];
+  const RESERVED_PATHS = [
+    'cases',
+    'clients',
+    'dashboard',
+    'documents',
+    'knowledge',
+    'team',
+    'analytics',
+    'intelligence',
+    'whatsapp',
+    'email',
+    'chat',
+  ];
 
   React.useEffect(() => {
     if (RESERVED_PATHS.includes(category)) {
@@ -142,27 +154,9 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
 
   return (
     <div className="min-h-screen">
-      {/* JSON-LD Structured Data */}
-      <ArticleJsonLd
-        title={article.title}
-        description={article.excerpt || article.subtitle || article.title}
-        slug={article.slug}
-        category={article.category}
-        publishedAt={article.publishedAt?.toString() || article.createdAt.toString()}
-        updatedAt={article.updatedAt?.toString()}
-        author={{ name: article.author.name, role: article.author.role }}
-        image={article.coverImage}
-        tags={article.tags}
-        readingTime={article.readingTime}
-      />
-      <BreadcrumbJsonLd
-        items={[
-          { name: 'Home', url: '/' },
-          { name: 'Insights', url: '/insights' },
-          { name: article.category, url: `/insights/${article.category}` },
-          { name: article.title, url: `/insights/${article.category}/${article.slug}` },
-        ]}
-      />
+      {/* NOTE: JSON-LD schemas (Article + BreadcrumbList) are now injected in <head> 
+          by the root layout (apps/mouth/src/app/layout.tsx) for better SEO and 
+          Schema.org Validator compatibility */}
 
       {/* Reading progress */}
       <ReadingProgress />
@@ -192,9 +186,7 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
               </span>
             )}
             {article.reviewedBy && (
-              <span className="text-xs text-white/50">
-                Verified by {article.reviewedBy}
-              </span>
+              <span className="text-xs text-white/50">Verified by {article.reviewedBy}</span>
             )}
           </div>
 
@@ -273,29 +265,92 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
             {/* Main content - wider now */}
             <article className="lg:col-span-8">
               {/* Article content with 30% larger text (prose-xl = 1.25rem vs prose-lg = 1.125rem) */}
-              <div className="prose prose-invert prose-xl max-w-none" style={{ fontSize: '1.3rem', lineHeight: '1.8' }}>
+              <div
+                className="prose prose-invert prose-xl max-w-none"
+                style={{ fontSize: '1.3rem', lineHeight: '1.8' }}
+              >
                 {article.mdxSource ? (
                   <MDXContent source={article.mdxSource} />
                 ) : (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      h1: ({children}) => <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0">{children}</h1>,
-                      h2: ({children}) => <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">{children}</h2>,
-                      h3: ({children}) => <h3 className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">{children}</h3>,
-                      p: ({children}) => <p className="text-white/80 leading-relaxed mb-5 text-xl">{children}</p>,
-                      ul: ({children}) => <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">{children}</ol>,
-                      li: ({children}) => <li className="leading-relaxed pl-2 text-xl">{children}</li>,
-                      a: ({href, children}) => <a href={href} className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors">{children}</a>,
-                      blockquote: ({children}) => <blockquote className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl">{children}</blockquote>,
-                      code: ({children, className}) => className ? <code className="font-mono text-base">{children}</code> : <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base">{children}</code>,
-                      pre: ({children}) => <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base">{children}</pre>,
-                      table: ({children}) => <div className="overflow-x-auto my-6 rounded-xl border border-white/10"><table className="w-full text-left">{children}</table></div>,
-                      thead: ({children}) => <thead className="bg-white/5 border-b border-white/10">{children}</thead>,
-                      th: ({children}) => <th className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60">{children}</th>,
-                      td: ({children}) => <td className="px-4 py-3 text-white/80 text-lg">{children}</td>,
-                      strong: ({children}) => <strong className="font-semibold text-white">{children}</strong>,
+                      h1: ({ children }) => (
+                        <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0">
+                          {children}
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">
+                          {children}
+                        </h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">
+                          {children}
+                        </h3>
+                      ),
+                      p: ({ children }) => (
+                        <p className="text-white/80 leading-relaxed mb-5 text-xl">{children}</p>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="leading-relaxed pl-2 text-xl">{children}</li>
+                      ),
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
+                        >
+                          {children}
+                        </a>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl">
+                          {children}
+                        </blockquote>
+                      ),
+                      code: ({ children, className }) =>
+                        className ? (
+                          <code className="font-mono text-base">{children}</code>
+                        ) : (
+                          <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base">
+                            {children}
+                          </code>
+                        ),
+                      pre: ({ children }) => (
+                        <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base">
+                          {children}
+                        </pre>
+                      ),
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-6 rounded-xl border border-white/10">
+                          <table className="w-full text-left">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => (
+                        <thead className="bg-white/5 border-b border-white/10">{children}</thead>
+                      ),
+                      th: ({ children }) => (
+                        <th className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="px-4 py-3 text-white/80 text-lg">{children}</td>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-semibold text-white">{children}</strong>
+                      ),
                       hr: () => <hr className="my-8 border-white/10" />,
                     }}
                   >
@@ -355,7 +410,11 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
                 <ArticleEngagement
                   articleId={article.id}
                   articleTitle={article.title}
-                  articleUrl={typeof window !== 'undefined' ? window.location.href : `https://balizero.com/${article.category}/${article.slug}`}
+                  articleUrl={
+                    typeof window !== 'undefined'
+                      ? window.location.href
+                      : `https://balizero.com/${article.category}/${article.slug}`
+                  }
                   initialLikes={article.likeCount || 0}
                   initialComments={[]}
                 />
@@ -382,11 +441,7 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               {relatedArticles.slice(0, 3).map((related, index) => (
-                <ArticleCard
-                  key={related.id}
-                  article={related}
-                  index={index}
-                />
+                <ArticleCard key={related.id} article={related} index={index} />
               ))}
             </div>
           </div>
