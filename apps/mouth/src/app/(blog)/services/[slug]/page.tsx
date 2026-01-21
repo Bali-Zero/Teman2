@@ -2,19 +2,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import {
-  ArrowLeft,
-  Check,
-  Clock,
-  Phone,
-  FileText,
-  AlertCircle,
-  ChevronRight,
-} from 'lucide-react';
+import { ArrowLeft, Check, Clock, Phone, FileText, AlertCircle, ChevronRight } from 'lucide-react';
 import { SERVICES_DATA } from '@/data/services_data';
 import ServicePricing from '@/components/services/ServicePricing';
+import { SchemaInjector } from '@/components/seo/SchemaInjector';
+import { logger } from '@/lib/logger';
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
   const service = SERVICES_DATA[params.slug];
   if (!service) {
     return {
@@ -35,10 +33,78 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
     notFound();
   }
 
+  // Structured logging for SEO monitoring
+  logger.info(`Service Page View: ${params.slug}`, {
+    component: 'ServiceDetailPage',
+    action: 'page_view',
+    metadata: { service: params.slug, userAgent: 'server-side' },
+  });
+
   const IconComponent = service.icon;
+  const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
+  const serviceUrl = `${baseUrl}/services/${params.slug}`;
+
+  // Determine service type: GovernmentService for visa, ProfessionalService for others
+  const serviceType = params.slug === 'visa' ? 'GovernmentService' : 'ProfessionalService';
+
+  // Generate GovernmentService/ProfessionalService schema
+  const serviceSchema = {
+    '@context': 'https://schema.org',
+    '@type': serviceType,
+    name: service.name,
+    description: service.description,
+    provider: {
+      '@type': 'Organization',
+      name: 'Bali Zero',
+      url: baseUrl,
+      logo: `${baseUrl}/assets/logo/balizero-logo.png`,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+62-859-0436-9574',
+        contactType: 'customer service',
+        availableLanguage: ['English', 'Indonesian'],
+      },
+    },
+    areaServed: {
+      '@type': 'Country',
+      name: 'Indonesia',
+    },
+    offers: service.packages
+      .filter((pkg) => pkg.price !== 'Contact')
+      .map((pkg) => ({
+        '@type': 'Offer',
+        name: pkg.name,
+        description: pkg.description,
+        price: pkg.price.replace(/\./g, ''),
+        priceCurrency: 'IDR',
+        availability: 'https://schema.org/InStock',
+        validFrom: '2026-01-01',
+      })),
+    serviceType: service.name,
+    hoursAvailable: service.timeline,
+  };
+
+  // Generate FAQPage schema
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: service.faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+
+  // Combine schemas for injection
+  const jsonLdSchemas = [serviceSchema, faqSchema];
 
   return (
     <div className="min-h-screen bg-[#051C2C]">
+      {/* JSON-LD Schema Injection */}
+      <SchemaInjector schemas={jsonLdSchemas} />
       {/* Breadcrumb */}
       <div className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-4">
@@ -67,7 +133,9 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
             {/* Main Content */}
             <div className="lg:col-span-2">
               <div className="flex items-start gap-4 mb-6">
-                <div className={`w-16 h-16 rounded-xl ${service.bgColor} flex items-center justify-center flex-shrink-0`}>
+                <div
+                  className={`w-16 h-16 rounded-xl ${service.bgColor} flex items-center justify-center flex-shrink-0`}
+                >
                   <IconComponent className={`w-8 h-8 ${service.iconColor}`} />
                 </div>
                 <div>
@@ -75,12 +143,28 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
                     {service.name}
                   </h1>
                   <p className="text-white/60 text-lg">{service.tagline}</p>
+
+                  {/* AI Summary Block - Semantic Data Extraction */}
+                  <dl className="sr-only" itemScope itemType={`https://schema.org/${serviceType}`}>
+                    <dt>Service Type</dt>
+                    <dd itemProp="serviceType">{service.name}</dd>
+                    <dt>Processing Time</dt>
+                    <dd itemProp="hoursAvailable">{service.timeline}</dd>
+                    <dt>Documents Required</dt>
+                    <dd itemProp="documentation">{service.documentsRequired}</dd>
+                    <dt>Validity Period</dt>
+                    <dd itemProp="validity">{service.validity}</dd>
+                    <dt>Service Provider</dt>
+                    <dd itemProp="provider" itemScope itemType="https://schema.org/Organization">
+                      <span itemProp="name">Bali Zero</span>
+                    </dd>
+                    <dt>Area Served</dt>
+                    <dd itemProp="areaServed">Indonesia</dd>
+                  </dl>
                 </div>
               </div>
 
-              <p className="text-white/70 text-lg leading-relaxed mb-8">
-                {service.description}
-              </p>
+              <p className="text-white/70 text-lg leading-relaxed mb-8">{service.description}</p>
 
               {/* Key Info */}
               <div className="grid grid-cols-3 gap-4 mb-8">
@@ -204,9 +288,7 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
                   {faq.question}
                   <ChevronRight className="w-5 h-5 text-white/40 group-open:rotate-90 transition-transform" />
                 </summary>
-                <div className="px-6 pb-6 text-white/70">
-                  {faq.answer}
-                </div>
+                <div className="px-6 pb-6 text-white/70">{faq.answer}</div>
               </details>
             ))}
           </div>
@@ -227,7 +309,9 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
                 return (
                   <Link key={key} href={`/services/${key}`} className="group">
                     <div className="rounded-xl border border-white/10 bg-[#0a2540] p-6 hover:border-[#2251ff]/50 transition-all">
-                      <div className={`w-12 h-12 rounded-lg ${svc.bgColor} flex items-center justify-center mb-4`}>
+                      <div
+                        className={`w-12 h-12 rounded-lg ${svc.bgColor} flex items-center justify-center mb-4`}
+                      >
                         <SvcIcon className={`w-6 h-6 ${svc.iconColor}`} />
                       </div>
                       <h3 className="text-white font-medium mb-2 group-hover:text-[#2251ff] transition-colors">
