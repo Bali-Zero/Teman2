@@ -13,13 +13,16 @@ import logging
 import re as regex
 from datetime import datetime
 from difflib import SequenceMatcher
+from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin
+from backend.app.utils.crm_utils import extract_json_from_llm_response
 from backend.app.utils.json_utils import to_jsonb
+from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     db_pool = None
     try:
         from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.google_drive_service import GoogleDriveService
+        from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
         if not GENAI_AVAILABLE:
             logger.warning("Auto OCR: GenAI not available")
@@ -64,9 +67,9 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                 return {"success": False, "error": "Client not found"}
             existing_name = client["full_name"]
 
-        # Get Drive access token
-        drive_service = GoogleDriveService(db_pool)
-        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        # Get Drive access token using Service Account
+        drive_service = ServiceAccountDriveService()
+        access_token = drive_service.credentials.token
         if not access_token:
             logger.warning("Auto OCR: Google Drive not connected")
             return {"success": False, "error": "Drive not connected"}
@@ -1125,3 +1128,196 @@ async def get_expiry_alerts_summary(pool=Depends(get_database_pool)):
         )
 
         return {"counts": dict(summary), "urgent_alerts": [dict(a) for a in urgent]}
+
+
+# ============================================
+# NEW ENDPOINTS (Frontend Integration)
+# ============================================
+
+
+class DocumentUploadBase64(BaseModel):
+    file: str  # Base64
+    file_name: str
+    document_type: str
+    mime_type: str | None = None
+    notes: str | None = None
+
+
+@router.post("/clients/{client_id}/documents/upload")
+async def upload_document_base64(
+    client_id: int,
+    data: DocumentUploadBase64 = Body(...),
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+) -> dict[str, Any]:
+    """
+    Upload a document via Base64 (for frontend integration).
+    Handles Google Drive upload and document creation.
+    """
+    try:
+        # Decode Base64
+        try:
+            file_content = base64.b64decode(data.file)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 file content")
+
+        # Determine category and folder name
+        category = "immigration"  # Default
+        folder_name = "01_Immigration"
+
+        dt = data.document_type.lower()
+        if "tax" in dt:
+            category = "tax"
+            folder_name = "03_Tax"
+        elif "company" in dt:
+            category = "company"
+            folder_name = "02_Company"
+        elif "family" in dt:
+            category = "personal"
+            folder_name = "04_Family"
+
+        async with pool.acquire() as conn:
+            client = await conn.fetchrow(
+                "SELECT id, full_name, google_drive_folder_id, client_type FROM clients WHERE id = $1",
+                client_id,
+            )
+
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            drive_service = ServiceAccountDriveService()
+
+            # Ensure Root Folder Exists
+            root_folder_id = client["google_drive_folder_id"]
+            if not root_folder_id:
+                # Create root folder logic
+                parent_id = settings.google_drive_root_folder_id
+
+                # If specific settings exist for types, use them (simplified from crm_drive_folders)
+                # But to avoid circular imports or config issues, we fall back to root or simple logic
+                if client["client_type"] == "individual" and hasattr(
+                    settings, "gdrive_individuals_folder_id"
+                ):
+                    parent_id = settings.gdrive_individuals_folder_id or parent_id
+                elif client["client_type"] == "company" and hasattr(
+                    settings, "gdrive_companies_folder_id"
+                ):
+                    parent_id = settings.gdrive_companies_folder_id or parent_id
+
+                try:
+                    folder_data = await drive_service.create_folder(
+                        name=f"{client['id']}_{client['full_name']}",
+                        parent_id=parent_id,
+                    )
+                    root_folder_id = folder_data["id"]
+
+                    # Update client
+                    await conn.execute(
+                        "UPDATE clients SET google_drive_folder_id = $1 WHERE id = $2",
+                        root_folder_id,
+                        client_id,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to create root folder: {e}")
+                    raise HTTPException(
+                        status_code=500, detail=f"Failed to create root folder: {e}"
+                    )
+
+            # Ensure Subfolder Exists (Find or Create)
+            try:
+                structure = await drive_service.get_folder_structure(
+                    root_folder_id=root_folder_id,
+                )
+            except Exception as e:
+                # If structure fetch fails, maybe root folder is missing/deleted?
+                # We'll just fail for now, or could try to recreate
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to access folder structure: {e}"
+                )
+
+            subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
+            if not subfolder:
+                # Create subfolder
+                try:
+                    subfolder_data = await drive_service.create_folder(
+                        name=folder_name,
+                        parent_id=root_folder_id,
+                    )
+                    subfolder_id = subfolder_data["id"]
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Failed to create subfolder: {e}")
+            else:
+                subfolder_id = subfolder["id"]
+
+            # Upload File
+            try:
+                upload_result = await drive_service.upload_file_to_folder(
+                    folder_id=subfolder_id,
+                    file_content=file_content,
+                    file_name=data.file_name,
+                    mime_type=data.mime_type,
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to upload to drive: {e}")
+
+            # Create Document Record
+            doc_id = await conn.fetchval(
+                """
+                INSERT INTO documents (
+                    client_id, document_type, document_category,
+                    file_name, file_id, file_url, google_drive_file_url,
+                    status, storage_type, notes
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8)
+                RETURNING id
+                """,
+                client_id,
+                data.document_type,
+                category,
+                data.file_name,
+                upload_result["id"],
+                upload_result.get("webViewLink"),  # Use webViewLink as file_url
+                upload_result.get("webViewLink"),
+                data.notes,
+            )
+
+            # Trigger OCR if passport
+            if "passport" in data.document_type.lower():
+                background_tasks.add_task(_auto_ocr_passport, client_id, upload_result["id"])
+
+            return {
+                "success": True,
+                "document_id": doc_id,
+                "file_url": upload_result.get("webViewLink"),
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/documents/{doc_id}")
+async def delete_document(
+    doc_id: int,
+    permanent: bool = False,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Delete a document (Soft delete by default).
+    """
+    async with pool.acquire() as conn:
+        if permanent:
+            result = await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
+        else:
+            result = await conn.execute(
+                "UPDATE documents SET is_archived = true, updated_at = NOW() WHERE id = $1",
+                doc_id,
+            )
+
+        if result == "DELETE 0" or result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Document not found")
+
+    return {"success": True, "action": "deleted" if permanent else "archived"}

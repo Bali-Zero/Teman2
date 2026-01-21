@@ -69,11 +69,8 @@ export const metadata: Metadata = {
   creator: 'Bali Zero',
   publisher: 'Bali Zero',
   category: 'Business Services',
-  icons: {
-    icon: '/static/balizero-logo-clean.png',
-    apple: '/static/balizero-logo-clean.png',
-    shortcut: '/static/balizero-logo-clean.png',
-  },
+  // Icons are auto-detected by Next.js from app/icon.png and app/apple-icon.png
+  // No explicit configuration needed - Next.js 13+ App Router handles this automatically
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -306,7 +303,7 @@ export default async function RootLayout({
       }
     } catch (error) {
       // Silently fail - don't block page rendering if article can't be loaded
-      console.error('Error loading article for JSON-LD:', error);
+      // Error logged server-side if needed, but not blocking page render
     }
   }
 
