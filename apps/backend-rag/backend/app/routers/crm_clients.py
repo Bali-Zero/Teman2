@@ -484,7 +484,7 @@ async def get_client(
 async def get_client_by_email(
     email: EmailStr = Path(..., description="Client email address"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
 ):
     """
     Get client by email address
@@ -526,6 +526,7 @@ async def update_client(
 
     All authenticated users can update any client.
     """
+    user_email = current_user.get("email", "").lower()
     time.time()
     try:
         async with db_pool.acquire() as conn:
@@ -700,7 +701,7 @@ async def delete_client(
 async def get_client_summary(
     client_id: int = Path(..., gt=0, description="Client ID"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
 ):
     """
     Get comprehensive client summary including:
@@ -858,7 +859,7 @@ async def get_client_audit_trail(
     client_id: int = Path(..., gt=0, description="Client ID"),
     limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
 ):
     """
     Get audit trail for a specific client.
@@ -1367,187 +1368,9 @@ Use null for unclear fields. Return ONLY JSON."""
 # ================================================
 
 
-class DocumentUploadResponse(BaseModel):
-    """Response model for document upload"""
-
-    success: bool
-    document_id: int | None = None
-    file_url: str | None = None
-    file_id: str | None = None
-    message: str | None = None
-
-
-@router.post("/{client_id}/documents/upload", response_model=DocumentUploadResponse)
-async def upload_client_document(
-    client_id: int = Path(..., gt=0, description="Client ID"),
-    file: bytes = Body(..., description="File binary data (base64 encoded)"),
-    file_name: str = Body(..., description="Original filename"),
-    document_type: str = Body(..., description="Document type (passport, visa, etc)"),
-    mime_type: str = Body(default="application/octet-stream", description="MIME type"),
-    notes: str | None = Body(default=None, description="Optional notes"),
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    Upload a document for a client (passport, visa, etc.) to Google Drive.
-
-    This endpoint accepts file binary data (base64 encoded) and metadata,
-    uploads the file to Google Drive, and stores the document record in the database.
-
-    Prerequisites:
-    - Client must have a Google Drive folder created (call POST /clients/{id}/create-drive-folder first)
-
-    Args:
-        client_id: Client ID
-        file: File binary data (base64 encoded)
-        file_name: Original filename
-        document_type: Document type (passport, visa, sponsor_letter, etc)
-        mime_type: MIME type (image/jpeg, image/png, application/pdf, etc)
-        notes: Optional notes about the document
-
-    Returns:
-        DocumentUploadResponse with document_id, file_url, and Google Drive file_id
-    """
-    import base64
-
-    from backend.services.integrations.google_drive_service import GoogleDriveService
-
-    try:
-        user_email = current_user.get("email", "").lower()
-
-        # Verify client exists and has Drive folder
-        async with db_pool.acquire() as conn:
-            client = await conn.fetchrow(
-                "SELECT id, full_name, google_drive_folder_id FROM clients WHERE id = $1",
-                client_id
-            )
-            if not client:
-                return DocumentUploadResponse(success=False, message=f"Client {client_id} not found")
-
-            if not client["google_drive_folder_id"]:
-                return DocumentUploadResponse(
-                    success=False,
-                    message="Client does not have a Google Drive folder. Please create one first via /clients/{id}/create-drive-folder"
-                )
-
-        # Initialize Google Drive service
-        drive_service = GoogleDriveService(db_pool)
-
-        # Check if system is connected to Google Drive
-        is_connected = await drive_service.is_connected(GoogleDriveService.SYSTEM_USER_ID)
-        if not is_connected:
-            return DocumentUploadResponse(
-                success=False,
-                message="Google Drive not connected. Please connect the system account first."
-            )
-
-        root_folder_id = client["google_drive_folder_id"]
-
-        # Determine subfolder based on document type
-        subfolder_name = "00_Profile" if document_type.lower() in ["passport", "id_card"] else "01_Immigration"
-
-        # List files in root folder to find subfolder
-        folder_files = await drive_service.list_folder_files(
-            user_id=GoogleDriveService.SYSTEM_USER_ID,
-            folder_id=root_folder_id
-        )
-
-        # Find subfolder ID
-        subfolder_id = None
-        for item in folder_files.get("files", []):
-            if item.get("name") == subfolder_name and item.get("mimeType") == "application/vnd.google-apps.folder":
-                subfolder_id = item["id"]
-                break
-
-        # If subfolder doesn't exist, create it
-        if not subfolder_id:
-            try:
-                subfolder = await drive_service.create_folder(
-                    user_id=GoogleDriveService.SYSTEM_USER_ID,
-                    name=subfolder_name,
-                    parent_id=root_folder_id
-                )
-                subfolder_id = subfolder["id"]
-                logger.info(f"Created subfolder {subfolder_name} for client {client_id}")
-            except Exception as e:
-                return DocumentUploadResponse(
-                    success=False,
-                    message=f"Failed to create subfolder: {str(e)}"
-                )
-
-        # Decode base64 file data
-        try:
-            file_data = base64.b64decode(file)
-        except Exception as e:
-            return DocumentUploadResponse(success=False, message=f"Invalid base64 file data: {str(e)}")
-
-        # Upload file to Google Drive
-        try:
-            upload_result = await drive_service.upload_file_to_folder(
-                user_id=GoogleDriveService.SYSTEM_USER_ID,
-                folder_id=subfolder_id,
-                file_content=file_data,
-                file_name=file_name,
-                mime_type=mime_type
-            )
-
-            drive_file_id = upload_result["id"]
-            drive_file_url = upload_result.get("download_url", "")
-
-        except Exception as e:
-            return DocumentUploadResponse(
-                success=False,
-                message=f"Failed to upload to Google Drive: {str(e)}"
-            )
-
-        # Calculate file size in KB
-        file_size_kb = len(file_data) // 1024
-
-        # Store document record in database
-        async with db_pool.acquire() as conn:
-            doc_row = await conn.fetchrow(
-                """
-                INSERT INTO documents (
-                    client_id,
-                    document_type,
-                    file_name,
-                    storage_type,
-                    file_id,
-                    file_url,
-                    file_size_kb,
-                    mime_type,
-                    status,
-                    uploaded_by,
-                    notes
-                ) VALUES (
-                    $1, $2, $3, 'google_drive', $4, $5, $6, $7, 'received', $8, $9
-                )
-                RETURNING id, file_url, file_id
-                """,
-                client_id,
-                document_type,
-                file_name,
-                drive_file_id,
-                drive_file_url,
-                file_size_kb,
-                mime_type,
-                user_email,
-                notes,
-            )
-
-        logger.info(f"Uploaded document {doc_row['id']} for client {client_id}: {file_name} ({file_size_kb}KB)")
-
-        return DocumentUploadResponse(
-            success=True,
-            document_id=doc_row["id"],
-            file_url=doc_row["file_url"],
-            file_id=doc_row["file_id"],
-            message=f"Document uploaded successfully: {file_name}",
-        )
-
-    except Exception as e:
-        logger.error(f"Document upload failed for client {client_id}: {e}", exc_info=True)
-        return DocumentUploadResponse(success=False, message=f"Upload failed: {str(e)}")
+# NOTE: Document upload endpoint moved to crm_enhanced.py
+# Path: POST /api/crm/clients/{client_id}/documents/upload
+# Uses DocumentUploadBase64 model with proper Pydantic validation
 
 
 @router.delete("/documents/{document_id}")
@@ -1613,4 +1436,4 @@ async def delete_client_document(
         raise
     except Exception as e:
         logger.error(f"Document deletion failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
