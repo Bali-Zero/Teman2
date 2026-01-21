@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import Script from 'next/script';
+// Script removed in favor of SchemaInjector
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { ArrowLeft, Check, Clock, Phone, FileText, AlertCircle, ChevronRight } from 'lucide-react';
 import { SERVICES_DATA } from '@/data/services_data';
 import ServicePricing from '@/components/services/ServicePricing';
+import { SchemaInjector } from '@/components/seo/SchemaInjector';
 import { logger } from '@/lib/logger';
 
 export async function generateMetadata({
@@ -105,22 +106,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      {/* JSON-LD Schema Injection - In head for Googlebot using beforeInteractive strategy */}
-      {jsonLdSchemas.map((schema, index) => {
-        const schemaType = schema['@type'] || 'schema';
-        const uniqueId = `${schemaType.toLowerCase()}-${index}`;
-        return (
-          <Script
-            key={uniqueId}
-            id={`json-ld-${uniqueId}`}
-            type="application/ld+json"
-            strategy="beforeInteractive"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(schema).replace(/</g, '\\u003c'),
-            }}
-          />
-        );
-      })}
+      {/* JSON-LD Schema Injection - Uses native <script> for perfect SEO */}
+      <SchemaInjector schemas={jsonLdSchemas} />
       <div className="min-h-screen bg-[#051C2C]">
         {/* Breadcrumb */}
       <div className="border-b border-white/10">
