@@ -104,10 +104,24 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const jsonLdSchemas = [serviceSchema, faqSchema];
 
   return (
-    <div className="min-h-screen bg-[#051C2C]">
-      {/* JSON-LD Schema Injection */}
-      <SchemaInjector schemas={jsonLdSchemas} />
-      {/* Breadcrumb */}
+    <>
+      {/* JSON-LD Schema Injection - In head for Googlebot */}
+      {jsonLdSchemas.map((schema, index) => {
+        const schemaType = schema['@type'] || 'schema';
+        const uniqueId = `${schemaType.toLowerCase()}-${index}`;
+        return (
+          <script
+            key={uniqueId}
+            id={`json-ld-${uniqueId}`}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(schema).replace(/</g, '\\u003c'),
+            }}
+          />
+        );
+      })}
+      <div className="min-h-screen bg-[#051C2C]">
+        {/* Breadcrumb */}
       <div className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-4">
           <nav className="flex items-center gap-2 text-sm">
@@ -327,6 +341,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
