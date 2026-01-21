@@ -203,6 +203,7 @@ export default function ClientiPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -224,6 +225,11 @@ export default function ClientiPage() {
       clearInterval(interval);
       clearTimeout(timeout);
     };
+  }, []);
+
+  // Fix hydration mismatch by detecting client-side rendering
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
   // Initial load
@@ -304,7 +310,8 @@ export default function ClientiPage() {
   };
 
   // Filtering (all clients visible to all users)
-  const visibleClients = profileLoaded ? clients : [];
+  // Prevent hydration mismatch by only showing clients after client-side mount
+  const visibleClients = (profileLoaded && isMounted) ? clients : [];
   const uniqueAssignees = Array.from(
     new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean))
   );
