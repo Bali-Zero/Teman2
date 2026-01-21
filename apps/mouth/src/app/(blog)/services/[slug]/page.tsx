@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { ArrowLeft, Check, Clock, Phone, FileText, AlertCircle, ChevronRight } from 'lucide-react';
-import { SERVICES_DATA } from '@/data/services_data';
+import { SERVICES_DATA, type ServiceData } from '@/data/services_data';
 import ServicePricing from '@/components/services/ServicePricing';
 import { logger } from '@/lib/logger';
 
@@ -179,7 +179,25 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       </section>
 
       {/* Pricing Table - Client Component for Interactivity */}
-      <ServicePricing service={service} slug={slug} />
+      {/* Exclude icon (React component) from serialization - it cannot be passed to Client Components */}
+      <ServicePricing 
+        service={{
+          name: service.name,
+          slug: service.slug,
+          tagline: service.tagline,
+          description: service.description,
+          bgColor: service.bgColor,
+          iconColor: service.iconColor,
+          timeline: service.timeline,
+          documentsRequired: service.documentsRequired,
+          validity: service.validity,
+          packages: service.packages,
+          included: service.included,
+          requirements: service.requirements,
+          faqs: service.faqs,
+        } as Omit<ServiceData, 'icon'>} 
+        slug={slug} 
+      />
 
       {/* What's Included */}
       <section className="border-b border-white/10">

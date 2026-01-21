@@ -4,10 +4,16 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Check, X, Info, Phone } from 'lucide-react';
-import type { ServiceData, ServicePackage } from '@/data/services_data';
+import type { ServicePackage } from '@/data/services_data';
+
+// ServiceData without icon (React component cannot be serialized)
+type ServiceDataWithoutIcon = Omit<
+  import('@/data/services_data').ServiceData,
+  'icon'
+>;
 
 interface ServicePricingProps {
-  service: ServiceData;
+  service: ServiceDataWithoutIcon;
   slug: string;
 }
 
