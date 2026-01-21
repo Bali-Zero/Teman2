@@ -313,10 +313,8 @@ async def get_client_profile(
 ):
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
+    RBAC REMOVED: All authenticated users can view all client profiles.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with pool.acquire() as conn:
         # Get client with extended fields
         client = await conn.fetchrow(
@@ -337,13 +335,6 @@ async def get_client_profile(
 
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
-
-        # RBAC: Check if user has access to this client
-        if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
-            logger.warning(f"RBAC: User {user_email} denied access to client profile {client_id}")
-            raise HTTPException(
-                status_code=403, detail="You don't have access to this client profile"
-            )
 
         # Get family members
         family_members = await conn.fetch(
@@ -464,18 +455,8 @@ async def update_client_profile(
 ):
     """
     Update client profile fields (avatar, Google Drive folder, etc.)
+    RBAC REMOVED: All authenticated users can update client profiles.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
-    async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
     update_fields = []
     values = []
     param_num = 1
@@ -532,19 +513,11 @@ async def update_client_profile(
 async def get_family_members(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
 ):
-    """Get all family members for a client."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Get all family members for a client.
+    RBAC REMOVED: All authenticated users can view family members.
+    """
     async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-
         members = await conn.fetch(
             """
             SELECT
@@ -586,18 +559,15 @@ async def create_family_member(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Add a family member to a client."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Add a family member to a client.
+    RBAC REMOVED: All authenticated users can create family members.
+    """
     async with pool.acquire() as conn:
-        # Verify client exists and check access
-        client = await conn.fetchrow("SELECT id, assigned_to FROM clients WHERE id = $1", client_id)
+        # Verify client exists
+        client = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
 
         # Sanitize date fields - convert strings to date objects for asyncpg
         date_of_birth = None
@@ -655,18 +625,10 @@ async def update_family_member(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Update a family member."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
-    async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
+    """
+    Update a family member.
+    RBAC REMOVED: All authenticated users can update family members.
+    """
     # Date fields that need string → date object conversion for asyncpg
     date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
 
@@ -718,19 +680,11 @@ async def delete_family_member(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Delete a family member."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Delete a family member.
+    RBAC REMOVED: All authenticated users can delete family members.
+    """
     async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-
         result = await conn.execute(
             "DELETE FROM client_family_members WHERE id = $1 AND client_id = $2",
             member_id,
@@ -757,19 +711,11 @@ async def get_client_documents(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Get all documents for a client, optionally filtered by category."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Get all documents for a client, optionally filtered by category.
+    RBAC REMOVED: All authenticated users can view documents.
+    """
     async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-
         query = """
             SELECT
                 d.id, d.document_type, d.document_category,
@@ -813,19 +759,11 @@ async def create_document(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Add a document to a client. Auto-triggers OCR for passport documents."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Add a document to a client. Auto-triggers OCR for passport documents.
+    RBAC REMOVED: All authenticated users can create documents.
+    """
     async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-
         # Sanitize date field - convert string to date object for asyncpg
         expiry_date = None
         if data.expiry_date:
@@ -881,6 +819,7 @@ async def create_documents_bulk(
 ):
     """
     Bulk insert documents for a client - optimized for migration.
+    RBAC REMOVED: All authenticated users can bulk create documents.
 
     This endpoint allows inserting multiple documents in a single transaction,
     significantly improving performance during large data migrations.
@@ -902,10 +841,9 @@ async def create_documents_bulk(
         }
 
     Raises:
-        HTTPException: If max limit exceeded or access denied
+        HTTPException: If max limit exceeded or client not found
     """
     user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
 
     # Enforce maximum batch size
     MAX_BATCH_SIZE = 100
@@ -919,16 +857,10 @@ async def create_documents_bulk(
         raise HTTPException(status_code=400, detail="No documents provided")
 
     async with pool.acquire() as conn:
-        # Check client exists and user has access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        # Check client exists
+        check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
         if not check:
             raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(
-                status_code=403,
-                detail="You don't have access to this client",
-            )
 
         inserted_ids = []
         ocr_count = 0
@@ -1013,18 +945,10 @@ async def update_document(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Update a document."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
-    async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
+    """
+    Update a document.
+    RBAC REMOVED: All authenticated users can update documents.
+    """
     # Date field that needs string → date object conversion for asyncpg
     date_fields = {"expiry_date"}
 
@@ -1077,19 +1001,11 @@ async def archive_document(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Archive or delete a document."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Archive or delete a document.
+    RBAC REMOVED: All authenticated users can archive/delete documents.
+    """
     async with pool.acquire() as conn:
-        # Check access
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-
         if permanent:
             result = await conn.execute(
                 "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id
@@ -1142,10 +1058,11 @@ async def get_all_expiry_alerts(
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
-    """Get all expiry alerts across all clients (for team dashboard)."""
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
+    """
+    Get all expiry alerts across all clients (for team dashboard).
+    RBAC REMOVED: All authenticated users can view all expiry alerts.
+    Optional filtering by assigned_to is available as a query parameter.
+    """
     async with pool.acquire() as conn:
         query = """
             SELECT
@@ -1157,14 +1074,8 @@ async def get_all_expiry_alerts(
         params = []
         param_num = 1
 
-        # RBAC: Non-admins only see their assigned clients' alerts
-        if not user_is_admin:
-            query += f" AND assigned_to = ${param_num}"
-            params.append(user_email)
-            param_num += 1
-            logger.info(f"RBAC: User {user_email} alerts filtered to their assigned clients")
-        elif assigned_to:
-            # Admins can filter by specific assigned_to
+        # Optional filter by assigned_to (user choice, not RBAC enforcement)
+        if assigned_to:
             query += f" AND assigned_to = ${param_num}"
             params.append(assigned_to)
             param_num += 1
