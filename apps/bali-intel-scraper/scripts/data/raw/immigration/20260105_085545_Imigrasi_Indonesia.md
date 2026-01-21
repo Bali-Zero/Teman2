@@ -12,7 +12,7 @@ score_reason: Tax law changes impact expats
 extraction_method: trafilatura
 ---
 
-# Operasi Wirawaspada dan Pertambangan, Imigrasi Amankan 220 WNA Diduga  Melanggar Izin Tinggal – Direktorat Jenderal Imigrasi
+# Operasi Wirawaspada dan Pertambangan, Imigrasi Amankan 220 WNA Diduga Melanggar Izin Tinggal – Direktorat Jenderal Imigrasi
 
 **Source:** Imigrasi Indonesia (T1)
 **Relevance Score:** 80/100 (Tax law changes impact expats)

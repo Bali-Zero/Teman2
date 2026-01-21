@@ -151,7 +151,15 @@ export class ZantaraAIWriter {
           trigger.processed = true;
           generated++;
         } catch (error) {
-          logger.error(`Failed to generate article for trigger: ${trigger.topic}`, { component: 'ZantaraAIWriter', action: 'processTriggers', metadata: { triggerTopic: trigger.topic } }, toError(error));
+          logger.error(
+            `Failed to generate article for trigger: ${trigger.topic}`,
+            {
+              component: 'ZantaraAIWriter',
+              action: 'processTriggers',
+              metadata: { triggerTopic: trigger.topic },
+            },
+            toError(error)
+          );
         }
       }
     }
@@ -340,7 +348,11 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return images?.[0]?.url || this.getDefaultCoverImage(category);
       }
     } catch (error) {
-      logger.error('Image generation failed', { component: 'ZantaraAIWriter', action: 'generateCoverImage', metadata: { category } }, toError(error));
+      logger.error(
+        'Image generation failed',
+        { component: 'ZantaraAIWriter', action: 'generateCoverImage', metadata: { category } },
+        toError(error)
+      );
     }
 
     return this.getDefaultCoverImage(category);
@@ -387,7 +399,15 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return articleIds || [];
       }
     } catch (error) {
-      logger.error('Failed to find related articles', { component: 'ZantaraAIWriter', action: 'findRelatedArticles', metadata: { topic, category } }, toError(error));
+      logger.error(
+        'Failed to find related articles',
+        {
+          component: 'ZantaraAIWriter',
+          action: 'findRelatedArticles',
+          metadata: { topic, category },
+        },
+        toError(error)
+      );
     }
 
     return [];
@@ -426,7 +446,11 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         );
       }
     } catch (error) {
-      logger.error('Failed to check government sources', { component: 'ZantaraAIWriter', action: 'checkGovernmentSources' }, toError(error));
+      logger.error(
+        'Failed to check government sources',
+        { component: 'ZantaraAIWriter', action: 'checkGovernmentSources' },
+        toError(error)
+      );
     }
 
     return [];
@@ -454,7 +478,11 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
           }));
       }
     } catch (error) {
-      logger.error('Failed to check news sources', { component: 'ZantaraAIWriter', action: 'checkNewsSources' }, toError(error));
+      logger.error(
+        'Failed to check news sources',
+        { component: 'ZantaraAIWriter', action: 'checkNewsSources' },
+        toError(error)
+      );
     }
 
     return [];
@@ -482,7 +510,11 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         );
       }
     } catch (error) {
-      logger.error('Failed to analyze client questions', { component: 'ZantaraAIWriter', action: 'analyzeClientQuestions' }, toError(error));
+      logger.error(
+        'Failed to analyze client questions',
+        { component: 'ZantaraAIWriter', action: 'analyzeClientQuestions' },
+        toError(error)
+      );
     }
 
     return [];
@@ -504,7 +536,11 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return exists;
       }
     } catch (error) {
-      logger.error('Failed to check for duplicates', { component: 'ZantaraAIWriter', action: 'checkSimilarArticleExists', metadata: { topic } }, toError(error));
+      logger.error(
+        'Failed to check for duplicates',
+        { component: 'ZantaraAIWriter', action: 'checkSimilarArticleExists', metadata: { topic } },
+        toError(error)
+      );
     }
 
     return false;
@@ -538,7 +574,15 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         }),
       });
     } catch (error) {
-      logger.error('Failed to notify editorial team', { component: 'ZantaraAIWriter', action: 'notifyEditorialTeam', metadata: { articleTitle: article.title } }, toError(error));
+      logger.error(
+        'Failed to notify editorial team',
+        {
+          component: 'ZantaraAIWriter',
+          action: 'notifyEditorialTeam',
+          metadata: { articleTitle: article.title },
+        },
+        toError(error)
+      );
     }
   }
 

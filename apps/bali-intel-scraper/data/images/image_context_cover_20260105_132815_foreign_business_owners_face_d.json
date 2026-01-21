@@ -16,11 +16,7 @@
       "PT setup",
       "coworking"
     ],
-    "emotional_range": [
-      "aspiration → action",
-      "complexity → clarity",
-      "idea → execution"
-    ],
+    "emotional_range": ["aspiration → action", "complexity → clarity", "idea → execution"],
     "setting_options": [
       "coworking space",
       "business meeting",

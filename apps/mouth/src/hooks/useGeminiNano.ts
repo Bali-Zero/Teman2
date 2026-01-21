@@ -165,7 +165,11 @@ export const useGeminiNano = (): UseGeminiNanoReturn => {
         try {
           sessionRef.current.destroy();
         } catch (e) {
-          logger.error('Error destroying session', { component: 'useGeminiNano' }, e instanceof Error ? e : new Error(String(e)));
+          logger.error(
+            'Error destroying session',
+            { component: 'useGeminiNano' },
+            e instanceof Error ? e : new Error(String(e))
+          );
         }
       }
     };

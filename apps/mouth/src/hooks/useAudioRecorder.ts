@@ -61,7 +61,12 @@ export const useAudioRecorder = () => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (error) {
-      logger.error('Error accessing microphone:', error, { component: "AUTO", action: "error" }, toError('Error accessing microphone:', error));
+      logger.error(
+        'Error accessing microphone:',
+        error,
+        { component: 'AUTO', action: 'error' },
+        toError('Error accessing microphone:', error)
+      );
       throw error;
     }
   }, []);

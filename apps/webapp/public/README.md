@@ -5,10 +5,11 @@ Pagina HTML statica per testare Google MediaPipe Object Detection lato client.
 ## 🚀 Come Usare
 
 1. **Apri il file nel browser:**
+
    ```bash
    # Opzione 1: Apri direttamente il file
    open apps/webapp/public/vision_test.html
-   
+
    # Opzione 2: Usa un server locale (consigliato per evitare problemi CORS)
    cd apps/webapp/public
    python3 -m http.server 8000
@@ -49,12 +50,15 @@ Pagina HTML statica per testare Google MediaPipe Object Detection lato client.
 ## 🐛 Troubleshooting
 
 **Problema:** Il modello non si carica
+
 - Verifica la connessione internet
 - Controlla la console del browser per errori
 
 **Problema:** Nessun oggetto rilevato
+
 - Prova con un'immagine più chiara
 - Assicurati che l'immagine contenga oggetti riconoscibili
 
 **Problema:** Errori CORS
+
 - Usa un server HTTP locale invece di aprire il file direttamente

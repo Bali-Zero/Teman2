@@ -16,11 +16,7 @@
       "document issues",
       "extensions"
     ],
-    "emotional_range": [
-      "frustration → relief",
-      "confusion → clarity",
-      "worry → solution"
-    ],
+    "emotional_range": ["frustration → relief", "confusion → clarity", "worry → solution"],
     "setting_options": [
       "immigration office",
       "service counter",

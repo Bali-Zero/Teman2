@@ -519,7 +519,9 @@ class IntentClassifier:
                     "category": "team_query",
                     "confidence": 0.9,
                     "suggested_ai": "fast",
+                    "requires_team_context": True,
                     "requires_rag_collection": "bali_zero_team",
+                    "skip_rag": True,  # Tier 0: Team Availability handled by Tools/Context, not RAG
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
@@ -669,6 +671,7 @@ class IntentClassifier:
                 "confidence": 0.0,
                 "suggested_ai": "fast",
                 "mode": "small_talk",
+                "skip_rag": True,  # Fallback to unknown should also skip RAG
             }
 
     def _derive_mode(self, category: str, message_lower: str) -> str:

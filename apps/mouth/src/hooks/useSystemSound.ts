@@ -21,7 +21,7 @@ export function useSystemSound(): UseSystemSoundReturn {
 
     // Optional: Log for debugging (can be removed in production)
     if (process.env.NODE_ENV === 'development') {
-      logger.debug(`[SystemSound] Playing: ${soundType}`, { component: "AUTO", action: "log" });
+      logger.debug(`[SystemSound] Playing: ${soundType}`, { component: 'AUTO', action: 'log' });
     }
 
     // Future implementation could:

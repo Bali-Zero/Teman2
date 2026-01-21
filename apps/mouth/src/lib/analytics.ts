@@ -48,7 +48,11 @@ export function trackEvent(
 
   // Log to logger in development
   if (process.env.NODE_ENV === 'development') {
-    logger.debug('Analytics event', { component: 'Analytics', action: 'trackEvent', metadata: { eventName, userId } });
+    logger.debug('Analytics event', {
+      component: 'Analytics',
+      action: 'trackEvent',
+      metadata: { eventName, userId },
+    });
   }
 
   // Send to analytics endpoint if configured
@@ -154,7 +158,11 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
     });
   } catch (error) {
     // Silently fail - don't interrupt user experience for analytics
-    logger.warn('Failed to send analytics event', { component: 'Analytics', action: 'sendAnalyticsEvent' }, toError(error));
+    logger.warn(
+      'Failed to send analytics event',
+      { component: 'Analytics', action: 'sendAnalyticsEvent' },
+      toError(error)
+    );
   }
 }
 

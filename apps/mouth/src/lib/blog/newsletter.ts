@@ -64,7 +64,11 @@ export class NewsletterService {
         message: 'Please check your email to confirm your subscription.',
       };
     } catch (error) {
-      logger.error('Newsletter subscription failed', { component: 'NewsletterService', action: 'subscribe' }, toError(error));
+      logger.error(
+        'Newsletter subscription failed',
+        { component: 'NewsletterService', action: 'subscribe' },
+        toError(error)
+      );
       return {
         success: false,
         message: 'An error occurred. Please try again.',
@@ -87,7 +91,11 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      logger.error('Newsletter confirmation failed', { component: 'NewsletterService', action: 'confirmSubscription' }, toError(error));
+      logger.error(
+        'Newsletter confirmation failed',
+        { component: 'NewsletterService', action: 'confirmSubscription' },
+        toError(error)
+      );
       return false;
     }
   }
@@ -107,7 +115,11 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      logger.error('Newsletter unsubscribe failed', { component: 'NewsletterService', action: 'unsubscribe' }, toError(error));
+      logger.error(
+        'Newsletter unsubscribe failed',
+        { component: 'NewsletterService', action: 'unsubscribe' },
+        toError(error)
+      );
       return false;
     }
   }
@@ -130,7 +142,11 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      logger.error('Newsletter preference update failed', { component: 'NewsletterService', action: 'updatePreferences' }, toError(error));
+      logger.error(
+        'Newsletter preference update failed',
+        { component: 'NewsletterService', action: 'updatePreferences' },
+        toError(error)
+      );
       return false;
     }
   }
@@ -277,7 +293,15 @@ export class NewsletterService {
           });
           sent++;
         } catch (error) {
-          logger.error(`Failed to send digest to ${subscriber.email}`, { component: 'NewsletterService', action: 'sendWeeklyDigest', metadata: { subscriberEmail: subscriber.email } }, toError(error));
+          logger.error(
+            `Failed to send digest to ${subscriber.email}`,
+            {
+              component: 'NewsletterService',
+              action: 'sendWeeklyDigest',
+              metadata: { subscriberEmail: subscriber.email },
+            },
+            toError(error)
+          );
         }
       }
     }
@@ -349,7 +373,15 @@ export class NewsletterService {
         });
         notified++;
       } catch (error) {
-        logger.error(`Failed to notify client ${client.id}`, { component: 'NewsletterService', action: 'notifyRelevantClients', metadata: { clientId: client.id } }, toError(error));
+        logger.error(
+          `Failed to notify client ${client.id}`,
+          {
+            component: 'NewsletterService',
+            action: 'notifyRelevantClients',
+            metadata: { clientId: client.id },
+          },
+          toError(error)
+        );
       }
     }
 
@@ -362,7 +394,10 @@ export class NewsletterService {
 
   private static async syncToZoho(subscriber: NewsletterSubscriber): Promise<void> {
     if (!ZOHO_API_URL || !ZOHO_ACCESS_TOKEN) {
-      logger.warn('Zoho integration not configured', { component: 'NewsletterService', action: 'syncToZoho' });
+      logger.warn('Zoho integration not configured', {
+        component: 'NewsletterService',
+        action: 'syncToZoho',
+      });
       return;
     }
 
@@ -391,7 +426,11 @@ export class NewsletterService {
         }),
       });
     } catch (error) {
-      logger.error('Zoho sync failed', { component: 'NewsletterService', action: 'syncToZoho' }, toError(error));
+      logger.error(
+        'Zoho sync failed',
+        { component: 'NewsletterService', action: 'syncToZoho' },
+        toError(error)
+      );
     }
   }
 

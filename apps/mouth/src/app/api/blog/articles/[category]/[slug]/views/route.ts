@@ -39,12 +39,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!response.ok) {
       // Silent fail for view tracking
-      logger.error('Failed to track view:', response.status, { component: "AUTO", action: "error" }, toError('Failed to track view:', response.status));
+      logger.error(
+        'Failed to track view:',
+        response.status,
+        { component: 'AUTO', action: 'error' },
+        toError('Failed to track view:', response.status)
+      );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('View tracking error:', error, { component: "AUTO", action: "error" }, toError('View tracking error:', error));
+    logger.error(
+      'View tracking error:',
+      error,
+      { component: 'AUTO', action: 'error' },
+      toError('View tracking error:', error)
+    );
     // Silent fail - don't disrupt user experience
     return NextResponse.json({ success: true });
   }
@@ -72,7 +82,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    logger.error('Failed to fetch view count:', error, { component: "AUTO", action: "error" }, toError('Failed to fetch view count:', error));
+    logger.error(
+      'Failed to fetch view count:',
+      error,
+      { component: 'AUTO', action: 'error' },
+      toError('Failed to fetch view count:', error)
+    );
     return NextResponse.json({ views: 0 });
   }
 }

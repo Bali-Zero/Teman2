@@ -99,7 +99,12 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
                   const event: AgenticRAGStreamEvent = JSON.parse(data);
                   handleSSEEvent(event);
                 } catch (e) {
-                  logger.error('Failed to parse SSE event:', e, { component: "AUTO", action: "error" }, toError('Failed to parse SSE event:', e));
+                  logger.error(
+                    'Failed to parse SSE event:',
+                    e,
+                    { component: 'AUTO', action: 'error' },
+                    toError('Failed to parse SSE event:', e)
+                  );
                 }
               }
             }

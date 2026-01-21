@@ -32,7 +32,11 @@ export const useEdgeSanitizer = (): UseEdgeSanitizerReturn => {
           const result = await generate(prompt);
           return result.trim();
         } catch (error) {
-          logger.warn('Edge Sanitization failed, returning regex-cleaned text', { component: 'useEdgeSanitizer', action: 'sanitize' }, error instanceof Error ? error : new Error(String(error)));
+          logger.warn(
+            'Edge Sanitization failed, returning regex-cleaned text',
+            { component: 'useEdgeSanitizer', action: 'sanitize' },
+            error instanceof Error ? error : new Error(String(error))
+          );
           return preProcessed;
         }
       }

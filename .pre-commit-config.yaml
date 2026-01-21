@@ -49,9 +49,9 @@ repos:
 
       - id: no-console-statements
         name: No console statements
-        entry: bash -c 'if grep -r "console\.\(log\|debug\|info\|warn\|error\)" --include="*.ts" --include="*.tsx" $@; then echo "❌ Found console statements. Use logger instead."; exit 1; fi'
+        entry: bash -c 'if grep -r "console\.\(log\|debug\|info\|warn\|error\)" --include="*.ts" --include="*.tsx" $@ | grep -v "apps/webapp/src/lib/ai-bridge.ts"; then echo "❌ Found console statements. Use logger instead."; exit 1; fi'
         language: system
-        files: ^apps/mouth/.*\.(ts|tsx)$
+        files: ^apps/(mouth|webapp)/.*\.(ts|tsx)$
         pass_filenames: false
 
       - id: check-todos

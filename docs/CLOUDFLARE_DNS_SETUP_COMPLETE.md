@@ -8,6 +8,7 @@
 ## ✅ Configurazione Completata
 
 ### 1. CNAME Record ✅
+
 - **Record:** `mo` → `balizero.com`
 - **Type:** CNAME
 - **Proxy Status:** ✅ Proxied (cloud arancione)
@@ -15,6 +16,7 @@
 - **Ultima Modifica:** 3 minuti fa
 
 ### 2. Page Rule ✅
+
 - **URL Pattern:** `mo.balizero.com/*`
 - **Action:** Forwarding URL
 - **Status Code:** 301 Permanent Redirect
@@ -26,12 +28,14 @@
 ## 🔍 Verifica
 
 ### DNS Resolution
+
 ```bash
 dig mo.balizero.com +short
 # Dovrebbe risolvere a un IP Cloudflare
 ```
 
 ### HTTP Redirect
+
 ```bash
 curl -I https://mo.balizero.com
 # Dovrebbe restituire:
@@ -45,7 +49,7 @@ curl -I https://mo.balizero.com
 
 1. **Propagazione DNS:** Il record è già attivo (modificato 3 minuti fa)
 2. **Page Rule:** Già configurata e attiva
-3. **Redirect Doppio:** 
+3. **Redirect Doppio:**
    - Page Rule Cloudflare (301 redirect a livello CDN)
    - Middleware Next.js (301 redirect applicativo)
    - Entrambi funzionano insieme per garantire il redirect

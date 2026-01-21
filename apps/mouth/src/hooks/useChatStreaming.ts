@@ -97,7 +97,12 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
           // onError
           (error: Error) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
-            logger.error('Failed to send message:', error, { component: "AUTO", action: "error" }, toError('Failed to send message:', error));
+            logger.error(
+              'Failed to send message:',
+              error,
+              { component: 'AUTO', action: 'error' },
+              toError('Failed to send message:', error)
+            );
             if (isMountedRef.current && !isAbortedRef.current) {
               const err = error as ApiError;
               const errorCode =
@@ -124,7 +129,12 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
         );
       } catch (error) {
         if (!isMountedRef.current || isAbortedRef.current) return;
-        logger.error('Unhandled error in sendMessageStreaming:', error, { component: "AUTO", action: "error" }, toError('Unhandled error in sendMessageStreaming:', error));
+        logger.error(
+          'Unhandled error in sendMessageStreaming:',
+          error,
+          { component: 'AUTO', action: 'error' },
+          toError('Unhandled error in sendMessageStreaming:', error)
+        );
         if (isMountedRef.current && !isAbortedRef.current) {
           setIsStreaming(false);
           callbacks.onError(error as Error);
