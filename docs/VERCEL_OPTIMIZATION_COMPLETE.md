@@ -14,11 +14,13 @@
 **Risparmio:** $240/anno
 
 #### Motivo
+
 - Utilizzo mensile: ~$2.78 (14% del limite Hobby)
 - Hobby plan: 6,000 build minutes/mese (più che sufficiente)
 - Nessuna necessità delle funzionalità Pro
 
 #### Risultato
+
 ✅ Piano cambiato da Pro a Hobby
 ✅ Badge "Hobby" visibile nel dashboard
 ✅ Nessun impatto sulle funzionalità utilizzate
@@ -30,16 +32,14 @@
 **Problema:** Il progetto "nuzantara" veniva ricreato automaticamente ad ogni push
 
 #### Causa Root
+
 Il repository ha un `package.json` nella root con nome "nuzantara":
+
 ```json
 {
   "name": "nuzantara",
   "version": "5.2.0",
-  "workspaces": [
-    "apps/backend-rag",
-    "apps/mouth",
-    "apps/zantara-media/dashboard"
-  ]
+  "workspaces": ["apps/backend-rag", "apps/mouth", "apps/zantara-media/dashboard"]
 }
 ```
 
@@ -61,10 +61,12 @@ Creato file `vercel.json` nella root del repository:
 ```
 
 **Configurazione:**
+
 - `"builds": []` → NON buildare dalla root
 - `"github": { "silent": true }` → Disabilita commenti automatici sui commit
 
 #### Risultato
+
 ✅ Progetto "nuzantara" eliminato
 ✅ File `vercel.json` committato e pushato
 ✅ Vercel NON ricrea più il progetto duplicato
@@ -76,10 +78,10 @@ Creato file `vercel.json` nella root del repository:
 
 ### Progetti Vercel
 
-| Progetto | URL | Root Directory | Status |
-|----------|-----|----------------|--------|
-| mouth | www.balizero.com | apps/mouth | ✅ Attivo |
-| ~~nuzantara~~ | ~~nuzantara.vercel.app~~ | ~~root~~ | ❌ Eliminato |
+| Progetto      | URL                      | Root Directory | Status       |
+| ------------- | ------------------------ | -------------- | ------------ |
+| mouth         | www.balizero.com         | apps/mouth     | ✅ Attivo    |
+| ~~nuzantara~~ | ~~nuzantara.vercel.app~~ | ~~root~~       | ❌ Eliminato |
 
 ### Piano Attuale
 
@@ -93,9 +95,11 @@ Creato file `vercel.json` nella root del repository:
 ## 📝 File Modificati
 
 ### Nuovi File
+
 - ✅ `vercel.json` - Configurazione Vercel per prevenire auto-deployment
 
 ### Commit
+
 ```
 fix(vercel): prevent auto-deployment from repository root
 
