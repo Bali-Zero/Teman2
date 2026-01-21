@@ -21,6 +21,7 @@ import type { Client } from '@/lib/api/crm/crm.types';
 import { CLIENT_STATUSES, COMMON_NATIONALITIES } from '@/lib/api/crm/crm.types';
 import { ClientKanban } from '@/components/crm/ClientKanban';
 import { ClientCard } from '@/components/crm/ClientCard';
+import { logger } from '@/lib/logger';
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -39,50 +40,6 @@ interface Filters {
   status: string;
   nationality: string;
   assigned_to: string;
-}
-
-// ============================================
-// ACCESS CONTROL RULES
-// ============================================
-// ZERO: can see ALL contacts
-// RUSLANA: can see own + Anton, Rina, Dea's contacts
-// OTHER MEMBERS: can only see their OWN contacts
-// ============================================
-
-const ACCESS_RULES = {
-  // Users who can see ALL contacts
-  superAdmins: ['zero'],
-  // Ruslana can see her contacts + these team members' contacts
-  ruslanaCanSee: ['ruslana', 'anton', 'rina', 'dea'],
-};
-
-function getVisibleClients(clients: Client[], currentUserEmail: string): Client[] {
-  if (!currentUserEmail) return [];
-  const emailLower = currentUserEmail.toLowerCase();
-  const userName = emailLower.split('@')[0];
-
-  // ZERO can see all
-  if (ACCESS_RULES.superAdmins.includes(userName)) {
-    return clients;
-  }
-
-  // RUSLANA can see her contacts + Anton, Rina, Dea
-  if (userName === 'ruslana') {
-    return clients.filter((client) => {
-      if (!client.assigned_to) return true; // Unassigned visible to Ruslana
-      if (!client.assigned_to.includes('@')) return false; // Invalid email format
-      const assignedTo = client.assigned_to.toLowerCase().split('@')[0];
-      return ACCESS_RULES.ruslanaCanSee.includes(assignedTo);
-    });
-  }
-
-  // Other members can only see their own contacts
-  return clients.filter((client) => {
-    if (!client.assigned_to) return false; // Unassigned not visible
-    if (!client.assigned_to.includes('@')) return false; // Invalid email format
-    const assignedTo = client.assigned_to.toLowerCase().split('@')[0];
-    return assignedTo === userName;
-  });
 }
 
 /**
@@ -109,8 +66,10 @@ function VirtualizedClientGrid({
   useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth;
-      if (width >= 1024) setColumns(3); // lg: 3 columns
-      else if (width >= 768) setColumns(2); // md: 2 columns
+      if (width >= 1024)
+        setColumns(3); // lg: 3 columns
+      else if (width >= 768)
+        setColumns(2); // md: 2 columns
       else setColumns(1); // sm: 1 column
     };
     updateColumns();
@@ -166,10 +125,7 @@ function VirtualizedClientGrid({
   }, [virtualizer]);
 
   return (
-    <div
-      ref={parentRef}
-      className="flex-1 overflow-auto pb-4 min-h-[400px]"
-    >
+    <div ref={parentRef} className="flex-1 overflow-auto pb-4 min-h-[400px]">
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -285,20 +241,20 @@ export default function ClientiPage() {
       const data = await api.crm.getClients({
         search: searchQuery || undefined,
         limit: PAGE_SIZE,
-        offset: currentOffset
+        offset: currentOffset,
       });
 
       if (reset) {
         setClients(data);
       } else {
-        setClients(prev => [...prev, ...data]);
+        setClients((prev) => [...prev, ...data]);
       }
 
       // If we got fewer than PAGE_SIZE, there's no more data
       setHasMore(data.length === PAGE_SIZE);
       setOffset(currentOffset + data.length);
     } catch (error) {
-      console.error('Failed to load clients:', error);
+      logger.error('Failed to load clients:', error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -331,9 +287,9 @@ export default function ClientiPage() {
   // Handle status change (e.g. from Kanban)
   const handleStatusChange = async (clientId: number, newStatus: string) => {
     // Optimistic update
-    setClients(prev => prev.map(c =>
-      c.id === clientId ? { ...c, status: newStatus as Client['status'] } : c
-    ));
+    setClients((prev) =>
+      prev.map((c) => (c.id === clientId ? { ...c, status: newStatus as Client['status'] } : c))
+    );
 
     try {
       // Assuming we have an updateClient method, otherwise we need to use PATCH endpoint
@@ -341,17 +297,17 @@ export default function ClientiPage() {
       const currentUser = api.getUserProfile();
       await api.crm.updateClient(clientId, { status: newStatus }, currentUser?.email || 'system');
     } catch (error) {
-      console.error('Failed to update status:', error);
+      logger.error('Failed to update status:', error);
       // Revert on error
       loadClients();
     }
   };
 
-  // Visibility & Filtering
-  const visibleClients = profileLoaded && currentUserEmail
-    ? getVisibleClients(clients, currentUserEmail)
-    : [];
-  const uniqueAssignees = Array.from(new Set(visibleClients.map(c => c.assigned_to).filter(Boolean)));
+  // Filtering (all clients visible to all users)
+  const visibleClients = profileLoaded ? clients : [];
+  const uniqueAssignees = Array.from(
+    new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean))
+  );
 
   const filteredClients = visibleClients
     .filter((client) => {
@@ -407,7 +363,8 @@ export default function ClientiPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Clients</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            {filteredClients.length.toLocaleString()} client{filteredClients.length !== 1 ? 's' : ''}
+            {filteredClients.length.toLocaleString()} client
+            {filteredClients.length !== 1 ? 's' : ''}
             {hasMore && ' (scroll for more)'}
             {activeFiltersCount > 0 && ` • filtered from ${visibleClients.length.toLocaleString()}`}
           </p>
@@ -430,7 +387,7 @@ export default function ClientiPage() {
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
-          
+
           <Button className="gap-2" onClick={handleNewClient}>
             <UserPlus className="w-4 h-4" />
             New Client
@@ -484,7 +441,9 @@ export default function ClientiPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">Status</label>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Status
+                </label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -492,12 +451,16 @@ export default function ClientiPage() {
                 >
                   <option value="">All statuses</option>
                   {CLIENT_STATUSES.map(({ value, label }) => (
-                    <option key={value} value={value}>{label}</option>
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">Nationality</label>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Nationality
+                </label>
                 <select
                   value={filters.nationality}
                   onChange={(e) => setFilters({ ...filters, nationality: e.target.value })}
@@ -505,12 +468,16 @@ export default function ClientiPage() {
                 >
                   <option value="">All nationalities</option>
                   {COMMON_NATIONALITIES.map((nat) => (
-                    <option key={nat} value={nat}>{nat}</option>
+                    <option key={nat} value={nat}>
+                      {nat}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">Assigned To</label>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Assigned To
+                </label>
                 <select
                   value={filters.assigned_to}
                   onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}
@@ -518,7 +485,9 @@ export default function ClientiPage() {
                 >
                   <option value="">All team members</option>
                   {uniqueAssignees.map((assignee) => (
-                    <option key={assignee} value={assignee}>{assignee?.split('@')[0]}</option>
+                    <option key={assignee} value={assignee}>
+                      {assignee?.split('@')[0]}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -548,9 +517,12 @@ export default function ClientiPage() {
                 }`}
               >
                 {label}
-                {sortField === field && (
-                  sortOrder === 'asc' ? <SortAsc className="w-3 h-3" /> : <SortDesc className="w-3 h-3" />
-                )}
+                {sortField === field &&
+                  (sortOrder === 'asc' ? (
+                    <SortAsc className="w-3 h-3" />
+                  ) : (
+                    <SortDesc className="w-3 h-3" />
+                  ))}
               </button>
             ))}
           </div>

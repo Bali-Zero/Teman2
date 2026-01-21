@@ -327,20 +327,14 @@ async def list_practices(
         # If called directly, we might not have current_user, but we have user_id
         # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
         if user_id:
-            # We assume user_id is the email in this context or we don't have enough info
-            # For backward compatibility with dashboard_summary, we'll try to use it
-            user_email = user_id.lower()
-            # We don't know if they are admin, so we assume not-admin for safety unless it's a known admin
-            user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+            # All users can see all practices (no RBAC filtering)
+            pass
         elif isinstance(current_user, dict):
-            # API Call: current_user is properly injected as a dict
-            user_email = current_user.get("email", "").lower()
-            user_is_admin = is_crm_admin(current_user)
+            # All users can see all practices (no RBAC filtering)
+            pass
         else:
-            # Fallback (e.g. direct call without user_id)
-            logger.warning("list_practices called without valid user context")
-            user_email = ""
-            user_is_admin = False
+            # All users can see all practices (no RBAC filtering)
+            pass
 
         async with db_pool.acquire() as conn:
             # Build query dynamically
@@ -363,13 +357,6 @@ async def list_practices(
             ]
             params: list[Any] = []
             param_index = 1
-
-            # RBAC: Non-admin users only see their assigned clients
-            if not user_is_admin:
-                query_parts.append(f" AND c.assigned_to = ${param_index}")
-                params.append(user_email)
-                param_index += 1
-                logger.info(f"RBAC: User {user_email} filtered to their assigned clients")
 
             if client_id:
                 query_parts.append(f" AND p.client_id = ${param_index}")
@@ -478,14 +465,9 @@ async def get_practice(
     """
     Get practice details by ID with full client and type info.
 
-    Access Control:
-    - Admin users: Can view any practice
-    - Team members: Can only view practices where they are the Lead
+    All authenticated users can view any practice.
     """
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -510,17 +492,6 @@ async def get_practice(
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
 
-            # RBAC: Check if non-admin user has access to this practice
-            if not user_is_admin:
-                client_lead = (row.get("client_lead") or "").lower()
-                if client_lead != user_email:
-                    logger.warning(
-                        f"RBAC: User {user_email} denied access to practice {practice_id}"
-                    )
-                    raise HTTPException(
-                        status_code=403, detail="You don't have access to this practice"
-                    )
-
             return dict(row)
 
     except HTTPException:
@@ -541,8 +512,7 @@ async def update_practice(
     Update practice information.
 
     Access Control:
-    - Admin users: Can update any practice
-    - Team members: Can only update practices where they are the Lead
+    All authenticated users can update any practice.
 
     Common status values:
     - inquiry
@@ -556,32 +526,7 @@ async def update_practice(
     - cancelled
     """
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
-            # RBAC: First check if user has access to this practice
-            if not user_is_admin:
-                check_row = await conn.fetchrow(
-                    """
-                    SELECT c.assigned_to as client_lead
-                    FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE p.id = $1
-                    """,
-                    practice_id,
-                )
-                if not check_row:
-                    raise HTTPException(status_code=404, detail="Practice not found")
-
-                client_lead = (check_row.get("client_lead") or "").lower()
-                if client_lead != user_email:
-                    logger.warning(
-                        f"RBAC: User {user_email} denied update to practice {practice_id}"
-                    )
-                    raise HTTPException(
-                        status_code=403, detail="You don't have access to update this practice"
-                    )
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -704,40 +649,14 @@ async def delete_practice(
     """
     Delete a practice (soft delete - marks as cancelled).
 
-    Access Control:
-    - Admin users: Can delete any practice
-    - Team members: Can only delete practices for clients they are the Lead of
+    All authenticated users can delete any practice.
 
     The practice is marked as 'cancelled' and not permanently deleted.
     """
     try:
         user_email = current_user.get("email", "").lower()
-        user_is_admin = is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
-            # RBAC: First check if user has access to this practice
-            if not user_is_admin:
-                check_row = await conn.fetchrow(
-                    """
-                    SELECT c.assigned_to as client_lead
-                    FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE p.id = $1
-                    """,
-                    practice_id,
-                )
-                if not check_row:
-                    raise HTTPException(status_code=404, detail="Practice not found")
-
-                client_lead = (check_row.get("client_lead") or "").lower()
-                if client_lead != user_email:
-                    logger.warning(
-                        f"RBAC: User {user_email} denied delete of practice {practice_id}"
-                    )
-                    raise HTTPException(
-                        status_code=403, detail="You don't have access to delete this practice"
-                    )
-
             # Soft delete - mark as cancelled
             row = await conn.fetchrow(
                 """
