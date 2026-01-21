@@ -9,3 +9,5 @@ export {
 } from './JsonLd';
 
 export { HomepageFAQSchema, HomepageServicesSchema, HomepageSEOSchemas } from './HomepageFAQ';
+
+export { SchemaInjector } from './SchemaInjector';

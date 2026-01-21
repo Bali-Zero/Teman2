@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -981,6 +981,7 @@ function OverviewTab({
         {/* Column 4: Visa */}
         <div className="self-start">
           <ActualVisaCard
+            client={client}
             documents={documents}
             activePractices={activePractices}
             formatDate={formatDate}
@@ -1076,6 +1077,9 @@ function PassportCard({
   formatDate: (d: string) => string;
 }) {
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Find passport document from documents
   const passportDoc = documents.find(
@@ -1158,6 +1162,81 @@ function PassportCard({
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type', { description: 'Please upload JPG, PNG, or PDF' });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('File too large', { description: 'Maximum file size is 10MB' });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+
+        const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
+          file: base64,
+          file_name: file.name,
+          document_type: 'passport',
+          mime_type: file.type,
+        })) as {
+          success: boolean;
+          message?: string;
+        };
+
+        if (response.success) {
+          toast.success('Passport uploaded successfully');
+          window.location.reload();
+        } else {
+          toast.error('Upload failed', { description: response.message });
+        }
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error('Upload failed', { description: (err as Error).message });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!passportDoc) return;
+
+    if (!confirm('Delete passport document? This will mark it as deleted.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/crm/documents/${passportDoc.id}`);
+      toast.success('Passport deleted');
+      window.location.reload();
+    } catch (err) {
+      toast.error('Delete failed', { description: (err as Error).message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
       {/* Header */}
@@ -1199,32 +1278,72 @@ function PassportCard({
                 </div>
               </div>
             </button>
-            {/* Extract OCR Button */}
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExtractData}
+                disabled={isExtracting}
+              >
+                {isExtracting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                {isExtracting ? 'Extracting...' : 'Extract Data'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+              <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
+              <span className="text-sm text-[var(--foreground-muted)]">No passport</span>
+            </div>
+
+            {/* Upload Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,application/pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
-              onClick={handleExtractData}
-              disabled={isExtracting}
+              className="w-full mt-3"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
             >
-              {isExtracting ? (
+              {isUploading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <FileText className="w-4 h-4 mr-2" />
+                <Upload className="w-4 h-4 mr-2" />
               )}
-              {isExtracting ? 'Extracting...' : 'Extract Data (OCR)'}
+              {isUploading ? 'Uploading...' : 'Upload Passport'}
             </Button>
-          </div>
-        ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
-            <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-sm text-[var(--foreground-muted)]">No passport</span>
           </div>
         )}
 
         {/* Caption */}
         <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
-          Upload passport in Documents
+          {passportImageUrl ? 'Passport document' : 'Upload passport (JPG, PNG, PDF - max 10MB)'}
         </p>
       </div>
     </div>
@@ -1248,16 +1367,21 @@ const VISA_PRICES: Record<string, { name: string; price: number }> = {
 };
 
 function ActualVisaCard({
+  client,
   documents,
   activePractices,
   formatDate,
   formatCurrency,
 }: {
+  client: ClientProfile['client'];
   documents: ClientDocument[];
   activePractices: ClientProfile['practices'];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
 }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Find latest visa/KITAS document
   const visaDocs = documents.filter(
     (doc) =>
@@ -1295,6 +1419,81 @@ function ActualVisaCard({
 
   const visaPrice = getVisaPrice();
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type', { description: 'Please upload JPG, PNG, or PDF' });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('File too large', { description: 'Maximum file size is 10MB' });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+
+        const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
+          file: base64,
+          file_name: file.name,
+          document_type: 'visa',
+          mime_type: file.type,
+        })) as {
+          success: boolean;
+          message?: string;
+        };
+
+        if (response.success) {
+          toast.success('Visa uploaded successfully');
+          window.location.reload();
+        } else {
+          toast.error('Upload failed', { description: response.message });
+        }
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error('Upload failed', { description: (err as Error).message });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!latestVisa) return;
+
+    if (!confirm('Delete visa document? This will mark it as deleted.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/crm/documents/${latestVisa.id}`);
+      toast.success('Visa deleted');
+      window.location.reload();
+    } catch (err) {
+      toast.error('Delete failed', { description: (err as Error).message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
       {/* Header */}
@@ -1314,45 +1513,87 @@ function ActualVisaCard({
             <p className="text-sm font-medium text-blue-400">Visa on process</p>
           </div>
         ) : latestVisa?.google_drive_file_url ? (
-          <a
-            href={latestVisa.google_drive_file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block relative group"
-          >
-            <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={
-                  getDriveProxyUrl(latestVisa.google_drive_file_url) ||
-                  latestVisa.google_drive_file_url
-                }
-                alt="Visa"
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  if (latestVisa.google_drive_file_url) {
-                    (e.target as HTMLImageElement).src = latestVisa.google_drive_file_url.replace(
-                      '/view',
-                      '/preview'
-                    );
+          <div className="space-y-3">
+            <a
+              href={latestVisa.google_drive_file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block relative group"
+            >
+              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={
+                    getDriveProxyUrl(latestVisa.google_drive_file_url) ||
+                    latestVisa.google_drive_file_url
                   }
-                }}
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  alt="Visa"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    if (latestVisa.google_drive_file_url) {
+                      (e.target as HTMLImageElement).src = latestVisa.google_drive_file_url.replace(
+                        '/view',
+                        '/preview'
+                      );
+                    }
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </div>
-            </div>
-          </a>
+            </a>
+            {/* Delete Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              {isDeleting ? 'Deleting...' : 'Delete Visa'}
+            </Button>
+          </div>
         ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
-            <FileText className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-sm text-[var(--foreground-muted)]">No visa</span>
+          <div>
+            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
+              <FileText className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
+              <span className="text-sm text-[var(--foreground-muted)]">No visa</span>
+            </div>
+
+            {/* Upload Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,application/pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-3"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              {isUploading ? 'Uploading...' : 'Upload Visa'}
+            </Button>
           </div>
         )}
 
         {/* Caption */}
         <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
-          Upload visa in Documents
+          {latestVisa?.google_drive_file_url ? 'Visa document' : 'Upload visa (JPG, PNG, PDF - max 10MB)'}
         </p>
       </div>
     </div>
