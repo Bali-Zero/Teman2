@@ -257,6 +257,38 @@ intel_articles_duplicates = Counter(
     "Duplicate articles rejected",
     ["intel_type"],
 )
+
+# Tier 1 Fluid Intelligence Metrics (Jan 2026 - System Resilience)
+tier1_fallback_activated_total = Counter(
+    "zantara_tier1_fallback_activated_total",
+    "Number of times Tier 1 (General Intelligence) fallback was activated",
+    ["intent_type", "has_context"],  # intent_type: business_simple/casual/etc, has_context: true/false
+)
+tier1_fallback_success_total = Counter(
+    "zantara_tier1_fallback_success_total",
+    "Number of successful Tier 1 fallback responses",
+    ["intent_type"],
+)
+tier1_fallback_failed_total = Counter(
+    "zantara_tier1_fallback_failed_total",
+    "Number of failed Tier 1 fallback attempts",
+    ["intent_type", "error_type"],  # error_type: llm_error/timeout/etc
+)
+strict_abstain_critical_total = Counter(
+    "zantara_strict_abstain_critical_total",
+    "Number of strict ABSTAIN responses for critical domains",
+    ["intent_type", "domain_type"],  # domain_type: visa/legal/pricing/procedure
+)
+abstain_decision_total = Counter(
+    "zantara_abstain_decision_total",
+    "Total ABSTAIN decisions (both strict and Tier 1)",
+    ["decision_type"],  # decision_type: strict_abstain/tier1_fallback
+)
+tier1_response_duration = Histogram(
+    "zantara_tier1_response_duration_seconds",
+    "Duration of Tier 1 fallback response generation",
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
 intel_scraper_latency = Histogram(
     "zantara_intel_scraper_submission_seconds",
     "Time to submit article to backend",
