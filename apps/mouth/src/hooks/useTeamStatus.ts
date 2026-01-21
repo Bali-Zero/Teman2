@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 
 const logError = (...args: unknown[]) => {
-  console.error(...args);
+  logger.error(...args, { component: "AUTO", action: "error" }, toError(...args));
 };
 
 export function useTeamStatus() {

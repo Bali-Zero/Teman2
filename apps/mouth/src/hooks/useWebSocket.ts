@@ -75,7 +75,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(() => {
     const token = api.getToken();
     if (!token) {
-      console.warn('No auth token for WebSocket');
+      logger.warn('No auth token for WebSocket', { component: "AUTO", action: "warn" });
       return;
     }
 
@@ -98,7 +98,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     const ws = new WebSocket(`${wsBaseUrl}/ws`, [`bearer.${token}`]);
 
     ws.onopen = () => {
-      // console.log('WebSocket connected');
+      // logger.debug('WebSocket connected', { component: "AUTO", action: "log" });
       setIsConnected(true);
       setIsConnecting(false);
       reconnectAttemptsRef.current = 0;
@@ -118,12 +118,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         const data = JSON.parse(event.data) as WebSocketMessage;
         onMessage?.(data);
       } catch {
-        console.error('Failed to parse WebSocket message:', event.data);
+        logger.error('Failed to parse WebSocket message:', event.data, { component: "AUTO", action: "error" }, toError('Failed to parse WebSocket message:', event.data));
       }
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      logger.error('WebSocket error:', error, { component: "AUTO", action: "error" }, toError('WebSocket error:', error));
       setIsConnecting(false);
       onError?.(error);
     };
@@ -179,7 +179,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       wsRef.current.send(JSON.stringify(data));
       return true;
     }
-    console.warn('WebSocket not connected');
+    logger.warn('WebSocket not connected', { component: "AUTO", action: "warn" });
     return false;
   }, []);
 

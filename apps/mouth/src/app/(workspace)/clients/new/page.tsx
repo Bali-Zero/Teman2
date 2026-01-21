@@ -27,6 +27,7 @@ import {
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CreateClientParams } from '@/lib/api/crm/crm.types';
+import { logger } from '@/lib/logger';
 import {
   COMMON_NATIONALITIES,
   CLIENT_STATUSES,
@@ -105,7 +106,7 @@ export default function NewClientPage() {
       await api.crm.createClient(cleanData, user.email);
       router.push('/clients');
     } catch (error) {
-      console.error('Failed to create client:', error);
+      logger.error('Failed to create client', { component: 'NewClientPage', action: 'createClient' }, error instanceof Error ? error : new Error(String(error)));
 
       // Extract error message from various error formats
       let errorMessage = 'Failed to create client';
@@ -169,9 +170,9 @@ export default function NewClientPage() {
       // Crop to square and resize to 400x400px
       const resizedImage = await cropToSquare(file, 400, 0.85);
       // setFormData((prev) => ({ ...prev, avatar_url: resizedImage })); // Disabled - type mismatch
-      console.log('Avatar processed:', resizedImage);
+      logger.debug('Avatar processed', { component: 'NewClientPage', action: 'handleAvatarUpload' });
     } catch (error) {
-      console.error('Failed to process image:', error);
+      logger.error('Failed to process image', { component: 'NewClientPage', action: 'handleAvatarUpload' }, error instanceof Error ? error : new Error(String(error)));
       alert('Failed to process image. Please try again.');
     }
   };

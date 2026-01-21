@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { logger } from '@/lib/logger';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -28,7 +29,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     this.setState({ error, errorInfo });
     
     // Log error for debugging
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('ErrorBoundary caught an error', { component: 'ErrorBoundary', action: 'componentDidCatch', metadata: { componentStack: errorInfo.componentStack } }, error);
     
     // Call custom error handler if provided
     if (this.props.onError) {
@@ -107,7 +108,7 @@ export function DashboardErrorBoundary({ children }: { children: React.ReactNode
       fallback={DashboardErrorFallback}
       onError={(error, errorInfo) => {
         // Track dashboard-specific errors
-        console.error('Dashboard Error:', error, errorInfo);
+        logger.error('Dashboard Error', { component: 'DashboardErrorBoundary', action: 'onError', metadata: { componentStack: errorInfo.componentStack } }, error);
       }}
     >
       {children}
@@ -149,7 +150,7 @@ export function ApiErrorBoundary({ children }: { children: React.ReactNode }) {
       fallback={ApiErrorFallback}
       onError={(error, errorInfo) => {
         // Track API-specific errors
-        console.error('API Error:', error, errorInfo);
+        logger.error('API Error', { component: 'ApiErrorBoundary', action: 'onError', metadata: { componentStack: errorInfo.componentStack } }, error);
       }}
     >
       {children}

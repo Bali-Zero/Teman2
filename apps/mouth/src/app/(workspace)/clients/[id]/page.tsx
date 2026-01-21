@@ -46,6 +46,7 @@ import type {
   Interaction,
   Client,
   DocumentCategory,
+  DocumentCategoryType,
 } from '@/lib/api/crm/crm.types';
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from '@/lib/api/crm/crm.types';
 import { cropToSquare } from '@/lib/utils/imageResize';
@@ -2441,7 +2442,7 @@ function AddDocumentModal({
   const [formData, setFormData] = useState({
     file_name: '',
     document_type: '',
-    document_category: 'other' as any,
+    document_category: 'other' as DocumentCategoryType,
     expiry_date: '',
     google_drive_file_url: '',
     family_member_id: '',
@@ -2506,7 +2507,7 @@ function AddDocumentModal({
           <label className="block text-sm font-medium mb-1.5">Category</label>
           <select
             value={formData.document_category}
-            onChange={(e) => setFormData({ ...formData, document_category: e.target.value as any })}
+            onChange={(e) => setFormData({ ...formData, document_category: e.target.value as DocumentCategoryType })}
             className={inputClass}
           >
             <option value="immigration">Immigration</option>
@@ -2640,7 +2641,7 @@ function EditDocumentModal({
             onChange={(e) =>
               setFormData({
                 ...formData,
-                document_category: e.target.value as any,
+                document_category: e.target.value as DocumentCategoryType,
               })
             }
             className={inputClass}

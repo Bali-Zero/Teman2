@@ -11,6 +11,8 @@ import type {
   NewsletterSubscribeRequest,
   CATEGORY_METADATA,
 } from './types';
+import { logger } from '../logger';
+import { toError } from '../types/common';
 
 const ZANTARA_API = process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
 const ZANTARA_API_KEY = process.env.ZANTARA_API_KEY;
@@ -62,7 +64,7 @@ export class NewsletterService {
         message: 'Please check your email to confirm your subscription.',
       };
     } catch (error) {
-      console.error('Newsletter subscription failed:', error);
+      logger.error('Newsletter subscription failed', { component: 'NewsletterService', action: 'subscribe' }, toError(error));
       return {
         success: false,
         message: 'An error occurred. Please try again.',
@@ -85,7 +87,7 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      console.error('Confirmation failed:', error);
+      logger.error('Newsletter confirmation failed', { component: 'NewsletterService', action: 'confirmSubscription' }, toError(error));
       return false;
     }
   }
@@ -105,7 +107,7 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      console.error('Unsubscribe failed:', error);
+      logger.error('Newsletter unsubscribe failed', { component: 'NewsletterService', action: 'unsubscribe' }, toError(error));
       return false;
     }
   }
@@ -128,7 +130,7 @@ export class NewsletterService {
 
       return response.ok;
     } catch (error) {
-      console.error('Preference update failed:', error);
+      logger.error('Newsletter preference update failed', { component: 'NewsletterService', action: 'updatePreferences' }, toError(error));
       return false;
     }
   }
@@ -275,7 +277,7 @@ export class NewsletterService {
           });
           sent++;
         } catch (error) {
-          console.error(`Failed to send digest to ${subscriber.email}:`, error);
+          logger.error(`Failed to send digest to ${subscriber.email}`, { component: 'NewsletterService', action: 'sendWeeklyDigest', metadata: { subscriberEmail: subscriber.email } }, toError(error));
         }
       }
     }
@@ -347,7 +349,7 @@ export class NewsletterService {
         });
         notified++;
       } catch (error) {
-        console.error(`Failed to notify client ${client.id}:`, error);
+        logger.error(`Failed to notify client ${client.id}`, { component: 'NewsletterService', action: 'notifyRelevantClients', metadata: { clientId: client.id } }, toError(error));
       }
     }
 
@@ -360,7 +362,7 @@ export class NewsletterService {
 
   private static async syncToZoho(subscriber: NewsletterSubscriber): Promise<void> {
     if (!ZOHO_API_URL || !ZOHO_ACCESS_TOKEN) {
-      console.warn('Zoho integration not configured');
+      logger.warn('Zoho integration not configured', { component: 'NewsletterService', action: 'syncToZoho' });
       return;
     }
 
@@ -389,7 +391,7 @@ export class NewsletterService {
         }),
       });
     } catch (error) {
-      console.error('Zoho sync failed:', error);
+      logger.error('Zoho sync failed', { component: 'NewsletterService', action: 'syncToZoho' }, toError(error));
     }
   }
 

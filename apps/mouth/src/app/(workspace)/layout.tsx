@@ -7,6 +7,7 @@ import { Header } from '@/components/workspace/Header';
 import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { useTeamStatus } from '@/hooks/useTeamStatus';
+import { logger } from '@/lib/logger';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -60,7 +61,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         hoursToday: undefined,
       });
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile', { component: 'WorkspaceLayout', action: 'loadProfile' }, error instanceof Error ? error : new Error(String(error)));
     }
   }, []);
 
@@ -97,9 +98,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             new Promise((resolve) => setTimeout(resolve, 5000)), // 5s timeout
           ]).catch(() => {
             // Clock status failed, but continue anyway
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn('Clock status load failed or timed out, continuing anyway');
-            }
+            logger.warn('Clock status load failed or timed out, continuing anyway', { component: 'WorkspaceLayout', action: 'loadClockStatus' });
           });
         } catch (error) {
           // If profile load fails, might be auth issue - redirect to login
@@ -131,7 +130,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     try {
       await api.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error', { component: 'WorkspaceLayout', action: 'logout' }, error instanceof Error ? error : new Error(String(error)));
     } finally {
       router.push('/login');
     }

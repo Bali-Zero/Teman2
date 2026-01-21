@@ -27,25 +27,25 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     const activeSessions = conversationMonitor.getActiveSessions();
 
     console.group('📊 Conversation Monitoring Summary');
-    console.log('Active Sessions:', summary.activeSessions);
-    console.log('Total Turns:', summary.totalTurns);
-    console.log('Total Errors:', summary.totalErrors);
-    console.log('Total Timeouts:', summary.totalTimeouts);
-    console.log('Total Rate Limit Hits:', summary.totalRateLimitHits);
-    console.log('');
+    logger.debug('Active Sessions:', summary.activeSessions, { component: "AUTO", action: "log" });
+    logger.debug('Total Turns:', summary.totalTurns, { component: "AUTO", action: "log" });
+    logger.debug('Total Errors:', summary.totalErrors, { component: "AUTO", action: "log" });
+    logger.debug('Total Timeouts:', summary.totalTimeouts, { component: "AUTO", action: "log" });
+    logger.debug('Total Rate Limit Hits:', summary.totalRateLimitHits, { component: "AUTO", action: "log" });
+    logger.debug('', { component: "AUTO", action: "log" });
 
     if (activeSessions.length > 0) {
       console.group('Active Sessions Details');
       activeSessions.forEach((session) => {
         const duration = Date.now() - session.startTime.getTime();
         const durationMinutes = Math.floor(duration / 60000);
-        console.log(`Session ${session.sessionId.substring(0, 8)}...`);
-        console.log(`  Turns: ${session.turnCount}`);
-        console.log(`  Duration: ${durationMinutes} minutes`);
-        console.log(`  Errors: ${session.errors.length}`);
-        console.log(`  Timeouts: ${session.timeouts}`);
-        console.log(`  Rate Limits: ${session.rateLimitHits}`);
-        console.log('');
+        logger.debug(`Session ${session.sessionId.substring(0, 8, { component: "AUTO", action: "log" })}...`);
+        logger.debug(`  Turns: ${session.turnCount}`, { component: "AUTO", action: "log" });
+        logger.debug(`  Duration: ${durationMinutes} minutes`, { component: "AUTO", action: "log" });
+        logger.debug(`  Errors: ${session.errors.length}`, { component: "AUTO", action: "log" });
+        logger.debug(`  Timeouts: ${session.timeouts}`, { component: "AUTO", action: "log" });
+        logger.debug(`  Rate Limits: ${session.rateLimitHits}`, { component: "AUTO", action: "log" });
+        logger.debug('', { component: "AUTO", action: "log" });
       });
       console.groupEnd();
     }
@@ -55,7 +55,7 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Recent Alerts');
       this.alertHistory.slice(-10).forEach((alert) => {
         const timeAgo = Math.floor((Date.now() - alert.timestamp.getTime()) / 1000);
-        console.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data);
+        logger.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data, { component: "AUTO", action: "warn" });
       });
       console.groupEnd();
     }
@@ -102,13 +102,13 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     });
 
     if (alerts.length === 0) {
-      console.log('✅ No active alerts');
+      logger.debug('✅ No active alerts', { component: "AUTO", action: "log" });
       return;
     }
 
     console.group('⚠️ Active Alerts');
     alerts.forEach((alert) => {
-      console.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, alert.data);
+      logger.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8, { component: "AUTO", action: "warn" })}...`, alert.data);
     });
     console.groupEnd();
   }
@@ -119,7 +119,7 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
   showSessionDetails(sessionId: string): void {
     const metrics = conversationMonitor.getMetrics(sessionId);
     if (!metrics) {
-      console.warn(`Session ${sessionId} not found`);
+      logger.warn(`Session ${sessionId} not found`, { component: "AUTO", action: "warn" });
       return;
     }
 
@@ -129,19 +129,19 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     const lastActivitySeconds = Math.floor(lastActivity / 1000);
 
     console.group(`📋 Session Details: ${sessionId.substring(0, 16)}...`);
-    console.log('Turn Count:', metrics.turnCount);
-    console.log('Duration:', `${durationMinutes} minutes`);
-    console.log('Last Activity:', `${lastActivitySeconds} seconds ago`);
-    console.log('Errors:', metrics.errors.length);
-    console.log('Timeouts:', metrics.timeouts);
-    console.log('Rate Limit Hits:', metrics.rateLimitHits);
-    console.log('');
+    logger.debug('Turn Count:', metrics.turnCount, { component: "AUTO", action: "log" });
+    logger.debug('Duration:', `${durationMinutes} minutes`, { component: "AUTO", action: "log" });
+    logger.debug('Last Activity:', `${lastActivitySeconds} seconds ago`, { component: "AUTO", action: "log" });
+    logger.debug('Errors:', metrics.errors.length, { component: "AUTO", action: "log" });
+    logger.debug('Timeouts:', metrics.timeouts, { component: "AUTO", action: "log" });
+    logger.debug('Rate Limit Hits:', metrics.rateLimitHits, { component: "AUTO", action: "log" });
+    logger.debug('', { component: "AUTO", action: "log" });
 
     if (metrics.errors.length > 0) {
       console.group('Error History');
       metrics.errors.forEach((error, idx) => {
         const timeAgo = Math.floor((Date.now() - error.timestamp.getTime()) / 1000);
-        console.error(`[${idx + 1}] [${timeAgo}s ago] ${error.type}:`, error.message);
+        logger.error(`[${idx + 1}] [${timeAgo}s ago] ${error.type}:`, error.message, { component: "AUTO", action: "error" }, toError(`[${idx + 1}] [${timeAgo}s ago] ${error.type}:`, error.message));
       });
       console.groupEnd();
     }
@@ -197,7 +197,7 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       }
     });
 
-    console.log(`🧹 Cleared ${cleared} old sessions (older than ${maxAgeMinutes} minutes)`);
+    logger.debug(`🧹 Cleared ${cleared} old sessions (older than ${maxAgeMinutes} minutes, { component: "AUTO", action: "log" })`);
   }
 
   /**
@@ -245,12 +245,12 @@ export const monitoringHelpers = {
    */
   export: () => {
     const json = monitoringDashboard.exportMetrics();
-    console.log('📥 Metrics exported:');
-    console.log(json);
+    logger.debug('📥 Metrics exported:', { component: "AUTO", action: "log" });
+    logger.debug(json, { component: "AUTO", action: "log" });
     // Also copy to clipboard if possible
     if (navigator.clipboard) {
       navigator.clipboard.writeText(json).then(() => {
-        console.log('✅ Metrics copied to clipboard');
+        logger.debug('✅ Metrics copied to clipboard', { component: "AUTO", action: "log" });
       });
     }
   },
@@ -265,17 +265,17 @@ export const monitoringHelpers = {
    */
   help: () => {
     console.group('📚 Monitoring Dashboard Help');
-    console.log('Available commands:');
-    console.log('  monitoringHelpers.summary()  - Show summary of all metrics');
-    console.log('  monitoringHelpers.alerts()   - Show active alerts');
-    console.log('  monitoringHelpers.export()   - Export metrics as JSON');
-    console.log('  monitoringHelpers.clear(60)   - Clear sessions older than 60 minutes');
-    console.log('  monitoringHelpers.help()      - Show this help');
-    console.log('');
-    console.log('Or use:');
-    console.log('  window.monitoringDashboard.showSummary()');
-    console.log('  window.monitoringDashboard.showAlerts()');
-    console.log('  window.conversationMonitor.getSummary()');
+    logger.debug('Available commands:', { component: "AUTO", action: "log" });
+    logger.debug('  monitoringHelpers.summary(, { component: "AUTO", action: "log" })  - Show summary of all metrics');
+    logger.debug('  monitoringHelpers.alerts(, { component: "AUTO", action: "log" })   - Show active alerts');
+    logger.debug('  monitoringHelpers.export(, { component: "AUTO", action: "log" })   - Export metrics as JSON');
+    logger.debug('  monitoringHelpers.clear(60, { component: "AUTO", action: "log" })   - Clear sessions older than 60 minutes');
+    logger.debug('  monitoringHelpers.help(, { component: "AUTO", action: "log" })      - Show this help');
+    logger.debug('', { component: "AUTO", action: "log" });
+    logger.debug('Or use:', { component: "AUTO", action: "log" });
+    logger.debug('  window.monitoringDashboard.showSummary(, { component: "AUTO", action: "log" })');
+    logger.debug('  window.monitoringDashboard.showAlerts(, { component: "AUTO", action: "log" })');
+    logger.debug('  window.conversationMonitor.getSummary(, { component: "AUTO", action: "log" })');
     console.groupEnd();
   },
 };

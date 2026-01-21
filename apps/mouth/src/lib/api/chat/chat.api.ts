@@ -89,10 +89,10 @@ export class ChatApi {
    * await api.sendMessageStreaming(
    *   'Hello',
    *   sessionId,
-   *   (chunk) => console.log('Chunk:', chunk),
-   *   (full, sources, metadata) => console.log('Done:', full),
-   *   (error) => console.error('Error:', error),
-   *   (step) => console.log('Step:', step)
+   *   (chunk) => logger.debug('Chunk:', chunk, { component: "AUTO", action: "log" }),
+   *   (full, sources, metadata) => logger.debug('Done:', full, { component: "AUTO", action: "log" }),
+   *   (error) => logger.error('Error:', error, { component: "AUTO", action: "error" }, toError('Error:', error)),
+   *   (step) => logger.debug('Step:', step, { component: "AUTO", action: "log" })
    * );
    * ```
    */

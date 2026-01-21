@@ -3,12 +3,16 @@
  * Sends events to the analytics service for monitoring usage patterns
  */
 
+import type { AnalyticsProperties } from './types/common';
+import { logger } from './logger';
+import { toError } from './types/common';
+
 export interface AnalyticsEvent {
   event_name: string;
   timestamp: string;
   user_id?: string;
   session_id?: string;
-  properties: Record<string, any>;
+  properties: AnalyticsProperties;
 }
 
 let sessionId: string | null = null;
@@ -27,7 +31,7 @@ export function initializeAnalytics(): void {
  */
 export function trackEvent(
   eventName: string,
-  properties?: Record<string, any>,
+  properties?: AnalyticsProperties,
   userId?: string
 ): void {
   if (typeof window === 'undefined') return;
@@ -42,9 +46,9 @@ export function trackEvent(
     properties: properties || {},
   };
 
-  // Log to console in development
+  // Log to logger in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('[Analytics]', event);
+    logger.debug('Analytics event', { component: 'Analytics', action: 'trackEvent', metadata: { eventName, userId } });
   }
 
   // Send to analytics endpoint if configured
@@ -150,9 +154,7 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
     });
   } catch (error) {
     // Silently fail - don't interrupt user experience for analytics
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[Analytics] Failed to send event:', error);
-    }
+    logger.warn('Failed to send analytics event', { component: 'Analytics', action: 'sendAnalyticsEvent' }, toError(error));
   }
 }
 

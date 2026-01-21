@@ -3,6 +3,8 @@
  * Provides structured logging for Intelligence Center and all frontend components
  */
 
+import type { Metadata } from './types/common';
+
 export enum LogLevel {
   DEBUG = 'DEBUG',
   INFO = 'INFO',
@@ -19,7 +21,7 @@ export interface LogContext {
   code?: number | string;
   reason?: string;
   note?: string;
-  metadata?: Record<string, any>;
+  metadata?: Metadata;
 }
 
 export interface LogEntry {

@@ -7,6 +7,12 @@
  * Best Practice: Use httpOnly cookies for auth (primary), localStorage as optional enhancement.
  */
 
+import { logger } from '../logger';
+import { toError } from '../types/common';
+
+import { logger } from '../logger';
+import { toError } from '../types/common';
+
 class SafeStorage {
   private isAvailable: boolean;
   private memoryFallback: Map<string, string>;
@@ -28,9 +34,7 @@ class SafeStorage {
       localStorage.removeItem(testKey);
       return true;
     } catch (e) {
-      console.warn(
-        '[SafeStorage] localStorage blocked (Private Browsing or disabled). Using memory fallback.'
-      );
+      logger.warn('[SafeStorage] localStorage blocked (Private Browsing or disabled). Using memory fallback.', { component: 'SafeStorage', action: 'checkAvailability' });
       return false;
     }
   }
@@ -45,7 +49,7 @@ class SafeStorage {
       }
       return this.memoryFallback.get(key) || null;
     } catch (e) {
-      console.warn(`[SafeStorage] getItem failed for key "${key}":`, e);
+      logger.warn(`[SafeStorage] getItem failed for key "${key}"`, { component: 'SafeStorage', action: 'getItem', metadata: { key } }, toError(e));
       return this.memoryFallback.get(key) || null;
     }
   }
@@ -62,7 +66,7 @@ class SafeStorage {
       this.memoryFallback.set(key, value);
       return false; // Indicate fallback was used
     } catch (e) {
-      console.warn(`[SafeStorage] setItem failed for key "${key}":`, e);
+      logger.warn(`[SafeStorage] setItem failed for key "${key}"`, { component: 'SafeStorage', action: 'setItem', metadata: { key } }, toError(e));
       this.memoryFallback.set(key, value);
       return false;
     }
@@ -78,7 +82,7 @@ class SafeStorage {
       }
       this.memoryFallback.delete(key);
     } catch (e) {
-      console.warn(`[SafeStorage] removeItem failed for key "${key}":`, e);
+      logger.warn(`[SafeStorage] removeItem failed for key "${key}"`, { component: 'SafeStorage', action: 'removeItem', metadata: { key } }, toError(e));
       this.memoryFallback.delete(key);
     }
   }
@@ -93,7 +97,7 @@ class SafeStorage {
       }
       this.memoryFallback.clear();
     } catch (e) {
-      console.warn('[SafeStorage] clear failed:', e);
+      logger.warn('[SafeStorage] clear failed', { component: 'SafeStorage', action: 'clear' }, toError(e));
       this.memoryFallback.clear();
     }
   }

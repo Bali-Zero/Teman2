@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           mdxSource, // Serialized MDX for client-side rendering
         });
       } catch (mdxError) {
-        console.error('MDX serialization failed, falling back to raw content:', mdxError);
+        logger.error('MDX serialization failed, falling back to raw content:', mdxError, { component: "AUTO", action: "error" }, toError('MDX serialization failed, falling back to raw content:', mdxError));
         // Fallback: return article without mdxSource (will render as plain text)
         return NextResponse.json({
           ...article,
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   } catch (error) {
-    console.error('Failed to fetch article:', error);
+    logger.error('Failed to fetch article:', error, { component: "AUTO", action: "error" }, toError('Failed to fetch article:', error));
 
     // Try mock data as fallback
     const { category, slug } = await params;

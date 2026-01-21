@@ -14,6 +14,8 @@ import type {
   READING_SPEED_WPM,
   ZANTARA_AI_AUTHOR,
 } from './types';
+import { logger } from '../logger';
+import { toError } from '../types/common';
 
 const ZANTARA_API = process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
 const ZANTARA_API_KEY = process.env.ZANTARA_API_KEY;
@@ -149,7 +151,7 @@ export class ZantaraAIWriter {
           trigger.processed = true;
           generated++;
         } catch (error) {
-          console.error(`Failed to generate article for trigger: ${trigger.topic}`, error);
+          logger.error(`Failed to generate article for trigger: ${trigger.topic}`, { component: 'ZantaraAIWriter', action: 'processTriggers', metadata: { triggerTopic: trigger.topic } }, toError(error));
         }
       }
     }
@@ -338,7 +340,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return images?.[0]?.url || this.getDefaultCoverImage(category);
       }
     } catch (error) {
-      console.error('Image generation failed:', error);
+      logger.error('Image generation failed', { component: 'ZantaraAIWriter', action: 'generateCoverImage', metadata: { category } }, toError(error));
     }
 
     return this.getDefaultCoverImage(category);
@@ -385,7 +387,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return articleIds || [];
       }
     } catch (error) {
-      console.error('Failed to find related articles:', error);
+      logger.error('Failed to find related articles', { component: 'ZantaraAIWriter', action: 'findRelatedArticles', metadata: { topic, category } }, toError(error));
     }
 
     return [];
@@ -424,7 +426,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         );
       }
     } catch (error) {
-      console.error('Failed to check government sources:', error);
+      logger.error('Failed to check government sources', { component: 'ZantaraAIWriter', action: 'checkGovernmentSources' }, toError(error));
     }
 
     return [];
@@ -452,7 +454,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
           }));
       }
     } catch (error) {
-      console.error('Failed to check news sources:', error);
+      logger.error('Failed to check news sources', { component: 'ZantaraAIWriter', action: 'checkNewsSources' }, toError(error));
     }
 
     return [];
@@ -480,7 +482,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         );
       }
     } catch (error) {
-      console.error('Failed to analyze client questions:', error);
+      logger.error('Failed to analyze client questions', { component: 'ZantaraAIWriter', action: 'analyzeClientQuestions' }, toError(error));
     }
 
     return [];
@@ -502,7 +504,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         return exists;
       }
     } catch (error) {
-      console.error('Failed to check for duplicates:', error);
+      logger.error('Failed to check for duplicates', { component: 'ZantaraAIWriter', action: 'checkSimilarArticleExists', metadata: { topic } }, toError(error));
     }
 
     return false;
@@ -536,7 +538,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         }),
       });
     } catch (error) {
-      console.error('Failed to notify editorial team:', error);
+      logger.error('Failed to notify editorial team', { component: 'ZantaraAIWriter', action: 'notifyEditorialTeam', metadata: { articleTitle: article.title } }, toError(error));
     }
   }
 
