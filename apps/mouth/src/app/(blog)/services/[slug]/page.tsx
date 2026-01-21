@@ -1,12 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
-// Script removed in favor of SchemaInjector
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { ArrowLeft, Check, Clock, Phone, FileText, AlertCircle, ChevronRight } from 'lucide-react';
 import { SERVICES_DATA } from '@/data/services_data';
 import ServicePricing from '@/components/services/ServicePricing';
-import { SchemaInjector } from '@/components/seo/SchemaInjector';
 import { logger } from '@/lib/logger';
 
 export async function generateMetadata({
@@ -40,74 +38,20 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   logger.info(`Service Page View: ${slug}`, {
     component: 'ServiceDetailPage',
     action: 'page_view',
-    metadata: { service: slug, userAgent: 'server-side' },
+    metadata: { service: slug, userAgent: 'server-side', timestamp: new Date().toISOString() },
   });
 
   const IconComponent = service.icon;
   const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
-  const serviceUrl = `${baseUrl}/services/${slug}`;
-
-  // Determine service type: GovernmentService for visa, ProfessionalService for others
+  
+  // Determine service type for semantic HTML microdata
   const serviceType = slug === 'visa' ? 'GovernmentService' : 'ProfessionalService';
 
-  // Generate GovernmentService/ProfessionalService schema
-  const serviceSchema = {
-    '@context': 'https://schema.org',
-    '@type': serviceType,
-    name: service.name,
-    description: service.description,
-    provider: {
-      '@type': 'Organization',
-      name: 'Bali Zero',
-      url: baseUrl,
-      logo: `${baseUrl}/assets/logo/balizero-logo.png`,
-      contactPoint: {
-        '@type': 'ContactPoint',
-        telephone: '+62-859-0436-9574',
-        contactType: 'customer service',
-        availableLanguage: ['English', 'Indonesian'],
-      },
-    },
-    areaServed: {
-      '@type': 'Country',
-      name: 'Indonesia',
-    },
-    offers: service.packages
-      .filter((pkg) => pkg.price !== 'Contact')
-      .map((pkg) => ({
-        '@type': 'Offer',
-        name: pkg.name,
-        description: pkg.description,
-        price: pkg.price.replace(/\./g, ''),
-        priceCurrency: 'IDR',
-        availability: 'https://schema.org/InStock',
-        validFrom: '2026-01-01',
-      })),
-    serviceType: service.name,
-    hoursAvailable: service.timeline,
-  };
-
-  // Generate FAQPage schema
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: service.faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.answer,
-      },
-    })),
-  };
-
-  // Combine schemas for injection
-  const jsonLdSchemas = [serviceSchema, faqSchema];
+  // NOTE: JSON-LD schemas are now injected in the <head> by the root layout
+  // (apps/mouth/src/app/layout.tsx) to ensure they are detected by Schema.org Validator
 
   return (
     <>
-      {/* JSON-LD Schema Injection - Uses native <script> for perfect SEO */}
-      <SchemaInjector schemas={jsonLdSchemas} />
       <div className="min-h-screen bg-[#051C2C]">
         {/* Breadcrumb */}
       <div className="border-b border-white/10">
