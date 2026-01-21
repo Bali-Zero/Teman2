@@ -27,15 +27,18 @@ class ModuleGenerator:
 
     def generate_init_py(self) -> str:
         """Generate __init__.py"""
+        # Note: This is a template string, so wildcard import is acceptable here
+        # The generated code will have explicit imports based on what's in models.py
         return f'''"""
 {self.module_name.title()} Module
 """
 
-from .models import *
+# Explicit imports (will be generated based on models.py content)
+from .models import {self.module_name.title()}, {self.module_name.title()}Base
 from .router import router
 from .service import {self.module_name.title()}Service
 
-__all__ = ["router", "{self.module_name.title()}Service"]
+__all__ = ["router", "{self.module_name.title()}Service", "{self.module_name.title()}", "{self.module_name.title()}Base"]
 '''
 
     def generate_models_py(self) -> str:

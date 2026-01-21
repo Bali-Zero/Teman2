@@ -10,7 +10,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.base import *
+# Explicit imports instead of wildcard for better type checking
+from llm.base import LLMMessage, LLMResponse, LLMProvider
 
 
 class TestBase:
