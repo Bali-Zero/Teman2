@@ -55,15 +55,24 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/static') ||
     pathname.includes('.') // files with extensions
   ) {
-    return NextResponse.next();
+    // Still add pathname header for consistency
+    const response = NextResponse.next();
+    response.headers.set('x-pathname', pathname);
+    return response;
   }
+
+  // Create response and add pathname header for Server Components
+  const response = NextResponse.next();
+  response.headers.set('x-pathname', pathname);
 
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
   if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
     const redirectUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
     redirectUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(redirectUrl, 301); // Permanent redirect
+    const redirectResponse = NextResponse.redirect(redirectUrl, 301); // Permanent redirect
+    redirectResponse.headers.set('x-pathname', pathname);
+    return redirectResponse;
   }
 
   // Determine if we're on the public domain
@@ -75,7 +84,7 @@ export function middleware(request: NextRequest) {
   const isFlyDev = hostname.includes('fly.dev');
 
   if (isDevelopment || isFlyDev) {
-    return NextResponse.next();
+    return response;
   }
 
   // === PUBLIC DOMAIN (balizero.com) ===
@@ -89,14 +98,18 @@ export function middleware(request: NextRequest) {
       // Redirect to app domain
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(appUrl);
+      const redirectResponse = NextResponse.redirect(appUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Check if it's the /chat route - redirect to app
     if (pathname === '/chat' || pathname.startsWith('/chat/')) {
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(appUrl);
+      const redirectResponse = NextResponse.redirect(appUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Rewrite /insights/* to /* for backward compatibility
@@ -104,18 +117,22 @@ export function middleware(request: NextRequest) {
       const newPath = pathname.replace('/insights', '') || '/';
       const url = request.nextUrl.clone();
       url.pathname = newPath;
-      return NextResponse.redirect(url);
+      const redirectResponse = NextResponse.redirect(url);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Allow public routes
-    return NextResponse.next();
+    return response;
   }
 
   // === APP DOMAIN (zantara.balizero.com) ===
   if (isAppDomain) {
     // Redirect root to login on app domain
     if (pathname === '/') {
-      return NextResponse.redirect(new URL('/login', request.url));
+      const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // On app domain, redirect public content to main domain
@@ -126,35 +143,43 @@ export function middleware(request: NextRequest) {
       // Redirect category pages to public domain
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Redirect /services to public domain (except API routes)
     if (pathname.startsWith('/services') && !pathname.startsWith('/services/api')) {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Redirect /contact to public domain
     if (pathname === '/contact') {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Redirect /team to public domain (public team page, not /team-management)
     if (pathname === '/team') {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl);
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
     }
 
     // Allow all other routes on app domain
-    return NextResponse.next();
+    return response;
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
