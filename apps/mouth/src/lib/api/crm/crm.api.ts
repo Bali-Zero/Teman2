@@ -587,4 +587,155 @@ export class CrmApi {
       }),
     });
   }
+
+  /**
+   * Google Drive Folder Management
+   */
+
+  /**
+   * Create standardized Google Drive folder structure for a client
+   */
+  async createDriveFolder(clientId: number): Promise<{
+    success: boolean;
+    root_folder_id: string;
+    root_folder_url: string;
+    root_folder_name: string;
+    folders: Record<string, { id: string; url: string }>;
+    created_count: number;
+  }> {
+    return this.client.request(`/api/clients/${clientId}/create-drive-folder`, { method: 'POST' });
+  }
+
+  /**
+   * Get Google Drive folder information for a client
+   */
+  async getDriveFolder(clientId: number): Promise<{
+    client_id: number;
+    folder_id: string | null;
+    folder_url: string | null;
+    exists: boolean;
+    message?: string;
+  }> {
+    return this.client.request(`/api/clients/${clientId}/drive-folder`);
+  }
+
+  /**
+   * Unlink Google Drive folder from client (does NOT delete the folder)
+   */
+  async unlinkDriveFolder(clientId: number): Promise<{
+    success: boolean;
+    message: string;
+    note: string;
+  }> {
+    return this.client.request(`/api/clients/${clientId}/drive-folder`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get complete folder structure with file counts
+   */
+  async getDriveFolderStructure(clientId: number): Promise<{
+    root_folder_id: string;
+    folders: Array<{
+      name: string;
+      id: string;
+      file_count: number;
+      total_size_bytes: number;
+      last_modified: string | null;
+    }>;
+    total_files: number;
+    total_size_bytes: number;
+  }> {
+    return this.client.request(`/api/clients/${clientId}/drive-folder/structure`);
+  }
+
+  /**
+   * List files in a subfolder
+   */
+  async listFolderFiles(
+    clientId: number,
+    folderName: string,
+    options?: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+    }
+  ): Promise<{
+    folder_name: string;
+    folder_id: string;
+    files: Array<{
+      id: string;
+      name: string;
+      mime_type: string;
+      size_bytes: number | null;
+      created_time: string;
+      modified_time: string;
+      thumbnail_url: string | null;
+      download_url: string;
+      is_folder: boolean;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  }> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.search) params.append('search', options.search);
+
+    const query = params.toString();
+    return this.client.request(
+      `/api/clients/${clientId}/drive-folder/${folderName}/files${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Upload file to a subfolder
+   */
+  async uploadFileToFolder(
+    clientId: number,
+    folderName: string,
+    file: File
+  ): Promise<{
+    success: boolean;
+    folder_name: string;
+    folder_id: string;
+    file_id: string;
+    file_name: string;
+    size_bytes: number;
+    download_url: string;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Client now handles FormData correctly (no Content-Type header)
+    return this.client.request(`/api/clients/${clientId}/drive-folder/${folderName}/upload`, {
+      method: 'POST',
+      body: formData,
+      // Headers will be set by client (CSRF token, etc.)
+      // Content-Type will NOT be set for FormData
+    });
+  }
+
+  /**
+   * Get folder statistics
+   */
+  async getDriveFolderStats(clientId: number): Promise<{
+    total_files: number;
+    total_size_bytes: number;
+    total_size_mb: number;
+    last_synced: string;
+    by_category: Record<
+      string,
+      {
+        files: number;
+        size_bytes: number;
+        size_mb: number;
+      }
+    >;
+  }> {
+    return this.client.request(`/api/clients/${clientId}/drive-folder/stats`);
+  }
 }

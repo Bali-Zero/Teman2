@@ -7,7 +7,8 @@ Handles automatic creation of standardized folder structures for clients.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from typing import Any
 
 from backend.app.core.auth import get_current_user
 from backend.app.core.config import settings
@@ -302,3 +303,315 @@ async def unlink_client_drive_folder(
         "message": f"Unlinked folder {client['google_drive_folder_id']} from client {client_id}",
         "note": "The folder still exists in Google Drive and was not deleted",
     }
+
+
+@router.get("/clients/{client_id}/drive-folder/structure")
+async def get_client_drive_folder_structure(
+    client_id: int,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Get complete folder structure with file counts and statistics.
+
+    Returns:
+        {
+            "root_folder_id": "1ABC...XYZ",
+            "folders": [
+                {
+                    "name": "00_Profile",
+                    "id": "...",
+                    "file_count": 12,
+                    "total_size_bytes": 5242880,
+                    "last_modified": "2026-01-20T10:30:00Z"
+                },
+                ...
+            ],
+            "total_files": 47,
+            "total_size_bytes": 131072000
+        }
+    """
+    async with pool.acquire() as conn:
+        client = await conn.fetchrow(
+            """
+            SELECT id, google_drive_folder_id
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id,
+        )
+
+    if not client:
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+    if not client["google_drive_folder_id"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Client does not have a Google Drive folder",
+        )
+
+    drive_service = GoogleDriveService(pool)
+    
+    try:
+        structure = await drive_service.get_folder_structure(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            root_folder_id=client["google_drive_folder_id"],
+        )
+        return structure
+    except Exception as e:
+        logger.error(f"[CRM] Failed to get folder structure for client {client_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get folder structure: {str(e)}",
+        )
+
+
+@router.get("/clients/{client_id}/drive-folder/{folder_name}/files")
+async def list_folder_files(
+    client_id: int,
+    folder_name: str,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    search: str | None = Query(None),
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    List files in a specific subfolder.
+
+    Args:
+        client_id: Client database ID
+        folder_name: Subfolder name (e.g., "01_Immigration")
+        limit: Max files to return (default: 50, max: 200)
+        offset: Pagination offset
+        search: Optional search query
+
+    Returns:
+        {
+            "folder_name": "01_Immigration",
+            "folder_id": "1GHI...XYZ",
+            "files": [...],
+            "total": 23,
+            "limit": 50,
+            "offset": 0
+        }
+    """
+    async with pool.acquire() as conn:
+        client = await conn.fetchrow(
+            """
+            SELECT id, google_drive_folder_id
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id,
+        )
+
+    if not client:
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+    if not client["google_drive_folder_id"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Client does not have a Google Drive folder",
+        )
+
+    drive_service = GoogleDriveService(pool)
+
+    # First, get folder structure to find the subfolder ID
+    try:
+        structure = await drive_service.get_folder_structure(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            root_folder_id=client["google_drive_folder_id"],
+        )
+    except Exception as e:
+        logger.error(f"[CRM] Failed to get folder structure: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get folder structure: {str(e)}",
+        )
+
+    # Find the subfolder
+    subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
+    if not subfolder:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Subfolder '{folder_name}' not found",
+        )
+
+    # List files in the subfolder
+    try:
+        files_data = await drive_service.list_folder_files(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            folder_id=subfolder["id"],
+            limit=limit,
+            offset=offset,
+            search=search,
+        )
+        
+        return {
+            "folder_name": folder_name,
+            "folder_id": subfolder["id"],
+            **files_data,
+        }
+    except Exception as e:
+        logger.error(f"[CRM] Failed to list files in folder {folder_name}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list files: {str(e)}",
+        )
+
+
+@router.post("/clients/{client_id}/drive-folder/{folder_name}/upload")
+async def upload_file_to_folder(
+    client_id: int,
+    folder_name: str,
+    file: UploadFile = File(...),
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Upload a file directly to a subfolder.
+
+    Args:
+        client_id: Client database ID
+        folder_name: Subfolder name (e.g., "01_Immigration")
+        file: File to upload
+
+    Returns:
+        {
+            "success": true,
+            "file_id": "1JKL...XYZ",
+            "file_name": "passport.pdf",
+            "size_bytes": 2359296,
+            "download_url": "/api/documents/proxy/1JKL...XYZ"
+        }
+    """
+    async with pool.acquire() as conn:
+        client = await conn.fetchrow(
+            """
+            SELECT id, google_drive_folder_id
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id,
+        )
+
+    if not client:
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+    if not client["google_drive_folder_id"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Client does not have a Google Drive folder",
+        )
+
+    drive_service = GoogleDriveService(pool)
+
+    # Get folder structure to find subfolder ID
+    try:
+        structure = await drive_service.get_folder_structure(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            root_folder_id=client["google_drive_folder_id"],
+        )
+    except Exception as e:
+        logger.error(f"[CRM] Failed to get folder structure: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get folder structure: {str(e)}",
+        )
+
+    # Find the subfolder
+    subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
+    if not subfolder:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Subfolder '{folder_name}' not found",
+        )
+
+    # Read file content
+    file_content = await file.read()
+    file_name = file.filename or "uploaded_file"
+
+    # Upload to Drive
+    try:
+        upload_result = await drive_service.upload_file_to_folder(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            folder_id=subfolder["id"],
+            file_content=file_content,
+            file_name=file_name,
+            mime_type=file.content_type,
+        )
+
+        logger.info(
+            f"[CRM] Uploaded file '{file_name}' to folder {folder_name} for client {client_id}"
+        )
+
+        return {
+            "success": True,
+            "folder_name": folder_name,
+            "folder_id": subfolder["id"],
+            **upload_result,
+        }
+    except Exception as e:
+        logger.error(f"[CRM] Failed to upload file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload file: {str(e)}",
+        )
+
+
+@router.get("/clients/{client_id}/drive-folder/stats")
+async def get_client_drive_folder_stats(
+    client_id: int,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Get aggregated statistics for client's Drive folder.
+
+    Returns:
+        {
+            "total_files": 47,
+            "total_size_bytes": 131072000,
+            "total_size_mb": 125.0,
+            "last_synced": "2026-01-20T12:30:00Z",
+            "by_category": {
+                "00_Profile": {"files": 2, "size_mb": 5.2},
+                "01_Immigration": {"files": 23, "size_mb": 45.0},
+                ...
+            }
+        }
+    """
+    async with pool.acquire() as conn:
+        client = await conn.fetchrow(
+            """
+            SELECT id, google_drive_folder_id
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id,
+        )
+
+    if not client:
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+    if not client["google_drive_folder_id"]:
+        raise HTTPException(
+            status_code=404,
+            detail="Client does not have a Google Drive folder",
+        )
+
+    drive_service = GoogleDriveService(pool)
+
+    try:
+        stats = await drive_service.get_folder_stats(
+            user_id=GoogleDriveService.SYSTEM_USER_ID,
+            root_folder_id=client["google_drive_folder_id"],
+        )
+        return stats
+    except Exception as e:
+        logger.error(f"[CRM] Failed to get folder stats for client {client_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get folder stats: {str(e)}",
+        )

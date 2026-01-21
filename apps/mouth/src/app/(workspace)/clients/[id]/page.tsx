@@ -36,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import type {
   ClientProfile,
   FamilyMember,
@@ -46,11 +47,19 @@ import type {
   Client,
   DocumentCategory,
 } from '@/lib/api/crm/crm.types';
-import {
-  COMMON_NATIONALITIES,
-  CLIENT_STATUSES,
-} from '@/lib/api/crm/crm.types';
+import { COMMON_NATIONALITIES, CLIENT_STATUSES } from '@/lib/api/crm/crm.types';
 import { cropToSquare } from '@/lib/utils/imageResize';
+import { DriveFolderStructure } from '@/components/crm/DriveFolderStructure';
+import { FolderFilesBrowser } from '@/components/crm/FolderFilesBrowser';
+
+const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> = {
+  '00_Profile': { label: 'Profile', icon: '👤' },
+  '01_Immigration': { label: 'Immigration', icon: '🛂' },
+  '02_Company': { label: 'Company', icon: '🏢' },
+  '03_Tax': { label: 'Tax', icon: '💰' },
+  '04_Family': { label: 'Family', icon: '👨‍👩‍👧‍👦' },
+  '99_Misc': { label: 'Misc', icon: '📁' },
+};
 
 // Status badge colors
 const STATUS_COLORS: Record<string, string> = {
@@ -168,36 +177,69 @@ const getDriveProxyUrl = (url: string, type: 'thumbnail' | 'full' = 'thumbnail')
 
 // Map nationalities to flag emojis
 const NATIONALITY_FLAGS: Record<string, string> = {
-  'Italian': '🇮🇹', 'Italy': '🇮🇹',
-  'Russian': '🇷🇺', 'Russia': '🇷🇺',
-  'Ukrainian': '🇺🇦', 'Ukraine': '🇺🇦',
-  'American': '🇺🇸', 'USA': '🇺🇸', 'United States': '🇺🇸',
-  'British': '🇬🇧', 'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
-  'Australian': '🇦🇺', 'Australia': '🇦🇺',
-  'German': '🇩🇪', 'Germany': '🇩🇪',
-  'French': '🇫🇷', 'France': '🇫🇷',
-  'Spanish': '🇪🇸', 'Spain': '🇪🇸',
-  'Dutch': '🇳🇱', 'Netherlands': '🇳🇱',
-  'Indonesian': '🇮🇩', 'Indonesia': '🇮🇩',
-  'Chinese': '🇨🇳', 'China': '🇨🇳',
-  'Japanese': '🇯🇵', 'Japan': '🇯🇵',
-  'Korean': '🇰🇷', 'Korea': '🇰🇷', 'South Korea': '🇰🇷',
-  'Indian': '🇮🇳', 'India': '🇮🇳',
-  'Brazilian': '🇧🇷', 'Brazil': '🇧🇷',
-  'Canadian': '🇨🇦', 'Canada': '🇨🇦',
-  'Mexican': '🇲🇽', 'Mexico': '🇲🇽',
-  'Argentinian': '🇦🇷', 'Argentina': '🇦🇷',
-  'South African': '🇿🇦', 'South Africa': '🇿🇦',
-  'New Zealander': '🇳🇿', 'New Zealand': '🇳🇿',
-  'Irish': '🇮🇪', 'Ireland': '🇮🇪',
-  'Portuguese': '🇵🇹', 'Portugal': '🇵🇹',
-  'Polish': '🇵🇱', 'Poland': '🇵🇱',
-  'Turkish': '🇹🇷', 'Turkey': '🇹🇷',
-  'Thai': '🇹🇭', 'Thailand': '🇹🇭',
-  'Vietnamese': '🇻🇳', 'Vietnam': '🇻🇳',
-  'Filipino': '🇵🇭', 'Philippines': '🇵🇭',
-  'Malaysian': '🇲🇾', 'Malaysia': '🇲🇾',
-  'Singaporean': '🇸🇬', 'Singapore': '🇸🇬',
+  Italian: '🇮🇹',
+  Italy: '🇮🇹',
+  Russian: '🇷🇺',
+  Russia: '🇷🇺',
+  Ukrainian: '🇺🇦',
+  Ukraine: '🇺🇦',
+  American: '🇺🇸',
+  USA: '🇺🇸',
+  'United States': '🇺🇸',
+  British: '🇬🇧',
+  UK: '🇬🇧',
+  'United Kingdom': '🇬🇧',
+  Australian: '🇦🇺',
+  Australia: '🇦🇺',
+  German: '🇩🇪',
+  Germany: '🇩🇪',
+  French: '🇫🇷',
+  France: '🇫🇷',
+  Spanish: '🇪🇸',
+  Spain: '🇪🇸',
+  Dutch: '🇳🇱',
+  Netherlands: '🇳🇱',
+  Indonesian: '🇮🇩',
+  Indonesia: '🇮🇩',
+  Chinese: '🇨🇳',
+  China: '🇨🇳',
+  Japanese: '🇯🇵',
+  Japan: '🇯🇵',
+  Korean: '🇰🇷',
+  Korea: '🇰🇷',
+  'South Korea': '🇰🇷',
+  Indian: '🇮🇳',
+  India: '🇮🇳',
+  Brazilian: '🇧🇷',
+  Brazil: '🇧🇷',
+  Canadian: '🇨🇦',
+  Canada: '🇨🇦',
+  Mexican: '🇲🇽',
+  Mexico: '🇲🇽',
+  Argentinian: '🇦🇷',
+  Argentina: '🇦🇷',
+  'South African': '🇿🇦',
+  'South Africa': '🇿🇦',
+  'New Zealander': '🇳🇿',
+  'New Zealand': '🇳🇿',
+  Irish: '🇮🇪',
+  Ireland: '🇮🇪',
+  Portuguese: '🇵🇹',
+  Portugal: '🇵🇹',
+  Polish: '🇵🇱',
+  Poland: '🇵🇱',
+  Turkish: '🇹🇷',
+  Turkey: '🇹🇷',
+  Thai: '🇹🇭',
+  Thailand: '🇹🇭',
+  Vietnamese: '🇻🇳',
+  Vietnam: '🇻🇳',
+  Filipino: '🇵🇭',
+  Philippines: '🇵🇭',
+  Malaysian: '🇲🇾',
+  Malaysia: '🇲🇾',
+  Singaporean: '🇸🇬',
+  Singapore: '🇸🇬',
 };
 
 // Get flag emoji from nationality
@@ -221,28 +263,28 @@ const formatPhoneNumber = (phone: string): string => {
 
   // Country codes sorted by length (longest first to match correctly)
   const countryCodes: { code: string; length: number }[] = [
-    { code: '380', length: 3 },  // Ukraine
-    { code: '62', length: 2 },   // Indonesia
-    { code: '82', length: 2 },   // South Korea
-    { code: '81', length: 2 },   // Japan
-    { code: '86', length: 2 },   // China
-    { code: '91', length: 2 },   // India
-    { code: '44', length: 2 },   // UK
-    { code: '49', length: 2 },   // Germany
-    { code: '33', length: 2 },   // France
-    { code: '39', length: 2 },   // Italy
-    { code: '34', length: 2 },   // Spain
-    { code: '31', length: 2 },   // Netherlands
-    { code: '61', length: 2 },   // Australia
-    { code: '55', length: 2 },   // Brazil
-    { code: '52', length: 2 },   // Mexico
-    { code: '65', length: 2 },   // Singapore
-    { code: '66', length: 2 },   // Thailand
-    { code: '63', length: 2 },   // Philippines
-    { code: '60', length: 2 },   // Malaysia
-    { code: '84', length: 2 },   // Vietnam
-    { code: '7', length: 1 },    // Russia
-    { code: '1', length: 1 },    // USA/Canada
+    { code: '380', length: 3 }, // Ukraine
+    { code: '62', length: 2 }, // Indonesia
+    { code: '82', length: 2 }, // South Korea
+    { code: '81', length: 2 }, // Japan
+    { code: '86', length: 2 }, // China
+    { code: '91', length: 2 }, // India
+    { code: '44', length: 2 }, // UK
+    { code: '49', length: 2 }, // Germany
+    { code: '33', length: 2 }, // France
+    { code: '39', length: 2 }, // Italy
+    { code: '34', length: 2 }, // Spain
+    { code: '31', length: 2 }, // Netherlands
+    { code: '61', length: 2 }, // Australia
+    { code: '55', length: 2 }, // Brazil
+    { code: '52', length: 2 }, // Mexico
+    { code: '65', length: 2 }, // Singapore
+    { code: '66', length: 2 }, // Thailand
+    { code: '63', length: 2 }, // Philippines
+    { code: '60', length: 2 }, // Malaysia
+    { code: '84', length: 2 }, // Vietnam
+    { code: '7', length: 1 }, // Russia
+    { code: '1', length: 1 }, // USA/Canada
   ];
 
   // Try to match country code
@@ -259,8 +301,16 @@ const formatPhoneNumber = (phone: string): string => {
 
 // Calculate passport validity color based on months until expiry
 // Green: >14 months, Orange: 9-13 months, Red: <9 months
-const getPassportValidityColor = (expiryDate: string | undefined): { color: string; label: string; bgClass: string; textClass: string } => {
-  if (!expiryDate) return { color: 'gray', label: 'No expiry', bgClass: 'bg-gray-500/20', textClass: 'text-gray-400' };
+const getPassportValidityColor = (
+  expiryDate: string | undefined
+): { color: string; label: string; bgClass: string; textClass: string } => {
+  if (!expiryDate)
+    return {
+      color: 'gray',
+      label: 'No expiry',
+      bgClass: 'bg-gray-500/20',
+      textClass: 'text-gray-400',
+    };
 
   const now = new Date();
   const expiry = new Date(expiryDate);
@@ -269,11 +319,26 @@ const getPassportValidityColor = (expiryDate: string | undefined): { color: stri
   if (monthsUntilExpiry <= 0) {
     return { color: 'red', label: 'EXPIRED', bgClass: 'bg-red-600/30', textClass: 'text-red-300' };
   } else if (monthsUntilExpiry < 9) {
-    return { color: 'red', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-red-500/20', textClass: 'text-red-400' };
+    return {
+      color: 'red',
+      label: `${Math.floor(monthsUntilExpiry)} months`,
+      bgClass: 'bg-red-500/20',
+      textClass: 'text-red-400',
+    };
   } else if (monthsUntilExpiry < 14) {
-    return { color: 'orange', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-orange-500/20', textClass: 'text-orange-400' };
+    return {
+      color: 'orange',
+      label: `${Math.floor(monthsUntilExpiry)} months`,
+      bgClass: 'bg-orange-500/20',
+      textClass: 'text-orange-400',
+    };
   } else {
-    return { color: 'green', label: `${Math.floor(monthsUntilExpiry)} months`, bgClass: 'bg-green-500/20', textClass: 'text-green-400' };
+    return {
+      color: 'green',
+      label: `${Math.floor(monthsUntilExpiry)} months`,
+      bgClass: 'bg-green-500/20',
+      textClass: 'text-green-400',
+    };
   }
 };
 
@@ -304,6 +369,7 @@ export default function ClientDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeModal, setActiveModal] = useState<ModalType>('none');
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
+  const [viewingFolder, setViewingFolder] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -318,7 +384,7 @@ export default function ClientDetailPage() {
       setInteractions(interactionsData);
       setDocCategories(categoriesData);
     } catch (err) {
-      console.error('Failed to load client data:', err);
+      logger.error('Failed to load client data:', err);
       setError('Failed to load client data');
       toast.error('Error', 'Failed to load client data');
     } finally {
@@ -331,7 +397,7 @@ export default function ClientDetailPage() {
       const profileData = await api.crm.getClientProfile(clientId);
       setProfile(profileData);
     } catch (err) {
-      console.error('Failed to refresh client data:', err);
+      logger.error('Failed to refresh client data:', err);
     }
   };
 
@@ -397,20 +463,21 @@ export default function ClientDetailPage() {
   const { client, family_members, documents, expiry_alerts, practices, stats } = profile;
 
   // Group documents by category
-  const documentsByCategory = documents.reduce((acc, doc) => {
-    const cat = doc.document_category || 'other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(doc);
-    return acc;
-  }, {} as Record<string, ClientDocument[]>);
+  const documentsByCategory = documents.reduce(
+    (acc, doc) => {
+      const cat = doc.document_category || 'other';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(doc);
+      return acc;
+    },
+    {} as Record<string, ClientDocument[]>
+  );
 
   // Calculate stats
   const activePractices = practices.filter(
     (p) => !['completed', 'cancelled', 'approved'].includes(p.status)
   );
-  const completedPractices = practices.filter((p) =>
-    ['completed', 'approved'].includes(p.status)
-  );
+  const completedPractices = practices.filter((p) => ['completed', 'approved'].includes(p.status));
 
   // Get country flag for fallback
   const countryFlag = getCountryFlag(client.nationality);
@@ -426,7 +493,11 @@ export default function ClientDetailPage() {
           {/* Avatar */}
           <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center overflow-hidden">
             {client.avatar_url ? (
-              <img src={client.avatar_url} alt={client.full_name} className="w-full h-full object-cover" />
+              <img
+                src={client.avatar_url}
+                alt={client.full_name}
+                className="w-full h-full object-cover"
+              />
             ) : countryFlag ? (
               <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center text-4xl">
                 {countryFlag}
@@ -478,7 +549,11 @@ export default function ClientDetailPage() {
                 className="gap-2 text-green-500 border-green-500/30 hover:bg-green-500/10"
                 onClick={() => {
                   const phone = client.phone?.replace(/\D/g, '');
-                  if (phone) window.open(`https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`, '_blank');
+                  if (phone)
+                    window.open(
+                      `https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`,
+                      '_blank'
+                    );
                 }}
               >
                 <MessageCircle className="w-4 h-4" />
@@ -490,7 +565,11 @@ export default function ClientDetailPage() {
                 className="gap-2 text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
                 onClick={() => {
                   const phone = client.phone?.replace(/\D/g, '');
-                  if (phone) window.open(`https://t.me/+${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`, '_blank');
+                  if (phone)
+                    window.open(
+                      `https://t.me/+${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`,
+                      '_blank'
+                    );
                 }}
               >
                 <Send className="w-4 h-4" />
@@ -503,10 +582,14 @@ export default function ClientDetailPage() {
               variant="outline"
               size="sm"
               className="gap-2 text-blue-500 border-blue-500/30 hover:bg-blue-500/10"
-              onClick={() => window.open(`https://drive.google.com/drive/folders/${client.google_drive_folder_id}`, '_blank')}
+              onClick={() => {
+                // Scroll to Drive Folder section instead of opening Drive
+                const element = document.querySelector('[data-drive-folder-section]');
+                element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             >
               <FolderOpen className="w-4 h-4" />
-              Drive
+              View Documents
             </Button>
           )}
         </div>
@@ -547,6 +630,7 @@ export default function ClientDetailPage() {
           formatCurrency={formatCurrency}
           formatTime={formatTime}
           router={router}
+          clientId={clientId}
           onEditClick={() => setActiveModal('edit_client')}
           onAddNote={async (note: string) => {
             const user = await api.getProfile();
@@ -598,11 +682,7 @@ export default function ClientDetailPage() {
       )}
 
       {activeTab === 'timeline' && (
-        <TimelineTab
-          interactions={interactions}
-          formatDate={formatDate}
-          formatTime={formatTime}
-        />
+        <TimelineTab interactions={interactions} formatDate={formatDate} formatTime={formatTime} />
       )}
 
       {/* Modals */}
@@ -627,6 +707,7 @@ export default function ClientDetailPage() {
           clientId={clientId}
           categories={docCategories}
           familyMembers={family_members}
+          clientHasDriveFolder={!!client.google_drive_folder_id}
           onClose={() => setActiveModal('none')}
           onSave={refreshProfile}
         />
@@ -663,6 +744,7 @@ function OverviewTab({
   formatCurrency,
   formatTime,
   router,
+  clientId,
   onEditClick,
   onAddNote,
 }: {
@@ -676,6 +758,7 @@ function OverviewTab({
   formatCurrency: (n: number) => string;
   formatTime: (d: string) => string;
   router: ReturnType<typeof useRouter>;
+  clientId: number;
   onEditClick: () => void;
   onAddNote: (note: string) => Promise<void>;
 }) {
@@ -718,7 +801,11 @@ function OverviewTab({
                 size="sm"
                 className="h-7 w-7 p-0 text-[var(--foreground-muted)] hover:text-red-500"
                 onClick={async () => {
-                  if (confirm(`⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All process and documents remain in the system.\n\nContinue?`)) {
+                  if (
+                    confirm(
+                      `⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All process and documents remain in the system.\n\nContinue?`
+                    )
+                  ) {
                     try {
                       const user = await api.getProfile();
                       await api.crm.deleteClient(client.id, user.email);
@@ -753,19 +840,28 @@ function OverviewTab({
                       <User className="w-3 h-3 text-[var(--accent)]" />
                     </div>
                   )}
-                  <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
+                  <span className="font-medium text-[var(--accent)]">
+                    {client.assigned_to.split('@')[0]}
+                  </span>
                 </div>
               )}
               {client.email && (
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline truncate">{client.email}</a>
+                  <a
+                    href={`mailto:${client.email}`}
+                    className="text-[var(--foreground)] hover:underline truncate"
+                  >
+                    {client.email}
+                  </a>
                 </div>
               )}
               {client.phone && (
                 <div className="flex items-center gap-2">
                   <Phone className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">{formatPhoneNumber(client.phone)}</span>
+                  <span className="text-[var(--foreground)]">
+                    {formatPhoneNumber(client.phone)}
+                  </span>
                 </div>
               )}
               {client.nationality && (
@@ -784,29 +880,39 @@ function OverviewTab({
 
             {/* Right column: Passport/OCR extracted data */}
             <div className="space-y-2.5 text-xs border-l border-[var(--border)] pl-4">
-              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-2">Passport Data</p>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-2">
+                Passport Data
+              </p>
               {client.passport_number && (
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)] font-mono">{client.passport_number}</span>
+                  <span className="text-[var(--foreground)] font-mono">
+                    {client.passport_number}
+                  </span>
                 </div>
               )}
               {client.passport_expiry && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">Exp: {formatDate(client.passport_expiry)}</span>
+                  <span className="text-[var(--foreground)]">
+                    Exp: {formatDate(client.passport_expiry)}
+                  </span>
                 </div>
               )}
               {client.date_of_birth && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">DOB: {formatDate(client.date_of_birth)}</span>
+                  <span className="text-[var(--foreground)]">
+                    DOB: {formatDate(client.date_of_birth)}
+                  </span>
                 </div>
               )}
               {client.gender && (
                 <div className="flex items-center gap-2">
                   <User className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">{client.gender === 'M' ? 'Male' : 'Female'}</span>
+                  <span className="text-[var(--foreground)]">
+                    {client.gender === 'M' ? 'Male' : 'Female'}
+                  </span>
                 </div>
               )}
               {client.birthplace && (
@@ -815,20 +921,22 @@ function OverviewTab({
                   <span className="text-[var(--foreground)]">{client.birthplace}</span>
                 </div>
               )}
-              {!client.passport_number && !client.passport_expiry && !client.date_of_birth && !client.gender && !client.birthplace && (
-                <p className="text-[var(--foreground-muted)] italic">No passport data yet. Use OCR to extract.</p>
-              )}
+              {!client.passport_number &&
+                !client.passport_expiry &&
+                !client.date_of_birth &&
+                !client.gender &&
+                !client.birthplace && (
+                  <p className="text-[var(--foreground-muted)] italic">
+                    No passport data yet. Use OCR to extract.
+                  </p>
+                )}
             </div>
           </div>
         </div>
 
         {/* Column 3: Passport Card + Quick Note */}
         <div className="space-y-4">
-          <PassportCard
-            client={client}
-            documents={documents}
-            formatDate={formatDate}
-          />
+          <PassportCard client={client} documents={documents} formatDate={formatDate} />
 
           {/* Quick Note */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
@@ -912,6 +1020,36 @@ function OverviewTab({
           <p className="text-xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
         </div>
       </div>
+
+      {/* Row 3: Google Drive Folder Structure or Browser */}
+      <div data-drive-folder-section>
+        {viewingFolder ? (
+          <FolderFilesBrowser
+            clientId={clientId}
+            clientName={client.full_name}
+            folderName={viewingFolder}
+            folderLabel={STANDARD_FOLDERS[viewingFolder]?.label || viewingFolder}
+            onBack={() => setViewingFolder(null)}
+          />
+        ) : (
+          <DriveFolderStructure
+            clientId={clientId}
+            clientName={client.full_name}
+            existingFolderId={client.google_drive_folder_id}
+            onFolderCreated={(folderId) => {
+              // Refresh client data to update google_drive_folder_id
+              router.refresh();
+            }}
+            onFolderLinked={(folderId) => {
+              // Refresh client data to update google_drive_folder_id
+              router.refresh();
+            }}
+            onViewFolder={(folderName) => {
+              setViewingFolder(folderName);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -935,7 +1073,7 @@ function PassportCard({
   const passportDoc = documents.find(
     (doc) =>
       doc.document_type?.toLowerCase().includes('passport') ||
-      doc.document_category === 'personal' && doc.document_type?.toLowerCase() === 'passport'
+      (doc.document_category === 'personal' && doc.document_type?.toLowerCase() === 'passport')
   );
 
   // Get passport validity color
@@ -974,10 +1112,10 @@ function PassportCard({
     }
     setIsExtracting(true);
     try {
-      const response = await api.post('/api/crm/clients/extract-passport-enhanced', {
+      const response = (await api.post('/api/crm/clients/extract-passport-enhanced', {
         client_id: client.id,
         file_id: fileId,
-      }) as {
+      })) as {
         success: boolean;
         passport_number?: string;
         expiry_date?: string;
@@ -1035,7 +1173,10 @@ function PassportCard({
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     // Fallback to Google preview if proxy fails
-                    (e.target as HTMLImageElement).src = passportImageUrl.replace('/view', '/preview');
+                    (e.target as HTMLImageElement).src = passportImageUrl.replace(
+                      '/view',
+                      '/preview'
+                    );
                   }}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
@@ -1083,15 +1224,15 @@ function PassportCard({
 // ============================================
 // Visa pricing listino (from visa_types table)
 const VISA_PRICES: Record<string, { name: string; price: number }> = {
-  'c1': { name: 'C1 Tourist Visa', price: 2500000 },
-  'c1_visa': { name: 'C1 Tourist Visa', price: 2500000 },
-  'd12': { name: 'D12 Business Visa', price: 3500000 },
-  'voa': { name: 'Visa on Arrival', price: 500000 },
-  'e33e': { name: 'Retirement KITAS', price: 18000000 },
-  'e33g': { name: 'Digital Nomad KITAS', price: 8000000 },
-  'e28a': { name: 'Investor KITAS', price: 25000000 },
-  'kitas': { name: 'KITAS', price: 15000000 },
-  'kitap': { name: 'KITAP', price: 20000000 },
+  c1: { name: 'C1 Tourist Visa', price: 2500000 },
+  c1_visa: { name: 'C1 Tourist Visa', price: 2500000 },
+  d12: { name: 'D12 Business Visa', price: 3500000 },
+  voa: { name: 'Visa on Arrival', price: 500000 },
+  e33e: { name: 'Retirement KITAS', price: 18000000 },
+  e33g: { name: 'Digital Nomad KITAS', price: 8000000 },
+  e28a: { name: 'Investor KITAS', price: 25000000 },
+  kitas: { name: 'KITAS', price: 15000000 },
+  kitap: { name: 'KITAP', price: 20000000 },
 };
 
 function ActualVisaCard({
@@ -1110,10 +1251,10 @@ function ActualVisaCard({
     (doc) =>
       doc.document_category === 'immigration' &&
       (doc.document_type?.toLowerCase().includes('visa') ||
-       doc.document_type?.toLowerCase().includes('kitas') ||
-       doc.document_type?.toLowerCase().includes('kitap') ||
-       doc.document_type?.toLowerCase().includes('e-visa') ||
-       doc.document_type?.toLowerCase().includes('evisa'))
+        doc.document_type?.toLowerCase().includes('kitas') ||
+        doc.document_type?.toLowerCase().includes('kitap') ||
+        doc.document_type?.toLowerCase().includes('e-visa') ||
+        doc.document_type?.toLowerCase().includes('evisa'))
   );
 
   const sortedVisaDocs = visaDocs.sort((a, b) => {
@@ -1125,12 +1266,13 @@ function ActualVisaCard({
   const latestVisa = sortedVisaDocs[0];
 
   // Find active visa process
-  const visaProcess = activePractices.find(p =>
-    p.practice_type_code?.toLowerCase().includes('visa') ||
-    p.practice_type_code?.toLowerCase().includes('kitas') ||
-    p.practice_type_code?.toLowerCase().includes('kitap') ||
-    p.practice_type_name?.toLowerCase().includes('visa') ||
-    p.practice_type_name?.toLowerCase().includes('kitas')
+  const visaProcess = activePractices.find(
+    (p) =>
+      p.practice_type_code?.toLowerCase().includes('visa') ||
+      p.practice_type_code?.toLowerCase().includes('kitas') ||
+      p.practice_type_code?.toLowerCase().includes('kitap') ||
+      p.practice_type_name?.toLowerCase().includes('visa') ||
+      p.practice_type_name?.toLowerCase().includes('kitas')
   );
 
   // Get price from listino
@@ -1169,12 +1311,18 @@ function ActualVisaCard({
             <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={getDriveProxyUrl(latestVisa.google_drive_file_url) || latestVisa.google_drive_file_url}
+                src={
+                  getDriveProxyUrl(latestVisa.google_drive_file_url) ||
+                  latestVisa.google_drive_file_url
+                }
                 alt="Visa"
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   if (latestVisa.google_drive_file_url) {
-                    (e.target as HTMLImageElement).src = latestVisa.google_drive_file_url.replace('/view', '/preview');
+                    (e.target as HTMLImageElement).src = latestVisa.google_drive_file_url.replace(
+                      '/view',
+                      '/preview'
+                    );
                   }
                 }}
               />
@@ -1274,7 +1422,8 @@ function ActiveProcessCard({
       {/* Pulsing animation keyframes */}
       <style jsx>{`
         @keyframes pulse-glow {
-          0%, 100% {
+          0%,
+          100% {
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
           }
           50% {
@@ -1354,7 +1503,12 @@ function FamilyTab({
                   </div>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(member.id, member.full_name)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                    onClick={() => handleDelete(member.id, member.full_name)}
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1374,7 +1528,7 @@ function FamilyTab({
                       {member.passport_number}
                       {member.passport_expiry && (
                         <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${ 
+                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                             ALERT_COLORS[member.passport_alert || 'green']
                           }`}
                         >
@@ -1391,7 +1545,7 @@ function FamilyTab({
                       {member.current_visa_type}
                       {member.visa_expiry && (
                         <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${ 
+                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
                             ALERT_COLORS[member.visa_alert || 'green']
                           }`}
                         >
@@ -1410,9 +1564,9 @@ function FamilyTab({
   );
 }
 
-// ============================================ 
+// ============================================
 // DOCUMENTS TAB
-// ============================================ 
+// ============================================
 function DocumentsTab({
   clientId,
   documentsByCategory,
@@ -1497,21 +1651,27 @@ function DocumentsTab({
                         rel="noopener noreferrer"
                         className="block relative"
                       >
-                        <div className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
-                          doc.alert_color === 'expired' || doc.alert_color === 'red'
-                            ? 'border-red-500/50'
-                            : doc.alert_color === 'yellow'
-                            ? 'border-yellow-500/50'
-                            : 'border-[var(--border)]'
-                        }`}>
+                        <div
+                          className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
+                            doc.alert_color === 'expired' || doc.alert_color === 'red'
+                              ? 'border-red-500/50'
+                              : doc.alert_color === 'yellow'
+                                ? 'border-yellow-500/50'
+                                : 'border-[var(--border)]'
+                          }`}
+                        >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={getDriveProxyUrl(doc.google_drive_file_url) || doc.google_drive_file_url}
+                            src={
+                              getDriveProxyUrl(doc.google_drive_file_url) ||
+                              doc.google_drive_file_url
+                            }
                             alt={doc.document_type}
                             className="w-full h-full object-contain"
                             onError={(e) => {
                               if (doc.google_drive_file_url) {
-                                (e.target as HTMLImageElement).src = doc.google_drive_file_url.replace('/view', '/preview');
+                                (e.target as HTMLImageElement).src =
+                                  doc.google_drive_file_url.replace('/view', '/preview');
                               }
                             }}
                           />
@@ -1558,7 +1718,10 @@ function DocumentsTab({
                       </div>
 
                       {doc.file_name && (
-                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-1" title={doc.file_name}>
+                        <p
+                          className="text-xs text-[var(--foreground-muted)] truncate mb-1"
+                          title={doc.file_name}
+                        >
                           {doc.file_name}
                         </p>
                       )}
@@ -1614,7 +1777,11 @@ function ProcessTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">All Process</h3>
-        <Button size="sm" className="gap-2" onClick={() => router.push(`/process/new?client_id=${clientId}`)}>
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={() => router.push(`/process/new?client_id=${clientId}`)}
+        >
           <Plus className="w-4 h-4" />
           New Process
         </Button>
@@ -1646,7 +1813,7 @@ function ProcessTab({
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${ 
+                    className={`text-xs px-2 py-1 rounded-full ${
                       STATUS_COLORS[practice.status] || 'bg-gray-500/20 text-gray-400'
                     }`}
                   >
@@ -1667,7 +1834,11 @@ function ProcessTab({
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm(`Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`)) {
+                        if (
+                          confirm(
+                            `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`
+                          )
+                        ) {
                           try {
                             const user = await api.getProfile();
                             await api.crm.deletePractice(practice.id, user.email);
@@ -1688,7 +1859,7 @@ function ProcessTab({
               </div>
               {practice.expiry_date && (
                 <div
-                  className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${ 
+                  className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
                     ALERT_COLORS[practice.alert_color || 'green']
                   }`}
                 >
@@ -1704,9 +1875,9 @@ function ProcessTab({
   );
 }
 
-// ============================================ 
+// ============================================
 // TIMELINE TAB
-// ============================================ 
+// ============================================
 function TimelineTab({
   interactions,
   formatDate,
@@ -1732,14 +1903,14 @@ function TimelineTab({
               {/* Timeline Line */}
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${ 
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     interaction.interaction_type === 'whatsapp'
                       ? 'bg-green-500/20 text-green-500'
                       : interaction.interaction_type === 'email'
-                      ? 'bg-blue-500/20 text-blue-500'
-                      : interaction.interaction_type === 'call'
-                      ? 'bg-purple-500/20 text-purple-500'
-                      : 'bg-[var(--accent)]/20 text-[var(--accent)]'
+                        ? 'bg-blue-500/20 text-blue-500'
+                        : interaction.interaction_type === 'call'
+                          ? 'bg-purple-500/20 text-purple-500'
+                          : 'bg-[var(--accent)]/20 text-[var(--accent)]'
                   }`}
                 >
                   {INTERACTION_ICONS[interaction.interaction_type] || (
@@ -1765,9 +1936,7 @@ function TimelineTab({
                     </span>
                   </div>
                   {interaction.subject && (
-                    <p className="text-sm text-[var(--foreground)] mb-1">
-                      {interaction.subject}
-                    </p>
+                    <p className="text-sm text-[var(--foreground)] mb-1">{interaction.subject}</p>
                   )}
                   {interaction.summary && (
                     <p className="text-xs text-[var(--foreground-muted)] line-clamp-2">
@@ -1778,12 +1947,12 @@ function TimelineTab({
                     <span>{interaction.team_member}</span>
                     {interaction.sentiment && (
                       <span
-                        className={`px-1.5 py-0.5 rounded ${ 
+                        className={`px-1.5 py-0.5 rounded ${
                           interaction.sentiment === 'positive'
                             ? 'bg-green-500/20 text-green-400'
                             : interaction.sentiment === 'negative'
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-gray-500/20 text-gray-400'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-gray-500/20 text-gray-400'
                         }`}
                       >
                         {interaction.sentiment}
@@ -1800,9 +1969,9 @@ function TimelineTab({
   );
 }
 
-// ============================================ 
+// ============================================
 // MODAL COMPONENTS
-// ============================================ 
+// ============================================
 
 function Modal({
   title,
@@ -1834,7 +2003,11 @@ function Modal({
               Cancel
             </Button>
             <Button type="submit" disabled={isSaving} className="gap-2">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Changes
             </Button>
           </div>
@@ -1868,10 +2041,18 @@ const TEAM_MEMBERS = [
 
 // Helper to get team member avatar
 const getTeamMemberAvatar = (email: string): string | undefined => {
-  return TEAM_MEMBERS.find(m => m.value === email)?.avatar;
+  return TEAM_MEMBERS.find((m) => m.value === email)?.avatar;
 };
 
-function EditClientModal({ client, onClose, onSave }: { client: Client; onClose: () => void; onSave: () => void }) {
+function EditClientModal({
+  client,
+  onClose,
+  onSave,
+}: {
+  client: Client;
+  onClose: () => void;
+  onSave: () => void;
+}) {
   const [isSaving, setIsSaving] = useState(false);
   const toast = useToast();
   const [formData, setFormData] = useState({
@@ -1912,7 +2093,7 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
       const resizedImage = await cropToSquare(file, 400, 0.85);
       setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
     } catch (error) {
-      console.error('Failed to process image:', error);
+      logger.error('Failed to process image:', error);
       alert('Failed to process image. Please try again.');
     }
   };
@@ -1942,7 +2123,8 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]';
+  const inputClass =
+    'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]';
 
   return (
     <Modal title="Edit Client" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
@@ -1957,9 +2139,17 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
                 className="w-full h-full object-cover"
               />
             ) : formData.status === 'lead' ? (
-              <img src="/avatars/default-lead.svg" alt="Default Lead" className="w-full h-full object-cover" />
+              <img
+                src="/avatars/default-lead.svg"
+                alt="Default Lead"
+                className="w-full h-full object-cover"
+              />
             ) : formData.status === 'active' ? (
-              <img src="/avatars/default-active.svg" alt="Default Active" className="w-full h-full object-cover" />
+              <img
+                src="/avatars/default-active.svg"
+                alt="Default Active"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <User className="w-12 h-12 text-[var(--foreground-muted)]" />
             )}
@@ -1982,12 +2172,7 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
           <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
             <Upload className="w-4 h-4" />
             {formData.avatar_url ? 'Change Photo' : 'Upload Photo'}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarUpload}
-              className="hidden"
-            />
+            <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
           </label>
         </div>
       </div>
@@ -1995,34 +2180,47 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Full Name *</label>
-          <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className={inputClass} required />
+          <input
+            type="text"
+            value={formData.full_name}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            className={inputClass}
+            required
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Email</label>
-          <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={inputClass} />
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Phone</label>
           <div className="flex gap-1">
             <select
               value={extractCountryCode(formData.phone).countryCode}
-              onChange={e => {
+              onChange={(e) => {
                 const { localNumber } = extractCountryCode(formData.phone);
-                setFormData({...formData, phone: e.target.value + localNumber});
+                setFormData({ ...formData, phone: e.target.value + localNumber });
               }}
               className={`${inputClass} w-[100px] flex-shrink-0`}
             >
               {COUNTRY_CODES.map(({ code, country, flag }) => (
-                <option key={code} value={code}>{flag} {code}</option>
+                <option key={code} value={code}>
+                  {flag} {code}
+                </option>
               ))}
             </select>
             <input
               type="tel"
               value={extractCountryCode(formData.phone).localNumber}
-              onChange={e => {
+              onChange={(e) => {
                 const { countryCode } = extractCountryCode(formData.phone);
                 const digits = e.target.value.replace(/[^\d]/g, '');
-                setFormData({...formData, phone: countryCode + digits});
+                setFormData({ ...formData, phone: countryCode + digits });
               }}
               className={`${inputClass} flex-1`}
               placeholder="Phone number"
@@ -2031,24 +2229,53 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Nationality</label>
-          <select value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className={inputClass}>
+          <select
+            value={formData.nationality}
+            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+            className={inputClass}
+          >
             <option value="">Select...</option>
-            {COMMON_NATIONALITIES.map(nat => <option key={nat} value={nat}>{nat}</option>)}
+            {COMMON_NATIONALITIES.map((nat) => (
+              <option key={nat} value={nat}>
+                {nat}
+              </option>
+            ))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Passport Number</label>
-          <input type="text" value={formData.passport_number} onChange={e => setFormData({...formData, passport_number: e.target.value.toUpperCase()})} className={inputClass} placeholder="e.g. YA123456" />
+          <input
+            type="text"
+            value={formData.passport_number}
+            onChange={(e) =>
+              setFormData({ ...formData, passport_number: e.target.value.toUpperCase() })
+            }
+            className={inputClass}
+            placeholder="e.g. YA123456"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Passport Expiry</label>
-          <input type="date" value={formData.passport_expiry} onChange={e => setFormData({...formData, passport_expiry: e.target.value})} className={inputClass} />
+          <input
+            type="date"
+            value={formData.passport_expiry}
+            onChange={(e) => setFormData({ ...formData, passport_expiry: e.target.value })}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Assigned To</label>
-          <select value={formData.assigned_to} onChange={e => setFormData({...formData, assigned_to: e.target.value})} className={inputClass}>
+          <select
+            value={formData.assigned_to}
+            onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+            className={inputClass}
+          >
             <option value="">Unassigned</option>
-            {TEAM_MEMBERS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {TEAM_MEMBERS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="md:col-span-2">
@@ -2059,14 +2286,20 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
                 key={value}
                 type="button"
                 onClick={() => setFormData({ ...formData, status: value })}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${ 
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                   formData.status === value
                     ? `border-${color}-500/50`
                     : 'border-transparent bg-[var(--background-secondary)]'
                 }`}
-                style={{ 
-                  backgroundColor: formData.status === value ? `var(--${color === 'blue' ? 'accent' : color}-500-20, rgba(59, 130, 246, 0.2))` : undefined,
-                  color: formData.status === value ? `var(--${color === 'blue' ? 'accent' : color}-500, #3b82f6)` : 'var(--foreground-muted)',
+                style={{
+                  backgroundColor:
+                    formData.status === value
+                      ? `var(--${color === 'blue' ? 'accent' : color}-500-20, rgba(59, 130, 246, 0.2))`
+                      : undefined,
+                  color:
+                    formData.status === value
+                      ? `var(--${color === 'blue' ? 'accent' : color}-500, #3b82f6)`
+                      : 'var(--foreground-muted)',
                 }}
               >
                 {label}
@@ -2079,7 +2312,15 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
   );
 }
 
-function AddFamilyMemberModal({ clientId, onClose, onSave }: { clientId: number; onClose: () => void; onSave: () => void }) {
+function AddFamilyMemberModal({
+  clientId,
+  onClose,
+  onSave,
+}: {
+  clientId: number;
+  onClose: () => void;
+  onSave: () => void;
+}) {
   const [isSaving, setIsSaving] = useState(false);
   const toast = useToast();
   const [formData, setFormData] = useState({
@@ -2108,18 +2349,29 @@ function AddFamilyMemberModal({ clientId, onClose, onSave }: { clientId: number;
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+  const inputClass =
+    'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
 
   return (
     <Modal title="Add Family Member" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Full Name *</label>
-          <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className={inputClass} required />
+          <input
+            type="text"
+            value={formData.full_name}
+            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            className={inputClass}
+            required
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Relationship</label>
-          <select value={formData.relationship} onChange={e => setFormData({...formData, relationship: e.target.value})} className={inputClass}>
+          <select
+            value={formData.relationship}
+            onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+            className={inputClass}
+          >
             <option value="spouse">Spouse</option>
             <option value="child">Child</option>
             <option value="parent">Parent</option>
@@ -2128,35 +2380,88 @@ function AddFamilyMemberModal({ clientId, onClose, onSave }: { clientId: number;
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Nationality</label>
-          <select value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className={inputClass}>
+          <select
+            value={formData.nationality}
+            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+            className={inputClass}
+          >
             <option value="">Select...</option>
-            {COMMON_NATIONALITIES.map(nat => <option key={nat} value={nat}>{nat}</option>)}
+            {COMMON_NATIONALITIES.map((nat) => (
+              <option key={nat} value={nat}>
+                {nat}
+              </option>
+            ))}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Passport Number</label>
-          <input type="text" value={formData.passport_number} onChange={e => setFormData({...formData, passport_number: e.target.value.toUpperCase()})} className={inputClass} />
+          <input
+            type="text"
+            value={formData.passport_number}
+            onChange={(e) =>
+              setFormData({ ...formData, passport_number: e.target.value.toUpperCase() })
+            }
+            className={inputClass}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Passport Expiry</label>
-          <input type="date" value={formData.passport_expiry} onChange={e => setFormData({...formData, passport_expiry: e.target.value})} className={inputClass} />
+          <input
+            type="date"
+            value={formData.passport_expiry}
+            onChange={(e) => setFormData({ ...formData, passport_expiry: e.target.value })}
+            className={inputClass}
+          />
         </div>
       </div>
     </Modal>
   );
 }
 
-function AddDocumentModal({ clientId, categories, familyMembers, onClose, onSave }: { clientId: number; categories: DocumentCategory[]; familyMembers: FamilyMember[]; onClose: () => void; onSave: () => void }) {
+function AddDocumentModal({
+  clientId,
+  categories,
+  familyMembers,
+  clientHasDriveFolder,
+  onClose,
+  onSave,
+}: {
+  clientId: number;
+  categories: DocumentCategory[];
+  familyMembers: FamilyMember[];
+  clientHasDriveFolder?: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
   const [isSaving, setIsSaving] = useState(false);
   const toast = useToast();
   const [formData, setFormData] = useState({
     file_name: '',
     document_type: '',
-    document_category: 'other',
+    document_category: 'other' as DocumentCategory,
     expiry_date: '',
     google_drive_file_url: '',
     family_member_id: '',
+    drive_folder: '', // Selected folder name
   });
+
+  // Auto-select folder based on category
+  React.useEffect(() => {
+    const categoryToFolder: Record<DocumentCategory, string> = {
+      immigration: '01_Immigration',
+      pma: '02_Company',
+      tax: '03_Tax',
+      personal: '04_Family',
+      other: '99_Misc',
+    };
+
+    if (formData.document_category && clientHasDriveFolder) {
+      setFormData((prev) => ({
+        ...prev,
+        drive_folder: categoryToFolder[formData.document_category] || '99_Misc',
+      }));
+    }
+  }, [formData.document_category, clientHasDriveFolder]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2177,18 +2482,30 @@ function AddDocumentModal({ clientId, categories, familyMembers, onClose, onSave
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+  const inputClass =
+    'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
 
   return (
     <Modal title="Add Document" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Document Name *</label>
-          <input type="text" value={formData.file_name} onChange={e => setFormData({...formData, file_name: e.target.value})} className={inputClass} placeholder="e.g. Passport Scan" required />
+          <input
+            type="text"
+            value={formData.file_name}
+            onChange={(e) => setFormData({ ...formData, file_name: e.target.value })}
+            className={inputClass}
+            placeholder="e.g. Passport Scan"
+            required
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Category</label>
-          <select value={formData.document_category} onChange={e => setFormData({...formData, document_category: e.target.value})} className={inputClass}>
+          <select
+            value={formData.document_category}
+            onChange={(e) => setFormData({ ...formData, document_category: e.target.value })}
+            className={inputClass}
+          >
             <option value="immigration">Immigration</option>
             <option value="pma">Company (PMA)</option>
             <option value="tax">Tax</option>
@@ -2198,22 +2515,47 @@ function AddDocumentModal({ clientId, categories, familyMembers, onClose, onSave
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Type</label>
-          <input type="text" value={formData.document_type} onChange={e => setFormData({...formData, document_type: e.target.value})} className={inputClass} placeholder="passport, kitas, etc" />
+          <input
+            type="text"
+            value={formData.document_type}
+            onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+            className={inputClass}
+            placeholder="passport, kitas, etc"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Expiry Date</label>
-          <input type="date" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className={inputClass} />
+          <input
+            type="date"
+            value={formData.expiry_date}
+            onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Belongs To</label>
-          <select value={formData.family_member_id} onChange={e => setFormData({...formData, family_member_id: e.target.value})} className={inputClass}>
+          <select
+            value={formData.family_member_id}
+            onChange={(e) => setFormData({ ...formData, family_member_id: e.target.value })}
+            className={inputClass}
+          >
             <option value="">Main Client</option>
-            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+            {familyMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name} ({m.relationship})
+              </option>
+            ))}
           </select>
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Google Drive Link</label>
-          <input type="url" value={formData.google_drive_file_url} onChange={e => setFormData({...formData, google_drive_file_url: e.target.value})} className={inputClass} placeholder="https://drive.google.com/..." />
+          <input
+            type="url"
+            value={formData.google_drive_file_url}
+            onChange={(e) => setFormData({ ...formData, google_drive_file_url: e.target.value })}
+            className={inputClass}
+            placeholder="https://drive.google.com/..."
+          />
         </div>
       </div>
     </Modal>
@@ -2272,18 +2614,40 @@ function EditDocumentModal({
     }
   };
 
-  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+  const inputClass =
+    'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
 
   return (
     <Modal title="Edit Document" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Document Name *</label>
-          <input type="text" value={formData.file_name} onChange={e => setFormData({...formData, file_name: e.target.value})} className={inputClass} placeholder="e.g. Passport Scan" required />
+          <input
+            type="text"
+            value={formData.file_name}
+            onChange={(e) => setFormData({ ...formData, file_name: e.target.value })}
+            className={inputClass}
+            placeholder="e.g. Passport Scan"
+            required
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Category</label>
-          <select value={formData.document_category} onChange={e => setFormData({...formData, document_category: e.target.value as 'immigration' | 'pma' | 'tax' | 'personal' | 'other'})} className={inputClass}>
+          <select
+            value={formData.document_category}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                document_category: e.target.value as
+                  | 'immigration'
+                  | 'pma'
+                  | 'tax'
+                  | 'personal'
+                  | 'other',
+              })
+            }
+            className={inputClass}
+          >
             <option value="immigration">Immigration</option>
             <option value="pma">Company (PMA)</option>
             <option value="tax">Tax</option>
@@ -2293,22 +2657,47 @@ function EditDocumentModal({
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Type</label>
-          <input type="text" value={formData.document_type} onChange={e => setFormData({...formData, document_type: e.target.value})} className={inputClass} placeholder="passport, kitas, etc" />
+          <input
+            type="text"
+            value={formData.document_type}
+            onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+            className={inputClass}
+            placeholder="passport, kitas, etc"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Expiry Date</label>
-          <input type="date" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className={inputClass} />
+          <input
+            type="date"
+            value={formData.expiry_date}
+            onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Belongs To</label>
-          <select value={formData.family_member_id} onChange={e => setFormData({...formData, family_member_id: e.target.value})} className={inputClass}>
+          <select
+            value={formData.family_member_id}
+            onChange={(e) => setFormData({ ...formData, family_member_id: e.target.value })}
+            className={inputClass}
+          >
             <option value="">Main Client</option>
-            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+            {familyMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name} ({m.relationship})
+              </option>
+            ))}
           </select>
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Google Drive Link</label>
-          <input type="url" value={formData.google_drive_file_url} onChange={e => setFormData({...formData, google_drive_file_url: e.target.value})} className={inputClass} placeholder="https://drive.google.com/..." />
+          <input
+            type="url"
+            value={formData.google_drive_file_url}
+            onChange={(e) => setFormData({ ...formData, google_drive_file_url: e.target.value })}
+            className={inputClass}
+            placeholder="https://drive.google.com/..."
+          />
         </div>
       </div>
     </Modal>
