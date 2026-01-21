@@ -495,7 +495,7 @@ class IntentClassifier:
                     "confidence": 1.0,
                     "suggested_ai": "fast",
                     "require_memory": True,
-                    "skip_rag": True,  # Greetings don't need RAG evidence
+                    "skip_rag": True,  # Tier 0: Greetings don't need RAG evidence
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
@@ -508,6 +508,7 @@ class IntentClassifier:
                     "confidence": 0.95,
                     "suggested_ai": "fast",
                     "requires_team_context": True,
+                    "skip_rag": True,  # Tier 0: Identity handled by System Prompt (Persona)
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
@@ -558,7 +559,7 @@ class IntentClassifier:
                     "category": "casual",
                     "confidence": 1.0,
                     "suggested_ai": "fast",
-                    "skip_rag": True,  # Casual chat doesn't need RAG evidence
+                    "skip_rag": True,  # Tier 0: Casual chat doesn't need RAG evidence
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
