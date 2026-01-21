@@ -320,4 +320,18 @@ export class ApiClientBase implements IApiClient {
   getCsrfToken(): string | null {
     return this.csrfToken || this.getCsrfFromCookie();
   }
+
+  /**
+   * Convenience method for POST requests
+   */
+  async post<T>(endpoint: string, body?: unknown, timeoutMs?: number): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'POST',
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      timeoutMs
+    );
+  }
 }
