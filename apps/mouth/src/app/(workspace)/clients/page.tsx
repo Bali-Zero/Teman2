@@ -90,6 +90,14 @@ function VirtualizedClientGrid({
     overscan: 2,
   });
 
+  // Force re-measure when parent becomes available
+  // IMPORTANT: This must be before the early return to maintain hooks order
+  useEffect(() => {
+    if (parentRef.current && shouldVirtualize) {
+      virtualizer.measure();
+    }
+  }, [virtualizer, shouldVirtualize]);
+
   if (!shouldVirtualize) {
     // For small lists, render normally
     return (
@@ -118,13 +126,6 @@ function VirtualizedClientGrid({
 
   // Virtualized grid rendering
   const virtualRows = virtualizer.getVirtualItems();
-
-  // Force re-measure when parent becomes available
-  useEffect(() => {
-    if (parentRef.current) {
-      virtualizer.measure();
-    }
-  }, [virtualizer]);
 
   return (
     <div ref={parentRef} className="flex-1 overflow-auto pb-4 min-h-[400px]">
