@@ -94,7 +94,6 @@ class EvidenceScoreConstants:
     # Score increments
     HIGH_QUALITY_SOURCE_BONUS = 0.5  # Bonus for having at least 1 high-quality source
     MULTIPLE_SOURCES_BONUS = 0.2  # Bonus for having >3 sources
-    CONTEXT_KEYWORD_BONUS = 0.3  # Bonus if context contains query keywords
     SUBSTANTIAL_CONTEXT_LENGTH = 500  # Minimum context length (chars) for substantial context bonus
 
     # Context quality weights

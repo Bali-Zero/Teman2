@@ -3,6 +3,8 @@
  * Provides real-time monitoring and alerting capabilities
  */
 
+import { logger } from './logger';
+import { toError } from './types/common';
 import { conversationMonitor } from './monitoring';
 import type { ConversationMetrics } from './monitoring';
 
@@ -42,9 +44,10 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       activeSessions.forEach((session) => {
         const duration = Date.now() - session.startTime.getTime();
         const durationMinutes = Math.floor(duration / 60000);
-        logger.debug(
-          `Session ${session.sessionId.substring(0, 8, { component: 'AUTO', action: 'log' })}...`
-        );
+        logger.debug(`Session ${session.sessionId.substring(0, 8)}...`, {
+          component: 'AUTO',
+          action: 'log',
+        });
         logger.debug(`  Turns: ${session.turnCount}`, { component: 'AUTO', action: 'log' });
         logger.debug(`  Duration: ${durationMinutes} minutes`, {
           component: 'AUTO',
@@ -66,9 +69,11 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Recent Alerts');
       this.alertHistory.slice(-10).forEach((alert) => {
         const timeAgo = Math.floor((Date.now() - alert.timestamp.getTime()) / 1000);
-        logger.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data, {
+        console.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data);
+        logger.warn(`[${timeAgo}s ago] ${alert.type}:`, {
           component: 'AUTO',
           action: 'warn',
+          metadata: alert.data,
         });
       });
       console.groupEnd();
@@ -116,16 +121,18 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     });
 
     if (alerts.length === 0) {
-      logger.debug('✅ No active alerts', { component: 'AUTO', action: 'log' });
+      console.log('✅ No active alerts');
       return;
     }
 
     console.group('⚠️ Active Alerts');
     alerts.forEach((alert) => {
-      logger.warn(
-        `[${alert.type}] Session: ${alert.sessionId.substring(0, 8, { component: 'AUTO', action: 'warn' })}...`,
-        alert.data
-      );
+      console.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, alert.data);
+      logger.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, {
+        component: 'AUTO',
+        action: 'warn',
+        metadata: alert.data,
+      });
     });
     console.groupEnd();
   }
@@ -136,6 +143,7 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
   showSessionDetails(sessionId: string): void {
     const metrics = conversationMonitor.getMetrics(sessionId);
     if (!metrics) {
+      console.warn(`Session ${sessionId} not found`);
       logger.warn(`Session ${sessionId} not found`, { component: 'AUTO', action: 'warn' });
       return;
     }
@@ -161,11 +169,15 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Error History');
       metrics.errors.forEach((error, idx) => {
         const timeAgo = Math.floor((Date.now() - error.timestamp.getTime()) / 1000);
+        console.error(`[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`);
         logger.error(
-          `[${idx + 1}] [${timeAgo}s ago] ${error.type}:`,
-          error.message,
-          { component: 'AUTO', action: 'error' },
-          toError(`[${idx + 1}] [${timeAgo}s ago] ${error.type}:`, error.message)
+          `[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`,
+          {
+            component: 'AUTO',
+            action: 'error',
+            metadata: { errorType: error.type, errorMessage: error.message },
+          },
+          toError(`[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`)
         );
       });
       console.groupEnd();
@@ -222,9 +234,10 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       }
     });
 
-    logger.debug(
-      `🧹 Cleared ${cleared} old sessions (older than ${maxAgeMinutes} minutes, { component: "AUTO", action: "log" })`
-    );
+    logger.debug(`🧹 Cleared ${cleared} old sessions (older than ${maxAgeMinutes} minutes)`, {
+      component: 'AUTO',
+      action: 'log',
+    });
   }
 
   /**

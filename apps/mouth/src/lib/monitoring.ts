@@ -3,6 +3,8 @@
  * Tracks long conversations and potential issues
  */
 
+import { logger } from './logger';
+
 // Extend Window interface for global access
 declare global {
   interface Window {

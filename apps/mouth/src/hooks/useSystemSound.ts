@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { logger } from '@/lib/logger';
 
 type SoundType = 'auth_start' | 'access_granted' | 'access_denied' | 'focus';
 

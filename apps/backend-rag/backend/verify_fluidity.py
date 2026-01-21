@@ -22,10 +22,11 @@ async def test_identity_intent():
     query = "tu chi sei"
     result = await classifier.classify_intent(query)
     logger.info(f"Query: '{query}'")
-    logger.info(f"Intent classified: {result['intent']}")
+    logger.info(f"Intent classified: {result.get('intent', result.get('category', 'unknown'))}")
     logger.info(f"Skip RAG: {result.get('skip_rag', False)}")
 
-    if result['intent'] == "identity" and result.get('skip_rag') is True:
+    intent = result.get('intent') or result.get('category', '')
+    if intent == "identity" and result.get('skip_rag') is True:
         logger.info("✅ PASS: Identity intent correctly triggers skip_rag=True")
     else:
         logger.info("❌ FAIL: Identity intent did NOT set skip_rag=True")
