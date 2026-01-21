@@ -89,5 +89,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Start uvicorn from root directory using module path
 # Bind to 0.0.0.0 (all IPv4 interfaces, Fly.io compatible)
+# Use PORT env var (set by Fly.io, defaults to 8080)
 # Use 2 workers to leverage 2 CPUs per VM
-CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
+CMD sh -c "uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 2"
