@@ -16,7 +16,10 @@ __pycache__/
 *.py[cod]
 uv.lock
 .venv/
+**/.venv/
 apps/backend-rag/data/
+# Prevent recursive apps structure
+apps/backend-rag/apps/
 check_ingest.py
 run_ingest.py
 # scripts/*.py  <-- REMOVED BLANKET IGNORE to allow tracking useful root scripts
@@ -252,3 +255,6 @@ scripts/data/temp_creds.json
 scripts/data/*_key.json
 scripts/data/*_creds.json
 
+test_github_token.py
+apps/mouth/SESSION_2026_01_19_SUMMARY.md
+apps/mouth/QUICK_ARTICLE_PUBLISHING.md
