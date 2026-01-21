@@ -138,26 +138,53 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await manager.connect(websocket, user_id)
 
+    # Create a background task to send pings to keep the connection alive
+    heartbeat_task = asyncio.create_task(send_heartbeat(websocket))
+
     try:
         while True:
             # Keep connection alive and handle client messages
-            message_text = await websocket.receive_text()
-
-            # Handle ping/pong for keepalive
+            # usage of asyncio.wait_for prevents indefinite blocking if we need to react to other events
             try:
-                message = json.loads(message_text)
-                if message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
-                # Other message types can be handled here if needed
-            except json.JSONDecodeError:
-                # Non-JSON message, ignore
-                pass
+                message_text = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                
+                # Handle ping/pong for keepalive
+                try:
+                    message = json.loads(message_text)
+                    if message.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                    # Other message types can be handled here if needed
+                except json.JSONDecodeError:
+                    pass
+            except asyncio.TimeoutError:
+                # No data received for 30s, loop around (heartbeat triggers separately)
+                continue
 
     except WebSocketDisconnect:
+        logger.info(f"🔌 WebSocket client disconnected: {user_id}")
         await manager.disconnect(websocket, user_id)
     except Exception as e:
-        logger.error(f"❌ WebSocket error: {e}")
+        logger.error(f"❌ WebSocket error for {user_id}: {e}", exc_info=True)
         await manager.disconnect(websocket, user_id)
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+
+
+async def send_heartbeat(websocket: WebSocket, interval: int = 15):
+    """Send periodic pings to keep connection alive through proxies"""
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await websocket.send_json({"type": "ping", "source": "server_keepalive"})
+            except Exception:
+                break
+    except asyncio.CancelledError:
+        pass
 
 
 # ============================================================================

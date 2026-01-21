@@ -12,6 +12,7 @@ Questo modulo è testabile in isolamento mockando memory_handler e context_windo
 """
 
 import logging
+import time
 from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span

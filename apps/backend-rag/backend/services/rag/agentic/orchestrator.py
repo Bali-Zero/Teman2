@@ -569,6 +569,20 @@ Respond in the SAME language the user is using."""
         logger.debug(f"Entering stream_query core. Query: {query}")
 
         full_answer = ""
+        
+        # 🎯 PROACTIVITY: Start Speculative Follow-up Generation (Background Task)
+        # We start this BEFORE the heavy RAG processing so it runs in parallel with the stream.
+        # Using response=None tells the service to predict based on Query + Context,
+        # effectively masking the 2-3s generation latency.
+        followup_task = asyncio.create_task(
+            self.followup_service.get_followups(
+                query=query,
+                response=None,  # SPECULATIVE MODE
+                use_ai=True,
+                conversation_context=None,
+            )
+        )
+        
         try:
             # Delegate to OrchestratorStreamingCore for main processing
             # PASS THE LOADED BASIC CONTEXT FOR ENRICHMENT
@@ -588,38 +602,23 @@ Respond in the SAME language the user is using."""
 
                 yield event
 
-            # 🎯 PROACTIVITY: Generate follow-up questions
-            followup_questions = []
-            if full_answer and len(full_answer) > 50:  # Only for substantial answers
-                try:
-                    # Generate follow-up questions with logging
-                    logger.debug(
-                        "💡 [Orchestrator] Generating follow-up questions",
-                        extra={
-                            "component": "AgenticRAGOrchestrator",
-                            "action": "generate_followups",
-                            "user_id": user_id,
-                            "query_length": len(query),
-                            "response_length": len(result.answer) if hasattr(result, "answer") else 0,
-                        },
+            # 🎯 PROACTIVITY: Retrieve results from background task
+            # By now, generation should be complete or nearly complete.
+            try:
+                # Wait for the task to finish (should be instant if stream took > 3s)
+                followup_questions = await followup_task
+                
+                if followup_questions:
+                    logger.info(
+                        f"📝 [Proactive] Retrieved {len(followup_questions)} speculative follow-up questions"
                     )
-                    followup_questions = await self.followup_service.get_followups(
-                        query=query,
-                        response=full_answer[:500],  # Use first 500 chars for efficiency
-                        use_ai=True,  # AI generates in user's language (any language)
-                        conversation_context=None,
-                    )
-                    if followup_questions:
-                        logger.info(
-                            f"📝 [Proactive] Generated {len(followup_questions)} follow-up questions"
-                        )
-                        # Emit metadata event with follow-up questions
-                        yield {
-                            "type": "metadata",
-                            "data": {"followup_questions": followup_questions},
-                        }
-                except Exception as followup_err:
-                    logger.warning(f"⚠️ [Proactive] Failed to generate follow-ups: {followup_err}")
+                    # Emit metadata event with follow-up questions
+                    yield {
+                        "type": "metadata",
+                        "data": {"followup_questions": followup_questions},
+                    }
+            except Exception as followup_err:
+                logger.warning(f"⚠️ [Proactive] Failed to retrieve follow-ups: {followup_err}")
 
         except Exception as e:
             # Use error classification for better error handling
@@ -652,3 +651,85 @@ Respond in the SAME language the user is using."""
         )
 
         return
+
+    async def stream_proactive_event(
+        self,
+        user_id: str,
+        event_type: str,
+        context_data: dict[str, Any],
+    ) -> AsyncGenerator[dict, None]:
+        """
+        Stream a proactive message triggered by a system event (e.g. Login).
+        
+        Logic:
+        1. Load FULL User Context (Memory, Tasks, Unread items).
+        2. Prompt LLM to decide IF and WHAT to say based on context + event.
+        3. Stream response if proactive message is generated.
+        
+        Args:
+            user_id: User triggering the event.
+            event_type: Type of event (e.g. "USER_LOGIN", "PAGE_VISIT", "IDLE").
+            context_data: Additional context (e.g. page_url, time_of_day).
+            
+        Yields:
+            Stream events.
+        """
+        correlation_id = str(uuid.uuid4())
+        start_time = time.time()
+        
+        if not user_id or user_id == "anonymous":
+            logger.warning("⚠️ [Proactive] Cannot trigger for anonymous user")
+            return
+
+        yield self.streaming_manager.create_initial_status_event(correlation_id)
+        
+        # 1. Load FULL Context immediately (we need to know what to be proactive about)
+        # Using Parallel Load (Fast)
+        user_context = await self.core.context_manager.get_user_context(
+            self.db_pool, user_id, self.memory_handler.memory_orchestrator
+        )
+        
+        # 2. Build Proactive Prompt
+        # We need a specialized prompt that takes the Event + Memory and decides output.
+        proactive_prompt = self.prompt_builder.build_proactive_prompt(
+            user_id=user_id,
+            context=user_context,
+            event_type=event_type,
+            event_context=context_data,
+        )
+        
+        # 3. Generate content via LLM Gateway (Single Turn, Fast Model)
+        # We use Flash because proactivity should be quick and doesn't need deep reasoning usually.
+        # But we enable tool use? No, usually proactive message is just text.
+        # IF we want it to "check calendar", it should have been done in context loading phase or via specialized tools.
+        # For "Zero-Shot Proactivity", we rely on the context we just loaded.
+        
+        chat = self.llm_gateway.create_chat_with_history(
+            history_to_use=[], # No conversation history for the strict prompt, but maybe valuable context?
+            # Actually, we should probably include recent history so it doesn't repeat itself.
+            model_tier=TIER_FLASH,
+        )
+        
+        # Add history to context for the prompt, but maybe not as chat messages to keep prompt clean?
+        # Let's rely on the system prompt having the history summary if needed.
+        
+        # Stream the response
+        try:
+            logger.info(f"🤖 [Proactive] Triggering event {event_type} for {user_id}")
+            
+            # Streaming standard generation
+            async for token in self.llm_gateway.stream_message(
+                chat,
+                user_message=f"SYSTEM EVENT: {event_type} occurred. Context: {context_data}. Generate proactive message or [SILENCE].",
+                system_prompt=proactive_prompt,
+                tier=TIER_FLASH,
+            ):
+                # Check for "silence" token or empty response if model decides not to speak?
+                # The prompt determines this.
+                yield {"type": "token", "data": token}
+            
+            yield {"type": "done", "data": {"route": "proactive"}}
+            
+        except Exception as e:
+            logger.error(f"❌ [Proactive] Failed: {e}", exc_info=True)
+            yield self._create_error_event("proactive_error", str(e), correlation_id)

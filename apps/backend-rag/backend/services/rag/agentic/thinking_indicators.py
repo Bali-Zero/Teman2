@@ -89,6 +89,7 @@ class ThinkingIndicatorService:
     def create_thinking_event(
         self,
         phase: ThinkingPhase,
+        message_override: str | None = None,
         **kwargs
     ) -> dict[str, Any]:
         """
@@ -96,6 +97,7 @@ class ThinkingIndicatorService:
 
         Args:
             phase: Current thinking phase
+            message_override: Optional custom message to show
             **kwargs: Variables for message formatting
 
         Returns:
@@ -105,9 +107,11 @@ class ThinkingIndicatorService:
         self._current_phase = phase
         self._phase_start_time = time.time()
 
+        message = message_override if message_override else self.get_message(phase, **kwargs)
+
         return {
             "type": "thinking",
-            "data": self.get_message(phase, **kwargs),
+            "data": message,
             "phase": phase.value,
             "timestamp": time.time()
         }

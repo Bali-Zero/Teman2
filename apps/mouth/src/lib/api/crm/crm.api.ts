@@ -540,6 +540,11 @@ export class CrmApi {
       address: string;
       notes: string;
       tags: string[];
+      google_drive_folder_id: string;
+      avatar_url: string;
+      passport_expiry: string;
+      date_of_birth: string;
+      company_name: string;
     }>,
     updatedBy: string
   ): Promise<Client> {

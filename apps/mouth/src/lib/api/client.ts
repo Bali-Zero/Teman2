@@ -171,10 +171,14 @@ export class ApiClientBase implements IApiClient {
     options: ApiRequestOptions = {},
     timeoutMs: number = 30000
   ): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...((options.headers as Record<string, string>) || {}),
-    };
+    // Don't set Content-Type for FormData - browser will set it with boundary
+    const isFormData = options.body instanceof FormData;
+    const headers: Record<string, string> = isFormData
+      ? { ...((options.headers as Record<string, string>) || {}) }
+      : {
+          'Content-Type': 'application/json',
+          ...((options.headers as Record<string, string>) || {}),
+        };
 
     // Add CSRF header for state-changing requests (POST, PUT, DELETE, PATCH)
     const method = (options.method || 'GET').toUpperCase();

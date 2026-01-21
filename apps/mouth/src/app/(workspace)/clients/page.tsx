@@ -254,7 +254,7 @@ export default function ClientiPage() {
       setHasMore(data.length === PAGE_SIZE);
       setOffset(currentOffset + data.length);
     } catch (error) {
-      logger.error('Failed to load clients:', error);
+      logger.error('Failed to load clients:', {}, error as Error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -297,7 +297,7 @@ export default function ClientiPage() {
       const currentUser = api.getUserProfile();
       await api.crm.updateClient(clientId, { status: newStatus }, currentUser?.email || 'system');
     } catch (error) {
-      logger.error('Failed to update status:', error);
+      logger.error('Failed to update status:', {}, error as Error);
       // Revert on error
       loadClients();
     }

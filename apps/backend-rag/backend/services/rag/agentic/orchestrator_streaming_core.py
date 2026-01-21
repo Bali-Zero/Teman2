@@ -86,31 +86,29 @@ class OrchestratorStreamingCore:
         # Yield initial status
         yield self.streaming_manager.create_initial_status_event(correlation_id)
 
-        # IMMEDIATE: Yield thinking indicator for user feedback
-        yield thinking_service.create_thinking_event(ThinkingPhase.ANALYZING)
+        # IMMEDIATE: Yield granular thinking indicator for user feedback
+        yield thinking_service.create_thinking_event(
+            ThinkingPhase.ANALYZING, 
+            message_override="🧠 Analyzing request & intent..."
+        )
 
         # 1. Prepare context (TIERED LOADING)
         user_context = None
         optimized_history = []
         extracted_entities = {}
+        kg_context_str = ""
 
         if initial_user_context:
             # FAST PATH: Using pre-loaded basic context
             # We need to enrich it with Memory + Entities (Heavy Lifting)
             user_context = initial_user_context
-            # History should already be in user_context or passed clearly
-            # Re-run history optimization just to be sure if not done?
-            # Basic context from get_basic_context returns (user_context, optimized_history)
-            # But here we only passed user_context dict.
-            # We should probably pass optimized_history too or assume it's in context.
-            # Let's assume conversation_history passed to this func is the optimized one if available.
-            # But wait, get_basic_context returns user_context, history.
-            # We should update signature to accept optimized_history too?
-            # Or just re-use conversation_history arg.
             optimized_history = conversation_history or user_context.get("history", [])
 
-            # ENRICHMENT PHASE (The latency we saved is now spent here, but visible!)
-            yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
+            # ENRICHMENT PHASE
+            yield thinking_service.create_thinking_event(
+                ThinkingPhase.SEARCHING, 
+                message_override="🔍 Retrieving memory & facts..."
+            )
             
             # Parallel Enrichment: Memory + Entities
             async def _enrich_memory():
@@ -137,8 +135,12 @@ class OrchestratorStreamingCore:
             
         else:
             # LEGACY / FULL LOAD PATH
-            yield thinking_service.create_thinking_event(ThinkingPhase.SEARCHING)
-            user_context, optimized_history, extracted_entities = await self.core.prepare_query_context(
+            yield thinking_service.create_thinking_event(
+                ThinkingPhase.SEARCHING, 
+                message_override="👤 Loading profile & extracting entities..."
+            )
+            
+            user_context, optimized_history, extracted_entities, kg_context_str = await self.core.prepare_query_context(
                 query=query,
                 user_id=user_id,
                 conversation_history=conversation_history,
@@ -178,6 +180,7 @@ class OrchestratorStreamingCore:
             history=optimized_history,
             extracted_entities=extracted_entities,
             deep_think_mode=False,  # Will be determined by routing
+            kg_context_str=kg_context_str, # Pass pre-fetched KG context
         )
 
         # 4. Create chat session

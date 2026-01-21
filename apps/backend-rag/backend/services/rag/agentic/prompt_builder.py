@@ -657,12 +657,14 @@ class SystemPromptBuilder:
             dept = profile.get("department", "General")
             notes = profile.get("notes", "")
             memory_parts.append(
-                f"User Name: {user_name}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}"
+                f"User Name: {user_name}\nEmail: {user_email}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}"
             )
         elif entities:
             user_name = entities.get("user_name", "Partner")
+            # Fallback for email if not in profile but known from user_id (if it looks like an email)
+            email_display = user_email if "@" in user_email else "Unknown"
             user_city = entities.get("user_city", "Unknown City")
-            memory_parts.append(f"User Name: {user_name}\nCity: {user_city}")
+            memory_parts.append(f"User Name: {user_name}\nEmail: {email_display}\nCity: {user_city}")
 
         # 2. Personal Facts
         if facts:
@@ -1354,3 +1356,60 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                 )
 
         return None
+
+    def build_proactive_prompt(
+        self,
+        user_id: str,
+        context: dict[str, Any],
+        event_type: str,
+        event_context: dict[str, Any] = None,
+    ) -> str:
+        """
+        Build a specialized system prompt for proactive triggers.
+        It instructs the LLM to analyze the context/event and decide whether to speak.
+        """
+        profile = context.get("profile") or {}
+        user_name = profile.get("name") or "Partner"
+        
+        # Format memory strictly
+        facts = context.get("facts", [])
+        tasks = context.get("tasks", []) # Assumptions: these might come from context enrichment
+        unread_items = context.get("unread", []) # Assumption
+        
+        # Flatten context for the prompt
+        context_str = f"Event Context: {event_context}"
+        memory_str = "\n".join([f"- {f}" for f in facts])
+        
+        prompt = f"""
+# SYSTEM INSTRUCTION: PROACTIVE TRIGGER
+You are ZANTARA. A system event '{event_type}' has occurred for user '{user_name}'.
+
+## YOUR GOAL
+Decide if you should initiate a conversation.
+
+## CONTEXT
+User: {user_name}
+Event: {event_type}
+{context_str}
+
+## MEMORY SNAPSHOT
+{memory_str}
+
+## RULES
+1. **BE USEFUL OR BE SILENT**: Only speak if you have something relevant to say.
+2. **LOGIN EVENT**:
+   - If User has pending tasks/unread items -> Mention them briefly.
+   - If it's a new day -> Brief, warm welcome.
+   - If nothing special -> simple "Welcome back, {user_name}."
+3. **PAGE_VISIT EVENT**:
+   - Offer help specific to the page topic ONLY if complex.
+4. **SILENCE PROTOCOL**:
+   - If you decide silence is best (e.g. user just visited 10s ago), output EXACTLY: `[SILENCE]`
+   - Do not output anything else if you choose silence.
+
+## TONE
+Concise, helpful, proactive. No fluff. Max 1-2 sentences.
+
+GENERATE RESPONSE OR [SILENCE]:
+"""
+        return prompt

@@ -105,10 +105,14 @@ export const articlesApi = {
    * Compose/enrich an article with Bali Zero style
    */
   async compose(request: ComposeRequest): Promise<ComposeResponse> {
-    const response = await apiClient.request<ComposeResponse>('/api/articles/compose', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+    const response = await apiClient.request<ComposeResponse>(
+      '/api/articles/compose',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      120000 // 2 minutes timeout for Claude API processing
+    );
     return response;
   },
 
@@ -126,10 +130,14 @@ export const articlesApi = {
    * Publish an enriched article to the site
    */
   async publish(request: PublishRequest): Promise<PublishResponse> {
-    const response = await apiClient.request<PublishResponse>('/api/articles/publish', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+    const response = await apiClient.request<PublishResponse>(
+      '/api/articles/publish',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      120000 // 2 minutes timeout for GitHub commit and image upload
+    );
     return response;
   },
 

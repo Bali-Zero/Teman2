@@ -99,36 +99,62 @@ class RealtimeService {
           const message: WebSocketMessage = JSON.parse(event.data);
           this.handleMessage(message);
         } catch (error) {
-          logger.error('Failed to parse WebSocket message', {
-            component: 'RealtimeService',
-            action: 'parse_message',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to parse WebSocket message',
+            {
+              component: 'RealtimeService',
+              action: 'parse_message',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       };
 
-      this.ws.onclose = () => {
-        logger.info('WebSocket disconnected', {
-          component: 'RealtimeService',
-          action: 'disconnect',
-        });
+      this.ws.onclose = (event) => {
+        // Only log if it was a clean close or unexpected close after successful connection
+        // Don't log if it failed during handshake (code 1006 = abnormal closure)
+        if (event.code !== 1006 || this.ws?.readyState === WebSocket.OPEN) {
+          logger.info('WebSocket disconnected', {
+            component: 'RealtimeService',
+            action: 'disconnect',
+            code: event.code,
+            reason: event.reason || 'Unknown',
+          });
+        }
         this.isConnecting = false;
         this.stopHeartbeat();
-        this.scheduleReconnect();
+        // Only schedule reconnect if we had a successful connection before
+        if (event.code !== 1006) {
+          this.scheduleReconnect();
+        } else {
+          // Server doesn't support WebSocket, stop trying
+          this.reconnectAttempts = this.maxReconnectAttempts;
+        }
       };
 
       this.ws.onerror = (error) => {
-        logger.error('WebSocket error', {
-          component: 'RealtimeService',
-          action: 'websocket_error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        // Only log error if we're actually trying to connect
+        // WebSocket errors during handshake are common if server doesn't support WS
+        if (this.isConnecting) {
+          logger.warn('WebSocket connection error (server may not support WebSocket)', {
+            component: 'RealtimeService',
+            action: 'websocket_error',
+            note: 'This is non-critical - real-time features will be disabled',
+          });
+        }
         this.isConnecting = false;
+        // Prevent infinite reconnect attempts
+        this.reconnectAttempts = this.maxReconnectAttempts;
       };
-
     } catch (error) {
-      logger.error('Failed to connect WebSocket', {
-        component: 'RealtimeService',
-        action: 'connect_error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to connect WebSocket',
+        {
+          component: 'RealtimeService',
+          action: 'connect_error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       this.isConnecting = false;
       this.scheduleReconnect();
     }
@@ -168,10 +194,7 @@ class RealtimeService {
   }
 
   // Send message to server
-  private send<T extends WebSocketMessageType>(
-    type: T,
-    data: WebSocketMessage<T>['data']
-  ): void {
+  private send<T extends WebSocketMessageType>(type: T, data: WebSocketMessage<T>['data']): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const message: WebSocketMessage<T> = {
         type,
@@ -213,7 +236,7 @@ class RealtimeService {
   private handleMessage(message: WebSocketMessage): void {
     const callbacks = this.listeners.get(message.type);
     if (callbacks) {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         // Type-safe callback invocation
         callback(message.data as WebSocketMessageData);
       });
@@ -319,7 +342,7 @@ class RealtimeService {
   private notifyDashboardUpdate(update: DashboardUpdateData): void {
     const callbacks = this.listeners.get('dashboard_refresh');
     if (callbacks) {
-      callbacks.forEach(callback => callback(update as WebSocketMessageData));
+      callbacks.forEach((callback) => callback(update as WebSocketMessageData));
     }
   }
 

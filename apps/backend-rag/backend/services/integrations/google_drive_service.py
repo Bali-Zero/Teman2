@@ -544,6 +544,357 @@ class GoogleDriveService:
             logger.info(f"[GDRIVE] Created folder '{name}' with ID: {folder_data['id']}")
             return folder_data
 
+    async def list_folder_files(
+        self,
+        user_id: str,
+        folder_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        search: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        List files in a specific folder with pagination and search.
+
+        Args:
+            user_id: User ID
+            folder_id: Google Drive folder ID
+            limit: Max number of files to return (default: 50, max: 200)
+            offset: Offset for pagination
+            search: Optional search query (searches in file name)
+
+        Returns:
+            {
+                "files": [...],
+                "total": 23,
+                "limit": 50,
+                "offset": 0
+            }
+        """
+        access_token = await self.get_valid_token(user_id)
+        if not access_token:
+            raise ValueError("User not connected to Google Drive")
+
+        # Build query
+        query_parts = [f"'{folder_id}' in parents", "trashed = false"]
+        if search:
+            query_parts.append(f"name contains '{search}'")
+        query = " and ".join(query_parts)
+
+        # Calculate page token from offset (Drive API uses page tokens, not offset)
+        # For simplicity, we'll fetch all and paginate in memory for now
+        # TODO: Implement proper page token handling if needed
+
+        params = {
+            "q": query,
+            "fields": "nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, webViewLink, thumbnailLink)",
+            "orderBy": "folder, name",
+            "pageSize": min(limit + offset, 200),  # Fetch enough to cover offset
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.API_BASE}/files",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            if response.status_code != 200:
+                error = response.json()
+                logger.error(f"[GDRIVE] List folder files failed: {error}")
+                raise ValueError(
+                    f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
+
+            data = response.json()
+            files = data.get("files", [])
+
+        # Apply offset and limit in memory
+        paginated_files = files[offset : offset + limit]
+
+        # Transform files to include proxy URLs
+        transformed_files = []
+        for file_info in paginated_files:
+            file_id = file_info.get("id")
+            transformed_files.append({
+                "id": file_id,
+                "name": file_info.get("name"),
+                "mime_type": file_info.get("mimeType"),
+                "size_bytes": int(file_info.get("size", 0)) if file_info.get("size") else None,
+                "created_time": file_info.get("createdTime"),
+                "modified_time": file_info.get("modifiedTime"),
+                "thumbnail_url": f"/api/documents/thumbnail/{file_id}" if file_info.get("thumbnailLink") else None,
+                "download_url": f"/api/documents/proxy/{file_id}",
+                "is_folder": file_info.get("mimeType") == "application/vnd.google-apps.folder",
+            })
+
+        return {
+            "files": transformed_files,
+            "total": len(files),  # Total available (may be more than returned)
+            "limit": limit,
+            "offset": offset,
+            "has_more": len(files) > offset + limit,
+        }
+
+    async def get_folder_structure(
+        self,
+        user_id: str,
+        root_folder_id: str,
+    ) -> dict[str, Any]:
+        """
+        Get complete folder structure with file counts and statistics.
+
+        Args:
+            user_id: User ID
+            root_folder_id: Root folder ID
+
+        Returns:
+            {
+                "root_folder_id": "...",
+                "folders": [
+                    {
+                        "name": "00_Profile",
+                        "id": "...",
+                        "file_count": 12,
+                        "total_size_bytes": 5242880,
+                        "last_modified": "2026-01-20T10:30:00Z"
+                    },
+                    ...
+                ],
+                "total_files": 47,
+                "total_size_bytes": 131072000
+            }
+        """
+        access_token = await self.get_valid_token(user_id)
+        if not access_token:
+            raise ValueError("User not connected to Google Drive")
+
+        # List all subfolders in root
+        params = {
+            "q": f"'{root_folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            "fields": "files(id, name)",
+            "orderBy": "name",
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.API_BASE}/files",
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            if response.status_code != 200:
+                error = response.json()
+                logger.error(f"[GDRIVE] Get folder structure failed: {error}")
+                raise ValueError(
+                    f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
+
+            data = response.json()
+            subfolders = data.get("files", [])
+
+        # For each subfolder, get file count and size
+        folders_info = []
+        total_files = 0
+        total_size_bytes = 0
+
+        for subfolder in subfolders:
+            folder_id = subfolder["id"]
+            folder_name = subfolder["name"]
+
+            # List files in this subfolder (non-recursive, direct children only)
+            files_params = {
+                "q": f"'{folder_id}' in parents and trashed = false",
+                "fields": "files(id, size)",
+                "pageSize": 1000,  # Get all files for accurate count
+            }
+
+            async with httpx.AsyncClient() as client:
+                files_response = await client.get(
+                    f"{self.API_BASE}/files",
+                    params=files_params,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+
+                if files_response.status_code == 200:
+                    files_data = files_response.json()
+                    files = files_data.get("files", [])
+                    file_count = len([f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"])
+                    
+                    # Calculate total size
+                    folder_size = sum(
+                        int(f.get("size", 0)) for f in files
+                        if f.get("size") and f.get("mimeType") != "application/vnd.google-apps.folder"
+                    )
+
+                    # Get last modified time (most recent file)
+                    if files:
+                        modified_times = [
+                            f.get("modifiedTime") for f in files
+                            if f.get("modifiedTime")
+                        ]
+                        last_modified = max(modified_times) if modified_times else None
+                    else:
+                        last_modified = None
+
+                    folders_info.append({
+                        "name": folder_name,
+                        "id": folder_id,
+                        "file_count": file_count,
+                        "total_size_bytes": folder_size,
+                        "last_modified": last_modified,
+                    })
+
+                    total_files += file_count
+                    total_size_bytes += folder_size
+
+        return {
+            "root_folder_id": root_folder_id,
+            "folders": folders_info,
+            "total_files": total_files,
+            "total_size_bytes": total_size_bytes,
+        }
+
+    async def upload_file_to_folder(
+        self,
+        user_id: str,
+        folder_id: str,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Upload a file directly to a Google Drive folder.
+
+        Args:
+            user_id: User ID
+            folder_id: Google Drive folder ID
+            file_content: File content as bytes
+            file_name: Name of the file
+            mime_type: MIME type (auto-detected if not provided)
+
+        Returns:
+            {
+                "id": "1JKL...XYZ",
+                "name": "passport_marco.pdf",
+                "size_bytes": 2359296,
+                "download_url": "/api/documents/proxy/1JKL...XYZ"
+            }
+        """
+        access_token = await self.get_valid_token(user_id)
+        if not access_token:
+            raise ValueError("User not connected to Google Drive")
+
+        # Auto-detect MIME type if not provided
+        if not mime_type:
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(file_name)
+            mime_type = mime_type or "application/octet-stream"
+
+        # Create file metadata
+        metadata = {
+            "name": file_name,
+            "parents": [folder_id],
+        }
+
+        # Upload file using multipart upload
+        async with httpx.AsyncClient() as client:
+            # First, create metadata
+            metadata_response = await client.post(
+                f"{self.API_BASE}/files",
+                json=metadata,
+                params={"fields": "id, name, size"},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+            )
+
+            if metadata_response.status_code != 200:
+                error = metadata_response.json()
+                logger.error(f"[GDRIVE] Upload file metadata failed: {error}")
+                raise ValueError(
+                    f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
+
+            file_id = metadata_response.json().get("id")
+            if not file_id:
+                raise ValueError("Failed to get file ID from upload")
+
+            # Then upload file content
+            upload_response = await client.patch(
+                f"{self.API_BASE}/files/{file_id}",
+                content=file_content,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": mime_type,
+                },
+            )
+
+            if upload_response.status_code not in (200, 204):
+                error = upload_response.json() if upload_response.headers.get("content-type", "").startswith("application/json") else {}
+                logger.error(f"[GDRIVE] Upload file content failed: {error}")
+                raise ValueError(
+                    f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
+
+            # Get final file info
+            file_info = metadata_response.json()
+            size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
+
+            logger.info(f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}")
+
+            return {
+                "id": file_id,
+                "name": file_name,
+                "size_bytes": size_bytes,
+                "download_url": f"/api/documents/proxy/{file_id}",
+            }
+
+    async def get_folder_stats(
+        self,
+        user_id: str,
+        root_folder_id: str,
+    ) -> dict[str, Any]:
+        """
+        Get aggregated statistics for a folder structure.
+
+        Args:
+            user_id: User ID
+            root_folder_id: Root folder ID
+
+        Returns:
+            {
+                "total_files": 47,
+                "total_size_bytes": 131072000,
+                "total_size_mb": 125.0,
+                "last_synced": "2026-01-20T12:30:00Z",
+                "by_category": {
+                    "00_Profile": {"files": 2, "size_mb": 5.2},
+                    "01_Immigration": {"files": 23, "size_mb": 45.0},
+                    ...
+                }
+            }
+        """
+        structure = await self.get_folder_structure(user_id, root_folder_id)
+
+        # Group by category (folder name prefix)
+        by_category = {}
+        for folder in structure["folders"]:
+            folder_name = folder["name"]
+            by_category[folder_name] = {
+                "files": folder["file_count"],
+                "size_bytes": folder["total_size_bytes"],
+                "size_mb": round(folder["total_size_bytes"] / 1024 / 1024, 2),
+            }
+
+        return {
+            "total_files": structure["total_files"],
+            "total_size_bytes": structure["total_size_bytes"],
+            "total_size_mb": round(structure["total_size_bytes"] / 1024 / 1024, 2),
+            "last_synced": datetime.now(timezone.utc).isoformat(),
+            "by_category": by_category,
+        }
+
 
 # Database migration SQL for tokens table
 MIGRATION_SQL = """

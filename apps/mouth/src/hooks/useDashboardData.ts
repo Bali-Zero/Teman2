@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, type DashboardData } from '@/lib/api/dashboard/dashboard.api';
+import { logger } from '@/lib/logger';
 
 export function useDashboardData() {
   const {
@@ -29,19 +30,39 @@ export function useDashboardData() {
           endpoint: '/api/dashboard/summary',
         };
 
-        // Log to console with full details
-        console.error('[Dashboard] Failed to load dashboard data:', errorDetails);
+        // Log error with structured logger
+        logger.error(
+          'Failed to load dashboard data',
+          {
+            component: 'useDashboardData',
+            action: 'getDashboardSummary',
+            metadata: errorDetails,
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
 
         // Check for specific error types
         if (err instanceof Error) {
           if (err.message.includes('401') || err.message.includes('Unauthorized')) {
-            console.error('[Dashboard] Authentication error - user may need to login again');
+            logger.warn('Authentication error - user may need to login again', {
+              component: 'useDashboardData',
+              action: 'getDashboardSummary',
+            });
           } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
-            console.error('[Dashboard] Authorization error - user may not have permission');
+            logger.warn('Authorization error - user may not have permission', {
+              component: 'useDashboardData',
+              action: 'getDashboardSummary',
+            });
           } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-            console.error('[Dashboard] Network error - backend may be unreachable');
+            logger.warn('Network error - backend may be unreachable', {
+              component: 'useDashboardData',
+              action: 'getDashboardSummary',
+            });
           } else if (err.message.includes('CORS')) {
-            console.error('[Dashboard] CORS error - backend CORS configuration may be incorrect');
+            logger.warn('CORS error - backend CORS configuration may be incorrect', {
+              component: 'useDashboardData',
+              action: 'getDashboardSummary',
+            });
           }
         }
 
@@ -56,18 +77,26 @@ export function useDashboardData() {
 
   // Log error details when error occurs
   if (error) {
-    console.error('[Dashboard] Error state detected:', {
-      error:
-        error instanceof Error
-          ? {
-              message: error.message,
-              name: error.name,
-              stack: error.stack,
-            }
-          : error,
-      hasData: !!data,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error(
+      'Dashboard error state detected',
+      {
+        component: 'useDashboardData',
+        action: 'error_state',
+        metadata: {
+          error:
+            error instanceof Error
+              ? {
+                  message: error.message,
+                  name: error.name,
+                  stack: error.stack,
+                }
+              : error,
+          hasData: !!data,
+          timestamp: new Date().toISOString(),
+        },
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
   }
 
   // Extract data with fallbacks (memoized to prevent unnecessary recalculations)
@@ -107,6 +136,11 @@ export function useDashboardData() {
 
   const isHealthy = useMemo(() => systemStatus === 'healthy', [systemStatus]);
 
+  // Admin-only data
+  const revenue = useMemo(() => data?.revenue || null, [data?.revenue]);
+
+  const revenueGrowth = useMemo(() => data?.revenue_growth ?? null, [data?.revenue_growth]);
+
   return {
     // Data
     user,
@@ -128,6 +162,10 @@ export function useDashboardData() {
     // Computed (now memoized)
     totalUnread,
     isHealthy,
+
+    // Admin-only data
+    revenue,
+    revenueGrowth,
   };
 }
 

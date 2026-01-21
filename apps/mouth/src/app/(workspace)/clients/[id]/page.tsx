@@ -34,7 +34,7 @@ import {
   Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import type {
@@ -358,7 +358,6 @@ export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const toast = useToast();
   const clientId = Number(params.id);
 
   const [profile, setProfile] = useState<ClientProfile | null>(null);
@@ -369,7 +368,6 @@ export default function ClientDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeModal, setActiveModal] = useState<ModalType>('none');
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
-  const [viewingFolder, setViewingFolder] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   const loadData = async () => {
@@ -385,9 +383,9 @@ export default function ClientDetailPage() {
       setInteractions(interactionsData);
       setDocCategories(categoriesData);
     } catch (err) {
-      logger.error('Failed to load client data:', err);
+      logger.error('Failed to load client data:', {}, err as Error);
       setError('Failed to load client data');
-      toast.error('Error', 'Failed to load client data');
+      toast.error('Failed to load client data');
     } finally {
       setIsLoading(false);
     }
@@ -398,7 +396,7 @@ export default function ClientDetailPage() {
       const profileData = await api.crm.getClientProfile(clientId);
       setProfile(profileData);
     } catch (err) {
-      logger.error('Failed to refresh client data:', err);
+      logger.error('Failed to refresh client data:', {}, err as Error);
     }
   };
 
@@ -772,9 +770,9 @@ function OverviewTab({
   onEditClick: () => void;
   onAddNote: (note: string) => Promise<void>;
 }) {
-  const toast = useToast();
   const [quickNote, setQuickNote] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [viewingFolder, setViewingFolder] = useState<string | null>(null);
 
   const handleAddNote = async () => {
     if (!quickNote.trim()) return;
@@ -783,7 +781,7 @@ function OverviewTab({
       await onAddNote(quickNote);
       setQuickNote('');
     } catch (err) {
-      toast.error('Failed', (err as Error).message);
+      toast.error('Failed', { description: (err as Error).message });
     } finally {
       setIsAddingNote(false);
     }
@@ -819,7 +817,7 @@ function OverviewTab({
                     try {
                       const user = await api.getProfile();
                       await api.crm.deleteClient(client.id, user.email);
-                      toast.success('Client deleted', 'Marked as inactive');
+                      toast.success('Client deleted', { description: 'Marked as inactive' });
                       router.push('/clients');
                       router.refresh();
                     } catch (err) {
@@ -1077,7 +1075,6 @@ function PassportCard({
   formatDate: (d: string) => string;
 }) {
   const [isExtracting, setIsExtracting] = useState(false);
-  const toast = useToast();
 
   // Find passport document from documents
   const passportDoc = documents.find(
@@ -1142,15 +1139,19 @@ function PassportCard({
         if (response.gender) details.push(`Gender: ${response.gender}`);
         if (response.birthplace) details.push(`Birthplace: ${response.birthplace}`);
         if (response.name_match === false) {
-          toast.warning('Name mismatch', 'Passport name differs from client record');
+          toast.warning('Name mismatch', {
+            description: 'Passport name differs from client record',
+          });
         }
-        toast.success('Passport data extracted!', details.join(' | '));
+        toast.success('Passport data extracted!', { description: details.join(' | ') });
         window.location.reload();
       } else {
-        toast.warning('OCR failed', response.message || 'Could not extract passport data');
+        toast.warning('OCR failed', {
+          description: response.message || 'Could not extract passport data',
+        });
       }
     } catch (err) {
-      toast.error('Extraction failed', (err as Error).message);
+      toast.error('Extraction failed', { description: (err as Error).message });
     } finally {
       setIsExtracting(false);
     }
@@ -1369,7 +1370,6 @@ function ActiveProcessCard({
   formatDate: (d: string) => string;
   router: ReturnType<typeof useRouter>;
 }) {
-  const toast = useToast();
   const mainProcess = activePractices[0];
 
   // Calculate estimated issue date (+7 days from now as fallback)
@@ -1461,8 +1461,6 @@ function FamilyTab({
   onAddClick: () => void;
   onRefresh: () => void;
 }) {
-  const toast = useToast();
-
   const handleDelete = async (id: number, name: string) => {
     if (confirm(`Remove ${name} from family members?`)) {
       try {
@@ -1470,7 +1468,7 @@ function FamilyTab({
         toast.success('Family member removed');
         onRefresh();
       } catch (err) {
-        toast.error('Error', (err as Error).message);
+        toast.error('Error', { description: (err as Error).message });
       }
     }
   };
@@ -1592,7 +1590,6 @@ function DocumentsTab({
   onEditClick: (doc: ClientDocument) => void;
   onRefresh: () => void;
 }) {
-  const toast = useToast();
   const categoryNames: Record<string, string> = {
     immigration: 'Immigration Documents',
     pma: 'PT PMA Documents',
@@ -1610,7 +1607,7 @@ function DocumentsTab({
         toast.success('Document archived');
         onRefresh();
       } catch (err) {
-        toast.error('Error', (err as Error).message);
+        toast.error('Error', { description: (err as Error).message });
       }
     }
   };
@@ -1782,7 +1779,6 @@ function ProcessTab({
   formatCurrency: (n: number) => string;
   router: ReturnType<typeof useRouter>;
 }) {
-  const toast = useToast();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -1855,7 +1851,7 @@ function ProcessTab({
                             toast.success('Process deleted');
                             window.location.reload();
                           } catch (err) {
-                            toast.error('Error', (err as Error).message);
+                            toast.error('Error', { description: (err as Error).message });
                           }
                         }
                       }}
@@ -2064,7 +2060,6 @@ function EditClientModal({
   onSave: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
   const [formData, setFormData] = useState({
     full_name: client.full_name || '',
     email: client.email || '',
@@ -2103,7 +2098,7 @@ function EditClientModal({
       const resizedImage = await cropToSquare(file, 400, 0.85);
       setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
     } catch (error) {
-      logger.error('Failed to process image:', error);
+      logger.error('Failed to process image:', {}, error);
       alert('Failed to process image. Please try again.');
     }
   };
@@ -2127,7 +2122,7 @@ function EditClientModal({
       onClose();
       toast.success('Client updated');
     } catch (err) {
-      toast.error('Failed to update', (err as Error).message);
+      toast.error('Failed to update', { description: (err as Error).message });
     } finally {
       setIsSaving(false);
     }
@@ -2332,7 +2327,6 @@ function AddFamilyMemberModal({
   onSave: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
   const [formData, setFormData] = useState({
     full_name: '',
     relationship: 'spouse',
@@ -2353,7 +2347,7 @@ function AddFamilyMemberModal({
       onSave();
       onClose();
     } catch (err) {
-      toast.error('Failed to add', (err as Error).message);
+      toast.error('Failed to add', { description: (err as Error).message });
     } finally {
       setIsSaving(false);
     }
@@ -2444,11 +2438,10 @@ function AddDocumentModal({
   onSave: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
   const [formData, setFormData] = useState({
     file_name: '',
     document_type: '',
-    document_category: 'other' as DocumentCategory,
+    document_category: 'other' as any,
     expiry_date: '',
     google_drive_file_url: '',
     family_member_id: '',
@@ -2457,7 +2450,7 @@ function AddDocumentModal({
 
   // Auto-select folder based on category
   React.useEffect(() => {
-    const categoryToFolder: Record<DocumentCategory, string> = {
+    const categoryToFolder: Record<string, string> = {
       immigration: '01_Immigration',
       pma: '02_Company',
       tax: '03_Tax',
@@ -2486,7 +2479,7 @@ function AddDocumentModal({
       onSave();
       onClose();
     } catch (err) {
-      toast.error('Failed to add', (err as Error).message);
+      toast.error('Failed to add', { description: (err as Error).message });
     } finally {
       setIsSaving(false);
     }
@@ -2513,7 +2506,7 @@ function AddDocumentModal({
           <label className="block text-sm font-medium mb-1.5">Category</label>
           <select
             value={formData.document_category}
-            onChange={(e) => setFormData({ ...formData, document_category: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, document_category: e.target.value as any })}
             className={inputClass}
           >
             <option value="immigration">Immigration</option>
@@ -2591,7 +2584,6 @@ function EditDocumentModal({
   onSave: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
   const [formData, setFormData] = useState({
     file_name: document.file_name || '',
     document_type: document.document_type || '',
@@ -2618,7 +2610,7 @@ function EditDocumentModal({
       onSave();
       onClose();
     } catch (err) {
-      toast.error('Failed to update', (err as Error).message);
+      toast.error('Failed to update', { description: (err as Error).message });
     } finally {
       setIsSaving(false);
     }
@@ -2648,12 +2640,7 @@ function EditDocumentModal({
             onChange={(e) =>
               setFormData({
                 ...formData,
-                document_category: e.target.value as
-                  | 'immigration'
-                  | 'pma'
-                  | 'tax'
-                  | 'personal'
-                  | 'other',
+                document_category: e.target.value as any,
               })
             }
             className={inputClass}
