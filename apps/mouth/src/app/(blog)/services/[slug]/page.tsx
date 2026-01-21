@@ -35,11 +35,17 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   }
 
   // Structured logging for SEO monitoring
-  logger.info(`Service Page View: ${slug}`, {
-    component: 'ServiceDetailPage',
-    action: 'page_view',
-    metadata: { service: slug, userAgent: 'server-side', timestamp: new Date().toISOString() },
-  });
+  // Wrapped in try-catch to prevent SSR errors from breaking page render
+  try {
+    logger.info(`Service Page View: ${slug}`, {
+      component: 'ServiceDetailPage',
+      action: 'page_view',
+      metadata: { service: slug, userAgent: 'server-side', timestamp: new Date().toISOString() },
+    });
+  } catch {
+    // Silently fail logging in production to prevent page crashes
+    // Logger errors should not break page rendering
+  }
 
   const IconComponent = service.icon;
   const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
