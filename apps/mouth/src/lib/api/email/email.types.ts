@@ -110,6 +110,8 @@ export interface ReplyEmailParams {
   content: string;
   reply_all?: boolean;
   attachment_ids?: string[];
+  to: string; // Required: original sender's email address
+  cc?: string; // Optional: CC addresses for reply all
 }
 
 export interface ForwardEmailParams {

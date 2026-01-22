@@ -73,6 +73,8 @@ class ReplyEmailRequest(BaseModel):
 
     content: str = Field(..., description="Reply content")
     reply_all: bool = Field(False, description="Reply to all recipients")
+    to: str = Field(..., description="Reply to address (original sender)")
+    cc: str | None = Field(None, description="CC addresses for reply all")
 
 
 class ForwardEmailRequest(BaseModel):
@@ -472,6 +474,8 @@ async def reply_email(
             message_id=message_id,
             content=request.content,
             reply_all=request.reply_all,
+            to_address=request.to,
+            cc_address=request.cc,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

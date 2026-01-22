@@ -16,6 +16,7 @@ Features:
 """
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -28,6 +29,78 @@ from backend.app.metrics import metrics_collector
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+
+def sanitize_filename(filename: str, max_length: int = 200) -> str:
+    """
+    Sanitize filename for email attachment upload.
+
+    Removes/replaces problematic characters that cause Zoho API issues:
+    - Removes spaces (replace with underscores)
+    - Removes special characters: < > : " / \ | ? * ,
+    - Truncates to max_length while preserving extension
+    - Ensures filename is not empty
+
+    Args:
+        filename: Original filename
+        max_length: Maximum filename length (default 200, Zoho limit ~255)
+
+    Returns:
+        Sanitized filename safe for email attachment
+
+    Examples:
+        >>> sanitize_filename("My File, Name (1).pdf")
+        "My_File_Name_1.pdf"
+        >>> sanitize_filename("a" * 300 + ".txt")
+        "aaaa...aaa.txt"  # Truncated to max_length
+    """
+    if not filename:
+        return "unnamed_file"
+
+    # Split name and extension
+    if "." in filename:
+        parts = filename.rsplit(".", 1)
+        name = parts[0]
+        extension = "." + parts[1]
+    else:
+        name = filename
+        extension = ""
+
+    # Remove/replace problematic characters
+    # Replace spaces with underscores
+    name = name.replace(" ", "_")
+
+    # Remove special characters that cause API issues
+    # Keep: letters, numbers, underscore, hyphen, period
+    name = re.sub(r'[<>:"/\\|?*,]', "", name)
+
+    # Remove multiple consecutive underscores
+    name = re.sub(r'_{2,}', "_", name)
+
+    # Remove leading/trailing underscores
+    name = name.strip("_")
+
+    # Ensure name is not empty
+    if not name:
+        name = "file"
+
+    # Truncate if too long (preserve extension)
+    max_name_length = max_length - len(extension)
+    if len(name) > max_name_length:
+        name = name[:max_name_length].rstrip("_")
+
+    sanitized = name + extension
+
+    # Final safety check
+    if not sanitized or sanitized == extension:
+        sanitized = "unnamed_file" + extension
+
+    return sanitized
 
 
 class ZohoEmailService:
@@ -551,6 +624,8 @@ class ZohoEmailService:
         message_id: str,
         content: str,
         reply_all: bool = False,
+        to_address: str | None = None,
+        cc_address: str | None = None,
     ) -> dict[str, Any]:
         """
         Reply to an email.
@@ -560,20 +635,37 @@ class ZohoEmailService:
             message_id: Original message ID
             content: Reply content
             reply_all: Whether to reply to all recipients
+            to_address: Reply recipient (original sender email)
+            cc_address: CC addresses for reply all
 
         Returns:
             Send result
         """
         action = "replyall" if reply_all else "reply"
         logger.info(
-            f"[Email] Replying to email user={user_id} message_id={message_id} reply_all={reply_all}"
+            f"[Email] Replying to email user={user_id} message_id={message_id} "
+            f"reply_all={reply_all} to={to_address}"
         )
+
+        # Build payload with required toAddress
+        payload: dict[str, Any] = {
+            "content": content,
+            "mailFormat": "html",
+        }
+
+        # Zoho API requires toAddress for reply
+        if to_address:
+            payload["toAddress"] = to_address
+
+        # Add CC for reply all
+        if cc_address:
+            payload["ccAddress"] = cc_address
 
         response = await self._request(
             user_id,
             "POST",
             f"/messages/{message_id}/{action}",
-            json_data={"content": content, "mailFormat": "html"},
+            json_data=payload,
         )
 
         reply_message_id = response.get("data", {}).get("messageId")
@@ -863,21 +955,67 @@ class ZohoEmailService:
         content_type: str,
     ) -> dict[str, str]:
         """
-        Upload attachment and get details for use in send.
+        Upload attachment with validation and sanitization.
 
         Args:
             user_id: User ID
-            filename: File name
+            filename: File name (will be sanitized)
             content: File content
             content_type: MIME type
 
         Returns:
             Dictionary with attachment details (id, store_name, path, name)
+
+        Raises:
+            ValueError: If file size exceeds 25MB or filename invalid
         """
+        # ========================================
+        # PRE-VALIDATION
+        # ========================================
+
+        original_filename = filename
+        file_size_mb = len(content) / (1024 * 1024)
+
         logger.info(
-            f"[Email] Uploading attachment user={user_id} "
-            f"filename={filename} size={len(content)} type={content_type}"
+            f"[Email] Upload request user={user_id} "
+            f"filename={filename!r} size={file_size_mb:.2f}MB type={content_type}"
         )
+
+        # Validate file size (Zoho limit: 25MB per attachment)
+        MAX_FILE_SIZE_MB = 25
+        MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+        if len(content) > MAX_FILE_SIZE_BYTES:
+            error_msg = (
+                f"File too large: {file_size_mb:.1f}MB exceeds {MAX_FILE_SIZE_MB}MB limit. "
+                f"Filename: {filename}"
+            )
+            logger.error(f"[Email] {error_msg}")
+            raise ValueError(error_msg)
+
+        # Validate filename length before sanitization
+        if len(filename) > 255:
+            error_msg = (
+                f"Filename too long: {len(filename)} characters exceeds 255 character limit. "
+                f"Filename: {filename}"
+            )
+            logger.error(f"[Email] {error_msg}")
+            raise ValueError(error_msg)
+
+        # Sanitize filename (remove spaces, special chars, truncate)
+        sanitized_filename = sanitize_filename(filename, max_length=200)
+
+        if sanitized_filename != original_filename:
+            logger.info(
+                f"[Email] Filename sanitized user={user_id} "
+                f"original={original_filename!r} → sanitized={sanitized_filename!r}"
+            )
+            filename = sanitized_filename
+
+        # ========================================
+        # API CALL
+        # ========================================
+
         account_id = await self._get_account_id(user_id)
         token = await self.oauth_service.get_valid_token(user_id)
 
@@ -886,29 +1024,77 @@ class ZohoEmailService:
         async with httpx.AsyncClient(
             timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT
         ) as client:
-            response = await client.post(
-                url,
-                headers={"Authorization": f"Zoho-oauthtoken {token}"},
-                files={"attach": (filename, content, content_type)},
-            )
+            try:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Zoho-oauthtoken {token}"},
+                    files={"attach": (filename, content, content_type)},
+                )
 
-            if response.status_code != 200:
-                logger.error(f"[Email] Failed to upload attachment: status={response.status_code}")
-                raise ValueError(f"Failed to upload attachment: {response.status_code}")
+                # ========================================
+                # ERROR HANDLING WITH FULL DETAILS
+                # ========================================
 
-            data = response.json()
-            # Zoho returns these fields in the 'data' object
-            attachment_data = data.get("data", {})
+                if response.status_code != 200:
+                    # Parse Zoho error response
+                    error_body = {}
+                    try:
+                        error_body = response.json() if response.content else {}
+                    except Exception:
+                        error_body = {"raw_content": response.text[:500]}
 
-            result = {
-                "attachment_id": attachment_data.get("attachmentId", ""),
-                "store_name": attachment_data.get("storeName", ""),
-                "attachment_path": attachment_data.get("attachmentPath", ""),
-                "attachment_name": attachment_data.get("attachmentName", filename),
-            }
+                    # Extract error details
+                    error_data = error_body.get("data", {})
+                    error_code = error_data.get("errorCode", "UNKNOWN_ERROR")
+                    error_message = error_data.get("message", "No error message provided")
 
-            logger.info(f"[Email] Attachment uploaded successfully id={result['attachment_id']}")
-            return result
+                    # Comprehensive error logging
+                    logger.error(
+                        f"[Email] Attachment upload failed\n"
+                        f"  User: {user_id}\n"
+                        f"  Filename: {filename!r} (original: {original_filename!r})\n"
+                        f"  Size: {file_size_mb:.2f}MB\n"
+                        f"  Content-Type: {content_type}\n"
+                        f"  HTTP Status: {response.status_code}\n"
+                        f"  Zoho Error Code: {error_code}\n"
+                        f"  Zoho Error Message: {error_message}\n"
+                        f"  Full Response: {error_body}"
+                    )
+
+                    # Raise informative error for user
+                    raise ValueError(
+                        f"Upload failed for '{original_filename}': {error_code} - {error_message}"
+                    )
+
+                # ========================================
+                # SUCCESS
+                # ========================================
+
+                data = response.json()
+                attachment_data = data.get("data", {})
+
+                result = {
+                    "attachment_id": attachment_data.get("attachmentId", ""),
+                    "store_name": attachment_data.get("storeName", ""),
+                    "attachment_path": attachment_data.get("attachmentPath", ""),
+                    "attachment_name": attachment_data.get("attachmentName", filename),
+                }
+
+                logger.info(
+                    f"[Email] Attachment uploaded successfully "
+                    f"user={user_id} attachment_id={result['attachment_id']} "
+                    f"filename={filename!r} size={file_size_mb:.2f}MB"
+                )
+
+                return result
+
+            except httpx.HTTPError as e:
+                logger.error(
+                    f"[Email] HTTP error uploading attachment user={user_id} "
+                    f"filename={filename!r}: {e}",
+                    exc_info=True,
+                )
+                raise ValueError(f"Network error uploading '{original_filename}': {str(e)}")
 
     # ═══════════════════════════════════════════
     # DRAFT OPERATIONS
