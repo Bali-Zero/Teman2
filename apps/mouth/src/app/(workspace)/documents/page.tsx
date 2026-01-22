@@ -8,7 +8,16 @@ import { DriveBreadcrumb } from './components/DriveBreadcrumb';
 import { FileGrid } from './components/FileGrid';
 import { FileList } from './components/FileList';
 import { DepartmentHome } from './components/DepartmentHome';
-import { FileModal, CreateMenu, ContextMenu, MoveDialog, DropZone, UploadProgress, UploadDialog, FileViewer } from '@/components/documents';
+import {
+  FileModal,
+  CreateMenu,
+  ContextMenu,
+  MoveDialog,
+  DropZone,
+  UploadProgress,
+  UploadDialog,
+  FileViewer,
+} from '@/components/documents';
 import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -25,19 +34,9 @@ export default function DocumentsPage() {
   // React Query Hooks
   const queryClient = useQueryClient();
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
-  const {
-    data,
-    isLoading: filesLoading,
-    error
-  } = useDriveFiles(currentFolderId, searchQuery);
+  const { data, isLoading: filesLoading, error } = useDriveFiles(currentFolderId, searchQuery);
 
-  const {
-    createFolder,
-    createDoc,
-    renameFile,
-    deleteFile,
-    moveFiles
-  } = useDriveMutations();
+  const { createFolder, createDoc, renameFile, deleteFile, moveFiles } = useDriveMutations();
 
   // Derived Data
   const files = data?.files || [];
@@ -49,26 +48,32 @@ export default function DocumentsPage() {
   // Selection State
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number>(-1);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(
+    null
+  );
 
   // Modal State
-  const [modalMode, setModalMode] = useState<'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename' | null>(null);
+  const [modalMode, setModalMode] = useState<
+    'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename' | null
+  >(null);
   const [renameTarget, setRenameTarget] = useState<FileItem | null>(null);
-  const [createMenuPos, setCreateMenuPos] = useState<{x: number, y: number} | null>(null);
+  const [createMenuPos, setCreateMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   // Upload State
-  const [uploads, setUploads] = useState<Array<{
-    id: string;
-    name: string;
-    progress: number;
-    status: 'uploading' | 'completed' | 'error';
-    error?: string;
-    abortController?: AbortController;
-  }>>([]);
+  const [uploads, setUploads] = useState<
+    Array<{
+      id: string;
+      name: string;
+      progress: number;
+      status: 'uploading' | 'completed' | 'error';
+      error?: string;
+      abortController?: AbortController;
+    }>
+  >([]);
 
   // Handlers
   const handleNavigate = (index: number) => {
@@ -129,61 +134,74 @@ export default function DocumentsPage() {
   const handleUpload = async (filesToUpload: File[]) => {
     setShowUploadDialog(false);
 
-    for (const file of filesToUpload) {
-      const uploadId = `${Date.now()}-${file.name}`;
+    // Create upload entries and initiate parallel uploads
+    const uploadPromises = filesToUpload.map(async (file) => {
+      const uploadId = `${Date.now()}-${Math.random()}-${file.name}`;
       const abortController = new AbortController();
 
       // Add to upload list
-      setUploads(prev => [...prev, {
-        id: uploadId,
-        name: file.name,
-        progress: 0,
-        status: 'uploading',
-        abortController,
-      }]);
+      setUploads((prev) => [
+        ...prev,
+        {
+          id: uploadId,
+          name: file.name,
+          progress: 0,
+          status: 'uploading',
+          abortController,
+        },
+      ]);
 
       try {
         await api.drive.uploadFile(file, currentFolderId || 'root', (progress) => {
-          setUploads(prev => prev.map(u =>
-            u.id === uploadId ? { ...u, progress: progress.percentage } : u
-          ));
+          setUploads((prev) =>
+            prev.map((u) => (u.id === uploadId ? { ...u, progress: progress.percentage } : u))
+          );
         });
 
         // Mark as completed
-        setUploads(prev => prev.map(u =>
-          u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u
-        ));
-
-        // Refresh file list
-        queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+        setUploads((prev) =>
+          prev.map((u) => (u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u))
+        );
 
         // Auto-dismiss after 3 seconds
         setTimeout(() => {
-          setUploads(prev => prev.filter(u => u.id !== uploadId));
+          setUploads((prev) => prev.filter((u) => u.id !== uploadId));
         }, 3000);
 
+        return { success: true, uploadId };
       } catch (error) {
-        setUploads(prev => prev.map(u =>
-          u.id === uploadId ? {
-            ...u,
-            status: 'error',
-            error: error instanceof Error ? error.message : 'Errore di upload'
-          } : u
-        ));
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === uploadId
+              ? {
+                  ...u,
+                  status: 'error',
+                  error: error instanceof Error ? error.message : 'Errore di upload',
+                }
+              : u
+          )
+        );
+        return { success: false, uploadId };
       }
-    }
+    });
+
+    // Wait for all uploads to complete (parallel execution)
+    await Promise.allSettled(uploadPromises);
+
+    // Refresh file list once after all uploads are done
+    queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
   };
 
   const handleCancelUpload = (uploadId: string) => {
-    const upload = uploads.find(u => u.id === uploadId);
+    const upload = uploads.find((u) => u.id === uploadId);
     if (upload?.abortController) {
       upload.abortController.abort();
     }
-    setUploads(prev => prev.filter(u => u.id !== uploadId));
+    setUploads((prev) => prev.filter((u) => u.id !== uploadId));
   };
 
   const handleDismissUpload = (uploadId: string) => {
-    setUploads(prev => prev.filter(u => u.id !== uploadId));
+    setUploads((prev) => prev.filter((u) => u.id !== uploadId));
   };
 
   // Handle files dropped via DropZone
@@ -206,7 +224,7 @@ export default function DocumentsPage() {
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[var(--background)]">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         >
           <Loader2 className="h-10 w-10 text-emerald-500" />
         </motion.div>
@@ -235,8 +253,8 @@ export default function DocumentsPage() {
             Connetti Google Drive
           </h2>
           <p className="max-w-md text-[var(--foreground-muted)]">
-            Accedi ai tuoi documenti aziendali collegando il tuo account Google Drive.
-            Tutti i file saranno organizzati per dipartimento.
+            Accedi ai tuoi documenti aziendali collegando il tuo account Google Drive. Tutti i file
+            saranno organizzati per dipartimento.
           </p>
         </div>
 
@@ -311,7 +329,7 @@ export default function DocumentsPage() {
             <div className="flex h-full items-center justify-center">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               >
                 <Loader2 className="h-10 w-10 text-emerald-500" />
               </motion.div>
@@ -324,25 +342,23 @@ export default function DocumentsPage() {
               storageUsed={0} // Feature: Storage tracking - Tracked in backlog
               storageTotal={30 * 1024 * 1024 * 1024 * 1024} // 30TB
             />
+          ) : // Show normal file view in subfolders
+          viewMode === 'grid' ? (
+            <FileGrid
+              files={files}
+              selectedFiles={selectedFiles}
+              onFileClick={handleFileClick}
+              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+              onContextMenu={handleContextMenu}
+            />
           ) : (
-            // Show normal file view in subfolders
-            viewMode === 'grid' ? (
-              <FileGrid
-                files={files}
-                selectedFiles={selectedFiles}
-                onFileClick={handleFileClick}
-                onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-                onContextMenu={handleContextMenu}
-              />
-            ) : (
-              <FileList
-                files={files}
-                selectedFiles={selectedFiles}
-                onFileClick={handleFileClick}
-                onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
-                onContextMenu={handleContextMenu}
-              />
-            )
+            <FileList
+              files={files}
+              selectedFiles={selectedFiles}
+              onFileClick={handleFileClick}
+              onFileDoubleClick={(f) => f.is_folder && setCurrentFolderId(f.id)}
+              onContextMenu={handleContextMenu}
+            />
           )}
         </div>
       </DropZone>
@@ -351,23 +367,35 @@ export default function DocumentsPage() {
       <CreateMenu
         isOpen={!!createMenuPos}
         onClose={() => setCreateMenuPos(null)}
-        position={createMenuPos || {x: 0, y: 0}}
+        position={createMenuPos || { x: 0, y: 0 }}
         onSelect={(mode) => setModalMode(mode)}
       />
 
       <FileModal
         mode={modalMode as any}
         isOpen={!!modalMode}
-        onClose={() => { setModalMode(null); setRenameTarget(null); }}
+        onClose={() => {
+          setModalMode(null);
+          setRenameTarget(null);
+        }}
         initialName={renameTarget?.name || ''}
         loading={createFolder.isPending || createDoc.isPending || renameFile.isPending}
         onSubmit={(name, docType) => {
           if (modalMode === 'rename' && renameTarget) {
-            renameFile.mutate({ fileId: renameTarget.id, newName: name }, { onSuccess: () => setModalMode(null) });
+            renameFile.mutate(
+              { fileId: renameTarget.id, newName: name },
+              { onSuccess: () => setModalMode(null) }
+            );
           } else if (modalMode === 'folder') {
-            createFolder.mutate({ name, parentId: currentFolderId }, { onSuccess: () => setModalMode(null) });
+            createFolder.mutate(
+              { name, parentId: currentFolderId },
+              { onSuccess: () => setModalMode(null) }
+            );
           } else if (docType) {
-            createDoc.mutate({ name, parentId: currentFolderId, docType }, { onSuccess: () => setModalMode(null) });
+            createDoc.mutate(
+              { name, parentId: currentFolderId, docType },
+              { onSuccess: () => setModalMode(null) }
+            );
           }
         }}
       />
@@ -398,7 +426,9 @@ export default function DocumentsPage() {
             setFilesToMove([file]);
             setShowMoveDialog(true);
           }}
-          onCopy={() => { /* TODO: Copy */ }}
+          onCopy={() => {
+            /* TODO: Copy */
+          }}
           onDownload={async (file) => {
             try {
               await api.drive.downloadFile(file.id, file.name);
@@ -416,7 +446,7 @@ export default function DocumentsPage() {
           isOpen={true}
           onClose={() => setShowMoveDialog(false)}
           onMove={(targetId) => {
-            const ids = filesToMove.map(f => f.id);
+            const ids = filesToMove.map((f) => f.id);
             moveFiles.mutate({ fileIds: ids, targetFolderId: targetId });
             setShowMoveDialog(false);
           }}
@@ -434,7 +464,7 @@ export default function DocumentsPage() {
         isOpen={showUploadDialog}
         onClose={() => setShowUploadDialog(false)}
         onUpload={handleUpload}
-        uploading={uploads.some(u => u.status === 'uploading')}
+        uploading={uploads.some((u) => u.status === 'uploading')}
       />
 
       {/* Upload Progress Indicator */}

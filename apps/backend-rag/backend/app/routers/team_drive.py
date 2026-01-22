@@ -229,14 +229,38 @@ async def get_user_allowed_folders(
 
 
 def folder_matches_allowed(folder_name: str, allowed_folders: list[str]) -> bool:
-    """Check if a folder name matches any of the allowed folder patterns."""
+    """
+    Check if a folder name matches any of the allowed folder patterns.
+
+    Uses whole-word matching to avoid false positives like:
+    - "Tax" matching "Taxation"
+    - "Legal" matching "Illegal"
+    """
     # Wildcard means full access
     if "*" in allowed_folders:
         return True
+
     folder_lower = folder_name.lower()
+
     for allowed in allowed_folders:
-        if allowed.lower() in folder_lower or folder_lower in allowed.lower():
+        allowed_lower = allowed.lower()
+
+        # 1. Exact match (case-insensitive)
+        if folder_lower == allowed_lower:
             return True
+
+        # 2. Word boundary match - folder name starts with allowed pattern
+        # e.g., "Legal Documents" matches "Legal" but "Illegal" does not
+        if folder_lower.startswith(allowed_lower + " ") or folder_lower.startswith(allowed_lower + "_"):
+            return True
+
+        # 3. Word boundary match - allowed pattern is a complete word in folder name
+        # e.g., "Client Tax Files" matches "Tax" but "Taxation Info" does not
+        import re
+        pattern = r'\b' + re.escape(allowed_lower) + r'\b'
+        if re.search(pattern, folder_lower):
+            return True
+
     return False
 
 

@@ -1,7 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Download, ExternalLink, ZoomIn, ZoomOut, RotateCw, Loader2, FileText, Image as ImageIcon, Video, Music, File } from 'lucide-react';
+import {
+  X,
+  Download,
+  ExternalLink,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Loader2,
+  FileText,
+  Image as ImageIcon,
+  Video,
+  Music,
+  File,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { api } from '@/lib/api';
@@ -25,10 +38,12 @@ function getViewerType(mimeType?: string): ViewerType {
   if (mimeType === 'application/pdf') return 'pdf';
 
   // Google Docs types
-  if (mimeType === 'application/vnd.google-apps.document' ||
-      mimeType === 'application/vnd.google-apps.spreadsheet' ||
-      mimeType === 'application/vnd.google-apps.presentation' ||
-      mimeType === 'application/vnd.google-apps.drawing') {
+  if (
+    mimeType === 'application/vnd.google-apps.document' ||
+    mimeType === 'application/vnd.google-apps.spreadsheet' ||
+    mimeType === 'application/vnd.google-apps.presentation' ||
+    mimeType === 'application/vnd.google-apps.drawing'
+  ) {
     return 'google-doc';
   }
 
@@ -71,28 +86,34 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
       return;
     }
 
-    // For images and media, get the download URL
-    if (viewerType === 'image' || viewerType === 'video' || viewerType === 'audio') {
+    // For images, keep loading state - will be cleared by onLoad/onError handlers
+    if (viewerType === 'image') {
       const url = api.drive.getDownloadUrl(file.id);
       setMediaUrl(url);
-      setLoading(false);
+      // Don't set loading=false here - let the img onLoad event handle it
+    } else if (viewerType === 'video' || viewerType === 'audio') {
+      const url = api.drive.getDownloadUrl(file.id);
+      setMediaUrl(url);
+      // Keep loading for video/audio - onLoadedData will clear it
     } else if (viewerType === 'pdf') {
       const url = api.drive.getDownloadUrl(file.id);
       setMediaUrl(url);
-      setLoading(false);
+      // Keep loading for PDF - iframe onLoad will clear it
     } else if (viewerType === 'google-doc') {
       // For Google Docs, use the embedded viewer URL
       if (file.web_view_link) {
         // Convert edit link to preview/embed link
-        const embedUrl = file.web_view_link.replace('/edit', '/preview').replace('/view', '/preview');
+        const embedUrl = file.web_view_link
+          .replace('/edit', '/preview')
+          .replace('/view', '/preview');
         setMediaUrl(embedUrl);
-        setLoading(false);
+        // Keep loading for iframe - onLoad will clear it
       } else {
         setError('Anteprima non disponibile');
         setLoading(false);
       }
     } else {
-      setError('Tipo di file non supportato per l\'anteprima');
+      setError("Tipo di file non supportato per l'anteprima");
       setLoading(false);
     }
   }, [file, isOpen, viewerType]);
@@ -111,9 +132,9 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
 
   if (!isOpen || !file) return null;
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
-  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
+  const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
 
   return (
     <AnimatePresence>
@@ -136,9 +157,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
         >
           <div className="flex items-center gap-3">
             <FileIcon className="h-5 w-5 text-gray-300" />
-            <h2 className="max-w-md truncate text-lg font-medium text-white">
-              {file.name}
-            </h2>
+            <h2 className="max-w-md truncate text-lg font-medium text-white">{file.name}</h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -248,8 +267,19 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
                     src={mediaUrl}
                     alt={file.name}
                     className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
-                    onLoad={() => setLoading(false)}
-                    onError={() => setError('Impossibile caricare l\'immagine')}
+                    onLoad={(e) => {
+                      setLoading(false);
+                    }}
+                    onError={() => {
+                      setLoading(false);
+                      setError("Impossibile caricare l'immagine");
+                    }}
+                    ref={(img) => {
+                      // Handle cached images that load instantly
+                      if (img && img.complete) {
+                        setLoading(false);
+                      }
+                    }}
                   />
                 </div>
               )}
@@ -281,7 +311,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
                     autoPlay
                     className="w-full max-w-md"
                     onLoadedData={() => setLoading(false)}
-                    onError={() => setError('Impossibile caricare l\'audio')}
+                    onError={() => setError("Impossibile caricare l'audio")}
                   />
                 </div>
               )}
