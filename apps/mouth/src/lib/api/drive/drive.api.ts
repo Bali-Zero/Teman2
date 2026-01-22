@@ -289,9 +289,18 @@ export class DriveApi {
     formData.append('file', file);
     formData.append('parent_id', parentId);
 
+    // Calculate timeout based on file size (5 minutes base + 1 minute per 100MB)
+    const fileSizeMB = file.size / (1024 * 1024);
+    const baseTimeoutMs = 5 * 60 * 1000; // 5 minutes
+    const additionalTimeoutMs = Math.ceil(fileSizeMB / 100) * 60 * 1000; // +1 min per 100MB
+    const timeoutMs = Math.min(baseTimeoutMs + additionalTimeoutMs, 30 * 60 * 1000); // Max 30 min
+
     // Use XMLHttpRequest for progress tracking
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+
+      // Set timeout dynamically based on file size
+      xhr.timeout = timeoutMs;
 
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
@@ -326,7 +335,17 @@ export class DriveApi {
       });
 
       xhr.addEventListener('error', () => {
-        reject(new Error('Network error during upload'));
+        reject(new Error('Network error during upload. Please check your connection and try again.'));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        const timeoutMinutes = Math.ceil(timeoutMs / 60000);
+        reject(
+          new Error(
+            `Upload timeout after ${timeoutMinutes} minutes. File size: ${fileSizeMB.toFixed(1)}MB. ` +
+            `Large files may require resumable upload support. Please try with a smaller file or contact support.`
+          )
+        );
       });
 
       // Get base URL from client
