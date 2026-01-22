@@ -935,12 +935,14 @@ export default function PratichePage() {
             // ✅ Smart positioning: adjusts based on viewport boundaries
             // Menu height ~340px (header 40px + 9 items * 32px + padding)
             // Menu width: 220px (min-w-[200px] + padding)
-            top: menuPosition.y + 340 > window.innerHeight
-              ? Math.max(10, menuPosition.y - 340) // Open above if not enough space below
-              : menuPosition.y,
-            left: menuPosition.x + 220 > window.innerWidth
-              ? Math.max(10, menuPosition.x - 220) // Open to left if not enough space to right
-              : menuPosition.x,
+            top:
+              menuPosition.y + 340 > window.innerHeight
+                ? Math.max(10, menuPosition.y - 340) // Open above if not enough space below
+                : menuPosition.y,
+            left:
+              menuPosition.x + 220 > window.innerWidth
+                ? Math.max(10, menuPosition.x - 220) // Open to left if not enough space to right
+                : menuPosition.x,
             // Ensure menu never goes offscreen
             maxHeight: 'calc(100vh - 20px)',
             maxWidth: 'calc(100vw - 20px)',

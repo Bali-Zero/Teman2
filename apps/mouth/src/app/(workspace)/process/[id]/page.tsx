@@ -131,11 +131,7 @@ export default function CaseDetailPage() {
         );
 
         setPractice(foundPractice);
-        casesMetrics.endPerformanceMark(
-          'case_detail_load',
-          caseId,
-          userEmail.current || undefined
-        );
+        casesMetrics.endPerformanceMark('case_detail_load', caseId, userEmail.current || undefined);
       } catch (err) {
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall(
