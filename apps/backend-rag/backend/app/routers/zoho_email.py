@@ -14,7 +14,7 @@ import secrets
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Path, Query, Response, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 
@@ -672,21 +672,14 @@ async def save_draft(
 
 @router.post("/attachments")
 async def upload_attachment(
-    file: Any = Body(...),  # Using Any to bypass strict type checking for UploadFile
+    file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Upload an attachment.
-    Expects multipart/form-data.
+    Expects multipart/form-data with 'file' field.
     """
-    from fastapi import UploadFile
-
-    # Manual type check/cast
-    if not isinstance(file, UploadFile):
-        # In case FastAPI passes it differently or for testing
-        pass
-
     try:
         user_id = _get_user_id(current_user)
         email_service = _get_email_service(db_pool)
