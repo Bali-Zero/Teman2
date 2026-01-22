@@ -91,6 +91,16 @@ export class CrmApi {
   }
 
   /**
+   * Get a single practice by ID
+   *
+   * Backend endpoint: GET /api/crm/practices/{id}
+   * Returns practice with full client and type info joined.
+   */
+  async getPractice(id: number): Promise<Practice> {
+    return this.client.request<Practice>(`/api/crm/practices/${id}`);
+  }
+
+  /**
    * Get interactions (e.g. WhatsApp messages)
    */
   async getInteractions(

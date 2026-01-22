@@ -4,19 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import {
-  ArrowLeft,
-  FolderKanban,
-  Loader2,
-  User,
-  Search,
-  Check,
-  Briefcase
-} from 'lucide-react';
+import { ArrowLeft, FolderKanban, Loader2, User, Search, Check, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CreatePracticeParams, Client } from '@/lib/api/crm/crm.types';
 import { casesMetrics } from '@/lib/metrics/cases-metrics';
+import { logger } from '@/lib/logger';
 
 export default function NewPracticePage() {
   const router = useRouter();
@@ -50,7 +43,7 @@ export default function NewPracticePage() {
         userEmail.current = user.email;
         casesMetrics.trackPageView('new', undefined, user.email);
       } catch (err) {
-        console.error('Failed to init metrics:', err);
+        logger.error('Failed to init metrics:', err);
       }
     };
 
@@ -61,10 +54,13 @@ export default function NewPracticePage() {
   useEffect(() => {
     const preselectedId = searchParams.get('client_id');
     if (preselectedId) {
-      api.crm.getClient(Number(preselectedId)).then(client => {
-        setSelectedClient(client);
-        setFormData(prev => ({ ...prev, client_id: client.id }));
-      }).catch(err => console.error("Failed to load preselected client", err));
+      api.crm
+        .getClient(Number(preselectedId))
+        .then((client) => {
+          setSelectedClient(client);
+          setFormData((prev) => ({ ...prev, client_id: client.id }));
+        })
+        .catch((err) => logger.error('Failed to load preselected client', err));
     }
   }, [searchParams]);
 
@@ -79,16 +75,41 @@ export default function NewPracticePage() {
       const apiStart = performance.now();
 
       try {
-        const results = await api.crm.getClients({ search: clientSearch, limit: 5 });
+        // ✅ Increased limit from 5 to 20 to show more search results
+        const results = await api.crm.getClients({ search: clientSearch, limit: 20 });
         const apiDuration = performance.now() - apiStart;
-        casesMetrics.trackApiCall('/api/crm/clients/search', 'GET', true, apiDuration, undefined, userEmail.current || undefined);
-        casesMetrics.trackClientSearch(clientSearch, results.length, userEmail.current || undefined);
+        casesMetrics.trackApiCall(
+          '/api/crm/clients/search',
+          'GET',
+          true,
+          apiDuration,
+          undefined,
+          userEmail.current || undefined
+        );
+        casesMetrics.trackClientSearch(
+          clientSearch,
+          results.length,
+          userEmail.current || undefined
+        );
         setClients(results);
       } catch (error) {
         const apiDuration = performance.now() - apiStart;
-        casesMetrics.trackApiCall('/api/crm/clients/search', 'GET', false, apiDuration, undefined, userEmail.current || undefined);
-        casesMetrics.trackError('Client Search Failed', (error as Error).message, 'CasesNewPage', undefined, userEmail.current || undefined);
-        console.error('Failed to search clients:', error);
+        casesMetrics.trackApiCall(
+          '/api/crm/clients/search',
+          'GET',
+          false,
+          apiDuration,
+          undefined,
+          userEmail.current || undefined
+        );
+        casesMetrics.trackError(
+          'Client Search Failed',
+          (error as Error).message,
+          'CasesNewPage',
+          undefined,
+          userEmail.current || undefined
+        );
+        logger.error('Failed to search clients:', error);
       } finally {
         setIsSearchingClients(false);
       }
@@ -114,17 +135,53 @@ export default function NewPracticePage() {
 
     if (!formData.client_id) {
       toast.error('Missing Client', 'Please select a client to create this process for.');
-      casesMetrics.trackError('Validation Error', 'Missing client_id', 'CasesNewPage', undefined, userEmail.current || undefined);
+      casesMetrics.trackError(
+        'Validation Error',
+        'Missing client_id',
+        'CasesNewPage',
+        undefined,
+        userEmail.current || undefined
+      );
       return;
     }
 
     setIsLoading(true);
-    casesMetrics.trackButtonClick('Create Case', 'CasesNewPage', undefined, undefined, userEmail.current || undefined);
+    casesMetrics.trackButtonClick(
+      'Create Case',
+      'CasesNewPage',
+      undefined,
+      undefined,
+      userEmail.current || undefined
+    );
     casesMetrics.startPerformanceMark('case_creation');
     const apiStart = performance.now();
 
     try {
       const user = await api.getProfile();
+
+      // ✅ Check for duplicate practices (same client + same type + active status)
+      const existingPractices = await api.crm.getClientPractices(formData.client_id);
+      const duplicateCheck = existingPractices.find(
+        (p) =>
+          p.practice_type_code === formData.practice_type_code &&
+          !['completed', 'cancelled'].includes(p.status)
+      );
+
+      if (duplicateCheck) {
+        toast.error(
+          'Duplicate Process',
+          `Client already has an active ${formData.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`
+        );
+        casesMetrics.trackError(
+          'Duplicate Process Blocked',
+          `Prevented duplicate ${formData.practice_type_code} for client ${formData.client_id}`,
+          'CasesNewPage',
+          duplicateCheck.id,
+          user.email
+        );
+        return;
+      }
+
       const backendData: CreatePracticeParams = {
         client_id: formData.client_id,
         practice_type_code: formData.practice_type_code,
@@ -135,28 +192,54 @@ export default function NewPracticePage() {
 
       const createdPractice = await api.crm.createPractice(backendData, user.email);
       const apiDuration = performance.now() - apiStart;
-      casesMetrics.trackApiCall('/api/crm/practices/create', 'POST', true, apiDuration, undefined, user.email);
+      casesMetrics.trackApiCall(
+        '/api/crm/practices/create',
+        'POST',
+        true,
+        apiDuration,
+        undefined,
+        user.email
+      );
 
       // Track case creation
       const caseId = (createdPractice as any)?.id || 0;
-      casesMetrics.trackCaseCreation(caseId, formData.practice_type_code, formData.client_id, user.email);
+      casesMetrics.trackCaseCreation(
+        caseId,
+        formData.practice_type_code,
+        formData.client_id,
+        user.email
+      );
       casesMetrics.endPerformanceMark('case_creation', caseId, user.email);
 
       toast.success('Process Created', 'Successfully created new process.');
       router.push('/process');
     } catch (error) {
       const apiDuration = performance.now() - apiStart;
-      casesMetrics.trackApiCall('/api/crm/practices/create', 'POST', false, apiDuration, undefined, userEmail.current || undefined);
-      casesMetrics.trackError('Create Case Failed', (error as Error).message, 'CasesNewPage', undefined, userEmail.current || undefined);
+      casesMetrics.trackApiCall(
+        '/api/crm/practices/create',
+        'POST',
+        false,
+        apiDuration,
+        undefined,
+        userEmail.current || undefined
+      );
+      casesMetrics.trackError(
+        'Create Case Failed',
+        (error as Error).message,
+        'CasesNewPage',
+        undefined,
+        userEmail.current || undefined
+      );
 
-      console.error('Failed to create case', error);
+      logger.error('Failed to create case', error);
       toast.error('Error', (error as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const inputClass = 'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
+  const inputClass =
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
   const labelClass = 'text-sm font-medium text-[var(--foreground)] mb-1.5 block';
 
   return (
@@ -177,13 +260,12 @@ export default function NewPracticePage() {
       {/* Form */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          
           {/* Client Selection */}
           <div className="space-y-2 relative" ref={searchRef}>
             <label className={labelClass}>
               Client <span className="text-red-500">*</span>
             </label>
-            
+
             {selectedClient ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10">
                 <div className="flex items-center gap-3">
@@ -191,17 +273,21 @@ export default function NewPracticePage() {
                     <User className="w-4 h-4 text-[var(--accent)]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-[var(--foreground)]">{selectedClient.full_name}</p>
-                    <p className="text-xs text-[var(--foreground-muted)]">{selectedClient.email || 'No email'}</p>
+                    <p className="text-sm font-medium text-[var(--foreground)]">
+                      {selectedClient.full_name}
+                    </p>
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      {selectedClient.email || 'No email'}
+                    </p>
                   </div>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setSelectedClient(null);
-                    setFormData(prev => ({ ...prev, client_id: undefined }));
+                    setFormData((prev) => ({ ...prev, client_id: undefined }));
                     setClientSearch('');
                   }}
                 >
@@ -225,25 +311,29 @@ export default function NewPracticePage() {
                 {isSearchingClients && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--foreground-muted)]" />
                 )}
-                
+
                 {/* Search Results Dropdown */}
                 {showClientDropdown && clientSearch && (
                   <div className="absolute z-10 w-full mt-1 bg-[var(--background-elevated)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {clients.length > 0 ? (
-                      clients.map(client => (
+                      clients.map((client) => (
                         <button
                           key={client.id}
                           type="button"
                           onClick={() => {
                             setSelectedClient(client);
-                            setFormData(prev => ({ ...prev, client_id: client.id }));
+                            setFormData((prev) => ({ ...prev, client_id: client.id }));
                             setShowClientDropdown(false);
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-[var(--background-secondary)] transition-colors border-b border-[var(--border)] last:border-0 flex items-center justify-between group"
                         >
                           <div>
-                            <p className="text-sm font-medium text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">{client.full_name}</p>
-                            <p className="text-xs text-[var(--foreground-muted)]">{client.email || client.phone || 'No contact info'}</p>
+                            <p className="text-sm font-medium text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+                              {client.full_name}
+                            </p>
+                            <p className="text-xs text-[var(--foreground-muted)]">
+                              {client.email || client.phone || 'No contact info'}
+                            </p>
                           </div>
                           {client.nationality && (
                             <span className="text-xs px-2 py-0.5 rounded bg-[var(--background)] text-[var(--foreground-muted)]">
@@ -255,6 +345,12 @@ export default function NewPracticePage() {
                     ) : (
                       <div className="p-4 text-center text-sm text-[var(--foreground-muted)]">
                         {isSearchingClients ? 'Searching...' : 'No clients found'}
+                      </div>
+                    )}
+                    {/* Show hint if max results reached */}
+                    {clients.length === 20 && (
+                      <div className="px-4 py-2 text-xs text-[var(--foreground-muted)] border-t border-[var(--border)] bg-[var(--background-secondary)]/30">
+                        Showing top 20 results. Type more to refine search.
                       </div>
                     )}
                   </div>
@@ -270,7 +366,9 @@ export default function NewPracticePage() {
               <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
               <select
                 value={formData.practice_type_code}
-                onChange={(e) => setFormData(prev => ({ ...prev, practice_type_code: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, practice_type_code: e.target.value }))
+                }
                 className={`${inputClass} appearance-none cursor-pointer`}
               >
                 <option value="visa">VISA</option>
@@ -292,7 +390,7 @@ export default function NewPracticePage() {
               <FolderKanban className="absolute left-3 top-3 w-4 h-4 text-[var(--foreground-muted)]" />
               <textarea
                 value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all resize-none"
                 placeholder="e.g. KITAS Renewal 2025, special requirements..."
                 rows={3}

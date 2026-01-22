@@ -33,6 +33,7 @@ langgraph>=0.0.1
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0
 pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.14.3  # Security and stability updates
 pdfplumber>=0.11.0
 pdfminer.six>=20251107

@@ -3,9 +3,25 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FolderKanban, Search, Filter, Plus, LayoutGrid, List,
-  ChevronRight, Loader2, User, MessageCircle, Mail, Phone,
-  FileText, MoreVertical, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, Download
+  FolderKanban,
+  Search,
+  Filter,
+  Plus,
+  LayoutGrid,
+  List,
+  ChevronRight,
+  Loader2,
+  User,
+  MessageCircle,
+  Mail,
+  Phone,
+  FileText,
+  MoreVertical,
+  CheckCircle2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -38,7 +54,13 @@ const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
 ];
 
 type ViewMode = 'kanban' | 'list';
-type SortField = 'id' | 'practice_type_code' | 'client_name' | 'client_lead' | 'status' | 'created_at';
+type SortField =
+  | 'id'
+  | 'practice_type_code'
+  | 'client_name'
+  | 'client_lead'
+  | 'status'
+  | 'created_at';
 type SortOrder = 'asc' | 'desc';
 
 interface FilterState {
@@ -84,7 +106,7 @@ export default function PratichePage() {
         const data = await api.crm.getPractices({ limit: 100 });
         setPractices(data);
       } catch (error) {
-        console.error('Failed to load practices:', error);
+        logger.error('Failed to load practices:', error);
         toast.error('Error', 'Failed to load process');
       } finally {
         setIsLoading(false);
@@ -149,15 +171,15 @@ export default function PratichePage() {
       const user = await api.getProfile();
 
       // Find old status for tracking
-      const practice = practices.find(p => p.id === practiceId);
+      const practice = practices.find((p) => p.id === practiceId);
       const oldStatus = practice?.status || 'unknown';
 
       await api.crm.updatePractice(practiceId, { status: newStatus }, user.email);
 
       // Update local state immediately for responsiveness
-      setPractices(prev => prev.map(p =>
-        p.id === practiceId ? { ...p, status: newStatus } : p
-      ));
+      setPractices((prev) =>
+        prev.map((p) => (p.id === practiceId ? { ...p, status: newStatus } : p))
+      );
 
       // Track status change
       trackCaseStatusChanged(practiceId, oldStatus, newStatus);
@@ -167,7 +189,7 @@ export default function PratichePage() {
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
-      console.error('Failed to update status:', error);
+      logger.error('Failed to update status:', error);
       toast.error('Error', 'Failed to update process status');
     } finally {
       setUpdatingId(null);
@@ -177,7 +199,7 @@ export default function PratichePage() {
   const handleMenuClick = (e: React.MouseEvent, practice: Practice) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Position menu near the click
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setSelectedPractice(practice);
@@ -190,8 +212,20 @@ export default function PratichePage() {
 
   const getStatusColumn = (status: string): CaseStatus => {
     if (status === 'inquiry' || status === 'request') return 'inquiry';
-    if (status === 'quotation_sent' || status === 'payment_pending' || status === 'quotation' || status === 'quote') return 'quotation';
-    if (status === 'in_progress' || status === 'waiting_documents' || status === 'submitted_to_gov' || status === 'active') return 'in_progress';
+    if (
+      status === 'quotation_sent' ||
+      status === 'payment_pending' ||
+      status === 'quotation' ||
+      status === 'quote'
+    )
+      return 'quotation';
+    if (
+      status === 'in_progress' ||
+      status === 'waiting_documents' ||
+      status === 'submitted_to_gov' ||
+      status === 'active'
+    )
+      return 'in_progress';
     if (status === 'completed' || status === 'approved' || status === 'done') return 'completed';
     return 'inquiry';
   };
@@ -215,70 +249,78 @@ export default function PratichePage() {
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
   // Memoize filtered and sorted practices to avoid unnecessary recalculations
-  const filteredPractices = useMemo(() => practices
-    .filter((p) => {
-      // Search filter
-      if (searchQuery) {
-        const matchesSearch =
-          p.id.toString().includes(searchQuery) ||
-          p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
-        if (!matchesSearch) return false;
-      }
+  const filteredPractices = useMemo(
+    () =>
+      practices
+        .filter((p) => {
+          // Search filter
+          if (searchQuery) {
+            const matchesSearch =
+              p.id.toString().includes(searchQuery) ||
+              p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
+            if (!matchesSearch) return false;
+          }
 
-      // Status filter
-      if (filters.status && getStatusColumn(p.status) !== filters.status) {
-        return false;
-      }
+          // Status filter
+          if (filters.status && getStatusColumn(p.status) !== filters.status) {
+            return false;
+          }
 
-      // Type filter
-      if (filters.type && p.practice_type_code !== filters.type) {
-        return false;
-      }
+          // Type filter
+          if (filters.type && p.practice_type_code !== filters.type) {
+            return false;
+          }
 
-      // Assigned to filter
-      if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
-        return false;
-      }
+          // Assigned to filter
+          if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
+            return false;
+          }
 
-      return true;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
+          return true;
+        })
+        .sort((a, b) => {
+          let comparison = 0;
 
-      switch (sortField) {
-        case 'id':
-          comparison = (a.id || 0) - (b.id || 0);
-          break;
-        case 'practice_type_code':
-          comparison = (a.practice_type_code || '').localeCompare(b.practice_type_code || '');
-          break;
-        case 'client_name':
-          comparison = (a.client_name || '').localeCompare(b.client_name || '');
-          break;
-        case 'client_lead':
-          comparison = (a.client_lead || '').localeCompare(b.client_lead || '');
-          break;
-        case 'status':
-          comparison = (a.status || '').localeCompare(b.status || '');
-          break;
-        case 'created_at':
-          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-          break;
-        default:
-          comparison = 0;
-      }
+          switch (sortField) {
+            case 'id':
+              comparison = (a.id || 0) - (b.id || 0);
+              break;
+            case 'practice_type_code':
+              comparison = (a.practice_type_code || '').localeCompare(b.practice_type_code || '');
+              break;
+            case 'client_name':
+              comparison = (a.client_name || '').localeCompare(b.client_name || '');
+              break;
+            case 'client_lead':
+              comparison = (a.client_lead || '').localeCompare(b.client_lead || '');
+              break;
+            case 'status':
+              comparison = (a.status || '').localeCompare(b.status || '');
+              break;
+            case 'created_at':
+              comparison =
+                new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+              break;
+            default:
+              comparison = 0;
+          }
 
-      return sortOrder === 'asc' ? comparison : -comparison;
-    }), [practices, searchQuery, filters, sortField, sortOrder]);
+          return sortOrder === 'asc' ? comparison : -comparison;
+        }),
+    [practices, searchQuery, filters, sortField, sortOrder]
+  );
 
   // Memoize practices by status to avoid unnecessary recalculations
-  const practicesByStatus = useMemo(() => ({
-    inquiry: filteredPractices.filter((p) => getStatusColumn(p.status) === 'inquiry'),
-    quotation: filteredPractices.filter((p) => getStatusColumn(p.status) === 'quotation'),
-    in_progress: filteredPractices.filter((p) => getStatusColumn(p.status) === 'in_progress'),
-    completed: filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed'),
-  }), [filteredPractices]);
+  const practicesByStatus = useMemo(
+    () => ({
+      inquiry: filteredPractices.filter((p) => getStatusColumn(p.status) === 'inquiry'),
+      quotation: filteredPractices.filter((p) => getStatusColumn(p.status) === 'quotation'),
+      in_progress: filteredPractices.filter((p) => getStatusColumn(p.status) === 'in_progress'),
+      completed: filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed'),
+    }),
+    [filteredPractices]
+  );
 
   // Track search operations (moved after filteredPractices declaration)
   useEffect(() => {
@@ -316,7 +358,10 @@ export default function PratichePage() {
             Manage KITAS, Visa, PT PMA, Tax and other processes
           </p>
         </div>
-        <Button className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white" onClick={handleNewCase}>
+        <Button
+          className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+          onClick={handleNewCase}
+        >
           <Plus className="w-4 h-4" />
           New Process
         </Button>
@@ -394,7 +439,10 @@ export default function PratichePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Status Filter */}
               <div>
-                <label htmlFor="status-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label
+                  htmlFor="status-filter"
+                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                >
                   Status
                 </label>
                 <select
@@ -413,7 +461,10 @@ export default function PratichePage() {
 
               {/* Type Filter */}
               <div>
-                <label htmlFor="type-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label
+                  htmlFor="type-filter"
+                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                >
                   Process Type
                 </label>
                 <select
@@ -432,7 +483,10 @@ export default function PratichePage() {
 
               {/* Assigned To Filter */}
               <div>
-                <label htmlFor="assigned-to-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label
+                  htmlFor="assigned-to-filter"
+                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                >
                   Assigned To
                 </label>
                 <select
@@ -442,17 +496,13 @@ export default function PratichePage() {
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All team members</option>
-                  {Array.from(
-                    new Set(
-                      practices
-                        .map((p) => p.client_lead)
-                        .filter(Boolean)
+                  {Array.from(new Set(practices.map((p) => p.client_lead).filter(Boolean))).map(
+                    (lead) => (
+                      <option key={lead} value={lead || ''}>
+                        {lead?.split('@')[0]}
+                      </option>
                     )
-                  ).map((lead) => (
-                    <option key={lead} value={lead || ''}>
-                      {lead?.split('@')[0]}
-                    </option>
-                  ))}
+                  )}
                 </select>
               </div>
             </div>
@@ -464,7 +514,9 @@ export default function PratichePage() {
       {viewMode === 'kanban' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {(['Inquiry', 'Quotation', 'In Progress', 'Completed'] as const).map((column, idx) => {
-            const statusKey = ['inquiry', 'quotation', 'in_progress', 'completed'][idx] as CaseStatus;
+            const statusKey = ['inquiry', 'quotation', 'in_progress', 'completed'][
+              idx
+            ] as CaseStatus;
             const columnPractices = practicesByStatus[statusKey] || [];
 
             return (
@@ -474,12 +526,17 @@ export default function PratichePage() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      idx === 0 ? 'bg-blue-500' :
-                      idx === 1 ? 'bg-yellow-500' :
-                      idx === 2 ? 'bg-purple-500' :
-                      'bg-green-500'
-                    }`} />
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        idx === 0
+                          ? 'bg-blue-500'
+                          : idx === 1
+                            ? 'bg-yellow-500'
+                            : idx === 2
+                              ? 'bg-purple-500'
+                              : 'bg-green-500'
+                      }`}
+                    />
                     <h3 className="font-semibold text-[var(--foreground)]">{column}</h3>
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
@@ -521,7 +578,8 @@ export default function PratichePage() {
                         {/* Card Header */}
                         <div className="flex items-start justify-between mb-1">
                           <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
-                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'}
+                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') ||
+                              'Process'}
                           </p>
 
                           {/* 3-Dot Menu Trigger */}
@@ -560,7 +618,10 @@ export default function PratichePage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const phone = practice.client_phone?.replace(/\D/g, '');
-                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
+                                window.open(
+                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                  '_blank'
+                                );
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                               title="WhatsApp"
@@ -614,7 +675,9 @@ export default function PratichePage() {
           ) : filteredPractices.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12">
               <FolderKanban className="w-16 h-16 text-[var(--foreground-muted)] opacity-50 mb-4" />
-              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No process found</h3>
+              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+                No process found
+              </h3>
               <p className="text-sm text-[var(--foreground-muted)] max-w-md">
                 Try adjusting your search or filters to find process.
               </p>
@@ -630,9 +693,12 @@ export default function PratichePage() {
                     >
                       <div className="flex items-center gap-2">
                         ID
-                        {sortField === 'id' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                        )}
+                        {sortField === 'id' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
                         {sortField !== 'id' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
@@ -642,10 +708,15 @@ export default function PratichePage() {
                     >
                       <div className="flex items-center gap-2">
                         Process Type
-                        {sortField === 'practice_type_code' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        {sortField === 'practice_type_code' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
+                        {sortField !== 'practice_type_code' && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
-                        {sortField !== 'practice_type_code' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
                     <th
@@ -654,10 +725,15 @@ export default function PratichePage() {
                     >
                       <div className="flex items-center gap-2">
                         Client
-                        {sortField === 'client_name' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        {sortField === 'client_name' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
+                        {sortField !== 'client_name' && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
-                        {sortField !== 'client_name' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
                     <th
@@ -666,10 +742,15 @@ export default function PratichePage() {
                     >
                       <div className="flex items-center gap-2">
                         Assigned To
-                        {sortField === 'client_lead' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        {sortField === 'client_lead' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
+                        {sortField !== 'client_lead' && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
-                        {sortField !== 'client_lead' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
                     <th
@@ -678,13 +759,18 @@ export default function PratichePage() {
                     >
                       <div className="flex items-center gap-2">
                         Status
-                        {sortField === 'status' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
-                        )}
+                        {sortField === 'status' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
                         {sortField !== 'status' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -717,25 +803,37 @@ export default function PratichePage() {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="inline-flex items-center gap-1">
-                          <span className={`w-2 h-2 rounded-full ${
-                            getStatusColumn(practice.status) === 'inquiry' ? 'bg-blue-500' :
-                            getStatusColumn(practice.status) === 'quotation' ? 'bg-yellow-500' :
-                            getStatusColumn(practice.status) === 'in_progress' ? 'bg-purple-500' :
-                            'bg-green-500'
-                          }`} />
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              getStatusColumn(practice.status) === 'inquiry'
+                                ? 'bg-blue-500'
+                                : getStatusColumn(practice.status) === 'quotation'
+                                  ? 'bg-yellow-500'
+                                  : getStatusColumn(practice.status) === 'in_progress'
+                                    ? 'bg-purple-500'
+                                    : 'bg-green-500'
+                            }`}
+                          />
                           <span className="text-[var(--foreground)]">
-                            {practice.status?.replace(/_/g, ' ').charAt(0).toUpperCase() + practice.status?.replace(/_/g, ' ').slice(1) || '-'}
+                            {practice.status?.replace(/_/g, ' ').charAt(0).toUpperCase() +
+                              practice.status?.replace(/_/g, ' ').slice(1) || '-'}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {practice.client_phone && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const phone = practice.client_phone?.replace(/\D/g, '');
-                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
+                                window.open(
+                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                  '_blank'
+                                );
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                               title="WhatsApp"
@@ -773,7 +871,9 @@ export default function PratichePage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--background-elevated)]">
                   <div className="text-sm text-[var(--foreground-muted)]">
-                    Showing {((listPageNumber - 1) * itemsPerPage) + 1} to {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of {filteredPractices.length} process
+                    Showing {(listPageNumber - 1) * itemsPerPage + 1} to{' '}
+                    {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of{' '}
+                    {filteredPractices.length} process
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -800,7 +900,9 @@ export default function PratichePage() {
                           </button>
                         );
                       })}
-                      {totalPages > 5 && <span className="text-[var(--foreground-muted)]">...</span>}
+                      {totalPages > 5 && (
+                        <span className="text-[var(--foreground-muted)]">...</span>
+                      )}
                     </div>
                     <button
                       onClick={() => setListPageNumber((p) => Math.min(totalPages, p + 1))}
@@ -830,14 +932,22 @@ export default function PratichePage() {
           ref={menuRef}
           className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{
-            top: Math.min(menuPosition.y, window.innerHeight - 300),
-            left: Math.min(menuPosition.x, window.innerWidth - 220),
+            // ✅ Smart positioning: adjusts based on viewport boundaries
+            // Menu height ~340px (header 40px + 9 items * 32px + padding)
+            // Menu width: 220px (min-w-[200px] + padding)
+            top: menuPosition.y + 340 > window.innerHeight
+              ? Math.max(10, menuPosition.y - 340) // Open above if not enough space below
+              : menuPosition.y,
+            left: menuPosition.x + 220 > window.innerWidth
+              ? Math.max(10, menuPosition.x - 220) // Open to left if not enough space to right
+              : menuPosition.x,
+            // Ensure menu never goes offscreen
+            maxHeight: 'calc(100vh - 20px)',
+            maxWidth: 'calc(100vw - 20px)',
           }}
         >
           <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--background-secondary)]/50 rounded-t-lg">
-            <p className="text-xs font-semibold text-[var(--foreground)]">
-              Update Status
-            </p>
+            <p className="text-xs font-semibold text-[var(--foreground)]">Update Status</p>
             <p className="text-[10px] text-[var(--foreground-muted)]">
               Process #{selectedPractice.id}
             </p>
@@ -860,15 +970,17 @@ export default function PratichePage() {
                       option.column === 'inquiry'
                         ? 'bg-blue-500'
                         : option.column === 'quotation'
-                        ? 'bg-yellow-500'
-                        : option.column === 'in_progress'
-                        ? 'bg-purple-500'
-                        : 'bg-green-500'
+                          ? 'bg-yellow-500'
+                          : option.column === 'in_progress'
+                            ? 'bg-purple-500'
+                            : 'bg-green-500'
                     }`}
                   />
                   {option.label}
                 </div>
-                {selectedPractice.status === option.value && <CheckCircle2 className="w-3.5 h-3.5" />}
+                {selectedPractice.status === option.value && (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                )}
               </button>
             ))}
           </div>

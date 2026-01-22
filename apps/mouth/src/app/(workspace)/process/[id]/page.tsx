@@ -3,24 +3,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  ArrowLeft, User, Mail, Phone, Calendar, DollarSign,
-  Clock, CheckCircle2, AlertCircle, Loader2, FileText,
-  MessageCircle, MoreVertical, Edit, Trash2
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  DollarSign,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  FileText,
+  MessageCircle,
+  MoreVertical,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
 import { casesMetrics } from '@/lib/metrics/cases-metrics';
+import { logger } from '@/lib/logger';
 
 // Status mapping for display
 const STATUS_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   inquiry: { label: 'Inquiry', color: 'blue', icon: <AlertCircle className="w-4 h-4" /> },
-  quotation_sent: { label: 'Quotation Sent', color: 'yellow', icon: <FileText className="w-4 h-4" /> },
-  payment_pending: { label: 'Payment Pending', color: 'orange', icon: <DollarSign className="w-4 h-4" /> },
+  quotation_sent: {
+    label: 'Quotation Sent',
+    color: 'yellow',
+    icon: <FileText className="w-4 h-4" />,
+  },
+  payment_pending: {
+    label: 'Payment Pending',
+    color: 'orange',
+    icon: <DollarSign className="w-4 h-4" />,
+  },
   in_progress: { label: 'In Progress', color: 'purple', icon: <Clock className="w-4 h-4" /> },
-  waiting_documents: { label: 'Waiting Documents', color: 'amber', icon: <FileText className="w-4 h-4" /> },
-  submitted_to_gov: { label: 'Submitted to Gov', color: 'indigo', icon: <FileText className="w-4 h-4" /> },
+  waiting_documents: {
+    label: 'Waiting Documents',
+    color: 'amber',
+    icon: <FileText className="w-4 h-4" />,
+  },
+  submitted_to_gov: {
+    label: 'Submitted to Gov',
+    color: 'indigo',
+    icon: <FileText className="w-4 h-4" />,
+  },
   approved: { label: 'Approved', color: 'green', icon: <CheckCircle2 className="w-4 h-4" /> },
   completed: { label: 'Completed', color: 'green', icon: <CheckCircle2 className="w-4 h-4" /> },
 };
@@ -61,7 +90,7 @@ export default function CaseDetailPage() {
           casesMetrics.trackPageView('detail', caseId, user.email);
         }
       } catch (err) {
-        console.error('Failed to init metrics:', err);
+        logger.error('Failed to init metrics:', err);
       }
     };
 
@@ -73,7 +102,13 @@ export default function CaseDetailPage() {
       if (!caseId) {
         setError('Invalid process ID');
         setIsLoading(false);
-        casesMetrics.trackError('Invalid Case ID', 'No case ID provided', 'CasesDetailPage', undefined, userEmail.current || undefined);
+        casesMetrics.trackError(
+          'Invalid Case ID',
+          'No case ID provided',
+          'CasesDetailPage',
+          undefined,
+          userEmail.current || undefined
+        );
         return;
       }
 
@@ -83,30 +118,45 @@ export default function CaseDetailPage() {
       const apiStart = performance.now();
 
       try {
-        // NOTE: Using getPractices with filter until dedicated getPractice(id) endpoint is available
-        // Backend endpoint: GET /api/crm/practices/{id} - TODO: Implement in backend
-        const allPractices = await api.crm.getPractices({ limit: 200 });
+        // ✅ Using dedicated GET endpoint for single practice (efficient: 1 query instead of loading 200 practices)
+        const foundPractice = await api.crm.getPractice(caseId);
         const apiDuration = performance.now() - apiStart;
-        casesMetrics.trackApiCall('/api/crm/practices', 'GET', true, apiDuration, caseId, userEmail.current || undefined);
+        casesMetrics.trackApiCall(
+          `/api/crm/practices/${caseId}`,
+          'GET',
+          true,
+          apiDuration,
+          caseId,
+          userEmail.current || undefined
+        );
 
-        const foundPractice = allPractices.find(p => p.id === caseId);
-
-        if (!foundPractice) {
-          setError('Process not found');
-          toast.error('Error', `Process #${caseId} not found`);
-          casesMetrics.trackError('Case Not Found', `Case #${caseId} not found`, 'CasesDetailPage', caseId, userEmail.current || undefined);
-        } else {
-          setPractice(foundPractice);
-          casesMetrics.endPerformanceMark('case_detail_load', caseId, userEmail.current || undefined);
-        }
+        setPractice(foundPractice);
+        casesMetrics.endPerformanceMark(
+          'case_detail_load',
+          caseId,
+          userEmail.current || undefined
+        );
       } catch (err) {
         const apiDuration = performance.now() - apiStart;
-        casesMetrics.trackApiCall('/api/crm/practices', 'GET', false, apiDuration, caseId, userEmail.current || undefined);
+        casesMetrics.trackApiCall(
+          `/api/crm/practices/${caseId}`,
+          'GET',
+          false,
+          apiDuration,
+          caseId,
+          userEmail.current || undefined
+        );
 
-        console.error('Failed to load process:', err);
+        logger.error('Failed to load process:', err);
         setError('Failed to load process details');
         toast.error('Error', 'Failed to load process details');
-        casesMetrics.trackError('API Error', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
+        casesMetrics.trackError(
+          'API Error',
+          (err as Error).message,
+          'CasesDetailPage',
+          caseId,
+          userEmail.current || undefined
+        );
       } finally {
         setIsLoading(false);
       }
@@ -135,7 +185,13 @@ export default function CaseDetailPage() {
   const handleEditClick = () => {
     if (!practice) return;
 
-    casesMetrics.trackButtonClick('Edit', 'CasesDetailPage', caseId || undefined, undefined, userEmail.current || undefined);
+    casesMetrics.trackButtonClick(
+      'Edit',
+      'CasesDetailPage',
+      caseId || undefined,
+      undefined,
+      userEmail.current || undefined
+    );
     casesMetrics.trackModal('edit', 'open', caseId || undefined, userEmail.current || undefined);
 
     setEditForm({
@@ -156,13 +212,19 @@ export default function CaseDetailPage() {
 
     try {
       const user = await api.getProfile();
-      const updates: Partial<Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price'>> = {};
+      const updates: Partial<
+        Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price'>
+      > = {};
 
       if (editForm.status && editForm.status !== practice.status) updates.status = editForm.status;
-      if (editForm.priority && editForm.priority !== practice.priority) updates.priority = editForm.priority;
-      if (editForm.payment_status && editForm.payment_status !== practice.payment_status) updates.payment_status = editForm.payment_status;
-      if (editForm.quoted_price && Number(editForm.quoted_price) !== practice.quoted_price) updates.quoted_price = Number(editForm.quoted_price);
-      if (editForm.actual_price && Number(editForm.actual_price) !== practice.actual_price) updates.actual_price = Number(editForm.actual_price);
+      if (editForm.priority && editForm.priority !== practice.priority)
+        updates.priority = editForm.priority;
+      if (editForm.payment_status && editForm.payment_status !== practice.payment_status)
+        updates.payment_status = editForm.payment_status;
+      if (editForm.quoted_price && Number(editForm.quoted_price) !== practice.quoted_price)
+        updates.quoted_price = Number(editForm.quoted_price);
+      if (editForm.actual_price && Number(editForm.actual_price) !== practice.actual_price)
+        updates.actual_price = Number(editForm.actual_price);
 
       if (Object.keys(updates).length === 0) {
         toast.error('No Changes', 'No fields were modified.');
@@ -176,7 +238,7 @@ export default function CaseDetailPage() {
       const updateType = updates.status ? 'status' : updates.payment_status ? 'payment' : 'details';
 
       // Log pre-request details
-      console.log('[Cases] Attempting to update case:', {
+      logger.info('[Cases] Attempting to update case:', {
         caseId,
         updates,
         userEmail: user.email,
@@ -187,14 +249,18 @@ export default function CaseDetailPage() {
 
       await api.crm.updatePractice(caseId, updates, user.email);
       const apiDuration = performance.now() - apiStart;
-      casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', true, apiDuration, caseId, user.email);
+      casesMetrics.trackApiCall(
+        '/api/crm/practices/update',
+        'PATCH',
+        true,
+        apiDuration,
+        caseId,
+        user.email
+      );
 
-      // Reload practice data
-      const allPractices = await api.crm.getPractices({ limit: 200 });
-      const updatedPractice = allPractices.find(p => p.id === caseId);
-      if (updatedPractice) {
-        setPractice(updatedPractice);
-      }
+      // Reload practice data with dedicated endpoint
+      const updatedPractice = await api.crm.getPractice(caseId);
+      setPractice(updatedPractice);
 
       // Track case update
       casesMetrics.trackCaseUpdate(caseId, fieldsUpdated, updateType, user.email);
@@ -204,44 +270,60 @@ export default function CaseDetailPage() {
       setIsEditModalOpen(false);
     } catch (err) {
       const apiDuration = performance.now() - apiStart;
-      casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', false, apiDuration, caseId, userEmail.current || undefined);
-      casesMetrics.trackError('Update Failed', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
+      casesMetrics.trackApiCall(
+        '/api/crm/practices/update',
+        'PATCH',
+        false,
+        apiDuration,
+        caseId,
+        userEmail.current || undefined
+      );
+      casesMetrics.trackError(
+        'Update Failed',
+        (err as Error).message,
+        'CasesDetailPage',
+        caseId,
+        userEmail.current || undefined
+      );
 
       // Detailed error logging
       const errorDetails = {
         caseId,
         updates: editForm,
         userEmail: userEmail.current,
-        error: err instanceof Error ? {
-          message: err.message,
-          name: err.name,
-          stack: err.stack,
-        } : err,
+        error:
+          err instanceof Error
+            ? {
+                message: err.message,
+                name: err.name,
+                stack: err.stack,
+              }
+            : err,
         apiDuration,
         timestamp: new Date().toISOString(),
         endpoint: `/api/crm/practices/${caseId}`,
       };
 
-      console.error('[Cases] Failed to update case details:', errorDetails);
+      logger.error('[Cases] Failed to update case details:', errorDetails);
 
       // Check for specific error types and provide user-friendly messages
       let errorMessage = 'Failed to update process details.';
       if (err instanceof Error) {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
           errorMessage = 'Authentication failed. Please login again.';
-          console.error('[Cases] Authentication error - user may need to re-authenticate');
+          logger.error('[Cases] Authentication error - user may need to re-authenticate');
         } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
           errorMessage = 'You do not have permission to update this process.';
-          console.error('[Cases] Authorization error - user may not have permission');
+          logger.error('[Cases] Authorization error - user may not have permission');
         } else if (err.message.includes('404') || err.message.includes('Not Found')) {
           errorMessage = 'Process not found. It may have been deleted.';
-          console.error('[Cases] Case not found - may have been deleted');
+          logger.error('[Cases] Case not found - may have been deleted');
         } else if (err.message.includes('Network') || err.message.includes('fetch')) {
           errorMessage = 'Network error. Please check your connection and try again.';
-          console.error('[Cases] Network error - backend may be unreachable');
+          logger.error('[Cases] Network error - backend may be unreachable');
         } else if (err.message.includes('CORS')) {
           errorMessage = 'CORS error. Please contact support.';
-          console.error('[Cases] CORS error - backend CORS configuration may be incorrect');
+          logger.error('[Cases] CORS error - backend CORS configuration may be incorrect');
         }
       }
 
@@ -294,7 +376,13 @@ export default function CaseDetailPage() {
       <div className="mb-6">
         <button
           onClick={() => {
-            casesMetrics.trackButtonClick('Back to Process', 'CasesDetailPage', caseId || undefined, '/process', userEmail.current || undefined);
+            casesMetrics.trackButtonClick(
+              'Back to Process',
+              'CasesDetailPage',
+              caseId || undefined,
+              '/process',
+              userEmail.current || undefined
+            );
             router.push('/process');
           }}
           className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
@@ -307,9 +395,12 @@ export default function CaseDetailPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-[var(--foreground)]">
-                {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #{practice.id}
+                {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #
+                {practice.id}
               </h1>
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}>
+              <div
+                className={`flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}
+              >
                 {statusInfo.icon}
                 <span className="text-sm font-medium">{statusInfo.label}</span>
               </div>
@@ -343,15 +434,27 @@ export default function CaseDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Client Name</label>
-                <p className="text-[var(--foreground)] font-medium">{practice.client_name || 'Not specified'}</p>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Client Name
+                </label>
+                <p className="text-[var(--foreground)] font-medium">
+                  {practice.client_name || 'Not specified'}
+                </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Client ID</label>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Client ID
+                </label>
                 <button
                   onClick={() => {
-                    casesMetrics.trackButtonClick('Client ID Link', 'CasesDetailPage', caseId || undefined, `/clients/${practice.client_id}`, userEmail.current || undefined);
+                    casesMetrics.trackButtonClick(
+                      'Client ID Link',
+                      'CasesDetailPage',
+                      caseId || undefined,
+                      `/clients/${practice.client_id}`,
+                      userEmail.current || undefined
+                    );
                     router.push(`/clients/${practice.client_id}`);
                   }}
                   className="text-[var(--accent)] hover:underline font-medium"
@@ -365,7 +468,14 @@ export default function CaseDetailPage() {
                   <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Email</label>
                   <a
                     href={`mailto:${practice.client_email}`}
-                    onClick={() => casesMetrics.trackQuickAction('email', caseId || 0, 'CasesDetailPage', userEmail.current || undefined)}
+                    onClick={() =>
+                      casesMetrics.trackQuickAction(
+                        'email',
+                        caseId || 0,
+                        'CasesDetailPage',
+                        userEmail.current || undefined
+                      )
+                    }
                     className="text-[var(--foreground)] hover:text-[var(--accent)] transition-colors flex items-center gap-2"
                   >
                     <Mail className="w-4 h-4" />
@@ -381,7 +491,14 @@ export default function CaseDetailPage() {
                     href={`https://wa.me/${practice.client_phone.replace(/\D/g, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => casesMetrics.trackQuickAction('whatsapp', caseId || 0, 'CasesDetailPage', userEmail.current || undefined)}
+                    onClick={() =>
+                      casesMetrics.trackQuickAction(
+                        'whatsapp',
+                        caseId || 0,
+                        'CasesDetailPage',
+                        userEmail.current || undefined
+                      )
+                    }
                     className="text-[var(--foreground)] hover:text-[var(--foreground-accent)] transition-colors flex items-center gap-2"
                   >
                     <Phone className="w-4 h-4" />
@@ -392,14 +509,18 @@ export default function CaseDetailPage() {
 
               {practice.client_lead && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Lead Team Member</label>
+                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                    Lead Team Member
+                  </label>
                   <p className="text-[var(--foreground)] font-medium">{practice.client_lead}</p>
                 </div>
               )}
 
               {practice.assigned_to && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Assigned To</label>
+                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                    Assigned To
+                  </label>
                   <p className="text-[var(--foreground)] font-medium">{practice.assigned_to}</p>
                 </div>
               )}
@@ -416,30 +537,48 @@ export default function CaseDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Status</label>
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}>
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}
+                >
                   {statusInfo.icon}
                   <span className="font-medium">{statusInfo.label}</span>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Priority</label>
-                <p className="text-[var(--foreground)] font-medium capitalize">{practice.priority || 'Normal'}</p>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Priority
+                </label>
+                <p className="text-[var(--foreground)] font-medium capitalize">
+                  {practice.priority || 'Normal'}
+                </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Payment Status</label>
-                <p className="text-[var(--foreground)] font-medium capitalize">{practice.payment_status || 'Not set'}</p>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Payment Status
+                </label>
+                <p className="text-[var(--foreground)] font-medium capitalize">
+                  {practice.payment_status || 'Not set'}
+                </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Quoted Price</label>
-                <p className="text-[var(--foreground)] font-medium">{formatCurrency(practice.quoted_price)}</p>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Quoted Price
+                </label>
+                <p className="text-[var(--foreground)] font-medium">
+                  {formatCurrency(practice.quoted_price)}
+                </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Actual Price</label>
-                <p className="text-[var(--foreground)] font-medium">{formatCurrency(practice.actual_price)}</p>
+                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  Actual Price
+                </label>
+                <p className="text-[var(--foreground)] font-medium">
+                  {formatCurrency(practice.actual_price)}
+                </p>
               </div>
 
               <div>
@@ -449,21 +588,27 @@ export default function CaseDetailPage() {
 
               {practice.start_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Start Date</label>
+                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                    Start Date
+                  </label>
                   <p className="text-[var(--foreground)]">{formatDate(practice.start_date)}</p>
                 </div>
               )}
 
               {practice.completion_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Completion Date</label>
+                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                    Completion Date
+                  </label>
                   <p className="text-[var(--foreground)]">{formatDate(practice.completion_date)}</p>
                 </div>
               )}
 
               {practice.expiry_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Expiry Date</label>
+                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                    Expiry Date
+                  </label>
                   <p className="text-[var(--foreground)]">{formatDate(practice.expiry_date)}</p>
                 </div>
               )}
@@ -485,9 +630,17 @@ export default function CaseDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
-                    casesMetrics.trackQuickAction('whatsapp', caseId || 0, 'CasesDetailPage', userEmail.current || undefined);
+                    casesMetrics.trackQuickAction(
+                      'whatsapp',
+                      caseId || 0,
+                      'CasesDetailPage',
+                      userEmail.current || undefined
+                    );
                     const phone = practice.client_phone?.replace(/\D/g, '');
-                    window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
+                    window.open(
+                      `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                      '_blank'
+                    );
                   }}
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
@@ -500,7 +653,12 @@ export default function CaseDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
-                    casesMetrics.trackQuickAction('email', caseId || 0, 'CasesDetailPage', userEmail.current || undefined);
+                    casesMetrics.trackQuickAction(
+                      'email',
+                      caseId || 0,
+                      'CasesDetailPage',
+                      userEmail.current || undefined
+                    );
                     window.open(`mailto:${practice.client_email}`, '_blank');
                   }}
                 >
@@ -513,7 +671,13 @@ export default function CaseDetailPage() {
                 variant="outline"
                 className="w-full justify-start"
                 onClick={() => {
-                  casesMetrics.trackButtonClick('View Client Profile', 'CasesDetailPage', caseId || undefined, `/clients/${practice.client_id}`, userEmail.current || undefined);
+                  casesMetrics.trackButtonClick(
+                    'View Client Profile',
+                    'CasesDetailPage',
+                    caseId || undefined,
+                    `/clients/${practice.client_id}`,
+                    userEmail.current || undefined
+                  );
                   router.push(`/clients/${practice.client_id}`);
                 }}
               >
@@ -541,13 +705,20 @@ export default function CaseDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--background-secondary)] z-10">
-              <h2 className="text-xl font-bold text-[var(--foreground)]">Edit Process #{practice.id}</h2>
+              <h2 className="text-xl font-bold text-[var(--foreground)]">
+                Edit Process #{practice.id}
+              </h2>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -558,7 +729,7 @@ export default function CaseDetailPage() {
                 <label className="text-sm font-medium text-[var(--foreground)]">Status</label>
                 <select
                   value={editForm.status}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="inquiry">Inquiry</option>
@@ -577,7 +748,7 @@ export default function CaseDetailPage() {
                 <label className="text-sm font-medium text-[var(--foreground)]">Priority</label>
                 <select
                   value={editForm.priority}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, priority: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="low">Low</option>
@@ -589,10 +760,14 @@ export default function CaseDetailPage() {
 
               {/* Payment Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">Payment Status</label>
+                <label className="text-sm font-medium text-[var(--foreground)]">
+                  Payment Status
+                </label>
                 <select
                   value={editForm.payment_status}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, payment_status: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, payment_status: e.target.value }))
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="unpaid">Unpaid</option>
@@ -603,11 +778,15 @@ export default function CaseDetailPage() {
 
               {/* Quoted Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">Quoted Price (USD)</label>
+                <label className="text-sm font-medium text-[var(--foreground)]">
+                  Quoted Price (USD)
+                </label>
                 <input
                   type="number"
                   value={editForm.quoted_price}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, quoted_price: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, quoted_price: e.target.value }))
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                   placeholder="0.00"
                   step="0.01"
@@ -616,11 +795,15 @@ export default function CaseDetailPage() {
 
               {/* Actual Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">Actual Price (USD)</label>
+                <label className="text-sm font-medium text-[var(--foreground)]">
+                  Actual Price (USD)
+                </label>
                 <input
                   type="number"
                   value={editForm.actual_price}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, actual_price: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, actual_price: e.target.value }))
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                   placeholder="0.00"
                   step="0.01"
@@ -629,7 +812,11 @@ export default function CaseDetailPage() {
             </div>
 
             <div className="p-6 border-t border-[var(--border)] flex justify-end gap-3 sticky bottom-0 bg-[var(--background-secondary)]">
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={isSaving}>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSaving}
+              >
                 Cancel
               </Button>
               <Button
