@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import {
   ZohoConnectBanner,
   FolderSidebar,
@@ -37,23 +38,23 @@ function htmlToPlainText(html: string): string {
 
   // Remove style tags (prevents CSS rules from appearing in text)
   const styleTags = temp.querySelectorAll('style');
-  styleTags.forEach(tag => tag.remove());
+  styleTags.forEach((tag) => tag.remove());
 
   // Remove script tags (safety)
   const scriptTags = temp.querySelectorAll('script');
-  scriptTags.forEach(tag => tag.remove());
+  scriptTags.forEach((tag) => tag.remove());
 
   // Remove head tag if present
   const headTags = temp.querySelectorAll('head');
-  headTags.forEach(tag => tag.remove());
+  headTags.forEach((tag) => tag.remove());
 
   // Convert <br> to newlines before extracting text
   const brTags = temp.querySelectorAll('br');
-  brTags.forEach(tag => tag.replaceWith('\n'));
+  brTags.forEach((tag) => tag.replaceWith('\n'));
 
   // Convert block elements to ensure newlines
   const blockElements = temp.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, tr');
-  blockElements.forEach(el => {
+  blockElements.forEach((el) => {
     if (el.textContent?.trim()) {
       el.insertAdjacentText('afterend', '\n');
     }
@@ -69,8 +70,20 @@ function htmlToPlainText(html: string): string {
     // Remove CSS property declarations that leaked (property: value !important; patterns)
     .replace(/[\w-]+:\s*[^;{}\n]+\s*!?important?\s*;?/gi, (match) => {
       // Only remove if it looks like CSS (has common CSS properties)
-      const cssProps = ['border', 'margin', 'padding', 'color', 'font', 'text', 'display', 'background', 'width', 'height', 'outline'];
-      if (cssProps.some(prop => match.toLowerCase().startsWith(prop))) {
+      const cssProps = [
+        'border',
+        'margin',
+        'padding',
+        'color',
+        'font',
+        'text',
+        'display',
+        'background',
+        'width',
+        'height',
+        'outline',
+      ];
+      if (cssProps.some((prop) => match.toLowerCase().startsWith(prop))) {
         return '';
       }
       return match;
@@ -80,24 +93,39 @@ function htmlToPlainText(html: string): string {
 
   // Clean up whitespace
   text = text
-    .replace(/\t/g, ' ')                    // Replace tabs with spaces
-    .replace(/ {2,}/g, ' ')                 // Collapse multiple spaces
-    .replace(/\n{3,}/g, '\n\n')             // Normalize multiple newlines
-    .replace(/^\s+|\s+$/gm, '')             // Trim each line
+    .replace(/\t/g, ' ') // Replace tabs with spaces
+    .replace(/ {2,}/g, ' ') // Collapse multiple spaces
+    .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
+    .replace(/^\s+|\s+$/gm, '') // Trim each line
     .split('\n')
-    .filter((line, i, arr) => line.trim() || (arr[i-1]?.trim() && arr[i+1]?.trim())) // Remove consecutive empty lines
+    .filter((line, i, arr) => line.trim() || (arr[i - 1]?.trim() && arr[i + 1]?.trim())) // Remove consecutive empty lines
     .join('\n');
 
   return text.trim();
 }
 
 // Helper function to format date safely
+// Handles both ISO strings and Zoho timestamps (milliseconds)
 function formatDateSafe(dateStr: string | undefined): string {
   if (!dateStr) return 'Unknown date';
   try {
-    const date = new Date(dateStr);
+    // Handle timestamp (milliseconds) from Zoho API or ISO string
+    const timestamp = Number(dateStr);
+    const date =
+      !isNaN(timestamp) && timestamp > 1000000000000
+        ? new Date(timestamp) // Timestamp in milliseconds
+        : new Date(dateStr); // ISO string
+
     if (isNaN(date.getTime())) return 'Unknown date';
-    return date.toLocaleString();
+
+    return date.toLocaleString('it-IT', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return 'Unknown date';
   }
@@ -143,7 +171,7 @@ export default function EmailPage() {
         await loadFolders();
       }
     } catch (error) {
-      console.error('Failed to check connection:', error);
+      logger.error('Failed to check connection:', error);
       setConnectionStatus({ connected: false, email: null, account_id: null, expires_at: null });
     } finally {
       setIsCheckingConnection(false);
@@ -163,7 +191,7 @@ export default function EmailPage() {
         setSelectedFolderId(inbox.folder_id);
       }
     } catch (error) {
-      console.error('Failed to load folders:', error);
+      logger.error('Failed to load folders:', error);
     } finally {
       setIsFoldersLoading(false);
     }
@@ -184,7 +212,7 @@ export default function EmailPage() {
       setHasMore(response.has_more);
       setTotalEmails(response.total);
     } catch (error) {
-      console.error('Failed to load emails:', error);
+      logger.error('Failed to load emails:', error);
     } finally {
       setIsEmailsLoading(false);
     }
@@ -205,7 +233,7 @@ export default function EmailPage() {
         );
       }
     } catch (error) {
-      console.error('Failed to load email:', error);
+      logger.error('Failed to load email:', error);
     } finally {
       setIsEmailDetailLoading(false);
     }
@@ -219,7 +247,7 @@ export default function EmailPage() {
       // Redirect to Zoho OAuth
       window.location.href = auth_url;
     } catch (error) {
-      console.error('Failed to get auth URL:', error);
+      logger.error('Failed to get auth URL:', error);
       setIsConnecting(false);
     }
   };
@@ -235,7 +263,7 @@ export default function EmailPage() {
       setEmails([]);
       setSelectedEmail(null);
     } catch (error) {
-      console.error('Failed to disconnect:', error);
+      logger.error('Failed to disconnect:', error);
     }
   };
 
@@ -286,7 +314,7 @@ export default function EmailPage() {
       );
       setSelectedIds(new Set());
     } catch (error) {
-      console.error('Failed to mark emails:', error);
+      logger.error('Failed to mark emails:', error);
     }
   };
 
@@ -305,7 +333,7 @@ export default function EmailPage() {
         setSelectedEmail({ ...selectedEmail, is_flagged: newFlagged });
       }
     } catch (error) {
-      console.error('Failed to toggle flag:', error);
+      logger.error('Failed to toggle flag:', error);
     }
   };
 
@@ -329,8 +357,10 @@ export default function EmailPage() {
         throw new Error('Delete operation failed');
       }
     } catch (error) {
-      console.error('Failed to delete emails:', error);
-      alert(`❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.error('Failed to delete emails:', error);
+      alert(
+        `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   };
 
@@ -376,13 +406,13 @@ export default function EmailPage() {
 
       setIsComposeOpen(false);
       alert('Draft saved successfully');
-      
+
       // Refresh current view to show changes if we are in drafts (or general refresh)
       if (selectedFolderId) {
         loadEmails(selectedFolderId, searchQuery, currentPage);
       }
     } catch (error) {
-      console.error('Failed to save draft:', error);
+      logger.error('Failed to save draft:', error);
       alert('Failed to save draft. Please try again.');
     }
   };
@@ -400,8 +430,13 @@ export default function EmailPage() {
     setComposeMode('reply');
 
     // Convert HTML to plain text for the textarea
-    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
-    const quotedContent = originalContent.split('\n').map(line => `> ${line}`).join('\n');
+    const originalContent = htmlToPlainText(
+      selectedEmail.html_content || selectedEmail.text_content || ''
+    );
+    const quotedContent = originalContent
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
 
     setComposeInitialData({
       to: [selectedEmail.from.address],
@@ -425,8 +460,13 @@ export default function EmailPage() {
     const uniqueRecipients = [...new Set(allRecipients)];
 
     // Convert HTML to plain text for the textarea
-    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
-    const quotedContent = originalContent.split('\n').map(line => `> ${line}`).join('\n');
+    const originalContent = htmlToPlainText(
+      selectedEmail.html_content || selectedEmail.text_content || ''
+    );
+    const quotedContent = originalContent
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
 
     setComposeMode('replyAll');
     setComposeInitialData({
@@ -445,7 +485,9 @@ export default function EmailPage() {
     setComposeMode('forward');
 
     // Convert HTML to plain text for the textarea
-    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
+    const originalContent = htmlToPlainText(
+      selectedEmail.html_content || selectedEmail.text_content || ''
+    );
 
     setComposeInitialData({
       to: [],
@@ -497,7 +539,7 @@ ${originalContent}`,
         loadEmails(selectedFolderId, searchQuery);
       }
     } catch (error) {
-      console.error('Failed to send email:', error);
+      logger.error('Failed to send email:', error);
       alert('Failed to send email. Please try again.');
     } finally {
       setIsSending(false);
@@ -517,7 +559,7 @@ ${originalContent}`,
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to download attachment:', error);
+      logger.error('Failed to download attachment:', error);
     }
   };
 
@@ -542,7 +584,7 @@ ${originalContent}`,
         loadEmailDetail(selectedEmailId, selectedFolderId);
       }
     } catch (error) {
-      console.error('Failed to create client:', error);
+      logger.error('Failed to create client:', error);
       alert('Errore nella creazione del cliente. Riprova.');
     }
   };
