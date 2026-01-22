@@ -5,6 +5,7 @@ Endpoints for managing practices (KITAS, PT PMA, Visas, etc.)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import asyncio
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -19,6 +20,7 @@ from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 from backend.core.cache import cached
+from backend.services.invoicing import InvoiceAutomationService
 
 logger = get_logger(__name__)
 
@@ -326,10 +328,7 @@ async def list_practices(
     try:
         # If called directly, we might not have current_user, but we have user_id
         # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
-        if user_id:
-            # All users can see all practices (no RBAC filtering)
-            pass
-        elif isinstance(current_user, dict):
+        if user_id or isinstance(current_user, dict):
             # All users can see all practices (no RBAC filtering)
             pass
         else:
@@ -625,6 +624,18 @@ async def update_practice(
                     practice_id,
                 )
 
+            # 🚀 Invoice Automation: Trigger when status changes to 'quotation_sent'
+            if updates.status == "quotation_sent":
+                invoice_service = InvoiceAutomationService(db_pool)
+                # Run in background to not block the response
+                asyncio.create_task(
+                    invoice_service.trigger_on_quotation_sent(
+                        practice_id=practice_id,
+                        triggered_by=user_email,
+                    )
+                )
+                logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
+
             log_success(
                 logger,
                 "Updated practice",
@@ -854,4 +865,83 @@ async def get_practices_stats(
             }
 
     except Exception as e:
+        raise handle_database_error(e)
+
+
+@router.post("/{practice_id}/regenerate-invoice")
+async def regenerate_invoice(
+    request: Request,
+    practice_id: int = Path(..., gt=0, description="Practice ID"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Manually regenerate and resend invoice for a practice.
+
+    Use cases:
+    - Client lost the invoice email
+    - Need to send updated invoice with corrected amount
+    - Previous automation failed
+    - Invoice generation was skipped (e.g., practice created before automation implemented)
+
+    This endpoint triggers the same workflow as the automatic invoice generation,
+    but can be called manually for any practice in 'quotation_sent' status.
+
+    Returns:
+        dict: Invoice generation result with file IDs, links, and notification status
+    """
+    try:
+        user_email = current_user.get("email", "").lower()
+
+        # Verify practice exists and check status
+        async with db_pool.acquire() as conn:
+            practice_row = await conn.fetchrow(
+                "SELECT status FROM practices WHERE id = $1",
+                practice_id,
+            )
+
+            if not practice_row:
+                raise HTTPException(status_code=404, detail="Practice not found")
+
+            if practice_row["status"] != "quotation_sent":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Can only regenerate invoice for practices in 'quotation_sent' status. Current status: {practice_row['status']}",
+                )
+
+        # Trigger invoice automation
+        invoice_service = InvoiceAutomationService(db_pool)
+        result = await invoice_service.regenerate_invoice(
+            practice_id=practice_id,
+            triggered_by=user_email,
+        )
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Invoice generation failed: {result.get('error', 'Unknown error')}",
+            )
+
+        log_success(
+            logger,
+            "Invoice regenerated successfully",
+            practice_id=practice_id,
+            invoice_number=result.get("invoice_number"),
+            triggered_by=user_email,
+        )
+
+        return {
+            "success": True,
+            "message": f"Invoice {result.get('invoice_number')} regenerated and sent successfully",
+            "invoice_number": result.get("invoice_number"),
+            "drive_file_id": result.get("drive_file_id"),
+            "drive_link": result.get("drive_link"),
+            "email_sent": result.get("email_sent"),
+            "whatsapp_sent": result.get("whatsapp_sent"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to regenerate invoice for practice {practice_id}: {e}", exc_info=True)
         raise handle_database_error(e)
