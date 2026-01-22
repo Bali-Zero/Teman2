@@ -15,7 +15,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.pdfgen import canvas
 
-from backend.core.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
