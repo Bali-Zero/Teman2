@@ -30,30 +30,17 @@ export class DriveApi {
    * Uses Team Drive (Service Account) - always connected if configured
    */
   async getStatus(): Promise<ConnectionStatus> {
-    try {
-      const response = await this.client.request<{
-        status: string;
-        service_account: string;
-        files_accessible: boolean;
-      }>('/api/drive/status');
+    const response = await this.client.request<{
+      status: string;
+      connected_as?: string;  // OAuth email or service account email
+      files_accessible: boolean;
+    }>('/api/drive/status');
 
-      return {
-        connected: response.status === 'connected',
-        configured: true,
-        root_folder_id: null,
-      };
-    } catch (error) {
-      // If Team Drive not available, fallback to old OAuth system
-      try {
-        return this.client.request<ConnectionStatus>('/integrations/google-drive/status');
-      } catch {
-        return {
-          connected: false,
-          configured: false,
-          root_folder_id: null,
-        };
-      }
-    }
+    return {
+      connected: response.status === 'connected',
+      configured: true,
+      root_folder_id: null,
+    };
   }
 
   /**
