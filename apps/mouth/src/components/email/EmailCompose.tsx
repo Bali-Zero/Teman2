@@ -57,7 +57,7 @@ export function EmailCompose({
   const [bcc, setBcc] = React.useState(initialData?.bcc?.join(', ') || '');
   const [subject, setSubject] = React.useState(initialData?.subject || '');
   const [content, setContent] = React.useState(initialData?.htmlContent || '');
-  
+
   // Attachments state with upload status
   const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
@@ -73,16 +73,25 @@ export function EmailCompose({
   }, [initialData]);
 
   const getComposeData = (): ComposeData => ({
-    to: to.split(',').map((e) => e.trim()).filter(Boolean),
-    cc: cc.split(',').map((e) => e.trim()).filter(Boolean),
-    bcc: bcc.split(',').map((e) => e.trim()).filter(Boolean),
+    to: to
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean),
+    cc: cc
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean),
+    bcc: bcc
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean),
     subject,
     htmlContent: content,
-    attachmentIds: attachments.map(a => a.data).filter((d): d is AttachmentObject => !!d),
+    attachmentIds: attachments.map((a) => a.data).filter((d): d is AttachmentObject => !!d),
   });
 
   const handleSend = async () => {
-    const pendingUploads = attachments.some(a => a.isUploading);
+    const pendingUploads = attachments.some((a) => a.isUploading);
     if (pendingUploads) {
       alert('Please wait for files to finish uploading.');
       return;
@@ -91,12 +100,12 @@ export function EmailCompose({
   };
 
   const handleSave = async () => {
-    const pendingUploads = attachments.some(a => a.isUploading);
+    const pendingUploads = attachments.some((a) => a.isUploading);
     if (pendingUploads) {
       alert('Please wait for files to finish uploading.');
       return;
     }
-    
+
     setIsSavingDraft(true);
     try {
       await onSaveDraft(getComposeData());
@@ -109,27 +118,35 @@ export function EmailCompose({
     const files = e.target.files;
     if (!files) return;
 
-    const newAttachments = Array.from(files).map(file => ({
+    const newAttachments = Array.from(files).map((file) => ({
       file,
       isUploading: true,
     }));
 
-    setAttachments(prev => [...prev, ...newAttachments]);
+    setAttachments((prev) => [...prev, ...newAttachments]);
 
     // Upload each file
     for (const attachment of newAttachments) {
       try {
         const response = await api.email.uploadAttachment(attachment.file);
-        
-        setAttachments(prev => prev.map(item => 
-          item.file === attachment.file 
-            ? { ...item, data: response, isUploading: false }
-            : item
-        ));
+
+        setAttachments((prev) =>
+          prev.map((item) =>
+            item.file === attachment.file ? { ...item, data: response, isUploading: false } : item
+          )
+        );
       } catch (error) {
-        console.error(`Failed to upload ${attachment.file.name}:`, error);
-        alert(`Failed to upload ${attachment.file.name}`);
-        setAttachments(prev => prev.filter(item => item.file !== attachment.file));
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to upload ${attachment.file.name}:`, errorMessage);
+
+        // Show detailed error message to user
+        const displayMessage =
+          errorMessage.includes('Upload failed for')
+            ? errorMessage // Backend provides detailed error
+            : `Failed to upload ${attachment.file.name}: ${errorMessage}`;
+
+        alert(displayMessage);
+        setAttachments((prev) => prev.filter((item) => item.file !== attachment.file));
       }
     }
   };
@@ -147,7 +164,7 @@ export function EmailCompose({
     forward: 'Forward',
   };
 
-  const hasPendingUploads = attachments.some(a => a.isUploading);
+  const hasPendingUploads = attachments.some((a) => a.isUploading);
   const isActionDisabled = isSending || isSavingDraft || hasPendingUploads || !to.trim();
 
   return (
@@ -168,9 +185,7 @@ export function EmailCompose({
         )}
         onClick={() => isMinimized && setIsMinimized(false)}
       >
-        <span className="text-sm font-medium text-[var(--foreground)]">
-          {modeLabels[mode]}
-        </span>
+        <span className="text-sm font-medium text-[var(--foreground)]">{modeLabels[mode]}</span>
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => {
@@ -203,9 +218,7 @@ export function EmailCompose({
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* To Field */}
             <div className="flex items-center border-b border-[var(--border)]">
-              <label className="w-16 px-4 py-2 text-sm text-[var(--foreground-muted)]">
-                To
-              </label>
+              <label className="w-16 px-4 py-2 text-sm text-[var(--foreground-muted)]">To</label>
               <input
                 type="text"
                 value={to}
@@ -334,17 +347,15 @@ export function EmailCompose({
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
               <label className="cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleAttachFile}
-                  className="hidden"
-                />
-                <div className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors" title="Attach file">
+                <input type="file" multiple onChange={handleAttachFile} className="hidden" />
+                <div
+                  className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
+                  title="Attach file"
+                >
                   <Paperclip className="w-5 h-5" />
                 </div>
               </label>
-              
+
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
@@ -365,13 +376,13 @@ export function EmailCompose({
                 )}
               >
                 {isSavingDraft ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                    <Save className="w-4 h-4" />
+                  <Save className="w-4 h-4" />
                 )}
                 Save Draft
               </button>
-              
+
               <button
                 onClick={handleSend}
                 disabled={isActionDisabled}

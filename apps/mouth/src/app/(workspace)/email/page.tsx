@@ -509,9 +509,18 @@ ${originalContent}`,
     try {
       if (composeMode === 'reply' || composeMode === 'replyAll') {
         if (selectedEmailId) {
+          // For reply: to = original sender, cc = empty
+          // For replyAll: to = original sender, cc = all other recipients
+          const toAddress = data.to[0] || selectedEmail?.from.address || '';
+          const ccAddresses = composeMode === 'replyAll' && data.cc?.length
+            ? data.cc.join(',')
+            : undefined;
+
           await api.email.replyEmail(selectedEmailId, {
             content: data.htmlContent,
             reply_all: composeMode === 'replyAll',
+            to: toAddress,
+            cc: ccAddresses,
           });
         }
       } else if (composeMode === 'forward') {
