@@ -78,51 +78,52 @@ export function FolderSidebar({
       {/* Folders List */}
       <div className="flex-1 overflow-y-auto px-2">
         <div className="space-y-0.5">
-          {isLoading ? (
-            // Loading skeleton
-            Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-10 bg-[var(--background-elevated)] rounded-lg animate-pulse mx-2"
-              />
-            ))
-          ) : (
-            sortedFolders.map((folder) => {
-              const Icon = FOLDER_ICONS[folder.folder_type] || Folder;
-              const isSelected = folder.folder_id === selectedFolderId;
+          {isLoading
+            ? // Loading skeleton
+              Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-10 bg-[var(--background-elevated)] rounded-lg animate-pulse mx-2"
+                />
+              ))
+            : sortedFolders.map((folder) => {
+                const Icon = FOLDER_ICONS[folder.folder_type] || Folder;
+                const isSelected = folder.folder_id === selectedFolderId;
+                const hasUnread = folder.unread_count > 0;
 
-              return (
-                <button
-                  key={folder.folder_id}
-                  onClick={() => onSelectFolder(folder.folder_id)}
-                  className={cn(
-                    'w-full px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                    'flex items-center justify-between gap-2',
-                    isSelected
-                      ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                      : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]'
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{folder.folder_name}</span>
-                  </div>
-                  {folder.unread_count > 0 && (
-                    <span
-                      className={cn(
-                        'text-xs font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center',
-                        isSelected
-                          ? 'bg-[var(--accent)] text-white'
-                          : 'bg-[var(--foreground-muted)]/20 text-[var(--foreground-muted)]'
-                      )}
-                    >
-                      {folder.unread_count > 99 ? '99+' : folder.unread_count}
-                    </span>
-                  )}
-                </button>
-              );
-            })
-          )}
+                return (
+                  <button
+                    key={folder.folder_id}
+                    onClick={() => onSelectFolder(folder.folder_id)}
+                    className={cn(
+                      'w-full px-3 py-2 rounded-lg text-sm transition-all',
+                      'flex items-center justify-between gap-2',
+                      isSelected
+                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
+                        : hasUnread
+                          ? 'text-[var(--foreground)] font-semibold hover:bg-[var(--background-elevated)]'
+                          : 'text-[var(--foreground-muted)] font-medium hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className={cn('w-4 h-4 flex-shrink-0', hasUnread && !isSelected && 'text-[var(--accent)]')} />
+                      <span className="truncate">{folder.folder_name}</span>
+                    </div>
+                    {hasUnread && (
+                      <span
+                        className={cn(
+                          'text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center',
+                          isSelected
+                            ? 'bg-[var(--accent)] text-white'
+                            : 'bg-[var(--accent)] text-white'
+                        )}
+                      >
+                        {folder.unread_count > 99 ? '99+' : folder.unread_count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
+import { logger } from '@/lib/logger';
 import {
   X,
   Reply,
@@ -69,7 +70,7 @@ export function EmailViewer({
         const client = await api.crm.getClientByEmail(email.from.address);
         setSenderClient(client);
       } catch (error) {
-        console.error('Failed to lookup client:', error);
+        logger.error('Failed to lookup client:', error);
         setSenderClient(null);
       } finally {
         setIsLoadingClient(false);
@@ -194,19 +195,16 @@ export function EmailViewer({
               </div>
 
               <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] mt-0.5">
-                <span>to {email.to.map((t) => t.name || t.address).join(', ')}</span>
+                <span>to {formatEmailList(email.to)}</span>
                 {email.cc && email.cc.length > 0 && (
-                  <span>, cc: {email.cc.map((c) => c.name || c.address).join(', ')}</span>
+                  <span>, cc: {formatEmailList(email.cc)}</span>
                 )}
                 <button
                   onClick={() => setShowFullHeaders(!showFullHeaders)}
                   className="p-0.5 hover:bg-[var(--background-elevated)] rounded"
                 >
                   <ChevronDown
-                    className={cn(
-                      'w-4 h-4 transition-transform',
-                      showFullHeaders && 'rotate-180'
-                    )}
+                    className={cn('w-4 h-4 transition-transform', showFullHeaders && 'rotate-180')}
                   />
                 </button>
               </div>
@@ -214,14 +212,16 @@ export function EmailViewer({
               {showFullHeaders && (
                 <div className="mt-2 p-3 bg-[var(--background-elevated)] rounded-lg text-xs text-[var(--foreground-muted)] space-y-1">
                   <div>
-                    <strong>From:</strong> {email.from.name} &lt;{email.from.address}&gt;
+                    <strong>From:</strong> {formatEmailAddress(email.from)}
                   </div>
                   <div>
-                    <strong>To:</strong> {email.to.map((t) => `${t.name || ''} <${t.address}>`).join(', ')}
+                    <strong>To:</strong>{' '}
+                    {email.to.map((t) => formatEmailAddress(t)).join(', ')}
                   </div>
                   {email.cc && email.cc.length > 0 && (
                     <div>
-                      <strong>Cc:</strong> {email.cc.map((c) => `${c.name || ''} <${c.address}>`).join(', ')}
+                      <strong>Cc:</strong>{' '}
+                      {email.cc.map((c) => formatEmailAddress(c)).join(', ')}
                     </div>
                   )}
                   <div>
@@ -285,7 +285,9 @@ export function EmailViewer({
               {email.attachments.map((attachment) => (
                 <button
                   key={attachment.attachment_id}
-                  onClick={() => onDownloadAttachment(attachment.attachment_id, attachment.filename)}
+                  onClick={() =>
+                    onDownloadAttachment(attachment.attachment_id, attachment.filename)
+                  }
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
                     'bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)]',
@@ -364,9 +366,10 @@ function FileIcon({ mimeType }: { mimeType: string }) {
 function formatDate(dateStr: string): string {
   // Handle timestamp (milliseconds) from Zoho API or ISO string
   const timestamp = Number(dateStr);
-  const date = !isNaN(timestamp) && timestamp > 1000000000000
-    ? new Date(timestamp)  // Timestamp in milliseconds
-    : new Date(dateStr);   // ISO string
+  const date =
+    !isNaN(timestamp) && timestamp > 1000000000000
+      ? new Date(timestamp) // Timestamp in milliseconds
+      : new Date(dateStr); // ISO string
 
   if (isNaN(date.getTime())) return '';
 
@@ -386,19 +389,84 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Decode HTML entities in text (e.g., &quot; -> ", &lt; -> <, &gt; -> >)
+ * Used to fix Zoho API returning encoded strings in email addresses
+ */
+function decodeHtmlEntities(text: string | undefined): string {
+  if (!text) return '';
+  // Use DOM parser to safely decode HTML entities
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  return doc.documentElement.textContent || '';
+}
+
+/**
+ * Format email address for display, decoding any HTML entities
+ */
+function formatEmailAddress(addr: { address: string; name?: string }): string {
+  const name = decodeHtmlEntities(addr.name);
+  if (name && name !== addr.address) {
+    return `${name} <${addr.address}>`;
+  }
+  return addr.address;
+}
+
+/**
+ * Format a list of email addresses for display
+ */
+function formatEmailList(addrs: Array<{ address: string; name?: string }>): string {
+  return addrs.map(a => decodeHtmlEntities(a.name) || a.address).join(', ');
+}
+
 function sanitizeHtml(html: string): string {
   // Secure sanitization using DOMPurify
   // Removes XSS vectors: scripts, event handlers, javascript: URLs, data: URLs, etc.
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      'a', 'b', 'i', 'u', 'strong', 'em', 'p', 'br', 'div', 'span',
-      'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'table', 'thead', 'tbody', 'tr', 'td', 'th',
-      'img', 'blockquote', 'pre', 'code', 'hr',
+      'a',
+      'b',
+      'i',
+      'u',
+      'strong',
+      'em',
+      'p',
+      'br',
+      'div',
+      'span',
+      'ul',
+      'ol',
+      'li',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'td',
+      'th',
+      'img',
+      'blockquote',
+      'pre',
+      'code',
+      'hr',
     ],
     ALLOWED_ATTR: [
-      'href', 'src', 'alt', 'title', 'class', 'style',
-      'width', 'height', 'align', 'valign', 'colspan', 'rowspan',
+      'href',
+      'src',
+      'alt',
+      'title',
+      'class',
+      'style',
+      'width',
+      'height',
+      'align',
+      'valign',
+      'colspan',
+      'rowspan',
     ],
     ALLOW_DATA_ATTR: false,
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
