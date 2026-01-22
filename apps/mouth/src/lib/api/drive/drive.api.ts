@@ -335,7 +335,9 @@ export class DriveApi {
       });
 
       xhr.addEventListener('error', () => {
-        reject(new Error('Network error during upload. Please check your connection and try again.'));
+        reject(
+          new Error('Network error during upload. Please check your connection and try again.')
+        );
       });
 
       xhr.addEventListener('timeout', () => {
@@ -343,7 +345,7 @@ export class DriveApi {
         reject(
           new Error(
             `Upload timeout after ${timeoutMinutes} minutes. File size: ${fileSizeMB.toFixed(1)}MB. ` +
-            `Large files may require resumable upload support. Please try with a smaller file or contact support.`
+              `Large files may require resumable upload support. Please try with a smaller file or contact support.`
           )
         );
       });
