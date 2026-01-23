@@ -275,33 +275,47 @@ class TeamDriveService:
 
         Priority:
         1. Local file (google_credentials.json)
-        2. Environment variable (base64 encoded JSON)
+        2. Environment variable (raw JSON or base64 encoded JSON)
         """
         # Check local file first
         if CREDENTIALS_PATH.exists():
             return str(CREDENTIALS_PATH)
 
-        # Check environment variable (base64 encoded)
-        env_creds = os.environ.get(CREDENTIALS_ENV_VAR)
+        # Check environment variables (supports both raw JSON and base64 encoded)
+        # Try GOOGLE_SERVICE_ACCOUNT_JSON first, then fallback to GOOGLE_SERVICE_ACCOUNT
+        env_creds = os.environ.get(CREDENTIALS_ENV_VAR) or os.environ.get("GOOGLE_SERVICE_ACCOUNT")
         if env_creds:
+            creds_json = None
+
+            # Try raw JSON first
             try:
-                # Decode base64 and write to temp file
-                creds_json = base64.b64decode(env_creds).decode("utf-8")
+                parsed = json.loads(env_creds)
+                if parsed.get("type") == "service_account":
+                    creds_json = env_creds
+                    logger.info("[TEAM_DRIVE] Using credentials from env (raw JSON)")
+            except json.JSONDecodeError:
+                pass
 
-                # Validate it's valid JSON
-                json.loads(creds_json)
+            # Try base64-encoded JSON
+            if not creds_json:
+                try:
+                    decoded = base64.b64decode(env_creds).decode("utf-8")
+                    parsed = json.loads(decoded)
+                    if parsed.get("type") == "service_account":
+                        creds_json = decoded
+                        logger.info("[TEAM_DRIVE] Using credentials from env (base64)")
+                except Exception:
+                    pass
 
+            if creds_json:
                 # Write to temp file
                 temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
                 temp_file.write(creds_json)
                 temp_file.close()
-
-                logger.info("[TEAM_DRIVE] Using credentials from environment variable")
                 return temp_file.name
 
-            except Exception as e:
-                logger.error(f"[TEAM_DRIVE] Failed to decode credentials from env: {e}")
-                return None
+            logger.error("[TEAM_DRIVE] Failed to parse credentials from env (tried raw JSON and base64)")
+            return None
 
         return None
 
@@ -535,7 +549,11 @@ class TeamDriveService:
 
     def is_configured(self) -> bool:
         """Check if the service account credentials are available."""
-        return CREDENTIALS_PATH.exists() or os.environ.get(CREDENTIALS_ENV_VAR) is not None
+        return (
+            CREDENTIALS_PATH.exists()
+            or os.environ.get(CREDENTIALS_ENV_VAR) is not None
+            or os.environ.get("GOOGLE_SERVICE_ACCOUNT") is not None
+        )
 
     @drive_operation("list_files")
     async def list_files(

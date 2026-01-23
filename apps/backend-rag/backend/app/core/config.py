@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     google_api_key: str | None = None  # Set via GOOGLE_API_KEY env var (for Gemini AI)
     google_credentials_json: str | None = Field(
         default=None,
-        description="Google Service Account JSON credentials for Vertex AI. Set via GOOGLE_CREDENTIALS_JSON, GOOGLE_SERVICE_ACCOUNT_JSON, or GEMINI_SA_TOKEN env var",
+        description="Google Service Account JSON credentials. Set via GOOGLE_CREDENTIALS_JSON, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_SERVICE_ACCOUNT, or GEMINI_SA_TOKEN env var",
     )
     gemini_sa_token: str | None = None  # Alias for GEMINI_SA_TOKEN env var
 
@@ -48,8 +48,11 @@ class Settings(BaseSettings):
 
         if v:
             return v
-        # Check alternative env var names
-        google_sa = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        # Check alternative env var names (in priority order)
+        google_sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        if google_sa_json:
+            return google_sa_json
+        google_sa = os.environ.get("GOOGLE_SERVICE_ACCOUNT")
         if google_sa:
             return google_sa
         gemini_token = os.environ.get("GEMINI_SA_TOKEN")
