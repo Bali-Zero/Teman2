@@ -314,7 +314,9 @@ class TeamDriveService:
                 temp_file.close()
                 return temp_file.name
 
-            logger.error("[TEAM_DRIVE] Failed to parse credentials from env (tried raw JSON and base64)")
+            logger.error(
+                "[TEAM_DRIVE] Failed to parse credentials from env (tried raw JSON and base64)"
+            )
             return None
 
         return None
@@ -918,6 +920,7 @@ class TeamDriveService:
                     body=file_metadata,
                     media_body=media,
                     fields="id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink",
+                    supportsAllDrives=True,  # Required for Shared Drive uploads
                 )
                 .execute()
             )
@@ -969,7 +972,11 @@ class TeamDriveService:
         try:
             folder = (
                 service.files()
-                .create(body=file_metadata, fields="id, name, mimeType, modifiedTime, webViewLink")
+                .create(
+                    body=file_metadata,
+                    fields="id, name, mimeType, modifiedTime, webViewLink",
+                    supportsAllDrives=True,  # Required for Shared Drive operations
+                )
                 .execute()
             )
 
@@ -1032,7 +1039,11 @@ class TeamDriveService:
         try:
             doc = (
                 service.files()
-                .create(body=file_metadata, fields="id, name, mimeType, modifiedTime, webViewLink")
+                .create(
+                    body=file_metadata,
+                    fields="id, name, mimeType, modifiedTime, webViewLink",
+                    supportsAllDrives=True,  # Required for Shared Drive operations
+                )
                 .execute()
             )
 
