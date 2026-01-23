@@ -17,9 +17,8 @@ describe('FileListSkeleton', () => {
   it('should render with default count of 10 skeleton rows', () => {
     const { container } = render(<FileListSkeleton />);
 
-    // Should have default 10 skeleton rows (excluding header)
-    const rows = container.querySelectorAll('.border-b.border-\\[\\#dadce0\\]');
-    // 10 rows + header = 11 total
+    // Should have default 10 skeleton rows (use .grid.border-b to exclude header wrapper)
+    const rows = container.querySelectorAll('.grid.border-b');
     expect(rows.length).toBe(10);
   });
 

@@ -20,15 +20,16 @@ describe('FileGridSkeleton', () => {
     const grid = container.querySelector('.grid');
     expect(grid).toBeTruthy();
 
-    // Should have default 12 skeleton items
-    const skeletonCards = container.querySelectorAll('.rounded-lg');
+    // Should have default 12 skeleton items (use .border to match only card containers)
+    const skeletonCards = container.querySelectorAll('.rounded-lg.border');
     expect(skeletonCards.length).toBe(12);
   });
 
   it('should render with custom count', () => {
     const { container } = render(<FileGridSkeleton count={6} />);
 
-    const skeletonCards = container.querySelectorAll('.rounded-lg');
+    // Use .border to match only card containers, not icon placeholders
+    const skeletonCards = container.querySelectorAll('.rounded-lg.border');
     expect(skeletonCards.length).toBe(6);
   });
 
