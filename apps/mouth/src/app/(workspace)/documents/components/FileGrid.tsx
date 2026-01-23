@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from './file-icon';
 import { MoreVertical, Star, Clock, Users } from 'lucide-react';
+import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileGridProps {
   files: FileItem[];
@@ -45,6 +46,8 @@ export function FileGrid({
   onFileDoubleClick,
   onContextMenu,
 }: FileGridProps) {
+  const { prefetchFolder } = usePrefetchFolder();
+
   // Separate folders and files for better organization
   const folders = files.filter((f) => f.is_folder);
   const documents = files.filter((f) => !f.is_folder);
@@ -74,6 +77,7 @@ export function FileGrid({
                 onClick={onFileClick}
                 onDoubleClick={onFileDoubleClick}
                 onContextMenu={onContextMenu}
+                onPrefetch={prefetchFolder}
               />
             ))}
           </motion.div>
@@ -103,6 +107,7 @@ export function FileGrid({
                 onClick={onFileClick}
                 onDoubleClick={onFileDoubleClick}
                 onContextMenu={onContextMenu}
+                onPrefetch={prefetchFolder}
               />
             ))}
           </motion.div>
@@ -132,6 +137,7 @@ interface FileCardProps {
   onClick: (file: FileItem, index: number, e: React.MouseEvent) => void;
   onDoubleClick: (file: FileItem) => void;
   onContextMenu: (file: FileItem, e: React.MouseEvent) => void;
+  onPrefetch?: (folderId: string) => void;
 }
 
 function FileCard({
@@ -141,8 +147,16 @@ function FileCard({
   onClick,
   onDoubleClick,
   onContextMenu,
+  onPrefetch,
 }: FileCardProps) {
   const deptInfo = file.is_folder ? getDepartmentInfo(file.name) : null;
+
+  // Prefetch folder contents on hover for instant navigation
+  const handleMouseEnter = () => {
+    if (file.is_folder && onPrefetch) {
+      onPrefetch(file.id);
+    }
+  };
 
   return (
     <motion.div
@@ -150,17 +164,18 @@ function FileCard({
       onClick={(e) => onClick(file, index, e)}
       onDoubleClick={() => onDoubleClick(file)}
       onContextMenu={(e) => onContextMenu(file, e)}
-      whileHover={{ scale: 1.02, y: -4 }}
-      whileTap={{ scale: 0.98 }}
+      onMouseEnter={handleMouseEnter}
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.99 }}
       className={`
-        group relative flex cursor-pointer flex-col items-center rounded-2xl border-2 p-5
+        group relative flex cursor-pointer flex-col items-center rounded-lg border p-4
         transition-all duration-200 ease-out
         ${
           isSelected
-            ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
-            : 'border-transparent bg-[var(--background-subtle)] hover:border-[var(--border)] hover:bg-[var(--accent)] hover:shadow-xl'
+            ? 'border-[#1a73e8] bg-[#e8f0fe] shadow-sm'
+            : 'border-transparent bg-white dark:bg-[var(--background-subtle)] hover:bg-[#f5f5f5] dark:hover:bg-[var(--accent)]'
         }
-        ${deptInfo ? 'hover:shadow-lg' : ''}
+        ${deptInfo ? 'hover:shadow-md' : ''}
       `}
       style={
         deptInfo
@@ -251,7 +266,7 @@ function FileCard({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1a73e8] text-white shadow-sm"
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
