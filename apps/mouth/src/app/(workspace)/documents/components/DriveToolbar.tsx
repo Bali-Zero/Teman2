@@ -16,6 +16,7 @@ import {
   Presentation,
   ChevronDown,
   X,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
@@ -30,6 +31,9 @@ interface DriveToolbarProps {
   isConnected: boolean;
   isConnecting?: boolean;
   onConnect?: () => void;
+  showInfoPanel?: boolean;
+  onToggleInfoPanel?: () => void;
+  hasSelection?: boolean;
 }
 
 export function DriveToolbar({
@@ -42,6 +46,9 @@ export function DriveToolbar({
   isConnected,
   isConnecting,
   onConnect,
+  showInfoPanel,
+  onToggleInfoPanel,
+  hasSelection,
 }: DriveToolbarProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -79,15 +86,15 @@ export function DriveToolbar({
               relative flex items-center rounded-xl border-2 bg-[var(--background-subtle)] transition-all duration-200
               ${
                 isSearchFocused
-                  ? 'border-emerald-500 shadow-lg shadow-emerald-500/10'
-                  : 'border-transparent hover:border-[var(--border)]'
+                  ? 'border-[#1a73e8] shadow-lg shadow-[#1a73e8]/10'
+                  : 'border-transparent hover:border-[#dadce0]'
               }
             `}
           >
             <Search
               className={`
               ml-4 h-5 w-5 transition-colors
-              ${isSearchFocused ? 'text-emerald-500' : 'text-[var(--foreground-muted)]'}
+              ${isSearchFocused ? 'text-[#1a73e8]' : 'text-[var(--foreground-muted)]'}
             `}
             />
             <input
@@ -151,15 +158,15 @@ export function DriveToolbar({
           )}
 
           {/* View mode toggle */}
-          <div className="flex rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] p-1">
+          <div className="flex rounded-lg border border-[#dadce0] bg-white dark:bg-[var(--background-subtle)] p-1">
             <button
               onClick={() => onViewModeChange('grid')}
               className={`
-                relative flex items-center justify-center rounded-lg p-2 transition-all duration-200
+                relative flex items-center justify-center rounded-md p-2 transition-all duration-200
                 ${
                   viewMode === 'grid'
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                    ? 'text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:text-[#202124] hover:bg-[#f5f5f5]'
                 }
               `}
               title="Vista griglia"
@@ -167,7 +174,7 @@ export function DriveToolbar({
               {viewMode === 'grid' && (
                 <motion.div
                   layoutId="viewModeIndicator"
-                  className="absolute inset-0 rounded-lg bg-emerald-500/10"
+                  className="absolute inset-0 rounded-md bg-[#e8f0fe]"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
@@ -176,11 +183,11 @@ export function DriveToolbar({
             <button
               onClick={() => onViewModeChange('list')}
               className={`
-                relative flex items-center justify-center rounded-lg p-2 transition-all duration-200
+                relative flex items-center justify-center rounded-md p-2 transition-all duration-200
                 ${
                   viewMode === 'list'
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                    ? 'text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:text-[#202124] hover:bg-[#f5f5f5]'
                 }
               `}
               title="Vista lista"
@@ -188,7 +195,7 @@ export function DriveToolbar({
               {viewMode === 'list' && (
                 <motion.div
                   layoutId="viewModeIndicator"
-                  className="absolute inset-0 rounded-lg bg-emerald-500/10"
+                  className="absolute inset-0 rounded-md bg-[#e8f0fe]"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
@@ -196,7 +203,27 @@ export function DriveToolbar({
             </button>
           </div>
 
-          <div className="mx-1 h-6 w-px bg-[var(--border)]" />
+          {/* Info panel toggle */}
+          {onToggleInfoPanel && (
+            <button
+              onClick={onToggleInfoPanel}
+              className={`
+                flex items-center justify-center rounded-full p-2 transition-all duration-200
+                ${
+                  showInfoPanel
+                    ? 'bg-[#e8f0fe] text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:bg-[#f5f5f5]'
+                }
+                ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+              title={showInfoPanel ? 'Nascondi dettagli' : 'Mostra dettagli'}
+              disabled={!hasSelection}
+            >
+              <Info className="h-5 w-5" />
+            </button>
+          )}
+
+          <div className="mx-1 h-6 w-px bg-[#dadce0]" />
 
           {/* Upload Button */}
           <Button
@@ -211,9 +238,9 @@ export function DriveToolbar({
           {/* Create Button */}
           <Button
             onClick={onCreateClick}
-            className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/25 transition-all hover:from-emerald-700 hover:to-emerald-600 hover:shadow-emerald-500/40"
+            className="bg-white border border-[#dadce0] text-[#3c4043] shadow-sm hover:bg-[#f8f9fa] hover:shadow-md transition-all"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4 text-[#1a73e8]" />
             <span className="hidden sm:inline">Nuovo</span>
             <ChevronDown className="ml-1 h-3 w-3 opacity-70" />
           </Button>

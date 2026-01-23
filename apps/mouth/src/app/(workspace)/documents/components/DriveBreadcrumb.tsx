@@ -23,10 +23,10 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
         variant="ghost"
         size="sm"
         onClick={() => onNavigate(-1)}
-        className="group h-8 gap-2 rounded-lg px-3 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
+        className="group h-8 gap-2 rounded-md px-3 hover:bg-[#f5f5f5] text-[#5f6368] hover:text-[#202124]"
       >
         <Home className="h-4 w-4 transition-transform group-hover:scale-110" />
-        <span className="font-medium">Home</span>
+        <span className="font-medium">Il mio Drive</span>
       </Button>
 
       {/* Breadcrumb items */}
@@ -49,11 +49,11 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
               size="sm"
               onClick={() => onNavigate(index)}
               className={`
-                group h-8 gap-2 rounded-lg px-3 transition-all
+                group h-8 gap-2 rounded-md px-3 transition-all
                 ${
                   isLast
-                    ? 'bg-[var(--accent)] font-semibold text-[var(--foreground)]'
-                    : 'text-[var(--foreground-muted)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
+                    ? 'bg-[#e8f0fe] font-semibold text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:bg-[#f5f5f5] hover:text-[#202124]'
                 }
               `}
             >
@@ -82,20 +82,6 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
           </motion.div>
         );
       })}
-
-      {/* Current folder indicator */}
-      {items.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="ml-2 flex items-center gap-1 text-xs text-[var(--foreground-muted)]"
-        >
-          <Building2 className="h-3 w-3" />
-          <span>
-            {items.length} {items.length === 1 ? 'livello' : 'livelli'}
-          </span>
-        </motion.div>
-      )}
     </motion.div>
   );
 }

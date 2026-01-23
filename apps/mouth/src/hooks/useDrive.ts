@@ -1,5 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { api } from '@/lib/api';
+import { driveLogger } from '@/lib/logging/drive-logger';
 import type {
   FileItem,
   CreateFolderRequest,
@@ -27,6 +29,47 @@ export function useDriveFiles(folderId: string | null, searchQuery: string = '')
     placeholderData: (previousData) => previousData, // Keep previous data while fetching new folder
     staleTime: 1000 * 60, // 1 minute cache
   });
+}
+
+/** Prefetch folder contents on hover for instant navigation */
+export function usePrefetchFolder() {
+  const queryClient = useQueryClient();
+
+  const prefetchFolder = useCallback(
+    (folderId: string) => {
+      // Only prefetch if not already in cache
+      const cached = queryClient.getQueryData(['drive', 'files', folderId, '']);
+      if (cached) {
+        driveLogger.logPrefetchSkipped(folderId, 'cached');
+        return;
+      }
+
+      driveLogger.logPrefetchStarted(folderId);
+      const startTime = performance.now();
+
+      queryClient.prefetchQuery({
+        queryKey: ['drive', 'files', folderId, ''],
+        queryFn: async () => {
+          try {
+            const result = await api.drive.listFiles({ folder_id: folderId });
+            const duration = Math.round(performance.now() - startTime);
+            driveLogger.logPrefetchCompleted(folderId, duration, result.files.length);
+            return result;
+          } catch (error) {
+            driveLogger.logPrefetchError(
+              folderId,
+              error instanceof Error ? error : new Error(String(error))
+            );
+            throw error;
+          }
+        },
+        staleTime: 1000 * 60, // 1 minute
+      });
+    },
+    [queryClient]
+  );
+
+  return { prefetchFolder };
 }
 
 export function useDriveStatus() {

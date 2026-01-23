@@ -5,6 +5,7 @@ import type { FileItem } from '@/lib/api/drive/drive.types';
 import { getFileIcon, getDepartmentInfo } from './file-icon';
 import { MoreVertical, Star, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileListProps {
   files: FileItem[];
@@ -49,6 +50,7 @@ export function FileList({
 }: FileListProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const { prefetchFolder } = usePrefetchFolder();
 
   // Sort files - folders first, then by selected field
   const sortedFiles = [...files].sort((a, b) => {
@@ -86,8 +88,8 @@ export function FileList({
       onClick={() => handleSort(field)}
       className={`
         flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium uppercase tracking-wider
-        transition-colors hover:bg-[var(--accent)]
-        ${sortField === field ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--foreground-muted)]'}
+        transition-colors hover:bg-[#f5f5f5]
+        ${sortField === field ? 'text-[#1a73e8]' : 'text-[#5f6368]'}
       `}
     >
       {children}
@@ -102,8 +104,8 @@ export function FileList({
   return (
     <div className="min-w-full">
       {/* Table Header */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--background-subtle)]/95 backdrop-blur-sm">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-3">
+      <div className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/95 dark:bg-[var(--background-subtle)]/95 backdrop-blur-sm">
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-2">
           <span className="w-10" />
           <SortButton field="name">Nome</SortButton>
           <SortButton field="modified">
@@ -132,10 +134,11 @@ export function FileList({
               onClick={(e) => onFileClick(file, index, e)}
               onDoubleClick={() => onFileDoubleClick(file)}
               onContextMenu={(e) => onContextMenu(file, e)}
+              onMouseEnter={() => file.is_folder && prefetchFolder(file.id)}
               className={`
-                group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-3 cursor-pointer
+                group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-2 cursor-pointer
                 transition-all duration-150
-                ${isSelected ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-[var(--accent)]'}
+                ${isSelected ? 'bg-[#e8f0fe] hover:bg-[#d3e3fd]' : 'hover:bg-[#f5f5f5]'}
               `}
             >
               {/* Icon */}
@@ -202,7 +205,7 @@ export function FileList({
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute left-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white"
+                  className="absolute left-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#1a73e8] text-white"
                 >
                   <svg
                     className="h-2.5 w-2.5"
