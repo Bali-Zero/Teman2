@@ -1,4 +1,6 @@
 import type { IApiClient } from '../types/api-client.types';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 import type {
   ConnectionStatus,
   FileItem,
@@ -253,10 +255,9 @@ export class DriveApi {
       document.body.removeChild(a);
     } catch (error) {
       logger.error(
-        '[DriveApi] Download error:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('[DriveApi] Download error:', error)
+        '[DriveApi] Download error',
+        { component: 'DriveApi', action: 'download' },
+        toError(error)
       );
       throw error;
     }
