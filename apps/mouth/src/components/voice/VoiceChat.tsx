@@ -80,12 +80,10 @@ export function VoiceChat({
     try {
       setError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       // Determine supported mime type
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-        ? 'audio/webm' 
-        : 'audio/mp4';
-        
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -136,7 +134,7 @@ export function VoiceChat({
     try {
       const extension = audioBlob.type.includes('webm') ? 'webm' : 'm4a';
       const audioFile = new File([audioBlob], `recording.${extension}`, { type: audioBlob.type });
-      
+
       const result = await sdk.transcribeAudio({
         file: audioFile,
       });
@@ -215,15 +213,15 @@ export function VoiceChat({
             </span>
           )}
         </div>
-        
+
         <div className="flex flex-wrap gap-3 items-center">
           <Button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={disabled || (isProcessing && !isRecording)}
             variant={isRecording ? 'destructive' : 'default'}
             className={cn(
-              "flex items-center gap-2 min-w-[160px] transition-all",
-              isRecording && "ring-2 ring-destructive ring-offset-2"
+              'flex items-center gap-2 min-w-[160px] transition-all',
+              isRecording && 'ring-2 ring-destructive ring-offset-2'
             )}
           >
             {isRecording ? (
@@ -238,7 +236,7 @@ export function VoiceChat({
               </>
             )}
           </Button>
-          
+
           {isProcessing && !isRecording && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -262,8 +260,8 @@ export function VoiceChat({
           <label className="text-sm font-semibold text-foreground">Text-to-Speech</label>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Voice:</span>
-            <Select 
-              value={currentVoice} 
+            <Select
+              value={currentVoice}
               onValueChange={handleVoiceChange}
               disabled={disabled || isProcessing || isPlaying}
             >
@@ -298,7 +296,11 @@ export function VoiceChat({
             className="flex-1"
           />
           {isPlaying ? (
-            <Button onClick={stopSpeaking} variant="outline" className="shrink-0 border-destructive text-destructive hover:bg-destructive/10">
+            <Button
+              onClick={stopSpeaking}
+              variant="outline"
+              className="shrink-0 border-destructive text-destructive hover:bg-destructive/10"
+            >
               <VolumeX className="h-4 w-4" />
             </Button>
           ) : (
@@ -307,7 +309,11 @@ export function VoiceChat({
               disabled={disabled || isProcessing || !textToSpeak.trim()}
               className="shrink-0"
             >
-              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
             </Button>
           )}
         </div>
@@ -323,10 +329,3 @@ export function VoiceChat({
     </div>
   );
 }
-
-
-
-
-
-
-

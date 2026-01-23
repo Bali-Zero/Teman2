@@ -25,9 +25,10 @@ export default function AutoCRMSettingsPage() {
     loadStats();
   }, []);
 
-  const successRate = stats && stats.total_extractions > 0
-    ? Math.round((stats.successful_extractions / stats.total_extractions) * 100)
-    : 0;
+  const successRate =
+    stats && stats.total_extractions > 0
+      ? Math.round((stats.successful_extractions / stats.total_extractions) * 100)
+      : 0;
 
   return (
     <div className="space-y-8">
@@ -69,17 +70,25 @@ export default function AutoCRMSettingsPage() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-cyan-500" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Total Extractions</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Total Extractions
+                </span>
               </div>
-              <div className="text-2xl font-bold text-[var(--foreground)]">{stats.total_extractions}</div>
+              <div className="text-2xl font-bold text-[var(--foreground)]">
+                {stats.total_extractions}
+              </div>
             </div>
 
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Success Rate</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Success Rate
+                </span>
               </div>
-              <div className={`text-2xl font-bold ${successRate >= 80 ? 'text-green-500' : successRate >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
+              <div
+                className={`text-2xl font-bold ${successRate >= 80 ? 'text-green-500' : successRate >= 60 ? 'text-yellow-500' : 'text-red-500'}`}
+              >
                 {successRate}%
               </div>
             </div>
@@ -87,10 +96,17 @@ export default function AutoCRMSettingsPage() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-purple-400" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Avg Confidence</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Avg Confidence
+                </span>
               </div>
-              <div className={`text-2xl font-bold ${stats.extraction_confidence_avg && stats.extraction_confidence_avg >= 0.7 ? 'text-green-500' : stats.extraction_confidence_avg && stats.extraction_confidence_avg >= 0.5 ? 'text-yellow-500' : 'text-red-500'}`}>
-                {stats.extraction_confidence_avg ? Math.round(stats.extraction_confidence_avg * 100) : 'N/A'}%
+              <div
+                className={`text-2xl font-bold ${stats.extraction_confidence_avg && stats.extraction_confidence_avg >= 0.7 ? 'text-green-500' : stats.extraction_confidence_avg && stats.extraction_confidence_avg >= 0.5 ? 'text-yellow-500' : 'text-red-500'}`}
+              >
+                {stats.extraction_confidence_avg
+                  ? Math.round(stats.extraction_confidence_avg * 100)
+                  : 'N/A'}
+                %
               </div>
             </div>
           </div>
@@ -100,7 +116,9 @@ export default function AutoCRMSettingsPage() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Clients Created</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Clients Created
+                </span>
               </div>
               <div className="text-2xl font-bold text-green-500">{stats.clients_created}</div>
               <div className="text-xs text-[var(--foreground-muted)] mt-1">
@@ -111,7 +129,9 @@ export default function AutoCRMSettingsPage() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FolderKanban className="w-4 h-4 text-orange-500" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Practices Created</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Practices Created
+                </span>
               </div>
               <div className="text-2xl font-bold text-green-500">{stats.practices_created}</div>
             </div>
@@ -119,7 +139,9 @@ export default function AutoCRMSettingsPage() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="w-4 h-4 text-red-500" />
-                <span className="text-sm font-medium text-[var(--foreground-muted)]">Failed Extractions</span>
+                <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                  Failed Extractions
+                </span>
               </div>
               <div className="text-2xl font-bold text-red-500">{stats.failed_extractions}</div>
             </div>
@@ -127,22 +149,30 @@ export default function AutoCRMSettingsPage() {
 
           {/* Recent Activity */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Recent Activity (Last 30 Days)</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+              Recent Activity (Last 30 Days)
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-[var(--foreground-muted)] mb-2">Last 24 Hours</div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Extractions:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_24h.extractions}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_24h.extractions}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Clients:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_24h.clients}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_24h.clients}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Practices:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_24h.practices}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_24h.practices}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -151,15 +181,21 @@ export default function AutoCRMSettingsPage() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Extractions:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_7d.extractions}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_7d.extractions}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Clients:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_7d.clients}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_7d.clients}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--foreground-muted)]">Practices:</span>
-                    <span className="text-[var(--foreground)] font-medium">{stats.last_7d.practices}</span>
+                    <span className="text-[var(--foreground)] font-medium">
+                      {stats.last_7d.practices}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -169,12 +205,19 @@ export default function AutoCRMSettingsPage() {
           {/* Top Practice Types */}
           {stats.top_practice_types.length > 0 && (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Top Practice Types Extracted</h3>
+              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+                Top Practice Types Extracted
+              </h3>
               <div className="space-y-2">
                 {stats.top_practice_types.map((type) => (
-                  <div key={type.code} className="flex items-center justify-between p-3 rounded bg-[var(--background)]">
+                  <div
+                    key={type.code}
+                    className="flex items-center justify-between p-3 rounded bg-[var(--background)]"
+                  >
                     <span className="text-sm text-[var(--foreground)]">{type.name}</span>
-                    <span className="text-sm font-medium text-[var(--foreground-muted)]">{type.count} extracted</span>
+                    <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                      {type.count} extracted
+                    </span>
                   </div>
                 ))}
               </div>
@@ -183,21 +226,32 @@ export default function AutoCRMSettingsPage() {
 
           {/* Information */}
           <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-3">How AUTO CRM Works</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-3">
+              How AUTO CRM Works
+            </h3>
             <div className="space-y-2 text-sm text-[var(--foreground-muted)]">
               <p>
-                <strong className="text-[var(--foreground)]">AI-Powered Extraction:</strong> When conversations are saved,
-                AUTO CRM automatically extracts:
+                <strong className="text-[var(--foreground)]">AI-Powered Extraction:</strong> When
+                conversations are saved, AUTO CRM automatically extracts:
               </p>
               <ul className="list-disc list-inside ml-4 space-y-1">
-                <li><strong>Client Info:</strong> Name, email, phone, nationality</li>
-                <li><strong>Practice Intent:</strong> Service type (KITAS, PT PMA, Visa, etc.), urgency, details</li>
-                <li><strong>Sentiment:</strong> Emotional tone of the conversation</li>
-                <li><strong>Action Items:</strong> Next steps identified from the conversation</li>
+                <li>
+                  <strong>Client Info:</strong> Name, email, phone, nationality
+                </li>
+                <li>
+                  <strong>Practice Intent:</strong> Service type (KITAS, PT PMA, Visa, etc.),
+                  urgency, details
+                </li>
+                <li>
+                  <strong>Sentiment:</strong> Emotional tone of the conversation
+                </li>
+                <li>
+                  <strong>Action Items:</strong> Next steps identified from the conversation
+                </li>
               </ul>
               <p className="mt-3">
-                <strong className="text-[var(--foreground)]">Automatic Actions:</strong> Based on extracted data,
-                AUTO CRM automatically:
+                <strong className="text-[var(--foreground)]">Automatic Actions:</strong> Based on
+                extracted data, AUTO CRM automatically:
               </p>
               <ul className="list-disc list-inside ml-4 space-y-1">
                 <li>Creates or updates client records</li>
@@ -215,10 +269,3 @@ export default function AutoCRMSettingsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-

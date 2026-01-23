@@ -435,9 +435,7 @@ export default function TeamActivityPage() {
                       type="text"
                       placeholder="Search messages..."
                       value={messageFilters.search}
-                      onChange={(e) =>
-                        setMessageFilters((f) => ({ ...f, search: e.target.value }))
-                      }
+                      onChange={(e) => setMessageFilters((f) => ({ ...f, search: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && loadMessages()}
                       className="flex-1 px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-sm"
                     />
@@ -545,7 +543,10 @@ export default function TeamActivityPage() {
                     <tbody>
                       {timesheet.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-3 py-8 text-center text-[var(--foreground-muted)]">
+                          <td
+                            colSpan={4}
+                            className="px-3 py-8 text-center text-[var(--foreground-muted)]"
+                          >
                             No records found
                           </td>
                         </tr>
@@ -616,7 +617,10 @@ export default function TeamActivityPage() {
                     <tbody>
                       {crmActions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-3 py-8 text-center text-[var(--foreground-muted)]">
+                          <td
+                            colSpan={5}
+                            className="px-3 py-8 text-center text-[var(--foreground-muted)]"
+                          >
                             No actions found
                           </td>
                         </tr>

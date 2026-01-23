@@ -11,7 +11,6 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Explicit import (already explicit, no wildcard)
-from llm.providers.vertex import VertexProvider
 
 
 class TestVertex:

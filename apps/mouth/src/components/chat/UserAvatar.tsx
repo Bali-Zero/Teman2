@@ -34,7 +34,9 @@ export function UserAvatar({ userName, userAvatar, size = 'sm', className = '' }
   }
 
   return (
-    <div className={`${config.classes} rounded-full bg-[#2a2a2a] flex items-center justify-center ${className}`}>
+    <div
+      className={`${config.classes} rounded-full bg-[#2a2a2a] flex items-center justify-center ${className}`}
+    >
       <span className="text-gray-300 font-medium text-sm">
         {userName ? userName.substring(0, 2).toUpperCase() : 'U'}
       </span>

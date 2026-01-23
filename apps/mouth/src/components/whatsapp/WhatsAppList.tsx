@@ -1,14 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  MessageCircle,
-  Search,
-  Filter,
-  Check,
-  Phone,
-  User,
-} from 'lucide-react';
+import { MessageCircle, Search, Filter, Check, Phone, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WhatsAppConversation } from '@/lib/api/whatsapp/whatsapp.types';
 
@@ -123,7 +116,10 @@ export function WhatsAppList({
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse"
+              />
             ))}
           </div>
         ) : filteredConversations.length === 0 ? (

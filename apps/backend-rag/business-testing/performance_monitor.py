@@ -34,21 +34,21 @@ class NuzantaraMonitor:
                     "response_time": response_time,
                     "database": data.get("database", {}),
                     "embeddings": data.get("embeddings", {}),
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
             else:
                 return {
                     "status": "unhealthy",
                     "response_time": response_time,
                     "error": f"HTTP {response.status_code}",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
                 }
         except Exception as e:
             return {
                 "status": "error",
                 "response_time": time.time() - start_time,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
     def measure_performance(self, duration_seconds: int = 60) -> dict[str, Any]:
@@ -75,7 +75,7 @@ class NuzantaraMonitor:
                 "min_response_time": min(response_times),
                 "max_response_time": max(response_times),
                 "median_response_time": statistics.median(response_times),
-                "measurements": measurements
+                "measurements": measurements,
             }
         else:
             performance_stats = {
@@ -83,7 +83,7 @@ class NuzantaraMonitor:
                 "healthy_checks": 0,
                 "success_rate": 0,
                 "error": "No successful measurements",
-                "measurements": measurements
+                "measurements": measurements,
             }
 
         return performance_stats
@@ -111,7 +111,9 @@ class NuzantaraMonitor:
         report.append(f"📊 System Status: {status_emoji} {status_text}")
         report.append(f"✅ Success Rate: {performance_data['success_rate']:.1%}")
         report.append(f"⚡ Avg Response Time: {performance_data.get('avg_response_time', 0):.3f}s")
-        report.append(f"📈 Min/Max: {performance_data.get('min_response_time', 0):.3f}s / {performance_data.get('max_response_time', 0):.3f}s")
+        report.append(
+            f"📈 Min/Max: {performance_data.get('min_response_time', 0):.3f}s / {performance_data.get('max_response_time', 0):.3f}s"
+        )
         report.append("")
 
         # Performance Analysis
@@ -166,10 +168,11 @@ class NuzantaraMonitor:
             "health_check": health,
             "performance_metrics": performance,
             "dashboard_report": dashboard,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         return results
+
 
 def main():
     """Run business monitoring"""
@@ -183,6 +186,7 @@ def main():
     print("\n💾 Results saved to: performance-monitoring-results.json")
     print("\n🎯 Business Monitoring Complete!")
     print("📋 System is ready for business operations!")
+
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,8 @@ import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 export default function ProjectsPage() {
   const router = useRouter();
   const pageLoadStartTime = useRef<number>(performance.now());
-  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } = useEnhancedAnalytics();
+  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } =
+    useEnhancedAnalytics();
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
@@ -24,7 +25,7 @@ export default function ProjectsPage() {
       action: 'mount',
       metadata: { loadTime: Math.round(loadTime) },
     });
-    
+
     trackPageView('/knowledge/projects', 'Projects');
     trackPerformance({ loadTime });
     trackEvent('knowledge_projects_view', 'navigation', 'projects');
@@ -59,7 +60,8 @@ export default function ProjectsPage() {
           </button>
           <h1 className="text-3xl font-bold text-[var(--foreground)]">Projects</h1>
           <p className="text-[var(--foreground-muted)] mt-2 max-w-2xl">
-            Discover our ongoing and completed projects. See how we've helped businesses establish and grow in Indonesia.
+            Discover our ongoing and completed projects. See how we've helped businesses establish
+            and grow in Indonesia.
           </p>
         </div>
       </div>
@@ -75,24 +77,34 @@ export default function ProjectsPage() {
                   <FolderKanban className="w-6 h-6 text-[var(--accent)]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-[var(--foreground)]">Kutuh Villa Project</h3>
-                  <p className="text-sm text-[var(--foreground-muted)]">Villa Development Project</p>
+                  <h3 className="text-xl font-bold text-[var(--foreground)]">
+                    Kutuh Villa Project
+                  </h3>
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    Villa Development Project
+                  </p>
                 </div>
               </div>
               <p className="text-[var(--foreground-muted)] mb-4">
-                Complete project documentation for the Kutuh Villa development, including planning, 
+                Complete project documentation for the Kutuh Villa development, including planning,
                 permits, and execution details.
               </p>
               <Button
                 onClick={() => {
-                  window.open('https://drive.google.com/uc?export=download&id=1eQUL2NudkDVNdpvPsaV8Owo5-G1CfpWt', '_blank');
-                  
+                  window.open(
+                    'https://drive.google.com/uc?export=download&id=1eQUL2NudkDVNdpvPsaV8Owo5-G1CfpWt',
+                    '_blank'
+                  );
+
                   logger.userAction('project_download', undefined, 'kutuh-villa', {
                     component: 'ProjectsPage',
                     action: 'download',
-                    metadata: { source: 'google_drive', fileId: '1eQUL2NudkDVNdpvPsaV8Owo5-G1CfpWt' },
+                    metadata: {
+                      source: 'google_drive',
+                      fileId: '1eQUL2NudkDVNdpvPsaV8Owo5-G1CfpWt',
+                    },
                   });
-                  
+
                   trackUserInteraction('download', 'project_pdf', 'kutuh-villa');
                   trackEvent('project_download', 'knowledge', 'kutuh-villa');
                 }}
@@ -109,4 +121,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-

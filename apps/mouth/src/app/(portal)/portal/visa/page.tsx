@@ -66,10 +66,14 @@ export default function VisaPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'expired': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      default: return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
+      case 'active':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'pending':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'expired':
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
+      default:
+        return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
     }
   };
 
@@ -95,7 +99,9 @@ export default function VisaPage() {
                   <p className="text-sm text-[#9AA0AE]">Permit #{visaData.current.permitNumber}</p>
                 </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(visaData.current.status)}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(visaData.current.status)}`}
+              >
                 {visaData.current.status.charAt(0).toUpperCase() + visaData.current.status.slice(1)}
               </span>
             </div>
@@ -112,7 +118,9 @@ export default function VisaPage() {
             </div>
             <div>
               <p className="text-sm text-[#9AA0AE] mb-1">Days Remaining</p>
-              <p className={`font-medium ${visaData.current.daysRemaining <= 60 ? 'text-orange-400' : 'text-emerald-400'}`}>
+              <p
+                className={`font-medium ${visaData.current.daysRemaining <= 60 ? 'text-orange-400' : 'text-emerald-400'}`}
+              >
                 {visaData.current.daysRemaining} days
               </p>
             </div>
@@ -128,7 +136,10 @@ export default function VisaPage() {
                 <AlertCircle className="w-5 h-5 text-amber-400" />
                 <div>
                   <p className="font-medium text-amber-300">Renewal Recommended</p>
-                  <p className="text-sm text-amber-400/80">Your visa expires in {visaData.current.daysRemaining} days. Please contact us to start the renewal process.</p>
+                  <p className="text-sm text-amber-400/80">
+                    Your visa expires in {visaData.current.daysRemaining} days. Please contact us to
+                    start the renewal process.
+                  </p>
                 </div>
               </div>
             </div>
@@ -150,7 +161,9 @@ export default function VisaPage() {
             {visaData.history.map((item) => (
               <div key={item.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${item.status === 'completed' ? 'bg-emerald-500/10' : 'bg-[#242424]'}`}>
+                  <div
+                    className={`p-2 rounded-lg ${item.status === 'completed' ? 'bg-emerald-500/10' : 'bg-[#242424]'}`}
+                  >
                     {item.status === 'completed' ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     ) : (
@@ -162,7 +175,9 @@ export default function VisaPage() {
                     <p className="text-sm text-[#9AA0AE]">{item.period}</p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs rounded-full border ${item.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-[#242424] text-[#9AA0AE] border-white/10'}`}>
+                <span
+                  className={`px-2 py-1 text-xs rounded-full border ${item.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-[#242424] text-[#9AA0AE] border-white/10'}`}
+                >
                   {item.status}
                 </span>
               </div>
@@ -203,7 +218,9 @@ export default function VisaPage() {
           <div className="bg-[#1A1D24] rounded-xl border border-white/5 p-8 text-center">
             <FileText className="w-12 h-12 text-[#9AA0AE] mx-auto mb-4" />
             <h3 className="font-medium text-[#E6E7EB]">No Documents</h3>
-            <p className="text-sm text-[#9AA0AE] mt-1">Your immigration documents will appear here</p>
+            <p className="text-sm text-[#9AA0AE] mt-1">
+              Your immigration documents will appear here
+            </p>
           </div>
         </div>
       )}

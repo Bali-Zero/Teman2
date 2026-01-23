@@ -3,14 +3,7 @@
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import {
-  Plane,
-  Building2,
-  Scale,
-  Home,
-  Sun,
-  Cpu,
-} from 'lucide-react';
+import { Plane, Building2, Scale, Home, Sun, Cpu } from 'lucide-react';
 import {
   ArticleGrid,
   ArticleGridSkeleton,
@@ -20,12 +13,15 @@ import {
 import type { ArticleCategory, ArticleListItem } from '@/lib/blog/types';
 
 // Category metadata
-const CATEGORY_META: Record<ArticleCategory, {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  gradient: string;
-}> = {
+const CATEGORY_META: Record<
+  ArticleCategory,
+  {
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    gradient: string;
+  }
+> = {
   immigration: {
     title: 'Immigration',
     description: 'Visas, permits, and everything you need to know about relocating to Indonesia.',
@@ -71,7 +67,19 @@ export default function CategoryPage() {
   const [loading, setLoading] = React.useState(true);
 
   // Reserved workspace paths - redirect to workspace if accessed
-  const RESERVED_PATHS = ['cases', 'clients', 'dashboard', 'documents', 'knowledge', 'team', 'analytics', 'intelligence', 'whatsapp', 'email', 'chat'];
+  const RESERVED_PATHS = [
+    'cases',
+    'clients',
+    'dashboard',
+    'documents',
+    'knowledge',
+    'team',
+    'analytics',
+    'intelligence',
+    'whatsapp',
+    'email',
+    'chat',
+  ];
 
   React.useEffect(() => {
     if (RESERVED_PATHS.includes(category)) {
@@ -125,10 +133,7 @@ export default function CategoryPage() {
       {/* Hero section */}
       <section className={`relative py-16 md:py-20 bg-gradient-to-b ${meta.gradient}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {/* Icon */}
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6">
               <Icon className="w-8 h-8 text-white" />
@@ -140,9 +145,7 @@ export default function CategoryPage() {
             </h1>
 
             {/* Description */}
-            <p className="text-lg text-white/60 max-w-2xl mb-8">
-              {meta.description}
-            </p>
+            <p className="text-lg text-white/60 max-w-2xl mb-8">{meta.description}</p>
 
             {/* Category nav */}
             <CategoryNav
@@ -168,12 +171,7 @@ export default function CategoryPage() {
               {loading ? (
                 <ArticleGridSkeleton count={6} />
               ) : articles.length > 0 ? (
-                <ArticleGrid
-                  articles={articles}
-                  variant="grid"
-                  columns={2}
-                  showFeatured={true}
-                />
+                <ArticleGrid articles={articles} variant="grid" columns={2} showFeatured={true} />
               ) : (
                 <div className="text-center py-12">
                   <p className="text-white/50">No articles in this category yet.</p>
@@ -184,15 +182,11 @@ export default function CategoryPage() {
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-8">
               {/* Newsletter */}
-              <NewsletterSidebar
-                defaultCategories={[category]}
-              />
+              <NewsletterSidebar defaultCategories={[category]} />
 
               {/* Popular in category */}
               <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-                <h3 className="font-medium text-white mb-4">
-                  Popular in {meta.title}
-                </h3>
+                <h3 className="font-medium text-white mb-4">Popular in {meta.title}</h3>
                 <div className="space-y-4">
                   {articles.slice(0, 3).map((article) => (
                     <a

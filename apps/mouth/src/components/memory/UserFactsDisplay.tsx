@@ -66,15 +66,10 @@ export function UserFactsDisplay({
 
       <div className="space-y-2">
         {facts.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No facts stored yet
-          </p>
+          <p className="text-sm text-muted-foreground italic">No facts stored yet</p>
         ) : (
           facts.map((fact, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-2 p-3 bg-muted rounded-lg"
-            >
+            <div key={index} className="flex items-start gap-2 p-3 bg-muted rounded-lg">
               <span className="flex-1 text-sm">{fact}</span>
               {!readonly && onRemoveFact && (
                 <button
@@ -113,10 +108,3 @@ export function UserFactsDisplay({
     </div>
   );
 }
-
-
-
-
-
-
-

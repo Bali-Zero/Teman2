@@ -59,30 +59,31 @@ export function ServiceHealthCard({
         <StatusIcon className="w-4 h-4" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold uppercase tracking-wider text-xs mb-2">
-            {status}
-        </div>
+        <div className="text-2xl font-bold uppercase tracking-wider text-xs mb-2">{status}</div>
         <p className="text-xs text-muted-foreground mb-4 font-mono truncate" title={message}>
           {message}
         </p>
-        
+
         <div className="space-y-2">
-            {latency !== undefined && (
+          {latency !== undefined && (
             <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground flex items-center gap-1">
+              <span className="text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Latency
-                </span>
-                <span className={cn('font-mono', latency > 1000 ? 'text-yellow-500' : 'text-green-500')}>
+              </span>
+              <span
+                className={cn('font-mono', latency > 1000 ? 'text-yellow-500' : 'text-green-500')}
+              >
                 {latency.toFixed(1)}ms
-                </span>
+              </span>
             </div>
-            )}
-            
-            {metadata && Object.entries(metadata).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                    <span className="font-mono text-foreground/80">{String(value)}</span>
-                </div>
+          )}
+
+          {metadata &&
+            Object.entries(metadata).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                <span className="font-mono text-foreground/80">{String(value)}</span>
+              </div>
             ))}
         </div>
       </CardContent>

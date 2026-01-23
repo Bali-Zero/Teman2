@@ -16,12 +16,16 @@ vi.mock('framer-motion', () => ({
 
 // Mock MessageBubble
 vi.mock('./MessageBubble', () => ({
-  MessageBubble: ({ message, onFollowUpClick }: { message: { content: string }; onFollowUpClick?: (q: string) => void }) => (
+  MessageBubble: ({
+    message,
+    onFollowUpClick,
+  }: {
+    message: { content: string };
+    onFollowUpClick?: (q: string) => void;
+  }) => (
     <div data-testid="message-bubble">
       <span>{message.content}</span>
-      {onFollowUpClick && (
-        <button onClick={() => onFollowUpClick('follow-up')}>Follow Up</button>
-      )}
+      {onFollowUpClick && <button onClick={() => onFollowUpClick('follow-up')}>Follow Up</button>}
     </div>
   ),
 }));
@@ -121,11 +125,7 @@ describe('ChatMessageList', () => {
       ];
 
       render(
-        <ChatMessageList
-          {...defaultProps}
-          messages={messagesWithPlaceholder}
-          isLoading={true}
-        />
+        <ChatMessageList {...defaultProps} messages={messagesWithPlaceholder} isLoading={true} />
       );
 
       const bubbles = screen.getAllByTestId('message-bubble');

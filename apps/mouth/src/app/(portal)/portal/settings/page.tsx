@@ -169,7 +169,9 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
-              onClick={() => setPreferences((p) => ({ ...p, emailNotifications: !p.emailNotifications }))}
+              onClick={() =>
+                setPreferences((p) => ({ ...p, emailNotifications: !p.emailNotifications }))
+              }
               className={`relative w-12 h-6 rounded-full transition-colors ${
                 preferences.emailNotifications ? 'bg-[#4FD1C5]' : 'bg-[#2a2a2a]'
               }`}
@@ -190,7 +192,9 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
-              onClick={() => setPreferences((p) => ({ ...p, whatsappNotifications: !p.whatsappNotifications }))}
+              onClick={() =>
+                setPreferences((p) => ({ ...p, whatsappNotifications: !p.whatsappNotifications }))
+              }
               className={`relative w-12 h-6 rounded-full transition-colors ${
                 preferences.whatsappNotifications ? 'bg-[#4FD1C5]' : 'bg-[#2a2a2a]'
               }`}

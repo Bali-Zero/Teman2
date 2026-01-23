@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Menu, Bell, Search, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React from 'react';
+import { Menu, Bell, Search, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface HeaderProps {
   onMenuClick: () => void;
   title?: string;
 }
 
-export function Header({ onMenuClick, title = "Dashboard" }: HeaderProps) {
+export function Header({ onMenuClick, title = 'Dashboard' }: HeaderProps) {
   return (
     <header className="h-14 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-4 sticky top-0 z-30">
       {/* Left side */}
@@ -21,9 +21,7 @@ export function Header({ onMenuClick, title = "Dashboard" }: HeaderProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-lg font-semibold text-[var(--foreground)]">
-          {title}
-        </h1>
+        <h1 className="text-lg font-semibold text-[var(--foreground)]">{title}</h1>
       </div>
 
       {/* Center - Search (hidden on mobile) */}

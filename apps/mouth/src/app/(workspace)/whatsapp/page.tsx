@@ -38,18 +38,21 @@ export default function WhatsAppPage() {
   }, []);
 
   // Load messages for selected phone
-  const loadMessages = useCallback(async (phone: string) => {
-    setIsLoadingMessages(true);
-    try {
-      const msgs = await api.whatsapp.getMessages(phone, 100);
-      setMessages(msgs);
-      // ... (client load logic)
-    } catch (error) {
-      logger.error('Failed to load WhatsApp messages:', {}, error as Error);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [conversations]);
+  const loadMessages = useCallback(
+    async (phone: string) => {
+      setIsLoadingMessages(true);
+      try {
+        const msgs = await api.whatsapp.getMessages(phone, 100);
+        setMessages(msgs);
+        // ... (client load logic)
+      } catch (error) {
+        logger.error('Failed to load WhatsApp messages:', {}, error as Error);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [conversations]
+  );
 
   // Load conversations on mount
   useEffect(() => {

@@ -10,7 +10,8 @@ import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 export default function OurJourneyPage() {
   const router = useRouter();
   const pageLoadStartTime = useRef<number>(performance.now());
-  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } = useEnhancedAnalytics();
+  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } =
+    useEnhancedAnalytics();
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
@@ -23,7 +24,7 @@ export default function OurJourneyPage() {
       action: 'mount',
       metadata: { loadTime: Math.round(loadTime) },
     });
-    
+
     trackPageView('/knowledge/our-journey', 'Our Journey');
     trackPerformance({ loadTime });
     trackEvent('knowledge_our_journey_view', 'navigation', 'our_journey');
@@ -89,8 +90,8 @@ export default function OurJourneyPage() {
             </div>
           </div>
           <p className="text-[var(--foreground-muted)]">
-            Discover our ongoing and completed projects. See how we've helped businesses 
-            establish and grow in Indonesia.
+            Discover our ongoing and completed projects. See how we've helped businesses establish
+            and grow in Indonesia.
           </p>
           <div className="mt-4 flex items-center gap-2 text-[var(--accent)] group-hover:gap-3 transition-all">
             <span className="text-sm font-medium">View Projects</span>
@@ -122,8 +123,8 @@ export default function OurJourneyPage() {
             </div>
           </div>
           <p className="text-[var(--foreground-muted)]">
-            Browse through our client cases and success stories. Learn from real examples 
-            of businesses we've helped navigate Indonesian regulations.
+            Browse through our client cases and success stories. Learn from real examples of
+            businesses we've helped navigate Indonesian regulations.
           </p>
           <div className="mt-4 flex items-center gap-2 text-[var(--accent)] group-hover:gap-3 transition-all">
             <span className="text-sm font-medium">View Cases</span>
@@ -134,4 +135,3 @@ export default function OurJourneyPage() {
     </div>
   );
 }
-

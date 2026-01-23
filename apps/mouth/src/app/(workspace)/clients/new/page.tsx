@@ -85,7 +85,7 @@ export default function NewClientPage() {
   // Sync whatsapp with phone if not set
   useEffect(() => {
     if (formData.phone && !formData.whatsapp) {
-      setFormData(prev => ({ ...prev, whatsapp: prev.phone }));
+      setFormData((prev) => ({ ...prev, whatsapp: prev.phone }));
     }
   }, [formData.phone, formData.whatsapp]);
 
@@ -106,7 +106,11 @@ export default function NewClientPage() {
       await api.crm.createClient(cleanData, user.email);
       router.push('/clients');
     } catch (error) {
-      logger.error('Failed to create client', { component: 'NewClientPage', action: 'createClient' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to create client',
+        { component: 'NewClientPage', action: 'createClient' },
+        error instanceof Error ? error : new Error(String(error))
+      );
 
       // Extract error message from various error formats
       let errorMessage = 'Failed to create client';
@@ -170,9 +174,16 @@ export default function NewClientPage() {
       // Crop to square and resize to 400x400px
       const resizedImage = await cropToSquare(file, 400, 0.85);
       // setFormData((prev) => ({ ...prev, avatar_url: resizedImage })); // Disabled - type mismatch
-      logger.debug('Avatar processed', { component: 'NewClientPage', action: 'handleAvatarUpload' });
+      logger.debug('Avatar processed', {
+        component: 'NewClientPage',
+        action: 'handleAvatarUpload',
+      });
     } catch (error) {
-      logger.error('Failed to process image', { component: 'NewClientPage', action: 'handleAvatarUpload' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to process image',
+        { component: 'NewClientPage', action: 'handleAvatarUpload' },
+        error instanceof Error ? error : new Error(String(error))
+      );
       alert('Failed to process image. Please try again.');
     }
   };
@@ -381,11 +392,7 @@ export default function NewClientPage() {
             </div>
 
             <div className="flex justify-end pt-4">
-              <Button
-                type="button"
-                onClick={() => setActiveSection('personal')}
-                className="gap-2"
-              >
+              <Button type="button" onClick={() => setActiveSection('personal')} className="gap-2">
                 Next: Personal Details
                 <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
               </Button>
@@ -495,11 +502,7 @@ export default function NewClientPage() {
                 <ChevronDown className="w-4 h-4 rotate-90" />
                 Back
               </Button>
-              <Button
-                type="button"
-                onClick={() => setActiveSection('crm')}
-                className="gap-2"
-              >
+              <Button type="button" onClick={() => setActiveSection('crm')} className="gap-2">
                 Next: CRM Settings
                 <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
               </Button>
@@ -661,10 +664,10 @@ export default function NewClientPage() {
                   formData.status === 'lead'
                     ? 'bg-blue-500/20 text-blue-400'
                     : formData.status === 'active'
-                    ? 'bg-green-500/20 text-green-400'
-                    : formData.status === 'completed'
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'bg-gray-500/20 text-gray-400'
+                      ? 'bg-green-500/20 text-green-400'
+                      : formData.status === 'completed'
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'bg-gray-500/20 text-gray-400'
                 }`}
               >
                 {CLIENT_STATUSES.find((s) => s.value === formData.status)?.label}

@@ -186,17 +186,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p
-          id={`${id}-title`}
-          className="text-sm font-medium text-[var(--foreground)]"
-        >
+        <p id={`${id}-title`} className="text-sm font-medium text-[var(--foreground)]">
           {toast.title}
         </p>
         {toast.description && (
-          <p
-            id={`${id}-desc`}
-            className="mt-1 text-xs text-[var(--foreground-muted)] line-clamp-2"
-          >
+          <p id={`${id}-desc`} className="mt-1 text-xs text-[var(--foreground-muted)] line-clamp-2">
             {toast.description}
           </p>
         )}

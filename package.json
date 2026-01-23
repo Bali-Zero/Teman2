@@ -32,6 +32,7 @@
     "ai:setup-cron": "bash .claude/scripts/setup-cron.sh",
     "ai:cleanup": "find .claude/handovers -name '*.md' -mtime +7 -delete && echo 'Handovers >7 giorni eliminati'",
     "ai:reset-all": "echo '⚠️  Reset completo - tutti locks e stati saranno cancellati!' && rm -f .claude/locks/active.txt && bash .claude/scripts/sync-coordination.sh && echo 'Reset completato'",
+    "ai:agent": "gemini --agent --conductor",
     "typecheck": "npm run typecheck -w apps/mouth",
     "devai:test": "./test-devai.sh",
     "devai:analyze": "node -e \"console.log('Use: curl /call -d {key:devai.analyze,params:{code:...}}')\"",

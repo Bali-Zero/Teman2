@@ -1,7 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plug, MessageCircle, Mail, Cloud, Database, Calendar, ArrowLeft, CheckCircle2, XCircle, Settings, ExternalLink, Loader2 } from 'lucide-react';
+import {
+  Plug,
+  MessageCircle,
+  Mail,
+  Cloud,
+  Database,
+  Calendar,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  Settings,
+  ExternalLink,
+  Loader2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -71,11 +84,17 @@ export default function IntegrationsPage() {
     const checkGoogleDriveStatus = async () => {
       try {
         const status = await api.drive.getStatus();
-        setIntegrations(prev => prev.map(i =>
-          i.id === 'google_drive'
-            ? { ...i, status: status.connected ? 'connected' : 'disconnected', lastSync: status.connected ? 'Just now' : undefined }
-            : i
-        ));
+        setIntegrations((prev) =>
+          prev.map((i) =>
+            i.id === 'google_drive'
+              ? {
+                  ...i,
+                  status: status.connected ? 'connected' : 'disconnected',
+                  lastSync: status.connected ? 'Just now' : undefined,
+                }
+              : i
+          )
+        );
       } catch (error) {
         console.error('Failed to check Google Drive status:', error);
       }
@@ -85,11 +104,11 @@ export default function IntegrationsPage() {
     // Check for OAuth callback success
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'google_drive_connected') {
-      setIntegrations(prev => prev.map(i =>
-        i.id === 'google_drive'
-          ? { ...i, status: 'connected', lastSync: 'Just now' }
-          : i
-      ));
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === 'google_drive' ? { ...i, status: 'connected', lastSync: 'Just now' } : i
+        )
+      );
       // Clean URL
       window.history.replaceState({}, document.title, '/settings/integrations');
     }
@@ -97,14 +116,16 @@ export default function IntegrationsPage() {
 
   const toggleConnection = async (id: string) => {
     if (id === 'google_drive') {
-      const integration = integrations.find(i => i.id === id);
+      const integration = integrations.find((i) => i.id === id);
       if (integration?.status === 'connected') {
         // Disconnect
         try {
           await api.drive.disconnect();
-          setIntegrations(prev => prev.map(i =>
-            i.id === id ? { ...i, status: 'disconnected', lastSync: undefined } : i
-          ));
+          setIntegrations((prev) =>
+            prev.map((i) =>
+              i.id === id ? { ...i, status: 'disconnected', lastSync: undefined } : i
+            )
+          );
         } catch (error) {
           console.error('Failed to disconnect Google Drive:', error);
         }
@@ -123,16 +144,18 @@ export default function IntegrationsPage() {
     }
 
     // For other integrations, just toggle state (placeholder)
-    setIntegrations(integrations.map(i => {
-      if (i.id === id) {
-        return {
-          ...i,
-          status: i.status === 'connected' ? 'disconnected' : 'connected',
-          lastSync: i.status === 'disconnected' ? 'Just now' : undefined,
-        };
-      }
-      return i;
-    }));
+    setIntegrations(
+      integrations.map((i) => {
+        if (i.id === id) {
+          return {
+            ...i,
+            status: i.status === 'connected' ? 'disconnected' : 'connected',
+            lastSync: i.status === 'disconnected' ? 'Just now' : undefined,
+          };
+        }
+        return i;
+      })
+    );
   };
 
   const getStatusBadge = (status: Integration['status']) => {
@@ -188,13 +211,13 @@ export default function IntegrationsPage() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Active</p>
           <p className="text-2xl font-bold text-green-400">
-            {integrations.filter(i => i.status === 'connected').length}
+            {integrations.filter((i) => i.status === 'connected').length}
           </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Inactive</p>
           <p className="text-2xl font-bold text-[var(--foreground-muted)]">
-            {integrations.filter(i => i.status === 'disconnected').length}
+            {integrations.filter((i) => i.status === 'disconnected').length}
           </p>
         </div>
       </div>
@@ -221,7 +244,9 @@ export default function IntegrationsPage() {
                       <h3 className="font-medium text-[var(--foreground)]">{integration.name}</h3>
                       {getStatusBadge(integration.status)}
                     </div>
-                    <p className="text-sm text-[var(--foreground-muted)]">{integration.description}</p>
+                    <p className="text-sm text-[var(--foreground-muted)]">
+                      {integration.description}
+                    </p>
                     {integration.lastSync && (
                       <p className="text-xs text-[var(--foreground-muted)] mt-1">
                         Last sync: {integration.lastSync}
@@ -246,8 +271,10 @@ export default function IntegrationsPage() {
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Connecting...
                       </>
+                    ) : integration.status === 'connected' ? (
+                      'Disconnect'
                     ) : (
-                      integration.status === 'connected' ? 'Disconnect' : 'Connect'
+                      'Connect'
                     )}
                   </Button>
                 </div>
@@ -280,16 +307,24 @@ export default function IntegrationsPage() {
           <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background)]">
             <div>
               <p className="font-medium text-[var(--foreground)]">New Client Webhook</p>
-              <p className="text-xs text-[var(--foreground-muted)]">Triggered when a new client is created</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Triggered when a new client is created
+              </p>
             </div>
-            <Button variant="ghost" size="sm">Configure</Button>
+            <Button variant="ghost" size="sm">
+              Configure
+            </Button>
           </div>
           <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background)]">
             <div>
               <p className="font-medium text-[var(--foreground)]">Case Status Webhook</p>
-              <p className="text-xs text-[var(--foreground-muted)]">Triggered when case status changes</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Triggered when case status changes
+              </p>
             </div>
-            <Button variant="ghost" size="sm">Configure</Button>
+            <Button variant="ghost" size="sm">
+              Configure
+            </Button>
           </div>
         </div>
       </div>

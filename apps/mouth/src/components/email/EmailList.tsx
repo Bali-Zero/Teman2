@@ -163,8 +163,8 @@ export function EmailList({
                     isActive
                       ? 'bg-[var(--accent)]/10'
                       : !email.is_read
-                      ? 'bg-[var(--background-secondary)]'
-                      : 'hover:bg-[var(--background-elevated)]'
+                        ? 'bg-[var(--background-secondary)]'
+                        : 'hover:bg-[var(--background-elevated)]'
                   )}
                 >
                   {/* Checkbox */}
@@ -200,15 +200,14 @@ export function EmailList({
                   </button>
 
                   {/* Email Content */}
-                  <div
-                    onClick={() => onSelectEmail(email.message_id)}
-                    className="flex-1 min-w-0"
-                  >
+                  <div onClick={() => onSelectEmail(email.message_id)} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span
                         className={cn(
                           'text-sm truncate',
-                          !email.is_read ? 'font-semibold text-[var(--foreground)]' : 'text-[var(--foreground)]'
+                          !email.is_read
+                            ? 'font-semibold text-[var(--foreground)]'
+                            : 'text-[var(--foreground)]'
                         )}
                       >
                         {email.from.name || email.from.address}
@@ -220,7 +219,9 @@ export function EmailList({
                     <p
                       className={cn(
                         'text-sm truncate mb-0.5',
-                        !email.is_read ? 'font-medium text-[var(--foreground)]' : 'text-[var(--foreground-muted)]'
+                        !email.is_read
+                          ? 'font-medium text-[var(--foreground)]'
+                          : 'text-[var(--foreground-muted)]'
                       )}
                     >
                       {email.subject || '(No subject)'}
@@ -247,7 +248,8 @@ export function EmailList({
       {totalEmails > 0 && (
         <div className="flex items-center justify-between p-3 border-t border-[var(--border)] bg-[var(--background-secondary)]">
           <span className="text-xs text-[var(--foreground-muted)]">
-            {emails.length > 0 ? (currentPage - 1) * 50 + 1 : 0} - {Math.min(currentPage * 50, totalEmails)} of {totalEmails} emails
+            {emails.length > 0 ? (currentPage - 1) * 50 + 1 : 0} -{' '}
+            {Math.min(currentPage * 50, totalEmails)} of {totalEmails} emails
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -274,9 +276,10 @@ export function EmailList({
 function formatDate(dateStr: string): string {
   // Handle timestamp (milliseconds) from Zoho API or ISO string
   const timestamp = Number(dateStr);
-  const date = !isNaN(timestamp) && timestamp > 1000000000000
-    ? new Date(timestamp)  // Timestamp in milliseconds
-    : new Date(dateStr);   // ISO string
+  const date =
+    !isNaN(timestamp) && timestamp > 1000000000000
+      ? new Date(timestamp) // Timestamp in milliseconds
+      : new Date(dateStr); // ISO string
 
   if (isNaN(date.getTime())) return '';
 

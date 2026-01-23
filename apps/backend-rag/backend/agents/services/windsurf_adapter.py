@@ -8,7 +8,6 @@ CLI disponibile in: /Applications/Windsurf.app/Contents/Resources/app/bin/windsu
 import logging
 import os
 import subprocess
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 class WindsurfAdapter:
     """
     Adapter for Windsurf AI coding platform.
-    
+
     Windsurf è un IDE completo con AI integrata.
     CLI disponibile nel bundle dell'app macOS.
     """
@@ -95,14 +94,12 @@ class WindsurfAdapter:
     async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> str:
         """
         Generate code using Windsurf.
-        
+
         Note: Windsurf è principalmente IDE-based.
         Per uso programmatico, apri file/folder nell'IDE.
         """
         if not self.available:
-            raise RuntimeError(
-                "Windsurf not available. Install from: https://windsurf.com/editor"
-            )
+            raise RuntimeError("Windsurf not available. Install from: https://windsurf.com/editor")
 
         # Windsurf è principalmente IDE-based
         # Per ora, apri file se fornito nel context

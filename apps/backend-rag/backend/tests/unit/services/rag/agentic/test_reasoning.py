@@ -107,7 +107,9 @@ class TestCriticalDomainDetection:
     def test_critical_domain_visa(self):
         """Test visa queries are detected as critical"""
         assert _is_critical_domain("Quanto costa il KITAS E33G?", "business_simple") is True
-        assert _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+        assert (
+            _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+        )
         assert _is_critical_domain("Parlami del KITAS", "business_simple") is True
 
     def test_critical_domain_legal(self):

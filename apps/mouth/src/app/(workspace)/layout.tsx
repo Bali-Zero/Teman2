@@ -61,7 +61,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         hoursToday: undefined,
       });
     } catch (error) {
-      logger.error('Failed to load profile', { component: 'WorkspaceLayout', action: 'loadProfile' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to load profile',
+        { component: 'WorkspaceLayout', action: 'loadProfile' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }, []);
 
@@ -98,7 +102,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             new Promise((resolve) => setTimeout(resolve, 5000)), // 5s timeout
           ]).catch(() => {
             // Clock status failed, but continue anyway
-            logger.warn('Clock status load failed or timed out, continuing anyway', { component: 'WorkspaceLayout', action: 'loadClockStatus' });
+            logger.warn('Clock status load failed or timed out, continuing anyway', {
+              component: 'WorkspaceLayout',
+              action: 'loadClockStatus',
+            });
           });
         } catch (error) {
           // If profile load fails, might be auth issue - redirect to login
@@ -130,7 +137,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     try {
       await api.logout();
     } catch (error) {
-      logger.error('Logout error', { component: 'WorkspaceLayout', action: 'logout' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Logout error',
+        { component: 'WorkspaceLayout', action: 'logout' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       router.push('/login');
     }
@@ -194,9 +205,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           />
 
           {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
-            {children}
-          </main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
         </div>
       </div>
     </ToastProvider>

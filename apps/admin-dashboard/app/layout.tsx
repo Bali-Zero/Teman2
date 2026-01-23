@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Sidebar } from '@/components/Sidebar';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Nuzantara Admin Dashboard",
-  description: "Inspector for PostgreSQL and Qdrant",
+  title: 'Nuzantara Admin Dashboard',
+  description: 'Inspector for PostgreSQL and Qdrant',
 };
 
 export default function RootLayout({
@@ -20,9 +20,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 ml-64 bg-background">
-            {children}
-          </main>
+          <main className="flex-1 ml-64 bg-background">{children}</main>
         </div>
       </body>
     </html>

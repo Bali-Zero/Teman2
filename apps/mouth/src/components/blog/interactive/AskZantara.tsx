@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ExternalLink,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -76,86 +76,92 @@ export function AskZantara({
   const isScriptedMode = scripted && scripted.length > 0;
 
   // Handle scripted question click
-  const handleScriptedQuestion = useCallback((qa: ScriptedQA) => {
-    if (isLoading) return;
+  const handleScriptedQuestion = useCallback(
+    (qa: ScriptedQA) => {
+      if (isLoading) return;
 
-    // Add user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: qa.q,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setShowSuggestions(false);
-    setIsLoading(true);
-
-    // Simulate "thinking" delay (200-500ms for realism)
-    const delay = 200 + Math.random() * 300;
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: qa.a,
-        sources: qa.sources,
+      // Add user message
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: qa.q,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, delay);
-  }, [isLoading]);
+      setMessages((prev) => [...prev, userMessage]);
+      setShowSuggestions(false);
+      setIsLoading(true);
+
+      // Simulate "thinking" delay (200-500ms for realism)
+      const delay = 200 + Math.random() * 300;
+      setTimeout(() => {
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: qa.a,
+          sources: qa.sources,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setIsLoading(false);
+      }, delay);
+    },
+    [isLoading]
+  );
 
   // Handle sending a question (AI mode)
-  const handleSend = useCallback(async (question?: string) => {
-    const q = question || input.trim();
-    if (!q || isLoading) return;
+  const handleSend = useCallback(
+    async (question?: string) => {
+      const q = question || input.trim();
+      if (!q || isLoading) return;
 
-    // Add user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: q,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setShowSuggestions(false);
-    setIsLoading(true);
-
-    try {
-      // Call API
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, context }),
-      });
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      const data = await response.json();
-
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.answer || "I couldn't find an answer to that question.",
-        sources: data.sources,
+      // Add user message
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: q,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      // Add error message
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "Sorry, I couldn't process your question. Please try again.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [input, isLoading, apiEndpoint, context]);
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+      setShowSuggestions(false);
+      setIsLoading(true);
+
+      try {
+        // Call API
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q, context }),
+        });
+
+        if (!response.ok) throw new Error('Failed to get response');
+
+        const data = await response.json();
+
+        // Add assistant message
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.answer || "I couldn't find an answer to that question.",
+          sources: data.sources,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } catch (error) {
+        // Add error message
+        const errorMessage: Message = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: "Sorry, I couldn't process your question. Please try again.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [input, isLoading, apiEndpoint, context]
+  );
 
   // Handle keyboard submit
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -213,11 +219,13 @@ export function AskZantara({
 
   // Inline or sidebar variant
   return (
-    <div className={cn(
-      'bg-black/40 rounded-2xl border border-white/10 overflow-hidden',
-      variant === 'sidebar' && 'sticky top-4',
-      className
-    )}>
+    <div
+      className={cn(
+        'bg-black/40 rounded-2xl border border-white/10 overflow-hidden',
+        variant === 'sidebar' && 'sticky top-4',
+        className
+      )}
+    >
       <AskZantaraContent
         messages={messages}
         input={input}
@@ -268,9 +276,7 @@ function AskZantaraContent({
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
   // Get questions that haven't been asked yet (for scripted mode)
-  const askedQuestions = new Set(
-    messages.filter((m) => m.role === 'user').map((m) => m.content)
-  );
+  const askedQuestions = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
   const remainingScriptedQuestions = scripted?.filter((qa) => !askedQuestions.has(qa.q)) || [];
   return (
     <>
@@ -314,35 +320,33 @@ function AskZantaraContent({
         )}
 
         {/* AI mode: show suggested questions */}
-        {!isScriptedMode && messages.length === 0 && showSuggestions && suggestedQuestions.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-white/40 text-xs">Suggested questions:</p>
-            {suggestedQuestions.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => onSend(q)}
-                className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/70 hover:text-white transition-colors"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
+        {!isScriptedMode &&
+          messages.length === 0 &&
+          showSuggestions &&
+          suggestedQuestions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-white/40 text-xs">Suggested questions:</p>
+              {suggestedQuestions.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => onSend(q)}
+                  className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/70 hover:text-white transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
         {messages.map((message) => (
           <div
             key={message.id}
-            className={cn(
-              'flex',
-              message.role === 'user' ? 'justify-end' : 'justify-start'
-            )}
+            className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
           >
             <div
               className={cn(
                 'max-w-[85%] p-3 rounded-xl text-sm',
-                message.role === 'user'
-                  ? 'bg-[#2251ff] text-white'
-                  : 'bg-white/10 text-white/80'
+                message.role === 'user' ? 'bg-[#2251ff] text-white' : 'bg-white/10 text-white/80'
               )}
             >
               <p className="whitespace-pre-wrap">{message.content}</p>

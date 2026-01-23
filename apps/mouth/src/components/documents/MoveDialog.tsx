@@ -244,10 +244,7 @@ export function MoveDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative z-10 flex w-full max-w-md flex-col rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
@@ -314,12 +311,10 @@ export function MoveDialog({
           </button>
           <button
             onClick={handleMove}
-            disabled={loading || (selectedFolderId === currentFolderId)}
+            disabled={loading || selectedFolderId === currentFolderId}
             className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 dark:bg-emerald-500 dark:hover:bg-emerald-600"
           >
-            {loading && (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            )}
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Sposta qui
           </button>
         </div>

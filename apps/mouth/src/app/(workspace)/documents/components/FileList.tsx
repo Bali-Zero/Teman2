@@ -40,7 +40,13 @@ const rowVariants = {
   },
 };
 
-export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick, onContextMenu }: FileListProps) {
+export function FileList({
+  files,
+  selectedFiles,
+  onFileClick,
+  onFileDoubleClick,
+  onContextMenu,
+}: FileListProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -56,7 +62,8 @@ export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick,
         comparison = a.name.localeCompare(b.name);
         break;
       case 'modified':
-        comparison = new Date(a.modified_time || 0).getTime() - new Date(b.modified_time || 0).getTime();
+        comparison =
+          new Date(a.modified_time || 0).getTime() - new Date(b.modified_time || 0).getTime();
         break;
       case 'size':
         comparison = (a.size || 0) - (b.size || 0);
@@ -85,7 +92,9 @@ export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick,
     >
       {children}
       {sortField === field && (
-        <ChevronDown className={`h-3 w-3 transition-transform ${sortDirection === 'desc' ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`h-3 w-3 transition-transform ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+        />
       )}
     </button>
   );
@@ -126,10 +135,7 @@ export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick,
               className={`
                 group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-3 cursor-pointer
                 transition-all duration-150
-                ${isSelected
-                  ? 'bg-blue-500/10 hover:bg-blue-500/15'
-                  : 'hover:bg-[var(--accent)]'
-                }
+                ${isSelected ? 'bg-blue-500/10 hover:bg-blue-500/15' : 'hover:bg-[var(--accent)]'}
               `}
             >
               {/* Icon */}
@@ -173,13 +179,18 @@ export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick,
               {/* Actions */}
               <div className="flex w-8 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
-                  onClick={(e) => { e.stopPropagation(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                   className="rounded p-1 hover:bg-[var(--background)] hover:text-amber-500"
                 >
                   <Star className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onContextMenu(file, e); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onContextMenu(file, e);
+                  }}
                   className="rounded p-1 hover:bg-[var(--background)]"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -193,8 +204,18 @@ export function FileList({ files, selectedFiles, onFileClick, onFileDoubleClick,
                   animate={{ scale: 1 }}
                   className="absolute left-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white"
                 >
-                  <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="h-2.5 w-2.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </motion.div>
               )}

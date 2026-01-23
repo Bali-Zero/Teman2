@@ -3,15 +3,18 @@
 import { Clock } from 'lucide-react';
 
 interface SchedulerStatusProps {
-  status: {
-    is_running?: boolean;
-    tasks?: Array<{
-      name: string;
-      next_run: string;
-      interval: string;
-      enabled: boolean;
-    }>;
-  } | string | null;
+  status:
+    | {
+        is_running?: boolean;
+        tasks?: Array<{
+          name: string;
+          next_run: string;
+          interval: string;
+          enabled: boolean;
+        }>;
+      }
+    | string
+    | null;
 }
 
 export function SchedulerStatus({ status }: SchedulerStatusProps) {
@@ -29,4 +32,3 @@ export function SchedulerStatus({ status }: SchedulerStatusProps) {
     </div>
   );
 }
-

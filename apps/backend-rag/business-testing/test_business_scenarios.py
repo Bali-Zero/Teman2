@@ -25,7 +25,7 @@ class NuzantaraBusinessTester:
             "status": status,
             "details": details,
             "response_time": response_time,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
         self.results.append(result)
 
@@ -43,16 +43,18 @@ class NuzantaraBusinessTester:
 
             if response.status_code == 200:
                 data = response.json()
-                docs = data.get('database', {}).get('total_documents', 0)
+                docs = data.get("database", {}).get("total_documents", 0)
                 self.log_test(
                     "System Health",
                     "PASS",
                     f"Database operational with {docs:,} documents",
-                    response_time
+                    response_time,
                 )
                 return True
             else:
-                self.log_test("System Health", "FAIL", f"HTTP {response.status_code}", response_time)
+                self.log_test(
+                    "System Health", "FAIL", f"HTTP {response.status_code}", response_time
+                )
                 return False
         except Exception as e:
             response_time = time.time() - start_time
@@ -70,7 +72,9 @@ class NuzantaraBusinessTester:
                 self.log_test("API Documentation", "PASS", "Swagger UI accessible", response_time)
                 return True
             else:
-                self.log_test("API Documentation", "FAIL", f"HTTP {response.status_code}", response_time)
+                self.log_test(
+                    "API Documentation", "FAIL", f"HTTP {response.status_code}", response_time
+                )
                 return False
         except Exception as e:
             response_time = time.time() - start_time
@@ -86,7 +90,7 @@ class NuzantaraBusinessTester:
                 "query": "What are the requirements for a digital nomad visa in Bali?",
                 "user_id": "business-test-user",
                 "stream": False,
-                "context": "visa_information"
+                "context": "visa_information",
             }
 
             # Note: This would require valid API key in production
@@ -94,7 +98,7 @@ class NuzantaraBusinessTester:
                 f"{self.base_url}/api/rag/query",
                 json=test_payload,
                 headers={"Content-Type": "application/json"},
-                timeout=15
+                timeout=15,
             )
             response_time = time.time() - start_time
 
@@ -103,19 +107,18 @@ class NuzantaraBusinessTester:
                     "Visa Info Query",
                     "PASS",
                     "Authentication working correctly (401 as expected)",
-                    response_time
+                    response_time,
                 )
                 return True
             elif response.status_code == 200:
                 self.log_test(
-                    "Visa Info Query",
-                    "PASS",
-                    "Query processed successfully",
-                    response_time
+                    "Visa Info Query", "PASS", "Query processed successfully", response_time
                 )
                 return True
             else:
-                self.log_test("Visa Info Query", "FAIL", f"HTTP {response.status_code}", response_time)
+                self.log_test(
+                    "Visa Info Query", "FAIL", f"HTTP {response.status_code}", response_time
+                )
                 return False
 
         except Exception as e:
@@ -136,11 +139,16 @@ class NuzantaraBusinessTester:
                     "CRM Client Management",
                     "PASS",
                     "CRM authentication working (401 as expected)",
-                    response_time
+                    response_time,
                 )
                 return True
             else:
-                self.log_test("CRM Client Management", "FAIL", f"Unexpected HTTP {response.status_code}", response_time)
+                self.log_test(
+                    "CRM Client Management",
+                    "FAIL",
+                    f"Unexpected HTTP {response.status_code}",
+                    response_time,
+                )
                 return False
 
         except Exception as e:
@@ -155,14 +163,14 @@ class NuzantaraBusinessTester:
             # Test passport OCR endpoint
             test_payload = {
                 "client_id": 1,
-                "passport_image_url": "https://example.com/passport.jpg"
+                "passport_image_url": "https://example.com/passport.jpg",
             }
 
             response = requests.post(
                 f"{self.base_url}/api/crm/clients/extract-passport",
                 json=test_payload,
                 headers={"Content-Type": "application/json"},
-                timeout=15
+                timeout=15,
             )
             response_time = time.time() - start_time
 
@@ -171,11 +179,13 @@ class NuzantaraBusinessTester:
                     "Passport OCR Service",
                     "PASS",
                     "OCR authentication working (401 as expected)",
-                    response_time
+                    response_time,
                 )
                 return True
             else:
-                self.log_test("Passport OCR Service", "FAIL", f"HTTP {response.status_code}", response_time)
+                self.log_test(
+                    "Passport OCR Service", "FAIL", f"HTTP {response.status_code}", response_time
+                )
                 return False
 
         except Exception as e:
@@ -208,7 +218,7 @@ class NuzantaraBusinessTester:
                     "Performance Benchmarks",
                     "PASS",
                     f"{success_rate:.0%} success rate, {avg_time:.2f}s avg response",
-                    avg_time
+                    avg_time,
                 )
                 return True
             else:
@@ -216,7 +226,7 @@ class NuzantaraBusinessTester:
                     "Performance Benchmarks",
                     "FAIL",
                     f"Low success rate: {success_rate:.0%}, avg time: {avg_time:.2f}s",
-                    avg_time
+                    avg_time,
                 )
                 return False
 
@@ -239,7 +249,7 @@ class NuzantaraBusinessTester:
             self.test_business_scenario_visa_info,
             self.test_crm_business_scenario,
             self.test_passport_ocr_scenario,
-            self.test_performance_benchmarks
+            self.test_performance_benchmarks,
         ]
 
         passed = 0
@@ -252,7 +262,7 @@ class NuzantaraBusinessTester:
 
         # Calculate summary
         success_rate = passed / total
-        avg_response_time = sum(r['response_time'] for r in self.results) / len(self.results)
+        avg_response_time = sum(r["response_time"] for r in self.results) / len(self.results)
 
         summary = {
             "total_tests": total,
@@ -260,7 +270,7 @@ class NuzantaraBusinessTester:
             "failed": total - passed,
             "success_rate": success_rate,
             "avg_response_time": avg_response_time,
-            "results": self.results
+            "results": self.results,
         }
 
         print("📊 BUSINESS TESTING SUMMARY")
@@ -278,6 +288,7 @@ class NuzantaraBusinessTester:
 
         return summary
 
+
 def main():
     """Run business testing"""
     tester = NuzantaraBusinessTester()
@@ -288,6 +299,7 @@ def main():
         json.dump(results, f, indent=2)
 
     print("\n💾 Results saved to: business-test-results.json")
+
 
 if __name__ == "__main__":
     main()

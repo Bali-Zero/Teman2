@@ -13,10 +13,34 @@ interface PageProps {
 
 // Static file paths that should NOT be handled by this route
 // 'images' included for backward compatibility (old URLs should 404, not render broken page)
-const STATIC_PATHS = ['static', 'assets', 'fonts', '_next', 'api', 'images', 'avatars', 'blueprints', 'videos', 'admin', 'dashboard', 'login', 'chat', 'clients', 'settings'];
+const STATIC_PATHS = [
+  'static',
+  'assets',
+  'fonts',
+  '_next',
+  'api',
+  'images',
+  'avatars',
+  'blueprints',
+  'videos',
+  'admin',
+  'dashboard',
+  'login',
+  'chat',
+  'clients',
+  'settings',
+];
 
 // Valid blog categories
-const VALID_CATEGORIES = ['immigration', 'business', 'tax-legal', 'property', 'lifestyle', 'digital-nomad', 'tech'];
+const VALID_CATEGORIES = [
+  'immigration',
+  'business',
+  'tax-legal',
+  'property',
+  'lifestyle',
+  'digital-nomad',
+  'tech',
+];
 
 /**
  * Check if this request is for a static file (should return 404 to let Next.js serve static)
@@ -53,7 +77,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Fallback metadata
   return {
-    title: `${slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} | Bali Zero`,
+    title: `${slug.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())} | Bali Zero`,
     description: `Learn about ${slug.replace(/-/g, ' ')} in Indonesia. Expert guides from Bali Zero.`,
   };
 }

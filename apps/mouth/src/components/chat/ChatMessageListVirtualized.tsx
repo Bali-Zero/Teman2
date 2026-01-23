@@ -102,9 +102,7 @@ export function ChatMessageListVirtualized({
         </motion.div>
 
         <div className="space-y-4 text-center mb-12">
-          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">
-            Zantara
-          </h1>
+          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">Zantara</h1>
           <div className="flex items-center justify-center gap-4">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white/30" />
             <p className="text-xs text-[var(--foreground-muted)] tracking-[0.4em] uppercase font-medium">
@@ -123,7 +121,9 @@ export function ChatMessageListVirtualized({
             onClick={() => onSetInput('What can you help me with?')}
             aria-label="Ask what Zantara can do"
           >
-            <span className="text-lg" aria-hidden="true">💡</span>
+            <span className="text-lg" aria-hidden="true">
+              💡
+            </span>
             <span>What can you do?</span>
           </Button>
           <Button
@@ -133,7 +133,9 @@ export function ChatMessageListVirtualized({
             onClick={() => onSetInput('Summarize my tasks for today')}
             aria-label="Get task summary"
           >
-            <span className="text-lg" aria-hidden="true">📋</span>
+            <span className="text-lg" aria-hidden="true">
+              📋
+            </span>
             <span>My Tasks</span>
           </Button>
           <Button
@@ -143,7 +145,9 @@ export function ChatMessageListVirtualized({
             onClick={onOpenSearchDocs}
             aria-label="Search documents"
           >
-            <span className="text-lg" aria-hidden="true">🔍</span>
+            <span className="text-lg" aria-hidden="true">
+              🔍
+            </span>
             <span>Search docs</span>
           </Button>
         </div>

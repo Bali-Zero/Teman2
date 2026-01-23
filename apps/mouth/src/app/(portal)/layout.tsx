@@ -5,10 +5,6 @@ export const metadata: Metadata = {
   description: 'Manage your visa, company, and tax services with Bali Zero',
 };
 
-export default function PortalGroupLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PortalGroupLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

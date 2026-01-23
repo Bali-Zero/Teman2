@@ -19,7 +19,7 @@ from backend.app.utils.tracing import set_span_attribute, set_span_status, trace
 from backend.services.misc.context_window_manager import ContextWindowManager
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 
-from .context_manager import get_user_context, fetch_profile_and_history, fetch_memory_facts
+from .context_manager import fetch_memory_facts, fetch_profile_and_history, get_user_context
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for context operations
@@ -177,28 +177,26 @@ class OrchestratorContextManager:
         Load ONLY basic context (Profile + History) from DB.
         Skips heavy Vector DB / Memory loading.
         Used for early gates (Greeting, Fast checks).
-        
+
         Args:
             user_id: User ID
             session_id: Optional Session ID
-            
+
         Returns:
             Tuple (basic_user_context, optimized_history)
         """
         profile_time_start = time.time()
-        
+
         # 1. Load basic user context (No memory facts)
         effective_user_id = user_id or "anonymous"
-        user_context_raw = await self._load_basic_user_profile(
-            effective_user_id, session_id
-        )
-        
+        user_context_raw = await self._load_basic_user_profile(effective_user_id, session_id)
+
         # 2. Prepare conversation history
         history = self.prepare_conversation_history(None, user_context_raw)
-        
+
         # 3. Apply context window management
         optimized_history = await self.apply_context_window_management(history)
-        
+
         logger.info(
             f"⚡ [Context] Loaded BASIC context for {user_id} in {time.time() - profile_time_start:.3f}s"
         )
@@ -261,12 +259,12 @@ class OrchestratorContextManager:
         """
         Enrich a basic context (profile only) with Memory Facts and Collective Knowledge.
         Called AFTER early gates have passed.
-        
+
         Args:
             basic_context: Context containing profile/history/entities
             user_id: User ID
             query: Query string
-            
+
         Returns:
             Enriched context with facts
         """
@@ -277,12 +275,14 @@ class OrchestratorContextManager:
         try:
             memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
             memory_data = await fetch_memory_facts(memory_orchestrator, user_id, query)
-            
+
             # Merge into context
             enriched_context = basic_context.copy()
             enriched_context.update(memory_data)
-            
-            logger.info(f"🧠 [Context] Enriched context with {len(memory_data.get('facts', []))} facts")
+
+            logger.info(
+                f"🧠 [Context] Enriched context with {len(memory_data.get('facts', []))} facts"
+            )
             return enriched_context
         except Exception as e:
             logger.warning(f"⚠️ [Context] Failed to enrich context: {e}")

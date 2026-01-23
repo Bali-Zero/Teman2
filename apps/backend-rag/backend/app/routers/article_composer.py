@@ -11,7 +11,6 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any
 
 import anthropic
 from fastapi import APIRouter, HTTPException
@@ -595,7 +594,9 @@ async def publish_article(request: PublishRequest):
         logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
 
         # Track metrics
-        article_publish_requests.labels(status="success", has_cover_image=str(has_cover_image)).inc()
+        article_publish_requests.labels(
+            status="success", has_cover_image=str(has_cover_image)
+        ).inc()
 
         return PublishResponse(
             success=True,
@@ -608,7 +609,9 @@ async def publish_article(request: PublishRequest):
 
     except GitHubPublisherError as e:
         logger.error(f"GitHub publish error: {e}")
-        article_publish_requests.labels(status="github_error", has_cover_image=str(has_cover_image)).inc()
+        article_publish_requests.labels(
+            status="github_error", has_cover_image=str(has_cover_image)
+        ).inc()
         return PublishResponse(success=False, message="Failed to publish to GitHub", error=str(e))
     except Exception as e:
         logger.error(f"Publish failed: {e}", exc_info=True)

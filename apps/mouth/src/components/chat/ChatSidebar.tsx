@@ -54,10 +54,7 @@ export function ChatSidebar({
     <>
       {/* Sidebar Overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose} />
       )}
 
       {/* Sidebar */}
@@ -79,10 +76,7 @@ export function ChatSidebar({
               />
               <span className="font-medium text-white/90">Zantara</span>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>

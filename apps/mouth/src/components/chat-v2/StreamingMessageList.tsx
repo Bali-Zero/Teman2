@@ -73,7 +73,9 @@ const MessageBubble = memo(function MessageBubble({
   const isAssistantStreaming = message.role === 'assistant' && message.isStreaming;
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in-0 slide-in-from-bottom-2 duration-300`}>
+    <div
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in-0 slide-in-from-bottom-2 duration-300`}
+    >
       {/* Avatar for assistant */}
       {!isUser && (
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center mr-2 shrink-0">
@@ -134,9 +136,7 @@ function StreamingIndicator({ status }: { status: string }) {
           <div className="w-4 h-4 rounded-full bg-[var(--primary)] opacity-20" />
         </div>
       </div>
-      <span className="text-sm text-[var(--muted)] animate-pulse">
-        {status || 'Thinking...'}
-      </span>
+      <span className="text-sm text-[var(--muted)] animate-pulse">{status || 'Thinking...'}</span>
     </div>
   );
 }
@@ -153,7 +153,10 @@ function MessageContent({ content }: { content: string }) {
       {parts.map((part, idx) => {
         if (part.startsWith('`') && part.endsWith('`')) {
           return (
-            <code key={idx} className="px-1.5 py-0.5 bg-[var(--background)] rounded text-sm font-mono">
+            <code
+              key={idx}
+              className="px-1.5 py-0.5 bg-[var(--background)] rounded text-sm font-mono"
+            >
               {part.slice(1, -1)}
             </code>
           );
@@ -191,9 +194,7 @@ function SourcesList({ sources }: { sources: Source[] }) {
           </a>
         ))}
         {sources.length > 5 && (
-          <span className="text-xs px-2 py-1 text-[var(--muted)]">
-            +{sources.length - 5} more
-          </span>
+          <span className="text-xs px-2 py-1 text-[var(--muted)]">+{sources.length - 5} more</span>
         )}
       </div>
     </div>
@@ -219,7 +220,8 @@ function WelcomeScreen() {
 
       <h2 className="text-2xl font-semibold mb-2">Welcome to Zantara</h2>
       <p className="text-[var(--muted)] mb-8 max-w-md">
-        Your AI-powered business assistant. Ask me anything about your data, reports, or get quick insights.
+        Your AI-powered business assistant. Ask me anything about your data, reports, or get quick
+        insights.
       </p>
 
       <div className="grid grid-cols-2 gap-3 max-w-md w-full">

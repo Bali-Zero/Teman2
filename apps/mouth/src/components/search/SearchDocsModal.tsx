@@ -115,7 +115,11 @@ export function SearchDocsModal({
   }, []);
 
   const selectedResults = useMemo(
-    () => Array.from(selectedIds).sort((a, b) => a - b).map((i) => results[i]).filter(Boolean),
+    () =>
+      Array.from(selectedIds)
+        .sort((a, b) => a - b)
+        .map((i) => results[i])
+        .filter(Boolean),
     [results, selectedIds]
   );
 
@@ -136,7 +140,9 @@ export function SearchDocsModal({
       const resp = await api.searchDocs({ query: q, level, limit });
       setResults(resp.results || []);
       setTotalFound(resp.total_found || 0);
-      setExecutionTimeMs(typeof resp.execution_time_ms === 'number' ? resp.execution_time_ms : null);
+      setExecutionTimeMs(
+        typeof resp.execution_time_ms === 'number' ? resp.execution_time_ms : null
+      );
       setExpandedIds(new Set());
       setSelectedIds(new Set());
       if (!resp.results?.length) {
@@ -389,13 +395,19 @@ export function SearchDocsModal({
                               }}
                               aria-label={fileUrl ? 'Open source' : 'Toggle details'}
                             >
-                              {fileUrl ? <ExternalLink className="w-4 h-4" /> : <span className="text-xs text-white/70">⋯</span>}
+                              {fileUrl ? (
+                                <ExternalLink className="w-4 h-4" />
+                              ) : (
+                                <span className="text-xs text-white/70">⋯</span>
+                              )}
                             </Button>
                           </div>
                         </div>
 
                         <div className="mt-2 text-sm text-white/80">
-                          {isExpanded ? r.text : `${r.text.slice(0, 220)}${r.text.length > 220 ? '…' : ''}`}
+                          {isExpanded
+                            ? r.text
+                            : `${r.text.slice(0, 220)}${r.text.length > 220 ? '…' : ''}`}
                         </div>
 
                         {topics.length > 0 && (

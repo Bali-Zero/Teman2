@@ -171,9 +171,7 @@ export function UploadProgress({ uploads, onCancel, onDismiss }: UploadProgressP
               )}
 
               {upload.status === 'completed' && (
-                <p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
-                  Completato
-                </p>
+                <p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">Completato</p>
               )}
 
               {upload.status === 'error' && (

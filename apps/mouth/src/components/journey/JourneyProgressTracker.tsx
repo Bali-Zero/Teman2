@@ -100,13 +100,9 @@ export function JourneyProgressTracker({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">{journey.title}</h2>
-          <span className="px-3 py-1 text-sm bg-muted rounded-full">
-            {progress.status}
-          </span>
+          <span className="px-3 py-1 text-sm bg-muted rounded-full">{progress.status}</span>
         </div>
-        {journey.description && (
-          <p className="text-muted-foreground">{journey.description}</p>
-        )}
+        {journey.description && <p className="text-muted-foreground">{journey.description}</p>}
       </div>
 
       {/* Progress Overview */}
@@ -131,9 +127,7 @@ export function JourneyProgressTracker({
         <div className="p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Estimated Time Remaining</span>
-            <span className="text-sm font-semibold">
-              {progress.estimated_days_remaining} days
-            </span>
+            <span className="text-sm font-semibold">{progress.estimated_days_remaining} days</span>
           </div>
           {progress.estimated_completion && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -149,8 +143,7 @@ export function JourneyProgressTracker({
         {journey.steps.map((step, index) => {
           const Icon = statusIcons[step.status];
           const colorClass = statusColors[step.status];
-          const canComplete =
-            step.status === 'pending' || step.status === 'in_progress';
+          const canComplete = step.status === 'pending' || step.status === 'in_progress';
 
           return (
             <div
@@ -171,14 +164,10 @@ export function JourneyProgressTracker({
                         {step.step_number}. {step.title}
                       </h4>
                       {step.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {step.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
                       )}
                     </div>
-                    <span className="px-2 py-1 text-xs bg-muted rounded">
-                      {step.status}
-                    </span>
+                    <span className="px-2 py-1 text-xs bg-muted rounded">{step.status}</span>
                   </div>
 
                   {/* Prerequisites */}
@@ -192,9 +181,7 @@ export function JourneyProgressTracker({
                   {/* Required Documents */}
                   {step.required_documents.length > 0 && (
                     <div className="text-xs">
-                      <span className="font-medium text-muted-foreground">
-                        Required Documents:
-                      </span>
+                      <span className="font-medium text-muted-foreground">Required Documents:</span>
                       <ul className="list-disc list-inside mt-1 space-y-0.5">
                         {step.required_documents.map((doc, docIndex) => (
                           <li key={docIndex} className="text-muted-foreground">
@@ -259,11 +246,7 @@ export function JourneyProgressTracker({
           <ul className="list-disc list-inside space-y-1 text-sm text-blue-800">
             {progress.next_steps.map((stepId, index) => {
               const step = journey.steps.find((s) => s.step_id === stepId);
-              return (
-                <li key={index}>
-                  {step ? `${step.step_number}. ${step.title}` : stepId}
-                </li>
-              );
+              return <li key={index}>{step ? `${step.step_number}. ${step.title}` : stepId}</li>;
             })}
           </ul>
         </div>
@@ -271,10 +254,3 @@ export function JourneyProgressTracker({
     </div>
   );
 }
-
-
-
-
-
-
-

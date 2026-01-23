@@ -32,9 +32,9 @@ class ABTestingService {
 
   initialize(config: ExperimentConfig, userId: string) {
     this.userId = userId;
-    
+
     // Load experiments
-    config.experiments.forEach(experiment => {
+    config.experiments.forEach((experiment) => {
       this.experiments.set(experiment.name, experiment);
     });
 
@@ -74,7 +74,7 @@ class ABTestingService {
     if (variant) {
       this.assignedVariants.set(experimentName, variant);
       this.saveAssignments();
-      
+
       // Track experiment view
       if (typeof window !== 'undefined' && window.gtag) {
         window.gtag('event', 'experiment_view', {
@@ -95,7 +95,7 @@ class ABTestingService {
     const experiment = this.experiments.get(experimentName);
     if (!experiment) return {};
 
-    const variantConfig = experiment.variants.find(v => v.id === variant);
+    const variantConfig = experiment.variants.find((v) => v.id === variant);
     return variantConfig?.config || {};
   }
 
@@ -105,7 +105,7 @@ class ABTestingService {
 
     // Check traffic allocation
     const hash = this.hashString(this.userId + experiment.name);
-    const normalizedHash = hash / 0xFFFFFFFF;
+    const normalizedHash = hash / 0xffffffff;
     if (normalizedHash > experiment.trafficAllocation) {
       return false;
     }
@@ -125,7 +125,7 @@ class ABTestingService {
     if (totalWeight === 0) return null;
 
     const hash = this.hashString(this.userId + experiment.name + Date.now().toString());
-    const normalizedHash = hash / 0xFFFFFFFF;
+    const normalizedHash = hash / 0xffffffff;
     const randomValue = normalizedHash * totalWeight;
 
     let cumulativeWeight = 0;
@@ -144,7 +144,7 @@ class ABTestingService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -153,7 +153,10 @@ class ABTestingService {
   // Save assignments to localStorage
   private saveAssignments() {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ab_test_variants', JSON.stringify(Array.from(this.assignedVariants.entries())));
+      localStorage.setItem(
+        'ab_test_variants',
+        JSON.stringify(Array.from(this.assignedVariants.entries()))
+      );
     }
   }
 
@@ -175,7 +178,7 @@ class ABTestingService {
   // Get all active experiments for the current user
   getActiveExperiments(): Array<{ name: string; variant: string }> {
     const active: Array<{ name: string; variant: string }> = [];
-    
+
     this.experiments.forEach((experiment, name) => {
       const variant = this.getVariant(name);
       if (variant) {

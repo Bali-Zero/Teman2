@@ -54,11 +54,7 @@ function MasonryGrid({
         {/* Right column - offset for masonry effect */}
         <div className="space-y-6 md:space-y-8 md:mt-12">
           {rightColumn.map((article, index) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              index={index + leftColumn.length}
-            />
+            <ArticleCard key={article.id} article={article} index={index + leftColumn.length} />
           ))}
         </div>
       </div>
@@ -103,11 +99,7 @@ function StandardGrid({
       {/* Grid */}
       <div className={cn('grid grid-cols-1 gap-6 md:gap-8', gridCols[columns])}>
         {regularArticles.map((article, index) => (
-          <ArticleCard
-            key={article.id}
-            article={article}
-            index={index}
-          />
+          <ArticleCard key={article.id} article={article} index={index} />
         ))}
       </div>
     </div>
@@ -143,12 +135,7 @@ function ListLayout({
       {/* List */}
       <div className="space-y-6">
         {regularArticles.map((article, index) => (
-          <ArticleCard
-            key={article.id}
-            article={article}
-            index={index}
-            variant="horizontal"
-          />
+          <ArticleCard key={article.id} article={article} index={index} variant="horizontal" />
         ))}
       </div>
     </div>
@@ -173,19 +160,11 @@ export function ArticleGrid({
 
   return (
     <div className={className}>
-      {variant === 'masonry' && (
-        <MasonryGrid articles={articles} showFeatured={showFeatured} />
-      )}
+      {variant === 'masonry' && <MasonryGrid articles={articles} showFeatured={showFeatured} />}
       {variant === 'grid' && (
-        <StandardGrid
-          articles={articles}
-          columns={columns}
-          showFeatured={showFeatured}
-        />
+        <StandardGrid articles={articles} columns={columns} showFeatured={showFeatured} />
       )}
-      {variant === 'list' && (
-        <ListLayout articles={articles} showFeatured={showFeatured} />
-      )}
+      {variant === 'list' && <ListLayout articles={articles} showFeatured={showFeatured} />}
     </div>
   );
 }

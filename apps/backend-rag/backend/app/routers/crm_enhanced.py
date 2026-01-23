@@ -1222,7 +1222,7 @@ async def upload_document_base64(
                     logger.error(f"Failed to create root folder: {e}")
                     raise HTTPException(
                         status_code=500, detail=f"Failed to create root folder: {e}"
-                    )
+                    ) from e
 
             # Ensure Subfolder Exists (Find or Create)
             try:
@@ -1234,7 +1234,7 @@ async def upload_document_base64(
                 # We'll just fail for now, or could try to recreate
                 raise HTTPException(
                     status_code=500, detail=f"Failed to access folder structure: {e}"
-                )
+                ) from e
 
             subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
             if not subfolder:

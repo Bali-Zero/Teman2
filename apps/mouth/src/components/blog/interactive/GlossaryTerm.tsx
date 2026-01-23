@@ -113,11 +113,7 @@ export function GlossaryTerm({
             <div className="flex items-start justify-between gap-2 mb-2">
               <div>
                 <h5 className="font-semibold text-white">{term}</h5>
-                {indonesian && (
-                  <p className="text-xs text-white/40 mt-0.5">
-                    🇮🇩 {indonesian}
-                  </p>
-                )}
+                {indonesian && <p className="text-xs text-white/40 mt-0.5">🇮🇩 {indonesian}</p>}
               </div>
               <div className="p-1 rounded bg-[#2251ff]/20">
                 <BookOpen className="w-3.5 h-3.5 text-[#2251ff]" />

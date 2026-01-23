@@ -358,17 +358,16 @@ class AgenticRAGOrchestrator:
         # 0. FAST CONTEXT LOADING (Basic Profile + History ONLY)
         # Avoids heavy Memory/Entity extraction unless needed
         user_context, history_to_use = await self.core.context_manager.get_basic_context(
-            user_id=user_id, 
-            session_id=session_id
+            user_id=user_id, session_id=session_id
         )
-        
+
         # If conversation_history passed explicitly, prefer it or merge?
         # get_basic_context logic usually respects conversation_history if passed to prepare_conversation_history.
         # But here we called it without passing history.
         # Ideally, we should respect the explicit history if provided.
         if conversation_history:
             # Overwrite history_to_use if explicit history provided
-             history_to_use = conversation_history
+            history_to_use = conversation_history
 
         logger.info(
             f"🧠 [Stream Context] Loaded BASIC context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)"
@@ -569,7 +568,7 @@ Respond in the SAME language the user is using."""
         logger.debug(f"Entering stream_query core. Query: {query}")
 
         full_answer = ""
-        
+
         # 🎯 PROACTIVITY: Start Speculative Follow-up Generation (Background Task)
         # We start this BEFORE the heavy RAG processing so it runs in parallel with the stream.
         # Using response=None tells the service to predict based on Query + Context,
@@ -582,7 +581,7 @@ Respond in the SAME language the user is using."""
                 conversation_context=None,
             )
         )
-        
+
         try:
             # Delegate to OrchestratorStreamingCore for main processing
             # PASS THE LOADED BASIC CONTEXT FOR ENRICHMENT
@@ -594,7 +593,7 @@ Respond in the SAME language the user is using."""
                 images=images,
                 tool_execution_counter=tool_execution_counter,
                 correlation_id=correlation_id,
-                initial_user_context=user_context, # NEW: Pass basic context for late binding
+                initial_user_context=user_context,  # NEW: Pass basic context for late binding
             ):
                 # Accumulate tokens for memory saving
                 if event.get("type") == "token":
@@ -607,7 +606,7 @@ Respond in the SAME language the user is using."""
             try:
                 # Wait for the task to finish (should be instant if stream took > 3s)
                 followup_questions = await followup_task
-                
+
                 if followup_questions:
                     logger.info(
                         f"📝 [Proactive] Retrieved {len(followup_questions)} speculative follow-up questions"
@@ -660,35 +659,35 @@ Respond in the SAME language the user is using."""
     ) -> AsyncGenerator[dict, None]:
         """
         Stream a proactive message triggered by a system event (e.g. Login).
-        
+
         Logic:
         1. Load FULL User Context (Memory, Tasks, Unread items).
         2. Prompt LLM to decide IF and WHAT to say based on context + event.
         3. Stream response if proactive message is generated.
-        
+
         Args:
             user_id: User triggering the event.
             event_type: Type of event (e.g. "USER_LOGIN", "PAGE_VISIT", "IDLE").
             context_data: Additional context (e.g. page_url, time_of_day).
-            
+
         Yields:
             Stream events.
         """
         correlation_id = str(uuid.uuid4())
         start_time = time.time()
-        
+
         if not user_id or user_id == "anonymous":
             logger.warning("⚠️ [Proactive] Cannot trigger for anonymous user")
             return
 
         yield self.streaming_manager.create_initial_status_event(correlation_id)
-        
+
         # 1. Load FULL Context immediately (we need to know what to be proactive about)
         # Using Parallel Load (Fast)
         user_context = await self.core.context_manager.get_user_context(
             self.db_pool, user_id, self.memory_handler.memory_orchestrator
         )
-        
+
         # 2. Build Proactive Prompt
         # We need a specialized prompt that takes the Event + Memory and decides output.
         proactive_prompt = self.prompt_builder.build_proactive_prompt(
@@ -697,26 +696,26 @@ Respond in the SAME language the user is using."""
             event_type=event_type,
             event_context=context_data,
         )
-        
+
         # 3. Generate content via LLM Gateway (Single Turn, Fast Model)
         # We use Flash because proactivity should be quick and doesn't need deep reasoning usually.
         # But we enable tool use? No, usually proactive message is just text.
         # IF we want it to "check calendar", it should have been done in context loading phase or via specialized tools.
         # For "Zero-Shot Proactivity", we rely on the context we just loaded.
-        
+
         chat = self.llm_gateway.create_chat_with_history(
-            history_to_use=[], # No conversation history for the strict prompt, but maybe valuable context?
+            history_to_use=[],  # No conversation history for the strict prompt, but maybe valuable context?
             # Actually, we should probably include recent history so it doesn't repeat itself.
             model_tier=TIER_FLASH,
         )
-        
+
         # Add history to context for the prompt, but maybe not as chat messages to keep prompt clean?
         # Let's rely on the system prompt having the history summary if needed.
-        
+
         # Stream the response
         try:
             logger.info(f"🤖 [Proactive] Triggering event {event_type} for {user_id}")
-            
+
             # Streaming standard generation
             async for token in self.llm_gateway.stream_message(
                 chat,
@@ -727,9 +726,9 @@ Respond in the SAME language the user is using."""
                 # Check for "silence" token or empty response if model decides not to speak?
                 # The prompt determines this.
                 yield {"type": "token", "data": token}
-            
+
             yield {"type": "done", "data": {"route": "proactive"}}
-            
+
         except Exception as e:
             logger.error(f"❌ [Proactive] Failed: {e}", exc_info=True)
             yield self._create_error_event("proactive_error", str(e), correlation_id)

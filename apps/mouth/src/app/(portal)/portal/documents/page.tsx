@@ -57,18 +57,25 @@ export default function DocumentsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'verified': return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
-      case 'pending': return <Clock className="w-4 h-4 text-amber-400" />;
-      default: return <Clock className="w-4 h-4 text-[#9AA0AE]" />;
+      case 'verified':
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      case 'pending':
+        return <Clock className="w-4 h-4 text-amber-400" />;
+      default:
+        return <Clock className="w-4 h-4 text-[#9AA0AE]" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'verified': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'expired': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      default: return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
+      case 'verified':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'pending':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'expired':
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
+      default:
+        return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
     }
   };
 
@@ -193,7 +200,10 @@ export default function DocumentsPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {filteredDocuments.map((doc) => (
-              <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-[#1F2329] transition-colors">
+              <div
+                key={doc.id}
+                className="p-4 flex items-center justify-between hover:bg-[#1F2329] transition-colors"
+              >
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
                     <FileText className="w-5 h-5 text-blue-400" />
@@ -217,7 +227,9 @@ export default function DocumentsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(doc.status)}`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(doc.status)}`}
+                  >
                     {doc.status}
                   </span>
                   <button className="p-2 text-[#9AA0AE] hover:text-[#4FD1C5] hover:bg-[#4FD1C5]/10 rounded-lg transition-colors">

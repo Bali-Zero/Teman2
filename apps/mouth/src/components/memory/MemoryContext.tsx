@@ -9,10 +9,7 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserFactsDisplay } from './UserFactsDisplay';
 import { EpisodicTimeline } from './EpisodicTimeline';
-import type {
-  UserMemory,
-  EpisodicEvent,
-} from '@/lib/api/zantara-sdk/types';
+import type { UserMemory, EpisodicEvent } from '@/lib/api/zantara-sdk/types';
 import { ZantaraSDK } from '@/lib/api/zantara-sdk';
 
 export interface MemoryContextProps {
@@ -95,10 +92,3 @@ export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextPr
     </Tabs>
   );
 }
-
-
-
-
-
-
-

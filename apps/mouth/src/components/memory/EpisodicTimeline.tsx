@@ -7,7 +7,11 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar, Filter, TrendingUp, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import type { EpisodicEvent, EpisodicEventType, EpisodicEmotion } from '@/lib/api/zantara-sdk/types';
+import type {
+  EpisodicEvent,
+  EpisodicEventType,
+  EpisodicEmotion,
+} from '@/lib/api/zantara-sdk/types';
 import { Select } from '@/components/ui/select';
 
 export interface EpisodicTimelineProps {
@@ -118,9 +122,7 @@ export function EpisodicTimeline({
 
       <div className="space-y-3">
         {filteredEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic text-center py-8">
-            No events found
-          </p>
+          <p className="text-sm text-muted-foreground italic text-center py-8">No events found</p>
         ) : (
           filteredEvents.map((event) => {
             const Icon = eventTypeIcons[event.event_type];
@@ -147,13 +149,9 @@ export function EpisodicTimeline({
                       <p className="text-sm text-muted-foreground">{event.description}</p>
                     )}
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2 py-0.5 bg-muted rounded">
-                        {event.event_type}
-                      </span>
+                      <span className="px-2 py-0.5 bg-muted rounded">{event.event_type}</span>
                       {event.emotion !== 'neutral' && (
-                        <span className="px-2 py-0.5 bg-muted rounded">
-                          {event.emotion}
-                        </span>
+                        <span className="px-2 py-0.5 bg-muted rounded">{event.emotion}</span>
                       )}
                     </div>
                   </div>
@@ -166,10 +164,3 @@ export function EpisodicTimeline({
     </div>
   );
 }
-
-
-
-
-
-
-

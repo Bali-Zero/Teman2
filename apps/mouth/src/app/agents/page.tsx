@@ -73,7 +73,9 @@ export default function AgentsPage() {
   const loadSchedulerStatus = useCallback(async () => {
     try {
       // Use direct API request since generated client is not available
-      const response = await api.get<SchedulerStatusData>('/api/autonomous-agents/scheduler/status');
+      const response = await api.get<SchedulerStatusData>(
+        '/api/autonomous-agents/scheduler/status'
+      );
       setSchedulerStatus(response);
     } catch (err) {
       console.error('Failed to load scheduler status:', err);
@@ -110,11 +112,15 @@ export default function AgentsPage() {
         // Map agent names to API endpoints (using direct API calls)
         const agentEndpoints: Record<string, () => Promise<unknown>> = {
           'Conversation Quality Trainer': () =>
-            api.post(`/api/autonomous-agents/conversation-trainer/run?days_back=${PAGINATION.TRAINER_DAYS_BACK}`),
+            api.post(
+              `/api/autonomous-agents/conversation-trainer/run?days_back=${PAGINATION.TRAINER_DAYS_BACK}`
+            ),
           'Client LTV Predictor': () =>
             api.post('/api/autonomous-agents/client-value-predictor/run'),
           'Knowledge Graph Builder': () =>
-            api.post(`/api/autonomous-agents/knowledge-graph-builder/run?days_back=${PAGINATION.KG_BUILDER_DAYS_BACK}&rebuild=false`),
+            api.post(
+              `/api/autonomous-agents/knowledge-graph-builder/run?days_back=${PAGINATION.KG_BUILDER_DAYS_BACK}&rebuild=false`
+            ),
         };
 
         const endpoint = agentEndpoints[agentName];

@@ -288,11 +288,14 @@ async def send_to_balizero(
                 # Map fields to ScraperSubmission model
                 payload = {
                     "title": item["title"],
-                    "content": item.get("content") or item.get("summary", ""),  # content is required
+                    "content": item.get("content")
+                    or item.get("summary", ""),  # content is required
                     "source_url": item.get("sourceUrl", ""),
                     "source_name": item["source"],  # source -> source_name
                     "category": item["category"],
-                    "relevance_score": item.get("relevance_score", 50),  # Use actual score, fallback to 50
+                    "relevance_score": item.get(
+                        "relevance_score", 50
+                    ),  # Use actual score, fallback to 50
                     "published_at": item.get("publishedAt"),
                 }
 
@@ -336,7 +339,9 @@ async def main():
     )
     parser.add_argument("--limit", type=int, default=5, help="Items per topic")
     parser.add_argument("--min-score", type=int, default=35, help="Min score (0-100)")
-    parser.add_argument("--api-url", default="https://nuzantara-rag.fly.dev", help="API URL")
+    parser.add_argument(
+        "--api-url", default="https://nuzantara-rag.fly.dev", help="API URL"
+    )
     parser.add_argument("--api-key", default=None, help="API key")
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview without sending"

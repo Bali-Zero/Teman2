@@ -1,9 +1,9 @@
 /**
  * Chat Page - Refactored Modular Architecture
- * 
+ *
  * Lightweight orchestrator that composes custom hooks and UI components.
  * Reduced from 1938 lines to ~250 lines by extracting logic into hooks.
- * 
+ *
  * @module ChatPage
  */
 
@@ -18,7 +18,7 @@ import type { Message, AgentStep } from '@/types';
 // Components
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
-import { ChatMessageList } from '@/components/chat/ChatMessageList';
+import { ChatMessageListVirtualized } from '@/components/chat/ChatMessageListVirtualized';
 import { ChatInputBar } from '@/components/chat/ChatInputBar';
 import { ImageGenModal } from '@/components/chat/ImageGenModal';
 import { SearchDocsModal } from '@/components/search/SearchDocsModal';
@@ -26,11 +26,11 @@ import { Toast } from '@/components/chat/Toast';
 
 /**
  * Chat Page Component - Modular Architecture
- * 
+ *
  * This is a lightweight orchestrator that composes:
  * - Custom hooks for business logic (useChatPage)
  * - UI components for rendering
- * 
+ *
  * Responsibilities:
  * - Layout and composition only
  * - No business logic (all in hooks)
@@ -87,7 +87,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#202020] text-white overflow-hidden">
+    <div className="flex h-screen bg-[#202020] text-white">
       {/* Hidden file input for avatar upload */}
       <input
         type="file"
@@ -151,23 +151,27 @@ export default function ChatPage() {
         />
 
         {/* Messages Area */}
-        <ChatMessageList
-          messages={displayMessages.map((m): Message => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp,
-            sources: m.sources,
-            imageUrl: m.imageUrl,
-            steps: m.steps ? m.steps.map(step => ({
-              type: step.type as AgentStep['type'],
-              data: step.data,
-              timestamp: step.timestamp,
-            })) as AgentStep[] : undefined,
-            currentStatus: m.isPending || m.isStreaming ? currentStatus : undefined,
-            verification_score: undefined,
-            metadata: m.metadata,
-          }))}
+        <ChatMessageListVirtualized
+          messages={displayMessages.map(
+            (m): Message => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp,
+              sources: m.sources,
+              imageUrl: m.imageUrl,
+              steps: m.steps
+                ? (m.steps.map((step) => ({
+                    type: step.type as AgentStep['type'],
+                    data: step.data,
+                    timestamp: step.timestamp,
+                  })) as AgentStep[])
+                : undefined,
+              currentStatus: m.isPending || m.isStreaming ? currentStatus : undefined,
+              verification_score: undefined,
+              metadata: m.metadata,
+            })
+          )}
           isLoading={isPending}
           thinkingElapsedTime={0}
           userAvatar={userAvatar}
@@ -193,7 +197,9 @@ export default function ChatPage() {
           setShowAttachMenu={() => {}}
           attachMenuRef={chatInput.imageInputRef}
           fileInputRef={chatInput.imageInputRef}
-          onFileChange={async (e) => { chatInput.handleImageAttach(e); }}
+          onFileChange={async (e) => {
+            chatInput.handleImageAttach(e);
+          }}
           isRecording={audioRecorder.isRecording}
           recordingTime={audioRecorder.recordingTime}
           onStartRecording={audioRecorder.startRecording}
@@ -207,9 +213,15 @@ export default function ChatPage() {
               } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 if (errorMessage.includes('Permission denied')) {
-                  showToast('Microphone access denied. Please allow microphone access in your browser settings.', 'error');
+                  showToast(
+                    'Microphone access denied. Please allow microphone access in your browser settings.',
+                    'error'
+                  );
                 } else if (errorMessage.includes('NotFoundError')) {
-                  showToast('No microphone found. Please connect a microphone and try again.', 'error');
+                  showToast(
+                    'No microphone found. Please connect a microphone and try again.',
+                    'error'
+                  );
                 } else {
                   showToast('Failed to access microphone. Please try again.', 'error');
                 }

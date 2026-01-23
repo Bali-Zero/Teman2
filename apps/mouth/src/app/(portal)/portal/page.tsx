@@ -26,12 +26,40 @@ interface StatusCardProps {
   accentColor: string;
 }
 
-function StatusCard({ title, status, description, href, icon, daysRemaining, accentColor }: StatusCardProps) {
+function StatusCard({
+  title,
+  status,
+  description,
+  href,
+  icon,
+  daysRemaining,
+  accentColor,
+}: StatusCardProps) {
   const statusConfig = {
-    active: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400', icon: <CheckCircle2 className="w-4 h-4" /> },
-    pending: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400', icon: <Clock className="w-4 h-4" /> },
-    warning: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', icon: <AlertCircle className="w-4 h-4" /> },
-    expired: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400', icon: <AlertCircle className="w-4 h-4" /> },
+    active: {
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/20',
+      text: 'text-emerald-400',
+      icon: <CheckCircle2 className="w-4 h-4" />,
+    },
+    pending: {
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20',
+      text: 'text-amber-400',
+      icon: <Clock className="w-4 h-4" />,
+    },
+    warning: {
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/20',
+      text: 'text-orange-400',
+      icon: <AlertCircle className="w-4 h-4" />,
+    },
+    expired: {
+      bg: 'bg-red-500/10',
+      border: 'border-red-500/20',
+      text: 'text-red-400',
+      icon: <AlertCircle className="w-4 h-4" />,
+    },
   };
 
   const config = statusConfig[status];
@@ -41,10 +69,7 @@ function StatusCard({ title, status, description, href, icon, daysRemaining, acc
       <div className="p-5 rounded-xl border border-white/5 bg-[#1A1D24] hover:bg-[#1F2329] hover:border-white/10 transition-all">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${accentColor}15` }}
-            >
+            <div className="p-2 rounded-lg" style={{ backgroundColor: `${accentColor}15` }}>
               {icon}
             </div>
             <div>
@@ -52,14 +77,18 @@ function StatusCard({ title, status, description, href, icon, daysRemaining, acc
               <p className="text-sm text-[#9AA0AE] mt-0.5">{description}</p>
             </div>
           </div>
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${config.bg} ${config.text} text-xs font-medium border ${config.border}`}>
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded-full ${config.bg} ${config.text} text-xs font-medium border ${config.border}`}
+          >
             {config.icon}
             <span className="capitalize">{status}</span>
           </div>
         </div>
         {daysRemaining !== undefined && daysRemaining <= 60 && (
           <div className="mt-3 pt-3 border-t border-white/5">
-            <p className={`text-sm ${daysRemaining <= 30 ? 'text-red-400' : 'text-orange-400'} font-medium`}>
+            <p
+              className={`text-sm ${daysRemaining <= 30 ? 'text-red-400' : 'text-orange-400'} font-medium`}
+            >
               {daysRemaining <= 0 ? 'Expired' : `${daysRemaining} days remaining`}
             </p>
           </div>
@@ -84,7 +113,10 @@ function ActionItem({ title, description, priority, href }: ActionItemProps) {
   };
 
   return (
-    <Link href={href} className="flex items-center gap-4 p-4 bg-[#1A1D24] rounded-xl border border-white/5 hover:border-white/10 hover:bg-[#1F2329] transition-all group">
+    <Link
+      href={href}
+      className="flex items-center gap-4 p-4 bg-[#1A1D24] rounded-xl border border-white/5 hover:border-white/10 hover:bg-[#1F2329] transition-all group"
+    >
       <span className={`px-2 py-1 text-xs font-medium rounded border ${priorityColors[priority]}`}>
         {priority.toUpperCase()}
       </span>
@@ -101,12 +133,31 @@ export default function PortalDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<{
-    visa: { status: 'active' | 'pending' | 'warning' | 'expired'; type: string; expiryDate?: string; daysRemaining?: number };
-    company: { status: 'active' | 'pending' | 'warning' | 'expired'; name?: string; licenses: number };
-    taxes: { status: 'active' | 'pending' | 'warning' | 'expired'; nextDeadline?: string; daysToDeadline?: number };
+    visa: {
+      status: 'active' | 'pending' | 'warning' | 'expired';
+      type: string;
+      expiryDate?: string;
+      daysRemaining?: number;
+    };
+    company: {
+      status: 'active' | 'pending' | 'warning' | 'expired';
+      name?: string;
+      licenses: number;
+    };
+    taxes: {
+      status: 'active' | 'pending' | 'warning' | 'expired';
+      nextDeadline?: string;
+      daysToDeadline?: number;
+    };
     documents: { total: number; pending: number };
     messages: { unread: number };
-    actions: Array<{ id: string; title: string; description: string; priority: 'high' | 'medium' | 'low'; href: string }>;
+    actions: Array<{
+      id: string;
+      title: string;
+      description: string;
+      priority: 'high' | 'medium' | 'low';
+      href: string;
+    }>;
   } | null>(null);
 
   useEffect(() => {
@@ -137,7 +188,7 @@ export default function PortalDashboard() {
           },
           documents: data.documents,
           messages: data.messages,
-          actions: data.actions.map(a => ({
+          actions: data.actions.map((a) => ({
             id: a.id,
             title: a.title,
             description: a.description,
@@ -159,30 +210,44 @@ export default function PortalDashboard() {
   // Helper functions to map API status to component status
   function mapVisaStatus(status: string): 'active' | 'pending' | 'warning' | 'expired' {
     switch (status) {
-      case 'active': return 'active';
-      case 'pending': return 'pending';
-      case 'warning': return 'warning';
-      case 'expired': return 'expired';
-      case 'none': return 'pending';
-      default: return 'pending';
+      case 'active':
+        return 'active';
+      case 'pending':
+        return 'pending';
+      case 'warning':
+        return 'warning';
+      case 'expired':
+        return 'expired';
+      case 'none':
+        return 'pending';
+      default:
+        return 'pending';
     }
   }
 
   function mapCompanyStatus(status: string): 'active' | 'pending' | 'warning' | 'expired' {
     switch (status) {
-      case 'active': return 'active';
-      case 'pending': return 'pending';
-      case 'none': return 'pending';
-      default: return 'pending';
+      case 'active':
+        return 'active';
+      case 'pending':
+        return 'pending';
+      case 'none':
+        return 'pending';
+      default:
+        return 'pending';
     }
   }
 
   function mapTaxStatus(status: string): 'active' | 'pending' | 'warning' | 'expired' {
     switch (status) {
-      case 'compliant': return 'active';
-      case 'attention': return 'warning';
-      case 'overdue': return 'expired';
-      default: return 'pending';
+      case 'compliant':
+        return 'active';
+      case 'attention':
+        return 'warning';
+      case 'overdue':
+        return 'expired';
+      default:
+        return 'pending';
     }
   }
 
@@ -247,7 +312,11 @@ export default function PortalDashboard() {
         <StatusCard
           title="Taxes"
           status={dashboardData.taxes.status}
-          description={dashboardData.taxes.nextDeadline ? `Next: ${dashboardData.taxes.nextDeadline}` : 'No deadlines'}
+          description={
+            dashboardData.taxes.nextDeadline
+              ? `Next: ${dashboardData.taxes.nextDeadline}`
+              : 'No deadlines'
+          }
           href="/portal/taxes"
           icon={<Receipt className="w-5 h-5 text-violet-400" />}
           daysRemaining={dashboardData.taxes.daysToDeadline}
@@ -272,7 +341,8 @@ export default function PortalDashboard() {
             </div>
             <div className="flex-1">
               <p className="font-medium text-sky-300">
-                You have {dashboardData.messages.unread} unread message{dashboardData.messages.unread > 1 ? 's' : ''}
+                You have {dashboardData.messages.unread} unread message
+                {dashboardData.messages.unread > 1 ? 's' : ''}
               </p>
               <p className="text-sm text-sky-400/70">Click to view your messages</p>
             </div>
@@ -297,19 +367,31 @@ export default function PortalDashboard() {
       <div>
         <h2 className="text-lg font-medium text-[#E6E7EB] mb-4">Quick Links</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link href="/portal/documents" className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-violet-500/30 hover:bg-violet-500/5 transition-all group">
+          <Link
+            href="/portal/documents"
+            className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-violet-500/30 hover:bg-violet-500/5 transition-all group"
+          >
             <FileText className="w-6 h-6 text-[#9AA0AE] mx-auto mb-2 group-hover:text-violet-400 transition-colors" />
             <span className="text-sm font-medium text-[#E6E7EB]">Upload Document</span>
           </Link>
-          <Link href="/portal/messages" className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-sky-500/30 hover:bg-sky-500/5 transition-all group">
+          <Link
+            href="/portal/messages"
+            className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-sky-500/30 hover:bg-sky-500/5 transition-all group"
+          >
             <MessageSquare className="w-6 h-6 text-[#9AA0AE] mx-auto mb-2 group-hover:text-sky-400 transition-colors" />
             <span className="text-sm font-medium text-[#E6E7EB]">Contact Team</span>
           </Link>
-          <Link href="/portal/visa" className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
+          <Link
+            href="/portal/visa"
+            className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group"
+          >
             <Plane className="w-6 h-6 text-[#9AA0AE] mx-auto mb-2 group-hover:text-emerald-400 transition-colors" />
             <span className="text-sm font-medium text-[#E6E7EB]">Visa History</span>
           </Link>
-          <Link href="/portal/settings" className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-[#4FD1C5]/30 hover:bg-[#4FD1C5]/5 transition-all group">
+          <Link
+            href="/portal/settings"
+            className="p-4 bg-[#1A1D24] border border-white/5 rounded-xl text-center hover:border-[#4FD1C5]/30 hover:bg-[#4FD1C5]/5 transition-all group"
+          >
             <Receipt className="w-6 h-6 text-[#9AA0AE] mx-auto mb-2 group-hover:text-[#4FD1C5] transition-colors" />
             <span className="text-sm font-medium text-[#E6E7EB]">Preferences</span>
           </Link>

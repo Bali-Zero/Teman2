@@ -34,13 +34,22 @@ const mdxComponents = {
 
   // Override default HTML elements with styled versions (30% larger text)
   h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0" {...props} />
+    <h1
+      className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0"
+      {...props}
+    />
   ),
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24" {...props} />
+    <h2
+      className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24"
+      {...props}
+    />
   ),
   h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24" {...props} />
+    <h3
+      className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24"
+      {...props}
+    />
   ),
   h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h4 className="font-semibold text-xl text-white mt-6 mb-2" {...props} />
@@ -76,13 +85,19 @@ const mdxComponents = {
     <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl" {...props} />
   ),
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="list-decimal list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl" {...props} />
+    <ol
+      className="list-decimal list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl"
+      {...props}
+    />
   ),
   li: (props: React.LiHTMLAttributes<HTMLLIElement>) => (
     <li className="leading-relaxed pl-2 text-xl" {...props} />
   ),
   blockquote: (props: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
-    <blockquote className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl" {...props} />
+    <blockquote
+      className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl"
+      {...props}
+    />
   ),
   code: (props: React.HTMLAttributes<HTMLElement>) => {
     // Check if it's inline code or code block
@@ -90,14 +105,20 @@ const mdxComponents = {
 
     if (isInline) {
       return (
-        <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base" {...props} />
+        <code
+          className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base"
+          {...props}
+        />
       );
     }
 
     return <code className="font-mono text-base" {...props} />;
   },
   pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-    <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base" {...props} />
+    <pre
+      className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base"
+      {...props}
+    />
   ),
   table: (props: React.TableHTMLAttributes<HTMLTableElement>) => (
     <div className="overflow-x-auto my-6 rounded-xl border border-white/10">
@@ -114,14 +135,15 @@ const mdxComponents = {
     <tr className="hover:bg-white/5 transition-colors" {...props} />
   ),
   th: (props: React.ThHTMLAttributes<HTMLTableCellElement>) => (
-    <th className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60" {...props} />
+    <th
+      className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60"
+      {...props}
+    />
   ),
   td: (props: React.TdHTMLAttributes<HTMLTableCellElement>) => (
     <td className="px-4 py-3 text-white/80 text-lg" {...props} />
   ),
-  hr: () => (
-    <hr className="my-8 border-white/10" />
-  ),
+  hr: () => <hr className="my-8 border-white/10" />,
   strong: (props: React.HTMLAttributes<HTMLElement>) => (
     <strong className="font-semibold text-white" {...props} />
   ),
@@ -129,19 +151,11 @@ const mdxComponents = {
     <em className="italic text-white/90" {...props} />
   ),
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
-     
     return (
       <span className="block my-6">
-        <img
-          className="rounded-xl w-full"
-          loading="lazy"
-          alt={props.alt || ''}
-          {...props}
-        />
+        <img className="rounded-xl w-full" loading="lazy" alt={props.alt || ''} {...props} />
         {props.alt && (
-          <span className="block text-center text-sm text-white/50 mt-2">
-            {props.alt}
-          </span>
+          <span className="block text-center text-sm text-white/50 mt-2">{props.alt}</span>
         )}
       </span>
     );

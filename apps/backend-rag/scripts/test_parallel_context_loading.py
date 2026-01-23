@@ -20,11 +20,8 @@ script_dir = Path(__file__).parent
 backend_dir = script_dir.parent
 sys.path.insert(0, str(backend_dir))
 
-from unittest.mock import AsyncMock, MagicMock
 
-import asyncpg
-
-from backend.services.memory import MemoryContext, MemoryOrchestrator
+from backend.services.memory import MemoryContext
 from backend.services.rag.agentic.context_manager import get_user_context
 
 # Configure logging to capture PARALLEL LOADING messages
@@ -117,16 +114,16 @@ async def test_parallel_loading():
     )
     total_time = time.time() - start_time
 
-    logger.info(f"\n✅ Parallel execution completed")
+    logger.info("\n✅ Parallel execution completed")
     logger.info(f"   Total time: {total_time:.3f}s")
-    logger.info(f"   Expected sequential time: ~0.700s (0.4s DB + 0.3s Memory)")
-    logger.info(f"   Expected parallel time: ~0.400s (max of both)")
-    logger.info(f"   Expected speedup: ~0.300s")
+    logger.info("   Expected sequential time: ~0.700s (0.4s DB + 0.3s Memory)")
+    logger.info("   Expected parallel time: ~0.400s (max of both)")
+    logger.info("   Expected speedup: ~0.300s")
 
     # Verify context structure
     assert context["profile"] is not None, "Profile should be loaded"
     assert len(context["facts"]) > 0, "Memory facts should be loaded"
-    logger.info(f"   ✅ Context structure verified")
+    logger.info("   ✅ Context structure verified")
 
     if total_time < 0.5:  # Should be close to max(0.4, 0.3) = 0.4s
         logger.info(f"   ✅ Performance target met: {total_time:.3f}s < 0.500s")
@@ -153,15 +150,15 @@ async def test_graceful_degradation_no_memory():
     )
     total_time = time.time() - start_time
 
-    logger.info(f"\n✅ Graceful degradation test completed")
+    logger.info("\n✅ Graceful degradation test completed")
     logger.info(f"   Total time: {total_time:.3f}s")
     logger.info(f"   Profile loaded: {context['profile'] is not None}")
     logger.info(f"   Memory facts: {len(context.get('facts', []))}")
-    logger.info(f"   Expected: Empty facts list (graceful degradation)")
+    logger.info("   Expected: Empty facts list (graceful degradation)")
 
     assert context["profile"] is not None, "Profile should still be loaded"
     assert context.get("facts") == [], "Facts should be empty (graceful degradation)"
-    logger.info(f"   ✅ Graceful degradation verified")
+    logger.info("   ✅ Graceful degradation verified")
 
 
 async def test_graceful_degradation_memory_error():
@@ -186,15 +183,15 @@ async def test_graceful_degradation_memory_error():
     )
     total_time = time.time() - start_time
 
-    logger.info(f"\n✅ Error handling test completed")
+    logger.info("\n✅ Error handling test completed")
     logger.info(f"   Total time: {total_time:.3f}s")
     logger.info(f"   Profile loaded: {context['profile'] is not None}")
     logger.info(f"   Memory facts: {len(context.get('facts', []))}")
-    logger.info(f"   Expected: Empty facts list (error handled gracefully)")
+    logger.info("   Expected: Empty facts list (error handled gracefully)")
 
     assert context["profile"] is not None, "Profile should still be loaded"
     assert context.get("facts") == [], "Facts should be empty (error handled)"
-    logger.info(f"   ✅ Error handling verified")
+    logger.info("   ✅ Error handling verified")
 
 
 async def test_logging_pattern():
@@ -228,17 +225,17 @@ async def test_logging_pattern():
     profile_logs = [log for log in log_capture if "Profile fetch" in log]
     memory_logs = [log for log in log_capture if "Memory fetch" in log]
 
-    logger.info(f"\n✅ Logging pattern check:")
+    logger.info("\n✅ Logging pattern check:")
     logger.info(f"   PARALLEL LOADING logs: {len(parallel_logs)}")
     logger.info(f"   Profile fetch logs: {len(profile_logs)}")
     logger.info(f"   Memory fetch logs: {len(memory_logs)}")
 
     if parallel_logs:
-        logger.info(f"   ✅ PARALLEL LOADING pattern found:")
+        logger.info("   ✅ PARALLEL LOADING pattern found:")
         for log in parallel_logs:
             logger.info(f"      - {log}")
     else:
-        logger.warning(f"   ⚠️  PARALLEL LOADING pattern not found in logs")
+        logger.warning("   ⚠️  PARALLEL LOADING pattern not found in logs")
 
     logging.getLogger("backend.services.rag.agentic.context_manager").removeHandler(handler)
 
@@ -265,11 +262,11 @@ async def main():
         logger.info("\n" + "=" * 80)
         logger.info("✅ ALL TESTS COMPLETED")
         logger.info("=" * 80)
-        logger.info(f"\nSummary:")
+        logger.info("\nSummary:")
         logger.info(f"  - Parallel loading time: {parallel_time:.3f}s")
-        logger.info(f"  - Expected speedup: 200-400ms reduction")
-        logger.info(f"  - Graceful degradation: ✅ Verified")
-        logger.info(f"  - Error handling: ✅ Verified")
+        logger.info("  - Expected speedup: 200-400ms reduction")
+        logger.info("  - Graceful degradation: ✅ Verified")
+        logger.info("  - Error handling: ✅ Verified")
 
     except Exception as e:
         logger.error(f"\n❌ Test failed with error: {e}")

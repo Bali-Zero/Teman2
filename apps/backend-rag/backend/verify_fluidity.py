@@ -12,7 +12,8 @@ from backend.services.classification.intent_classifier import IntentClassifier
 
 # Configure logger for test output
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
 
 async def test_identity_intent():
     logger.info("\n--- TEST 1: Identity Intent (Tier 0) ---")
@@ -23,11 +24,12 @@ async def test_identity_intent():
     logger.info(f"Intent classified: {result.get('intent', result.get('category', 'unknown'))}")
     logger.info(f"Skip RAG: {result.get('skip_rag', False)}")
 
-    intent = result.get('intent') or result.get('category', '')
-    if intent == "identity" and result.get('skip_rag') is True:
+    intent = result.get("intent") or result.get("category", "")
+    if intent == "identity" and result.get("skip_rag") is True:
         logger.info("✅ PASS: Identity intent correctly triggers skip_rag=True")
     else:
         logger.info("❌ FAIL: Identity intent did NOT set skip_rag=True")
+
 
 async def test_fluid_fallback_implementation():
     logger.info("\n--- TEST 2: Fluid Fallback Implementation (Tier 1) ---")
@@ -71,13 +73,18 @@ async def test_fluid_fallback_implementation():
         logger.info("❌ FAIL: Critical domain check logic NOT found")
 
     # Check 4: Both paths exist (ABSTAIN for critical, Tier 1 for non-critical)
-    has_abstain_path = "STRICT ABSTAIN" in reasoning_content or "Triggered ABSTAIN" in reasoning_content
+    has_abstain_path = (
+        "STRICT ABSTAIN" in reasoning_content or "Triggered ABSTAIN" in reasoning_content
+    )
     has_tier1_path = "Tier 1" in reasoning_content and "General Intelligence" in reasoning_content
 
     if has_abstain_path and has_tier1_path:
         logger.info("✅ PASS: Both ABSTAIN (critical) and Tier 1 (non-critical) paths exist")
     else:
-        logger.info(f"⚠️  WARNING: Missing paths - ABSTAIN: {has_abstain_path}, Tier 1: {has_tier1_path}")
+        logger.info(
+            f"⚠️  WARNING: Missing paths - ABSTAIN: {has_abstain_path}, Tier 1: {has_tier1_path}"
+        )
+
 
 async def test_critical_domain_detection():
     logger.info("\n--- TEST 3: Critical Domain Detection ---")
@@ -127,6 +134,7 @@ async def test_critical_domain_detection():
     except ImportError as e:
         logger.info(f"❌ FAIL: Could not import _is_critical_domain: {e}")
 
+
 async def test_constants():
     logger.info("\n--- TEST 4: Constants Tuning ---")
     logger.info(f"ABSTAIN_THRESHOLD: {EvidenceScoreConstants.ABSTAIN_THRESHOLD}")
@@ -135,12 +143,17 @@ async def test_constants():
     if EvidenceScoreConstants.ABSTAIN_THRESHOLD == 0.15:
         logger.info("✅ PASS: ABSTAIN_THRESHOLD is lowered to 0.15")
     else:
-         logger.info(f"❌ FAIL: ABSTAIN_THRESHOLD is {EvidenceScoreConstants.ABSTAIN_THRESHOLD} (expected 0.15)")
+        logger.info(
+            f"❌ FAIL: ABSTAIN_THRESHOLD is {EvidenceScoreConstants.ABSTAIN_THRESHOLD} (expected 0.15)"
+        )
 
     if EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS == 0.35:
         logger.info("✅ PASS: CONTEXT_KEYWORD_BONUS is increased to 0.35")
     else:
-        logger.info(f"⚠️  WARNING: CONTEXT_KEYWORD_BONUS is {EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS} (expected 0.35)")
+        logger.info(
+            f"⚠️  WARNING: CONTEXT_KEYWORD_BONUS is {EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS} (expected 0.35)"
+        )
+
 
 async def main():
     logger.info("=" * 60)
@@ -155,6 +168,7 @@ async def main():
     logger.info("\n" + "=" * 60)
     logger.info("VERIFICATION COMPLETE")
     logger.info("=" * 60)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

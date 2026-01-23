@@ -11,7 +11,6 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Explicit imports instead of wildcard for better type checking
-from llm.base import LLMMessage, LLMResponse, LLMProvider
 
 
 class TestBase:

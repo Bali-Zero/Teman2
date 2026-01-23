@@ -262,7 +262,10 @@ intel_articles_duplicates = Counter(
 tier1_fallback_activated_total = Counter(
     "zantara_tier1_fallback_activated_total",
     "Number of times Tier 1 (General Intelligence) fallback was activated",
-    ["intent_type", "has_context"],  # intent_type: business_simple/casual/etc, has_context: true/false
+    [
+        "intent_type",
+        "has_context",
+    ],  # intent_type: business_simple/casual/etc, has_context: true/false
 )
 tier1_fallback_success_total = Counter(
     "zantara_tier1_fallback_success_total",

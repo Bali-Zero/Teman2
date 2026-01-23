@@ -7,11 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import type {
-  ComplianceItem,
-  ComplianceAlert,
-  AlertSeverity,
-} from '@/lib/api/zantara-sdk/types';
+import type { ComplianceItem, ComplianceAlert, AlertSeverity } from '@/lib/api/zantara-sdk/types';
 import { ZantaraSDK } from '@/lib/api/zantara-sdk';
 
 export interface ComplianceCalendarProps {
@@ -139,14 +135,12 @@ export function ComplianceCalendar({
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {(['critical', 'urgent', 'warning', 'info'] as AlertSeverity[]).map((severity) => {
-          const count = alerts.filter((a) => a.severity === severity && a.status === 'active')
-            .length;
+          const count = alerts.filter(
+            (a) => a.severity === severity && a.status === 'active'
+          ).length;
           const Icon = severityIcons[severity];
           return (
-            <div
-              key={severity}
-              className={`p-4 border rounded-lg ${severityColors[severity]}`}
-            >
+            <div key={severity} className={`p-4 border rounded-lg ${severityColors[severity]}`}>
               <div className="flex items-center gap-2">
                 <Icon className="h-5 w-5" />
                 <span className="text-sm font-medium capitalize">{severity}</span>
@@ -174,9 +168,7 @@ export function ComplianceCalendar({
             return (
               <div
                 key={deadline.item_id}
-                className={`p-4 border rounded-lg ${
-                  alert ? severityColors[severity] : 'bg-muted'
-                }`}
+                className={`p-4 border rounded-lg ${alert ? severityColors[severity] : 'bg-muted'}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -184,19 +176,15 @@ export function ComplianceCalendar({
                       <Icon className="h-5 w-5" />
                       <h4 className="font-medium">{deadline.title}</h4>
                     </div>
-                    {deadline.description && (
-                      <p className="text-sm mt-1">{deadline.description}</p>
-                    )}
+                    {deadline.description && <p className="text-sm mt-1">{deadline.description}</p>}
                     <div className="flex items-center gap-4 mt-2 text-xs">
-                      <span>
-                        Due: {new Date(deadline.deadline).toLocaleDateString()}
-                      </span>
+                      <span>Due: {new Date(deadline.deadline).toLocaleDateString()}</span>
                       <span className="font-medium">
                         {daysUntil > 0
                           ? `${daysUntil} days remaining`
                           : daysUntil === 0
-                          ? 'Due today'
-                          : `${Math.abs(daysUntil)} days overdue`}
+                            ? 'Due today'
+                            : `${Math.abs(daysUntil)} days overdue`}
                       </span>
                     </div>
                     {deadline.required_documents.length > 0 && (
@@ -250,15 +238,13 @@ export function ComplianceCalendar({
                       </div>
                       <p className="text-sm mt-1">{alert.description}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs">
-                        <span>
-                          Deadline: {new Date(alert.deadline).toLocaleDateString()}
-                        </span>
+                        <span>Deadline: {new Date(alert.deadline).toLocaleDateString()}</span>
                         <span className="font-medium">
                           {alert.days_until > 0
                             ? `${alert.days_until} days remaining`
                             : alert.days_until === 0
-                            ? 'Due today'
-                            : `${Math.abs(alert.days_until)} days overdue`}
+                              ? 'Due today'
+                              : `${Math.abs(alert.days_until)} days overdue`}
                         </span>
                       </div>
                     </div>
@@ -280,10 +266,3 @@ export function ComplianceCalendar({
     </div>
   );
 }
-
-
-
-
-
-
-

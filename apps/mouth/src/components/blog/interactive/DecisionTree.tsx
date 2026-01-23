@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ArrowRight,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -119,7 +119,8 @@ export function DecisionTree({
 }: DecisionTreeProps) {
   // Compute defaults
   const effectiveId = id || title.toLowerCase().replace(/\s+/g, '-');
-  const effectiveStartNodeId = startNodeId || nodes.find(n => n.id === 'start')?.id || nodes[0]?.id || '';
+  const effectiveStartNodeId =
+    startNodeId || nodes.find((n) => n.id === 'start')?.id || nodes[0]?.id || '';
   const effectiveSubtitle = subtitle || description;
 
   // Track the path of node IDs visited
@@ -175,7 +176,9 @@ export function DecisionTree({
   }
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-[#2251ff]/10 to-transparent">
         <div className="flex items-center justify-between">
@@ -296,9 +299,7 @@ function QuestionView({
         </div>
         <div>
           <h4 className="text-lg font-medium text-white">{node.question}</h4>
-          {node.description && (
-            <p className="text-white/60 text-sm mt-1">{node.description}</p>
-          )}
+          {node.description && <p className="text-white/60 text-sm mt-1">{node.description}</p>}
         </div>
       </div>
 
@@ -342,13 +343,7 @@ function QuestionView({
 // Result View
 // ============================================================================
 
-function ResultView({
-  node,
-  onRestart,
-}: {
-  node: DecisionNode;
-  onRestart: () => void;
-}) {
+function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => void }) {
   const result = node.result;
   if (!result) return null;
 
@@ -394,7 +389,13 @@ function ResultView({
             <ol className="space-y-2">
               {result.nextSteps.map((step, index) => (
                 <li key={index} className="flex items-start gap-3 text-sm text-white/60">
-                  <span className={cn('w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium', colors.bg, colors.text)}>
+                  <span
+                    className={cn(
+                      'w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium',
+                      colors.bg,
+                      colors.text
+                    )}
+                  >
                     {index + 1}
                   </span>
                   <span>{step}</span>

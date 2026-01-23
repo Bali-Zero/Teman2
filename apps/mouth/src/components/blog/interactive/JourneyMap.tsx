@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
-  Zap
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -94,7 +94,9 @@ export function JourneyMap({
   }, 0);
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-transparent">
         <div className="flex items-center justify-between">
@@ -127,9 +129,7 @@ export function JourneyMap({
         <div className="flex items-center gap-6 mt-4">
           <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-4 h-4" />
-            <span className="text-sm">
-              {totalDuration || `~${calculatedDuration} days`}
-            </span>
+            <span className="text-sm">{totalDuration || `~${calculatedDuration} days`}</span>
           </div>
           <div className="flex items-center gap-2 text-white/60">
             <DollarSign className="w-4 h-4" />
@@ -183,10 +183,12 @@ export function JourneyMap({
                       ) : isCompleted ? (
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       ) : (
-                        <span className={cn(
-                          'font-bold',
-                          isCurrent ? 'text-[#2251ff]' : 'text-white/60'
-                        )}>
+                        <span
+                          className={cn(
+                            'font-bold',
+                            isCurrent ? 'text-[#2251ff]' : 'text-white/60'
+                          )}
+                        >
                           {index + 1}
                         </span>
                       )}
@@ -200,12 +202,16 @@ export function JourneyMap({
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className={cn(
-                              'font-medium transition-colors',
-                              isCompleted && 'text-emerald-400',
-                              isCurrent && 'text-[#2251ff]',
-                              !isCompleted && !isCurrent && 'text-white group-hover:text-[#2251ff]'
-                            )}>
+                            <h4
+                              className={cn(
+                                'font-medium transition-colors',
+                                isCompleted && 'text-emerald-400',
+                                isCurrent && 'text-[#2251ff]',
+                                !isCompleted &&
+                                  !isCurrent &&
+                                  'text-white group-hover:text-[#2251ff]'
+                              )}
+                            >
                               {step.title}
                             </h4>
                             <p className="text-white/50 text-sm mt-0.5">{step.description}</p>
@@ -258,7 +264,10 @@ export function JourneyMap({
                                   </h5>
                                   <ul className="space-y-1">
                                     {step.documents.map((doc, i) => (
-                                      <li key={i} className="text-sm text-white/60 flex items-center gap-2">
+                                      <li
+                                        key={i}
+                                        className="text-sm text-white/60 flex items-center gap-2"
+                                      >
                                         <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
                                         {doc}
                                       </li>
@@ -276,7 +285,10 @@ export function JourneyMap({
                                   </h5>
                                   <ul className="space-y-1">
                                     {step.tips.map((tip, i) => (
-                                      <li key={i} className="text-sm text-white/60 flex items-start gap-2">
+                                      <li
+                                        key={i}
+                                        className="text-sm text-white/60 flex items-start gap-2"
+                                      >
                                         <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                                         {tip}
                                       </li>
@@ -294,7 +306,10 @@ export function JourneyMap({
                                   </h5>
                                   <ul className="space-y-1">
                                     {step.warnings.map((warning, i) => (
-                                      <li key={i} className="text-sm text-amber-400/60 flex items-start gap-2">
+                                      <li
+                                        key={i}
+                                        className="text-sm text-amber-400/60 flex items-start gap-2"
+                                      >
                                         <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                                         {warning}
                                       </li>

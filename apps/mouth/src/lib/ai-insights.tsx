@@ -268,7 +268,9 @@ class AIInsightsService {
   }> {
     // Extract numeric values from CaseData[] and RevenueData[]
     const caseValues = (data.cases || []).map(() => Math.floor(Math.random() * 100)); // Placeholder - extract actual values
-    const revenueValues = (data.revenue || []).map(r => typeof r === 'object' && 'amount' in r ? r.amount : 0);
+    const revenueValues = (data.revenue || []).map((r) =>
+      typeof r === 'object' && 'amount' in r ? r.amount : 0
+    );
     const efficiencyValues = data.efficiency || [];
 
     const caseVolume = this.generateTrendData(caseValues, 'cases');
@@ -279,13 +281,15 @@ class AIInsightsService {
   }
 
   // Detect anomalies
-  private async detectAnomalies(data: HistoricalData): Promise<Array<{
-    metric: string;
-    value: number;
-    expected: number;
-    deviation: number;
-    timestamp: string;
-  }>> {
+  private async detectAnomalies(data: HistoricalData): Promise<
+    Array<{
+      metric: string;
+      value: number;
+      expected: number;
+      deviation: number;
+      timestamp: string;
+    }>
+  > {
     const anomalies: Array<{
       metric: string;
       value: number;
@@ -356,7 +360,9 @@ class AIInsightsService {
       return { value: 0, confidence: 0.5 };
     }
     // Extract amount values from RevenueData[]
-    const revenueValues = historical.map(r => typeof r === 'object' && 'amount' in r ? r.amount : 0);
+    const revenueValues = historical.map((r) =>
+      typeof r === 'object' && 'amount' in r ? r.amount : 0
+    );
     const average = revenueValues.reduce((a, b) => a + b, 0) / revenueValues.length;
     const trend = this.calculateTrend(revenueValues);
     const prediction = average * (1 + trend);
@@ -373,7 +379,8 @@ class AIInsightsService {
     const highRiskClients = clients
       .filter((client) => {
         const lastActivity = typeof client.lastActivity === 'number' ? client.lastActivity : 0;
-        const satisfactionScore = typeof client.satisfactionScore === 'number' ? client.satisfactionScore : 5;
+        const satisfactionScore =
+          typeof client.satisfactionScore === 'number' ? client.satisfactionScore : 5;
         return lastActivity > 30 || satisfactionScore < 3;
       })
       .map((client) => ({
@@ -381,7 +388,7 @@ class AIInsightsService {
         riskScore: 0.7, // Simplified
         reasons: ['Low activity', 'Low satisfaction'],
       }));
-    
+
     return {
       riskScore: highRiskClients.length / Math.max(clients.length, 1),
       highRiskClients,
@@ -392,13 +399,13 @@ class AIInsightsService {
     // Generate 30-day workload forecast
     const values: number[] = [];
     let currentWorkload = data.currentWorkload || 10;
-    
+
     for (let i = 0; i < 30; i++) {
       currentWorkload += (Math.random() - 0.5) * 2;
       currentWorkload = Math.max(0, currentWorkload);
       values.push(Math.round(currentWorkload));
     }
-    
+
     return {
       values,
       period: '30 days',
@@ -406,10 +413,13 @@ class AIInsightsService {
     };
   }
 
-  private generateTrendData(data: number[], type: string): Array<{ date: string; value: number; prediction: boolean }> {
+  private generateTrendData(
+    data: number[],
+    type: string
+  ): Array<{ date: string; value: number; prediction: boolean }> {
     const result = [];
     const now = new Date();
-    
+
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const value = data[data.length - 30 + i] || Math.floor(Math.random() * 100);
@@ -419,7 +429,7 @@ class AIInsightsService {
         prediction: false,
       });
     }
-    
+
     // Add future predictions
     for (let i = 1; i <= 7; i++) {
       const date = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
@@ -431,11 +441,14 @@ class AIInsightsService {
         prediction: true,
       });
     }
-    
+
     return result;
   }
 
-  private detectMetricAnomaly(data: number[], metric: string): {
+  private detectMetricAnomaly(
+    data: number[],
+    metric: string
+  ): {
     metric: string;
     value: number;
     expected: number;
@@ -497,11 +510,11 @@ class AIInsightsService {
   async retrainModel(modelId: string): Promise<boolean> {
     const model = this.models.get(modelId);
     if (!model) return false;
-    
+
     // Simulate retraining
     model.lastTrained = new Date().toISOString();
     model.accuracy = Math.min(0.95, model.accuracy + 0.02);
-    
+
     console.log(`🤖 Model ${modelId} retrained. New accuracy: ${model.accuracy}`);
     return true;
   }
@@ -519,7 +532,7 @@ export function useAIInsights() {
   const generateInsights = useCallback(async (data: HistoricalData) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await aiInsights.generateInsights(data);
       setInsights(result);

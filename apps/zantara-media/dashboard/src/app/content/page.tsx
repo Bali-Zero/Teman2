@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Search,
   Plus,
@@ -18,24 +18,24 @@ import {
   Trash2,
   Clock,
   Send,
-} from "lucide-react";
-import { formatRelativeTime, truncate } from "@/lib/utils";
-import type { Content, ContentStatus } from "@/types";
+} from 'lucide-react';
+import { formatRelativeTime, truncate } from '@/lib/utils';
+import type { Content, ContentStatus } from '@/types';
 
 // Mock data
 const mockContent: Content[] = [
   {
-    id: "1",
-    title: "New KITAS Regulations 2025: What Expats Need to Know",
-    slug: "kitas-regulations-2025",
-    type: "article",
-    status: "published",
-    category: "immigration",
-    priority: "high",
-    body: "Lorem ipsum...",
-    summary: "Complete guide to the new KITAS regulations effective January 2025",
-    author_id: "1",
-    author_name: "Zero",
+    id: '1',
+    title: 'New KITAS Regulations 2025: What Expats Need to Know',
+    slug: 'kitas-regulations-2025',
+    type: 'article',
+    status: 'published',
+    category: 'immigration',
+    priority: 'high',
+    body: 'Lorem ipsum...',
+    summary: 'Complete guide to the new KITAS regulations effective January 2025',
+    author_id: '1',
+    author_name: 'Zero',
     created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
@@ -43,22 +43,22 @@ const mockContent: Content[] = [
       word_count: 1250,
       reading_time_minutes: 5,
       ai_generated: false,
-      language: "en",
+      language: 'en',
     },
     distributions: [],
-    tags: ["kitas", "visa", "2025", "regulations"],
+    tags: ['kitas', 'visa', '2025', 'regulations'],
   },
   {
-    id: "2",
-    title: "Tax Filing Deadline Reminder for PT PMA Companies",
-    slug: "tax-filing-deadline-pt-pma",
-    type: "article",
-    status: "scheduled",
-    category: "tax",
-    priority: "high",
-    body: "Lorem ipsum...",
-    author_id: "1",
-    author_name: "AI Writer",
+    id: '2',
+    title: 'Tax Filing Deadline Reminder for PT PMA Companies',
+    slug: 'tax-filing-deadline-pt-pma',
+    type: 'article',
+    status: 'scheduled',
+    category: 'tax',
+    priority: 'high',
+    body: 'Lorem ipsum...',
+    author_id: '1',
+    author_name: 'AI Writer',
     created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     scheduled_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
@@ -66,100 +66,117 @@ const mockContent: Content[] = [
       word_count: 800,
       reading_time_minutes: 3,
       ai_generated: true,
-      ai_model: "llama-4-scout",
-      language: "en",
+      ai_model: 'llama-4-scout',
+      language: 'en',
     },
     distributions: [],
-    tags: ["tax", "pt pma", "deadline", "spt"],
+    tags: ['tax', 'pt pma', 'deadline', 'spt'],
   },
   {
-    id: "3",
-    title: "Bali Property Market Q1 2025 Analysis",
-    slug: "bali-property-q1-2025",
-    type: "article",
-    status: "review",
-    category: "property",
-    priority: "normal",
-    body: "Lorem ipsum...",
-    author_id: "2",
-    author_name: "Nina",
+    id: '3',
+    title: 'Bali Property Market Q1 2025 Analysis',
+    slug: 'bali-property-q1-2025',
+    type: 'article',
+    status: 'review',
+    category: 'property',
+    priority: 'normal',
+    body: 'Lorem ipsum...',
+    author_id: '2',
+    author_name: 'Nina',
     created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     metadata: {
       word_count: 2100,
       reading_time_minutes: 8,
       ai_generated: false,
-      language: "en",
+      language: 'en',
     },
     distributions: [],
-    tags: ["property", "bali", "market analysis", "q1 2025"],
+    tags: ['property', 'bali', 'market analysis', 'q1 2025'],
   },
   {
-    id: "4",
-    title: "Quick Guide: Remote Worker Visa in 60 Seconds",
-    slug: "remote-worker-visa-guide",
-    type: "social_post",
-    status: "draft",
-    category: "immigration",
-    priority: "normal",
-    body: "Lorem ipsum...",
-    author_id: "1",
-    author_name: "AI Writer",
+    id: '4',
+    title: 'Quick Guide: Remote Worker Visa in 60 Seconds',
+    slug: 'remote-worker-visa-guide',
+    type: 'social_post',
+    status: 'draft',
+    category: 'immigration',
+    priority: 'normal',
+    body: 'Lorem ipsum...',
+    author_id: '1',
+    author_name: 'AI Writer',
     created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     metadata: {
       word_count: 150,
       reading_time_minutes: 1,
       ai_generated: true,
-      ai_model: "gemini-flash",
-      language: "en",
+      ai_model: 'gemini-flash',
+      language: 'en',
     },
     distributions: [],
-    tags: ["remote worker", "visa", "digital nomad"],
+    tags: ['remote worker', 'visa', 'digital nomad'],
   },
   {
-    id: "5",
-    title: "Weekly Newsletter: Indonesia Business Updates",
-    slug: "weekly-newsletter-jan-w2",
-    type: "newsletter",
-    status: "intake",
-    category: "general",
-    priority: "normal",
-    body: "",
-    author_id: "1",
-    author_name: "System",
+    id: '5',
+    title: 'Weekly Newsletter: Indonesia Business Updates',
+    slug: 'weekly-newsletter-jan-w2',
+    type: 'newsletter',
+    status: 'intake',
+    category: 'general',
+    priority: 'normal',
+    body: '',
+    author_id: '1',
+    author_name: 'System',
     created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     metadata: {
       word_count: 0,
       reading_time_minutes: 0,
       ai_generated: false,
-      language: "en",
+      language: 'en',
     },
     distributions: [],
-    tags: ["newsletter", "weekly"],
+    tags: ['newsletter', 'weekly'],
   },
 ];
 
-const statusTabs: { value: ContentStatus | "all"; label: string; count: number }[] = [
-  { value: "all", label: "All", count: mockContent.length },
-  { value: "intake", label: "Intake", count: mockContent.filter((c) => c.status === "intake").length },
-  { value: "draft", label: "Draft", count: mockContent.filter((c) => c.status === "draft").length },
-  { value: "review", label: "Review", count: mockContent.filter((c) => c.status === "review").length },
-  { value: "scheduled", label: "Scheduled", count: mockContent.filter((c) => c.status === "scheduled").length },
-  { value: "published", label: "Published", count: mockContent.filter((c) => c.status === "published").length },
+const statusTabs: { value: ContentStatus | 'all'; label: string; count: number }[] = [
+  { value: 'all', label: 'All', count: mockContent.length },
+  {
+    value: 'intake',
+    label: 'Intake',
+    count: mockContent.filter((c) => c.status === 'intake').length,
+  },
+  { value: 'draft', label: 'Draft', count: mockContent.filter((c) => c.status === 'draft').length },
+  {
+    value: 'review',
+    label: 'Review',
+    count: mockContent.filter((c) => c.status === 'review').length,
+  },
+  {
+    value: 'scheduled',
+    label: 'Scheduled',
+    count: mockContent.filter((c) => c.status === 'scheduled').length,
+  },
+  {
+    value: 'published',
+    label: 'Published',
+    count: mockContent.filter((c) => c.status === 'published').length,
+  },
 ];
 
 function getStatusBadge(status: ContentStatus) {
-  const variants: Record<ContentStatus, "success" | "warning" | "default" | "secondary" | "error"> = {
-    published: "success",
-    scheduled: "warning",
-    review: "default",
-    approved: "success",
-    draft: "secondary",
-    intake: "secondary",
-    archived: "secondary",
-  };
+  const variants: Record<ContentStatus, 'success' | 'warning' | 'default' | 'secondary' | 'error'> =
+    {
+      published: 'success',
+      scheduled: 'warning',
+      review: 'default',
+      approved: 'success',
+      draft: 'secondary',
+      intake: 'secondary',
+      archived: 'secondary',
+    };
   return <Badge variant={variants[status]}>{status}</Badge>;
 }
 
@@ -172,19 +189,19 @@ function getTypeBadge(type: string) {
   return (
     <Badge variant="outline" className="gap-1">
       {icons[type]}
-      {type.replace("_", " ")}
+      {type.replace('_', ' ')}
     </Badge>
   );
 }
 
 export default function ContentPage() {
-  const [activeTab, setActiveTab] = useState<ContentStatus | "all">("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<ContentStatus | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredContent = mockContent.filter((content) => {
-    const matchesTab = activeTab === "all" || content.status === activeTab;
+    const matchesTab = activeTab === 'all' || content.status === activeTab;
     const matchesSearch =
-      searchQuery === "" ||
+      searchQuery === '' ||
       content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       content.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesTab && matchesSearch;
@@ -216,7 +233,7 @@ export default function ContentPage() {
       </div>
 
       {/* Status Tabs */}
-      <Tabs defaultValue="all" onValueChange={(v) => setActiveTab(v as ContentStatus | "all")}>
+      <Tabs defaultValue="all" onValueChange={(v) => setActiveTab(v as ContentStatus | 'all')}>
         <TabsList className="mb-4 flex-wrap h-auto gap-1">
           {statusTabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
@@ -279,9 +296,7 @@ export default function ContentPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-4 hidden md:table-cell">
-                          {getTypeBadge(content.type)}
-                        </td>
+                        <td className="p-4 hidden md:table-cell">{getTypeBadge(content.type)}</td>
                         <td className="p-4">{getStatusBadge(content.status)}</td>
                         <td className="p-4 hidden lg:table-cell">
                           <span className="text-sm text-[var(--foreground-secondary)]">

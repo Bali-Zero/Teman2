@@ -42,7 +42,7 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
   }, []);
 
   const isHealthy = systemAppStatus === 'healthy';
-  
+
   // Format numbers for display (e.g. 53,757 -> 53.7k)
   const formatK = (num: number) => {
     return num > 999 ? (num / 1000).toFixed(1) + 'k' : num;

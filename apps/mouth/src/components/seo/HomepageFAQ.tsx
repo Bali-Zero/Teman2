@@ -27,7 +27,8 @@ export function HomepageServicesSchema() {
     {
       '@type': 'Service',
       name: 'PT PMA Company Registration',
-      description: 'Full foreign company setup in Indonesia including NIB, business licenses, and bank account. 4-8 weeks processing.',
+      description:
+        'Full foreign company setup in Indonesia including NIB, business licenses, and bank account. 4-8 weeks processing.',
       provider: { '@type': 'Organization', name: 'Bali Zero' },
       areaServed: { '@type': 'Country', name: 'Indonesia' },
       offers: {
@@ -41,7 +42,8 @@ export function HomepageServicesSchema() {
     {
       '@type': 'Service',
       name: 'KITAS Visa Processing',
-      description: 'Work permit and temporary stay permit for foreigners in Indonesia. Director, Investor, Employee, and Retirement visas available.',
+      description:
+        'Work permit and temporary stay permit for foreigners in Indonesia. Director, Investor, Employee, and Retirement visas available.',
       provider: { '@type': 'Organization', name: 'Bali Zero' },
       areaServed: { '@type': 'Country', name: 'Indonesia' },
       offers: {
@@ -56,7 +58,8 @@ export function HomepageServicesSchema() {
     {
       '@type': 'Service',
       name: 'Golden Visa Indonesia',
-      description: 'Premium 5-10 year residence permit for investors and high-net-worth individuals. $350,000+ investment required.',
+      description:
+        'Premium 5-10 year residence permit for investors and high-net-worth individuals. $350,000+ investment required.',
       provider: { '@type': 'Organization', name: 'Bali Zero' },
       areaServed: { '@type': 'Country', name: 'Indonesia' },
       offers: {
@@ -69,7 +72,8 @@ export function HomepageServicesSchema() {
     {
       '@type': 'Service',
       name: 'Tax Compliance & Filing',
-      description: 'Personal and corporate tax registration, SPT filing, Coretax setup, and tax consultation for expats and businesses.',
+      description:
+        'Personal and corporate tax registration, SPT filing, Coretax setup, and tax consultation for expats and businesses.',
       provider: { '@type': 'Organization', name: 'Bali Zero' },
       areaServed: { '@type': 'Country', name: 'Indonesia' },
       offers: {

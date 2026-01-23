@@ -151,7 +151,8 @@ describe('FASE 1.3: Session ID with UUID v4', () => {
     const { result } = renderHook(() => useChatPage(), { wrapper: createWrapper() });
 
     // UUID v4 format: session_xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-    const uuidRegex = /^session_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^session_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     expect(result.current.sessionId).toMatch(uuidRegex);
   });
@@ -215,7 +216,8 @@ describe('FASE 1.3: Session ID with UUID v4', () => {
     expect(result.current.sessionId).not.toBe(initialSessionId);
 
     // New session ID should still be valid UUID v4
-    const uuidRegex = /^session_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^session_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     expect(result.current.sessionId).toMatch(uuidRegex);
   });
 });

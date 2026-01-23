@@ -15,23 +15,14 @@ class NuzantaraClient:
     def __init__(self, api_key: str, base_url: str = "https://nuzantara-rag.fly.dev"):
         self.api_key = api_key
         self.base_url = base_url
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        self.headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
     def query_visa_information(self, question: str, user_id: str = "default") -> dict[str, Any]:
         """Query visa and immigration information"""
-        payload = {
-            "query": question,
-            "user_id": user_id,
-            "stream": False
-        }
+        payload = {"query": question, "user_id": user_id, "stream": False}
 
         response = requests.post(
-            f"{self.base_url}/api/rag/query",
-            json=payload,
-            headers=self.headers
+            f"{self.base_url}/api/rag/query", json=payload, headers=self.headers
         )
 
         return response.json()
@@ -39,24 +30,17 @@ class NuzantaraClient:
     def create_client(self, client_data: dict[str, Any]) -> dict[str, Any]:
         """Create new CRM client"""
         response = requests.post(
-            f"{self.base_url}/api/crm/clients/",
-            json=client_data,
-            headers=self.headers
+            f"{self.base_url}/api/crm/clients/", json=client_data, headers=self.headers
         )
 
         return response.json()
 
     def extract_passport_data(self, client_id: int, passport_image_url: str) -> dict[str, Any]:
         """Extract passport data using OCR"""
-        payload = {
-            "client_id": client_id,
-            "passport_image_url": passport_image_url
-        }
+        payload = {"client_id": client_id, "passport_image_url": passport_image_url}
 
         response = requests.post(
-            f"{self.base_url}/api/crm/clients/extract-passport",
-            json=payload,
-            headers=self.headers
+            f"{self.base_url}/api/crm/clients/extract-passport", json=payload, headers=self.headers
         )
 
         return response.json()
@@ -64,11 +48,11 @@ class NuzantaraClient:
     def get_client_statistics(self) -> dict[str, Any]:
         """Get CRM client statistics"""
         response = requests.get(
-            f"{self.base_url}/api/crm/clients/stats/overview",
-            headers=self.headers
+            f"{self.base_url}/api/crm/clients/stats/overview", headers=self.headers
         )
 
         return response.json()
+
 
 def example_immigration_law_firm():
     """Example: Immigration Law Firm Integration"""
@@ -84,7 +68,7 @@ def example_immigration_law_firm():
     try:
         result = client.query_visa_information(
             "What are the requirements for a digital nomad visa in Bali?",
-            user_id="law-firm-user-001"
+            user_id="law-firm-user-001",
         )
         print("✅ Query successful")
         print(f"📋 Response: {result.get('answer', 'No answer available')[:200]}...")
@@ -98,7 +82,7 @@ def example_immigration_law_firm():
         "email": "john.smith@example.com",
         "phone": "+1234567890",
         "company": "Tech Corp",
-        "notes": "Interested in digital nomad visa"
+        "notes": "Interested in digital nomad visa",
     }
 
     try:
@@ -112,13 +96,13 @@ def example_immigration_law_firm():
     print("\n3. Processing passport document...")
     try:
         passport_result = client.extract_passport_data(
-            client_id=1,
-            passport_image_url="https://example.com/passport.jpg"
+            client_id=1, passport_image_url="https://example.com/passport.jpg"
         )
         print("✅ Passport processing initiated")
         print(f"📋 Status: {passport_result.get('success', False)}")
     except Exception as e:
         print(f"❌ Passport processing failed: {e}")
+
 
 def example_hr_department():
     """Example: HR Department Integration"""
@@ -132,7 +116,7 @@ def example_hr_department():
     compliance_queries = [
         "What are the KITAS requirements for foreign employees?",
         "How to renew a work permit in Indonesia?",
-        "What documents are needed for visa extension?"
+        "What documents are needed for visa extension?",
     ]
 
     print("\nChecking visa compliance requirements...")
@@ -142,6 +126,7 @@ def example_hr_department():
             print(f"✅ Query {i}: Processed successfully")
         except Exception as e:
             print(f"❌ Query {i} failed: {e}")
+
 
 def example_nomad_platform():
     """Example: Digital Nomad Platform Integration"""
@@ -155,7 +140,7 @@ def example_nomad_platform():
     user_questions = [
         "Can I work remotely with a tourist visa in Bali?",
         "What's the cost of living for digital nomads in Indonesia?",
-        "How to get tax residency as a remote worker?"
+        "How to get tax residency as a remote worker?",
     ]
 
     print("\nAnswering user visa questions...")
@@ -165,6 +150,7 @@ def example_nomad_platform():
             print(f"✅ Answer {i}: Provided successfully")
         except Exception as e:
             print(f"❌ Answer {i} failed: {e}")
+
 
 def main():
     """Run all integration examples"""
@@ -186,6 +172,7 @@ def main():
     print("2. Test with your specific business scenarios")
     print("3. Integrate with your existing systems")
     print("4. Monitor performance and usage")
+
 
 if __name__ == "__main__":
     main()

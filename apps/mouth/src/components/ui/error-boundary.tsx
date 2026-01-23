@@ -141,11 +141,7 @@ function ErrorFallback({
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
-          <Button
-            onClick={onRetry}
-            className="gap-2 focus-ring"
-            aria-label="Try again"
-          >
+          <Button onClick={onRetry} className="gap-2 focus-ring" aria-label="Try again">
             <RefreshCw size={16} />
             Try Again
           </Button>

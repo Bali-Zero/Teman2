@@ -22,19 +22,23 @@ export const EdgeAiDebug: React.FC = () => {
   };
 
   const statusColor = {
-    'checking': 'text-gray-400',
-    'ready': 'text-green-500',
-    'downloading': 'text-yellow-500',
-    'unsupported': 'text-red-500',
-    'error': 'text-red-500'
+    checking: 'text-gray-400',
+    ready: 'text-green-500',
+    downloading: 'text-yellow-500',
+    unsupported: 'text-red-500',
+    error: 'text-red-500',
   }[status];
 
   return (
     <div className="p-4 border border-gray-800 rounded-lg bg-gray-900/50 backdrop-blur-sm max-w-md">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-mono text-sm font-bold text-gray-300">EDGE_INTELLIGENCE // GEMINI NANO</h3>
+        <h3 className="font-mono text-sm font-bold text-gray-300">
+          EDGE_INTELLIGENCE // GEMINI NANO
+        </h3>
         <div className={`flex items-center gap-2 font-mono text-xs ${statusColor}`}>
-          <div className={`w-2 h-2 rounded-full bg-current ${status === 'ready' ? 'animate-pulse' : ''}`} />
+          <div
+            className={`w-2 h-2 rounded-full bg-current ${status === 'ready' ? 'animate-pulse' : ''}`}
+          />
           {status.toUpperCase()}
         </div>
       </div>
@@ -76,15 +80,17 @@ export const EdgeAiDebug: React.FC = () => {
         </button>
 
         {response && (
-           <div className="mt-4 pt-4 border-t border-gray-800">
-             <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-mono text-gray-500">OUTPUT_TENSOR</label>
-                {latency && <span className="text-[10px] font-mono text-green-600">{latency.toFixed(2)}ms</span>}
-             </div>
-             <div className="p-2 bg-black rounded border border-gray-800/50 text-xs font-mono text-gray-300 whitespace-pre-wrap">
-               {response}
-             </div>
-           </div>
+          <div className="mt-4 pt-4 border-t border-gray-800">
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-mono text-gray-500">OUTPUT_TENSOR</label>
+              {latency && (
+                <span className="text-[10px] font-mono text-green-600">{latency.toFixed(2)}ms</span>
+              )}
+            </div>
+            <div className="p-2 bg-black rounded border border-gray-800/50 text-xs font-mono text-gray-300 whitespace-pre-wrap">
+              {response}
+            </div>
+          </div>
         )}
       </div>
     </div>

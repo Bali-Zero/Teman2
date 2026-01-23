@@ -2,8 +2,18 @@
 
 import { motion } from 'framer-motion';
 import {
-  Building2, Users, TrendingUp, Scale, Settings, Briefcase,
-  HardDrive, Clock, Star, FolderOpen, ChevronRight, Sparkles
+  Building2,
+  Users,
+  TrendingUp,
+  Scale,
+  Settings,
+  Briefcase,
+  HardDrive,
+  Clock,
+  Star,
+  FolderOpen,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { DEPARTMENT_COLORS, getDepartmentInfo } from './file-icon';
@@ -55,16 +65,21 @@ const heroVariants = {
   },
 };
 
-export function DepartmentHome({ files, onFolderClick, storageUsed = 0, storageTotal = 30 * 1024 * 1024 * 1024 * 1024 }: DepartmentHomeProps) {
+export function DepartmentHome({
+  files,
+  onFolderClick,
+  storageUsed = 0,
+  storageTotal = 30 * 1024 * 1024 * 1024 * 1024,
+}: DepartmentHomeProps) {
   // Separate department folders from other folders
-  const departmentFolders = files.filter(f => f.is_folder && getDepartmentInfo(f.name));
-  const otherFolders = files.filter(f => f.is_folder && !getDepartmentInfo(f.name));
-  const recentFiles = files.filter(f => !f.is_folder).slice(0, 6);
+  const departmentFolders = files.filter((f) => f.is_folder && getDepartmentInfo(f.name));
+  const otherFolders = files.filter((f) => f.is_folder && !getDepartmentInfo(f.name));
+  const recentFiles = files.filter((f) => !f.is_folder).slice(0, 6);
 
   // Sort department folders by defined order
   const sortedDepartments = [...departmentFolders].sort((a, b) => {
-    const aIndex = DEPARTMENT_ORDER.findIndex(d => a.name.toUpperCase().includes(d));
-    const bIndex = DEPARTMENT_ORDER.findIndex(d => b.name.toUpperCase().includes(d));
+    const aIndex = DEPARTMENT_ORDER.findIndex((d) => a.name.toUpperCase().includes(d));
+    const bIndex = DEPARTMENT_ORDER.findIndex((d) => b.name.toUpperCase().includes(d));
     return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
   });
 
@@ -93,9 +108,7 @@ export function DepartmentHome({ files, onFolderClick, storageUsed = 0, storageT
                 <Sparkles className="h-5 w-5 text-emerald-200" />
                 <span className="text-sm font-medium text-emerald-100">Workspace Documenti</span>
               </div>
-              <h1 className="text-3xl font-bold text-white md:text-4xl">
-                Benvenuto nel tuo Drive
-              </h1>
+              <h1 className="text-3xl font-bold text-white md:text-4xl">Benvenuto nel tuo Drive</h1>
               <p className="mt-2 text-emerald-100">
                 Accedi ai tuoi documenti organizzati per dipartimento
               </p>
@@ -202,7 +215,9 @@ export function DepartmentHome({ files, onFolderClick, storageUsed = 0, storageT
                   {recentFiles.map((file) => (
                     <button
                       key={file.id}
-                      onClick={() => file.web_view_link && window.open(file.web_view_link, '_blank')}
+                      onClick={() =>
+                        file.web_view_link && window.open(file.web_view_link, '_blank')
+                      }
                       className="flex w-full items-center gap-3 rounded-xl bg-[var(--background-subtle)] p-3 transition-all hover:bg-[var(--accent)] hover:shadow-md"
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
@@ -213,7 +228,8 @@ export function DepartmentHome({ files, onFolderClick, storageUsed = 0, storageT
                           {file.name}
                         </div>
                         <div className="text-xs text-[var(--foreground-muted)]">
-                          {file.modified_time && new Date(file.modified_time).toLocaleDateString('it-IT')}
+                          {file.modified_time &&
+                            new Date(file.modified_time).toLocaleDateString('it-IT')}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-[var(--foreground-muted)]" />
@@ -231,7 +247,7 @@ export function DepartmentHome({ files, onFolderClick, storageUsed = 0, storageT
 
 interface DepartmentCardProps {
   folder: FileItem;
-  deptInfo: typeof DEPARTMENT_COLORS[string];
+  deptInfo: (typeof DEPARTMENT_COLORS)[string];
   onClick: () => void;
 }
 
@@ -291,7 +307,10 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
         </p>
 
         {/* Arrow indicator */}
-        <div className="mt-3 flex items-center gap-1 text-sm font-medium" style={{ color: deptInfo.primary }}>
+        <div
+          className="mt-3 flex items-center gap-1 text-sm font-medium"
+          style={{ color: deptInfo.primary }}
+        >
           <span>Apri cartella</span>
           <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </div>

@@ -29,7 +29,7 @@ export function MemoryPulse() {
       if (timeSinceOpened < CIRCUIT_BREAKER_TIMEOUT) {
         logInfo(LogCategory.MEMORY, 'Circuit breaker open, skipping memory pulse request', {
           failureCount: failureCount.current,
-          timeRemaining: Math.round((CIRCUIT_BREAKER_TIMEOUT - timeSinceOpened) / 1000) + 's'
+          timeRemaining: Math.round((CIRCUIT_BREAKER_TIMEOUT - timeSinceOpened) / 1000) + 's',
         });
         return;
       }
@@ -56,14 +56,15 @@ export function MemoryPulse() {
       logError(LogCategory.MEMORY, 'Failed to load memory pulse', {
         error: error instanceof Error ? error.message : 'Unknown error',
         failureCount: failureCount.current,
-        circuitOpen: circuitOpen.current
+        circuitOpen: circuitOpen.current,
       });
 
       // Open circuit breaker if threshold reached
       if (failureCount.current >= CIRCUIT_BREAKER_THRESHOLD && !circuitOpen.current) {
         circuitOpen.current = true;
         circuitOpenedAt.current = Date.now();
-        logWarn(LogCategory.MEMORY,
+        logWarn(
+          LogCategory.MEMORY,
           `Circuit breaker opened after ${CIRCUIT_BREAKER_THRESHOLD} failures. Will retry in ${CIRCUIT_BREAKER_TIMEOUT / 1000} seconds`
         );
       }
@@ -95,7 +96,9 @@ export function MemoryPulse() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
             </span>
           </div>
-          <span className="text-xs font-semibold tracking-wider text-indigo-200 uppercase">AI Pulse</span>
+          <span className="text-xs font-semibold tracking-wider text-indigo-200 uppercase">
+            AI Pulse
+          </span>
         </div>
         {isLoading ? (
           <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
@@ -124,7 +127,10 @@ export function MemoryPulse() {
                   </div>
                   <div className="space-y-1">
                     {memory.profile_facts.slice(0, 5).map((fact, i) => (
-                      <div key={i} className="text-[11px] text-white/70 flex items-start gap-1.5 leading-tight">
+                      <div
+                        key={i}
+                        className="text-[11px] text-white/70 flex items-start gap-1.5 leading-tight"
+                      >
                         <span className="mt-1 h-1 w-1 rounded-full bg-indigo-500 flex-shrink-0" />
                         <span>{fact}</span>
                       </div>

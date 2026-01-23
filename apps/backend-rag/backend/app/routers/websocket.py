@@ -147,7 +147,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # usage of asyncio.wait_for prevents indefinite blocking if we need to react to other events
             try:
                 message_text = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
-                
+
                 # Handle ping/pong for keepalive
                 try:
                     message = json.loads(message_text)

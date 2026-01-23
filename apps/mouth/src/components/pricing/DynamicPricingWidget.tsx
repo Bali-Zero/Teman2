@@ -145,9 +145,7 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                 <Clock className="h-5 w-5" />
                 <span className="text-sm font-medium">Timeline</span>
               </div>
-              <div className="text-lg font-bold text-purple-900">
-                {result.timeline_estimate}
-              </div>
+              <div className="text-lg font-bold text-purple-900">{result.timeline_estimate}</div>
               <p className="text-xs text-purple-700 mt-1">Estimated duration</p>
             </div>
           </div>
@@ -156,9 +154,7 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
           <div className="p-3 bg-muted rounded-lg">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Confidence Score</span>
-              <span className="text-sm font-semibold">
-                {(result.confidence * 100).toFixed(0)}%
-              </span>
+              <span className="text-sm font-semibold">{(result.confidence * 100).toFixed(0)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
               <div
@@ -180,7 +176,10 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                       ? ((amount / result.total_setup_cost) * 100).toFixed(1)
                       : '0';
                   return (
-                    <div key={category} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div
+                      key={category}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 text-xs rounded ${getCategoryColor(category)}`}>
                           {category}
@@ -199,14 +198,13 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
             <h3 className="text-lg font-semibold">Detailed Cost Items</h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {result.cost_items.map((item, index) => (
-                <div
-                  key={index}
-                  className="p-3 border rounded-lg hover:bg-muted transition-colors"
-                >
+                <div key={index} className="p-3 border rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs rounded ${getCategoryColor(item.category)}`}>
+                        <span
+                          className={`px-2 py-1 text-xs rounded ${getCategoryColor(item.category)}`}
+                        >
                           {item.category}
                         </span>
                         {item.is_recurring && (
@@ -250,10 +248,3 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
     </div>
   );
 }
-
-
-
-
-
-
-

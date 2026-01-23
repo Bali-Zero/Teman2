@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { FileText, ChevronDown, ChevronUp, CheckCircle2, Download, ExternalLink } from 'lucide-react';
+import {
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Source } from '@/types';
 

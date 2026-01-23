@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Client } from '@/lib/api/crm/crm.types';
 import { ClientCard } from './ClientCard';
@@ -16,7 +15,7 @@ const COLUMNS = [
   { id: 'prospect', title: 'Prospects', color: 'bg-purple-500' },
   { id: 'active', title: 'Active', color: 'bg-green-500' },
   { id: 'inactive', title: 'Inactive', color: 'bg-gray-500' },
-  { id: 'completed', title: 'Completed', color: 'bg-indigo-500' }
+  { id: 'completed', title: 'Completed', color: 'bg-indigo-500' },
 ];
 
 // Estimated height for ClientCard (for virtualization)
@@ -62,17 +61,14 @@ function ColumnBody({
     return (
       <div className="p-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
         <AnimatePresence>
-          {clients.map(client => (
+          {clients.map((client) => (
             <div
               key={client.id}
               draggable
               onDragStart={(e) => onDragStart(e, client)}
               onDragEnd={onDragEnd}
             >
-              <ClientCard 
-                client={client} 
-                isDragging={draggedClient?.id === client.id}
-              />
+              <ClientCard client={client} isDragging={draggedClient?.id === client.id} />
             </div>
           ))}
         </AnimatePresence>
@@ -116,10 +112,7 @@ function ColumnBody({
                 onDragEnd={onDragEnd}
                 className="mb-3"
               >
-                <ClientCard 
-                  client={client} 
-                  isDragging={draggedClient?.id === client.id}
-                />
+                <ClientCard client={client} isDragging={draggedClient?.id === client.id} />
               </div>
             </div>
           );
@@ -131,10 +124,10 @@ function ColumnBody({
 
 export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => {
   const [draggedClient, setDraggedClient] = useState<Client | null>(null);
-  
+
   // Group clients by status
   const getClientsByStatus = (status: string) => {
-    return clients.filter(c => (c.status || 'lead') === status);
+    return clients.filter((c) => (c.status || 'lead') === status);
   };
 
   const handleDragStart = (e: React.DragEvent, client: Client) => {
@@ -155,7 +148,7 @@ export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => 
   const handleDrop = async (e: React.DragEvent, status: string) => {
     e.preventDefault();
     const clientId = parseInt(e.dataTransfer.getData('clientId'));
-    
+
     if (clientId && draggedClient && draggedClient.status !== status) {
       // Optimistic update handled by parent usually, but we call the handler
       await onStatusChange(clientId, status);
@@ -165,8 +158,8 @@ export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => 
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-220px)] min-h-[500px]">
-      {COLUMNS.map(column => (
-        <div 
+      {COLUMNS.map((column) => (
+        <div
           key={column.id}
           className="flex-shrink-0 w-80 flex flex-col rounded-xl bg-[var(--background-secondary)]/50 border border-[var(--border)]"
           onDragOver={handleDragOver}

@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Key, Smartphone, Monitor, Clock, ArrowLeft, Save, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Shield,
+  Key,
+  Smartphone,
+  Monitor,
+  Clock,
+  ArrowLeft,
+  Save,
+  AlertTriangle,
+  CheckCircle2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
@@ -79,9 +89,7 @@ export default function SecuritySettingsPage() {
             <Shield className="w-6 h-6 text-green-400" />
             Security Settings
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Manage your account security
-          </p>
+          <p className="text-sm text-[var(--foreground-muted)]">Manage your account security</p>
         </div>
       </div>
 
@@ -92,7 +100,9 @@ export default function SecuritySettingsPage() {
             <Key className="w-5 h-5 text-amber-400" />
             <div>
               <h2 className="text-lg font-semibold text-[var(--foreground)]">PIN Code</h2>
-              <p className="text-sm text-[var(--foreground-muted)]">Change your 6-digit login PIN</p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                Change your 6-digit login PIN
+              </p>
             </div>
           </div>
           {!showPasswordForm && (
@@ -112,7 +122,12 @@ export default function SecuritySettingsPage() {
                 type="password"
                 maxLength={6}
                 value={passwordForm.currentPin}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPin: e.target.value.replace(/\D/g, '') })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPin: e.target.value.replace(/\D/g, ''),
+                  })
+                }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 placeholder="••••••"
               />
@@ -125,7 +140,9 @@ export default function SecuritySettingsPage() {
                 type="password"
                 maxLength={6}
                 value={passwordForm.newPin}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPin: e.target.value.replace(/\D/g, '') })}
+                onChange={(e) =>
+                  setPasswordForm({ ...passwordForm, newPin: e.target.value.replace(/\D/g, '') })
+                }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 placeholder="••••••"
               />
@@ -138,7 +155,12 @@ export default function SecuritySettingsPage() {
                 type="password"
                 maxLength={6}
                 value={passwordForm.confirmPin}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPin: e.target.value.replace(/\D/g, '') })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPin: e.target.value.replace(/\D/g, ''),
+                  })
+                }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 placeholder="••••••"
               />
@@ -162,8 +184,12 @@ export default function SecuritySettingsPage() {
           <div className="flex items-center gap-3">
             <Smartphone className="w-5 h-5 text-purple-400" />
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">Two-Factor Authentication</h2>
-              <p className="text-sm text-[var(--foreground-muted)]">Add an extra layer of security</p>
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Two-Factor Authentication
+              </h2>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                Add an extra layer of security
+              </p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -188,7 +214,9 @@ export default function SecuritySettingsPage() {
           <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
             <div className="flex items-center gap-2 text-yellow-400">
               <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm font-medium">2FA is recommended for additional security</span>
+              <span className="text-sm font-medium">
+                2FA is recommended for additional security
+              </span>
             </div>
           </div>
         )}
@@ -200,7 +228,9 @@ export default function SecuritySettingsPage() {
           <Monitor className="w-5 h-5 text-cyan-400" />
           <div>
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Active Sessions</h2>
-            <p className="text-sm text-[var(--foreground-muted)]">Manage devices logged into your account</p>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              Manage devices logged into your account
+            </p>
           </div>
         </div>
 

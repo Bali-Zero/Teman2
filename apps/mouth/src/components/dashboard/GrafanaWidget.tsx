@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, ExternalLink, Activity, Database, RefreshCw, FileText, Zap, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  BarChart3,
+  ExternalLink,
+  Activity,
+  Database,
+  RefreshCw,
+  FileText,
+  Zap,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 
 interface GrafanaWidgetProps {
   className?: string;
@@ -23,7 +33,8 @@ interface HealthData {
   };
 }
 
-const GRAFANA_DASHBOARD_URL = 'https://zero1987.grafana.net/d/fastapi-observability/zantara-backend-observability?orgId=1&from=now-1h&to=now&refresh=30s';
+const GRAFANA_DASHBOARD_URL =
+  'https://zero1987.grafana.net/d/fastapi-observability/zantara-backend-observability?orgId=1&from=now-1h&to=now&refresh=30s';
 const BACKEND_HEALTH_URL = 'https://nuzantara-rag.fly.dev/health';
 
 export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
@@ -63,7 +74,9 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
   const isDbConnected = health?.database?.status === 'connected';
 
   return (
-    <div className={`rounded-xl border-2 border-orange-500/40 bg-gradient-to-br from-orange-500/10 to-orange-600/5 overflow-hidden ${className}`}>
+    <div
+      className={`rounded-xl border-2 border-orange-500/40 bg-gradient-to-br from-orange-500/10 to-orange-600/5 overflow-hidden ${className}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-3">
@@ -104,23 +117,33 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
         ) : (
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Backend Status */}
-            <div className={`rounded-lg p-3 ${isHealthy ? 'bg-green-500/10' : 'bg-[var(--background-secondary)]'}`}>
+            <div
+              className={`rounded-lg p-3 ${isHealthy ? 'bg-green-500/10' : 'bg-[var(--background-secondary)]'}`}
+            >
               <div className="flex items-center gap-2 mb-1">
                 <Activity className={`w-4 h-4 ${isHealthy ? 'text-green-400' : 'text-red-400'}`} />
                 <p className="text-xs text-[var(--foreground-muted)]">Backend</p>
               </div>
-              <p className={`text-sm font-semibold ${isHealthy ? 'text-green-400' : 'text-red-400'}`}>
+              <p
+                className={`text-sm font-semibold ${isHealthy ? 'text-green-400' : 'text-red-400'}`}
+              >
                 {isLoading ? '...' : isHealthy ? 'Healthy' : 'Unhealthy'}
               </p>
             </div>
 
             {/* Qdrant Status */}
-            <div className={`rounded-lg p-3 ${isDbConnected ? 'bg-blue-500/10' : 'bg-[var(--background-secondary)]'}`}>
+            <div
+              className={`rounded-lg p-3 ${isDbConnected ? 'bg-blue-500/10' : 'bg-[var(--background-secondary)]'}`}
+            >
               <div className="flex items-center gap-2 mb-1">
-                <Database className={`w-4 h-4 ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`} />
+                <Database
+                  className={`w-4 h-4 ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`}
+                />
                 <p className="text-xs text-[var(--foreground-muted)]">Qdrant</p>
               </div>
-              <p className={`text-sm font-semibold ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`}>
+              <p
+                className={`text-sm font-semibold ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`}
+              >
                 {isLoading ? '...' : isDbConnected ? 'Connected' : 'Disconnected'}
               </p>
             </div>
@@ -165,7 +188,8 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
       {/* Footer */}
       <div className="px-5 py-2 bg-orange-500/5 border-t border-orange-500/20">
         <p className="text-xs text-[var(--foreground-muted)] text-center">
-          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'} • Auto-refresh 30s
+          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'} •
+          Auto-refresh 30s
         </p>
       </div>
     </div>

@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Database, Download, Upload, Clock, ArrowLeft, FileJson, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Database,
+  Download,
+  Upload,
+  Clock,
+  ArrowLeft,
+  FileJson,
+  FileSpreadsheet,
+  AlertTriangle,
+  CheckCircle2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -36,9 +46,7 @@ export default function BackupExportPage() {
   ];
 
   const toggleDataSelection = (id: string) => {
-    setSelectedData(prev =>
-      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
-    );
+    setSelectedData((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
   };
 
   const handleExport = async () => {
@@ -48,7 +56,9 @@ export default function BackupExportPage() {
       // For now, we'll use the timesheet export as an example
       // In a real app, this would call a comprehensive export API
       const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        .toISOString()
+        .split('T')[0];
       const endDate = today.toISOString().split('T')[0];
 
       if (selectedData.includes('team')) {
@@ -64,7 +74,7 @@ export default function BackupExportPage() {
       }
 
       // Simulate export for other data
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       alert('Export completed successfully!');
     } catch (err) {
@@ -130,12 +140,18 @@ export default function BackupExportPage() {
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center ${
-                    isSelected ? 'bg-[var(--accent)]' : 'bg-[var(--background-secondary)] border border-[var(--border)]'
-                  }`}>
+                  <div
+                    className={`w-4 h-4 rounded flex items-center justify-center ${
+                      isSelected
+                        ? 'bg-[var(--accent)]'
+                        : 'bg-[var(--background-secondary)] border border-[var(--border)]'
+                    }`}
+                  >
                     {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
                   </div>
-                  <span className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                  <span
+                    className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                  >
                     {option.label}
                   </span>
                 </div>
@@ -159,8 +175,16 @@ export default function BackupExportPage() {
                   : 'border-[var(--border)] bg-[var(--background)]'
               }`}
             >
-              <FileJson className={`w-5 h-5 ${exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
-              <span className={exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}>JSON</span>
+              <FileJson
+                className={`w-5 h-5 ${exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+              />
+              <span
+                className={
+                  exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'
+                }
+              >
+                JSON
+              </span>
             </button>
             <button
               onClick={() => setExportFormat('csv')}
@@ -170,8 +194,16 @@ export default function BackupExportPage() {
                   : 'border-[var(--border)] bg-[var(--background)]'
               }`}
             >
-              <FileSpreadsheet className={`w-5 h-5 ${exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
-              <span className={exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}>CSV</span>
+              <FileSpreadsheet
+                className={`w-5 h-5 ${exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+              />
+              <span
+                className={
+                  exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'
+                }
+              >
+                CSV
+              </span>
             </button>
           </div>
         </div>
@@ -183,7 +215,9 @@ export default function BackupExportPage() {
           className="w-full"
         >
           <Download className="w-4 h-4 mr-2" />
-          {isExporting ? 'Exporting...' : `Export ${selectedData.length} Data Set${selectedData.length !== 1 ? 's' : ''}`}
+          {isExporting
+            ? 'Exporting...'
+            : `Export ${selectedData.length} Data Set${selectedData.length !== 1 ? 's' : ''}`}
         </Button>
       </div>
 
@@ -237,7 +271,9 @@ export default function BackupExportPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-sm text-[var(--foreground)]">Enable Daily Backups</p>
-            <p className="text-xs text-[var(--foreground-muted)]">Automatically backup data every day at midnight</p>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Automatically backup data every day at midnight
+            </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -251,7 +287,9 @@ export default function BackupExportPage() {
           </div>
           <select className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm">
             <option value="7">7 days</option>
-            <option value="30" selected>30 days</option>
+            <option value="30" selected>
+              30 days
+            </option>
             <option value="90">90 days</option>
             <option value="365">1 year</option>
           </select>

@@ -12,7 +12,7 @@ import {
   EyeOff,
   Trophy,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -108,24 +108,28 @@ const itemColors = {
 // ============================================================================
 
 // Helper to check if using simple format
-function isSimpleFormat(items: ComparisonItem[] | SimpleComparisonItem[]): items is SimpleComparisonItem[] {
-  return items.length > 0 && 'values' in items[0] && typeof (items[0] as SimpleComparisonItem).values === 'object';
+function isSimpleFormat(
+  items: ComparisonItem[] | SimpleComparisonItem[]
+): items is SimpleComparisonItem[] {
+  return (
+    items.length > 0 &&
+    'values' in items[0] &&
+    typeof (items[0] as SimpleComparisonItem).values === 'object'
+  );
 }
 
 // Simple table component for MDX format
 function SimpleComparisonTableContent({
   items,
   title,
-  subtitle
+  subtitle,
 }: {
   items: SimpleComparisonItem[];
   title: string;
   subtitle?: string;
 }) {
   // Extract all unique keys from all items
-  const allKeys = Array.from(
-    new Set(items.flatMap(item => Object.keys(item.values || {})))
-  );
+  const allKeys = Array.from(new Set(items.flatMap((item) => Object.keys(item.values || {}))));
 
   return (
     <div className="bg-black/40 rounded-2xl border border-white/10 overflow-hidden">
@@ -142,28 +146,30 @@ function SimpleComparisonTableContent({
             <tr className="border-b border-white/10">
               <th className="text-left p-4 text-white/40 text-sm font-normal">Feature</th>
               {items.map((item, idx) => (
-                <th key={idx} className={cn(
-                  "text-left p-4 min-w-[180px]",
-                  item.highlight && "bg-[#2251ff]/10"
-                )}>
+                <th
+                  key={idx}
+                  className={cn('text-left p-4 min-w-[180px]', item.highlight && 'bg-[#2251ff]/10')}
+                >
                   <div className="font-medium text-white">{item.name}</div>
-                  {item.subtitle && <div className="text-xs text-white/50 mt-0.5">{item.subtitle}</div>}
+                  {item.subtitle && (
+                    <div className="text-xs text-white/50 mt-0.5">{item.subtitle}</div>
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {allKeys.map((key, rowIdx) => (
-              <tr key={key} className={cn(
-                "border-b border-white/5",
-                rowIdx % 2 === 0 && "bg-white/[0.02]"
-              )}>
+              <tr
+                key={key}
+                className={cn('border-b border-white/5', rowIdx % 2 === 0 && 'bg-white/[0.02]')}
+              >
                 <td className="p-4 text-white/70 text-sm font-medium">{key}</td>
                 {items.map((item, colIdx) => (
-                  <td key={colIdx} className={cn(
-                    "p-4 text-sm text-white/80",
-                    item.highlight && "bg-[#2251ff]/5"
-                  )}>
+                  <td
+                    key={colIdx}
+                    className={cn('p-4 text-sm text-white/80', item.highlight && 'bg-[#2251ff]/5')}
+                  >
                     {item.values?.[key] || '—'}
                   </td>
                 ))}
@@ -202,11 +208,13 @@ export function ComparisonTable({
 
   // Check if using simple format
   if (isSimpleFormat(items)) {
-    return <SimpleComparisonTableContent
-      items={items}
-      title={title}
-      subtitle={subtitle || description}
-    />;
+    return (
+      <SimpleComparisonTableContent
+        items={items}
+        title={title}
+        subtitle={subtitle || description}
+      />
+    );
   }
 
   // Complex format with features
@@ -232,10 +240,13 @@ export function ComparisonTable({
 
   // Group features by category
   const categories = Array.from(new Set(filteredFeatures.map((f) => f.category || 'General')));
-  const featuresByCategory = categories.reduce((acc, cat) => {
-    acc[cat] = filteredFeatures.filter((f) => (f.category || 'General') === cat);
-    return acc;
-  }, {} as Record<string, ComparisonFeature[]>);
+  const featuresByCategory = categories.reduce(
+    (acc, cat) => {
+      acc[cat] = filteredFeatures.filter((f) => (f.category || 'General') === cat);
+      return acc;
+    },
+    {} as Record<string, ComparisonFeature[]>
+  );
 
   // Toggle category
   const toggleCategory = (category: string) => {
@@ -249,7 +260,9 @@ export function ComparisonTable({
   };
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
@@ -309,10 +322,7 @@ export function ComparisonTable({
                 return (
                   <th
                     key={item.id}
-                    className={cn(
-                      'p-4 border-b min-w-[160px] text-center',
-                      colors.header
-                    )}
+                    className={cn('p-4 border-b min-w-[160px] text-center', colors.header)}
                   >
                     <div className="flex flex-col items-center gap-2">
                       {item.icon && <span className="text-2xl">{item.icon}</span>}
@@ -323,7 +333,9 @@ export function ComparisonTable({
                         </span>
                       )}
                       {item.description && (
-                        <span className="text-white/40 text-xs font-normal">{item.description}</span>
+                        <span className="text-white/40 text-xs font-normal">
+                          {item.description}
+                        </span>
                       )}
                     </div>
                   </th>
@@ -339,10 +351,7 @@ export function ComparisonTable({
                 {/* Category header */}
                 {categories.length > 1 && (
                   <tr>
-                    <td
-                      colSpan={items.length + 1}
-                      className="bg-white/5 border-b border-white/10"
-                    >
+                    <td colSpan={items.length + 1} className="bg-white/5 border-b border-white/10">
                       <button
                         onClick={() => toggleCategory(category)}
                         className="w-full flex items-center justify-between px-4 py-2 text-left"
@@ -376,10 +385,12 @@ export function ComparisonTable({
                         {/* Feature name */}
                         <td className="p-4">
                           <div className="flex items-center gap-2">
-                            <span className={cn(
-                              'text-white/80',
-                              feature.important && 'font-medium text-amber-400'
-                            )}>
+                            <span
+                              className={cn(
+                                'text-white/80',
+                                feature.important && 'font-medium text-amber-400'
+                              )}
+                            >
                               {feature.name}
                             </span>
                             {feature.description && (

@@ -10,7 +10,7 @@ import {
   Download,
   RefreshCw,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +73,11 @@ export interface CalculatorProps {
 // Format utilities
 // ============================================================================
 
-function formatValue(value: number, format: 'currency' | 'number' | 'percentage', currency = 'IDR'): string {
+function formatValue(
+  value: number,
+  format: 'currency' | 'number' | 'percentage',
+  currency = 'IDR'
+): string {
   if (format === 'currency') {
     if (currency === 'IDR') {
       return `Rp ${value.toLocaleString('id-ID')}`;
@@ -158,7 +162,9 @@ export function Calculator({
   const breakdownResults = results.filter((r) => !r.isTotal);
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent">
         <div className="flex items-center justify-between">
@@ -235,10 +241,12 @@ export function Calculator({
                             </div>
                           )}
                         </div>
-                        <span className={cn(
-                          'font-mono',
-                          result.highlight ? 'text-amber-400' : 'text-white'
-                        )}>
+                        <span
+                          className={cn(
+                            'font-mono',
+                            result.highlight ? 'text-amber-400' : 'text-white'
+                          )}
+                        >
                           {formatValue(result.value, result.format, result.currency)}
                         </span>
                       </motion.div>
@@ -281,9 +289,7 @@ export function Calculator({
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <DollarSign className="w-12 h-12 text-white/10 mb-4" />
-                <p className="text-white/40">
-                  Adjust the parameters to see estimated costs
-                </p>
+                <p className="text-white/40">Adjust the parameters to see estimated costs</p>
               </div>
             )}
           </div>
@@ -372,9 +378,15 @@ function FieldInput({
             className="w-full accent-[#2251ff]"
           />
           <div className="flex justify-between text-xs text-white/40">
-            <span>{field.min ?? 0} {field.unit}</span>
-            <span className="font-mono text-white">{numValue} {field.unit}</span>
-            <span>{field.max ?? 100} {field.unit}</span>
+            <span>
+              {field.min ?? 0} {field.unit}
+            </span>
+            <span className="font-mono text-white">
+              {numValue} {field.unit}
+            </span>
+            <span>
+              {field.max ?? 100} {field.unit}
+            </span>
           </div>
         </div>
       )}
@@ -415,7 +427,13 @@ function FieldInput({
           >
             {boolValue && (
               <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M2 6L5 9L10 3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             )}
           </div>

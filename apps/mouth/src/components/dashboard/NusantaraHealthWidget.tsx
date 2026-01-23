@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, AlertCircle, Activity, Database, Brain, Globe, Server, Cpu, HardDrive } from 'lucide-react';
+import {
+  RefreshCw,
+  AlertCircle,
+  Activity,
+  Database,
+  Brain,
+  Globe,
+  Server,
+  Cpu,
+  HardDrive,
+} from 'lucide-react';
 
 interface IslandHealth {
   name: string;
@@ -182,7 +192,9 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
 
   if (isLoading) {
     return (
-      <div className={`rounded-lg border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 ${className}`}>
+      <div
+        className={`rounded-lg border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 ${className}`}
+      >
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="w-6 h-6 text-cyan-500 animate-spin" />
           <span className="ml-2 text-white/60">Loading Nusantara Health Map...</span>
@@ -208,7 +220,9 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
   const selectedIslandData = selectedIsland && health?.islands[selectedIsland];
 
   return (
-    <div className={`rounded-lg border border-white/10 bg-gradient-to-br from-slate-900 via-blue-950/30 to-slate-900 overflow-hidden ${className}`}>
+    <div
+      className={`rounded-lg border border-white/10 bg-gradient-to-br from-slate-900 via-blue-950/30 to-slate-900 overflow-hidden ${className}`}
+    >
       {/* Header */}
       <div className="p-4 border-b border-white/10 bg-black/20">
         <div className="flex items-center justify-between">
@@ -318,9 +332,7 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
                 </svg>
 
                 {/* Icon overlay */}
-                <div
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-80"
-                >
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-80">
                   <IconComponent className="w-4 h-4 text-white/90" />
                 </div>
 
@@ -337,10 +349,42 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
 
         {/* Connection lines (simplified) */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-          <line x1="32%" y1="72%" x2="45%" y2="30%" stroke="cyan" strokeWidth="0.5" strokeDasharray="4 4" />
-          <line x1="45%" y1="30%" x2="62%" y2="38%" stroke="cyan" strokeWidth="0.5" strokeDasharray="4 4" />
-          <line x1="62%" y1="38%" x2="85%" y2="40%" stroke="cyan" strokeWidth="0.5" strokeDasharray="4 4" />
-          <line x1="32%" y1="72%" x2="48%" y2="75%" stroke="cyan" strokeWidth="0.5" strokeDasharray="4 4" />
+          <line
+            x1="32%"
+            y1="72%"
+            x2="45%"
+            y2="30%"
+            stroke="cyan"
+            strokeWidth="0.5"
+            strokeDasharray="4 4"
+          />
+          <line
+            x1="45%"
+            y1="30%"
+            x2="62%"
+            y2="38%"
+            stroke="cyan"
+            strokeWidth="0.5"
+            strokeDasharray="4 4"
+          />
+          <line
+            x1="62%"
+            y1="38%"
+            x2="85%"
+            y2="40%"
+            stroke="cyan"
+            strokeWidth="0.5"
+            strokeDasharray="4 4"
+          />
+          <line
+            x1="32%"
+            y1="72%"
+            x2="48%"
+            y2="75%"
+            stroke="cyan"
+            strokeWidth="0.5"
+            strokeDasharray="4 4"
+          />
         </svg>
       </div>
 
@@ -360,13 +404,17 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
           {health.status_counts.degraded > 0 && (
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-xs text-white/60">{health.status_counts.degraded} degraded</span>
+              <span className="text-xs text-white/60">
+                {health.status_counts.degraded} degraded
+              </span>
             </div>
           )}
           {health.status_counts.critical > 0 && (
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-xs text-white/60">{health.status_counts.critical} critical</span>
+              <span className="text-xs text-white/60">
+                {health.status_counts.critical} critical
+              </span>
             </div>
           )}
         </div>
@@ -393,18 +441,22 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
 
           {/* Metrics */}
           <div className="grid grid-cols-2 gap-2 text-xs">
-            {Object.entries(selectedIslandData.metrics).slice(0, 4).map(([key, value]) => (
-              <div key={key} className="bg-white/5 rounded px-2 py-1">
-                <div className="text-white/40 capitalize">{key.replace(/_/g, ' ')}</div>
-                <div className="text-white/80 truncate">
-                  {typeof value === 'object'
-                    ? (value as Record<string, unknown>)?.available !== undefined
-                      ? (value as Record<string, unknown>).available ? 'Available' : 'Unavailable'
-                      : JSON.stringify(value).slice(0, 20)
-                    : String(value)}
+            {Object.entries(selectedIslandData.metrics)
+              .slice(0, 4)
+              .map(([key, value]) => (
+                <div key={key} className="bg-white/5 rounded px-2 py-1">
+                  <div className="text-white/40 capitalize">{key.replace(/_/g, ' ')}</div>
+                  <div className="text-white/80 truncate">
+                    {typeof value === 'object'
+                      ? (value as Record<string, unknown>)?.available !== undefined
+                        ? (value as Record<string, unknown>).available
+                          ? 'Available'
+                          : 'Unavailable'
+                        : JSON.stringify(value).slice(0, 20)
+                      : String(value)}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

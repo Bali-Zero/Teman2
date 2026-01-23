@@ -12,7 +12,6 @@ from typing import Any
 
 from backend.agents.services.multi_ai_adapter import (
     AIRequest,
-    AITool,
     TaskType,
     get_multi_ai_adapter,
 )
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MultiAIOrchestrator:
     """
     Orchestrator that uses multiple AI tools for coding tasks.
-    
+
     Routes tasks to:
     - Qwen: Test generation, simple tasks
     - Gemini: Code analysis, documentation
@@ -86,9 +85,7 @@ Code:
             "tool_used": response.tool_used.value,
         }
 
-    async def design_architecture(
-        self, component_name: str, requirements: str
-    ) -> dict[str, Any]:
+    async def design_architecture(self, component_name: str, requirements: str) -> dict[str, Any]:
         """Design architecture using Claude (best for complex reasoning)"""
         prompt = f"""Design architecture for: {component_name}
 
@@ -193,7 +190,11 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Multi-AI Orchestrator")
-    parser.add_argument("--task", required=True, choices=["test", "analyze", "architecture", "refactor", "docs", "review"])
+    parser.add_argument(
+        "--task",
+        required=True,
+        choices=["test", "analyze", "architecture", "refactor", "docs", "review"],
+    )
     parser.add_argument("--file", help="File path")
     parser.add_argument("--code", help="Code content")
     parser.add_argument("--project-root", default=".", help="Project root")
@@ -254,6 +255,7 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

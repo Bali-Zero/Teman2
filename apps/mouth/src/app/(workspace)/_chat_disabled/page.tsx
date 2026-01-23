@@ -183,11 +183,7 @@ export default function ZantaraChatPage() {
       {/* Conversations Panel (Desktop) */}
       <div className="hidden lg:flex flex-col w-64 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
         <div className="p-3 border-b border-[var(--border)]">
-          <Button
-            onClick={handleNewChat}
-            className="w-full justify-start gap-2"
-            variant="default"
-          >
+          <Button onClick={handleNewChat} className="w-full justify-start gap-2" variant="default">
             <Plus className="w-4 h-4" />
             Nuova Chat
           </Button>
@@ -348,7 +344,12 @@ export default function ZantaraChatPage() {
               <span className="text-sm text-[var(--foreground-secondary)]">
                 Descrivi l&apos;immagine da generare
               </span>
-              <Button variant="ghost" size="sm" onClick={() => setShowImagePrompt(false)} className="ml-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImagePrompt(false)}
+                className="ml-auto"
+              >
                 Annulla
               </Button>
             </div>
@@ -415,7 +416,7 @@ export default function ZantaraChatPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={showImagePrompt ? 'Descrivi l\'immagine...' : 'Scrivi messaggio...'}
+                placeholder={showImagePrompt ? "Descrivi l'immagine..." : 'Scrivi messaggio...'}
                 disabled={isChatLoading}
                 rows={1}
                 className="flex-1 border-0 bg-transparent focus-visible:ring-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-black placeholder:text-gray-500"

@@ -143,9 +143,9 @@ class EnhancedAnalyticsService {
 
   trackError(error: Error, context?: string) {
     this.performanceMetrics.errorCount += 1;
-    
+
     this.trackEvent('javascript_error', 'error', `${error.name}: ${error.message}`);
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.error('📊 Tracked Error:', error, context);
     }

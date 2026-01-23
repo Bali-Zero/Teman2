@@ -16,8 +16,6 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from collections import defaultdict
-
 
 def parse_log_line(line: str) -> dict | None:
     """Parse a log line and extract relevant information."""
@@ -60,9 +58,7 @@ def parse_log_line(line: str) -> dict | None:
     if re.search(lock_pattern, line):
         result["has_lock"] = True
 
-    return result if (
-        result["has_memory"] or result["has_timing"] or result["has_error"]
-    ) else None
+    return result if (result["has_memory"] or result["has_timing"] or result["has_error"]) else None
 
 
 def analyze_logs(log_file: Path) -> dict:
@@ -82,7 +78,7 @@ def analyze_logs(log_file: Path) -> dict:
         print(f"⚠️  Log file not found: {log_file}")
         return stats
 
-    with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+    with open(log_file, encoding="utf-8", errors="ignore") as f:
         for line in f:
             stats["total_lines"] += 1
             parsed = parse_log_line(line)
@@ -114,7 +110,7 @@ def print_summary(stats: dict):
     print("MEMORY ORCHESTRATOR TIMING & ERROR ANALYSIS")
     print("=" * 80)
 
-    print(f"\n📊 Statistics:")
+    print("\n📊 Statistics:")
     print(f"  Total lines analyzed: {stats['total_lines']}")
     print(f"  Memory-related lines: {stats['memory_lines']}")
     print(f"  Error lines: {stats['error_lines']}")
@@ -122,7 +118,7 @@ def print_summary(stats: dict):
     print(f"  Lock-related lines: {stats['lock_lines']}")
 
     if stats["timings"]:
-        print(f"\n⏱️  Timing Metrics:")
+        print("\n⏱️  Timing Metrics:")
         print(f"  Count: {len(stats['timings'])}")
         print(f"  Min: {min(stats['timings']):.2f}ms")
         print(f"  Max: {max(stats['timings']):.2f}ms")
@@ -192,7 +188,9 @@ def main():
                 print(f"❌ Failed to fetch logs: {result.stderr}")
                 return 1
         except FileNotFoundError:
-            print("❌ fly CLI not found. Install it from https://fly.io/docs/hands-on/install-flyctl/")
+            print(
+                "❌ fly CLI not found. Install it from https://fly.io/docs/hands-on/install-flyctl/"
+            )
             return 1
         except subprocess.TimeoutExpired:
             print("❌ Timeout fetching logs")

@@ -200,13 +200,8 @@ export function FloatingToc({ content }: { content: string }) {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <span className="text-sm font-medium text-white">
-                Table of Contents
-              </span>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white/60 hover:text-white"
-              >
+              <span className="text-sm font-medium text-white">Table of Contents</span>
+              <button onClick={() => setIsOpen(false)} className="text-white/60 hover:text-white">
                 Close
               </button>
             </div>

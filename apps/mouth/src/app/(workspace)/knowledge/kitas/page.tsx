@@ -64,7 +64,7 @@ function getDifficultyLabel(difficulty: string | undefined): string {
 function getCategoryColor(category: string): string {
   // Normalize category for matching
   const cat = category?.toLowerCase() || '';
-  
+
   // KITAS/KITAP = Intense Orange
   if (cat.includes('kitas') || cat.includes('limited stay')) {
     return 'from-orange-400/50 to-amber-400/50 border-orange-500/60';
@@ -72,7 +72,7 @@ function getCategoryColor(category: string): string {
   if (cat.includes('kitap') || cat.includes('permanent')) {
     return 'from-orange-500/50 to-amber-500/50 border-orange-600/60';
   }
-  
+
   // Visa types = Intense Blue/Cyan
   if (cat.includes('free')) {
     return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
@@ -121,12 +121,12 @@ function getSeriesFromCode(code: string): string {
 
 // Sort order for series
 const SERIES_ORDER: Record<string, number> = {
-  'A': 1,
-  'B': 2,
-  'C': 3,
-  'D': 4,
-  'E': 5,
-  'KITAP': 6,
+  A: 1,
+  B: 2,
+  C: 3,
+  D: 4,
+  E: 5,
+  KITAP: 6,
 };
 
 function getSeriesOrder(code: string): number {
@@ -138,13 +138,20 @@ function getSeriesOrder(code: string): number {
 // Get series display name
 function getSeriesDisplayName(series: string): string {
   switch (series) {
-    case 'A': return 'Series A - Visa Free';
-    case 'B': return 'Series B - Visa on Arrival';
-    case 'C': return 'Series C - Single Entry Visit';
-    case 'D': return 'Series D - Multiple Entry Visit';
-    case 'E': return 'Series E - KITAS (Temporary Stay)';
-    case 'KITAP': return 'KITAP - Permanent Stay';
-    default: return `Series ${series}`;
+    case 'A':
+      return 'Series A - Visa Free';
+    case 'B':
+      return 'Series B - Visa on Arrival';
+    case 'C':
+      return 'Series C - Single Entry Visit';
+    case 'D':
+      return 'Series D - Multiple Entry Visit';
+    case 'E':
+      return 'Series E - KITAS (Temporary Stay)';
+    case 'KITAP':
+      return 'KITAP - Permanent Stay';
+    default:
+      return `Series ${series}`;
   }
 }
 
@@ -165,9 +172,8 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
   const pdfUrl = visa.metadata?.pdf_url;
 
   // Check if has Bali Zero price (not "Contact for quote")
-  const hasBaliZeroPrice = visa.cost_visa &&
-    visa.cost_visa !== 'Contact for quote' &&
-    visa.cost_visa !== 'Contact';
+  const hasBaliZeroPrice =
+    visa.cost_visa && visa.cost_visa !== 'Contact for quote' && visa.cost_visa !== 'Contact';
 
   const handlePdfDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -226,7 +232,9 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
           <span className="text-sm font-black text-[var(--foreground)] tracking-tight">
             {visa.code}
           </span>
-          <span className={`px-1.5 py-0.5 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(visa.category)}`}>
+          <span
+            className={`px-1.5 py-0.5 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(visa.category)}`}
+          >
             {visa.category}
           </span>
         </div>
@@ -242,15 +250,23 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
             <Clock className="w-2.5 h-2.5 text-[var(--accent)]" />
             <span>{visa.duration || 'Varies'}</span>
           </div>
-          <div className={`flex items-center gap-0.5 ${hasBaliZeroPrice ? 'text-emerald-400 font-bold' : ''}`}>
-            <Wallet className={`w-2.5 h-2.5 ${hasBaliZeroPrice ? 'text-emerald-400' : 'text-emerald-400'}`} />
-            <span className={hasBaliZeroPrice ? 'text-[9px]' : ''}>{visa.cost_visa || 'Contact'}</span>
+          <div
+            className={`flex items-center gap-0.5 ${hasBaliZeroPrice ? 'text-emerald-400 font-bold' : ''}`}
+          >
+            <Wallet
+              className={`w-2.5 h-2.5 ${hasBaliZeroPrice ? 'text-emerald-400' : 'text-emerald-400'}`}
+            />
+            <span className={hasBaliZeroPrice ? 'text-[9px]' : ''}>
+              {visa.cost_visa || 'Contact'}
+            </span>
           </div>
         </div>
 
         {/* Difficulty Badge */}
         {difficulty && (
-          <span className={`inline-block px-1.5 py-0.5 text-[8px] font-medium rounded-full mb-1.5 ${getDifficultyColor(difficulty)}`}>
+          <span
+            className={`inline-block px-1.5 py-0.5 text-[8px] font-medium rounded-full mb-1.5 ${getDifficultyColor(difficulty)}`}
+          >
             {getDifficultyLabel(difficulty)}
           </span>
         )}
@@ -259,7 +275,9 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
         {visa.benefits.length > 0 && (
           <div className="flex items-start gap-1 mb-1.5">
             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-            <span className="text-[8px] text-[var(--foreground-secondary)] line-clamp-1">{visa.benefits[0]}</span>
+            <span className="text-[8px] text-[var(--foreground-secondary)] line-clamp-1">
+              {visa.benefits[0]}
+            </span>
           </div>
         )}
 
@@ -305,24 +323,29 @@ interface CategoryFilterProps {
 function CategoryFilter({ categories, selected, onSelect, counts }: CategoryFilterProps) {
   // Priority order for known categories
   const priorityOrder = [
-    'visa free/voa', 'voa', 'visa free', 
-    'visit visa', 'visit', 
+    'visa free/voa',
+    'voa',
+    'visa free',
+    'visit visa',
+    'visit',
     'multiple entry',
-    'kitas/limited stay', 'kitas', 
-    'kitap', 'permanent residence'
+    'kitas/limited stay',
+    'kitas',
+    'kitap',
+    'permanent residence',
   ];
 
   const sortedCategories = [...categories].sort((a, b) => {
-    const idxA = priorityOrder.findIndex(p => a.toLowerCase().includes(p));
-    const idxB = priorityOrder.findIndex(p => b.toLowerCase().includes(p));
-    
+    const idxA = priorityOrder.findIndex((p) => a.toLowerCase().includes(p));
+    const idxB = priorityOrder.findIndex((p) => b.toLowerCase().includes(p));
+
     // If both found in priority list, sort by index
     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
     // If only A found, A comes first
     if (idxA !== -1) return -1;
     // If only B found, B comes first
     if (idxB !== -1) return 1;
-    
+
     // Otherwise alphabetical
     return a.localeCompare(b);
   });
@@ -333,9 +356,10 @@ function CategoryFilter({ categories, selected, onSelect, counts }: CategoryFilt
         onClick={() => onSelect(null)}
         className={`
           px-4 py-2 rounded-full text-sm font-medium transition-all
-          ${selected === null
-            ? 'bg-[var(--accent)] text-white'
-            : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+          ${
+            selected === null
+              ? 'bg-[var(--accent)] text-white'
+              : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
           }
         `}
       >
@@ -347,9 +371,10 @@ function CategoryFilter({ categories, selected, onSelect, counts }: CategoryFilt
           onClick={() => onSelect(category)}
           className={`
             px-4 py-2 rounded-full text-sm font-medium transition-all
-            ${selected === category
-              ? 'bg-[var(--accent)] text-white'
-              : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+            ${
+              selected === category
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
             }
           `}
         >
@@ -408,22 +433,28 @@ export default function KitasVisaPage() {
   });
 
   // Group visas by series for section headers
-  const visasBySeries = sortedVisas.reduce((acc, visa) => {
-    const series = visa.code === 'KITAP' ? 'KITAP' : getSeriesFromCode(visa.code);
-    if (!acc[series]) acc[series] = [];
-    acc[series].push(visa);
-    return acc;
-  }, {} as Record<string, VisaType[]>);
+  const visasBySeries = sortedVisas.reduce(
+    (acc, visa) => {
+      const series = visa.code === 'KITAP' ? 'KITAP' : getSeriesFromCode(visa.code);
+      if (!acc[series]) acc[series] = [];
+      acc[series].push(visa);
+      return acc;
+    },
+    {} as Record<string, VisaType[]>
+  );
 
   // Get ordered series keys
   const orderedSeries = Object.keys(visasBySeries).sort((a, b) => {
     return (SERIES_ORDER[a] || 99) - (SERIES_ORDER[b] || 99);
   });
 
-  const categoryCounts = visas.reduce((acc, visa) => {
-    acc[visa.category] = (acc[visa.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCounts = visas.reduce(
+    (acc, visa) => {
+      acc[visa.category] = (acc[visa.category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const handleVisaClick = (visa: VisaType) => {
     router.push(`/knowledge/kitas/${visa.id}`);
@@ -448,8 +479,8 @@ export default function KitasVisaPage() {
           </button>
           <h1 className="text-3xl font-bold text-[var(--foreground)]">KITAS & Visa Guide</h1>
           <p className="text-[var(--foreground-muted)] mt-2 max-w-2xl">
-            Complete guide to Indonesian visas and permits. Professional service by Bali Zero -
-            your trusted immigration partner since 2015.
+            Complete guide to Indonesian visas and permits. Professional service by Bali Zero - your
+            trusted immigration partner since 2015.
           </p>
         </div>
 
@@ -527,7 +558,10 @@ export default function KitasVisaPage() {
       {isLoading && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="h-32 rounded-xl bg-[var(--background-secondary)] animate-pulse" />
+            <div
+              key={i}
+              className="h-32 rounded-xl bg-[var(--background-secondary)] animate-pulse"
+            />
           ))}
         </div>
       )}
@@ -550,12 +584,16 @@ export default function KitasVisaPage() {
             <div key={series} className="space-y-2">
               {/* Series Header */}
               <div className="flex items-center gap-2">
-                <div className={`
+                <div
+                  className={`
                   w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm
-                  ${series === 'E' || series === 'KITAP'
-                    ? 'bg-orange-500/40 text-orange-500 dark:text-orange-400 border border-orange-500/50'
-                    : 'bg-sky-500/40 text-sky-500 dark:text-sky-400 border border-sky-500/50'}
-                `}>
+                  ${
+                    series === 'E' || series === 'KITAP'
+                      ? 'bg-orange-500/40 text-orange-500 dark:text-orange-400 border border-orange-500/50'
+                      : 'bg-sky-500/40 text-sky-500 dark:text-sky-400 border border-sky-500/50'
+                  }
+                `}
+                >
                   {series}
                 </div>
                 <div>
@@ -563,7 +601,8 @@ export default function KitasVisaPage() {
                     {getSeriesDisplayName(series)}
                   </h2>
                   <p className="text-[10px] text-[var(--foreground-muted)]">
-                    {visasBySeries[series].length} visa type{visasBySeries[series].length > 1 ? 's' : ''}
+                    {visasBySeries[series].length} visa type
+                    {visasBySeries[series].length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -619,11 +658,17 @@ export default function KitasVisaPage() {
               key={service.name}
               className="p-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] hover:border-purple-500/50 transition-all"
             >
-              <h3 className="text-[10px] font-semibold text-[var(--foreground)] mb-0.5 line-clamp-1">{service.name}</h3>
-              <p className="text-[8px] text-[var(--foreground-muted)] mb-1.5 line-clamp-1">{service.description}</p>
+              <h3 className="text-[10px] font-semibold text-[var(--foreground)] mb-0.5 line-clamp-1">
+                {service.name}
+              </h3>
+              <p className="text-[8px] text-[var(--foreground-muted)] mb-1.5 line-clamp-1">
+                {service.description}
+              </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-purple-400">{service.price}</span>
-                <span className="text-[8px] text-[var(--foreground-muted)]">{service.processing}</span>
+                <span className="text-[8px] text-[var(--foreground-muted)]">
+                  {service.processing}
+                </span>
               </div>
             </div>
           ))}
@@ -638,8 +683,8 @@ export default function KitasVisaPage() {
               Need Help Choosing the Right Visa?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our immigration experts are here to guide you through the process.
-              Free consultation available.
+              Our immigration experts are here to guide you through the process. Free consultation
+              available.
             </p>
           </div>
           <Button
@@ -657,21 +702,96 @@ export default function KitasVisaPage() {
 
 // Auxiliary Immigration Services Data
 const AUXILIARY_SERVICES = [
-  { name: 'EPO', description: 'Exit Permit Only (one-way exit)', price: 'Rp 700K', processing: '1-3 days' },
+  {
+    name: 'EPO',
+    description: 'Exit Permit Only (one-way exit)',
+    price: 'Rp 700K',
+    processing: '1-3 days',
+  },
   { name: 'ERP', description: 'Exit Re-entry Permit', price: 'Rp 800K', processing: '1-3 days' },
-  { name: 'Mutation Passport', description: 'Update KITAS with new passport', price: 'Rp 500K', processing: '5-7 days' },
-  { name: 'Mutation Address', description: 'Update registered address', price: 'Rp 500K', processing: '5-7 days' },
-  { name: 'Cancel Full (RPTKA+IMTA+WL)', description: 'Complete work permit cancellation', price: 'Rp 3.5M', processing: '7-10 days' },
-  { name: 'Cancel RPTKA', description: 'Cancel RPTKA permit only', price: 'Rp 500K', processing: '3-5 days' },
-  { name: 'Cancel Wajib Lapor', description: 'Cancel employment report', price: 'Rp 500K', processing: '3-5 days' },
-  { name: 'Reset Molina', description: 'Reset immigration account', price: 'Rp 1M', processing: '1-3 days' },
-  { name: 'SKTT', description: 'Temporary residence certificate', price: 'Rp 1.5M', processing: '7-10 days' },
+  {
+    name: 'Mutation Passport',
+    description: 'Update KITAS with new passport',
+    price: 'Rp 500K',
+    processing: '5-7 days',
+  },
+  {
+    name: 'Mutation Address',
+    description: 'Update registered address',
+    price: 'Rp 500K',
+    processing: '5-7 days',
+  },
+  {
+    name: 'Cancel Full (RPTKA+IMTA+WL)',
+    description: 'Complete work permit cancellation',
+    price: 'Rp 3.5M',
+    processing: '7-10 days',
+  },
+  {
+    name: 'Cancel RPTKA',
+    description: 'Cancel RPTKA permit only',
+    price: 'Rp 500K',
+    processing: '3-5 days',
+  },
+  {
+    name: 'Cancel Wajib Lapor',
+    description: 'Cancel employment report',
+    price: 'Rp 500K',
+    processing: '3-5 days',
+  },
+  {
+    name: 'Reset Molina',
+    description: 'Reset immigration account',
+    price: 'Rp 1M',
+    processing: '1-3 days',
+  },
+  {
+    name: 'SKTT',
+    description: 'Temporary residence certificate',
+    price: 'Rp 1.5M',
+    processing: '7-10 days',
+  },
   { name: 'SKCK', description: 'Police clearance letter', price: 'Rp 2M', processing: '5-7 days' },
-  { name: 'Domicile Letter', description: 'Residence confirmation', price: 'Rp 800K', processing: '3-5 days' },
-  { name: 'Domicile + SKTT', description: 'Combined package', price: 'Rp 1.6M', processing: '7-10 days' },
-  { name: 'Born Report', description: 'Birth registration for foreigner child', price: 'Rp 4M', processing: '7-14 days' },
-  { name: 'Passport 5 Years', description: 'Indonesian passport renewal', price: 'Rp 1.3M', processing: '7-14 days' },
-  { name: 'Passport 10 Years', description: 'Indonesian passport (10yr)', price: 'Rp 2M', processing: '7-14 days' },
-  { name: 'E-Passport 5 Years', description: 'Biometric passport', price: 'Rp 2M', processing: '7-14 days' },
-  { name: 'E-Passport 10 Years', description: 'Biometric passport (10yr)', price: 'Rp 2.5M', processing: '7-14 days' },
+  {
+    name: 'Domicile Letter',
+    description: 'Residence confirmation',
+    price: 'Rp 800K',
+    processing: '3-5 days',
+  },
+  {
+    name: 'Domicile + SKTT',
+    description: 'Combined package',
+    price: 'Rp 1.6M',
+    processing: '7-10 days',
+  },
+  {
+    name: 'Born Report',
+    description: 'Birth registration for foreigner child',
+    price: 'Rp 4M',
+    processing: '7-14 days',
+  },
+  {
+    name: 'Passport 5 Years',
+    description: 'Indonesian passport renewal',
+    price: 'Rp 1.3M',
+    processing: '7-14 days',
+  },
+  {
+    name: 'Passport 10 Years',
+    description: 'Indonesian passport (10yr)',
+    price: 'Rp 2M',
+    processing: '7-14 days',
+  },
+  {
+    name: 'E-Passport 5 Years',
+    description: 'Biometric passport',
+    price: 'Rp 2M',
+    processing: '7-14 days',
+  },
+  {
+    name: 'E-Passport 10 Years',
+    description: 'Biometric passport (10yr)',
+    price: 'Rp 2.5M',
+    processing: '7-14 days',
+  },
 ];

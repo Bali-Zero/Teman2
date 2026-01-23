@@ -37,7 +37,7 @@ export default function NotificationsSettingsPage() {
     {
       id: 'case_updates',
       label: 'Case Updates',
-      description: 'Updates on cases you\'re assigned to',
+      description: "Updates on cases you're assigned to",
       email: true,
       push: true,
       inApp: true,
@@ -69,9 +69,7 @@ export default function NotificationsSettingsPage() {
   ]);
 
   const toggleSetting = (id: string, type: 'email' | 'push' | 'inApp') => {
-    setSettings(settings.map(s =>
-      s.id === id ? { ...s, [type]: !s[type] } : s
-    ));
+    setSettings(settings.map((s) => (s.id === id ? { ...s, [type]: !s[type] } : s)));
   };
 
   const handleSave = async () => {
@@ -177,7 +175,9 @@ export default function NotificationsSettingsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-sm text-[var(--foreground)]">Enable Quiet Hours</p>
-            <p className="text-xs text-[var(--foreground-muted)]">Pause notifications during specific hours</p>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Pause notifications during specific hours
+            </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" />

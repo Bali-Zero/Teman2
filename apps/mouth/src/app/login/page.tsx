@@ -85,15 +85,19 @@ export default function LoginPage() {
       }, REDIRECT_DELAY_MS);
     } catch (error) {
       // 4. Failure
-      logger.error('Login failed', {
-        component: 'LoginPage',
-        action: 'handleLogin',
-        metadata: { email },
-      }, error instanceof Error ? error : new Error(String(error)));
-      
+      logger.error(
+        'Login failed',
+        {
+          component: 'LoginPage',
+          action: 'handleLogin',
+          metadata: { email },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
+
       setLoginStage('denied');
       play('access_denied');
-      
+
       // Reset after delay
       setTimeout(() => {
         logger.debug('Resetting to idle state', {

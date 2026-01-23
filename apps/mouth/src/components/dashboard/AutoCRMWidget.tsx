@@ -2,7 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Users, FolderKanban, TrendingUp, CheckCircle2, XCircle, Activity, Plus, UserPlus, ArrowRight, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  Users,
+  FolderKanban,
+  TrendingUp,
+  CheckCircle2,
+  XCircle,
+  Activity,
+  Plus,
+  UserPlus,
+  ArrowRight,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import type { AutoCRMStats } from '@/lib/api/crm/crm.types';
@@ -78,7 +90,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
 
   if (isLoading && !stats) {
     return (
-      <div className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}>
+      <div
+        className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-purple-400" />
@@ -92,7 +106,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
 
   if (error && !stats) {
     return (
-      <div className={`rounded-lg border border-red-500/20 bg-red-500/10 p-6 backdrop-blur-sm ${className || ''}`}>
+      <div
+        className={`rounded-lg border border-red-500/20 bg-red-500/10 p-6 backdrop-blur-sm ${className || ''}`}
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-purple-400" />
@@ -106,12 +122,15 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
 
   if (!stats) return null;
 
-  const successRate = stats.total_extractions > 0 
-    ? Math.round((stats.successful_extractions / stats.total_extractions) * 100)
-    : 0;
+  const successRate =
+    stats.total_extractions > 0
+      ? Math.round((stats.successful_extractions / stats.total_extractions) * 100)
+      : 0;
 
   return (
-    <div className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}>
+    <div
+      className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-purple-400" />
@@ -228,7 +247,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <Activity className="w-4 h-4 text-cyan-500" />
             <span className="text-sm text-white/80">Success Rate</span>
           </div>
-          <span className={`text-sm font-medium ${successRate >= 80 ? 'text-green-400' : successRate >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+          <span
+            className={`text-sm font-medium ${successRate >= 80 ? 'text-green-400' : successRate >= 60 ? 'text-yellow-400' : 'text-red-400'}`}
+          >
             {successRate}%
           </span>
         </div>
@@ -284,7 +305,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
         <div className="pt-2 border-t border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-green-400" />
-            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">Last 24h</span>
+            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
+              Last 24h
+            </span>
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
@@ -309,7 +332,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
               <CheckCircle2 className="w-4 h-4 text-green-400" />
               <span className="text-sm text-white/80">Avg Confidence</span>
             </div>
-            <span className={`text-sm font-medium ${stats.extraction_confidence_avg >= 0.7 ? 'text-green-400' : stats.extraction_confidence_avg >= 0.5 ? 'text-yellow-400' : 'text-red-400'}`}>
+            <span
+              className={`text-sm font-medium ${stats.extraction_confidence_avg >= 0.7 ? 'text-green-400' : stats.extraction_confidence_avg >= 0.5 ? 'text-yellow-400' : 'text-red-400'}`}
+            >
               {Math.round(stats.extraction_confidence_avg * 100)}%
             </span>
           </div>

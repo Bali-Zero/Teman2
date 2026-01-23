@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Key, Copy, Eye, EyeOff, Plus, Trash2, ArrowLeft, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Key,
+  Copy,
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
@@ -58,7 +68,7 @@ export default function ApiKeysSettingsPage() {
 
   const deleteKey = (id: string) => {
     if (confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
-      setApiKeys(apiKeys.filter(k => k.id !== id));
+      setApiKeys(apiKeys.filter((k) => k.id !== id));
     }
   };
 
@@ -115,7 +125,8 @@ export default function ApiKeysSettingsPage() {
           <div>
             <h3 className="font-medium text-yellow-500">Keep your API keys secure</h3>
             <p className="text-sm text-yellow-500/80">
-              Never share your API keys or commit them to version control. Treat them like passwords.
+              Never share your API keys or commit them to version control. Treat them like
+              passwords.
             </p>
           </div>
         </div>
@@ -210,7 +221,9 @@ export default function ApiKeysSettingsPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Create New API Key</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+              Create New API Key
+            </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
@@ -228,9 +241,7 @@ export default function ApiKeysSettingsPage() {
                 <Button variant="ghost" onClick={() => setShowCreateModal(false)}>
                   Cancel
                 </Button>
-                <Button onClick={createNewKey}>
-                  Create Key
-                </Button>
+                <Button onClick={createNewKey}>Create Key</Button>
               </div>
             </div>
           </div>

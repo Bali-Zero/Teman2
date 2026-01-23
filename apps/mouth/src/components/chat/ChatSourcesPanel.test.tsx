@@ -111,9 +111,7 @@ describe('ChatSourcesPanel', () => {
     });
 
     it('should not render link when no url', () => {
-      const sourcesWithoutUrl: Source[] = [
-        { id: 1, title: 'No URL Source', content: 'Content' },
-      ];
+      const sourcesWithoutUrl: Source[] = [{ id: 1, title: 'No URL Source', content: 'Content' }];
       render(<ChatSourcesPanel sources={sourcesWithoutUrl} isOpen={true} onClose={vi.fn()} />);
 
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
@@ -122,18 +120,14 @@ describe('ChatSourcesPanel', () => {
 
   describe('Fallback handling', () => {
     it('should show Untitled Source when no title', () => {
-      const sourcesWithoutTitle: Source[] = [
-        { id: 1, content: 'Some content' },
-      ];
+      const sourcesWithoutTitle: Source[] = [{ id: 1, content: 'Some content' }];
       render(<ChatSourcesPanel sources={sourcesWithoutTitle} isOpen={true} onClose={vi.fn()} />);
 
       expect(screen.getByText('Untitled Source')).toBeInTheDocument();
     });
 
     it('should handle undefined score gracefully', () => {
-      const sourcesWithoutScore: Source[] = [
-        { id: 1, title: 'Test', content: 'Content' },
-      ];
+      const sourcesWithoutScore: Source[] = [{ id: 1, title: 'Test', content: 'Content' }];
       render(<ChatSourcesPanel sources={sourcesWithoutScore} isOpen={true} onClose={vi.fn()} />);
 
       expect(screen.queryByText(/Relevance:/)).not.toBeInTheDocument();

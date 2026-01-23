@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   ExternalLink,
   BookOpen,
-  MessageCircle
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -126,7 +126,9 @@ export function LegalDecoder({
   const statusStyle = statusStyles[status];
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 to-transparent">
         <div className="flex items-start justify-between gap-4">
@@ -139,7 +141,9 @@ export function LegalDecoder({
                 <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/60 font-mono">
                   {documentType}
                 </span>
-                <span className={cn('text-xs px-2 py-0.5 rounded', statusStyle.bg, statusStyle.text)}>
+                <span
+                  className={cn('text-xs px-2 py-0.5 rounded', statusStyle.bg, statusStyle.text)}
+                >
                   {statusStyle.label}
                 </span>
               </div>
@@ -209,10 +213,7 @@ export function LegalDecoder({
                       {section.reference}
                     </span>
                   )}
-                  <span className={cn(
-                    'font-medium',
-                    isExpanded ? sevStyle.text : 'text-white'
-                  )}>
+                  <span className={cn('font-medium', isExpanded ? sevStyle.text : 'text-white')}>
                     {section.explanation.slice(0, 60)}...
                   </span>
                 </div>
@@ -262,7 +263,9 @@ export function LegalDecoder({
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <MessageCircle className="w-4 h-4 text-[#2251ff]" />
-                          <span className="text-sm font-medium text-[#2251ff]">In Plain English</span>
+                          <span className="text-sm font-medium text-[#2251ff]">
+                            In Plain English
+                          </span>
                         </div>
                         <p className="text-white/80 leading-relaxed">{section.explanation}</p>
                       </div>
@@ -286,7 +289,9 @@ export function LegalDecoder({
                       {section.impact && (
                         <div className={cn('p-3 rounded-lg', sevStyle.bg)}>
                           <div className="flex items-start gap-2">
-                            <AlertTriangle className={cn('w-4 h-4 flex-shrink-0 mt-0.5', sevStyle.text)} />
+                            <AlertTriangle
+                              className={cn('w-4 h-4 flex-shrink-0 mt-0.5', sevStyle.text)}
+                            />
                             <div>
                               <p className={cn('text-sm font-medium mb-1', sevStyle.text)}>
                                 Impact on Your Business

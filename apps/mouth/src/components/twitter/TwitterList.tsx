@@ -1,14 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  MessageCircle,
-  Search,
-  Filter,
-  Check,
-  Twitter,
-  User,
-} from 'lucide-react';
+import { MessageCircle, Search, Filter, Check, Twitter, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TwitterConversation } from '@/lib/api/twitter/twitter.types';
 
@@ -110,7 +103,10 @@ export function TwitterList({
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse"
+              />
             ))}
           </div>
         ) : filteredConversations.length === 0 ? (

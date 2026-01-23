@@ -12,11 +12,36 @@ interface PermissionDialogProps {
   onClose: () => void;
 }
 
-const ROLE_OPTIONS: { value: PermissionRole; label: string; icon: React.ReactNode; description: string }[] = [
-  { value: 'reader', label: 'Visualizzatore', icon: <Eye className="h-4 w-4" />, description: 'Può solo visualizzare' },
-  { value: 'commenter', label: 'Commentatore', icon: <MessageSquare className="h-4 w-4" />, description: 'Può visualizzare e commentare' },
-  { value: 'writer', label: 'Editor', icon: <Pencil className="h-4 w-4" />, description: 'Può modificare' },
-  { value: 'owner', label: 'Proprietario', icon: <Shield className="h-4 w-4" />, description: 'Controllo completo' },
+const ROLE_OPTIONS: {
+  value: PermissionRole;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}[] = [
+  {
+    value: 'reader',
+    label: 'Visualizzatore',
+    icon: <Eye className="h-4 w-4" />,
+    description: 'Può solo visualizzare',
+  },
+  {
+    value: 'commenter',
+    label: 'Commentatore',
+    icon: <MessageSquare className="h-4 w-4" />,
+    description: 'Può visualizzare e commentare',
+  },
+  {
+    value: 'writer',
+    label: 'Editor',
+    icon: <Pencil className="h-4 w-4" />,
+    description: 'Può modificare',
+  },
+  {
+    value: 'owner',
+    label: 'Proprietario',
+    icon: <Shield className="h-4 w-4" />,
+    description: 'Controllo completo',
+  },
 ];
 
 export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProps) {
@@ -75,7 +100,7 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
       setNewEmail('');
       setNewRole('reader');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore nell\'aggiunta del permesso');
+      setError(err instanceof Error ? err.message : "Errore nell'aggiunta del permesso");
     } finally {
       setAdding(false);
     }
@@ -89,9 +114,9 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
 
     try {
       const updated = await api.drive.updatePermission(file.id, permissionId, { role: newRole });
-      setPermissions(permissions.map(p => p.id === permissionId ? updated : p));
+      setPermissions(permissions.map((p) => (p.id === permissionId ? updated : p)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore nell\'aggiornamento del ruolo');
+      setError(err instanceof Error ? err.message : "Errore nell'aggiornamento del ruolo");
     } finally {
       setEditingId(null);
     }
@@ -106,7 +131,7 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
 
     try {
       await api.drive.removePermission(file.id, permissionId);
-      setPermissions(permissions.filter(p => p.id !== permissionId));
+      setPermissions(permissions.filter((p) => p.id !== permissionId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore nella rimozione del permesso');
     } finally {
@@ -115,7 +140,7 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
   };
 
   const getRoleDisplay = (role: PermissionRole) => {
-    const option = ROLE_OPTIONS.find(r => r.value === role);
+    const option = ROLE_OPTIONS.find((r) => r.value === role);
     return option || ROLE_OPTIONS[0];
   };
 
@@ -177,14 +202,18 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
                 className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 disabled={adding}
               >
-                {ROLE_OPTIONS.filter(r => r.value !== 'owner').map((option) => (
+                {ROLE_OPTIONS.filter((r) => r.value !== 'owner').map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
               </select>
               <Button type="submit" disabled={adding || !newEmail.trim()}>
-                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {adding ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <label className="mt-2 flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
@@ -201,9 +230,7 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
 
           {/* Current Permissions */}
           <div>
-            <h3 className="mb-3 text-sm font-medium text-[var(--foreground)]">
-              Chi ha accesso
-            </h3>
+            <h3 className="mb-3 text-sm font-medium text-[var(--foreground)]">Chi ha accesso</h3>
 
             {loading ? (
               <div className="flex items-center justify-center py-8">
@@ -234,9 +261,7 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
                           <p className="font-medium text-[var(--foreground)]">
                             {perm.name || perm.email}
                           </p>
-                          <p className="text-xs text-[var(--foreground-muted)]">
-                            {perm.email}
-                          </p>
+                          <p className="text-xs text-[var(--foreground-muted)]">{perm.email}</p>
                         </div>
                       </div>
 
@@ -251,10 +276,12 @@ export function PermissionDialog({ isOpen, file, onClose }: PermissionDialogProp
                         ) : (
                           <select
                             value={perm.role}
-                            onChange={(e) => handleUpdateRole(perm.id, e.target.value as PermissionRole)}
+                            onChange={(e) =>
+                              handleUpdateRole(perm.id, e.target.value as PermissionRole)
+                            }
                             className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                           >
-                            {ROLE_OPTIONS.filter(r => r.value !== 'owner').map((option) => (
+                            {ROLE_OPTIONS.filter((r) => r.value !== 'owner').map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>

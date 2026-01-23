@@ -10,11 +10,7 @@ export interface ChatSourcesPanelProps {
   onClose: () => void;
 }
 
-export function ChatSourcesPanel({
-  sources,
-  isOpen,
-  onClose,
-}: ChatSourcesPanelProps) {
+export function ChatSourcesPanel({ sources, isOpen, onClose }: ChatSourcesPanelProps) {
   if (!isOpen || sources.length === 0) {
     return null;
   }

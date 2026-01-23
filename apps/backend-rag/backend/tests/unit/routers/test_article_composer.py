@@ -29,7 +29,6 @@ from backend.app.routers.article_composer import (
     router,
 )
 
-
 # --- FIXTURES ---
 
 
@@ -137,7 +136,9 @@ def mock_anthropic_response():
 
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
-def test_compose_article_success(mock_anthropic_class, test_client, sample_compose_request, mock_anthropic_response):
+def test_compose_article_success(
+    mock_anthropic_class, test_client, sample_compose_request, mock_anthropic_response
+):
     """Test successful article composition with Claude API"""
     # Setup mock
     mock_client = MagicMock()
@@ -243,9 +244,19 @@ def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_
         # Build minimal valid JSON
         minimal_json = {
             "headline": "Test",
-            "tldr": {"should_worry": "No", "what": "Test", "who": "Test", "when": "Test", "risk_level": "Low"},
+            "tldr": {
+                "should_worry": "No",
+                "what": "Test",
+                "who": "Test",
+                "when": "Test",
+                "risk_level": "Low",
+            },
             "facts": "Test facts",
-            "bali_zero_take": {"hidden_insight": "Test", "our_analysis": "Test", "our_advice": "Test"},
+            "bali_zero_take": {
+                "hidden_insight": "Test",
+                "our_analysis": "Test",
+                "our_advice": "Test",
+            },
             "next_steps": {"expat": [], "investor": []},
             "category": "business",
             "priority": "low",
@@ -267,7 +278,9 @@ def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_
         mock_client.messages.create.return_value = mock_response
         mock_anthropic_class.return_value = mock_client
 
-        response = test_client.post("/api/articles/compose", json=sample_compose_request.model_dump())
+        response = test_client.post(
+            "/api/articles/compose", json=sample_compose_request.model_dump()
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -285,7 +298,9 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
 
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
-def test_compose_article_json_parse_error(mock_anthropic_class, test_client, sample_compose_request):
+def test_compose_article_json_parse_error(
+    mock_anthropic_class, test_client, sample_compose_request
+):
     """Test compose handles JSON parse errors"""
     mock_response = MagicMock()
     mock_response.content = [MagicMock(text="Invalid JSON {{{")]
@@ -353,7 +368,9 @@ def test_compose_status_not_configured(test_client):
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
-async def test_publish_article_with_cover_image(mock_publisher, test_client, sample_enriched_article):
+async def test_publish_article_with_cover_image(
+    mock_publisher, test_client, sample_enriched_article
+):
     """Test publishing article with cover image (base64)"""
     # Setup mock
     mock_publisher.is_configured = True
@@ -389,7 +406,9 @@ async def test_publish_article_with_cover_image(mock_publisher, test_client, sam
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
-async def test_publish_article_without_cover_image(mock_publisher, test_client, sample_enriched_article):
+async def test_publish_article_without_cover_image(
+    mock_publisher, test_client, sample_enriched_article
+):
     """Test publishing article without cover image"""
     # Setup mock
     mock_publisher.is_configured = True
@@ -412,7 +431,9 @@ async def test_publish_article_without_cover_image(mock_publisher, test_client, 
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
-def test_publish_article_github_not_configured(mock_publisher, test_client, sample_enriched_article):
+def test_publish_article_github_not_configured(
+    mock_publisher, test_client, sample_enriched_article
+):
     """Test publish fails when GitHub not configured"""
     mock_publisher.is_configured = False
 

@@ -25,11 +25,7 @@ const FREQUENCY_OPTIONS: { value: 'daily' | 'weekly' | 'monthly'; label: string 
 ];
 
 // Inline form variant (default)
-function InlineForm({
-  defaultCategories = [],
-  onSuccess,
-  className,
-}: NewsletterFormProps) {
+function InlineForm({ defaultCategories = [], onSuccess, className }: NewsletterFormProps) {
   const [email, setEmail] = React.useState('');
   const [status, setStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -154,11 +150,7 @@ function InlineForm({
 }
 
 // Sidebar variant (with category selection)
-function SidebarForm({
-  defaultCategories = [],
-  onSuccess,
-  className,
-}: NewsletterFormProps) {
+function SidebarForm({ defaultCategories = [], onSuccess, className }: NewsletterFormProps) {
   const [email, setEmail] = React.useState('');
   const [name, setName] = React.useState('');
   const [categories, setCategories] = React.useState<ArticleCategory[]>(
@@ -170,9 +162,7 @@ function SidebarForm({
   const [errorMessage, setErrorMessage] = React.useState('');
 
   const toggleCategory = (cat: ArticleCategory) => {
-    setCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    );
+    setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -231,12 +221,8 @@ function SidebarForm({
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
             <Check className="w-8 h-8 text-emerald-400" />
           </div>
-          <h3 className="font-serif text-xl font-semibold text-white mb-2">
-            Welcome Aboard!
-          </h3>
-          <p className="text-white/60">
-            Check your inbox to confirm your subscription.
-          </p>
+          <h3 className="font-serif text-xl font-semibold text-white mb-2">Welcome Aboard!</h3>
+          <p className="text-white/60">Check your inbox to confirm your subscription.</p>
         </div>
       </motion.div>
     );
@@ -312,10 +298,7 @@ function SidebarForm({
                 : `${categories.length} topic${categories.length > 1 ? 's' : ''} selected`}
             </span>
             <ChevronDown
-              className={cn(
-                'w-4 h-4 transition-transform',
-                showCategories && 'rotate-180'
-              )}
+              className={cn('w-4 h-4 transition-transform', showCategories && 'rotate-180')}
             />
           </button>
 
@@ -348,9 +331,7 @@ function SidebarForm({
                             : 'border-white/20'
                         )}
                       >
-                        {categories.includes(cat.value) && (
-                          <Check className="w-3 h-3 text-white" />
-                        )}
+                        {categories.includes(cat.value) && <Check className="w-3 h-3 text-white" />}
                       </div>
                       {cat.label}
                     </button>
@@ -417,10 +398,7 @@ function SidebarForm({
 }
 
 // Main component with variant support
-export function NewsletterForm({
-  variant = 'inline',
-  ...props
-}: NewsletterFormProps) {
+export function NewsletterForm({ variant = 'inline', ...props }: NewsletterFormProps) {
   if (variant === 'sidebar' || variant === 'modal') {
     return <SidebarForm {...props} />;
   }

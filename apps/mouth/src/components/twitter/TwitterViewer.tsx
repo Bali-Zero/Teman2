@@ -84,14 +84,17 @@ export function TwitterViewer({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const groupedMessages = messages.reduce((groups, message) => {
-    const date = formatDate(message.timestamp);
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(message);
-    return groups;
-  }, {} as Record<string, TwitterMessage[]>);
+  const groupedMessages = messages.reduce(
+    (groups, message) => {
+      const date = formatDate(message.timestamp);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+      return groups;
+    },
+    {} as Record<string, TwitterMessage[]>
+  );
 
   if (!twitterUserId) {
     return (
@@ -167,10 +170,7 @@ export function TwitterViewer({
                 return (
                   <div
                     key={message.id}
-                    className={cn(
-                      'flex mb-2',
-                      isOutbound ? 'justify-end' : 'justify-start'
-                    )}
+                    className={cn('flex mb-2', isOutbound ? 'justify-end' : 'justify-start')}
                   >
                     <div
                       className={cn(
@@ -202,9 +202,18 @@ export function TwitterViewer({
                           View Tweet <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
-                      <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {message.message_text}
+                      </p>
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        <span className={cn('text-xs', isOutbound ? 'text-black/70 dark:text-white/70' : 'text-[var(--foreground-muted)]')}>
+                        <span
+                          className={cn(
+                            'text-xs',
+                            isOutbound
+                              ? 'text-black/70 dark:text-white/70'
+                              : 'text-[var(--foreground-muted)]'
+                          )}
+                        >
                           {formatTime(message.timestamp)}
                         </span>
                         {isOutbound && (

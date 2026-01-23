@@ -93,7 +93,9 @@ describe('NewsRoomPage', () => {
       expect(screen.getByText('Breaking: New Immigration Policy Announced')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Visa Requirements Updated for Business Travelers')).toBeInTheDocument();
+    expect(
+      screen.getByText('Visa Requirements Updated for Business Travelers')
+    ).toBeInTheDocument();
     expect(screen.getByText('Indonesia Opens New Immigration Office in Bali')).toBeInTheDocument();
     expect(intelligenceApi.getPendingItems).toHaveBeenCalledWith('news');
   });
@@ -110,7 +112,9 @@ describe('NewsRoomPage', () => {
       expect(screen.getByText('No Drafts Pending')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/The intelligence scraper hasn't flagged any new items/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The intelligence scraper hasn't flagged any new items/i)
+    ).toBeInTheDocument();
   });
 
   it('should display source badges correctly', async () => {
@@ -134,14 +138,16 @@ describe('NewsRoomPage', () => {
 
   it('should not display CRITICAL badge for non-critical items', async () => {
     vi.mocked(intelligenceApi.getPendingItems).mockResolvedValue({
-      items: mockNewsItems.filter(item => !item.is_critical),
+      items: mockNewsItems.filter((item) => !item.is_critical),
       count: 2,
     });
 
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Visa Requirements Updated for Business Travelers')).toBeInTheDocument();
+      expect(
+        screen.getByText('Visa Requirements Updated for Business Travelers')
+      ).toBeInTheDocument();
     });
 
     expect(screen.queryByText('CRITICAL')).not.toBeInTheDocument();
@@ -344,7 +350,9 @@ describe('NewsRoomPage', () => {
       render(<NewsRoomPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Indonesia Opens New Immigration Office in Bali')).toBeInTheDocument();
+        expect(
+          screen.getByText('Indonesia Opens New Immigration Office in Bali')
+        ).toBeInTheDocument();
       });
 
       // Select items using checkboxes
@@ -358,8 +366,9 @@ describe('NewsRoomPage', () => {
       });
 
       // Find bulk publish button (should appear with count)
-      const bulkPublishButton = screen.queryByRole('button', { name: /Publish.*\(2\)/i }) ||
-                                screen.queryByText(/Publish All/i);
+      const bulkPublishButton =
+        screen.queryByRole('button', { name: /Publish.*\(2\)/i }) ||
+        screen.queryByText(/Publish All/i);
 
       if (bulkPublishButton) {
         await userEvent.click(bulkPublishButton);

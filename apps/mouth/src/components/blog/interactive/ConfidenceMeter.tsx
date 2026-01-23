@@ -90,11 +90,13 @@ export function ConfidenceMeter({
   const isCompact = variant === 'compact';
 
   return (
-    <div className={cn(
-      'rounded-xl border border-white/10 overflow-hidden',
-      isCompact ? 'bg-white/5 p-3' : 'bg-black/40 p-4',
-      className
-    )}>
+    <div
+      className={cn(
+        'rounded-xl border border-white/10 overflow-hidden',
+        isCompact ? 'bg-white/5 p-3' : 'bg-black/40 p-4',
+        className
+      )}
+    >
       {/* Header */}
       {!isCompact && (
         <div className="flex items-center gap-2 mb-4">
@@ -115,28 +117,29 @@ export function ConfidenceMeter({
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   {!isCompact && <Icon className={cn('w-3.5 h-3.5', colors.text)} />}
-                  <span className={cn(
-                    'text-white/70',
-                    isCompact ? 'text-xs' : 'text-sm'
-                  )}>
+                  <span className={cn('text-white/70', isCompact ? 'text-xs' : 'text-sm')}>
                     {item.label}
                   </span>
                 </div>
-                <span className={cn(
-                  'font-mono font-medium',
-                  colors.text,
-                  isCompact ? 'text-xs' : 'text-sm'
-                )}>
+                <span
+                  className={cn(
+                    'font-mono font-medium',
+                    colors.text,
+                    isCompact ? 'text-xs' : 'text-sm'
+                  )}
+                >
                   {item.value}%
                 </span>
               </div>
 
               {/* Progress bar */}
-              <div className={cn(
-                'rounded-full overflow-hidden',
-                colors.bg,
-                isCompact ? 'h-1.5' : 'h-2'
-              )}>
+              <div
+                className={cn(
+                  'rounded-full overflow-hidden',
+                  colors.bg,
+                  isCompact ? 'h-1.5' : 'h-2'
+                )}
+              >
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${item.value}%` }}

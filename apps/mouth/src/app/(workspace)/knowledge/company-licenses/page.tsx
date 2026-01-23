@@ -11,7 +11,8 @@ import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 export default function CompanyLicensesPage() {
   const router = useRouter();
   const pageLoadStartTime = useRef<number>(performance.now());
-  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } = useEnhancedAnalytics();
+  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } =
+    useEnhancedAnalytics();
 
   useEffect(() => {
     const loadTime = performance.now() - pageLoadStartTime.current;
@@ -24,7 +25,7 @@ export default function CompanyLicensesPage() {
       action: 'mount',
       metadata: { loadTime: Math.round(loadTime) },
     });
-    
+
     trackPageView('/knowledge/company-licenses', 'Company & Licenses');
     trackPerformance({ loadTime });
     trackEvent('knowledge_company_licenses_view', 'navigation', 'company_licenses');
@@ -90,8 +91,8 @@ export default function CompanyLicensesPage() {
             </div>
           </div>
           <p className="text-[var(--foreground-muted)]">
-            Comprehensive KBLI business classification blueprints based on PP 28/2025. 
-            Download guides for starting your business in Indonesia.
+            Comprehensive KBLI business classification blueprints based on PP 28/2025. Download
+            guides for starting your business in Indonesia.
           </p>
           <div className="mt-4 flex items-center gap-2 text-[var(--accent)] group-hover:gap-3 transition-all">
             <span className="text-sm font-medium">View KBLI Blueprints</span>
@@ -135,4 +136,3 @@ export default function CompanyLicensesPage() {
     </div>
   );
 }
-
