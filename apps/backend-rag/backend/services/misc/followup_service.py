@@ -300,7 +300,7 @@ class FollowupService:
     ) -> list[str]:
         """
         Generate dynamic, contextually relevant follow-up questions using AI
-        
+
         Args:
             query: User's original question
             response: AI's response (Optional, if None, generates based on prediction)
@@ -403,10 +403,12 @@ class FollowupService:
         self, query: str, response: str | None, conversation_context: str | None, language: str
     ) -> str:
         """Build prompt for AI to generate follow-up questions in the user's language"""
-        
+
         # LOGIC: If response is None, we are in SPECULATIVE mode (generating while reasoning)
         speculative_mode = response is None
-        response_text = f'AI responded: "{response[:300]}..."' if response else "AI response: (In progress...)"
+        response_text = (
+            f'AI responded: "{response[:300]}..."' if response else "AI response: (In progress...)"
+        )
 
         # CRITICAL: Generate follow-ups in the SAME language as the user's query
         # Use the detected language parameter explicitly in the prompt

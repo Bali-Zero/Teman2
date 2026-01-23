@@ -1,14 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  MessageCircle,
-  Search,
-  Filter,
-  Check,
-  Send,
-  User,
-} from 'lucide-react';
+import { MessageCircle, Search, Filter, Check, Send, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TelegramConversation } from '@/lib/api/telegram/telegram.types';
 
@@ -116,7 +109,10 @@ export function TelegramList({
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse"
+              />
             ))}
           </div>
         ) : filteredConversations.length === 0 ? (
@@ -172,7 +168,9 @@ export function TelegramList({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-sm font-semibold text-[var(--foreground)] truncate">
-                        {conv.client_name || conv.username || `Chat ${String(conv.chat_id).slice(-4)}`}
+                        {conv.client_name ||
+                          conv.username ||
+                          `Chat ${String(conv.chat_id).slice(-4)}`}
                       </h3>
                       <span className="text-xs text-[var(--foreground-muted)] flex-shrink-0 ml-2">
                         {formatTime(conv.last_message_date)}

@@ -66,7 +66,8 @@ export const StatsCard = React.memo(function StatsCard({
       className={cn(
         'p-5 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]',
         'transition-all duration-200',
-        href && 'hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 cursor-pointer',
+        href &&
+          'hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 cursor-pointer',
         accent?.border
       )}
     >
@@ -95,10 +96,8 @@ export const StatsCard = React.memo(function StatsCard({
 
       <p className="text-sm text-[var(--foreground-muted)] mb-1">{title}</p>
       <p className={cn('text-2xl font-bold', styles.value)}>{value}</p>
-      
-      {subtitle && (
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">{subtitle}</p>
-      )}
+
+      {subtitle && <p className="text-xs text-[var(--foreground-muted)] mt-1">{subtitle}</p>}
     </div>
   );
 

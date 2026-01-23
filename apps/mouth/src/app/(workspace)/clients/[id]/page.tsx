@@ -1227,7 +1227,7 @@ function PassportCard({
 
     setIsDeleting(true);
     try {
-      await api.delete(`/api/crm/documents/${passportDoc.id}`);
+      await api.request(`/api/crm/documents/${passportDoc.id}`, { method: 'DELETE' });
       toast.success('Passport deleted');
       window.location.reload();
     } catch (err) {
@@ -1484,7 +1484,7 @@ function ActualVisaCard({
 
     setIsDeleting(true);
     try {
-      await api.delete(`/api/crm/documents/${latestVisa.id}`);
+      await api.request(`/api/crm/documents/${latestVisa.id}`, { method: 'DELETE' });
       toast.success('Visa deleted');
       window.location.reload();
     } catch (err) {
@@ -1593,7 +1593,9 @@ function ActualVisaCard({
 
         {/* Caption */}
         <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
-          {latestVisa?.google_drive_file_url ? 'Visa document' : 'Upload visa (JPG, PNG, PDF - max 10MB)'}
+          {latestVisa?.google_drive_file_url
+            ? 'Visa document'
+            : 'Upload visa (JPG, PNG, PDF - max 10MB)'}
         </p>
       </div>
     </div>
@@ -2748,7 +2750,12 @@ function AddDocumentModal({
           <label className="block text-sm font-medium mb-1.5">Category</label>
           <select
             value={formData.document_category}
-            onChange={(e) => setFormData({ ...formData, document_category: e.target.value as DocumentCategoryType })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                document_category: e.target.value as DocumentCategoryType,
+              })
+            }
             className={inputClass}
           >
             <option value="immigration">Immigration</option>

@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useMemo } from "react";
-import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState, useMemo } from 'react';
+import { intelligenceApi, StagingItem } from '@/lib/api/intelligence.api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { logger } from "@/lib/logger";
+} from '@/components/ui/select';
+import { useToast } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
 import {
   Loader2,
   Check,
@@ -29,22 +29,22 @@ import {
   Search,
   CheckSquare,
   Square,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-type FilterType = "all" | "NEW" | "UPDATED";
-type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
+type FilterType = 'all' | 'NEW' | 'UPDATED';
+type SortType = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc';
 
 export default function VisaOraclePage() {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [previewContent, setPreviewContent] = useState<string>("");
+  const [previewContent, setPreviewContent] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<FilterType>("all");
-  const [sortType, setSortType] = useState<SortType>("date-desc");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [sortType, setSortType] = useState<SortType>('date-desc');
+  const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
   // Filtered and sorted items
@@ -63,20 +63,20 @@ export default function VisaOraclePage() {
     }
 
     // Apply type filter
-    if (filterType !== "all") {
+    if (filterType !== 'all') {
       filtered = filtered.filter((item) => item.detection_type === filterType);
     }
 
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       switch (sortType) {
-        case "date-desc":
+        case 'date-desc':
           return new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime();
-        case "date-asc":
+        case 'date-asc':
           return new Date(a.detected_at).getTime() - new Date(b.detected_at).getTime();
-        case "title-asc":
+        case 'title-asc':
           return a.title.localeCompare(b.title);
-        case "title-desc":
+        case 'title-desc':
           return b.title.localeCompare(a.title);
         default:
           return 0;
@@ -99,7 +99,7 @@ export default function VisaOraclePage() {
     logger.info('Loading visa items', { component: 'VisaOraclePage', action: 'load_items' });
     setLoading(true);
     try {
-      const res = await intelligenceApi.getPendingItems("visa");
+      const res = await intelligenceApi.getPendingItems('visa');
       setItems(res.items);
       logger.info(`Loaded ${res.count} visa items`, {
         component: 'VisaOraclePage',
@@ -107,18 +107,22 @@ export default function VisaOraclePage() {
         metadata: { count: res.count },
       });
     } catch (error) {
-      logger.error('Failed to load visa items', { component: 'VisaOraclePage', action: 'load_items_error' }, error as Error);
-      toast.error("Failed to load items", "Could not fetch pending visa updates.");
+      logger.error(
+        'Failed to load visa items',
+        { component: 'VisaOraclePage', action: 'load_items_error' },
+        error as Error
+      );
+      toast.error('Failed to load items', 'Could not fetch pending visa updates.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePreview = async (id: string, type: "visa" | "news") => {
+  const handlePreview = async (id: string, type: 'visa' | 'news') => {
     if (previewId === id) {
       logger.userAction('close_preview', type, id, { component: 'VisaOraclePage' });
       setPreviewId(null);
-      setPreviewContent("");
+      setPreviewContent('');
       return;
     }
 
@@ -127,7 +131,7 @@ export default function VisaOraclePage() {
     try {
       const item = await intelligenceApi.getPreview(type, id);
       setPreviewId(id);
-      setPreviewContent(item.content || "No content available");
+      setPreviewContent(item.content || 'No content available');
       logger.info(`Preview loaded for ${id}`, {
         component: 'VisaOraclePage',
         action: 'preview_success',
@@ -135,20 +139,24 @@ export default function VisaOraclePage() {
         itemId: id,
       });
     } catch (error) {
-      logger.error(`Preview failed for ${id}`, {
-        component: 'VisaOraclePage',
-        action: 'preview_error',
-        itemType: type,
-        itemId: id,
-      }, error as Error);
-      toast.error("Preview failed", "Could not load content");
+      logger.error(
+        `Preview failed for ${id}`,
+        {
+          component: 'VisaOraclePage',
+          action: 'preview_error',
+          itemType: type,
+          itemId: id,
+        },
+        error as Error
+      );
+      toast.error('Preview failed', 'Could not load content');
     }
   };
 
   const handleApprove = async (id: string) => {
     logger.userAction('approve_confirm_prompt', 'visa', id, { component: 'VisaOraclePage' });
 
-    if (!confirm("This will ingest the content into the Knowledge Base. Continue?")) {
+    if (!confirm('This will ingest the content into the Knowledge Base. Continue?')) {
       logger.info('Approval cancelled by user', {
         component: 'VisaOraclePage',
         action: 'approve_cancelled',
@@ -167,15 +175,15 @@ export default function VisaOraclePage() {
 
     setProcessing(id);
     try {
-      await intelligenceApi.approveItem("visa", id);
+      await intelligenceApi.approveItem('visa', id);
       toast.success(
-        "Visa approved",
-        "Item has been ingested into visa_oracle collection successfully."
+        'Visa approved',
+        'Item has been ingested into visa_oracle collection successfully.'
       );
       setItems((prev) => prev.filter((i) => i.id !== id));
       if (previewId === id) {
         setPreviewId(null);
-        setPreviewContent("");
+        setPreviewContent('');
       }
       logger.info('Approval completed successfully', {
         component: 'VisaOraclePage',
@@ -184,13 +192,17 @@ export default function VisaOraclePage() {
         itemId: id,
       });
     } catch (error) {
-      logger.error('Approval failed', {
-        component: 'VisaOraclePage',
-        action: 'approve_error',
-        itemType: 'visa',
-        itemId: id,
-      }, error as Error);
-      toast.error("Approval failed", "Could not ingest item. Check backend logs.");
+      logger.error(
+        'Approval failed',
+        {
+          component: 'VisaOraclePage',
+          action: 'approve_error',
+          itemType: 'visa',
+          itemId: id,
+        },
+        error as Error
+      );
+      toast.error('Approval failed', 'Could not ingest item. Check backend logs.');
     } finally {
       setProcessing(null);
     }
@@ -218,11 +230,15 @@ export default function VisaOraclePage() {
 
   const handleBulkApprove = async () => {
     if (selectedItems.size === 0) {
-      toast.error("No items selected", "Please select items to approve.");
+      toast.error('No items selected', 'Please select items to approve.');
       return;
     }
 
-    if (!confirm(`Approve ${selectedItems.size} item(s)? This will ingest them into the Knowledge Base.`)) {
+    if (
+      !confirm(
+        `Approve ${selectedItems.size} item(s)? This will ingest them into the Knowledge Base.`
+      )
+    ) {
       return;
     }
 
@@ -238,16 +254,20 @@ export default function VisaOraclePage() {
     for (const id of ids) {
       setProcessing(id);
       try {
-        await intelligenceApi.approveItem("visa", id);
+        await intelligenceApi.approveItem('visa', id);
         results.success++;
         setItems((prev) => prev.filter((i) => i.id !== id));
       } catch (error) {
         results.failed++;
-        logger.error('Bulk approval failed for item', {
-          component: 'VisaOraclePage',
-          action: 'bulk_approve_error',
-          itemId: id,
-        }, error as Error);
+        logger.error(
+          'Bulk approval failed for item',
+          {
+            component: 'VisaOraclePage',
+            action: 'bulk_approve_error',
+            itemId: id,
+          },
+          error as Error
+        );
       } finally {
         setProcessing(null);
       }
@@ -255,7 +275,7 @@ export default function VisaOraclePage() {
 
     setSelectedItems(new Set());
     toast.success(
-      "Bulk approval completed",
+      'Bulk approval completed',
       `${results.success} approved, ${results.failed} failed.`
     );
 
@@ -268,7 +288,7 @@ export default function VisaOraclePage() {
 
   const handleBulkReject = async () => {
     if (selectedItems.size === 0) {
-      toast.error("No items selected", "Please select items to reject.");
+      toast.error('No items selected', 'Please select items to reject.');
       return;
     }
 
@@ -288,16 +308,20 @@ export default function VisaOraclePage() {
     for (const id of ids) {
       setProcessing(id);
       try {
-        await intelligenceApi.rejectItem("visa", id);
+        await intelligenceApi.rejectItem('visa', id);
         results.success++;
         setItems((prev) => prev.filter((i) => i.id !== id));
       } catch (error) {
         results.failed++;
-        logger.error('Bulk rejection failed for item', {
-          component: 'VisaOraclePage',
-          action: 'bulk_reject_error',
-          itemId: id,
-        }, error as Error);
+        logger.error(
+          'Bulk rejection failed for item',
+          {
+            component: 'VisaOraclePage',
+            action: 'bulk_reject_error',
+            itemId: id,
+          },
+          error as Error
+        );
       } finally {
         setProcessing(null);
       }
@@ -305,7 +329,7 @@ export default function VisaOraclePage() {
 
     setSelectedItems(new Set());
     toast.success(
-      "Bulk rejection completed",
+      'Bulk rejection completed',
       `${results.success} rejected, ${results.failed} failed.`
     );
 
@@ -319,7 +343,7 @@ export default function VisaOraclePage() {
   const handleReject = async (id: string) => {
     logger.userAction('reject_confirm_prompt', 'visa', id, { component: 'VisaOraclePage' });
 
-    if (!confirm("Are you sure you want to reject this update? It will be archived.")) {
+    if (!confirm('Are you sure you want to reject this update? It will be archived.')) {
       logger.info('Rejection cancelled by user', {
         component: 'VisaOraclePage',
         action: 'reject_cancelled',
@@ -338,12 +362,12 @@ export default function VisaOraclePage() {
 
     setProcessing(id);
     try {
-      await intelligenceApi.rejectItem("visa", id);
-      toast.success("Update rejected", "Item has been archived as rejected.");
+      await intelligenceApi.rejectItem('visa', id);
+      toast.success('Update rejected', 'Item has been archived as rejected.');
       setItems((prev) => prev.filter((i) => i.id !== id));
       if (previewId === id) {
         setPreviewId(null);
-        setPreviewContent("");
+        setPreviewContent('');
       }
       logger.info('Rejection completed successfully', {
         component: 'VisaOraclePage',
@@ -352,13 +376,17 @@ export default function VisaOraclePage() {
         itemId: id,
       });
     } catch (error) {
-      logger.error('Rejection failed', {
-        component: 'VisaOraclePage',
-        action: 'reject_error',
-        itemType: 'visa',
-        itemId: id,
-      }, error as Error);
-      toast.error("Rejection failed", "Could not archive item. Check backend logs.");
+      logger.error(
+        'Rejection failed',
+        {
+          component: 'VisaOraclePage',
+          action: 'reject_error',
+          itemType: 'visa',
+          itemId: id,
+        },
+        error as Error
+      );
+      toast.error('Rejection failed', 'Could not archive item. Check backend logs.');
     } finally {
       setProcessing(null);
     }
@@ -381,19 +409,13 @@ export default function VisaOraclePage() {
         <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
           <Sparkles className="h-12 w-12 text-[var(--accent)]" />
         </div>
-        <h3 className="text-2xl font-bold text-[var(--foreground)] mb-2">
-          All Caught Up!
-        </h3>
+        <h3 className="text-2xl font-bold text-[var(--foreground)] mb-2">All Caught Up!</h3>
         <p className="text-[var(--foreground-muted)] text-center max-w-md mb-8">
           {items.length === 0
-            ? "No pending visa updates detected. The Intelligent Visa Agent is continuously monitoring imigrasi.go.id for new regulations."
-            : "No items match your current filters. Try adjusting your search or filters."}
+            ? 'No pending visa updates detected. The Intelligent Visa Agent is continuously monitoring imigrasi.go.id for new regulations.'
+            : 'No items match your current filters. Try adjusting your search or filters.'}
         </p>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={loadItems}
-        >
+        <Button variant="outline" className="gap-2" onClick={loadItems}>
           <RefreshCw className="w-4 h-4" />
           Check Again
         </Button>
@@ -409,13 +431,14 @@ export default function VisaOraclePage() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
             <span className="text-sm font-medium text-[var(--foreground)]">
-              {filteredAndSortedItems.length} of {items.length} {items.length === 1 ? "item" : "items"} pending review
+              {filteredAndSortedItems.length} of {items.length}{' '}
+              {items.length === 1 ? 'item' : 'items'} pending review
             </span>
           </div>
           <div className="h-4 w-px bg-[var(--border)]" />
           <div className="text-sm text-[var(--foreground-muted)]">
-            {items.filter((i) => i.detection_type === "NEW").length} new ·{" "}
-            {items.filter((i) => i.detection_type === "UPDATED").length} updated
+            {items.filter((i) => i.detection_type === 'NEW').length} new ·{' '}
+            {items.filter((i) => i.detection_type === 'UPDATED').length} updated
           </div>
           {selectedItems.size > 0 && (
             <>
@@ -476,12 +499,7 @@ export default function VisaOraclePage() {
         {/* Bulk Actions */}
         {selectedItems.size > 0 && (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="gap-2"
-            >
+            <Button variant="outline" size="sm" onClick={toggleSelectAll} className="gap-2">
               {selectedItems.size === filteredAndSortedItems.length ? (
                 <>
                   <CheckSquare className="w-4 h-4" />
@@ -524,11 +542,9 @@ export default function VisaOraclePage() {
           <Card
             key={item.id}
             className={cn(
-              "group overflow-hidden transition-all duration-200",
-              "border-l-4 shadow-sm hover:shadow-lg",
-              item.detection_type === "NEW"
-                ? "border-l-blue-500"
-                : "border-l-amber-500"
+              'group overflow-hidden transition-all duration-200',
+              'border-l-4 shadow-sm hover:shadow-lg',
+              item.detection_type === 'NEW' ? 'border-l-blue-500' : 'border-l-amber-500'
             )}
           >
             <CardHeader className="bg-[var(--background-secondary)] pb-4">
@@ -547,42 +563,41 @@ export default function VisaOraclePage() {
                     )}
                   </button>
                   <div className="space-y-2 flex-1">
-                  {/* Badge */}
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold shadow-sm",
-                        item.detection_type === "NEW"
-                          ? "bg-blue-100 text-blue-700 border border-blue-200"
-                          : "bg-amber-100 text-amber-700 border border-amber-200"
-                      )}
-                    >
-                      {item.detection_type === "NEW"
-                        ? "✨ NEW REGULATION"
-                        : "📝 UPDATED POLICY"}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <CardTitle className="text-xl group-hover:text-[var(--accent)] transition-colors">
-                    {item.title}
-                  </CardTitle>
-
-                  {/* Metadata */}
-                  <div className="flex items-center gap-4 text-xs text-[var(--foreground-muted)]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                      <span className="font-mono">ID: {item.id}</span>
+                    {/* Badge */}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full px-3 py-1 text-xs font-bold shadow-sm',
+                          item.detection_type === 'NEW'
+                            ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                            : 'bg-amber-100 text-amber-700 border border-amber-200'
+                        )}
+                      >
+                        {item.detection_type === 'NEW' ? '✨ NEW REGULATION' : '📝 UPDATED POLICY'}
+                      </span>
                     </div>
-                    <div className="h-3 w-px bg-[var(--border)]" />
-                    <span>
-                      Detected {new Date(item.detected_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
+
+                    {/* Title */}
+                    <CardTitle className="text-xl group-hover:text-[var(--accent)] transition-colors">
+                      {item.title}
+                    </CardTitle>
+
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 text-xs text-[var(--foreground-muted)]">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                        <span className="font-mono">ID: {item.id}</span>
+                      </div>
+                      <div className="h-3 w-px bg-[var(--border)]" />
+                      <span>
+                        Detected{' '}
+                        {new Date(item.detected_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -612,7 +627,7 @@ export default function VisaOraclePage() {
                       size="sm"
                       onClick={() => {
                         setPreviewId(null);
-                        setPreviewContent("");
+                        setPreviewContent('');
                       }}
                     >
                       <X className="w-4 h-4" />
@@ -634,7 +649,11 @@ export default function VisaOraclePage() {
                     Processing Required
                   </p>
                   <p className="text-xs text-[var(--foreground-muted)]">
-                    Will be ingested into <code className="font-mono bg-[var(--background-secondary)] px-1 py-0.5 rounded">visa_oracle</code> collection
+                    Will be ingested into{' '}
+                    <code className="font-mono bg-[var(--background-secondary)] px-1 py-0.5 rounded">
+                      visa_oracle
+                    </code>{' '}
+                    collection
                   </p>
                 </div>
               </div>
@@ -648,7 +667,7 @@ export default function VisaOraclePage() {
                   onClick={() => handlePreview(item.id, item.type)}
                 >
                   <Eye className="w-4 h-4" />
-                  {previewId === item.id ? "Hide Preview" : "View Content"}
+                  {previewId === item.id ? 'Hide Preview' : 'View Content'}
                 </Button>
 
                 <div className="flex-1" />

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 async def get_featured_articles() -> dict:
     """
     Get featured articles for dashboard widget.
-    
+
     Currently returns static articles from balizero.com.
     Can be extended to fetch from database or external API.
     """

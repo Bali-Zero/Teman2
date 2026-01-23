@@ -130,9 +130,7 @@ async def test_save_memory_database_error_handled(memory_handler, mock_metrics_c
     """Test che gli errori del database vengono gestiti senza propagazione."""
     # Mock orchestrator to raise database error
     mock_orchestrator = MagicMock()
-    mock_orchestrator.process_conversation = AsyncMock(
-        side_effect=RuntimeError("Connection lost")
-    )
+    mock_orchestrator.process_conversation = AsyncMock(side_effect=RuntimeError("Connection lost"))
     memory_handler.get_memory_orchestrator = AsyncMock(return_value=mock_orchestrator)
 
     # Should not raise exception
@@ -182,9 +180,7 @@ async def test_create_save_task_creates_background_task(memory_handler):
     """Test che create_save_task crea un task in background."""
     memory_handler.save_conversation_memory = AsyncMock()
 
-    task = memory_handler.create_save_task(
-        "test@example.com", "Test query", "Test answer"
-    )
+    task = memory_handler.create_save_task("test@example.com", "Test query", "Test answer")
 
     assert task is not None
     assert isinstance(task, asyncio.Task)

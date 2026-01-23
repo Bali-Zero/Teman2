@@ -16,7 +16,8 @@ export default function KnowledgePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const pageLoadStartTime = useRef<number>(performance.now());
-  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } = useEnhancedAnalytics();
+  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } =
+    useEnhancedAnalytics();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -29,13 +30,13 @@ export default function KnowledgePage() {
     const searchStartTime = performance.now();
     setIsSearching(true);
     setHasSearched(true);
-    
+
     logger.info('Knowledge search initiated', {
       component: 'KnowledgePage',
       action: 'search',
       metadata: { query: searchQuery, queryLength: searchQuery.length },
     });
-    
+
     trackUserInteraction('search', 'knowledge_search', searchQuery);
     trackEvent('knowledge_search', 'knowledge', searchQuery);
 
@@ -44,12 +45,12 @@ export default function KnowledgePage() {
         query: searchQuery,
         limit: 20,
       });
-      
+
       const searchDuration = performance.now() - searchStartTime;
       const resultCount = response.results?.length || 0;
-      
+
       setSearchResults(response.results || []);
-      
+
       logger.info('Knowledge search completed', {
         component: 'KnowledgePage',
         action: 'search_success',
@@ -60,19 +61,23 @@ export default function KnowledgePage() {
           searchDuration: Math.round(searchDuration),
         },
       });
-      
+
       trackPerformance({ apiCallTime: searchDuration });
       trackEvent('knowledge_search_success', 'knowledge', searchQuery, resultCount);
     } catch (error) {
       const searchDuration = performance.now() - searchStartTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      logger.error('Knowledge search failed', {
-        component: 'KnowledgePage',
-        action: 'search_error',
-        metadata: { query: searchQuery, error: errorMessage },
-      }, error instanceof Error ? error : new Error(errorMessage));
-      
+
+      logger.error(
+        'Knowledge search failed',
+        {
+          component: 'KnowledgePage',
+          action: 'search_error',
+          metadata: { query: searchQuery, error: errorMessage },
+        },
+        error instanceof Error ? error : new Error(errorMessage)
+      );
+
       trackEvent('knowledge_search_error', 'knowledge', searchQuery);
       setSearchResults([]);
     } finally {
@@ -105,7 +110,7 @@ export default function KnowledgePage() {
       action: 'mount',
       metadata: { loadTime: Math.round(loadTime) },
     });
-    
+
     trackPageView('/knowledge', 'Knowledge Base');
     trackPerformance({ loadTime });
     trackEvent('knowledge_page_view', 'navigation', 'knowledge_base');
@@ -164,16 +169,37 @@ export default function KnowledgePage() {
       {/* Categories - 30% smaller */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { name: 'KITAS & Visa', icon: FileText, key: 'kitas', href: '/knowledge/kitas', hasPage: true },
-          { name: 'Company & Licenses', icon: FolderOpen, key: 'pma', href: '/knowledge/company-licenses', hasPage: true },
+          {
+            name: 'KITAS & Visa',
+            icon: FileText,
+            key: 'kitas',
+            href: '/knowledge/kitas',
+            hasPage: true,
+          },
+          {
+            name: 'Company & Licenses',
+            icon: FolderOpen,
+            key: 'pma',
+            href: '/knowledge/company-licenses',
+            hasPage: true,
+          },
           { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: '/knowledge/tax', hasPage: true },
-          { name: 'Our Journey', icon: Tag, key: 'journey', href: '/knowledge/our-journey', hasPage: true },
+          {
+            name: 'Our Journey',
+            icon: Tag,
+            key: 'journey',
+            href: '/knowledge/our-journey',
+            hasPage: true,
+          },
         ].map((category) => {
           const count = searchResults.filter((r) => {
             const collection = r.metadata?.collection?.toLowerCase() || '';
-            if (category.key === 'kitas') return collection.includes('kitas') || collection.includes('visa');
-            if (category.key === 'pma') return collection.includes('pma') || collection.includes('company');
-            if (category.key === 'tax') return collection.includes('tax') || collection.includes('npwp');
+            if (category.key === 'kitas')
+              return collection.includes('kitas') || collection.includes('visa');
+            if (category.key === 'pma')
+              return collection.includes('pma') || collection.includes('company');
+            if (category.key === 'tax')
+              return collection.includes('tax') || collection.includes('npwp');
             if (category.key === 'journey') return false; // Our Journey is empty for now
             return false;
           }).length;
@@ -189,11 +215,18 @@ export default function KnowledgePage() {
                 });
                 trackUserInteraction('click', `category_${category.key}`, category.name);
                 trackEvent('knowledge_category_click', 'knowledge', category.key);
-                
+
                 if (category.hasPage && category.href) {
                   router.push(category.href);
                 } else {
-                  const searchTerm = category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : 'procedure process';
+                  const searchTerm =
+                    category.key === 'kitas'
+                      ? 'KITAS visa'
+                      : category.key === 'pma'
+                        ? 'PT PMA company'
+                        : category.key === 'tax'
+                          ? 'tax NPWP'
+                          : 'procedure process';
                   setSearchQuery(searchTerm);
                   handleSearch();
                 }
@@ -204,12 +237,22 @@ export default function KnowledgePage() {
                   : 'border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50'
               }`}
             >
-              <category.icon className={`w-6 h-6 mb-2 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
+              <category.icon
+                className={`w-6 h-6 mb-2 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+              />
               <h3 className="text-sm font-medium text-[var(--foreground)]">{category.name}</h3>
               <p className="text-[10px] text-[var(--foreground-muted)]">
                 {category.hasPage
-                  ? (category.key === 'kitas' ? 'View visa guides' : category.key === 'pma' ? 'Company & Licenses' : category.key === 'tax' ? 'NPWP, SPT, BPJS, LKPM' : category.key === 'journey' ? 'Coming soon' : '')
-                  : ((category as any).subtitle || `${count} documents`)}
+                  ? category.key === 'kitas'
+                    ? 'View visa guides'
+                    : category.key === 'pma'
+                      ? 'Company & Licenses'
+                      : category.key === 'tax'
+                        ? 'NPWP, SPT, BPJS, LKPM'
+                        : category.key === 'journey'
+                          ? 'Coming soon'
+                          : ''
+                  : (category as any).subtitle || `${count} documents`}
               </p>
             </div>
           );
@@ -226,7 +269,9 @@ export default function KnowledgePage() {
           </div>
           {isSearching ? (
             <div className="p-8 text-center">
-              <div className="animate-pulse text-sm text-[var(--foreground-muted)]">Searching...</div>
+              <div className="animate-pulse text-sm text-[var(--foreground-muted)]">
+                Searching...
+              </div>
             </div>
           ) : searchResults.length > 0 ? (
             <div className="divide-y divide-[var(--border)]">
@@ -269,9 +314,7 @@ export default function KnowledgePage() {
           ) : (
             <div className="p-8 text-center">
               <BookOpen className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-              <p className="text-sm text-[var(--foreground-muted)]">
-                No documents found
-              </p>
+              <p className="text-sm text-[var(--foreground-muted)]">No documents found</p>
             </div>
           )}
         </div>
@@ -285,9 +328,7 @@ export default function KnowledgePage() {
           </div>
           <div className="p-8 text-center">
             <BookOpen className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">
-              No recent documents
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">No recent documents</p>
           </div>
         </div>
       )}
@@ -295,9 +336,8 @@ export default function KnowledgePage() {
       {/* Info Box */}
       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          The Knowledge Base contains all company documents, operational procedures,
-          templates and legal/tax information for Indonesia.
-          Integrated with Zantara AI for semantic search.
+          The Knowledge Base contains all company documents, operational procedures, templates and
+          legal/tax information for Indonesia. Integrated with Zantara AI for semantic search.
         </p>
       </div>
     </div>

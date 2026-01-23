@@ -75,9 +75,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-[var(--foreground)]">
-          My Process
-        </h2>
+        <h2 className="text-base font-semibold text-[var(--foreground)]">My Process</h2>
         <Link
           href="/process"
           className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
@@ -90,9 +88,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
       <div className="space-y-2">
         {pratiche.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-[var(--foreground-muted)]">
-              No process assigned
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">No process assigned</p>
           </div>
         ) : (
           pratiche.map((pratica) => {
@@ -130,8 +126,8 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
                           pratica.daysRemaining <= 3
                             ? 'text-[var(--error)]'
                             : pratica.daysRemaining <= 7
-                            ? 'text-[var(--warning)]'
-                            : 'text-[var(--foreground-muted)]'
+                              ? 'text-[var(--warning)]'
+                              : 'text-[var(--foreground-muted)]'
                         )}
                       >
                         <Clock className="w-3 h-3" />

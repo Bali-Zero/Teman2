@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { intelligenceApi, IntelligenceAnalytics } from "@/lib/api/intelligence.api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from 'react';
+import { intelligenceApi, IntelligenceAnalytics } from '@/lib/api/intelligence.api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { logger } from "@/lib/logger";
+} from '@/components/ui/select';
+import { useToast } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
 import {
   Loader2,
   TrendingUp,
@@ -23,8 +23,8 @@ import {
   XCircle,
   FileText,
   Calendar,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function IntelligenceAnalyticsPage() {
   const [analytics, setAnalytics] = useState<IntelligenceAnalytics | null>(null);
@@ -62,12 +62,16 @@ export default function IntelligenceAnalyticsPage() {
         },
       });
     } catch (error) {
-      logger.error('Failed to load analytics', {
-        component: 'IntelligenceAnalyticsPage',
-        action: 'load_analytics_error',
-      }, error as Error);
+      logger.error(
+        'Failed to load analytics',
+        {
+          component: 'IntelligenceAnalyticsPage',
+          action: 'load_analytics_error',
+        },
+        error as Error
+      );
 
-      toast.error("Failed to load analytics", "Could not fetch analytics data. Please try again.");
+      toast.error('Failed to load analytics', 'Could not fetch analytics data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -77,9 +81,7 @@ export default function IntelligenceAnalyticsPage() {
     return (
       <div className="flex flex-col justify-center items-center h-96 space-y-4">
         <Loader2 className="h-12 w-12 animate-spin text-[var(--accent)]" />
-        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">
-          Loading Analytics...
-        </p>
+        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">Loading Analytics...</p>
       </div>
     );
   }
@@ -88,9 +90,7 @@ export default function IntelligenceAnalyticsPage() {
     return (
       <div className="flex flex-col justify-center items-center h-96 space-y-4">
         <BarChart3 className="h-12 w-12 text-red-500" />
-        <p className="text-[var(--foreground-muted)] text-lg">
-          Analytics Unavailable
-        </p>
+        <p className="text-[var(--foreground-muted)] text-lg">Analytics Unavailable</p>
         <Button onClick={loadAnalytics} variant="secondary">
           Retry
         </Button>
@@ -99,7 +99,9 @@ export default function IntelligenceAnalyticsPage() {
   }
 
   const maxDailyValue = Math.max(
-    ...analytics.daily_trends.map((d) => Math.max(d.processed, d.approved, d.rejected, d.published)),
+    ...analytics.daily_trends.map((d) =>
+      Math.max(d.processed, d.approved, d.rejected, d.published)
+    ),
     1
   );
 
@@ -116,7 +118,10 @@ export default function IntelligenceAnalyticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Select value={periodDays.toString()} onValueChange={(value) => setPeriodDays(parseInt(value))}>
+          <Select
+            value={periodDays.toString()}
+            onValueChange={(value) => setPeriodDays(parseInt(value))}
+          >
             <SelectTrigger className="w-[140px]">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -198,9 +203,7 @@ export default function IntelligenceAnalyticsPage() {
             <div className="text-2xl font-bold text-purple-600">
               {analytics.summary.total_published}
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              News articles published
-            </p>
+            <p className="mt-3 text-xs text-[var(--foreground-muted)]">News articles published</p>
           </CardContent>
         </Card>
       </div>
@@ -208,9 +211,7 @@ export default function IntelligenceAnalyticsPage() {
       {/* Daily Trends Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-[var(--foreground)]">
-            Daily Trends
-          </CardTitle>
+          <CardTitle className="text-xl font-bold text-[var(--foreground)]">Daily Trends</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -222,7 +223,10 @@ export default function IntelligenceAnalyticsPage() {
               return (
                 <div key={day.date} className="flex items-end gap-2">
                   <div className="w-20 text-xs text-[var(--foreground-muted)] text-right">
-                    {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {new Date(day.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
                   </div>
                   <div className="flex-1 flex items-end gap-1 h-32">
                     {day.processed > 0 && (
@@ -294,7 +298,9 @@ export default function IntelligenceAnalyticsPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[var(--foreground-muted)]">Processed</span>
-                <span className="text-lg font-semibold">{analytics.type_breakdown.visa.processed}</span>
+                <span className="text-lg font-semibold">
+                  {analytics.type_breakdown.visa.processed}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[var(--foreground-muted)]">Approved</span>
@@ -322,7 +328,9 @@ export default function IntelligenceAnalyticsPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[var(--foreground-muted)]">Processed</span>
-                <span className="text-lg font-semibold">{analytics.type_breakdown.news.processed}</span>
+                <span className="text-lg font-semibold">
+                  {analytics.type_breakdown.news.processed}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[var(--foreground-muted)]">Approved</span>

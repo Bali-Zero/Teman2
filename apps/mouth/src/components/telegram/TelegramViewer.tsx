@@ -84,14 +84,17 @@ export function TelegramViewer({
   };
 
   // Group messages by date
-  const groupedMessages = messages.reduce((groups, message) => {
-    const date = formatDate(message.timestamp);
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(message);
-    return groups;
-  }, {} as Record<string, TelegramMessage[]>);
+  const groupedMessages = messages.reduce(
+    (groups, message) => {
+      const date = formatDate(message.timestamp);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+      return groups;
+    },
+    {} as Record<string, TelegramMessage[]>
+  );
 
   if (!chatId) {
     return (
@@ -171,10 +174,7 @@ export function TelegramViewer({
                 return (
                   <div
                     key={message.id}
-                    className={cn(
-                      'flex mb-2',
-                      isOutbound ? 'justify-end' : 'justify-start'
-                    )}
+                    className={cn('flex mb-2', isOutbound ? 'justify-end' : 'justify-start')}
                   >
                     <div
                       className={cn(
@@ -184,9 +184,16 @@ export function TelegramViewer({
                           : 'bg-[var(--background-elevated)] text-[var(--foreground)]'
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">
+                        {message.message_text}
+                      </p>
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        <span className={cn('text-xs', isOutbound ? 'text-blue-100' : 'text-[var(--foreground-muted)]')}>
+                        <span
+                          className={cn(
+                            'text-xs',
+                            isOutbound ? 'text-blue-100' : 'text-[var(--foreground-muted)]'
+                          )}
+                        >
                           {formatTime(message.timestamp)}
                         </span>
                         {isOutbound && (

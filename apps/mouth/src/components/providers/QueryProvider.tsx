@@ -18,7 +18,7 @@ function createQueryClient() {
           if (err?.status && err.status >= 400 && err.status < 500) return false;
           return failureCount < 3;
         },
-        retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
         refetchOnWindowFocus: false, // Don't refetch on window focus for enterprise
         refetchOnReconnect: true, // Do refetch on reconnect
         refetchOnMount: false, // Don't refetch on mount for better UX
@@ -54,11 +54,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       {/* Enhanced DevTools with enterprise features */}
-      <ReactQueryDevtools
-        initialIsOpen={false}
-        buttonPosition="bottom-left"
-        position="bottom"
-      />
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" position="bottom" />
     </QueryClientProvider>
   );
 }

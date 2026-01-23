@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class ThinkingPhase(Enum):
     """Phases of LLM thinking process."""
+
     ANALYZING = "analyzing"
     SEARCHING = "searching"
     REASONING = "reasoning"
@@ -44,7 +45,7 @@ THINKING_MESSAGES = {
         ThinkingPhase.REASONING: "💭 Berpikir...",
         ThinkingPhase.TOOL_CALLING: "🔧 Menggunakan {tool_name}...",
         ThinkingPhase.GENERATING: "✍️ Menulis jawaban...",
-    }
+    },
 }
 
 
@@ -87,10 +88,7 @@ class ThinkingIndicatorService:
             return template
 
     def create_thinking_event(
-        self,
-        phase: ThinkingPhase,
-        message_override: str | None = None,
-        **kwargs
+        self, phase: ThinkingPhase, message_override: str | None = None, **kwargs
     ) -> dict[str, Any]:
         """
         Create a thinking event for streaming.
@@ -109,12 +107,7 @@ class ThinkingIndicatorService:
 
         message = message_override if message_override else self.get_message(phase, **kwargs)
 
-        return {
-            "type": "thinking",
-            "data": message,
-            "phase": phase.value,
-            "timestamp": time.time()
-        }
+        return {"type": "thinking", "data": message, "phase": phase.value, "timestamp": time.time()}
 
     def create_done_event(self) -> dict[str, Any]:
         """
@@ -123,11 +116,7 @@ class ThinkingIndicatorService:
         Returns:
             Done event dictionary
         """
-        return {
-            "type": "thinking_done",
-            "data": "",
-            "timestamp": time.time()
-        }
+        return {"type": "thinking_done", "data": "", "timestamp": time.time()}
 
     def get_phase_duration(self) -> float:
         """
@@ -156,7 +145,7 @@ class ThinkingIndicatorService:
         always_show = {
             ThinkingPhase.SEARCHING,
             ThinkingPhase.TOOL_CALLING,
-            ThinkingPhase.GENERATING
+            ThinkingPhase.GENERATING,
         }
 
         # Show analyzing only for complex queries

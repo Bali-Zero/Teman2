@@ -680,6 +680,7 @@ async def stream_agentic_rag(
 
 class ProactiveTriggerRequest(BaseModel):
     """Request to trigger proactive AI behavior based on system events"""
+
     event_type: str  # e.g. "USER_LOGIN", "PAGE_VISIT", "IDLE"
     user_id: str | None = None  # Optional override, defaults to Auth User
     context_data: dict[str, Any] | None = None
@@ -699,37 +700,38 @@ async def trigger_proactivity(
     # Security: Use Auth User unless Admin (simplified: just use Auth User for now)
     authenticated_user_id = current_user.get("email") or current_user.get("user_id")
     target_user_id = authenticated_user_id
-    
+
     # Allow override only if needed (future: RBAC)
     if request_body.user_id and request_body.user_id != authenticated_user_id:
         # Check permissions? For now, strictly verify it matches or is system call.
         # Let's enforce authenticated user for safety unless it's a specific system token (not impl yet).
-        logger.warning(f"⚠️ Proactive trigger mismatch: Auth={authenticated_user_id}, Req={request_body.user_id}. Forcing Auth ID.")
+        logger.warning(
+            f"⚠️ Proactive trigger mismatch: Auth={authenticated_user_id}, Req={request_body.user_id}. Forcing Auth ID."
+        )
         target_user_id = authenticated_user_id
 
-    correlation_id = (
-        getattr(http_request.state, "correlation_id", None)
-        or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
-    )
+    correlation_id = getattr(
+        http_request.state, "correlation_id", None
+    ) or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
 
     logger.info(f"⚡ [Proactive] Trigger received: {request_body.event_type} for {target_user_id}")
 
     async def event_generator():
         # Yield initial status
         yield f"data: {json.dumps({'type': 'status', 'data': {'status': 'analyzing_context', 'correlation_id': correlation_id}})}\n\n"
-        
+
         try:
             async for event in orchestrator.stream_proactive_event(
                 user_id=target_user_id,
                 event_type=request_body.event_type,
-                context_data=request_body.context_data or {}
+                context_data=request_body.context_data or {},
             ):
                 event_json = json.dumps(event)
                 yield f"data: {event_json}\n\n"
         except Exception as e:
             logger.error(f"❌ [Proactive] Stream Error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(e)}})}\n\n"
-        
+
         yield f"data: {json.dumps({'type': 'done', 'data': None})}\n\n"
 
     return StreamingResponse(

@@ -2,15 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { UI } from '@/constants';
-import {
-  Send,
-  ImageIcon,
-  Plus,
-  Loader2,
-  Upload,
-  Camera,
-  Mic,
-} from 'lucide-react';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
 import { ChatRecordingOverlay } from './ChatRecordingOverlay';
 
 export interface ChatInputBarProps {
@@ -199,8 +191,7 @@ export function ChatInputBar({
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = 'auto';
-                target.style.height =
-                  Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + 'px';
+                target.style.height = Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + 'px';
               }}
             />
 
@@ -210,11 +201,7 @@ export function ChatInputBar({
               size="icon"
               className="rounded-xl flex-shrink-0"
               aria-label={
-                isLoading
-                  ? 'Sending...'
-                  : showImagePrompt
-                    ? 'Generate image'
-                    : 'Send message'
+                isLoading ? 'Sending...' : showImagePrompt ? 'Generate image' : 'Send message'
               }
             >
               {isLoading ? (

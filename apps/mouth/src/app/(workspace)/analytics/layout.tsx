@@ -8,11 +8,7 @@ import { ShieldAlert, Loader2, Lock } from 'lucide-react';
 // Only the founder can access analytics
 const FOUNDER_EMAIL = 'zero@balizero.com';
 
-export default function AnalyticsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -31,9 +31,7 @@ export default function TeamPage() {
                 Our Team
               </span>
               <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-                Meet the{' '}
-                <span className="text-[#e85c41]">Experts</span>{' '}
-                Behind Your Success
+                Meet the <span className="text-[#e85c41]">Experts</span> Behind Your Success
               </h1>
               <p className="text-lg text-white/70 mb-8 leading-relaxed">
                 A dedicated team of visa specialists, tax consultants, and business advisors
@@ -83,8 +81,18 @@ export default function TeamPage() {
                 <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#051C2C] to-transparent pointer-events-none" />
                 {/* Sound hint icon */}
                 <div className="absolute bottom-4 right-4 bg-black/50 rounded-full p-2 pointer-events-none">
-                  <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  <svg
+                    className="w-5 h-5 text-white/70"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -187,9 +195,9 @@ export default function TeamPage() {
               <h3 className="font-serif text-2xl text-white mb-2">Zantara AI</h3>
               <p className="text-[#2251ff] font-medium mb-4">AI Bridge</p>
               <p className="text-white/60">
-                Your 24/7 intelligent assistant. Zantara AI helps you get instant answers
-                about visas, company setup, taxes, and more — bridging you to the right
-                expert when you need human support.
+                Your 24/7 intelligent assistant. Zantara AI helps you get instant answers about
+                visas, company setup, taxes, and more — bridging you to the right expert when you
+                need human support.
               </p>
               <Link
                 href="/chat"
@@ -211,8 +219,8 @@ export default function TeamPage() {
               Ready to Work With Us?
             </h2>
             <p className="text-white/80 text-lg mb-8">
-              Get in touch with our team for a free consultation.
-              We're here to help you navigate Indonesia with confidence.
+              Get in touch with our team for a free consultation. We're here to help you navigate
+              Indonesia with confidence.
             </p>
 
             <div className="flex flex-wrap gap-4 justify-center">
@@ -253,9 +261,13 @@ function TeamCard({ member, size = 'normal' }: { member: TeamMember; size?: 'nor
   const isLarge = size === 'large';
 
   return (
-    <div className={`group rounded-xl border border-white/10 bg-[#0a2540] ${isLarge ? 'p-8' : 'p-6'} hover:border-[#2251ff]/50 transition-all text-center`}>
+    <div
+      className={`group rounded-xl border border-white/10 bg-[#0a2540] ${isLarge ? 'p-8' : 'p-6'} hover:border-[#2251ff]/50 transition-all text-center`}
+    >
       {/* Avatar - Photo or Initials */}
-      <div className={`${isLarge ? 'w-24 h-24' : 'w-16 h-16'} rounded-full ${member.gradient} flex items-center justify-center mx-auto mb-4 overflow-hidden`}>
+      <div
+        className={`${isLarge ? 'w-24 h-24' : 'w-16 h-16'} rounded-full ${member.gradient} flex items-center justify-center mx-auto mb-4 overflow-hidden`}
+      >
         {member.photo ? (
           <Image
             src={member.photo}
@@ -272,14 +284,14 @@ function TeamCard({ member, size = 'normal' }: { member: TeamMember; size?: 'nor
       </div>
 
       {/* Info */}
-      <h3 className={`${isLarge ? 'text-xl' : 'text-base'} font-medium text-white mb-1 group-hover:text-[#2251ff] transition-colors`}>
+      <h3
+        className={`${isLarge ? 'text-xl' : 'text-base'} font-medium text-white mb-1 group-hover:text-[#2251ff] transition-colors`}
+      >
         {member.name}
       </h3>
       <p className={`${isLarge ? 'text-sm' : 'text-xs'} text-white/60`}>
         {member.role}
-        {member.external && (
-          <span className="ml-2 text-[#2251ff]">(External)</span>
-        )}
+        {member.external && <span className="ml-2 text-[#2251ff]">(External)</span>}
       </p>
     </div>
   );

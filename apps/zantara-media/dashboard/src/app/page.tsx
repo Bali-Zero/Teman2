@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   FileText,
   Send,
@@ -15,8 +15,8 @@ import {
   Users,
   ArrowRight,
   AlertCircle,
-} from "lucide-react";
-import { formatRelativeTime } from "@/lib/utils";
+} from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils';
 
 // Mock data - will be replaced with API calls
 const stats = {
@@ -28,58 +28,58 @@ const stats = {
 
 const recentContent = [
   {
-    id: "1",
-    title: "New KITAS Regulations 2025: What Expats Need to Know",
-    status: "published",
-    category: "immigration",
+    id: '1',
+    title: 'New KITAS Regulations 2025: What Expats Need to Know',
+    status: 'published',
+    category: 'immigration',
     published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     engagements: 1240,
   },
   {
-    id: "2",
-    title: "Tax Filing Deadline Reminder for PT PMA Companies",
-    status: "scheduled",
-    category: "tax",
+    id: '2',
+    title: 'Tax Filing Deadline Reminder for PT PMA Companies',
+    status: 'scheduled',
+    category: 'tax',
     scheduled_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
   },
   {
-    id: "3",
-    title: "Bali Property Market Q1 2025 Analysis",
-    status: "review",
-    category: "property",
+    id: '3',
+    title: 'Bali Property Market Q1 2025 Analysis',
+    status: 'review',
+    category: 'property',
     updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
   },
 ];
 
 const intelSignals = [
   {
-    id: "1",
-    title: "New visa regulation detected - Imigrasi.go.id",
-    priority: "high",
+    id: '1',
+    title: 'New visa regulation detected - Imigrasi.go.id',
+    priority: 'high',
     detected_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    source: "Imigrasi",
+    source: 'Imigrasi',
   },
   {
-    id: "2",
-    title: "Tax deadline reminder trending on Twitter",
-    priority: "medium",
+    id: '2',
+    title: 'Tax deadline reminder trending on Twitter',
+    priority: 'medium',
     detected_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    source: "Twitter",
+    source: 'Twitter',
   },
   {
-    id: "3",
-    title: "Bali tourism stats released by BPS",
-    priority: "low",
+    id: '3',
+    title: 'Bali tourism stats released by BPS',
+    priority: 'low',
     detected_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    source: "BPS",
+    source: 'BPS',
   },
 ];
 
 const upcomingSchedule = [
-  { time: "10:00", title: "Newsletter send", platform: "Email" },
-  { time: "14:00", title: "TikTok video post", platform: "TikTok" },
-  { time: "16:00", title: "Twitter thread", platform: "Twitter" },
-  { time: "18:00", title: "LinkedIn article", platform: "LinkedIn" },
+  { time: '10:00', title: 'Newsletter send', platform: 'Email' },
+  { time: '14:00', title: 'TikTok video post', platform: 'TikTok' },
+  { time: '16:00', title: 'Twitter thread', platform: 'Twitter' },
+  { time: '18:00', title: 'LinkedIn article', platform: 'LinkedIn' },
 ];
 
 function StatCard({
@@ -99,9 +99,7 @@ function StatCard({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-[var(--foreground-muted)]">{title}</p>
-            <p className="text-2xl font-bold text-[var(--foreground)] mt-1">
-              {value}
-            </p>
+            <p className="text-2xl font-bold text-[var(--foreground)] mt-1">{value}</p>
             {trend && (
               <p className="text-xs text-[var(--success)] mt-1 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
@@ -120,11 +118,11 @@ function StatCard({
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case "published":
+    case 'published':
       return <Badge variant="success">Published</Badge>;
-    case "scheduled":
+    case 'scheduled':
       return <Badge variant="warning">Scheduled</Badge>;
-    case "review":
+    case 'review':
       return <Badge variant="default">In Review</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
@@ -133,11 +131,11 @@ function getStatusBadge(status: string) {
 
 function getPriorityBadge(priority: string) {
   switch (priority) {
-    case "high":
+    case 'high':
       return <Badge variant="error">HIGH</Badge>;
-    case "medium":
+    case 'medium':
       return <Badge variant="warning">MED</Badge>;
-    case "low":
+    case 'low':
       return <Badge variant="secondary">LOW</Badge>;
     default:
       return <Badge variant="secondary">{priority}</Badge>;
@@ -155,21 +153,9 @@ export default function DashboardPage() {
           icon={FileText}
           trend="+12% vs yesterday"
         />
-        <StatCard
-          title="Scheduled"
-          value={stats.scheduled}
-          icon={Clock}
-        />
-        <StatCard
-          title="In Review"
-          value={stats.in_review}
-          icon={Eye}
-        />
-        <StatCard
-          title="Intel Signals"
-          value={stats.intel_signals}
-          icon={Zap}
-        />
+        <StatCard title="Scheduled" value={stats.scheduled} icon={Clock} />
+        <StatCard title="In Review" value={stats.in_review} icon={Eye} />
+        <StatCard title="Intel Signals" value={stats.intel_signals} icon={Zap} />
       </div>
 
       {/* Main Content Grid */}
@@ -179,9 +165,7 @@ export default function DashboardPage() {
           {/* Recent Content */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-semibold">
-                Recent Content
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Recent Content</CardTitle>
               <Button variant="ghost" size="sm" className="text-[var(--accent)]">
                 View All
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -214,10 +198,7 @@ export default function DashboardPage() {
                       {getStatusBadge(content.status)}
                       <span className="text-xs text-[var(--foreground-muted)]">
                         {formatRelativeTime(
-                          content.published_at ||
-                            content.scheduled_at ||
-                            content.updated_at ||
-                            ""
+                          content.published_at || content.scheduled_at || content.updated_at || ''
                         )}
                       </span>
                     </div>
@@ -231,9 +212,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-semibold">
-                  Intel Signals
-                </CardTitle>
+                <CardTitle className="text-base font-semibold">Intel Signals</CardTitle>
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--accent)] text-white text-xs">
                   {intelSignals.length}
                 </span>
@@ -252,17 +231,15 @@ export default function DashboardPage() {
                   >
                     <AlertCircle
                       className={`w-5 h-5 flex-shrink-0 ${
-                        signal.priority === "high"
-                          ? "text-[var(--error)]"
-                          : signal.priority === "medium"
-                          ? "text-[var(--warning)]"
-                          : "text-[var(--foreground-muted)]"
+                        signal.priority === 'high'
+                          ? 'text-[var(--error)]'
+                          : signal.priority === 'medium'
+                            ? 'text-[var(--warning)]'
+                            : 'text-[var(--foreground-muted)]'
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--foreground)] truncate">
-                        {signal.title}
-                      </p>
+                      <p className="text-sm text-[var(--foreground)] truncate">{signal.title}</p>
                       <p className="text-xs text-[var(--foreground-muted)]">
                         {signal.source} · {formatRelativeTime(signal.detected_at)}
                       </p>
@@ -280,25 +257,18 @@ export default function DashboardPage() {
           {/* Today's Schedule */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Today&apos;s Schedule
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Today&apos;s Schedule</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {upcomingSchedule.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 text-sm"
-                  >
+                  <div key={index} className="flex items-center gap-3 text-sm">
                     <span className="text-[var(--foreground-muted)] w-12 flex-shrink-0">
                       {item.time}
                     </span>
                     <div className="flex-1">
                       <p className="text-[var(--foreground)]">{item.title}</p>
-                      <p className="text-xs text-[var(--foreground-muted)]">
-                        {item.platform}
-                      </p>
+                      <p className="text-xs text-[var(--foreground-muted)]">{item.platform}</p>
                     </div>
                   </div>
                 ))}
@@ -309,9 +279,7 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Quick Actions
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button variant="outline" className="w-full justify-start gap-2">
@@ -332,38 +300,29 @@ export default function DashboardPage() {
           {/* Platform Status */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">
-                Platform Status
-              </CardTitle>
+              <CardTitle className="text-base font-semibold">Platform Status</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {[
-                  { name: "Twitter", status: "connected", followers: "12.4K" },
-                  { name: "LinkedIn", status: "connected", followers: "8.2K" },
-                  { name: "Instagram", status: "connected", followers: "15.1K" },
-                  { name: "TikTok", status: "connected", followers: "5.8K" },
-                  { name: "Telegram", status: "connected", followers: "3.2K" },
+                  { name: 'Twitter', status: 'connected', followers: '12.4K' },
+                  { name: 'LinkedIn', status: 'connected', followers: '8.2K' },
+                  { name: 'Instagram', status: 'connected', followers: '15.1K' },
+                  { name: 'TikTok', status: 'connected', followers: '5.8K' },
+                  { name: 'Telegram', status: 'connected', followers: '3.2K' },
                 ].map((platform) => (
-                  <div
-                    key={platform.name}
-                    className="flex items-center justify-between text-sm"
-                  >
+                  <div key={platform.name} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          platform.status === "connected"
-                            ? "bg-[var(--success)]"
-                            : "bg-[var(--error)]"
+                          platform.status === 'connected'
+                            ? 'bg-[var(--success)]'
+                            : 'bg-[var(--error)]'
                         }`}
                       />
-                      <span className="text-[var(--foreground)]">
-                        {platform.name}
-                      </span>
+                      <span className="text-[var(--foreground)]">{platform.name}</span>
                     </div>
-                    <span className="text-[var(--foreground-muted)]">
-                      {platform.followers}
-                    </span>
+                    <span className="text-[var(--foreground-muted)]">{platform.followers}</span>
                   </div>
                 ))}
               </div>

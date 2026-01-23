@@ -124,7 +124,7 @@ describe('Cases Page', () => {
       id: '1',
       email: 'zero@balizero.com',
       name: 'Test User',
-      role: 'admin'
+      role: 'admin',
     });
     (analytics.initializeAnalytics as any) = vi.fn();
     (analytics.trackViewModeChange as any) = vi.fn();
@@ -160,7 +160,9 @@ describe('Cases Page', () => {
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Search process by ID, client, type/i)).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText(/Search process by ID, client, type/i)
+        ).toBeInTheDocument();
       });
     });
 
@@ -281,10 +283,12 @@ describe('Cases Page', () => {
       });
 
       // Click list view button (assuming it has data-testid or aria-label)
-      const listButton = screen.getAllByRole('button').find(btn =>
-        btn.getAttribute('aria-label')?.includes('List') ||
-        btn.className.includes('list')
-      );
+      const listButton = screen
+        .getAllByRole('button')
+        .find(
+          (btn) =>
+            btn.getAttribute('aria-label')?.includes('List') || btn.className.includes('list')
+        );
 
       if (listButton) {
         await user.click(listButton);
@@ -303,9 +307,9 @@ describe('Cases Page', () => {
       });
 
       // Switch to list view
-      const listButton = screen.getAllByRole('button').find(btn =>
-        btn.className.includes('list')
-      );
+      const listButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.className.includes('list'));
 
       if (listButton) {
         await user.click(listButton);
@@ -550,10 +554,12 @@ describe('Cases Page', () => {
       });
 
       // Find and click the menu button on first card
-      const menuButtons = screen.getAllByRole('button').filter(btn =>
-        btn.getAttribute('aria-label')?.includes('menu') ||
-        btn.className.includes('menu')
-      );
+      const menuButtons = screen
+        .getAllByRole('button')
+        .filter(
+          (btn) =>
+            btn.getAttribute('aria-label')?.includes('menu') || btn.className.includes('menu')
+        );
 
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
@@ -577,9 +583,9 @@ describe('Cases Page', () => {
       });
 
       // Open context menu
-      const menuButtons = screen.getAllByRole('button').filter(btn =>
-        btn.className.includes('menu')
-      );
+      const menuButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.className.includes('menu'));
 
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
@@ -594,7 +600,11 @@ describe('Cases Page', () => {
             { status: 'in_progress' },
             'zero@balizero.com'
           );
-          expect(analytics.trackCaseStatusChanged).toHaveBeenCalledWith(1, 'inquiry', 'in_progress');
+          expect(analytics.trackCaseStatusChanged).toHaveBeenCalledWith(
+            1,
+            'inquiry',
+            'in_progress'
+          );
         });
       }
     });
@@ -608,9 +618,9 @@ describe('Cases Page', () => {
       });
 
       // Open context menu
-      const menuButtons = screen.getAllByRole('button').filter(btn =>
-        btn.className.includes('menu')
-      );
+      const menuButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.className.includes('menu'));
 
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
@@ -666,9 +676,9 @@ describe('Cases Page', () => {
       });
 
       // Switch to list view
-      const listButton = screen.getAllByRole('button').find(btn =>
-        btn.className.includes('list')
-      );
+      const listButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.className.includes('list'));
 
       if (listButton) {
         await user.click(listButton);
@@ -698,9 +708,9 @@ describe('Cases Page', () => {
       });
 
       // Switch to list view
-      const listButton = screen.getAllByRole('button').find(btn =>
-        btn.className.includes('list')
-      );
+      const listButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.className.includes('list'));
 
       if (listButton) {
         await user.click(listButton);
@@ -736,9 +746,9 @@ describe('Cases Page', () => {
       expect(analytics.trackViewModeChange).toHaveBeenCalledWith('kanban');
 
       // Switch to list view
-      const listButton = screen.getAllByRole('button').find(btn =>
-        btn.className.includes('list')
-      );
+      const listButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.className.includes('list'));
 
       if (listButton) {
         await user.click(listButton);
@@ -803,9 +813,9 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const menuButtons = screen.getAllByRole('button').filter(btn =>
-        btn.className.includes('menu')
-      );
+      const menuButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.className.includes('menu'));
 
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
@@ -832,10 +842,7 @@ describe('Cases Page', () => {
 
       await waitFor(() => {
         // Should log error to console
-        expect(console.error).toHaveBeenCalledWith(
-          'Failed to load practices:',
-          expect.any(Error)
-        );
+        expect(console.error).toHaveBeenCalledWith('Failed to load practices:', expect.any(Error));
       });
     });
 
@@ -849,9 +856,9 @@ describe('Cases Page', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      const menuButtons = screen.getAllByRole('button').filter(btn =>
-        btn.className.includes('menu')
-      );
+      const menuButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.className.includes('menu'));
 
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
@@ -860,10 +867,7 @@ describe('Cases Page', () => {
         await user.click(inProgressOption);
 
         await waitFor(() => {
-          expect(console.error).toHaveBeenCalledWith(
-            'Failed to update status:',
-            expect.any(Error)
-          );
+          expect(console.error).toHaveBeenCalledWith('Failed to update status:', expect.any(Error));
         });
       }
     });

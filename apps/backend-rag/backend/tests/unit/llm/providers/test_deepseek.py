@@ -10,8 +10,6 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.providers.deepseek import DeepSeekProvider
-
 
 class TestDeepseek:
     """Tests for llm.providers.deepseek"""

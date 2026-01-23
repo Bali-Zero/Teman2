@@ -156,7 +156,8 @@ export function DriveFolderStructure({
       toast.success('Folder structure created successfully');
       onFolderCreated?.(data.root_folder_id);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create folder structure';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to create folder structure';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

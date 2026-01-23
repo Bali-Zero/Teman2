@@ -83,9 +83,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h3 className="font-medium text-[var(--foreground)]">{section.title}</h3>
-                <p className="text-sm text-[var(--foreground-muted)]">
-                  {section.description}
-                </p>
+                <p className="text-sm text-[var(--foreground-muted)]">{section.description}</p>
               </div>
             </div>
           </div>
@@ -145,8 +143,8 @@ export default function SettingsPage() {
       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
         <Settings className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          Complete settings center to manage profile, security,
-          notifications and administrative configurations.
+          Complete settings center to manage profile, security, notifications and administrative
+          configurations.
         </p>
       </div>
     </div>

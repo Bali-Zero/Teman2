@@ -33,10 +33,8 @@ describe('StatsCard Memoization', () => {
   });
 
   it('should render with variant styles', () => {
-    const { rerender } = render(
-      <StatsCard {...defaultProps} variant="warning" />
-    );
-    
+    const { rerender } = render(<StatsCard {...defaultProps} variant="warning" />);
+
     rerender(<StatsCard {...defaultProps} variant="danger" />);
     // Should re-render with new variant
     expect(screen.getByText('Test Card')).toBeInTheDocument();

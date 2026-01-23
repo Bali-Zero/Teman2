@@ -1,14 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  MessageCircle,
-  Search,
-  Filter,
-  Check,
-  Camera,
-  User,
-} from 'lucide-react';
+import { MessageCircle, Search, Filter, Check, Camera, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { InstagramConversation } from '@/lib/api/instagram/instagram.types';
 
@@ -113,7 +106,10 @@ export function InstagramList({
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-16 bg-[var(--background-elevated)] rounded-lg animate-pulse"
+              />
             ))}
           </div>
         ) : filteredConversations.length === 0 ? (

@@ -2,15 +2,7 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import {
-  Plane,
-  Building2,
-  Scale,
-  Home,
-  Sun,
-  Cpu,
-  LayoutGrid,
-} from 'lucide-react';
+import { Plane, Building2, Scale, Home, Sun, Cpu, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ArticleCategory, CategoryNavProps } from '@/lib/blog/types';
 
@@ -37,11 +29,14 @@ const categoryLabels: Record<ArticleCategory | 'all', string> = {
 };
 
 // Category colors
-const categoryColors: Record<ArticleCategory | 'all', {
-  active: string;
-  inactive: string;
-  gradient: string;
-}> = {
+const categoryColors: Record<
+  ArticleCategory | 'all',
+  {
+    active: string;
+    inactive: string;
+    gradient: string;
+  }
+> = {
   all: {
     active: 'bg-white/10 text-white',
     inactive: 'text-white/50 hover:text-white/80 hover:bg-white/5',
@@ -106,13 +101,12 @@ export function CategoryNav({
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {allCategories.map((category) => {
           const Icon = categoryIcons[category];
-          const isActive = category === 'all'
-            ? !activeCategory
-            : activeCategory === category;
+          const isActive = category === 'all' ? !activeCategory : activeCategory === category;
           const colors = categoryColors[category];
-          const count = category === 'all'
-            ? Object.values(categoryCounts || {}).reduce((a, b) => a + b, 0)
-            : categoryCounts?.[category as ArticleCategory];
+          const count =
+            category === 'all'
+              ? Object.values(categoryCounts || {}).reduce((a, b) => a + b, 0)
+              : categoryCounts?.[category as ArticleCategory];
 
           return (
             <motion.button

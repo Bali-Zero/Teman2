@@ -40,33 +40,34 @@ def mock_tools():
 @pytest.fixture
 def orchestrator(mock_tools):
     """Create orchestrator instance with mocked dependencies"""
-    with patch("services.rag.agentic.orchestrator.SemanticCache"), \
-         patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"), \
-         patch("services.rag.agentic.orchestrator.IntentClassifier"), \
-         patch("services.rag.agentic.orchestrator.EmotionalAttunementService"), \
-         patch("services.rag.agentic.orchestrator.ClarificationService"), \
-         patch("services.rag.agentic.orchestrator.FollowupService") as mock_followup, \
-         patch("services.rag.agentic.orchestrator.GoldenAnswerService"), \
-         patch("services.rag.agentic.orchestrator.MemoryHandler"), \
-         patch("services.rag.agentic.orchestrator.QueryGates"), \
-         patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm_gateway, \
-         patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning:
-        
+    with (
+        patch("services.rag.agentic.orchestrator.SemanticCache"),
+        patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+        patch("services.rag.agentic.orchestrator.IntentClassifier"),
+        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("services.rag.agentic.orchestrator.ClarificationService"),
+        patch("services.rag.agentic.orchestrator.FollowupService") as mock_followup,
+        patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+        patch("services.rag.agentic.orchestrator.MemoryHandler"),
+        patch("services.rag.agentic.orchestrator.QueryGates"),
+        patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm_gateway,
+        patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
+    ):
         # Setup mock LLM Gateway
         mock_llm_gateway_instance = MagicMock()
         mock_llm_gateway.return_value = mock_llm_gateway_instance
-        
+
         # Setup mock Reasoning Engine
         mock_reasoning_instance = MagicMock()
         mock_reasoning.return_value = mock_reasoning_instance
-        
+
         # Setup mock FollowupService
         mock_followup_instance = MagicMock()
         mock_followup_instance.get_followups = AsyncMock(
             return_value=["Quanto costa?", "Quali documenti servono?", "Quanto tempo richiede?"]
         )
         mock_followup.return_value = mock_followup_instance
-        
+
         # Create orchestrator
         orch = AgenticRAGOrchestrator(
             tools=mock_tools,
@@ -75,10 +76,10 @@ def orchestrator(mock_tools):
             retriever=None,
             clarification_service=None,
         )
-        
+
         # Inject mock followup service
         orch.followup_service = mock_followup_instance
-        
+
         yield orch
 
 
@@ -89,17 +90,15 @@ class TestZantaraFluidity:
     async def test_low_abstain_threshold(self):
         """Test that ABSTAIN threshold is low (0.2) for fluidity"""
         from app.core.constants import EvidenceScoreConstants
-        
-        assert EvidenceScoreConstants.ABSTAIN_THRESHOLD == 0.2, \
-            "ABSTAIN threshold should be 0.2 for fluidity (was {})".format(
-                EvidenceScoreConstants.ABSTAIN_THRESHOLD
-            )
+
+        assert EvidenceScoreConstants.ABSTAIN_THRESHOLD == 0.2, (
+            f"ABSTAIN threshold should be 0.2 for fluidity (was {EvidenceScoreConstants.ABSTAIN_THRESHOLD})"
+        )
 
     @pytest.mark.asyncio
     async def test_proactive_abstain_message(self):
         """Test that ABSTAIN message is proactive (suggests alternatives)"""
-        from services.rag.agentic.reasoning import ReasoningEngine
-        
+
         # Check that ABSTAIN message includes suggestions
         abstain_message = (
             "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
@@ -110,7 +109,7 @@ class TestZantaraFluidity:
             "• Procedure e documentazione\n\n"
             "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
         )
-        
+
         # Verify message is proactive (not just "altro?")
         assert "Posso aiutarti con:" in abstain_message
         assert "visti e KITAS" in abstain_message
@@ -121,13 +120,14 @@ class TestZantaraFluidity:
     async def test_evidence_score_allows_responses(self):
         """Test that evidence score thresholds allow responses"""
         from app.core.constants import EvidenceScoreConstants
-        
+
         # With threshold 0.2, responses with score >= 0.2 should be allowed
         test_scores = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        
+
         for score in test_scores:
-            assert score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD, \
+            assert score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD, (
                 f"Score {score} should allow response (threshold: {EvidenceScoreConstants.ABSTAIN_THRESHOLD})"
+            )
 
 
 class TestZantaraStrength:
@@ -137,24 +137,33 @@ class TestZantaraStrength:
     async def test_prompt_includes_proactivity(self):
         """Test that system prompt includes proactivity rules"""
         from services.rag.agentic.prompt_builder import ZANTARA_MASTER_TEMPLATE
-        
+
         # Check for proactivity keywords in prompt
-        assert "PROACTIVITY" in ZANTARA_MASTER_TEMPLATE or "proactive" in ZANTARA_MASTER_TEMPLATE.lower()
-        assert "suggest" in ZANTARA_MASTER_TEMPLATE.lower() or "suggerire" in ZANTARA_MASTER_TEMPLATE.lower()
-        assert "next step" in ZANTARA_MASTER_TEMPLATE.lower() or "prossimi passi" in ZANTARA_MASTER_TEMPLATE.lower()
+        assert (
+            "PROACTIVITY" in ZANTARA_MASTER_TEMPLATE
+            or "proactive" in ZANTARA_MASTER_TEMPLATE.lower()
+        )
+        assert (
+            "suggest" in ZANTARA_MASTER_TEMPLATE.lower()
+            or "suggerire" in ZANTARA_MASTER_TEMPLATE.lower()
+        )
+        assert (
+            "next step" in ZANTARA_MASTER_TEMPLATE.lower()
+            or "prossimi passi" in ZANTARA_MASTER_TEMPLATE.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_followup_service_active(self, orchestrator):
         """Test that FollowupService is active and generates suggestions"""
         assert orchestrator.followup_service is not None
-        
+
         # Test that followup service generates suggestions
         followups = await orchestrator.followup_service.get_followups(
             query="Quanto costa PT PMA?",
             response="PT PMA costa Rp 20.000.000...",
-            use_ai=False  # Use topic-based for faster test
+            use_ai=False,  # Use topic-based for faster test
         )
-        
+
         assert isinstance(followups, list)
         assert len(followups) > 0, "FollowupService should generate suggestions"
 
@@ -164,23 +173,27 @@ class TestZantaraStrength:
         # Read the reasoning.py file to verify prompt includes suggestions
         reasoning_file = backend_path / "backend" / "services" / "rag" / "agentic" / "reasoning.py"
         reasoning_content = reasoning_file.read_text()
-        
+
         assert "suggest" in reasoning_content.lower() or "suggerire" in reasoning_content.lower()
-        assert "next step" in reasoning_content.lower() or "prossimi passi" in reasoning_content.lower()
+        assert (
+            "next step" in reasoning_content.lower()
+            or "prossimi passi" in reasoning_content.lower()
+        )
         assert "Vuoi sapere anche" in reasoning_content or "Ti interessa anche" in reasoning_content
 
     @pytest.mark.asyncio
     async def test_moderate_evidence_allows_response(self):
         """Test that moderate evidence (0.2-0.5) still allows response with warning"""
         from app.core.constants import EvidenceScoreConstants
-        
+
         moderate_scores = [0.2, 0.3, 0.4, 0.5]
-        
+
         for score in moderate_scores:
             # Should allow response (not ABSTAIN)
-            assert score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD, \
+            assert score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD, (
                 f"Moderate score {score} should allow response"
-            
+            )
+
             # Should use positive language ("available" not "limited")
             # This is verified in the code, not directly testable here
 
@@ -202,7 +215,7 @@ class TestZantaraIntegration:
             model_used="gemini-3-flash-preview",
             timings={"total": 1.5},
         )
-        
+
         # Verify response is substantial (not empty)
         assert len(mock_result.answer) > 50, "Response should be substantial"
         assert mock_result.evidence_score >= 0.2, "Evidence score should allow response"
@@ -211,10 +224,10 @@ class TestZantaraIntegration:
     async def test_followup_generation_metrics(self):
         """Test that followup generation is tracked with metrics"""
         from services.misc.followup_service import (
-            followup_requests_total,
             followup_generation_duration,
+            followup_requests_total,
         )
-        
+
         # Verify metrics exist
         assert followup_requests_total is not None
         assert followup_generation_duration is not None
@@ -231,12 +244,13 @@ class TestZantaraIntegration:
             "• Procedure e documentazione\n\n"
             "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
         )
-        
+
         # Quality checks
         assert len(abstain_message) > 100, "Message should be substantial"
         assert "•" in abstain_message or "-" in abstain_message, "Should have bullet points"
-        assert "Posso aiutarti" in abstain_message or "can help" in abstain_message.lower(), \
+        assert "Posso aiutarti" in abstain_message or "can help" in abstain_message.lower(), (
             "Should be helpful, not dismissive"
+        )
         assert "altro?" not in abstain_message.lower(), "Should not just ask 'altro?'"
 
 
@@ -247,7 +261,7 @@ class TestZantaraPerformance:
     async def test_evidence_score_calculation_allows_responses(self):
         """Test that evidence score calculation allows most queries to get responses"""
         from services.rag.agentic.reasoning import calculate_evidence_score
-        
+
         # Simulate scenarios that should get responses
         test_cases = [
             {
@@ -257,18 +271,24 @@ class TestZantaraPerformance:
                 "expected_min": 0.2,  # Should be above ABSTAIN threshold
             },
             {
-                "sources": [{"score": 0.3}, {"score": 0.3}, {"score": 0.3}, {"score": 0.3}],  # Multiple sources
+                "sources": [
+                    {"score": 0.3},
+                    {"score": 0.3},
+                    {"score": 0.3},
+                    {"score": 0.3},
+                ],  # Multiple sources
                 "context": ["Context 1", "Context 2", "Context 3"],
                 "query": "Come funziona il visto?",
                 "expected_min": 0.2,
             },
         ]
-        
+
         for case in test_cases:
             score = calculate_evidence_score(
                 sources=case["sources"],
                 context_gathered=case["context"],
                 query=case["query"],
             )
-            assert score >= case["expected_min"], \
+            assert score >= case["expected_min"], (
                 f"Evidence score {score} should allow response for query: {case['query']}"
+            )

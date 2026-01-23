@@ -6,7 +6,6 @@ Verifica che il bot risponda correttamente ai messaggi
 
 import asyncio
 import httpx
-import json
 import sys
 from datetime import datetime
 
@@ -22,10 +21,10 @@ async def test_bot_info():
         try:
             response = await client.get(f"{API_BASE}/getMe")
             data = response.json()
-            
+
             if data.get("ok"):
                 bot_info = data["result"]
-                print(f"✅ Bot trovato:")
+                print("✅ Bot trovato:")
                 print(f"   Username: @{bot_info.get('username')}")
                 print(f"   Nome: {bot_info.get('first_name')}")
                 print(f"   ID: {bot_info.get('id')}")
@@ -45,23 +44,23 @@ async def test_webhook_info():
         try:
             response = await client.get(f"{API_BASE}/getWebhookInfo")
             data = response.json()
-            
+
             if data.get("ok"):
                 webhook_info = data["result"]
                 url = webhook_info.get("url", "")
                 pending = webhook_info.get("pending_update_count", 0)
-                
+
                 if url:
-                    print(f"✅ Webhook configurato:")
+                    print("✅ Webhook configurato:")
                     print(f"   URL: {url}")
                     print(f"   Updates in attesa: {pending}")
-                    
+
                     # Verifica che l'URL sia raggiungibile
                     if "nuzantara-rag.fly.dev" in url:
                         print("✅ URL webhook corretto")
                     else:
                         print("⚠️  URL webhook potrebbe non essere corretto")
-                    
+
                     return True
                 else:
                     print("❌ Webhook non configurato")
@@ -88,31 +87,30 @@ async def test_webhook_endpoint():
                         "id": 1125336968,
                         "is_bot": False,
                         "first_name": "Test",
-                        "username": "test_user"
+                        "username": "test_user",
                     },
-                    "chat": {
-                        "id": 1125336968,
-                        "type": "private"
-                    },
+                    "chat": {"id": 1125336968, "type": "private"},
                     "date": int(datetime.now().timestamp()),
-                    "text": "/start"
-                }
+                    "text": "/start",
+                },
             }
-            
+
             # Prova a raggiungere l'endpoint (potrebbe richiedere autenticazione)
             response = await client.post(
                 WEBHOOK_URL,
                 json=test_update,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
-            
+
             print(f"   Status Code: {response.status_code}")
-            
+
             if response.status_code == 200:
                 print("✅ Endpoint raggiungibile e risponde")
                 return True
             elif response.status_code == 403:
-                print("⚠️  Endpoint richiede autenticazione (normale se webhook secret è configurato)")
+                print(
+                    "⚠️  Endpoint richiede autenticazione (normale se webhook secret è configurato)"
+                )
                 return True  # Questo è normale se c'è un secret token
             elif response.status_code == 401:
                 print("⚠️  Endpoint richiede autenticazione")
@@ -121,7 +119,7 @@ async def test_webhook_endpoint():
                 print(f"⚠️  Risposta inaspettata: {response.status_code}")
                 print(f"   Response: {response.text[:200]}")
                 return False
-                
+
         except httpx.TimeoutException:
             print("❌ Timeout: endpoint non raggiungibile")
             return False
@@ -140,11 +138,11 @@ async def test_send_message(chat_id: str):
                 json={
                     "chat_id": chat_id,
                     "text": "🧪 Test bot - Se ricevi questo messaggio, il bot funziona!",
-                    "parse_mode": "Markdown"
-                }
+                    "parse_mode": "Markdown",
+                },
             )
             data = response.json()
-            
+
             if data.get("ok"):
                 print("✅ Messaggio inviato con successo!")
                 print(f"   Message ID: {data['result'].get('message_id')}")
@@ -152,15 +150,17 @@ async def test_send_message(chat_id: str):
             else:
                 error_code = data.get("error_code", "unknown")
                 description = data.get("description", "Unknown error")
-                print(f"❌ Errore invio messaggio:")
+                print("❌ Errore invio messaggio:")
                 print(f"   Code: {error_code}")
                 print(f"   Description: {description}")
-                
+
                 if error_code == 403:
-                    print("   💡 Suggerimento: Il bot potrebbe non essere avviato. Invia /start al bot prima.")
+                    print(
+                        "   💡 Suggerimento: Il bot potrebbe non essere avviato. Invia /start al bot prima."
+                    )
                 elif error_code == 400:
                     print("   💡 Suggerimento: Chat ID potrebbe non essere valido")
-                
+
                 return False
         except Exception as e:
             print(f"❌ Errore: {e}")
@@ -174,18 +174,18 @@ async def main():
     print(f"Bot Token: {BOT_TOKEN[:20]}...")
     print(f"Webhook URL: {WEBHOOK_URL}")
     print("=" * 60)
-    
+
     results = []
-    
+
     # Test 1: Bot info
     results.append(await test_bot_info())
-    
+
     # Test 2: Webhook info
     results.append(await test_webhook_info())
-    
+
     # Test 3: Webhook endpoint
     results.append(await test_webhook_endpoint())
-    
+
     # Test 4: Send message (opzionale, richiede chat_id)
     if len(sys.argv) > 1:
         chat_id = sys.argv[1]
@@ -194,7 +194,7 @@ async def main():
         print("\n💡 Per testare l'invio di messaggi, esegui:")
         print(f"   python3 {sys.argv[0]} <chat_id>")
         print(f"   Esempio: python3 {sys.argv[0]} 1125336968")
-    
+
     # Riepilogo
     print("\n" + "=" * 60)
     print("📊 RIEPILOGO TEST")
@@ -202,7 +202,7 @@ async def main():
     passed = sum(results)
     total = len(results)
     print(f"Test passati: {passed}/{total}")
-    
+
     if passed == total:
         print("✅ Tutti i test sono passati!")
         return 0

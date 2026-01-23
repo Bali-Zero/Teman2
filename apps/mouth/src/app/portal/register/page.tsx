@@ -127,7 +127,8 @@ function RegisterContent() {
           </div>
           <h1 className="text-2xl font-bold text-slate-800 mb-2">Invalid Invitation</h1>
           <p className="text-slate-600 mb-6">
-            {error || 'This invitation link is no longer valid. Please contact your account manager for a new invitation.'}
+            {error ||
+              'This invitation link is no longer valid. Please contact your account manager for a new invitation.'}
           </p>
           <a
             href="mailto:support@balizero.com"
@@ -157,9 +158,7 @@ function RegisterContent() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
             <input
               type="email"
               value={clientEmail}
@@ -185,9 +184,7 @@ function RegisterContent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Confirm PIN
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Confirm PIN</label>
             <input
               type="password"
               inputMode="numeric"
@@ -236,14 +233,16 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
+            <p className="text-slate-600">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <RegisterContent />
     </Suspense>
   );

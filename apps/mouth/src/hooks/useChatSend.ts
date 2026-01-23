@@ -7,7 +7,7 @@
  * @returns Send message handler and streaming state
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useChatStreaming } from './useChatStreaming';
 import { saveConversation } from '@/app/chat/actions';
 import { api } from '@/lib/api';
@@ -16,6 +16,30 @@ import { chatMetrics } from '@/lib/metrics';
 import type { Source } from '@/types';
 import type { ChatMessage, ChatImage } from '@/app/chat/actions';
 import type { AgentStep } from '@/types';
+
+// Error message configurations for user-friendly feedback
+const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  TIMEOUT: {
+    title: 'Response Timeout',
+    description: 'The AI took too long to respond. Please try again.',
+  },
+  NETWORK: {
+    title: 'Connection Lost',
+    description: 'Please check your internet connection.',
+  },
+  RATE_LIMIT: {
+    title: 'Too Many Requests',
+    description: 'Please wait a moment before sending another message.',
+  },
+  SERVER_ERROR: {
+    title: 'Server Error',
+    description: 'Something went wrong. Our team has been notified.',
+  },
+  ABORTED: {
+    title: 'Message Stopped',
+    description: 'You stopped the message generation.',
+  },
+};
 
 export interface UseChatSendOptions {
   sessionId: string;
@@ -59,6 +83,56 @@ export function useChatSend({
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
   const [currentStatus, setCurrentStatus] = useState('');
 
+  // Toast deduplication - max 1 toast per 5s per error type
+  const lastToastTime = useRef<Record<string, number>>({});
+
+  /**
+   * Classify error type and show appropriate toast notification
+   * with deduplication to prevent toast spam
+   */
+  const showErrorToast = useCallback(
+    (error: Error) => {
+      // Classify error type based on error message
+      let errorType = 'SERVER_ERROR';
+      const errorMsg = error.message?.toLowerCase() || '';
+
+      if (errorMsg.includes('timeout')) {
+        errorType = 'TIMEOUT';
+      } else if (errorMsg.includes('aborted') || errorMsg.includes('abort')) {
+        errorType = 'ABORTED';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        errorType = 'NETWORK';
+      } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+        errorType = 'RATE_LIMIT';
+      }
+
+      // Check deduplication - max 1 toast per 5s per error type
+      const now = Date.now();
+      const lastShown = lastToastTime.current[errorType] || 0;
+
+      if (now - lastShown < 5000) {
+        logger.info('Toast deduplication: skipping duplicate error toast', {
+          component: 'useChatSend',
+          metadata: { errorType, timeSinceLastToast: now - lastShown },
+        });
+        return;
+      }
+
+      // Show toast with user-friendly message
+      const config = ERROR_MESSAGES[errorType] || ERROR_MESSAGES.SERVER_ERROR;
+      onToast(config.description, 'error');
+
+      // Update last toast time
+      lastToastTime.current[errorType] = now;
+
+      logger.info('Error toast shown', {
+        component: 'useChatSend',
+        metadata: { errorType, title: config.title },
+      });
+    },
+    [onToast]
+  );
+
   const sendMessage = useCallback(
     async (input: string) => {
       const trimmedInput = input.trim();
@@ -100,6 +174,7 @@ export function useChatSend({
               const streamingDuration = (Date.now() - streamingStartTime) / 1000;
               chatMetrics.streamingError(sessionId, error.name || 'Unknown');
               setCurrentStatus('');
+              showErrorToast(error);
               onError(error);
             },
             onStep: (step) => {
@@ -137,9 +212,9 @@ export function useChatSend({
 
         setCurrentStatus('');
         setStreamingSteps([]);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        onToast(`Failed to send message: ${errorMessage}`, 'error');
-        onError(error instanceof Error ? error : new Error(String(error)));
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        showErrorToast(errorObj);
+        onError(errorObj);
       } finally {
         setIsStreaming(false);
       }
@@ -156,6 +231,7 @@ export function useChatSend({
       onComplete,
       onError,
       onStep,
+      showErrorToast,
     ]
   );
 

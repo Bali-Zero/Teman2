@@ -2,6 +2,7 @@
 ZANTARA Conversations Router
 Endpoints for persistent conversation history with PostgreSQL
 + Auto-CRM population from conversations
++ Async LLM-generated conversation titles
 
 SECURITY: All endpoints require JWT authentication (added 2025-12-03)
 User identity is taken from JWT token, NOT from request parameters.
@@ -9,6 +10,7 @@ User identity is taken from JWT token, NOT from request parameters.
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import asyncio
 from datetime import datetime
 
 import asyncpg
@@ -20,6 +22,7 @@ from backend.app.metrics import metrics_collector
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success, log_warning
+from backend.services.crm.conversation_title_generator import generate_conversation_title
 from backend.services.memory import MemoryOrchestrator, get_memory_cache
 
 logger = get_logger(__name__)
@@ -63,6 +66,68 @@ def get_auto_crm():
             log_warning(logger, f"Auto-CRM service not available: {e}")
             _auto_crm_service = False  # Mark as unavailable
     return _auto_crm_service if _auto_crm_service else None
+
+
+async def _generate_and_update_title(
+    conversation_id: int,
+    first_user_message: str,
+    db_pool: asyncpg.Pool
+):
+    """
+    Background task to generate and store conversation title.
+
+    Runs async (fire-and-forget) to avoid blocking conversation save.
+    Stores generated title in metadata.generated_title JSONB field.
+
+    Args:
+        conversation_id: ID of conversation to update
+        first_user_message: First message content for title generation
+        db_pool: Database connection pool
+
+    Cost: ~$0.000006 per title (Claude Haiku)
+    Latency: Non-blocking (runs in background)
+    """
+    try:
+        # Generate title using LLM
+        title = await generate_conversation_title(
+            conversation_id=str(conversation_id),
+            first_user_message=first_user_message
+        )
+
+        if title:
+            # Update metadata.generated_title in database
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE conversations
+                    SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                                   jsonb_build_object('generated_title', $1::text)
+                    WHERE id = $2
+                    """,
+                    title,
+                    conversation_id
+                )
+
+            log_success(
+                logger,
+                "Generated conversation title",
+                conversation_id=conversation_id,
+                title=title[:50]
+            )
+        else:
+            logger.info(
+                f"Title generation returned None for conversation {conversation_id}, "
+                "using fallback"
+            )
+
+    except Exception as e:
+        # Don't fail conversation save if title generation fails
+        log_warning(
+            logger,
+            "Title generation failed",
+            conversation_id=conversation_id,
+            error=str(e)
+        )
 
 
 # Pydantic models
@@ -247,6 +312,32 @@ async def save_conversation(
                                 messages_count=len(request.messages),
                                 attempt=attempt + 1,
                             )
+
+                            # Trigger async title generation for new conversations
+                            # (fire-and-forget, non-blocking)
+                            if conversation_id and request.messages:
+                                # Find first user message for title generation
+                                first_user_msg = next(
+                                    (
+                                        msg.get("content", "")
+                                        for msg in request.messages
+                                        if isinstance(msg, dict) and msg.get("role") == "user"
+                                    ),
+                                    None
+                                )
+
+                                if first_user_msg:
+                                    asyncio.create_task(
+                                        _generate_and_update_title(
+                                            conversation_id=conversation_id,
+                                            first_user_message=first_user_msg,
+                                            db_pool=db_pool
+                                        )
+                                    )
+                                    logger.info(
+                                        f"🎯 Triggered async title generation for conversation {conversation_id}"
+                                    )
+
                             break  # Success - exit retry loop
             else:
                 logger.warning("⚠️ DB Pool unavailable, skipping DB save")
@@ -569,15 +660,28 @@ async def list_conversations(
             conversations = []
             for row in rows:
                 messages = row["messages"] or []
+                metadata = row["metadata"] or {}
 
-                # Extract title from first user message
-                title = "New Conversation"
+                # Fallback chain: generated_title → first_message → default
+                # Priority 1: Use LLM-generated title (best quality)
+                title = None
+                if metadata and isinstance(metadata, dict) and "generated_title" in metadata:
+                    title = metadata["generated_title"]
+
+                # Priority 2: Fallback to first message excerpt
+                if not title:
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("role") == "user":
+                            content = msg.get("content", "")
+                            title = content[:50] + "..." if len(content) > 50 else content
+                            break
+
+                # Priority 3: Final fallback to default
+                if not title:
+                    title = "New Conversation"
+
+                # Extract preview from last assistant message
                 preview = ""
-                for msg in messages:
-                    if isinstance(msg, dict) and msg.get("role") == "user":
-                        content = msg.get("content", "")
-                        title = content[:50] + "..." if len(content) > 50 else content
-                        break
 
                 # Extract preview from last assistant message
                 for msg in reversed(messages):

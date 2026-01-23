@@ -88,8 +88,7 @@ class OrchestratorStreamingCore:
 
         # IMMEDIATE: Yield granular thinking indicator for user feedback
         yield thinking_service.create_thinking_event(
-            ThinkingPhase.ANALYZING, 
-            message_override="🧠 Analyzing request & intent..."
+            ThinkingPhase.ANALYZING, message_override="🧠 Analyzing request & intent..."
         )
 
         # 1. Prepare context (TIERED LOADING)
@@ -106,10 +105,9 @@ class OrchestratorStreamingCore:
 
             # ENRICHMENT PHASE
             yield thinking_service.create_thinking_event(
-                ThinkingPhase.SEARCHING, 
-                message_override="🔍 Retrieving memory & facts..."
+                ThinkingPhase.SEARCHING, message_override="🔍 Retrieving memory & facts..."
             )
-            
+
             # Parallel Enrichment: Memory + Entities
             async def _enrich_memory():
                 return await self.core.context_manager.enrich_user_context(
@@ -120,27 +118,30 @@ class OrchestratorStreamingCore:
                 return await self.core.entity_extractor.extract_entities(query)
 
             enrich_results = await asyncio.gather(
-                _enrich_memory(),
-                _extract_entities(),
-                return_exceptions=True
+                _enrich_memory(), _extract_entities(), return_exceptions=True
             )
 
             # Process Memory result
             if not isinstance(enrich_results[0], Exception):
                 user_context = enrich_results[0]
-            
+
             # Process Entity result
             if not isinstance(enrich_results[1], Exception):
                 extracted_entities = enrich_results[1]
-            
+
         else:
             # LEGACY / FULL LOAD PATH
             yield thinking_service.create_thinking_event(
-                ThinkingPhase.SEARCHING, 
-                message_override="👤 Loading profile & extracting entities..."
+                ThinkingPhase.SEARCHING,
+                message_override="👤 Loading profile & extracting entities...",
             )
-            
-            user_context, optimized_history, extracted_entities, kg_context_str = await self.core.prepare_query_context(
+
+            (
+                user_context,
+                optimized_history,
+                extracted_entities,
+                kg_context_str,
+            ) = await self.core.prepare_query_context(
                 query=query,
                 user_id=user_id,
                 conversation_history=conversation_history,
@@ -180,7 +181,7 @@ class OrchestratorStreamingCore:
             history=optimized_history,
             extracted_entities=extracted_entities,
             deep_think_mode=False,  # Will be determined by routing
-            kg_context_str=kg_context_str, # Pass pre-fetched KG context
+            kg_context_str=kg_context_str,  # Pass pre-fetched KG context
         )
 
         # 4. Create chat session
@@ -222,8 +223,7 @@ class OrchestratorStreamingCore:
                 if raw_event and raw_event.get("type") == "tool_call":
                     tool_name = raw_event.get("data", {}).get("tool_name", "unknown tool")
                     yield thinking_service.create_thinking_event(
-                        ThinkingPhase.TOOL_CALLING,
-                        tool_name=tool_name
+                        ThinkingPhase.TOOL_CALLING, tool_name=tool_name
                     )
 
                 # Process and validate events

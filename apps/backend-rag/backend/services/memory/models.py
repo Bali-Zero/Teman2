@@ -170,8 +170,8 @@ class MemoryProcessResult(BaseModel):
 # DATABASE MAPPING (SQLModel)
 # ==========================================
 
-from sqlalchemy import Column, Text, JSON
-from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import JSON, Column, Text
+from sqlmodel import Field, SQLModel
 
 
 class UserFactModel(SQLModel, table=True):
@@ -231,7 +231,7 @@ class EpisodicMemoryModel(SQLModel, table=True):
     # Event Metadata (renamed to avoid SQLModel conflict)
     event_metadata: dict = Field(default_factory=dict, sa_column=Column("metadata", JSON))
     source: str = Field(default="auto", max_length=50)
-    
+
     # Timestamps
     occurred_at: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)

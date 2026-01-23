@@ -1,14 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  MessageSquare,
-  Send,
-  User,
-  Users,
-  Clock,
-  AlertCircle,
-} from 'lucide-react';
+import { MessageSquare, Send, User, Users, Clock, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { PortalMessage } from '@/lib/api/portal/portal.types';
 
@@ -76,10 +69,10 @@ export default function MessagesPage() {
 
     try {
       const sentMessage = await api.portal.sendMessage({ content: messageToSend });
-      setMessages((prev) => prev.map(m => m.id === tempId ? sentMessage : m));
+      setMessages((prev) => prev.map((m) => (m.id === tempId ? sentMessage : m)));
     } catch (err) {
       console.error('Failed to send message:', err);
-      setMessages((prev) => prev.filter(m => m.id !== tempId));
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setNewMessage(messageToSend);
     } finally {
       setIsSending(false);
@@ -105,14 +98,17 @@ export default function MessagesPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const groupedMessages = messages.reduce((acc, message) => {
-    const dateKey = new Date(message.createdAt).toDateString();
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(message);
-    return acc;
-  }, {} as Record<string, PortalMessage[]>);
+  const groupedMessages = messages.reduce(
+    (acc, message) => {
+      const dateKey = new Date(message.createdAt).toDateString();
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(message);
+      return acc;
+    },
+    {} as Record<string, PortalMessage[]>
+  );
 
   if (isLoading) {
     return (
@@ -182,15 +178,23 @@ export default function MessagesPage() {
                         } p-4`}
                       >
                         {/* Sender */}
-                        <div className={`flex items-center gap-2 mb-2 ${message.direction === 'client_to_team' ? 'justify-end' : ''}`}>
-                          <div className={`p-1 rounded-full ${message.direction === 'client_to_team' ? 'bg-[#38B2AC]' : 'bg-[#1A1D24]'}`}>
+                        <div
+                          className={`flex items-center gap-2 mb-2 ${message.direction === 'client_to_team' ? 'justify-end' : ''}`}
+                        >
+                          <div
+                            className={`p-1 rounded-full ${message.direction === 'client_to_team' ? 'bg-[#38B2AC]' : 'bg-[#1A1D24]'}`}
+                          >
                             {message.direction === 'client_to_team' ? (
-                              <User className={`w-3 h-3 ${message.direction === 'client_to_team' ? 'text-[#0B0E13]' : 'text-[#9AA0AE]'}`} />
+                              <User
+                                className={`w-3 h-3 ${message.direction === 'client_to_team' ? 'text-[#0B0E13]' : 'text-[#9AA0AE]'}`}
+                              />
                             ) : (
                               <Users className="w-3 h-3 text-[#9AA0AE]" />
                             )}
                           </div>
-                          <span className={`text-xs ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/70' : 'text-[#9AA0AE]'}`}>
+                          <span
+                            className={`text-xs ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/70' : 'text-[#9AA0AE]'}`}
+                          >
                             {message.sentBy}
                           </span>
                         </div>
@@ -199,9 +203,15 @@ export default function MessagesPage() {
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
 
                         {/* Time */}
-                        <div className={`flex items-center gap-1 mt-2 ${message.direction === 'client_to_team' ? 'justify-end' : ''}`}>
-                          <Clock className={`w-3 h-3 ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/50' : 'text-[#9AA0AE]'}`} />
-                          <span className={`text-xs ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/50' : 'text-[#9AA0AE]'}`}>
+                        <div
+                          className={`flex items-center gap-1 mt-2 ${message.direction === 'client_to_team' ? 'justify-end' : ''}`}
+                        >
+                          <Clock
+                            className={`w-3 h-3 ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/50' : 'text-[#9AA0AE]'}`}
+                          />
+                          <span
+                            className={`text-xs ${message.direction === 'client_to_team' ? 'text-[#0B0E13]/50' : 'text-[#9AA0AE]'}`}
+                          >
                             {formatTime(message.createdAt)}
                           </span>
                         </div>
@@ -244,7 +254,9 @@ export default function MessagesPage() {
               <Send className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-xs text-[#9AA0AE] mt-2">Press Enter to send, Shift+Enter for new line</p>
+          <p className="text-xs text-[#9AA0AE] mt-2">
+            Press Enter to send, Shift+Enter for new line
+          </p>
         </div>
       </div>
     </div>

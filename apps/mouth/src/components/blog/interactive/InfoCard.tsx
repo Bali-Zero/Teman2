@@ -9,7 +9,7 @@ import {
   Lightbulb,
   Zap,
   BookOpen,
-  ExternalLink
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -50,15 +50,18 @@ export interface InfoCardProps {
 // Variant styles
 // ============================================================================
 
-const variantStyles: Record<InfoCardVariant, {
-  bg: string;
-  border: string;
-  iconBg: string;
-  iconColor: string;
-  titleColor: string;
-  defaultTitle: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = {
+const variantStyles: Record<
+  InfoCardVariant,
+  {
+    bg: string;
+    border: string;
+    iconBg: string;
+    iconColor: string;
+    titleColor: string;
+    defaultTitle: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
   info: {
     bg: 'bg-blue-500/5',
     border: 'border-blue-500/20',
@@ -153,14 +156,7 @@ export function InfoCard({
   const displayTitle = title || styles.defaultTitle;
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border overflow-hidden',
-        styles.bg,
-        styles.border,
-        className
-      )}
-    >
+    <div className={cn('rounded-xl border overflow-hidden', styles.bg, styles.border, className)}>
       {/* Header */}
       <div
         className={cn(
@@ -172,9 +168,7 @@ export function InfoCard({
         <div className={cn('p-1.5 rounded-lg', styles.iconBg)}>
           {icon || <Icon className={cn('w-4 h-4', styles.iconColor)} />}
         </div>
-        <span className={cn('font-medium text-sm', styles.titleColor)}>
-          {displayTitle}
-        </span>
+        <span className={cn('font-medium text-sm', styles.titleColor)}>{displayTitle}</span>
         {collapsible && (
           <svg
             className={cn(
@@ -193,9 +187,7 @@ export function InfoCard({
       {/* Content */}
       {(!collapsible || !isCollapsed) && (
         <div className="px-4 pb-4">
-          <div className="text-sm text-white/70 leading-relaxed">
-            {children}
-          </div>
+          <div className="text-sm text-white/70 leading-relaxed">{children}</div>
 
           {/* Link */}
           {link && (

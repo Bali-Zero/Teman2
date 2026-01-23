@@ -34,9 +34,7 @@ describe('AgentCard', () => {
     });
 
     it('does not display metrics when not provided', () => {
-      const { container } = render(
-        <AgentCard name="Test" description="Test" status="idle" />
-      );
+      const { container } = render(<AgentCard name="Test" description="Test" status="idle" />);
 
       expect(screen.queryByText(/Success:/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Total runs:/)).not.toBeInTheDocument();
@@ -89,9 +87,7 @@ describe('AgentCard', () => {
         item8: 8, // Should not be displayed
       };
 
-      const { container } = render(
-        <AgentCard {...defaultProps} latestResult={latestResult} />
-      );
+      const { container } = render(<AgentCard {...defaultProps} latestResult={latestResult} />);
 
       const resultItems = container.querySelectorAll('.grid > div');
       expect(resultItems).toHaveLength(6);
@@ -164,9 +160,7 @@ describe('AgentCard', () => {
 
     it('truncates long text properly', () => {
       const longName = 'This is a very long agent name that should be truncated';
-      const { container } = render(
-        <AgentCard {...defaultProps} name={longName} />
-      );
+      const { container } = render(<AgentCard {...defaultProps} name={longName} />);
 
       const nameElement = screen.getByText(longName);
       expect(nameElement).toHaveClass('truncate');

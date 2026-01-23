@@ -33,15 +33,15 @@ def normalize_phone(phone: str | None) -> str | None:
         return None
 
     # Remove all non-digit characters
-    digits = re.sub(r'\D', '', phone)
+    digits = re.sub(r"\D", "", phone)
 
     # If starts with '0', replace with country code (assume Indonesia +62)
-    if digits.startswith('0'):
-        digits = '62' + digits[1:]
+    if digits.startswith("0"):
+        digits = "62" + digits[1:]
 
     # Ensure '+' prefix
-    if not digits.startswith('+'):
-        digits = '+' + digits
+    if not digits.startswith("+"):
+        digits = "+" + digits
 
     return digits
 
@@ -70,12 +70,15 @@ class ClientIdentityResolver:
             client_id if found, None otherwise
         """
         async with self.db_pool.acquire() as conn:
-            client_id = await conn.fetchval("""
+            client_id = await conn.fetchval(
+                """
                 SELECT client_id
                 FROM messaging_users
                 WHERE telegram_chat_id = $1
                   AND client_id IS NOT NULL
-            """, str(telegram_chat_id))
+            """,
+                str(telegram_chat_id),
+            )
 
             return client_id
 
@@ -95,23 +98,29 @@ class ClientIdentityResolver:
 
         async with self.db_pool.acquire() as conn:
             # Try messaging_users first (if linked)
-            client_id = await conn.fetchval("""
+            client_id = await conn.fetchval(
+                """
                 SELECT client_id
                 FROM messaging_users
                 WHERE phone = $1
                   AND client_id IS NOT NULL
-            """, normalized)
+            """,
+                normalized,
+            )
 
             if client_id:
                 return client_id
 
             # Fallback: search clients table by whatsapp/phone
-            client_id = await conn.fetchval("""
+            client_id = await conn.fetchval(
+                """
                 SELECT id
                 FROM clients
                 WHERE whatsapp = $1 OR phone = $1
                 LIMIT 1
-            """, normalized)
+            """,
+                normalized,
+            )
 
             return client_id
 
@@ -129,19 +138,19 @@ class ClientIdentityResolver:
             return None
 
         async with self.db_pool.acquire() as conn:
-            client_id = await conn.fetchval("""
+            client_id = await conn.fetchval(
+                """
                 SELECT id
                 FROM clients
                 WHERE LOWER(email) = LOWER($1)
-            """, email)
+            """,
+                email,
+            )
 
             return client_id
 
     async def link_messaging_user_to_client(
-        self,
-        channel: str,
-        identifier: str,
-        client_id: int
+        self, channel: str, identifier: str, client_id: int
     ) -> bool:
         """
         Link a messaging_user to a client.
@@ -155,21 +164,29 @@ class ClientIdentityResolver:
             True if linked successfully, False otherwise
         """
         async with self.db_pool.acquire() as conn:
-            if channel == 'telegram':
-                result = await conn.execute("""
+            if channel == "telegram":
+                result = await conn.execute(
+                    """
                     UPDATE messaging_users
                     SET client_id = $1
                     WHERE telegram_chat_id = $2
                       AND client_id IS NULL
-                """, client_id, identifier)
-            elif channel == 'whatsapp':
+                """,
+                    client_id,
+                    identifier,
+                )
+            elif channel == "whatsapp":
                 normalized = normalize_phone(identifier)
-                result = await conn.execute("""
+                result = await conn.execute(
+                    """
                     UPDATE messaging_users
                     SET client_id = $1
                     WHERE phone = $2
                       AND client_id IS NULL
-                """, client_id, normalized)
+                """,
+                    client_id,
+                    normalized,
+                )
             else:
                 logger.warning(f"Unknown channel: {channel}")
                 return False
@@ -183,10 +200,7 @@ class ClientIdentityResolver:
             return success
 
     async def resolve_or_create_client(
-        self,
-        channel: str,
-        identifier: str,
-        client_data: dict[str, Any] | None = None
+        self, channel: str, identifier: str, client_data: dict[str, Any] | None = None
     ) -> tuple[int, bool]:
         """
         Resolve client identity or create new client.
@@ -202,11 +216,11 @@ class ClientIdentityResolver:
         # 1. Try to find existing client
         client_id = None
 
-        if channel == 'telegram':
+        if channel == "telegram":
             client_id = await self.find_client_by_telegram(identifier)
-        elif channel == 'whatsapp':
+        elif channel == "whatsapp":
             client_id = await self.find_client_by_whatsapp(identifier)
-        elif channel == 'email':
+        elif channel == "email":
             client_id = await self.find_client_by_email(identifier)
 
         if client_id:
@@ -220,7 +234,8 @@ class ClientIdentityResolver:
 
         async with self.db_pool.acquire() as conn:
             # Create new client
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO clients (
                     full_name, email, phone, whatsapp, nationality, status,
                     client_type, source, notes, created_at
@@ -229,18 +244,18 @@ class ClientIdentityResolver:
                 )
                 RETURNING id
             """,
-                client_data.get('full_name', 'Unknown'),
-                client_data.get('email'),
-                client_data.get('phone'),
-                client_data.get('whatsapp') or client_data.get('phone'),
-                client_data.get('nationality'),
-                client_data.get('status', 'prospect'),
-                client_data.get('client_type', 'individual'),
-                client_data.get('source', channel),
-                client_data.get('notes')
+                client_data.get("full_name", "Unknown"),
+                client_data.get("email"),
+                client_data.get("phone"),
+                client_data.get("whatsapp") or client_data.get("phone"),
+                client_data.get("nationality"),
+                client_data.get("status", "prospect"),
+                client_data.get("client_type", "individual"),
+                client_data.get("source", channel),
+                client_data.get("notes"),
             )
 
-            new_client_id = row['id']
+            new_client_id = row["id"]
             logger.info(f"✅ Created new client #{new_client_id} from {channel}")
 
             # Auto-link to messaging_user
@@ -263,7 +278,8 @@ class ClientIdentityResolver:
             ]
         """
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT
                     channel,
                     COALESCE(telegram_chat_id::text, phone) as identifier,
@@ -273,6 +289,8 @@ class ClientIdentityResolver:
                 FROM messaging_users
                 WHERE client_id = $1
                 ORDER BY last_message_at DESC NULLS LAST
-            """, client_id)
+            """,
+                client_id,
+            )
 
             return [dict(row) for row in rows]

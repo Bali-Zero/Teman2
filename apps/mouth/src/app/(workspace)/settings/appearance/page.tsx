@@ -100,8 +100,12 @@ export default function AppearanceSettingsPage() {
                     : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                 }`}
               >
-                <Icon className={`w-8 h-8 mx-auto mb-2 ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
-                <p className={`text-sm font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                <Icon
+                  className={`w-8 h-8 mx-auto mb-2 ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+                />
+                <p
+                  className={`text-sm font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                >
                   {theme.label}
                 </p>
                 {isSelected && (
@@ -131,15 +135,16 @@ export default function AppearanceSettingsPage() {
                 style={{ backgroundColor: accent.color }}
                 title={accent.label}
               >
-                {isSelected && (
-                  <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />
-                )}
+                {isSelected && <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />}
               </button>
             );
           })}
         </div>
         <p className="text-xs text-[var(--foreground-muted)] mt-3">
-          Selected: <span style={{ color: accentColors.find(a => a.id === selectedAccent)?.color }}>{accentColors.find(a => a.id === selectedAccent)?.label}</span>
+          Selected:{' '}
+          <span style={{ color: accentColors.find((a) => a.id === selectedAccent)?.color }}>
+            {accentColors.find((a) => a.id === selectedAccent)?.label}
+          </span>
         </p>
       </div>
 
@@ -168,7 +173,9 @@ export default function AppearanceSettingsPage() {
         <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background)]">
           <div>
             <p className="font-medium text-[var(--foreground)]">Animations</p>
-            <p className="text-sm text-[var(--foreground-muted)]">Enable smooth transitions and effects</p>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              Enable smooth transitions and effects
+            </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -187,15 +194,20 @@ export default function AppearanceSettingsPage() {
         <h3 className="text-sm font-medium text-[var(--foreground-muted)] mb-3">Preview</h3>
         <div className="p-4 rounded-lg bg-[var(--background)] border border-[var(--border)]">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full" style={{ backgroundColor: accentColors.find(a => a.id === selectedAccent)?.color }}></div>
+            <div
+              className="w-10 h-10 rounded-full"
+              style={{ backgroundColor: accentColors.find((a) => a.id === selectedAccent)?.color }}
+            ></div>
             <div>
               <p className="font-medium text-[var(--foreground)]">Sample Card</p>
-              <p className="text-sm text-[var(--foreground-muted)]">This is how elements will look</p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                This is how elements will look
+              </p>
             </div>
           </div>
           <button
             className="px-4 py-2 rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: accentColors.find(a => a.id === selectedAccent)?.color }}
+            style={{ backgroundColor: accentColors.find((a) => a.id === selectedAccent)?.color }}
           >
             Sample Button
           </button>

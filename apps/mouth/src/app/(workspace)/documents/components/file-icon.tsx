@@ -1,43 +1,59 @@
-import { Image, FileSpreadsheet, Presentation, FileText, FileCode, File, Users, Briefcase, TrendingUp, Scale, Settings, Building2 } from 'lucide-react';
+import {
+  Image,
+  FileSpreadsheet,
+  Presentation,
+  FileText,
+  FileCode,
+  File,
+  Users,
+  Briefcase,
+  TrendingUp,
+  Scale,
+  Settings,
+  Building2,
+} from 'lucide-react';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 
 // Department color mapping - matches the organization structure
-export const DEPARTMENT_COLORS: Record<string, { primary: string; secondary: string; icon: typeof Users; label: string }> = {
-  'BOARD': {
+export const DEPARTMENT_COLORS: Record<
+  string,
+  { primary: string; secondary: string; icon: typeof Users; label: string }
+> = {
+  BOARD: {
     primary: '#8B5CF6', // Violet
     secondary: '#A78BFA',
     icon: Building2,
-    label: 'Board'
+    label: 'Board',
   },
-  'CRM': {
+  CRM: {
     primary: '#3B82F6', // Blue
     secondary: '#60A5FA',
     icon: Users,
-    label: 'CRM'
+    label: 'CRM',
   },
-  'MARKETING': {
+  MARKETING: {
     primary: '#EC4899', // Pink
     secondary: '#F472B6',
     icon: TrendingUp,
-    label: 'Marketing'
+    label: 'Marketing',
   },
-  'PERATURAN': {
+  PERATURAN: {
     primary: '#10B981', // Emerald
     secondary: '#34D399',
     icon: Scale,
-    label: 'Peraturan'
+    label: 'Peraturan',
   },
   'SETUP TEAM': {
     primary: '#F59E0B', // Amber
     secondary: '#FBBF24',
     icon: Settings,
-    label: 'Setup Team'
+    label: 'Setup Team',
   },
   'TAX DEPARTMENT': {
     primary: '#EF4444', // Red
     secondary: '#F87171',
     icon: Briefcase,
-    label: 'Tax Department'
+    label: 'Tax Department',
   },
 };
 
@@ -64,17 +80,28 @@ export function DepartmentFolder({
   className,
   primaryColor = '#F59E0B',
   secondaryColor = '#FBBF24',
-  DepartmentIcon
+  DepartmentIcon,
 }: DepartmentFolderProps) {
   return (
     <div className={`relative ${className}`}>
-      <svg viewBox="0 0 64 64" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        viewBox="0 0 64 64"
+        className="w-full h-full"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         {/* Shadow */}
         <ellipse cx="32" cy="58" rx="24" ry="4" fill="black" opacity="0.1" />
 
         {/* Back panel with gradient */}
         <defs>
-          <linearGradient id={`folder-grad-${primaryColor.replace('#', '')}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient
+            id={`folder-grad-${primaryColor.replace('#', '')}`}
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
             <stop offset="0%" stopColor={secondaryColor} />
             <stop offset="100%" stopColor={primaryColor} />
           </linearGradient>
@@ -104,12 +131,7 @@ export function DepartmentFolder({
         />
 
         {/* Inner line detail */}
-        <path
-          d="M10 26H54"
-          stroke={primaryColor}
-          strokeWidth="1"
-          opacity="0.3"
-        />
+        <path d="M10 26H54" stroke={primaryColor} strokeWidth="1" opacity="0.3" />
       </svg>
 
       {/* Department icon overlay */}
@@ -145,11 +167,7 @@ function WindowsFolder({ className }: { className?: string }) {
         fill="#FBBF24"
       />
       {/* Inner shadow for depth */}
-      <path
-        d="M6 18H42V20H6V18Z"
-        fill="#D97706"
-        opacity="0.3"
-      />
+      <path d="M6 18H42V20H6V18Z" fill="#D97706" opacity="0.3" />
     </svg>
   );
 }
@@ -188,11 +206,7 @@ export function getFileIcon(file: FileItem, size: 'sm' | 'lg' = 'lg') {
   if (mimeType.includes('pdf')) {
     return <FileText className={`${sizeClass} text-red-500`} />;
   }
-  if (
-    mimeType.includes('code') ||
-    mimeType.includes('javascript') ||
-    mimeType.includes('json')
-  ) {
+  if (mimeType.includes('code') || mimeType.includes('javascript') || mimeType.includes('json')) {
     return <FileCode className={`${sizeClass} text-purple-500`} />;
   }
   return <File className={`${sizeClass} text-gray-400`} />;

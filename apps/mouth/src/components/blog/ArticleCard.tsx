@@ -63,10 +63,7 @@ function CategoryBadge({ category }: { category: ArticleCategory }) {
 }
 
 // Featured article card (hero style)
-function FeaturedCard({
-  article,
-  index = 0,
-}: ArticleCardProps) {
+function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
 
   return (
@@ -218,9 +215,7 @@ function DefaultCard({
         </h3>
 
         {/* Excerpt */}
-        <p className="text-white/60 text-sm line-clamp-2 mb-3">
-          {article.excerpt}
-        </p>
+        <p className="text-white/60 text-sm line-clamp-2 mb-3">{article.excerpt}</p>
 
         {/* Meta */}
         <div className="flex items-center justify-between text-white/40 text-xs">
@@ -260,10 +255,7 @@ function DefaultCard({
 }
 
 // Compact card (for sidebars)
-function CompactCard({
-  article,
-  index = 0,
-}: ArticleCardProps) {
+function CompactCard({ article, index = 0 }: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
 
   return (
@@ -302,11 +294,7 @@ function CompactCard({
 }
 
 // Horizontal card (for lists)
-function HorizontalCard({
-  article,
-  index = 0,
-  showCategory = true,
-}: ArticleCardProps) {
+function HorizontalCard({ article, index = 0, showCategory = true }: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
 
   return (

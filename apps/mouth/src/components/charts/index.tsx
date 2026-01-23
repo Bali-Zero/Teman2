@@ -88,7 +88,10 @@ export function LineChart({
 }: LineChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div style={{ height }} className="flex items-center justify-center text-[var(--foreground-muted)]">
+      <div
+        style={{ height }}
+        className="flex items-center justify-center text-[var(--foreground-muted)]"
+      >
         No data available
       </div>
     );
@@ -150,7 +153,10 @@ export function BarChart({
 }: BarChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div style={{ height }} className="flex items-center justify-center text-[var(--foreground-muted)]">
+      <div
+        style={{ height }}
+        className="flex items-center justify-center text-[var(--foreground-muted)]"
+      >
         No data available
       </div>
     );
@@ -209,7 +215,10 @@ export function PieChart({
 }: PieChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div style={{ height }} className="flex items-center justify-center text-[var(--foreground-muted)]">
+      <div
+        style={{ height }}
+        className="flex items-center justify-center text-[var(--foreground-muted)]"
+      >
         No data available
       </div>
     );

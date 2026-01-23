@@ -63,7 +63,7 @@ class AutoCRMService:
             telegram_service: Optional TelegramBotService for lead notifications
         """
         self.extractor = get_extractor(ai_client=ai_client)
-        self.pool: "asyncpg.Pool | None" = db_pool
+        self.pool: asyncpg.Pool | None = db_pool
         self.telegram_service = telegram_service
 
     async def connect(self):

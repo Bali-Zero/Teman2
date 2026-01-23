@@ -38,10 +38,16 @@ const itemVariants = {
   },
 };
 
-export function FileGrid({ files, selectedFiles, onFileClick, onFileDoubleClick, onContextMenu }: FileGridProps) {
+export function FileGrid({
+  files,
+  selectedFiles,
+  onFileClick,
+  onFileDoubleClick,
+  onContextMenu,
+}: FileGridProps) {
   // Separate folders and files for better organization
-  const folders = files.filter(f => f.is_folder);
-  const documents = files.filter(f => !f.is_folder);
+  const folders = files.filter((f) => f.is_folder);
+  const documents = files.filter((f) => !f.is_folder);
 
   return (
     <div className="p-6">
@@ -110,7 +116,9 @@ export function FileGrid({ files, selectedFiles, onFileClick, onFileDoubleClick,
             <Users className="h-12 w-12 opacity-50" />
           </div>
           <p className="text-lg font-medium">Questa cartella è vuota</p>
-          <p className="text-sm">Trascina file qui o usa il pulsante "Nuovo" per creare contenuti</p>
+          <p className="text-sm">
+            Trascina file qui o usa il pulsante "Nuovo" per creare contenuti
+          </p>
         </div>
       )}
     </div>
@@ -126,7 +134,14 @@ interface FileCardProps {
   onContextMenu: (file: FileItem, e: React.MouseEvent) => void;
 }
 
-function FileCard({ file, index, isSelected, onClick, onDoubleClick, onContextMenu }: FileCardProps) {
+function FileCard({
+  file,
+  index,
+  isSelected,
+  onClick,
+  onDoubleClick,
+  onContextMenu,
+}: FileCardProps) {
   const deptInfo = file.is_folder ? getDepartmentInfo(file.name) : null;
 
   return (
@@ -140,15 +155,20 @@ function FileCard({ file, index, isSelected, onClick, onDoubleClick, onContextMe
       className={`
         group relative flex cursor-pointer flex-col items-center rounded-2xl border-2 p-5
         transition-all duration-200 ease-out
-        ${isSelected
-          ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
-          : 'border-transparent bg-[var(--background-subtle)] hover:border-[var(--border)] hover:bg-[var(--accent)] hover:shadow-xl'
+        ${
+          isSelected
+            ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
+            : 'border-transparent bg-[var(--background-subtle)] hover:border-[var(--border)] hover:bg-[var(--accent)] hover:shadow-xl'
         }
         ${deptInfo ? 'hover:shadow-lg' : ''}
       `}
-      style={deptInfo ? {
-        '--tw-shadow-color': `${deptInfo.primary}20`,
-      } as React.CSSProperties : undefined}
+      style={
+        deptInfo
+          ? ({
+              '--tw-shadow-color': `${deptInfo.primary}20`,
+            } as React.CSSProperties)
+          : undefined
+      }
     >
       {/* Department badge for department folders */}
       {deptInfo && (
@@ -163,13 +183,18 @@ function FileCard({ file, index, isSelected, onClick, onDoubleClick, onContextMe
       {/* Quick actions overlay */}
       <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
-          onClick={(e) => { e.stopPropagation(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
           className="rounded-full bg-white/80 p-1.5 text-gray-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-amber-500 dark:bg-gray-800/80 dark:text-gray-400 dark:hover:bg-gray-800"
         >
           <Star className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onContextMenu(file, e); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onContextMenu(file, e);
+          }}
           className="rounded-full bg-white/80 p-1.5 text-gray-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white dark:bg-gray-800/80 dark:text-gray-400 dark:hover:bg-gray-800"
         >
           <MoreVertical className="h-3.5 w-3.5" />
@@ -190,9 +215,7 @@ function FileCard({ file, index, isSelected, onClick, onDoubleClick, onContextMe
             style={{ backgroundColor: deptInfo.primary }}
           />
         )}
-        <div className="relative">
-          {getFileIcon(file, 'lg')}
-        </div>
+        <div className="relative">{getFileIcon(file, 'lg')}</div>
       </div>
 
       {/* File name */}

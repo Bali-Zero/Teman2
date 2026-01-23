@@ -103,7 +103,9 @@ export default function LocaleSettingsPage() {
                     : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                 }`}
               >
-                <p className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                <p
+                  className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                >
                   {lang.label}
                 </p>
                 <p className="text-sm text-[var(--foreground-muted)]">{lang.native}</p>
@@ -147,7 +149,9 @@ export default function LocaleSettingsPage() {
 
         {/* Date Format */}
         <div>
-          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">Date Format</label>
+          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">
+            Date Format
+          </label>
           <div className="grid grid-cols-2 gap-3">
             {dateFormats.map((format) => {
               const isSelected = settings.dateFormat === format.value;
@@ -161,7 +165,9 @@ export default function LocaleSettingsPage() {
                       : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                   }`}
                 >
-                  <p className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                  <p
+                    className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                  >
                     {format.label}
                   </p>
                   <p className="text-xs text-[var(--foreground-muted)]">{format.example}</p>
@@ -173,7 +179,9 @@ export default function LocaleSettingsPage() {
 
         {/* Time Format */}
         <div>
-          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">Time Format</label>
+          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">
+            Time Format
+          </label>
           <div className="grid grid-cols-2 gap-3">
             {timeFormats.map((format) => {
               const isSelected = settings.timeFormat === format.value;
@@ -187,7 +195,9 @@ export default function LocaleSettingsPage() {
                       : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                   }`}
                 >
-                  <p className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                  <p
+                    className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                  >
                     {format.label}
                   </p>
                   <p className="text-xs text-[var(--foreground-muted)]">{format.example}</p>
@@ -199,7 +209,9 @@ export default function LocaleSettingsPage() {
 
         {/* First Day of Week */}
         <div>
-          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">First Day of Week</label>
+          <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-2">
+            First Day of Week
+          </label>
           <div className="grid grid-cols-2 gap-3">
             {[
               { value: 'monday', label: 'Monday' },
@@ -216,7 +228,9 @@ export default function LocaleSettingsPage() {
                       : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                   }`}
                 >
-                  <p className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                  <p
+                    className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                  >
                     {day.label}
                   </p>
                 </button>

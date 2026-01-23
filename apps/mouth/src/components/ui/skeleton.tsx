@@ -52,12 +52,7 @@ export function Skeleton({
     );
   }
 
-  return (
-    <div
-      className={cn(baseStyles, variantStyles[variant], className)}
-      style={style}
-    />
-  );
+  return <div className={cn(baseStyles, variantStyles[variant], className)} style={style} />;
 }
 
 /**
@@ -68,11 +63,7 @@ export function MessageBubbleSkeleton({ isUser = false }: { isUser?: boolean }) 
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
       <div className={`flex max-w-[75%] gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar skeleton */}
-        <Skeleton
-          variant="circular"
-          width={isUser ? 40 : 56}
-          height={isUser ? 40 : 56}
-        />
+        <Skeleton variant="circular" width={isUser ? 40 : 56} height={isUser ? 40 : 56} />
 
         {/* Content skeleton */}
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} min-w-0 flex-1`}>

@@ -18,8 +18,6 @@ import logging
 import time
 from typing import Any
 
-from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
@@ -27,6 +25,7 @@ from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
 
@@ -182,7 +181,7 @@ class OrchestratorCore:
             """KG retrieval task"""
             if not self.kg_retrieval:
                 return None
-            
+
             try:
                 kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
                 if kg_context and kg_context.graph_summary:

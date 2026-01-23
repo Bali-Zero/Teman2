@@ -21,12 +21,15 @@ export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps)
     setPrompt('');
   }, [prompt, onSubmit]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  }, [handleSubmit]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
 
   if (!isOpen) return null;
 
@@ -43,10 +46,7 @@ export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps)
               <p className="text-xs text-gray-400">Descrivi cosa vuoi creare</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>

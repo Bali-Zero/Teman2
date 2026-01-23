@@ -139,16 +139,22 @@ class UnifiedTestForceOrchestrator:
                     coverage_report, options.get("max_tests_per_component", 5)
                 )
                 results["test_generation"] = test_generation
-                
+
                 # Step 5: Ricalcola coverage dopo i test generati ed eseguiti
                 if test_generation.get("tests_passed", 0) > 0:
                     logger.info("📊 Step 5: Ricalcolo coverage dopo test generati...")
                     updated_coverage = await self._recalculate_coverage_after_tests()
                     if updated_coverage:
-                        logger.info(f"   ✅ Coverage aggiornata: {updated_coverage.get('overall_coverage', 0):.1f}%")
+                        logger.info(
+                            f"   ✅ Coverage aggiornata: {updated_coverage.get('overall_coverage', 0):.1f}%"
+                        )
                         # Aggiorna coverage nel report
-                        coverage_report.overall_coverage = updated_coverage.get("overall_coverage", coverage_report.overall_coverage)
-                        results["coverage_report"]["overall_coverage"] = coverage_report.overall_coverage
+                        coverage_report.overall_coverage = updated_coverage.get(
+                            "overall_coverage", coverage_report.overall_coverage
+                        )
+                        results["coverage_report"]["overall_coverage"] = (
+                            coverage_report.overall_coverage
+                        )
                         results["coverage_after_tests"] = updated_coverage
 
             # Generate summary
@@ -229,7 +235,7 @@ class UnifiedTestForceOrchestrator:
                         if comp_name not in test_results["tests_by_component"]:
                             test_results["tests_by_component"][comp_name] = 0
                         test_results["tests_by_component"][comp_name] += 1
-                        
+
                         # Esegui il test per verificare che funzioni
                         test_passed = await self._run_test(test_file_path, gap)
                         if test_passed:
@@ -315,7 +321,7 @@ Generate complete test file."""
             file_path = Path(gap["file"])
             component = gap["component"]
             component_type = gap["component_type"]
-            
+
             # Determina directory test basata sul componente
             if component == "zantara-media-backend":
                 test_dir = Path("apps/zantara-media-backend/tests")
@@ -326,22 +332,30 @@ Generate complete test file."""
             else:
                 # Default: cerca directory tests nel componente
                 component_path = Path(f"apps/{component}")
-                test_dir = component_path / "tests" / "unit" if (component_path / "tests" / "unit").exists() else component_path / "tests"
-            
+                test_dir = (
+                    component_path / "tests" / "unit"
+                    if (component_path / "tests" / "unit").exists()
+                    else component_path / "tests"
+                )
+
             # Crea directory se non esiste
             test_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Nome file test basato sul file originale
-            test_filename = f"test_{file_path.stem}.py" if component_type == "backend" else f"{file_path.stem}.test.ts"
+            test_filename = (
+                f"test_{file_path.stem}.py"
+                if component_type == "backend"
+                else f"{file_path.stem}.test.ts"
+            )
             test_file_path = test_dir / test_filename
-            
+
             # Salva il test
             with open(test_file_path, "w") as f:
                 f.write(test_code)
-            
+
             logger.info(f"   ✅ Test salvato: {test_file_path}")
             return str(test_file_path)
-            
+
         except Exception as e:
             logger.error(f"   ❌ Errore salvataggio test: {e}")
             return None
@@ -351,10 +365,11 @@ Generate complete test file."""
         try:
             component_type = gap["component_type"]
             component = gap["component"]
-            
+
             if component_type == "backend":
                 # Esegui pytest
                 import subprocess
+
                 result = subprocess.run(
                     ["pytest", test_file_path, "-v", "--tb=short"],
                     capture_output=True,
@@ -372,6 +387,7 @@ Generate complete test file."""
             else:
                 # Frontend: esegui vitest
                 import subprocess
+
                 result = subprocess.run(
                     ["npm", "run", "test", "--", test_file_path],
                     capture_output=True,
@@ -385,7 +401,7 @@ Generate complete test file."""
                 else:
                     logger.warning(f"   ⚠️ Test fallito: {test_file_path}")
                     return False
-                    
+
         except Exception as e:
             logger.warning(f"   ⚠️ Errore esecuzione test: {e}")
             return False
@@ -396,7 +412,7 @@ Generate complete test file."""
             # Raccogli coverage aggiornata
             collector = UnifiedCoverageCollector()
             updated_report = await collector.collect_all_coverage()
-            
+
             if updated_report:
                 logger.info(f"   📊 Coverage aggiornata: {updated_report.overall_coverage:.1f}%")
                 return {

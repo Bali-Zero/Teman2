@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class GoogleCloudShellAdapter:
     """
     Adapter for Google Cloud Shell Editor.
-    
+
     Cloud Shell Editor è disponibile via:
     - Google Cloud Console (web-based)
     - gcloud CLI (se installato)
@@ -33,7 +33,7 @@ class GoogleCloudShellAdapter:
                 timeout=5.0,
             )
             if result.returncode == 0:
-                version = result.stdout.decode().strip().split('\n')[0]
+                version = result.stdout.decode().strip().split("\n")[0]
                 logger.info(f"✅ Google Cloud SDK trovato: {version}")
                 return True
         except Exception:
@@ -45,7 +45,7 @@ class GoogleCloudShellAdapter:
     async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> str:
         """
         Generate using Google Cloud Shell Editor.
-        
+
         Note: Cloud Shell Editor è principalmente web-based.
         """
         if not self.available:

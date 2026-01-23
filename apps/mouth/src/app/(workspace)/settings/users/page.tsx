@@ -1,7 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, MoreVertical, Mail, Shield, ArrowLeft, UserCircle, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Users,
+  Plus,
+  Search,
+  MoreVertical,
+  Mail,
+  Shield,
+  ArrowLeft,
+  UserCircle,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -33,18 +44,36 @@ export default function UserManagementPage() {
     const loadUsers = async () => {
       try {
         const teamStatus = await api.getTeamStatus();
-        setUsers(teamStatus.map(u => ({
-          ...u,
-          name: u.email.split('@')[0],
-          role: u.email === 'zero@balizero.com' ? 'admin' : 'user',
-          team: 'Team',
-        })));
+        setUsers(
+          teamStatus.map((u) => ({
+            ...u,
+            name: u.email.split('@')[0],
+            role: u.email === 'zero@balizero.com' ? 'admin' : 'user',
+            team: 'Team',
+          }))
+        );
       } catch (err) {
         console.error('Failed to load users:', err);
         // Fallback mock data
         setUsers([
-          { user_id: '1', email: 'zero@balizero.com', name: 'Zero', role: 'admin', team: 'Team', is_online: true, last_action: 'now' },
-          { user_id: '2', email: 'staff@balizero.com', name: 'Staff', role: 'user', team: 'Team', is_online: false, last_action: '2h ago' },
+          {
+            user_id: '1',
+            email: 'zero@balizero.com',
+            name: 'Zero',
+            role: 'admin',
+            team: 'Team',
+            is_online: true,
+            last_action: 'now',
+          },
+          {
+            user_id: '2',
+            email: 'staff@balizero.com',
+            name: 'Staff',
+            role: 'user',
+            team: 'Team',
+            is_online: false,
+            last_action: '2h ago',
+          },
         ]);
       } finally {
         setIsLoading(false);
@@ -53,9 +82,10 @@ export default function UserManagementPage() {
     loadUsers();
   }, []);
 
-  const filteredUsers = users.filter(u =>
-    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter(
+    (u) =>
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddUser = () => {
@@ -84,9 +114,7 @@ export default function UserManagementPage() {
               <Users className="w-6 h-6 text-blue-400" />
               User Management
             </h1>
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Add, modify or remove users
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">Add, modify or remove users</p>
           </div>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
@@ -115,11 +143,15 @@ export default function UserManagementPage() {
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
-          <p className="text-2xl font-bold text-green-400">{users.filter(u => u.is_online).length}</p>
+          <p className="text-2xl font-bold text-green-400">
+            {users.filter((u) => u.is_online).length}
+          </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Admins</p>
-          <p className="text-2xl font-bold text-purple-400">{users.filter(u => u.role === 'admin').length}</p>
+          <p className="text-2xl font-bold text-purple-400">
+            {users.filter((u) => u.role === 'admin').length}
+          </p>
         </div>
       </div>
 
@@ -133,11 +165,21 @@ export default function UserManagementPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--background)]">
-                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">User</th>
-                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Role</th>
-                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Status</th>
-                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">Last Active</th>
-                <th className="text-right p-4 text-sm font-medium text-[var(--foreground-muted)]">Actions</th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">
+                  User
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">
+                  Role
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">
+                  Status
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-[var(--foreground-muted)]">
+                  Last Active
+                </th>
+                <th className="text-right p-4 text-sm font-medium text-[var(--foreground-muted)]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -155,19 +197,23 @@ export default function UserManagementPage() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      user.role === 'admin'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'bg-blue-500/20 text-blue-400'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        user.role === 'admin'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}
+                    >
                       <Shield className="w-3 h-3" />
                       {user.role}
                     </span>
                   </td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1 text-sm ${
-                      user.is_online ? 'text-green-400' : 'text-[var(--foreground-muted)]'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center gap-1 text-sm ${
+                        user.is_online ? 'text-green-400' : 'text-[var(--foreground-muted)]'
+                      }`}
+                    >
                       {user.is_online ? (
                         <CheckCircle2 className="w-4 h-4" />
                       ) : (
@@ -176,9 +222,7 @@ export default function UserManagementPage() {
                       {user.is_online ? 'Online' : 'Offline'}
                     </span>
                   </td>
-                  <td className="p-4 text-sm text-[var(--foreground-muted)]">
-                    {user.last_action}
-                  </td>
+                  <td className="p-4 text-sm text-[var(--foreground-muted)]">{user.last_action}</td>
                   <td className="p-4 text-right">
                     <Button variant="ghost" size="sm">
                       <MoreVertical className="w-4 h-4" />
@@ -239,9 +283,7 @@ export default function UserManagementPage() {
                 <Button variant="ghost" onClick={() => setShowAddModal(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddUser}>
-                  Add User
-                </Button>
+                <Button onClick={handleAddUser}>Add User</Button>
               </div>
             </div>
           </div>

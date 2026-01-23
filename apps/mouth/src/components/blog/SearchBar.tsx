@@ -244,13 +244,7 @@ interface SearchResult {
 }
 
 // Full search modal
-export function SearchModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -407,14 +401,26 @@ export function SearchModal({
                         <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 capitalize">
                           {article.category}
                         </span>
-                        <span className="text-xs text-white/40">{article.readingTime} min read</span>
+                        <span className="text-xs text-white/40">
+                          {article.readingTime} min read
+                        </span>
                       </div>
                     </div>
                     {/* Arrow indicator for selected */}
                     {index === selectedIndex && (
                       <div className="text-white/40 self-center">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </div>
                     )}
@@ -430,10 +436,16 @@ export function SearchModal({
               <div className="p-6 text-center">
                 <p className="text-white/40 text-sm mb-4">Popular searches</p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <RecentSearch label="KITAS application" onClick={() => handleRecentClick('KITAS')} />
+                  <RecentSearch
+                    label="KITAS application"
+                    onClick={() => handleRecentClick('KITAS')}
+                  />
                   <RecentSearch label="PT PMA setup" onClick={() => handleRecentClick('PT PMA')} />
                   <RecentSearch label="Tax obligations" onClick={() => handleRecentClick('tax')} />
-                  <RecentSearch label="Golden Visa" onClick={() => handleRecentClick('golden visa')} />
+                  <RecentSearch
+                    label="Golden Visa"
+                    onClick={() => handleRecentClick('golden visa')}
+                  />
                 </div>
               </div>
             )}

@@ -76,7 +76,11 @@ export function DbExplorer() {
           </SelectTrigger>
           <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
             {tables.map((t) => (
-              <SelectItem key={t} value={t} className="focus:bg-zinc-800 focus:text-white cursor-pointer">
+              <SelectItem
+                key={t}
+                value={t}
+                className="focus:bg-zinc-800 focus:text-white cursor-pointer"
+              >
                 {t}
               </SelectItem>
             ))}
@@ -99,7 +103,8 @@ export function DbExplorer() {
         <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
           <div className="p-2 bg-white/5 border-b border-white/10 flex justify-between items-center text-xs text-muted-foreground">
             <span>
-              Rows {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, tableData.total_rows)} of {tableData.total_rows}
+              Rows {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, tableData.total_rows)}{' '}
+              of {tableData.total_rows}
             </span>
             <div className="flex gap-2">
               <Button
@@ -120,13 +125,16 @@ export function DbExplorer() {
               </Button>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-white/10">
                   {tableData.columns.map((col) => (
-                    <TableHead key={col} className="text-blue-400 font-mono text-xs whitespace-nowrap">
+                    <TableHead
+                      key={col}
+                      className="text-blue-400 font-mono text-xs whitespace-nowrap"
+                    >
                       {col}
                     </TableHead>
                   ))}
@@ -134,24 +142,34 @@ export function DbExplorer() {
               </TableHeader>
               <TableBody>
                 {tableData.rows.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={tableData.columns.length} className="text-center h-24 text-muted-foreground">
-                            No data found
-                        </TableCell>
-                    </TableRow>
+                  <TableRow>
+                    <TableCell
+                      colSpan={tableData.columns.length}
+                      className="text-center h-24 text-muted-foreground"
+                    >
+                      No data found
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                    tableData.rows.map((row, i) => (
+                  tableData.rows.map((row, i) => (
                     <TableRow key={i} className="hover:bg-white/5 border-white/5">
-                        {tableData.columns.map((col) => {
-                            const val = row[col];
-                            return (
-                                <TableCell key={`${i}-${col}`} className="font-mono text-xs max-w-[200px] truncate text-zinc-300">
-                                    {val === null ? <span className="text-zinc-600">NULL</span> : String(val)}
-                                </TableCell>
-                            );
-                        })}
+                      {tableData.columns.map((col) => {
+                        const val = row[col];
+                        return (
+                          <TableCell
+                            key={`${i}-${col}`}
+                            className="font-mono text-xs max-w-[200px] truncate text-zinc-300"
+                          >
+                            {val === null ? (
+                              <span className="text-zinc-600">NULL</span>
+                            ) : (
+                              String(val)
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
-                    ))
+                  ))
                 )}
               </TableBody>
             </Table>

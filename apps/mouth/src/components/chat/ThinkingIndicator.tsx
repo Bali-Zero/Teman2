@@ -2,7 +2,7 @@
 
 /**
  * ThinkingIndicator - Visual indicator for AI reasoning process
- * 
+ *
  * PERFORMANCE NOTE: This component uses 45+ motion components which can impact INP.
  * Consider optimizing by:
  * - Using CSS animations for simple transitions (opacity, transform)
@@ -128,8 +128,14 @@ const TOOL_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
   calculator: { icon: <Calculator className="w-3.5 h-3.5" />, label: 'Calculating' },
   get_pricing: { icon: <DollarSign className="w-3.5 h-3.5" />, label: 'Fetching Pricing Info' },
   team_knowledge: { icon: <Users className="w-3.5 h-3.5" />, label: 'Looking Up Team Info' },
-  graph_traversal: { icon: <Network className="w-3.5 h-3.5" />, label: 'Exploring Knowledge Graph' },
-  knowledge_graph_search: { icon: <Network className="w-3.5 h-3.5" />, label: 'Exploring Knowledge Graph' },
+  graph_traversal: {
+    icon: <Network className="w-3.5 h-3.5" />,
+    label: 'Exploring Knowledge Graph',
+  },
+  knowledge_graph_search: {
+    icon: <Network className="w-3.5 h-3.5" />,
+    label: 'Exploring Knowledge Graph',
+  },
 };
 
 const DEFAULT_TOOL = { icon: <Brain className="w-3.5 h-3.5" />, label: 'Processing' };
@@ -196,41 +202,45 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   const reasoningSteps = steps.filter((s) => s.type === 'reasoning_step');
 
   const latestPhase = phases.length > 0 ? phases[phases.length - 1] : null;
-  const latestReasoning = reasoningSteps.length > 0 ? reasoningSteps[reasoningSteps.length - 1] : null;
+  const latestReasoning =
+    reasoningSteps.length > 0 ? reasoningSteps[reasoningSteps.length - 1] : null;
 
   // Determine current phase name from either standard phase event or reasoning step
   // Type-safe data extraction
   const latestReasoningData = latestReasoning?.data as Record<string, unknown> | undefined;
   const latestPhaseData = latestPhase?.data as Record<string, unknown> | undefined;
-  const currentPhaseName = (latestReasoningData?.phase as string) || (latestPhaseData?.name as string) || null;
+  const currentPhaseName =
+    (latestReasoningData?.phase as string) || (latestPhaseData?.name as string) || null;
   const currentMessage = (latestReasoningData?.message as string) || null;
 
   // Calculate actual step from thinking events
-  const actualStep = thinkingSteps.length > 0 ? thinkingSteps.length : (currentStep || 1);
+  const actualStep = thinkingSteps.length > 0 ? thinkingSteps.length : currentStep || 1;
   const progressPercent = Math.min((actualStep / maxSteps) * 100, 100);
 
   // Build activity list with DYNAMIC messages from actual tool arguments
-  const activities = toolCalls.map((step, idx) => {
-    // Handle both tool_call and tool_start event formats
-    // Type-safe data extraction
-    const stepData = step.data as Record<string, unknown> | undefined;
-    const toolName = (stepData?.tool as string) || (stepData?.name as string) || 'unknown';
-    const toolArgs = (stepData?.args as Record<string, unknown>) || {};
-    const icon = TOOL_ICONS[toolName] || DEFAULT_TOOL.icon;
-    // Generate dynamic message based on actual arguments
-    const dynamicLabel = getDynamicToolMessage(toolName, toolArgs);
-    const isCompleted = idx < toolEnds.length;
-    const isCurrent = idx === toolCalls.length - 1 && !isCompleted;
+  const activities = toolCalls
+    .map((step, idx) => {
+      // Handle both tool_call and tool_start event formats
+      // Type-safe data extraction
+      const stepData = step.data as Record<string, unknown> | undefined;
+      const toolName = (stepData?.tool as string) || (stepData?.name as string) || 'unknown';
+      const toolArgs = (stepData?.args as Record<string, unknown>) || {};
+      const icon = TOOL_ICONS[toolName] || DEFAULT_TOOL.icon;
+      // Generate dynamic message based on actual arguments
+      const dynamicLabel = getDynamicToolMessage(toolName, toolArgs);
+      const isCompleted = idx < toolEnds.length;
+      const isCurrent = idx === toolCalls.length - 1 && !isCompleted;
 
-    return {
-      key: `${toolName}-${idx}`,
-      icon,
-      label: dynamicLabel,
-      toolName,
-      isCompleted,
-      isCurrent,
-    };
-  }).filter(Boolean);
+      return {
+        key: `${toolName}-${idx}`,
+        icon,
+        label: dynamicLabel,
+        toolName,
+        isCompleted,
+        isCurrent,
+      };
+    })
+    .filter(Boolean);
 
   const currentPhrase = THINKING_PHRASES[phraseIndex];
 
@@ -246,7 +256,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
     const isCell = latestReasoningData?.phase === 'cell';
 
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         className="mt-3 bg-[var(--background)]/50 rounded-lg p-2 text-xs border border-[var(--border)]"
@@ -270,14 +280,14 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   // Phase Visualizer (deprecated - kept for backward compatibility)
   const PhaseVisualizer = () => {
     if (!currentPhaseName) return null;
-    
+
     const phases = [
       { id: 'giant', label: 'Giant', icon: <BookOpen className="w-3 h-3" /> },
       { id: 'cell', label: 'Cell', icon: <Scale className="w-3 h-3" /> },
       { id: 'zantara', label: 'Zantara', icon: <Sparkles className="w-3 h-3" /> },
     ];
 
-    const currentIndex = phases.findIndex(p => p.id === currentPhaseName);
+    const currentIndex = phases.findIndex((p) => p.id === currentPhaseName);
 
     return (
       <div className="flex flex-col mb-3 px-1">
@@ -285,15 +295,23 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
           {phases.map((phase, idx) => {
             const isActive = phase.id === currentPhaseName;
             const isCompleted = currentIndex > idx;
-            
+
             return (
               <div key={phase.id} className="flex flex-col items-center gap-1">
                 <motion.div
                   initial={false}
                   animate={{
-                    backgroundColor: isActive ? 'rgba(var(--accent-rgb), 0.2)' : isCompleted ? 'rgba(var(--success-rgb), 0.2)' : 'rgba(var(--foreground-rgb), 0.05)',
-                    borderColor: isActive ? 'var(--accent)' : isCompleted ? 'var(--success)' : 'transparent',
-                    scale: isActive ? 1.1 : 1
+                    backgroundColor: isActive
+                      ? 'rgba(var(--accent-rgb), 0.2)'
+                      : isCompleted
+                        ? 'rgba(var(--success-rgb), 0.2)'
+                        : 'rgba(var(--foreground-rgb), 0.05)',
+                    borderColor: isActive
+                      ? 'var(--accent)'
+                      : isCompleted
+                        ? 'var(--success)'
+                        : 'transparent',
+                    scale: isActive ? 1.1 : 1,
                   }}
                   className={`
                     w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors bg-[var(--background)]
@@ -302,7 +320,9 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                 >
                   {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : phase.icon}
                 </motion.div>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}>
+                <span
+                  className={`text-[10px] font-medium ${isActive ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+                >
                   {phase.label}
                 </span>
               </div>
@@ -310,7 +330,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
           })}
           {/* Progress Line */}
           <div className="absolute left-4 right-4 top-4 h-0.5 bg-[var(--border)] -z-10">
-            <motion.div 
+            <motion.div
               className="h-full bg-[var(--accent)]"
               initial={{ width: '0%' }}
               animate={{ width: `${(currentIndex / 2) * 100}%` }}
@@ -318,7 +338,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             />
           </div>
         </div>
-        
+
         {/* Current Message Display */}
         {currentMessage && (
           <motion.div
@@ -403,7 +423,8 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             <motion.div
               className="absolute inset-0 opacity-20"
               style={{
-                background: 'linear-gradient(45deg, transparent 0%, rgba(139, 92, 246, 0.1) 50%, transparent 100%)',
+                background:
+                  'linear-gradient(45deg, transparent 0%, rgba(139, 92, 246, 0.1) 50%, transparent 100%)',
               }}
               animate={{
                 x: ['-100%', '100%'],
@@ -488,52 +509,56 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-2.5"
                 >
-                  {activities.map((activity, idx) => activity && (
-                    <motion.div
-                      key={activity.key}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className={`
+                  {activities.map(
+                    (activity, idx) =>
+                      activity && (
+                        <motion.div
+                          key={activity.key}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className={`
                         flex items-center gap-2.5 text-xs p-2 rounded-lg
-                        ${activity.isCompleted
-                          ? 'bg-[var(--success)]/10 text-[var(--success)]'
-                          : activity.isCurrent
-                            ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                            : 'text-[var(--foreground-muted)]'
+                        ${
+                          activity.isCompleted
+                            ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                            : activity.isCurrent
+                              ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                              : 'text-[var(--foreground-muted)]'
                         }
                       `}
-                    >
-                      {activity.isCompleted ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring' }}
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          {activity.isCompleted ? (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: 'spring' }}
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </motion.div>
+                          ) : activity.isCurrent ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            >
+                              <Loader2 className="w-4 h-4" />
+                            </motion.div>
+                          ) : (
+                            activity.icon
+                          )}
+                          <span className="font-medium">{activity.label}</span>
+                          {activity.isCompleted && (
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="text-[10px] ml-auto opacity-70"
+                            >
+                              Done
+                            </motion.span>
+                          )}
                         </motion.div>
-                      ) : activity.isCurrent ? (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        >
-                          <Loader2 className="w-4 h-4" />
-                        </motion.div>
-                      ) : (
-                        activity.icon
-                      )}
-                      <span className="font-medium">{activity.label}</span>
-                      {activity.isCompleted && (
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="text-[10px] ml-auto opacity-70"
-                        >
-                          Done
-                        </motion.span>
-                      )}
-                    </motion.div>
-                  ))}
+                      )
+                  )}
                 </motion.div>
               ) : (
                 /* Rotating thinking phrases + Indonesian interjection */
@@ -552,7 +577,11 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                     >
                       {currentPhrase.icon}
                     </motion.div>
-                    <span>{currentPhaseName ? `${currentPhaseName === 'giant' ? 'Analyzing complex regulations...' : currentPhaseName === 'cell' ? 'Calibrating with local data...' : 'Finalizing answer...'}` : currentPhrase.text}</span>
+                    <span>
+                      {currentPhaseName
+                        ? `${currentPhaseName === 'giant' ? 'Analyzing complex regulations...' : currentPhaseName === 'cell' ? 'Calibrating with local data...' : 'Finalizing answer...'}`
+                        : currentPhrase.text}
+                    </span>
                   </motion.div>
                   {/* Indonesian interjection - casual friendly touch */}
                   <motion.div
@@ -580,7 +609,9 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                   transition={{ duration: 0.5 }}
                   className="w-5 h-5 rounded-full bg-[var(--success)]/20 flex items-center justify-center"
                 >
-                  <span className="text-[10px] font-bold text-[var(--success)]">{toolEnds.length}</span>
+                  <span className="text-[10px] font-bold text-[var(--success)]">
+                    {toolEnds.length}
+                  </span>
                 </motion.div>
                 <span className="text-xs text-[var(--foreground-muted)]">
                   {toolEnds.length === 1 ? 'source' : 'sources'} found

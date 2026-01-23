@@ -88,9 +88,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
               <Upload className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Carica file
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Carica file</h2>
           </div>
           <button
             onClick={handleClose}
@@ -108,9 +106,10 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
           onClick={() => fileInputRef.current?.click()}
           className={`
             relative mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all
-            ${isDragOver
-              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-              : 'border-gray-300 bg-gray-50 hover:border-emerald-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900/50 dark:hover:border-emerald-500 dark:hover:bg-gray-900'
+            ${
+              isDragOver
+                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                : 'border-gray-300 bg-gray-50 hover:border-emerald-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900/50 dark:hover:border-emerald-500 dark:hover:bg-gray-900'
             }
           `}
         >
@@ -122,15 +121,21 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
             className="hidden"
           />
 
-          <div className={`
+          <div
+            className={`
             mb-3 flex h-16 w-16 items-center justify-center rounded-full transition-colors
             ${isDragOver ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-gray-200 dark:bg-gray-700'}
-          `}>
-            <Upload className={`h-8 w-8 ${isDragOver ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`} />
+          `}
+          >
+            <Upload
+              className={`h-8 w-8 ${isDragOver ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}
+            />
           </div>
 
           <p className="text-center text-sm font-medium text-gray-700 dark:text-gray-200">
-            {isDragOver ? 'Rilascia i file qui' : 'Trascina i file qui oppure clicca per selezionare'}
+            {isDragOver
+              ? 'Rilascia i file qui'
+              : 'Trascina i file qui oppure clicca per selezionare'}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Supportati tutti i tipi di file

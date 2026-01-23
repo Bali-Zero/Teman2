@@ -121,12 +121,7 @@ describe('ChatHeader', () => {
     });
 
     it('should show avatar image when provided', () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          userAvatar="data:image/png;base64,test"
-        />
-      );
+      render(<ChatHeader {...defaultProps} userAvatar="data:image/png;base64,test" />);
       expect(screen.getByAltText('User avatar')).toBeInTheDocument();
     });
   });

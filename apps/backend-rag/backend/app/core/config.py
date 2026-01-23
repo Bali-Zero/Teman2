@@ -112,9 +112,9 @@ class Settings(BaseSettings):
     # ========================================
     # ZANTARA AI CONFIGURATION (PRIMARY)
     # ========================================
-    zantara_ai_model: str = "gpt-4o-mini"  # Set via ZANTARA_AI_MODEL
-    zantara_ai_cost_input: float = 0.15  # Cost per 1M input tokens (GPT-4o-mini)
-    zantara_ai_cost_output: float = 0.60  # Cost per 1M output tokens (GPT-4o-mini)
+    zantara_ai_model: str = "gemini-3-flash-preview"  # Set via ZANTARA_AI_MODEL
+    zantara_ai_cost_input: float = 0.00  # Preview is free? Or check updated pricing.
+    zantara_ai_cost_output: float = 0.00  # Preview is free? Or check updated pricing.
     openrouter_api_key: str | None = None  # Set via OPENROUTER_API_KEY env var (free AI fallback)
     deepseek_api_key: str | None = Field(default=None, description="DeepSeek API Key")
     ollama_url: str = Field(

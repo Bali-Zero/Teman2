@@ -48,7 +48,9 @@ class TestTier1Fallback:
                 "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale, Bali è un'isola dell'Indonesia.",
                 "gemini-2.0-flash",
                 None,
-                MagicMock(prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001),
+                MagicMock(
+                    prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001
+                ),
             )
         )
 
@@ -91,10 +93,14 @@ class TestTier1Fallback:
         call_args = mock_llm_gateway.send_message.call_args
         prompt = call_args[0][1]  # Second argument is the prompt
 
-        assert "SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL" in prompt or "SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND" in prompt, \
-            "Prompt should contain Transparency Protocol instruction"
-        assert "Non ho trovato documenti interni verificati" in prompt or "conoscenza generale" in prompt, \
-            "Prompt should contain transparency disclaimer"
+        assert (
+            "SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL" in prompt
+            or "SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND" in prompt
+        ), "Prompt should contain Transparency Protocol instruction"
+        assert (
+            "Non ho trovato documenti interni verificati" in prompt
+            or "conoscenza generale" in prompt
+        ), "Prompt should contain transparency disclaimer"
 
         # Verify answer was generated
         assert result_state.final_answer is not None, "Answer should be generated"
@@ -149,17 +155,20 @@ class TestTier1Fallback:
         # Verify STRICT ABSTAIN was used (LLM should NOT be called for final answer regeneration)
         # Check that answer contains ABSTAIN message
         assert result_state.final_answer is not None
-        assert "non ho informazioni verificate sufficienti" in result_state.final_answer.lower() or \
-               "non ho trovato informazioni verificate" in result_state.final_answer.lower() or \
-               "per questa domanda specifica" in result_state.final_answer.lower(), \
-            "Should return ABSTAIN message for critical query"
+        assert (
+            "non ho informazioni verificate sufficienti" in result_state.final_answer.lower()
+            or "non ho trovato informazioni verificate" in result_state.final_answer.lower()
+            or "per questa domanda specifica" in result_state.final_answer.lower()
+        ), "Should return ABSTAIN message for critical query"
 
     @pytest.mark.asyncio
     async def test_critical_domain_detection(self):
         """Test that critical domain detection works correctly"""
         # Test visa queries
         assert _is_critical_domain("Quanto costa il KITAS?", "business_simple") is True
-        assert _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+        assert (
+            _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+        )
 
         # Test legal queries
         assert _is_critical_domain("Parlami della legge sul PMA", "business_complex") is True
@@ -187,7 +196,9 @@ class TestTier1Fallback:
                 "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale...",
                 "gemini-2.0-flash",
                 None,
-                MagicMock(prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001),
+                MagicMock(
+                    prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001
+                ),
             )
         )
 
@@ -230,8 +241,9 @@ class TestTier1Fallback:
         call_args = mock_llm_gateway.send_message.call_args
         prompt = call_args[0][1]
 
-        assert "SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL" in prompt, \
+        assert "SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL" in prompt, (
             "Prompt should contain Transparency Protocol for low confidence retrieval"
+        )
 
         # Verify answer was generated
         assert result_state.final_answer is not None

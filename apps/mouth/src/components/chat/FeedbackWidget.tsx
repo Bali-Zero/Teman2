@@ -95,7 +95,6 @@ export function FeedbackWidget({
       setTimeout(() => {
         setIsVisible(false);
       }, 2000);
-
     } catch (error) {
       console.error('Failed to submit feedback:', error);
       // Still mark as submitted to avoid annoying users
@@ -185,8 +184,7 @@ export function FeedbackWidget({
                   className="w-full justify-start gap-2 hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-yellow-500"
                   onClick={() => setFeedbackType('negative')}
                 >
-                  <ThumbsDown className="w-4 h-4" />
-                  I had some issues
+                  <ThumbsDown className="w-4 h-4" />I had some issues
                 </Button>
                 <Button
                   variant="outline"
@@ -194,8 +192,7 @@ export function FeedbackWidget({
                   className="w-full justify-start gap-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500"
                   onClick={() => setFeedbackType('issue')}
                 >
-                  <AlertCircle className="w-4 h-4" />
-                  I found a bug
+                  <AlertCircle className="w-4 h-4" />I found a bug
                 </Button>
               </div>
             ) : (

@@ -2,8 +2,20 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Grid, List, Plus, Upload, Loader2, Cloud, CloudOff,
-  FolderPlus, FileText, Table, Presentation, ChevronDown, X
+  Search,
+  Grid,
+  List,
+  Plus,
+  Upload,
+  Loader2,
+  Cloud,
+  CloudOff,
+  FolderPlus,
+  FileText,
+  Table,
+  Presentation,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
@@ -65,16 +77,19 @@ export function DriveToolbar({
           <div
             className={`
               relative flex items-center rounded-xl border-2 bg-[var(--background-subtle)] transition-all duration-200
-              ${isSearchFocused
-                ? 'border-emerald-500 shadow-lg shadow-emerald-500/10'
-                : 'border-transparent hover:border-[var(--border)]'
+              ${
+                isSearchFocused
+                  ? 'border-emerald-500 shadow-lg shadow-emerald-500/10'
+                  : 'border-transparent hover:border-[var(--border)]'
               }
             `}
           >
-            <Search className={`
+            <Search
+              className={`
               ml-4 h-5 w-5 transition-colors
               ${isSearchFocused ? 'text-emerald-500' : 'text-[var(--foreground-muted)]'}
-            `} />
+            `}
+            />
             <input
               ref={searchInputRef}
               type="text"
@@ -117,10 +132,7 @@ export function DriveToolbar({
         <div className="flex items-center gap-2">
           {/* Connection status */}
           {!isConnected && onConnect && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <Button
                 variant="outline"
                 size="sm"
@@ -144,9 +156,10 @@ export function DriveToolbar({
               onClick={() => onViewModeChange('grid')}
               className={`
                 relative flex items-center justify-center rounded-lg p-2 transition-all duration-200
-                ${viewMode === 'grid'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                ${
+                  viewMode === 'grid'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                 }
               `}
               title="Vista griglia"
@@ -164,9 +177,10 @@ export function DriveToolbar({
               onClick={() => onViewModeChange('list')}
               className={`
                 relative flex items-center justify-center rounded-lg p-2 transition-all duration-200
-                ${viewMode === 'list'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                ${
+                  viewMode === 'list'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                 }
               `}
               title="Vista lista"

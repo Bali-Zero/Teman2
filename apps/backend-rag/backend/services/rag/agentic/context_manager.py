@@ -207,9 +207,7 @@ async def fetch_memory_facts(
 
         # DIAGNOSTIC: Log first 3 facts for debugging
         if memory_context.profile_facts:
-            logger.warning(
-                f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}"
-            )
+            logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
         else:
             logger.warning(
                 f"⚠️  [ContextManager] NO profile facts found for {user_id} - user recognition will fail!"

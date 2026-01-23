@@ -12,24 +12,32 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Filter urgent alerts (warning, urgent, critical)
-  const urgentAlerts = alerts.filter(a => ['warning', 'urgent', 'critical'].includes(a.severity));
+  const urgentAlerts = alerts.filter((a) => ['warning', 'urgent', 'critical'].includes(a.severity));
   const hasAlerts = urgentAlerts.length > 0;
 
   const getIcon = (severity: string) => {
-    switch(severity) {
-      case 'critical': return <ShieldAlert className="w-4 h-4 text-red-500" />;
-      case 'urgent': return <AlertTriangle className="w-4 h-4 text-orange-500" />;
-      case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-      default: return <Info className="w-4 h-4 text-blue-500" />;
+    switch (severity) {
+      case 'critical':
+        return <ShieldAlert className="w-4 h-4 text-red-500" />;
+      case 'urgent':
+        return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+      case 'warning':
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+      default:
+        return <Info className="w-4 h-4 text-blue-500" />;
     }
   };
 
   const getColor = (severity: string) => {
-    switch(severity) {
-      case 'critical': return 'bg-red-500/10 border-red-500/20 text-red-200';
-      case 'urgent': return 'bg-orange-500/10 border-orange-500/20 text-orange-200';
-      case 'warning': return 'bg-yellow-500/10 border-yellow-500/20 text-yellow-200';
-      default: return 'bg-blue-500/10 border-blue-500/20 text-blue-200';
+    switch (severity) {
+      case 'critical':
+        return 'bg-red-500/10 border-red-500/20 text-red-200';
+      case 'urgent':
+        return 'bg-orange-500/10 border-orange-500/20 text-orange-200';
+      case 'warning':
+        return 'bg-yellow-500/10 border-yellow-500/20 text-yellow-200';
+      default:
+        return 'bg-blue-500/10 border-blue-500/20 text-blue-200';
     }
   };
 
@@ -64,7 +72,7 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
 
             <div className="max-h-[300px] overflow-y-auto p-2 space-y-2">
               {urgentAlerts.map((alert) => (
-                <div 
+                <div
                   key={alert.alert_id}
                   className={`p-3 rounded-lg border flex flex-col gap-2 ${getColor(alert.severity)}`}
                 >
@@ -74,8 +82,11 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
                       {alert.severity}
                     </div>
                     {onDismiss && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onDismiss(alert.alert_id); }}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDismiss(alert.alert_id);
+                        }}
                         className="text-white/20 hover:text-white/50"
                       >
                         <X size={14} />
@@ -84,13 +95,17 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-sm mb-1 line-clamp-1">{alert.title.replace(/^(CRITICAL|URGENT|WARNING|INFO): /, '')}</h4>
-                    <p className="text-xs opacity-80 leading-relaxed mb-2">
-                      {alert.message}
-                    </p>
+                    <h4 className="font-semibold text-sm mb-1 line-clamp-1">
+                      {alert.title.replace(/^(CRITICAL|URGENT|WARNING|INFO): /, '')}
+                    </h4>
+                    <p className="text-xs opacity-80 leading-relaxed mb-2">{alert.message}</p>
                     <div className="flex items-center gap-2 pt-2 border-t border-white/5">
-                       <span className="text-[10px] font-mono opacity-60">Due: {new Date(alert.deadline).toLocaleDateString()}</span>
-                       <span className="text-[10px] font-mono opacity-60 ml-auto">{alert.days_until_deadline} days left</span>
+                      <span className="text-[10px] font-mono opacity-60">
+                        Due: {new Date(alert.deadline).toLocaleDateString()}
+                      </span>
+                      <span className="text-[10px] font-mono opacity-60 ml-auto">
+                        {alert.days_until_deadline} days left
+                      </span>
                     </div>
                   </div>
                 </div>

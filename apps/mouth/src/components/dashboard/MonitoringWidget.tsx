@@ -22,7 +22,9 @@ export function MonitoringWidget() {
   const [alerts, setAlerts] = useState<Array<{ type: string; count: number }>>([]);
   const isMountedRef = useRef(true);
 
-  const buildAlerts = (activeSessions: ReturnType<typeof conversationMonitor.getActiveSessions>) => {
+  const buildAlerts = (
+    activeSessions: ReturnType<typeof conversationMonitor.getActiveSessions>
+  ) => {
     const alertCounts: Record<string, number> = {};
 
     activeSessions.forEach((session) => {
@@ -48,7 +50,7 @@ export function MonitoringWidget() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // Only show in development or if explicitly enabled
     const showWidget = localStorage.getItem('showMonitoringWidget') === 'true';
 

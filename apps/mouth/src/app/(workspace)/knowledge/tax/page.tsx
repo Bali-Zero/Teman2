@@ -57,7 +57,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'One-time',
     mandatory: true,
     icon: 'calculator',
-    description: 'Personal Tax ID registration with Coretax system integration. Required for all working individuals in Indonesia.',
+    description:
+      'Personal Tax ID registration with Coretax system integration. Required for all working individuals in Indonesia.',
     key_points: [
       'Required for KITAS holders',
       'Needed for bank accounts',
@@ -76,7 +77,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'One-time',
     mandatory: true,
     icon: 'building',
-    description: 'Corporate/Regional Tax ID for companies. Required for all PT PMA and local businesses.',
+    description:
+      'Corporate/Regional Tax ID for companies. Required for all PT PMA and local businesses.',
     key_points: [
       'Required after company setup',
       'Enables invoice issuance',
@@ -95,7 +97,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'Annually (by March 31)',
     mandatory: true,
     icon: 'receipt',
-    description: 'Individual annual tax return filing. Mandatory for all NPWP holders with Indonesian income.',
+    description:
+      'Individual annual tax return filing. Mandatory for all NPWP holders with Indonesian income.',
     key_points: [
       'Deadline: March 31',
       'Covers worldwide income',
@@ -116,7 +119,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'Annually (by April 30)',
     mandatory: true,
     icon: 'receipt',
-    description: 'Annual tax return for dormant or zero-activity companies. Still mandatory even with no revenue.',
+    description:
+      'Annual tax return for dormant or zero-activity companies. Still mandatory even with no revenue.',
     key_points: [
       'For dormant companies',
       'NIL declaration required',
@@ -177,7 +181,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'One-time setup',
     mandatory: true,
     icon: 'users',
-    description: 'National Health Insurance registration. Mandatory for all KITAS holders and PT PMA employees.',
+    description:
+      'National Health Insurance registration. Mandatory for all KITAS holders and PT PMA employees.',
     key_points: [
       'Required for KITAS extension',
       'Covers medical expenses',
@@ -218,7 +223,8 @@ const TAX_SERVICES: TaxService[] = [
     frequency: 'Quarterly',
     mandatory: true,
     icon: 'calendar',
-    description: 'Quarterly Investment Activity Report to BKPM. Mandatory for all PT PMA companies.',
+    description:
+      'Quarterly Investment Activity Report to BKPM. Mandatory for all PT PMA companies.',
     key_points: [
       'Due 10th of Q+1 month',
       'Investment realization',
@@ -324,7 +330,9 @@ function TaxCard({ service, onClick }: TaxCardProps) {
               {service.code}
             </span>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(service.category)}`}>
+              <span
+                className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(service.category)}`}
+              >
                 {service.category}
               </span>
             </div>
@@ -336,7 +344,9 @@ function TaxCard({ service, onClick }: TaxCardProps) {
           <h3 className="text-xs font-semibold text-[var(--foreground)] mb-0 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
             {service.title}
           </h3>
-          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">{service.title_id}</p>
+          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">
+            {service.title_id}
+          </p>
         </div>
 
         {/* Price and Time */}
@@ -347,14 +357,18 @@ function TaxCard({ service, onClick }: TaxCardProps) {
               <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
                 {service.price_note || 'Price'}
               </p>
-              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight">{service.price}</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight">
+                {service.price}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
             <Clock className="w-2.5 h-2.5 text-blue-400" />
             <div>
               <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Frequency</p>
-              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">{service.frequency}</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
+                {service.frequency}
+              </p>
             </div>
           </div>
         </div>
@@ -364,7 +378,9 @@ function TaxCard({ service, onClick }: TaxCardProps) {
           {service.key_points.slice(0, 2).map((point, idx) => (
             <div key={idx} className="flex items-start gap-1">
               <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-[10px] text-[var(--foreground-secondary)] line-clamp-1">{point}</span>
+              <span className="text-[10px] text-[var(--foreground-secondary)] line-clamp-1">
+                {point}
+              </span>
             </div>
           ))}
         </div>
@@ -381,7 +397,9 @@ function TaxCard({ service, onClick }: TaxCardProps) {
 
         {/* CTA */}
         <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
-          <span className="text-[8px] text-[var(--foreground-muted)]">{service.processing_time}</span>
+          <span className="text-[8px] text-[var(--foreground-muted)]">
+            {service.processing_time}
+          </span>
           <div className="flex items-center gap-0.5 text-[var(--accent)] font-medium text-[10px] group-hover:gap-1 transition-all">
             <span>More</span>
             <ChevronRight className="w-2.5 h-2.5" />
@@ -421,10 +439,13 @@ export default function TaxPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const categoryCounts = TAX_SERVICES.reduce((acc, svc) => {
-    acc[svc.category] = (acc[svc.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCounts = TAX_SERVICES.reduce(
+    (acc, svc) => {
+      acc[svc.category] = (acc[svc.category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const handleCardClick = (service: TaxService) => {
     // Navigate to chat with context
@@ -600,8 +621,8 @@ export default function TaxPage() {
               Need Help with Tax Compliance?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our tax experts can guide you through registration, filing, and compliance.
-              Free consultation available.
+              Our tax experts can guide you through registration, filing, and compliance. Free
+              consultation available.
             </p>
           </div>
           <Button

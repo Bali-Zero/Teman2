@@ -54,7 +54,14 @@ interface Blueprint {
   kbli_code: string;
   title: string;
   title_id: string;
-  category: 'Hospitality' | 'Real Estate' | 'Services' | 'Technology' | 'Trade' | 'Construction' | 'Leasing';
+  category:
+    | 'Hospitality'
+    | 'Real Estate'
+    | 'Services'
+    | 'Technology'
+    | 'Trade'
+    | 'Construction'
+    | 'Leasing';
   risk_level: 'Low' | 'Medium' | 'High';
   pma_allowed: boolean;
   pma_percentage: string;
@@ -69,7 +76,35 @@ interface Blueprint {
   pdf_id_teknis_url?: string;
   pdf_id_bisnis_url?: string;
   has_indonesian?: boolean;
-  icon: 'hotel' | 'home' | 'tent' | 'building' | 'scissors' | 'code' | 'gamepad' | 'globe' | 'database' | 'server' | 'cart' | 'monitor' | 'radio' | 'wrench' | 'laptop' | 'hardhat' | 'factory' | 'warehouse' | 'health' | 'education' | 'entertainment' | 'car' | 'anchor' | 'mining' | 'satellite' | 'antenna' | 'grid' | 'briefcase';
+  icon:
+    | 'hotel'
+    | 'home'
+    | 'tent'
+    | 'building'
+    | 'scissors'
+    | 'code'
+    | 'gamepad'
+    | 'globe'
+    | 'database'
+    | 'server'
+    | 'cart'
+    | 'monitor'
+    | 'radio'
+    | 'wrench'
+    | 'laptop'
+    | 'hardhat'
+    | 'factory'
+    | 'warehouse'
+    | 'health'
+    | 'education'
+    | 'entertainment'
+    | 'car'
+    | 'anchor'
+    | 'mining'
+    | 'satellite'
+    | 'antenna'
+    | 'grid'
+    | 'briefcase';
   description: string;
 }
 
@@ -87,7 +122,8 @@ const BLUEPRINTS: Blueprint[] = [
     has_indonesian: true,
     has_bisnis: true,
     icon: 'hotel',
-    description: 'Comprehensive guide for establishing star-rated hotels in Indonesia under PP 28/2025.',
+    description:
+      'Comprehensive guide for establishing star-rated hotels in Indonesia under PP 28/2025.',
   },
   {
     id: 'kbli-55120',
@@ -1561,7 +1597,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
       const baseName = pdfFilename.replace(/_Teknis\.pdf$/, '');
       pdfUrl = `/blueprints/${baseName}_Bisnis.pdf`;
     }
-    
+
     // If no explicit URL but we have a filename, construct the URL
     // Default path: /blueprints/{filename} (default is Teknis English)
     if (!pdfUrl && pdfFilename) {
@@ -1570,7 +1606,12 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
 
     if (pdfUrl) {
       // Track KB download
-      api.kbActivity.logDownload('blueprint', blueprint.kbli_code, blueprint.title, blueprint.category);
+      api.kbActivity.logDownload(
+        'blueprint',
+        blueprint.kbli_code,
+        blueprint.title,
+        blueprint.category
+      );
 
       const link = document.createElement('a');
       link.href = pdfUrl;
@@ -1590,7 +1631,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
           url: pdfUrl,
         },
       });
-      
+
       // Download riuscito - tutti i blueprint hanno PDF collegato
     } else {
       // Questo caso NON DOVREBBE MAI VERIFICARSI
@@ -1607,7 +1648,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
           pdfFilename: blueprint.pdf_filename,
         },
       });
-      
+
       // Fallback: mostra messaggio di errore
       alert('Errore: PDF non disponibile. Contatta il supporto.');
     }
@@ -1643,9 +1684,10 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
             className={`
               flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold
               border transition-all duration-200
-              ${showIndonesian
-                ? 'bg-red-600 text-white border-red-600 shadow-sm'
-                : 'bg-white text-red-600 border-red-300 hover:bg-red-50'
+              ${
+                showIndonesian
+                  ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                  : 'bg-white text-red-600 border-red-300 hover:bg-red-50'
               }
             `}
             title={showIndonesian ? 'Viewing Indonesian' : 'Switch to Indonesian'}
@@ -1665,9 +1707,10 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
             className={`
               flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold
               border transition-all duration-200
-              ${showBisnis
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
+              ${
+                showBisnis
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
               }
             `}
             title={showBisnis ? 'Viewing Business guide' : 'Switch to Business guide'}
@@ -1697,7 +1740,9 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
               {blueprint.kbli_code}
             </span>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getRiskColor(blueprint.risk_level)}`}>
+              <span
+                className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getRiskColor(blueprint.risk_level)}`}
+              >
                 {blueprint.risk_level}
               </span>
             </div>
@@ -1709,7 +1754,9 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
           <h3 className="text-xs font-semibold text-[var(--foreground)] mb-0 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
             {blueprint.title}
           </h3>
-          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">{blueprint.title_id}</p>
+          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">
+            {blueprint.title_id}
+          </p>
         </div>
 
         {/* Description - Compact */}
@@ -1752,7 +1799,15 @@ export default function BlueprintsPage() {
     api.kbActivity.logView('blueprints', undefined, 'Company & Classifications', 'blueprints');
   }, []);
 
-  const categories = ['Hospitality', 'Real Estate', 'Services', 'Technology', 'Construction', 'Leasing', 'Trade'];
+  const categories = [
+    'Hospitality',
+    'Real Estate',
+    'Services',
+    'Technology',
+    'Construction',
+    'Leasing',
+    'Trade',
+  ];
 
   const filteredBlueprints = BLUEPRINTS.filter((bp) => {
     const matchesSearch =
@@ -1764,10 +1819,13 @@ export default function BlueprintsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const categoryCounts = BLUEPRINTS.reduce((acc, bp) => {
-    acc[bp.category] = (acc[bp.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCounts = BLUEPRINTS.reduce(
+    (acc, bp) => {
+      acc[bp.category] = (acc[bp.category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   return (
     <div className="space-y-8">
@@ -1783,8 +1841,8 @@ export default function BlueprintsPage() {
           </button>
           <h1 className="text-3xl font-bold text-[var(--foreground)]">Company & Classifications</h1>
           <p className="text-[var(--foreground-muted)] mt-2 max-w-2xl">
-            KBLI Business Classification Blueprints based on PP 28/2025. Download comprehensive guides
-            for starting your business in Indonesia.
+            KBLI Business Classification Blueprints based on PP 28/2025. Download comprehensive
+            guides for starting your business in Indonesia.
           </p>
         </div>
 
@@ -1901,7 +1959,9 @@ export default function BlueprintsPage() {
       {filteredBlueprints.length === 0 && (
         <div className="p-12 rounded-xl bg-[var(--background-secondary)] border border-[var(--border)] text-center">
           <FileText className="w-16 h-16 text-[var(--foreground-muted)] mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No blueprints found</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+            No blueprints found
+          </h3>
           <p className="text-sm text-[var(--foreground-muted)]">
             Try adjusting your search or filter criteria.
           </p>
@@ -1916,8 +1976,8 @@ export default function BlueprintsPage() {
               Need Help Setting Up Your Business?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our PT PMA experts can guide you through the entire process.
-              Free consultation available.
+              Our PT PMA experts can guide you through the entire process. Free consultation
+              available.
             </p>
           </div>
           <Button

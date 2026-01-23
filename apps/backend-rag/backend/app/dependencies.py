@@ -282,9 +282,7 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Authentication failed") from e
 
 
-def get_current_user_email(
-    user: Annotated[dict, Depends(get_current_user)]
-) -> str:
+def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> str:
     """
     Extract email from authenticated user.
 

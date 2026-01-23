@@ -11,7 +11,6 @@ Supporta:
 import logging
 import subprocess
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 class CursorAdapter:
     """
     Adapter for Cursor IDE integration.
-    
+
     Cursor è principalmente IDE-based, ma può essere usato via:
     - CLI per aprire file/folder
     - .cursorrules per configurare comportamento AI

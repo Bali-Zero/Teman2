@@ -89,7 +89,7 @@ async def _get_email_stats(db_pool: asyncpg.Pool, user_id: str) -> dict:
 async def _get_critical_deadlines(db_pool: asyncpg.Pool, user_id: str, is_admin: bool) -> int:
     """
     Get count of practices with critical deadlines (expiring within 7 days).
-    
+
     Critical deadlines are practices with expiry_date within 7 days from today.
     """
     try:
@@ -118,7 +118,7 @@ async def _get_critical_deadlines(db_pool: asyncpg.Pool, user_id: str, is_admin:
                     AND assigned_to = $1
                 """
                 result = await conn.fetchrow(query, user_id)
-            
+
             return result["count"] if result else 0
     except Exception as e:
         logger.warning(f"Failed to get critical deadlines for user {user_id}: {e}")
@@ -128,7 +128,7 @@ async def _get_critical_deadlines(db_pool: asyncpg.Pool, user_id: str, is_admin:
 async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
     """
     Get revenue statistics (total, paid, outstanding).
-    
+
     Returns revenue from all practices with actual_price set.
     """
     try:
@@ -143,7 +143,7 @@ async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
                 WHERE actual_price IS NOT NULL
                 """
             )
-            
+
             if revenue_row:
                 return {
                     "total_revenue": float(revenue_row["total_revenue"] or 0),
@@ -167,7 +167,7 @@ async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
 async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
     """
     Calculate revenue growth percentage (current month vs previous month).
-    
+
     Returns growth percentage as float (e.g., 5.5 for 5.5% growth).
     """
     try:
@@ -182,7 +182,7 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
                 AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)
                 """
             )
-            
+
             # Get previous month revenue
             previous_month = await conn.fetchrow(
                 """
@@ -193,13 +193,13 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
                 AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
                 """
             )
-            
+
             current_revenue = float(current_month["revenue"] or 0) if current_month else 0
             previous_revenue = float(previous_month["revenue"] or 0) if previous_month else 0
-            
+
             if previous_revenue == 0:
                 return 0.0 if current_revenue == 0 else 100.0
-            
+
             growth = ((current_revenue - previous_revenue) / previous_revenue) * 100
             return round(growth, 1)
     except Exception as e:
@@ -257,18 +257,15 @@ async def get_dashboard_summary(
             if not isinstance(results[4], Exception)
             else {"connected": False, "unread_count": 0}
         )
-        critical_deadlines = (
-            results[5] if not isinstance(results[5], Exception) else 0
-        )
-        
+        critical_deadlines = results[5] if not isinstance(results[5], Exception) else 0
+
         # Admin-only results
         revenue_stats = (
-            results[6] if is_admin and not isinstance(results[6], Exception)
+            results[6]
+            if is_admin and not isinstance(results[6], Exception)
             else {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0}
         )
-        revenue_growth = (
-            results[7] if is_admin and not isinstance(results[7], Exception) else 0.0
-        )
+        revenue_growth = results[7] if is_admin and not isinstance(results[7], Exception) else 0.0
 
         # Check system health
         has_failures = any(isinstance(result, Exception) for result in results[:5])
@@ -348,12 +345,12 @@ async def get_dashboard_summary(
             "system_status": system_status,
             "last_updated": asyncio.get_event_loop().time(),
         }
-        
+
         # Add admin-only data
         if is_admin:
             response["revenue"] = revenue_stats
             response["revenue_growth"] = revenue_growth
-        
+
         return response
 
     except Exception as e:
@@ -380,7 +377,7 @@ async def get_dashboard_summary(
             "system_status": "degraded",
             "last_updated": asyncio.get_event_loop().time(),
         }
-        
+
         # Add admin-only data even in error case
         if is_admin:
             error_response["revenue"] = {
@@ -389,7 +386,7 @@ async def get_dashboard_summary(
                 "outstanding_revenue": 0,
             }
             error_response["revenue_growth"] = 0.0
-        
+
         return error_response
 
 

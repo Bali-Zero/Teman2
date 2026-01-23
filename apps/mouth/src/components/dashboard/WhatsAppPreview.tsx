@@ -57,9 +57,7 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-[var(--foreground)]">
-            Recent WhatsApp
-          </h2>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">Recent WhatsApp</h2>
           {unreadCount > 0 && (
             <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
               {unreadCount}
@@ -79,9 +77,7 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle className="w-8 h-8 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">
-              No recent messages
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">No recent messages</p>
           </div>
         ) : (
           messages.map((msg) => (

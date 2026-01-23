@@ -159,7 +159,7 @@ class MobileOptimizationService {
       },
     ];
 
-    mobileExperiments.forEach(experiment => {
+    mobileExperiments.forEach((experiment) => {
       this.experiments.set(experiment.name, experiment);
     });
   }
@@ -225,7 +225,7 @@ class MobileOptimizationService {
     const experiment = this.experiments.get(experimentName);
     if (!experiment) return {};
 
-    const variantConfig = experiment.variants.find(v => v.id === variant);
+    const variantConfig = experiment.variants.find((v) => v.id === variant);
     return variantConfig?.config || {};
   }
 
@@ -237,7 +237,7 @@ class MobileOptimizationService {
     // Use device-specific hashing for consistent assignment
     const deviceKey = `${userId}_${experiment.name}_${this.currentBreakpoint}`;
     const hash = this.hashString(deviceKey);
-    const normalizedHash = hash / 0xFFFFFFFF;
+    const normalizedHash = hash / 0xffffffff;
 
     // Weighted selection
     let cumulativeWeight = 0;
@@ -256,7 +256,7 @@ class MobileOptimizationService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash);
@@ -284,7 +284,7 @@ class MobileOptimizationService {
 
   // Notify listeners of changes
   private notifyListeners(): void {
-    this.listeners.forEach(listener => listener());
+    this.listeners.forEach((listener) => listener());
   }
 
   // Subscribe to breakpoint changes
@@ -314,7 +314,11 @@ class MobileOptimizationService {
   }
 
   // Get responsive classes
-  getResponsiveClasses(baseClasses: string, mobileClasses?: string, tabletClasses?: string): string {
+  getResponsiveClasses(
+    baseClasses: string,
+    mobileClasses?: string,
+    tabletClasses?: string
+  ): string {
     const classes = [baseClasses];
     if (mobileClasses && this.isMobile()) classes.push(mobileClasses);
     if (tabletClasses && this.isTablet()) classes.push(tabletClasses);
@@ -397,7 +401,12 @@ export function withMobileOptimization<P extends object>(
   const WrappedComponent = (props: P) => {
     const mobile = useMobileOptimization();
 
-    return <Component {...(props as P & { mobile?: ReturnType<typeof useMobileOptimization> })} mobile={mobile} />;
+    return (
+      <Component
+        {...(props as P & { mobile?: ReturnType<typeof useMobileOptimization> })}
+        mobile={mobile}
+      />
+    );
   };
 
   WrappedComponent.displayName = `withMobileOptimization(${Component.displayName || Component.name})`;

@@ -27,7 +27,7 @@ export default function CompanyPage() {
         setError(null);
         const data = await api.portal.getCompanies();
         setCompanies(data);
-        const primary = data.find(c => c.isPrimary) || data[0];
+        const primary = data.find((c) => c.isPrimary) || data[0];
         setSelectedCompany(primary || null);
       } catch (err) {
         console.error('Failed to load companies:', err);
@@ -65,7 +65,9 @@ export default function CompanyPage() {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-        <h2 className="text-lg font-medium text-[#E6E7EB] mb-2">Unable to load company information</h2>
+        <h2 className="text-lg font-medium text-[#E6E7EB] mb-2">
+          Unable to load company information
+        </h2>
         <p className="text-[#9AA0AE] mb-4">{error}</p>
         <button
           onClick={() => window.location.reload()}
@@ -89,13 +91,20 @@ export default function CompanyPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'expiring': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'expired': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'upcoming': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'overdue': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'completed': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      default: return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
+      case 'active':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'expiring':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'expired':
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'upcoming':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'overdue':
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'completed':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      default:
+        return 'bg-[#1A1D24] text-[#9AA0AE] border-white/10';
     }
   };
 
@@ -151,7 +160,9 @@ export default function CompanyPage() {
                 <p className="text-sm text-[#9AA0AE]">{selectedCompany.type}</p>
               </div>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedCompany.status)}`}>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedCompany.status)}`}
+            >
               {selectedCompany.status.charAt(0).toUpperCase() + selectedCompany.status.slice(1)}
             </span>
           </div>
@@ -183,7 +194,9 @@ export default function CompanyPage() {
             {selectedCompany.licenses.map((license) => (
               <div key={license.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${license.status === 'active' ? 'bg-emerald-500/10' : license.status === 'expiring' ? 'bg-amber-500/10' : 'bg-red-500/10'}`}>
+                  <div
+                    className={`p-2 rounded-lg ${license.status === 'active' ? 'bg-emerald-500/10' : license.status === 'expiring' ? 'bg-amber-500/10' : 'bg-red-500/10'}`}
+                  >
                     {license.status === 'active' ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     ) : (
@@ -196,7 +209,9 @@ export default function CompanyPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(license.status)}`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(license.status)}`}
+                  >
                     {license.status}
                   </span>
                   {license.daysRemaining && license.daysRemaining <= 60 && (
@@ -237,7 +252,9 @@ export default function CompanyPage() {
                     <p className="text-sm text-[#9AA0AE]">Due: {item.dueDate}</p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(item.status)}`}>
+                <span
+                  className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(item.status)}`}
+                >
                   {item.status}
                 </span>
               </div>

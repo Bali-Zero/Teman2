@@ -98,13 +98,13 @@ class ChatSession:
             response = self._chat_session.send_message(message, stream=True)
 
             for chunk in response:
-                if hasattr(chunk, 'text'):
+                if hasattr(chunk, "text"):
                     yield chunk.text
-                elif hasattr(chunk, 'candidates') and chunk.candidates:
+                elif hasattr(chunk, "candidates") and chunk.candidates:
                     candidate = chunk.candidates[0]
-                    if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate, "content") and candidate.content:
                         for part in candidate.content.parts:
-                            if hasattr(part, 'text'):
+                            if hasattr(part, "text"):
                                 yield part.text
 
         except Exception as e:
@@ -123,10 +123,7 @@ class ChatSession:
             role: "user" or "model"
             content: Message content
         """
-        self.history.append({
-            "role": role,
-            "parts": [{"text": content}]
-        })
+        self.history.append({"role": role, "parts": [{"text": content}]})
         logger.debug(f"Added {role} message to history")
 
 
@@ -211,7 +208,4 @@ class MockChatSession:
             role: "user" or "model"
             content: Message content
         """
-        self.history.append({
-            "role": role,
-            "parts": [{"text": content}]
-        })
+        self.history.append({"role": role, "parts": [{"text": content}]})

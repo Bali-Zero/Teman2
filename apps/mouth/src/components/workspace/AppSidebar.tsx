@@ -84,7 +84,8 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
   const renderNavItem = (item: NavItem) => {
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
-    const badge = (item.href === '/whatsapp' || item.href === '/omnichannel') ? unreadWhatsApp : item.badge;
+    const badge =
+      item.href === '/whatsapp' || item.href === '/omnichannel' ? unreadWhatsApp : item.badge;
     const colors = navColors[item.href] || { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' };
 
     return (
@@ -94,9 +95,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
           'text-sm font-medium group',
-          active
-            ? 'bg-white/5 border border-white/10'
-            : 'text-[#9AA0AE] hover:bg-white/5'
+          active ? 'bg-white/5 border border-white/10' : 'text-[#9AA0AE] hover:bg-white/5'
         )}
         style={{
           color: active ? colors.activeColor : undefined,
@@ -104,17 +103,11 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
         }}
       >
         <Icon
-          className={cn(
-            'w-5 h-5',
-            !active && colors.cssClass
-          )}
+          className={cn('w-5 h-5', !active && colors.cssClass)}
           style={active ? { color: colors.activeColor } : undefined}
         />
         <span
-          className={cn(
-            'flex-1 transition-colors',
-            !active && 'group-hover:text-[#E6E7EB]'
-          )}
+          className={cn('flex-1 transition-colors', !active && 'group-hover:text-[#E6E7EB]')}
           style={{ color: active ? colors.activeColor : undefined }}
         >
           {item.title}
@@ -168,12 +161,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
           <div className="relative">
             <div className="w-10 h-10 rounded-full bg-[#1A1D24] flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.04)]">
               {user.avatar ? (
-                <Image
-                  src={user.avatar}
-                  alt={user.name}
-                  fill
-                  className="object-cover"
-                />
+                <Image src={user.avatar} alt={user.name} fill className="object-cover" />
               ) : (
                 <UserCircle className="w-6 h-6 text-[#9AA0AE]" />
               )}
@@ -189,12 +177,8 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
 
           {/* User Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#E6E7EB] truncate">
-              {user.name}
-            </p>
-            <p className="text-xs text-[#9AA0AE] truncate">
-              {user.team}
-            </p>
+            <p className="text-sm font-medium text-[#E6E7EB] truncate">{user.name}</p>
+            <p className="text-xs text-[#9AA0AE] truncate">{user.team}</p>
           </div>
 
           {/* Status */}
@@ -207,11 +191,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
             >
               {user.isOnline ? 'Online' : 'Offline'}
             </span>
-            {user.hoursToday && (
-              <span className="text-xs text-[#9AA0AE]">
-                {user.hoursToday}
-              </span>
-            )}
+            {user.hoursToday && <span className="text-xs text-[#9AA0AE]">{user.hoursToday}</span>}
           </div>
         </div>
 

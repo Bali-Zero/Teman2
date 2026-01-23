@@ -106,9 +106,7 @@ class TestFollowupServiceMetrics:
     @pytest.mark.asyncio
     async def test_metrics_recorded_on_error(self, followup_service):
         """Test that error metrics are recorded on failure"""
-        followup_service.zantara_client.chat_async = AsyncMock(
-            side_effect=Exception("AI error")
-        )
+        followup_service.zantara_client.chat_async = AsyncMock(side_effect=Exception("AI error"))
 
         initial_error = followup_requests_total.labels(
             method="ai", topic="business", language="en", status="error"
@@ -137,9 +135,11 @@ class TestFollowupServiceMetrics:
 
         # Verify duration histogram has observations
         # We can't easily check exact values, but we can verify the metric exists
-        samples = list(followup_generation_duration.labels(
-            method="ai", topic="business", language="en"
-        )._buckets.values())
+        samples = list(
+            followup_generation_duration.labels(
+                method="ai", topic="business", language="en"
+            )._buckets.values()
+        )
         assert len(samples) >= 0  # At least the metric structure exists
 
     def test_topic_based_metrics_incremented(self, followup_service):
@@ -176,9 +176,7 @@ class TestFollowupServiceMetrics:
     @pytest.mark.asyncio
     async def test_ai_generation_metrics_error(self, followup_service):
         """Test AI generation error metrics"""
-        followup_service.zantara_client.chat_async = AsyncMock(
-            side_effect=Exception("AI error")
-        )
+        followup_service.zantara_client.chat_async = AsyncMock(side_effect=Exception("AI error"))
 
         initial_error = followup_ai_generation_total.labels(status="error")._value.get()
 
@@ -224,9 +222,7 @@ class TestFollowupServiceLogging:
     @pytest.mark.asyncio
     async def test_logging_on_error(self, followup_service, caplog):
         """Test that errors are logged"""
-        followup_service.zantara_client.chat_async = AsyncMock(
-            side_effect=Exception("Test error")
-        )
+        followup_service.zantara_client.chat_async = AsyncMock(side_effect=Exception("Test error"))
 
         with caplog.at_level("ERROR"):
             await followup_service.get_followups(
@@ -247,12 +243,8 @@ class TestFollowupServiceHealthCheck:
             return_value={"text": "1. First?\n2. Second?\n3. Third?"}
         )
 
-        await followup_service.get_followups(
-            query="Test 1", response="Test", use_ai=True
-        )
-        await followup_service.get_followups(
-            query="Test 2", response="Test", use_ai=True
-        )
+        await followup_service.get_followups(query="Test 1", response="Test", use_ai=True)
+        await followup_service.get_followups(query="Test 2", response="Test", use_ai=True)
 
         result = await followup_service.health_check()
 

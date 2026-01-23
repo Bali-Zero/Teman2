@@ -27,15 +27,23 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.setState({ error, errorInfo });
-    
+
     // Log error for debugging
-    logger.error('ErrorBoundary caught an error', { component: 'ErrorBoundary', action: 'componentDidCatch', metadata: { componentStack: errorInfo.componentStack } }, error);
-    
+    logger.error(
+      'ErrorBoundary caught an error',
+      {
+        component: 'ErrorBoundary',
+        action: 'componentDidCatch',
+        metadata: { componentStack: errorInfo.componentStack },
+      },
+      error
+    );
+
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
+
     // Track error for analytics
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'exception', {
@@ -64,8 +72,18 @@ function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => vo
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center space-y-4 p-6 rounded-lg border border-red-500/20 bg-red-500/10 max-w-md">
         <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
-          <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <svg
+            className="w-8 h-8 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
           </svg>
         </div>
         <div>
@@ -91,9 +109,7 @@ function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => vo
         {process.env.NODE_ENV === 'development' && error && (
           <details className="mt-4 text-left">
             <summary className="text-xs text-red-500/60 cursor-pointer">Error Details</summary>
-            <pre className="text-xs text-red-500/40 mt-2 whitespace-pre-wrap">
-              {error.stack}
-            </pre>
+            <pre className="text-xs text-red-500/40 mt-2 whitespace-pre-wrap">{error.stack}</pre>
           </details>
         )}
       </div>
@@ -108,7 +124,15 @@ export function DashboardErrorBoundary({ children }: { children: React.ReactNode
       fallback={DashboardErrorFallback}
       onError={(error, errorInfo) => {
         // Track dashboard-specific errors
-        logger.error('Dashboard Error', { component: 'DashboardErrorBoundary', action: 'onError', metadata: { componentStack: errorInfo.componentStack } }, error);
+        logger.error(
+          'Dashboard Error',
+          {
+            component: 'DashboardErrorBoundary',
+            action: 'onError',
+            metadata: { componentStack: errorInfo.componentStack },
+          },
+          error
+        );
       }}
     >
       {children}
@@ -122,8 +146,18 @@ function DashboardErrorFallback({ error, retry }: { error?: Error; retry: () => 
       <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-yellow-500/20 rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-5 h-5 text-yellow-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
           <div className="flex-1">
@@ -150,7 +184,15 @@ export function ApiErrorBoundary({ children }: { children: React.ReactNode }) {
       fallback={ApiErrorFallback}
       onError={(error, errorInfo) => {
         // Track API-specific errors
-        logger.error('API Error', { component: 'ApiErrorBoundary', action: 'onError', metadata: { componentStack: errorInfo.componentStack } }, error);
+        logger.error(
+          'API Error',
+          {
+            component: 'ApiErrorBoundary',
+            action: 'onError',
+            metadata: { componentStack: errorInfo.componentStack },
+          },
+          error
+        );
       }}
     >
       {children}
@@ -163,8 +205,18 @@ function ApiErrorFallback({ error, retry }: { error?: Error; retry: () => void }
     <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
-          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-4 h-4 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </div>
         <div className="flex-1">

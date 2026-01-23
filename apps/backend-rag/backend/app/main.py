@@ -9,14 +9,14 @@ The actual application is defined in main_cloud.py.
 
 # Explicit imports instead of wildcard for better type checking and IDE support
 from backend.app.main_cloud import (
-    app,
-    initialize_services,
-    initialize_plugins,
-    on_startup,
-    on_shutdown,
-    _parse_history,
     _allowed_origins,
+    _parse_history,
     _safe_endpoint_label,
+    app,
+    initialize_plugins,
+    initialize_services,
+    on_shutdown,
+    on_startup,
 )
 
 __all__ = [

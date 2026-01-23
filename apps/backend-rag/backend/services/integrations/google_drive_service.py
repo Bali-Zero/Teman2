@@ -615,17 +615,21 @@ class GoogleDriveService:
         transformed_files = []
         for file_info in paginated_files:
             file_id = file_info.get("id")
-            transformed_files.append({
-                "id": file_id,
-                "name": file_info.get("name"),
-                "mime_type": file_info.get("mimeType"),
-                "size_bytes": int(file_info.get("size", 0)) if file_info.get("size") else None,
-                "created_time": file_info.get("createdTime"),
-                "modified_time": file_info.get("modifiedTime"),
-                "thumbnail_url": f"/api/documents/thumbnail/{file_id}" if file_info.get("thumbnailLink") else None,
-                "download_url": f"/api/documents/proxy/{file_id}",
-                "is_folder": file_info.get("mimeType") == "application/vnd.google-apps.folder",
-            })
+            transformed_files.append(
+                {
+                    "id": file_id,
+                    "name": file_info.get("name"),
+                    "mime_type": file_info.get("mimeType"),
+                    "size_bytes": int(file_info.get("size", 0)) if file_info.get("size") else None,
+                    "created_time": file_info.get("createdTime"),
+                    "modified_time": file_info.get("modifiedTime"),
+                    "thumbnail_url": f"/api/documents/thumbnail/{file_id}"
+                    if file_info.get("thumbnailLink")
+                    else None,
+                    "download_url": f"/api/documents/proxy/{file_id}",
+                    "is_folder": file_info.get("mimeType") == "application/vnd.google-apps.folder",
+                }
+            )
 
         return {
             "files": transformed_files,
@@ -718,31 +722,40 @@ class GoogleDriveService:
                 if files_response.status_code == 200:
                     files_data = files_response.json()
                     files = files_data.get("files", [])
-                    file_count = len([f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"])
-                    
+                    file_count = len(
+                        [
+                            f
+                            for f in files
+                            if f.get("mimeType") != "application/vnd.google-apps.folder"
+                        ]
+                    )
+
                     # Calculate total size
                     folder_size = sum(
-                        int(f.get("size", 0)) for f in files
-                        if f.get("size") and f.get("mimeType") != "application/vnd.google-apps.folder"
+                        int(f.get("size", 0))
+                        for f in files
+                        if f.get("size")
+                        and f.get("mimeType") != "application/vnd.google-apps.folder"
                     )
 
                     # Get last modified time (most recent file)
                     if files:
                         modified_times = [
-                            f.get("modifiedTime") for f in files
-                            if f.get("modifiedTime")
+                            f.get("modifiedTime") for f in files if f.get("modifiedTime")
                         ]
                         last_modified = max(modified_times) if modified_times else None
                     else:
                         last_modified = None
 
-                    folders_info.append({
-                        "name": folder_name,
-                        "id": folder_id,
-                        "file_count": file_count,
-                        "total_size_bytes": folder_size,
-                        "last_modified": last_modified,
-                    })
+                    folders_info.append(
+                        {
+                            "name": folder_name,
+                            "id": folder_id,
+                            "file_count": file_count,
+                            "total_size_bytes": folder_size,
+                            "last_modified": last_modified,
+                        }
+                    )
 
                     total_files += file_count
                     total_size_bytes += folder_size
@@ -787,6 +800,7 @@ class GoogleDriveService:
         # Auto-detect MIME type if not provided
         if not mime_type:
             import mimetypes
+
             mime_type, _ = mimetypes.guess_type(file_name)
             mime_type = mime_type or "application/octet-stream"
 
@@ -831,7 +845,13 @@ class GoogleDriveService:
             )
 
             if upload_response.status_code not in (200, 204):
-                error = upload_response.json() if upload_response.headers.get("content-type", "").startswith("application/json") else {}
+                error = (
+                    upload_response.json()
+                    if upload_response.headers.get("content-type", "").startswith(
+                        "application/json"
+                    )
+                    else {}
+                )
                 logger.error(f"[GDRIVE] Upload file content failed: {error}")
                 raise ValueError(
                     f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}"
@@ -839,9 +859,13 @@ class GoogleDriveService:
 
             # Get final file info
             file_info = metadata_response.json()
-            size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
+            size_bytes = (
+                int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
+            )
 
-            logger.info(f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}")
+            logger.info(
+                f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}"
+            )
 
             return {
                 "id": file_id,

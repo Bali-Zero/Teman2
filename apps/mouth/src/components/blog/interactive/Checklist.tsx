@@ -3,14 +3,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Check,
-  Circle,
-  Download,
-  RotateCcw,
-  ListChecks,
-  Printer
-} from 'lucide-react';
+import { Check, Circle, Download, RotateCcw, ListChecks, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -117,10 +110,13 @@ export function Checklist({
 
   // Group items by group
   const groups = Array.from(new Set(items.map((i) => i.group || 'Items')));
-  const itemsByGroup = groups.reduce((acc, group) => {
-    acc[group] = items.filter((i) => (i.group || 'Items') === group);
-    return acc;
-  }, {} as Record<string, ChecklistItem[]>);
+  const itemsByGroup = groups.reduce(
+    (acc, group) => {
+      acc[group] = items.filter((i) => (i.group || 'Items') === group);
+      return acc;
+    },
+    {} as Record<string, ChecklistItem[]>
+  );
 
   // Handle print
   const handlePrint = () => {
@@ -128,7 +124,9 @@ export function Checklist({
   };
 
   return (
-    <div className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}>
+    <div
+      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
@@ -229,9 +227,7 @@ export function Checklist({
                       <div
                         className={cn(
                           'flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors mt-0.5',
-                          isChecked
-                            ? 'bg-emerald-500 border-emerald-500'
-                            : 'border-white/30'
+                          isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-white/30'
                         )}
                       >
                         {isChecked && <Check className="w-3 h-3 text-white" />}
@@ -240,10 +236,12 @@ export function Checklist({
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={cn(
-                            'font-medium transition-colors',
-                            isChecked ? 'text-emerald-400 line-through opacity-70' : 'text-white'
-                          )}>
+                          <span
+                            className={cn(
+                              'font-medium transition-colors',
+                              isChecked ? 'text-emerald-400 line-through opacity-70' : 'text-white'
+                            )}
+                          >
                             {item.label}
                           </span>
                           {item.required && (
@@ -253,10 +251,12 @@ export function Checklist({
                           )}
                         </div>
                         {item.description && (
-                          <p className={cn(
-                            'text-sm mt-0.5 transition-colors',
-                            isChecked ? 'text-white/30' : 'text-white/50'
-                          )}>
+                          <p
+                            className={cn(
+                              'text-sm mt-0.5 transition-colors',
+                              isChecked ? 'text-white/30' : 'text-white/50'
+                            )}
+                          >
                             {item.description}
                           </p>
                         )}

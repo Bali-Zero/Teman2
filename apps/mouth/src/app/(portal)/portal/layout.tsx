@@ -33,13 +33,55 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/portal', label: 'Dashboard', icon: 'LayoutDashboard', cssClass: 'nav-icon-teal', activeColor: '#2DD4BF' },
-  { href: '/portal/visa', label: 'Visa & Immigration', icon: 'Plane', cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
-  { href: '/portal/company', label: 'Company', icon: 'Building2', cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
-  { href: '/portal/taxes', label: 'Taxes', icon: 'Receipt', cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
-  { href: '/portal/documents', label: 'Documents', icon: 'FileText', cssClass: 'nav-icon-violet', activeColor: '#C084FC' },
-  { href: '/portal/messages', label: 'Messages', icon: 'MessageSquare', cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
-  { href: '/portal/settings', label: 'Settings', icon: 'Settings', cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
+  {
+    href: '/portal',
+    label: 'Dashboard',
+    icon: 'LayoutDashboard',
+    cssClass: 'nav-icon-teal',
+    activeColor: '#2DD4BF',
+  },
+  {
+    href: '/portal/visa',
+    label: 'Visa & Immigration',
+    icon: 'Plane',
+    cssClass: 'nav-icon-emerald',
+    activeColor: '#34D399',
+  },
+  {
+    href: '/portal/company',
+    label: 'Company',
+    icon: 'Building2',
+    cssClass: 'nav-icon-blue',
+    activeColor: '#60A5FA',
+  },
+  {
+    href: '/portal/taxes',
+    label: 'Taxes',
+    icon: 'Receipt',
+    cssClass: 'nav-icon-amber',
+    activeColor: '#FBBF24',
+  },
+  {
+    href: '/portal/documents',
+    label: 'Documents',
+    icon: 'FileText',
+    cssClass: 'nav-icon-violet',
+    activeColor: '#C084FC',
+  },
+  {
+    href: '/portal/messages',
+    label: 'Messages',
+    icon: 'MessageSquare',
+    cssClass: 'nav-icon-sky',
+    activeColor: '#38BDF8',
+  },
+  {
+    href: '/portal/settings',
+    label: 'Settings',
+    icon: 'Settings',
+    cssClass: 'nav-icon-gray',
+    activeColor: '#9CA3AF',
+  },
 ];
 
 const iconMap: Record<string, React.ElementType> = {
@@ -137,9 +179,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
           'text-sm font-medium group',
-          active
-            ? 'bg-white/5 border border-white/10'
-            : 'text-[#9AA0AE] hover:bg-white/5'
+          active ? 'bg-white/5 border border-white/10' : 'text-[#9AA0AE] hover:bg-white/5'
         )}
         style={{
           color: active ? item.activeColor : undefined,
@@ -151,10 +191,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
           style={active ? { color: item.activeColor } : undefined}
         />
         <span
-          className={cn(
-            'flex-1 transition-colors',
-            !active && 'group-hover:text-[#E6E7EB]'
-          )}
+          className={cn('flex-1 transition-colors', !active && 'group-hover:text-[#E6E7EB]')}
           style={{ color: active ? item.activeColor : undefined }}
         >
           {item.label}
@@ -170,12 +207,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         {/* Logo Section */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
           <div className="relative w-10 h-10">
-            <Image
-              src="/assets/logo/logo_zan.png"
-              alt="Zantara"
-              fill
-              className="object-contain"
-            />
+            <Image src="/assets/logo/logo_zan.png" alt="Zantara" fill className="object-contain" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#E6E7EB] tracking-wide">ZANTARA</h1>
@@ -202,12 +234,8 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
 
             {/* User Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#E6E7EB] truncate">
-                {user.name}
-              </p>
-              <p className="text-xs text-[#9AA0AE] truncate">
-                {user.email}
-              </p>
+              <p className="text-sm font-medium text-[#E6E7EB] truncate">{user.name}</p>
+              <p className="text-xs text-[#9AA0AE] truncate">{user.email}</p>
             </div>
           </div>
 
@@ -226,12 +254,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-[#242424] border-b border-white/5 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <div className="relative w-8 h-8">
-            <Image
-              src="/assets/logo/logo_zan.png"
-              alt="Zantara"
-              fill
-              className="object-contain"
-            />
+            <Image src="/assets/logo/logo_zan.png" alt="Zantara" fill className="object-contain" />
           </div>
           <div>
             <span className="text-lg font-bold text-[#E6E7EB]">ZANTARA</span>
@@ -310,9 +333,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
 
       {/* Main Content */}
       <main className="md:ml-60 pt-16 md:pt-0 min-h-screen">
-        <div className="p-4 md:p-6 lg:p-8">
-          {children}
-        </div>
+        <div className="p-4 md:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

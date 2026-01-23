@@ -106,7 +106,7 @@ class LLMGateway:
             - OpenRouter client is initialized lazily on first use
             - GenAI client handles connection pooling
         """
-        self.gemini_tools = gemini_tools or []
+        self._gemini_tools = gemini_tools or []
 
         # Initialize GenAI client (new SDK)
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
@@ -132,7 +132,7 @@ class LLMGateway:
         # Model name constants - Gemini 3 Flash Preview (Primary)
         self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro)
         self.model_name_flash = "gemini-3-flash-preview"  # Primary: fast, cost-effective
-        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable, reliable
+        self.model_name_fallback = "gemini-3-flash-preview"  # Force Gemini 3! No fallback to 2.0 unless truly dead.
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)"
@@ -157,7 +157,7 @@ class LLMGateway:
         Args:
             tools: List of Gemini function declarations for native tool calling
         """
-        self.gemini_tools = tools or []
+        self._gemini_tools = tools or []
         logger.debug(f"LLMGateway: Updated gemini_tools ({len(self.gemini_tools)} tools)")
 
     def _get_openrouter_client(self) -> OpenRouterClient | None:
@@ -208,12 +208,9 @@ class LLMGateway:
 
         # Convert history to Gemini format
         gemini_history = []
-        for msg in (history_to_use or []):
+        for msg in history_to_use or []:
             role = "user" if msg.get("role") == "user" else "model"
-            gemini_history.append({
-                "role": role,
-                "parts": [{"text": msg.get("content", "")}]
-            })
+            gemini_history.append({"role": role, "parts": [{"text": msg.get("content", "")}]})
 
         # Create chat session with history
         model_name = self._get_model_for_tier(model_tier)
@@ -379,41 +376,41 @@ class LLMGateway:
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message with tier-based routing, native function calling, and cascade fallback.
 
-        Implements intelligent model selection with automatic degradation:
-        1. Try requested tier (Pro/Flash/Lite) with native function calling
-        2. On quota/error: cascade to next cheaper tier
-        3. Final fallback: OpenRouter (third-party) with regex parsing
+            Implements intelligent model selection with automatic degradation:
+            1. Try requested tier (Pro/Flash/Lite) with native function calling
+            2. On quota/error: cascade to next cheaper tier
+            3. Final fallback: OpenRouter (third-party) with regex parsing
 
-        This ensures high availability while optimizing costs.
+            This ensures high availability while optimizing costs.
 
-        Args:
-            chat: Active chat session (unused in new SDK, kept for API compatibility)
-            message: User message or continuation prompt
-            system_prompt: System instructions (used for OpenRouter fallback)
-            model_tier: Requested tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
-            enable_function_calling: Whether to enable native function calling (default: True)
-            conversation_messages: Message history for OpenRouter
-            images: Optional list of images for vision capability
+            Args:
+                chat: Active chat session (unused in new SDK, kept for API compatibility)
+                message: User message or continuation prompt
+                system_prompt: System instructions (used for OpenRouter fallback)
+                model_tier: Requested tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
+                enable_function_calling: Whether to enable native function calling (default: True)
+                conversation_messages: Message history for OpenRouter
+                images: Optional list of images for vision capability
 
-        Returns:
-            Tuple of (response_text, model_name_used, response_object)
-            response_object contains parts that may include function_call
+            Returns:
+                Tuple of (response_text, model_name_used, response_object)
+                response_object contains parts that may include function_call
 
-        Raises:
-            RuntimeError: If all models fail (including OpenRouter)
+            Raises:
+                RuntimeError: If all models fail (including OpenRouter)
 
-        Note:
-            - Uses new google-genai SDK with client.aio.models.generate_content
-            - Logs all tier transitions for monitoring
-            - Extracts user query from structured prompts for OpenRouter
-            - Native function calling enabled for Gemini models
-            - OpenRouter uses regex fallback (no function calling)
-            - Vision mode: pass images for multimodal Gemini support
+            Note:
+                - Uses new google-genai SDK with client.aio.models.generate_content
+                - Logs all tier transitions for monitoring
+                - Extracts user query from structured prompts for OpenRouter
+                - Native function calling enabled for Gemini models
+                - OpenRouter uses regex fallback (no function calling)
+                - Vision mode: pass images for multimodal Gemini support
 
-    Example:
-        >>> response = await gateway.generate_content("Hello", tier=TIER_FLASH)
-        >>> logger.info(f"Response from {model}: {response}")
-    """
+        Example:
+            >>> response = await gateway.generate_content("Hello", tier=TIER_FLASH)
+            >>> logger.info(f"Response from {model}: {response}")
+        """
 
     # Helper to build config with optional tools
     def _build_config(self, with_tools: bool = False) -> Any:
@@ -690,7 +687,9 @@ class LLMGateway:
         except Exception as openrouter_error:
             logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
             # All fallbacks exhausted
-            raise RuntimeError("All models in fallback chain failed (including OpenRouter)") from None
+            raise RuntimeError(
+                "All models in fallback chain failed (including OpenRouter)"
+            ) from None
 
     async def _call_model(
         self,
@@ -699,7 +698,7 @@ class LLMGateway:
         chat: Any = None,
         message: str = "",
         images: list[dict] | None = None,
-        _system_prompt: str = ""
+        _system_prompt: str = "",
     ) -> tuple[str, Any, TokenUsage]:
         """Call a specific model and return (text, response, token_usage)."""
         if not self._genai_client or not self._genai_client.is_available:
@@ -716,13 +715,18 @@ class LLMGateway:
                         # Handle different image formats
                         if img.get("format") == "base64":
                             import base64
+
                             image_data = base64.b64decode(img["data"])
                         else:
                             # Assume raw bytes
                             image_data = img["data"]
 
                         import mimetypes
-                        mime_type = img.get("mime_type", mimetypes.guess_type(img.get("filename", ""))[0] or "image/jpeg")
+
+                        mime_type = img.get(
+                            "mime_type",
+                            mimetypes.guess_type(img.get("filename", ""))[0] or "image/jpeg",
+                        )
 
                         # Import Part inline to avoid circular imports
                         from google.genai.types import Part

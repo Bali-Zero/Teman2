@@ -179,7 +179,11 @@ export function FolderFilesBrowser({
       toast.success(`Downloaded ${selectedFiles.size} file(s)`);
       setSelectedFiles(new Set());
     } catch (error: unknown) {
-      logger.error('Failed to download files', { component: 'FolderFilesBrowser', action: 'handleDownloadMultiple' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to download files',
+        { component: 'FolderFilesBrowser', action: 'handleDownloadMultiple' },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast.error('Failed to download files');
     }
   };

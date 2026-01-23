@@ -59,7 +59,8 @@ const LICENSES: License[] = [
     mandatory_for: ['Restaurants', 'Cafes', 'Hotels with F&B', 'Catering', 'Food Production'],
     issuer: 'Dinas Kesehatan (Dinkes)',
     icon: 'utensils',
-    description: 'Mandatory hygiene certificate for all food and beverage businesses in Indonesia. Required before opening.',
+    description:
+      'Mandatory hygiene certificate for all food and beverage businesses in Indonesia. Required before opening.',
     key_points: [
       'Required for all F&B businesses',
       'Health inspection included',
@@ -80,7 +81,8 @@ const LICENSES: License[] = [
     mandatory_for: ['Bars', 'Beach Clubs', 'Restaurants serving alcohol', 'Hotels with bars'],
     issuer: 'Bea Cukai (Customs)',
     icon: 'wine',
-    description: 'License to sell alcoholic beverages. Covers all categories: A (<5%), B (5-20%), C (>20% alcohol).',
+    description:
+      'License to sell alcoholic beverages. Covers all categories: A (<5%), B (5-20%), C (>20% alcohol).',
     key_points: [
       'Golongan A: Beer, wine coolers',
       'Golongan B: Wine, sake',
@@ -98,10 +100,15 @@ const LICENSES: License[] = [
     price: 'IDR 5.000.000 - 8.000.000',
     processing_time: '4-8 weeks',
     validity: '4 years',
-    mandatory_for: ['F&B targeting Muslim market', 'Export to Muslim countries', 'Supermarket products'],
+    mandatory_for: [
+      'F&B targeting Muslim market',
+      'Export to Muslim countries',
+      'Supermarket products',
+    ],
     issuer: 'BPJPH (Badan Penyelenggara Jaminan Produk Halal)',
     icon: 'badge',
-    description: 'Official halal certification for food products. Optional but recommended for wider market reach.',
+    description:
+      'Official halal certification for food products. Optional but recommended for wider market reach.',
     key_points: [
       'Expands market reach',
       'Required for some exports',
@@ -118,10 +125,16 @@ const LICENSES: License[] = [
     price: 'IDR 500.000 - 1.000.000',
     processing_time: '2-3 weeks',
     validity: '5 years',
-    mandatory_for: ['Small-scale food production', 'Home bakeries', 'Homemade snacks', 'Cottage food'],
+    mandatory_for: [
+      'Small-scale food production',
+      'Home bakeries',
+      'Homemade snacks',
+      'Cottage food',
+    ],
     issuer: 'Dinas Kesehatan (Dinkes)',
     icon: 'cookie',
-    description: 'License for small-scale home food production. More affordable option for cottage industries.',
+    description:
+      'License for small-scale home food production. More affordable option for cottage industries.',
     key_points: [
       'Low cost option',
       'For home-based production',
@@ -217,7 +230,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
               {license.code}
             </span>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(license.category)}`}>
+              <span
+                className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(license.category)}`}
+              >
                 {license.category}
               </span>
             </div>
@@ -229,7 +244,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
           <h3 className="text-xs font-semibold text-[var(--foreground)] mb-0 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
             {license.title}
           </h3>
-          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">{license.title_id}</p>
+          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">
+            {license.title_id}
+          </p>
         </div>
 
         {/* Price and Time */}
@@ -238,14 +255,18 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
             <DollarSign className="w-2.5 h-2.5 text-emerald-400" />
             <div>
               <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Price</p>
-              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">{license.price}</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
+                {license.price}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
             <Clock className="w-2.5 h-2.5 text-blue-400" />
             <div>
               <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Processing</p>
-              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">{license.processing_time}</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
+                {license.processing_time}
+              </p>
             </div>
           </div>
         </div>
@@ -255,7 +276,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
           {license.key_points.slice(0, 2).map((point, idx) => (
             <div key={idx} className="flex items-start gap-1">
               <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-[10px] text-[var(--foreground-secondary)] line-clamp-1">{point}</span>
+              <span className="text-[10px] text-[var(--foreground-secondary)] line-clamp-1">
+                {point}
+              </span>
             </div>
           ))}
         </div>
@@ -272,7 +295,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
 
         {/* CTA */}
         <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
-          <span className="text-[8px] text-[var(--foreground-muted)]">Valid: {license.validity}</span>
+          <span className="text-[8px] text-[var(--foreground-muted)]">
+            Valid: {license.validity}
+          </span>
           <div className="flex items-center gap-0.5 text-[var(--accent)] font-medium text-[10px] group-hover:gap-1 transition-all">
             <span>More</span>
             <ChevronRight className="w-2.5 h-2.5" />
@@ -312,14 +337,19 @@ export default function LicensesPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const categoryCounts = LICENSES.reduce((acc, lic) => {
-    acc[lic.category] = (acc[lic.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCounts = LICENSES.reduce(
+    (acc, lic) => {
+      acc[lic.category] = (acc[lic.category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const handleCardClick = (license: License) => {
     // Navigate to chat with context
-    router.push(`/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`);
+    router.push(
+      `/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`
+    );
   };
 
   return (
@@ -446,7 +476,11 @@ export default function LicensesPage() {
       {/* License Cards - 4 columns compact */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filteredLicenses.map((license) => (
-          <LicenseCard key={license.id} license={license} onClick={() => handleCardClick(license)} />
+          <LicenseCard
+            key={license.id}
+            license={license}
+            onClick={() => handleCardClick(license)}
+          />
         ))}
       </div>
 
@@ -507,8 +541,8 @@ export default function LicensesPage() {
               Need Help with Business Licenses?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our licensing experts handle the entire process from application to approval.
-              Free consultation available.
+              Our licensing experts handle the entire process from application to approval. Free
+              consultation available.
             </p>
           </div>
           <Button

@@ -7,8 +7,7 @@ Handles automatic creation of standardized folder structures for clients.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from typing import Any
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from backend.app.core.auth import get_current_user
 from backend.app.core.config import settings
@@ -351,7 +350,7 @@ async def get_client_drive_folder_structure(
         )
 
     drive_service = GoogleDriveService(pool)
-    
+
     try:
         structure = await drive_service.get_folder_structure(
             user_id=GoogleDriveService.SYSTEM_USER_ID,
@@ -447,7 +446,7 @@ async def list_folder_files(
             offset=offset,
             search=search,
         )
-        
+
         return {
             "folder_name": folder_name,
             "folder_id": subfolder["id"],

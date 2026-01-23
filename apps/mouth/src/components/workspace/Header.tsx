@@ -85,9 +85,7 @@ export function Header({
 
           {/* Compact Greeting - Page Title + Date */}
           <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-[var(--foreground)]">
-              {getPageTitle()}
-            </h1>
+            <h1 className="text-lg font-semibold text-[var(--foreground)]">{getPageTitle()}</h1>
             <p className="text-xs text-[var(--foreground-muted)]">
               {formatDate()} • {userName.split(' ')[0]}
             </p>
@@ -136,15 +134,10 @@ export function Header({
             {/* Notifications Dropdown */}
             {showNotifications && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowNotifications(false)}
-                />
+                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
                 <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl shadow-xl">
                   <div className="p-4 border-b border-[var(--border)]">
-                    <h3 className="font-semibold text-[var(--foreground)]">
-                      Notifications
-                    </h3>
+                    <h3 className="font-semibold text-[var(--foreground)]">Notifications</h3>
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-[var(--foreground-muted)] text-center py-4">
@@ -183,9 +176,7 @@ export function Header({
             size="icon"
             className={cn(
               'sm:hidden',
-              isClockIn
-                ? 'text-[var(--success)]'
-                : 'text-[var(--foreground-secondary)]'
+              isClockIn ? 'text-[var(--success)]' : 'text-[var(--foreground-secondary)]'
             )}
             aria-label={isClockIn ? 'Clock out' : 'Clock in'}
           >

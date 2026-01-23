@@ -27,7 +27,9 @@ vi.mock('next/link', () => ({
 vi.mock('@/components/dashboard', () => ({
   StatsCard: ({ title, value, href }: { title: string; value: string | number; href: string }) => (
     <div data-testid={`stats-card-${title.toLowerCase().replaceAll(' ', '-')}`}>
-      <a href={href}>{title}: {value}</a>
+      <a href={href}>
+        {title}: {value}
+      </a>
     </div>
   ),
   PratichePreview: ({ pratiche, isLoading }: { pratiche: unknown[]; isLoading: boolean }) => (
@@ -35,12 +37,24 @@ vi.mock('@/components/dashboard', () => ({
       {isLoading ? 'Loading...' : `${pratiche.length} practices`}
     </div>
   ),
-  WhatsAppPreview: ({ messages, isLoading, onDelete }: { messages: unknown[]; isLoading: boolean; onDelete: (id: string) => void }) => (
+  WhatsAppPreview: ({
+    messages,
+    isLoading,
+    onDelete,
+  }: {
+    messages: unknown[];
+    isLoading: boolean;
+    onDelete: (id: string) => void;
+  }) => (
     <div data-testid="whatsapp-preview">
-      {isLoading ? 'Loading...' : (
+      {isLoading ? (
+        'Loading...'
+      ) : (
         <>
           <span>{messages.length} messages</span>
-          <button onClick={() => onDelete('1')} data-testid="delete-message-btn">Delete</button>
+          <button onClick={() => onDelete('1')} data-testid="delete-message-btn">
+            Delete
+          </button>
         </>
       )}
     </div>
@@ -85,10 +99,23 @@ describe('DashboardPage - Unit Tests', () => {
     },
     data: {
       practices: [
-        { id: 1, title: 'Test Practice', client: 'Test Client', status: 'in_progress', daysRemaining: 10 },
+        {
+          id: 1,
+          title: 'Test Practice',
+          client: 'Test Client',
+          status: 'in_progress',
+          daysRemaining: 10,
+        },
       ],
       interactions: [
-        { id: '1', contactName: 'John Doe', message: 'Test message', timestamp: '2025-01-01', isRead: false, hasAiSuggestion: false },
+        {
+          id: '1',
+          contactName: 'John Doe',
+          message: 'Test message',
+          timestamp: '2025-01-01',
+          isRead: false,
+          hasAiSuggestion: false,
+        },
       ],
       email: {
         connected: true,

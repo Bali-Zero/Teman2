@@ -111,11 +111,7 @@ interface TypewriterCodeProps {
   className?: string;
 }
 
-export function TypewriterCode({
-  code,
-  language = 'typescript',
-  className,
-}: TypewriterCodeProps) {
+export function TypewriterCode({ code, language = 'typescript', className }: TypewriterCodeProps) {
   return (
     <div
       className={cn(
@@ -124,9 +120,7 @@ export function TypewriterCode({
       )}
     >
       {language && (
-        <div className="text-xs text-[var(--foreground-muted)] mb-2 font-mono">
-          {language}
-        </div>
+        <div className="text-xs text-[var(--foreground-muted)] mb-2 font-mono">{language}</div>
       )}
       <pre className="font-mono text-sm text-[var(--foreground)]">
         <TypeAnimation

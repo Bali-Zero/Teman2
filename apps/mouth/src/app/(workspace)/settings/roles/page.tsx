@@ -32,7 +32,11 @@ const allPermissions: Permission[] = [
   { id: 'team_view', name: 'View Team', description: 'View team members' },
   { id: 'analytics_view', name: 'View Analytics', description: 'Access analytics dashboard' },
   { id: 'settings_view', name: 'View Settings', description: 'Access settings' },
-  { id: 'settings_admin', name: 'Admin Settings', description: 'Manage users, roles, integrations' },
+  {
+    id: 'settings_admin',
+    name: 'Admin Settings',
+    description: 'Manage users, roles, integrations',
+  },
 ];
 
 export default function RolesPermissionsPage() {
@@ -53,7 +57,7 @@ export default function RolesPermissionsPage() {
       description: 'Full system access',
       color: '#A78BFA',
       userCount: 1,
-      permissions: allPermissions.map(p => p.id),
+      permissions: allPermissions.map((p) => p.id),
     },
     {
       id: '2',
@@ -61,7 +65,14 @@ export default function RolesPermissionsPage() {
       description: 'Standard user access',
       color: '#60A5FA',
       userCount: 3,
-      permissions: ['dashboard_view', 'chat_use', 'clients_view', 'cases_view', 'knowledge_view', 'settings_view'],
+      permissions: [
+        'dashboard_view',
+        'chat_use',
+        'clients_view',
+        'cases_view',
+        'knowledge_view',
+        'settings_view',
+      ],
     },
     {
       id: '3',
@@ -79,7 +90,7 @@ export default function RolesPermissionsPage() {
       setEditingRole({
         ...editingRole,
         permissions: hasPermission
-          ? editingRole.permissions.filter(p => p !== permId)
+          ? editingRole.permissions.filter((p) => p !== permId)
           : [...editingRole.permissions, permId],
       });
     } else {
@@ -87,7 +98,7 @@ export default function RolesPermissionsPage() {
       setNewRole({
         ...newRole,
         permissions: hasPermission
-          ? newRole.permissions.filter(p => p !== permId)
+          ? newRole.permissions.filter((p) => p !== permId)
           : [...newRole.permissions, permId],
       });
     }
@@ -95,7 +106,7 @@ export default function RolesPermissionsPage() {
 
   const handleSaveRole = () => {
     if (editingRole) {
-      setRoles(roles.map(r => r.id === editingRole.id ? editingRole : r));
+      setRoles(roles.map((r) => (r.id === editingRole.id ? editingRole : r)));
       setEditingRole(null);
     } else {
       const role: Role = {
@@ -111,7 +122,7 @@ export default function RolesPermissionsPage() {
 
   const deleteRole = (id: string) => {
     if (confirm('Are you sure you want to delete this role?')) {
-      setRoles(roles.filter(r => r.id !== id));
+      setRoles(roles.filter((r) => r.id !== id));
     }
   };
 
@@ -193,7 +204,7 @@ export default function RolesPermissionsPage() {
             <div className="mt-3 pt-3 border-t border-[var(--border)]">
               <div className="flex flex-wrap gap-1">
                 {role.permissions.slice(0, 4).map((permId) => {
-                  const perm = allPermissions.find(p => p.id === permId);
+                  const perm = allPermissions.find((p) => p.id === permId);
                   return (
                     <span
                       key={permId}
@@ -254,9 +265,10 @@ export default function RolesPermissionsPage() {
                   <input
                     type="text"
                     value={editingRole ? editingRole.name : newRole.name}
-                    onChange={(e) => editingRole
-                      ? setEditingRole({ ...editingRole, name: e.target.value })
-                      : setNewRole({ ...newRole, name: e.target.value })
+                    onChange={(e) =>
+                      editingRole
+                        ? setEditingRole({ ...editingRole, name: e.target.value })
+                        : setNewRole({ ...newRole, name: e.target.value })
                     }
                     placeholder="e.g., Manager"
                     className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -269,9 +281,10 @@ export default function RolesPermissionsPage() {
                   <input
                     type="color"
                     value={editingRole ? editingRole.color : newRole.color}
-                    onChange={(e) => editingRole
-                      ? setEditingRole({ ...editingRole, color: e.target.value })
-                      : setNewRole({ ...newRole, color: e.target.value })
+                    onChange={(e) =>
+                      editingRole
+                        ? setEditingRole({ ...editingRole, color: e.target.value })
+                        : setNewRole({ ...newRole, color: e.target.value })
                     }
                     className="w-full h-10 rounded-lg cursor-pointer"
                   />
@@ -285,9 +298,10 @@ export default function RolesPermissionsPage() {
                 <input
                   type="text"
                   value={editingRole ? editingRole.description : newRole.description}
-                  onChange={(e) => editingRole
-                    ? setEditingRole({ ...editingRole, description: e.target.value })
-                    : setNewRole({ ...newRole, description: e.target.value })
+                  onChange={(e) =>
+                    editingRole
+                      ? setEditingRole({ ...editingRole, description: e.target.value })
+                      : setNewRole({ ...newRole, description: e.target.value })
                   }
                   placeholder="Brief description of this role"
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -311,16 +325,24 @@ export default function RolesPermissionsPage() {
                             : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded flex items-center justify-center ${
-                          isChecked ? 'bg-[var(--accent)]' : 'bg-[var(--background-secondary)] border border-[var(--border)]'
-                        }`}>
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center ${
+                            isChecked
+                              ? 'bg-[var(--accent)]'
+                              : 'bg-[var(--background-secondary)] border border-[var(--border)]'
+                          }`}
+                        >
                           {isChecked && <Check className="w-3 h-3 text-white" />}
                         </div>
                         <div>
-                          <p className={`text-sm font-medium ${isChecked ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>
+                          <p
+                            className={`text-sm font-medium ${isChecked ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
+                          >
                             {perm.name}
                           </p>
-                          <p className="text-xs text-[var(--foreground-muted)]">{perm.description}</p>
+                          <p className="text-xs text-[var(--foreground-muted)]">
+                            {perm.description}
+                          </p>
                         </div>
                       </button>
                     );
@@ -329,10 +351,13 @@ export default function RolesPermissionsPage() {
               </div>
 
               <div className="flex gap-2 justify-end pt-4">
-                <Button variant="ghost" onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingRole(null);
-                }}>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setEditingRole(null);
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button onClick={handleSaveRole}>

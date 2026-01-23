@@ -1,21 +1,26 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { articlesApi, ComposeRequest, EnrichedArticle, PublishRequest } from "@/lib/api/articles.api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect, useRef } from 'react';
+import {
+  articlesApi,
+  ComposeRequest,
+  EnrichedArticle,
+  PublishRequest,
+} from '@/lib/api/articles.api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { logger } from "@/lib/logger";
+} from '@/components/ui/select';
+import { useToast } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
 import {
   Loader2,
   Sparkles,
@@ -38,22 +43,22 @@ import {
   X,
   Pencil,
   Save,
-} from "lucide-react";
+} from 'lucide-react';
 
 const CATEGORIES = [
-  { value: "immigration", label: "Immigration & Visas" },
-  { value: "business", label: "Business & Company" },
-  { value: "tax", label: "Tax & Legal" },
-  { value: "property", label: "Property & Real Estate" },
-  { value: "lifestyle", label: "Lifestyle" },
-  { value: "tech", label: "Technology" },
-  { value: "legal", label: "Legal Updates" },
+  { value: 'immigration', label: 'Immigration & Visas' },
+  { value: 'business', label: 'Business & Company' },
+  { value: 'tax', label: 'Tax & Legal' },
+  { value: 'property', label: 'Property & Real Estate' },
+  { value: 'lifestyle', label: 'Lifestyle' },
+  { value: 'tech', label: 'Technology' },
+  { value: 'legal', label: 'Legal Updates' },
 ];
 
 const POSITIONS = [
-  { value: "main_featured", label: "Main Featured (Homepage Hero)" },
-  { value: "secondary", label: "Secondary Featured" },
-  { value: "normal", label: "Normal Article" },
+  { value: 'main_featured', label: 'Main Featured (Homepage Hero)' },
+  { value: 'secondary', label: 'Secondary Featured' },
+  { value: 'normal', label: 'Normal Article' },
 ];
 
 export default function ArticleComposerPage() {
@@ -68,11 +73,11 @@ export default function ArticleComposerPage() {
   const toast = useToast();
 
   // Form state
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [category, setCategory] = useState("business");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [author, setAuthor] = useState("Marketing Team");
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('business');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [author, setAuthor] = useState('Marketing Team');
 
   // Cover image state
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -80,8 +85,8 @@ export default function ArticleComposerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Publish state
-  const [position, setPosition] = useState<"main_featured" | "secondary" | "normal">("normal");
-  const [customSlug, setCustomSlug] = useState("");
+  const [position, setPosition] = useState<'main_featured' | 'secondary' | 'normal'>('normal');
+  const [customSlug, setCustomSlug] = useState('');
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   // Edit mode state
@@ -89,11 +94,11 @@ export default function ArticleComposerPage() {
   const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(null);
 
   useEffect(() => {
-    logger.componentMount("ArticleComposerPage");
+    logger.componentMount('ArticleComposerPage');
     checkStatus();
 
     return () => {
-      logger.componentUnmount("ArticleComposerPage");
+      logger.componentUnmount('ArticleComposerPage');
     };
   }, []);
 
@@ -106,14 +111,18 @@ export default function ArticleComposerPage() {
       ]);
       setConfigured(composeStatus.configured);
       setPublishConfigured(publishStatus.configured);
-      logger.info("Article composer status", {
-        component: "ArticleComposerPage",
+      logger.info('Article composer status', {
+        component: 'ArticleComposerPage',
         metadata: { composeStatus, publishStatus },
       });
     } catch (err) {
-      logger.error("Failed to check composer status", {
-        component: "ArticleComposerPage",
-      }, err as Error);
+      logger.error(
+        'Failed to check composer status',
+        {
+          component: 'ArticleComposerPage',
+        },
+        err as Error
+      );
       setConfigured(false);
     } finally {
       setStatusLoading(false);
@@ -124,8 +133,8 @@ export default function ArticleComposerPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Invalid File", "Please select an image file");
+      if (!file.type.startsWith('image/')) {
+        toast.error('Invalid File', 'Please select an image file');
         return;
       }
       setCoverImage(file);
@@ -142,7 +151,7 @@ export default function ArticleComposerPage() {
     setCoverImage(null);
     setCoverImagePreview(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
@@ -151,7 +160,7 @@ export default function ArticleComposerPage() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
+        const base64 = (reader.result as string).split(',')[1];
         resolve(base64);
       };
       reader.onerror = reject;
@@ -162,7 +171,7 @@ export default function ArticleComposerPage() {
   // Publish article
   const handlePublish = async () => {
     if (!result) {
-      toast.error("No Article", "Please compose an article first");
+      toast.error('No Article', 'Please compose an article first');
       return;
     }
 
@@ -186,27 +195,28 @@ export default function ArticleComposerPage() {
 
       if (response.success) {
         setPublishedUrl(response.article_url || null);
-        toast.success(
-          "Published!",
-          response.message
-        );
-        logger.info("Article published", {
-          component: "ArticleComposerPage",
-          action: "publish_success",
+        toast.success('Published!', response.message);
+        logger.info('Article published', {
+          component: 'ArticleComposerPage',
+          action: 'publish_success',
           metadata: { url: response.article_url, commit: response.commit_sha },
         });
       } else {
-        setError(response.error || "Unknown error");
-        toast.error("Publish Failed", response.error || "Unknown error");
+        setError(response.error || 'Unknown error');
+        toast.error('Publish Failed', response.error || 'Unknown error');
       }
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
       setError(errMsg);
-      toast.error("Publish Error", errMsg);
-      logger.error("Publish failed", {
-        component: "ArticleComposerPage",
-        action: "publish_error",
-      }, err as Error);
+      toast.error('Publish Error', errMsg);
+      logger.error(
+        'Publish failed',
+        {
+          component: 'ArticleComposerPage',
+          action: 'publish_error',
+        },
+        err as Error
+      );
     } finally {
       setPublishing(false);
     }
@@ -214,7 +224,7 @@ export default function ArticleComposerPage() {
 
   const handleCompose = async () => {
     if (!title.trim() || !content.trim()) {
-      toast.error("Missing Fields", "Please enter both title and content");
+      toast.error('Missing Fields', 'Please enter both title and content');
       return;
     }
 
@@ -222,9 +232,9 @@ export default function ArticleComposerPage() {
     setError(null);
     setResult(null);
 
-    logger.info("Composing article", {
-      component: "ArticleComposerPage",
-      action: "compose_start",
+    logger.info('Composing article', {
+      component: 'ArticleComposerPage',
+      action: 'compose_start',
       metadata: { title, category },
     });
 
@@ -242,27 +252,28 @@ export default function ArticleComposerPage() {
       if (response.success && response.article) {
         setResult(response.article);
         setApiCost(response.api_cost_cents);
-        toast.success(
-          "Article Enriched!",
-          `Cost: $${(response.api_cost_cents / 100).toFixed(4)}`
-        );
-        logger.info("Article composed successfully", {
-          component: "ArticleComposerPage",
-          action: "compose_success",
+        toast.success('Article Enriched!', `Cost: $${(response.api_cost_cents / 100).toFixed(4)}`);
+        logger.info('Article composed successfully', {
+          component: 'ArticleComposerPage',
+          action: 'compose_success',
           metadata: { cost: response.api_cost_cents },
         });
       } else {
-        setError(response.error || "Unknown error");
-        toast.error("Enrichment Failed", response.error || "Unknown error");
+        setError(response.error || 'Unknown error');
+        toast.error('Enrichment Failed', response.error || 'Unknown error');
       }
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
       setError(errMsg);
-      toast.error("Error", errMsg);
-      logger.error("Compose failed", {
-        component: "ArticleComposerPage",
-        action: "compose_error",
-      }, err as Error);
+      toast.error('Error', errMsg);
+      logger.error(
+        'Compose failed',
+        {
+          component: 'ArticleComposerPage',
+          action: 'compose_error',
+        },
+        err as Error
+      );
     } finally {
       setLoading(false);
     }
@@ -281,7 +292,7 @@ export default function ArticleComposerPage() {
     if (editedResult) {
       setResult(editedResult);
       setIsEditing(false);
-      toast.success("Saved!", "Article changes saved");
+      toast.success('Saved!', 'Article changes saved');
     }
   };
 
@@ -295,7 +306,7 @@ export default function ArticleComposerPage() {
   const updateEditedField = (path: string, value: string | string[]) => {
     if (!editedResult) return;
     const updated = { ...editedResult };
-    const keys = path.split(".");
+    const keys = path.split('.');
     let obj: Record<string, unknown> = updated;
     for (let i = 0; i < keys.length - 1; i++) {
       obj = obj[keys[i]] as Record<string, unknown>;
@@ -306,18 +317,18 @@ export default function ArticleComposerPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied!", "Content copied to clipboard");
+    toast.success('Copied!', 'Content copied to clipboard');
   };
 
   const exportAsJson = () => {
     if (!result) return;
     const blob = new Blob([JSON.stringify(result, null, 2)], {
-      type: "application/json",
+      type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `article-${result.headline.slice(0, 30).replace(/\s+/g, "-")}.json`;
+    a.download = `article-${result.headline.slice(0, 30).replace(/\s+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -339,12 +350,10 @@ export default function ArticleComposerPage() {
         <div className="bg-amber-100 p-6 rounded-full mb-6">
           <AlertTriangle className="h-12 w-12 text-amber-600" />
         </div>
-        <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">
-          API Not Configured
-        </h3>
+        <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">API Not Configured</h3>
         <p className="text-[var(--foreground-muted)] max-w-md text-center">
-          The Anthropic API key is not configured. Please contact the admin to set up
-          the ANTHROPIC_API_KEY secret on Fly.io.
+          The Anthropic API key is not configured. Please contact the admin to set up the
+          ANTHROPIC_API_KEY secret on Fly.io.
         </p>
       </div>
     );
@@ -478,9 +487,7 @@ export default function ArticleComposerPage() {
                   >
                     <X className="h-4 w-4" />
                   </Button>
-                  <p className="mt-1 text-xs text-[var(--foreground-muted)]">
-                    {coverImage?.name}
-                  </p>
+                  <p className="mt-1 text-xs text-[var(--foreground-muted)]">{coverImage?.name}</p>
                 </div>
               ) : (
                 <div
@@ -544,12 +551,7 @@ export default function ArticleComposerPage() {
                         <Save className="h-4 w-4" />
                         Save Changes
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelEditing}
-                        className="gap-2"
-                      >
+                      <Button variant="outline" size="sm" onClick={cancelEditing} className="gap-2">
                         <X className="h-4 w-4" />
                         Cancel
                       </Button>
@@ -574,12 +576,7 @@ export default function ArticleComposerPage() {
                         <Copy className="h-4 w-4" />
                         Copy JSON
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={exportAsJson}
-                        className="gap-2"
-                      >
+                      <Button variant="outline" size="sm" onClick={exportAsJson} className="gap-2">
                         <Download className="h-4 w-4" />
                         Export
                       </Button>
@@ -590,7 +587,9 @@ export default function ArticleComposerPage() {
 
               {/* Publish Section */}
               {publishConfigured ? (
-                <Card className={`border-emerald-500/30 bg-emerald-500/5 ${isEditing ? "opacity-50" : ""}`}>
+                <Card
+                  className={`border-emerald-500/30 bg-emerald-500/5 ${isEditing ? 'opacity-50' : ''}`}
+                >
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Globe className="h-5 w-5 text-emerald-500" />
@@ -605,7 +604,11 @@ export default function ArticleComposerPage() {
                       {/* Position Selector */}
                       <div className="space-y-2">
                         <Label>Position</Label>
-                        <Select value={position} onValueChange={(v) => setPosition(v as typeof position)} disabled={isEditing}>
+                        <Select
+                          value={position}
+                          onValueChange={(v) => setPosition(v as typeof position)}
+                          disabled={isEditing}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -675,7 +678,9 @@ export default function ArticleComposerPage() {
                       <AlertTriangle className="h-5 w-5" />
                       <div>
                         <p className="font-medium">Publishing Not Configured</p>
-                        <p className="text-sm">Set GITHUB_TOKEN environment variable to enable direct publishing.</p>
+                        <p className="text-sm">
+                          Set GITHUB_TOKEN environment variable to enable direct publishing.
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -683,7 +688,7 @@ export default function ArticleComposerPage() {
               )}
 
               {/* Headline Card */}
-              <Card className={isEditing ? "border-amber-500/50" : ""}>
+              <Card className={isEditing ? 'border-amber-500/50' : ''}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-[var(--accent)] uppercase">
@@ -701,7 +706,7 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Headline</Label>
                         <Input
                           value={editedResult.headline}
-                          onChange={(e) => updateEditedField("headline", e.target.value)}
+                          onChange={(e) => updateEditedField('headline', e.target.value)}
                           className="text-lg font-bold"
                         />
                       </div>
@@ -709,7 +714,7 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Summary</Label>
                         <Textarea
                           value={editedResult.ai_summary}
-                          onChange={(e) => updateEditedField("ai_summary", e.target.value)}
+                          onChange={(e) => updateEditedField('ai_summary', e.target.value)}
                           className="min-h-[80px]"
                         />
                       </div>
@@ -719,16 +724,14 @@ export default function ArticleComposerPage() {
                       <h3 className="text-2xl font-bold text-[var(--foreground)] leading-tight">
                         {result.headline}
                       </h3>
-                      <p className="mt-2 text-[var(--foreground-muted)]">
-                        {result.ai_summary}
-                      </p>
+                      <p className="mt-2 text-[var(--foreground-muted)]">{result.ai_summary}</p>
                     </>
                   )}
                 </CardContent>
               </Card>
 
               {/* TL;DR Card */}
-              <Card className={isEditing ? "border-amber-500/50" : ""}>
+              <Card className={isEditing ? 'border-amber-500/50' : ''}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -743,9 +746,11 @@ export default function ArticleComposerPage() {
                           <Label className="text-xs text-amber-600">Should Worry</Label>
                           <Select
                             value={editedResult.tldr.should_worry}
-                            onValueChange={(v) => updateEditedField("tldr.should_worry", v)}
+                            onValueChange={(v) => updateEditedField('tldr.should_worry', v)}
                           >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Yes">Yes</SelectItem>
                               <SelectItem value="No">No</SelectItem>
@@ -757,9 +762,11 @@ export default function ArticleComposerPage() {
                           <Label className="text-xs text-amber-600">Risk Level</Label>
                           <Select
                             value={editedResult.tldr.risk_level}
-                            onValueChange={(v) => updateEditedField("tldr.risk_level", v)}
+                            onValueChange={(v) => updateEditedField('tldr.risk_level', v)}
                           >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Low">Low</SelectItem>
                               <SelectItem value="Medium">Medium</SelectItem>
@@ -772,7 +779,7 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">What</Label>
                         <Textarea
                           value={editedResult.tldr.what}
-                          onChange={(e) => updateEditedField("tldr.what", e.target.value)}
+                          onChange={(e) => updateEditedField('tldr.what', e.target.value)}
                           className="min-h-[60px]"
                         />
                       </div>
@@ -780,14 +787,14 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Who</Label>
                         <Input
                           value={editedResult.tldr.who}
-                          onChange={(e) => updateEditedField("tldr.who", e.target.value)}
+                          onChange={(e) => updateEditedField('tldr.who', e.target.value)}
                         />
                       </div>
                       <div>
                         <Label className="text-xs text-amber-600">When</Label>
                         <Input
                           value={editedResult.tldr.when}
-                          onChange={(e) => updateEditedField("tldr.when", e.target.value)}
+                          onChange={(e) => updateEditedField('tldr.when', e.target.value)}
                         />
                       </div>
                     </div>
@@ -796,30 +803,36 @@ export default function ArticleComposerPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">Should Worry:</span>
-                          <span className={
-                            result.tldr.should_worry === "Yes"
-                              ? "text-red-600 font-bold"
-                              : result.tldr.should_worry === "No"
-                              ? "text-green-600"
-                              : "text-amber-600"
-                          }>
+                          <span
+                            className={
+                              result.tldr.should_worry === 'Yes'
+                                ? 'text-red-600 font-bold'
+                                : result.tldr.should_worry === 'No'
+                                  ? 'text-green-600'
+                                  : 'text-amber-600'
+                            }
+                          >
                             {result.tldr.should_worry}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">Risk Level:</span>
-                          <span className={
-                            result.tldr.risk_level === "High"
-                              ? "text-red-600 font-bold"
-                              : result.tldr.risk_level === "Low"
-                              ? "text-green-600"
-                              : "text-amber-600"
-                          }>
+                          <span
+                            className={
+                              result.tldr.risk_level === 'High'
+                                ? 'text-red-600 font-bold'
+                                : result.tldr.risk_level === 'Low'
+                                  ? 'text-green-600'
+                                  : 'text-amber-600'
+                            }
+                          >
                             {result.tldr.risk_level}
                           </span>
                         </div>
                       </div>
-                      <div><strong>What:</strong> {result.tldr.what}</div>
+                      <div>
+                        <strong>What:</strong> {result.tldr.what}
+                      </div>
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-[var(--foreground-muted)]" />
                         <strong>Who:</strong> {result.tldr.who}
@@ -834,7 +847,7 @@ export default function ArticleComposerPage() {
               </Card>
 
               {/* Facts Card */}
-              <Card className={isEditing ? "border-amber-500/50" : ""}>
+              <Card className={isEditing ? 'border-amber-500/50' : ''}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -845,19 +858,19 @@ export default function ArticleComposerPage() {
                   {isEditing && editedResult ? (
                     <Textarea
                       value={editedResult.facts}
-                      onChange={(e) => updateEditedField("facts", e.target.value)}
+                      onChange={(e) => updateEditedField('facts', e.target.value)}
                       className="min-h-[150px]"
                     />
                   ) : (
-                    <p className="text-[var(--foreground)] whitespace-pre-line">
-                      {result.facts}
-                    </p>
+                    <p className="text-[var(--foreground)] whitespace-pre-line">{result.facts}</p>
                   )}
                 </CardContent>
               </Card>
 
               {/* Bali Zero Take Card */}
-              <Card className={`border-[var(--accent)]/30 bg-[var(--accent)]/5 ${isEditing ? "border-amber-500/50" : ""}`}>
+              <Card
+                className={`border-[var(--accent)]/30 bg-[var(--accent)]/5 ${isEditing ? 'border-amber-500/50' : ''}`}
+              >
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Lightbulb className="h-5 w-5 text-[var(--accent)]" />
@@ -871,7 +884,9 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Hidden Insight</Label>
                         <Textarea
                           value={editedResult.bali_zero_take.hidden_insight}
-                          onChange={(e) => updateEditedField("bali_zero_take.hidden_insight", e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField('bali_zero_take.hidden_insight', e.target.value)
+                          }
                           className="min-h-[80px]"
                         />
                       </div>
@@ -879,7 +894,9 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Our Analysis</Label>
                         <Textarea
                           value={editedResult.bali_zero_take.our_analysis}
-                          onChange={(e) => updateEditedField("bali_zero_take.our_analysis", e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField('bali_zero_take.our_analysis', e.target.value)
+                          }
                           className="min-h-[80px]"
                         />
                       </div>
@@ -887,7 +904,9 @@ export default function ArticleComposerPage() {
                         <Label className="text-xs text-amber-600">Our Advice</Label>
                         <Textarea
                           value={editedResult.bali_zero_take.our_advice}
-                          onChange={(e) => updateEditedField("bali_zero_take.our_advice", e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField('bali_zero_take.our_advice', e.target.value)
+                          }
                           className="min-h-[80px]"
                         />
                       </div>
@@ -924,7 +943,7 @@ export default function ArticleComposerPage() {
               </Card>
 
               {/* Next Steps Card */}
-              <Card className={isEditing ? "border-amber-500/50" : ""}>
+              <Card className={isEditing ? 'border-amber-500/50' : ''}>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <TrendingUp className="h-5 w-5 text-emerald-500" />
@@ -935,19 +954,33 @@ export default function ArticleComposerPage() {
                   {isEditing && editedResult ? (
                     <>
                       <div>
-                        <Label className="text-xs text-amber-600 mb-2 block">For Expats (one per line)</Label>
+                        <Label className="text-xs text-amber-600 mb-2 block">
+                          For Expats (one per line)
+                        </Label>
                         <Textarea
-                          value={editedResult.next_steps.expat.join("\n")}
-                          onChange={(e) => updateEditedField("next_steps.expat", e.target.value.split("\n").filter(s => s.trim()))}
+                          value={editedResult.next_steps.expat.join('\n')}
+                          onChange={(e) =>
+                            updateEditedField(
+                              'next_steps.expat',
+                              e.target.value.split('\n').filter((s) => s.trim())
+                            )
+                          }
                           className="min-h-[120px]"
                           placeholder="Enter each step on a new line"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-amber-600 mb-2 block">For Investors (one per line)</Label>
+                        <Label className="text-xs text-amber-600 mb-2 block">
+                          For Investors (one per line)
+                        </Label>
                         <Textarea
-                          value={editedResult.next_steps.investor.join("\n")}
-                          onChange={(e) => updateEditedField("next_steps.investor", e.target.value.split("\n").filter(s => s.trim()))}
+                          value={editedResult.next_steps.investor.join('\n')}
+                          onChange={(e) =>
+                            updateEditedField(
+                              'next_steps.investor',
+                              e.target.value.split('\n').filter((s) => s.trim())
+                            )
+                          }
                           className="min-h-[120px]"
                           placeholder="Enter each step on a new line"
                         />
@@ -983,7 +1016,7 @@ export default function ArticleComposerPage() {
               </Card>
 
               {/* Tags & Components */}
-              <Card className={isEditing ? "border-amber-500/50" : ""}>
+              <Card className={isEditing ? 'border-amber-500/50' : ''}>
                 <CardContent className="pt-4 space-y-4">
                   {isEditing && editedResult ? (
                     <>
@@ -993,8 +1026,16 @@ export default function ArticleComposerPage() {
                           AI Tags (comma separated)
                         </Label>
                         <Input
-                          value={editedResult.ai_tags.join(", ")}
-                          onChange={(e) => updateEditedField("ai_tags", e.target.value.split(",").map(s => s.trim()).filter(s => s))}
+                          value={editedResult.ai_tags.join(', ')}
+                          onChange={(e) =>
+                            updateEditedField(
+                              'ai_tags',
+                              e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter((s) => s)
+                            )
+                          }
                           placeholder="tag1, tag2, tag3"
                         />
                       </div>
@@ -1003,8 +1044,16 @@ export default function ArticleComposerPage() {
                           Suggested Components (comma separated)
                         </Label>
                         <Input
-                          value={editedResult.suggested_components.join(", ")}
-                          onChange={(e) => updateEditedField("suggested_components", e.target.value.split(",").map(s => s.trim()).filter(s => s))}
+                          value={editedResult.suggested_components.join(', ')}
+                          onChange={(e) =>
+                            updateEditedField(
+                              'suggested_components',
+                              e.target.value
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter((s) => s)
+                            )
+                          }
                           placeholder="checklist, comparison-table, alert-box"
                         />
                       </div>
@@ -1049,15 +1098,15 @@ export default function ArticleComposerPage() {
 
               {/* Image Prompt Card */}
               {(result.image_prompt || isEditing) && (
-                <Card className={isEditing ? "border-amber-500/50" : ""}>
+                <Card className={isEditing ? 'border-amber-500/50' : ''}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Cover Image Prompt</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {isEditing && editedResult ? (
                       <Textarea
-                        value={editedResult.image_prompt || ""}
-                        onChange={(e) => updateEditedField("image_prompt", e.target.value)}
+                        value={editedResult.image_prompt || ''}
+                        onChange={(e) => updateEditedField('image_prompt', e.target.value)}
                         className="min-h-[150px] font-mono text-sm"
                         placeholder="Enter AI image generation prompt..."
                       />
@@ -1069,7 +1118,7 @@ export default function ArticleComposerPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => copyToClipboard(result.image_prompt || "")}
+                          onClick={() => copyToClipboard(result.image_prompt || '')}
                           className="mt-2 gap-2"
                         >
                           <Copy className="h-4 w-4" />
@@ -1083,7 +1132,7 @@ export default function ArticleComposerPage() {
 
               {/* Cost Info */}
               <div className="text-center text-sm text-[var(--foreground-muted)]">
-                API Cost: ${(apiCost / 100).toFixed(4)} | Enriched at:{" "}
+                API Cost: ${(apiCost / 100).toFixed(4)} | Enriched at:{' '}
                 {new Date(result.enriched_at).toLocaleString()}
               </div>
             </>
@@ -1096,9 +1145,8 @@ export default function ArticleComposerPage() {
                 Ready to Transform
               </h3>
               <p className="text-[var(--foreground-muted)] max-w-md text-center">
-                Enter your raw content on the left and click "Compose Executive Brief"
-                to generate a Bali Zero style article with TL;DR, strategic analysis,
-                and actionable next steps.
+                Enter your raw content on the left and click "Compose Executive Brief" to generate a
+                Bali Zero style article with TL;DR, strategic analysis, and actionable next steps.
               </p>
             </div>
           )}

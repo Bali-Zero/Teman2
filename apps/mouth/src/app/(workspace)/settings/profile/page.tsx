@@ -62,9 +62,7 @@ export default function ProfileSettingsPage() {
             <User className="w-6 h-6 text-blue-400" />
             Profile Settings
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Manage your personal information
-          </p>
+          <p className="text-sm text-[var(--foreground-muted)]">Manage your personal information</p>
         </div>
       </div>
 
@@ -82,7 +80,9 @@ export default function ProfileSettingsPage() {
                 <User className="w-10 h-10 text-[var(--foreground-muted)]" />
               </div>
               <div className="space-y-2">
-                <Button variant="outline" size="sm">Change Photo</Button>
+                <Button variant="outline" size="sm">
+                  Change Photo
+                </Button>
                 <p className="text-xs text-[var(--foreground-muted)]">JPG, PNG max 2MB</p>
               </div>
             </div>
@@ -117,7 +117,9 @@ export default function ProfileSettingsPage() {
                   disabled
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground-muted)] cursor-not-allowed"
                 />
-                <p className="text-xs text-[var(--foreground-muted)] mt-1">Email cannot be changed</p>
+                <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                  Email cannot be changed
+                </p>
               </div>
 
               <div>
@@ -165,7 +167,9 @@ export default function ProfileSettingsPage() {
 
           {/* Account Info */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Account Information</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+              Account Information
+            </h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-[var(--foreground-muted)]">User ID</span>

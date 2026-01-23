@@ -13,7 +13,10 @@ export interface WebSocketContextValue {
   connect: () => void;
   disconnect: () => void;
   sendMessage: (message: WebSocketMessage) => void;
-  subscribe: (channel: WebSocketChannel, callback: (message: WebSocketMessage) => void) => () => void;
+  subscribe: (
+    channel: WebSocketChannel,
+    callback: (message: WebSocketMessage) => void
+  ) => () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
@@ -191,10 +194,3 @@ export function useWebSocket() {
   }
   return context;
 }
-
-
-
-
-
-
-

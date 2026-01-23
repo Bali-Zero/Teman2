@@ -11,7 +11,6 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Explicit imports instead of wildcard
-from llm.adapters.base import ModelCapabilities, ModelAdapter
 
 
 class TestBase:

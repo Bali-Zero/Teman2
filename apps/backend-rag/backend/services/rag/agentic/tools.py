@@ -355,8 +355,8 @@ class TeamKnowledgeTool(BaseTool):
 
     def _get_data_file_path(self):
         if self._data_file is None:
-            from pathlib import Path
             import os
+            from pathlib import Path
 
             # Logical paths to check (Local Repo vs Docker Container)
             possible_paths = [
@@ -369,7 +369,7 @@ class TeamKnowledgeTool(BaseTool):
                 # 4. Fallback: Current Working Directory
                 Path(os.getcwd()) / "backend" / "data" / "team_members.json",
             ]
-            
+
             for path in possible_paths:
                 try:
                     if path.exists():
@@ -378,10 +378,12 @@ class TeamKnowledgeTool(BaseTool):
                         break
                 except Exception as e:
                     logger.warning(f"[{self.name}] Error checking path {path}: {e}")
-            
+
             if self._data_file is None:
-                logger.error(f"[{self.name}] CRITICAL: team_members.json NOT FOUND in any expected location.")
-                
+                logger.error(
+                    f"[{self.name}] CRITICAL: team_members.json NOT FOUND in any expected location."
+                )
+
         return self._data_file
 
     def _load_team_data(self):
@@ -866,11 +868,11 @@ class TimeSheetTool(BaseTool):
 
             # Try relative to this file first (Local Dev)
             path = Path(__file__).parent.parent.parent.parent / "data" / "team_members.json"
-            
+
             # If not found, try Docker paths
             if not path.exists():
                 path = Path("/app/backend/data/team_members.json")
-            
+
             if not path.exists():
                 path = Path("/app/data/team_members.json")
 

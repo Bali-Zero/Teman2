@@ -50,9 +50,10 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
               onClick={() => onNavigate(index)}
               className={`
                 group h-8 gap-2 rounded-lg px-3 transition-all
-                ${isLast
-                  ? 'bg-[var(--accent)] font-semibold text-[var(--foreground)]'
-                  : 'text-[var(--foreground-muted)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
+                ${
+                  isLast
+                    ? 'bg-[var(--accent)] font-semibold text-[var(--foreground)]'
+                    : 'text-[var(--foreground-muted)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
                 }
               `}
             >
@@ -62,10 +63,7 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
                   className="flex h-5 w-5 items-center justify-center rounded"
                   style={{ backgroundColor: `${deptInfo.primary}20` }}
                 >
-                  <deptInfo.icon
-                    className="h-3 w-3"
-                    style={{ color: deptInfo.primary }}
-                  />
+                  <deptInfo.icon className="h-3 w-3" style={{ color: deptInfo.primary }} />
                 </div>
               )}
 
@@ -93,7 +91,9 @@ export function DriveBreadcrumb({ items, onNavigate }: DriveBreadcrumbProps) {
           className="ml-2 flex items-center gap-1 text-xs text-[var(--foreground-muted)]"
         >
           <Building2 className="h-3 w-3" />
-          <span>{items.length} {items.length === 1 ? 'livello' : 'livelli'}</span>
+          <span>
+            {items.length} {items.length === 1 ? 'livello' : 'livelli'}
+          </span>
         </motion.div>
       )}
     </motion.div>

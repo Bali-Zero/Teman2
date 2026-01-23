@@ -37,9 +37,9 @@ describe('ClientKanban Virtualization', () => {
   it('should show correct client count per column', () => {
     const handleStatusChange = vi.fn();
     render(<ClientKanban clients={mockClients} onStatusChange={handleStatusChange} />);
-    
+
     // Should show count for each column
-    const activeClients = mockClients.filter(c => c.status === 'active').length;
+    const activeClients = mockClients.filter((c) => c.status === 'active').length;
     expect(screen.getByText(activeClients.toString())).toBeInTheDocument();
   });
 });

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Search,
   Filter,
@@ -18,96 +18,102 @@ import {
   AlertCircle,
   TrendingUp,
   RefreshCw,
-} from "lucide-react";
-import { formatRelativeTime, truncate } from "@/lib/utils";
-import type { IntelSignal, ContentCategory } from "@/types";
+} from 'lucide-react';
+import { formatRelativeTime, truncate } from '@/lib/utils';
+import type { IntelSignal, ContentCategory } from '@/types';
 
 // Mock data
 const mockSignals: IntelSignal[] = [
   {
-    id: "1",
-    title: "New visa regulation: E33G Remote Worker KITAS processing time reduced to 3 days",
-    source_name: "Imigrasi Indonesia",
-    source_url: "https://imigrasi.go.id/news/123",
-    category: "immigration",
-    priority: "high",
-    summary: "The Directorate General of Immigration announced that E33G Remote Worker KITAS applications will now be processed within 3 working days, down from the previous 5-7 days.",
+    id: '1',
+    title: 'New visa regulation: E33G Remote Worker KITAS processing time reduced to 3 days',
+    source_name: 'Imigrasi Indonesia',
+    source_url: 'https://imigrasi.go.id/news/123',
+    category: 'immigration',
+    priority: 'high',
+    summary:
+      'The Directorate General of Immigration announced that E33G Remote Worker KITAS applications will now be processed within 3 working days, down from the previous 5-7 days.',
     detected_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     processed: false,
   },
   {
-    id: "2",
-    title: "Tax deadline reminder: SPT Tahunan due March 31, 2025",
-    source_name: "DJP Online",
-    source_url: "https://djponline.pajak.go.id/",
-    category: "tax",
-    priority: "high",
-    summary: "Annual tax return (SPT Tahunan) deadline approaching. PT PMA companies must file by March 31, 2025. Late filing incurs IDR 1,000,000 penalty.",
+    id: '2',
+    title: 'Tax deadline reminder: SPT Tahunan due March 31, 2025',
+    source_name: 'DJP Online',
+    source_url: 'https://djponline.pajak.go.id/',
+    category: 'tax',
+    priority: 'high',
+    summary:
+      'Annual tax return (SPT Tahunan) deadline approaching. PT PMA companies must file by March 31, 2025. Late filing incurs IDR 1,000,000 penalty.',
     detected_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     processed: false,
   },
   {
-    id: "3",
-    title: "Bali tourism arrivals hit record high in December 2024",
-    source_name: "BPS Statistics",
-    source_url: "https://bps.go.id/",
-    category: "bali_news",
-    priority: "medium",
-    summary: "Bali welcomed 1.2 million international visitors in December 2024, the highest monthly figure since 2019. Australian tourists led the arrivals.",
+    id: '3',
+    title: 'Bali tourism arrivals hit record high in December 2024',
+    source_name: 'BPS Statistics',
+    source_url: 'https://bps.go.id/',
+    category: 'bali_news',
+    priority: 'medium',
+    summary:
+      'Bali welcomed 1.2 million international visitors in December 2024, the highest monthly figure since 2019. Australian tourists led the arrivals.',
     detected_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     processed: true,
-    content_id: "article-123",
+    content_id: 'article-123',
   },
   {
-    id: "4",
-    title: "New KBLI codes added for tech sector businesses",
-    source_name: "OSS Indonesia",
-    source_url: "https://oss.go.id/",
-    category: "business",
-    priority: "medium",
-    summary: "OSS system updated with 15 new KBLI codes specifically for technology and digital services sector. Includes AI development, cloud services, and fintech.",
+    id: '4',
+    title: 'New KBLI codes added for tech sector businesses',
+    source_name: 'OSS Indonesia',
+    source_url: 'https://oss.go.id/',
+    category: 'business',
+    priority: 'medium',
+    summary:
+      'OSS system updated with 15 new KBLI codes specifically for technology and digital services sector. Includes AI development, cloud services, and fintech.',
     detected_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     processed: false,
   },
   {
-    id: "5",
-    title: "Property foreign ownership regulations under review",
-    source_name: "Kementerian ATR/BPN",
-    source_url: "https://atr.bpn.go.id/",
-    category: "property",
-    priority: "low",
-    summary: "Ministry reviewing regulations on foreign property ownership. Discussions ongoing about extending HGB rights for foreigners from 80 to 100 years.",
+    id: '5',
+    title: 'Property foreign ownership regulations under review',
+    source_name: 'Kementerian ATR/BPN',
+    source_url: 'https://atr.bpn.go.id/',
+    category: 'property',
+    priority: 'low',
+    summary:
+      'Ministry reviewing regulations on foreign property ownership. Discussions ongoing about extending HGB rights for foreigners from 80 to 100 years.',
     detected_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     processed: false,
   },
   {
-    id: "6",
-    title: "BPJS Kesehatan premium rates unchanged for 2025",
-    source_name: "BPJS Kesehatan",
-    source_url: "https://bpjs-kesehatan.go.id/",
-    category: "legal",
-    priority: "low",
-    summary: "BPJS confirms health insurance premium rates will remain the same for 2025. No changes to coverage or contribution amounts.",
+    id: '6',
+    title: 'BPJS Kesehatan premium rates unchanged for 2025',
+    source_name: 'BPJS Kesehatan',
+    source_url: 'https://bpjs-kesehatan.go.id/',
+    category: 'legal',
+    priority: 'low',
+    summary:
+      'BPJS confirms health insurance premium rates will remain the same for 2025. No changes to coverage or contribution amounts.',
     detected_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
     processed: true,
   },
 ];
 
-const categoryFilters: { value: ContentCategory | "all"; label: string }[] = [
-  { value: "all", label: "All Categories" },
-  { value: "immigration", label: "Immigration" },
-  { value: "tax", label: "Tax" },
-  { value: "business", label: "Business" },
-  { value: "property", label: "Property" },
-  { value: "legal", label: "Legal" },
-  { value: "bali_news", label: "Bali News" },
+const categoryFilters: { value: ContentCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'immigration', label: 'Immigration' },
+  { value: 'tax', label: 'Tax' },
+  { value: 'business', label: 'Business' },
+  { value: 'property', label: 'Property' },
+  { value: 'legal', label: 'Legal' },
+  { value: 'bali_news', label: 'Bali News' },
 ];
 
 function getPriorityIcon(priority: string) {
   switch (priority) {
-    case "high":
+    case 'high':
       return <AlertCircle className="w-5 h-5 text-[var(--error)]" />;
-    case "medium":
+    case 'medium':
       return <TrendingUp className="w-5 h-5 text-[var(--warning)]" />;
     default:
       return <Clock className="w-5 h-5 text-[var(--foreground-muted)]" />;
@@ -116,9 +122,9 @@ function getPriorityIcon(priority: string) {
 
 function getPriorityBadge(priority: string) {
   switch (priority) {
-    case "high":
+    case 'high':
       return <Badge variant="error">HIGH</Badge>;
-    case "medium":
+    case 'medium':
       return <Badge variant="warning">MEDIUM</Badge>;
     default:
       return <Badge variant="secondary">LOW</Badge>;
@@ -126,16 +132,16 @@ function getPriorityBadge(priority: string) {
 }
 
 export default function IntelPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<ContentCategory | "all">("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<ContentCategory | 'all'>('all');
   const [showProcessed, setShowProcessed] = useState(false);
 
   const filteredSignals = mockSignals.filter((signal) => {
     const matchesSearch =
-      searchQuery === "" ||
+      searchQuery === '' ||
       signal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       signal.source_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || signal.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || signal.category === categoryFilter;
     const matchesProcessed = showProcessed || !signal.processed;
     return matchesSearch && matchesCategory && matchesProcessed;
   });
@@ -164,7 +170,7 @@ export default function IntelPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-[var(--foreground)]">
-                {mockSignals.filter((s) => s.priority === "high" && !s.processed).length}
+                {mockSignals.filter((s) => s.priority === 'high' && !s.processed).length}
               </p>
               <p className="text-sm text-[var(--foreground-muted)]">High Priority</p>
             </div>
@@ -210,7 +216,7 @@ export default function IntelPage() {
         <div className="flex gap-2 flex-wrap">
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as ContentCategory | "all")}
+            onChange={(e) => setCategoryFilter(e.target.value as ContentCategory | 'all')}
             className="h-10 px-3 rounded-md border border-[var(--border)] bg-[var(--background-input)] text-sm text-[var(--foreground)]"
           >
             {categoryFilters.map((cat) => (
@@ -220,11 +226,11 @@ export default function IntelPage() {
             ))}
           </select>
           <Button
-            variant={showProcessed ? "secondary" : "outline"}
+            variant={showProcessed ? 'secondary' : 'outline'}
             size="sm"
             onClick={() => setShowProcessed(!showProcessed)}
           >
-            {showProcessed ? "Hide" : "Show"} Processed
+            {showProcessed ? 'Hide' : 'Show'} Processed
           </Button>
           <Button variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
@@ -236,10 +242,7 @@ export default function IntelPage() {
       {/* Signals List */}
       <div className="space-y-4">
         {filteredSignals.map((signal) => (
-          <Card
-            key={signal.id}
-            className={signal.processed ? "opacity-60" : ""}
-          >
+          <Card key={signal.id} className={signal.processed ? 'opacity-60' : ''}>
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
                 {getPriorityIcon(signal.priority)}

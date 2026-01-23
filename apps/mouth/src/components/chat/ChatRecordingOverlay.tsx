@@ -11,10 +11,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function ChatRecordingOverlay({
-  isRecording,
-  recordingTime,
-}: ChatRecordingOverlayProps) {
+export function ChatRecordingOverlay({ isRecording, recordingTime }: ChatRecordingOverlayProps) {
   if (!isRecording) {
     return null;
   }

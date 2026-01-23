@@ -286,7 +286,10 @@ describe('VisaOraclePage', () => {
     });
 
     expect(logger.info).toHaveBeenCalledWith('Starting rejection process', expect.any(Object));
-    expect(logger.info).toHaveBeenCalledWith('Rejection completed successfully', expect.any(Object));
+    expect(logger.info).toHaveBeenCalledWith(
+      'Rejection completed successfully',
+      expect.any(Object)
+    );
 
     confirmSpy.mockRestore();
   });
@@ -469,8 +472,9 @@ describe('VisaOraclePage', () => {
       });
 
       // Find bulk approve button (should appear with count)
-      const bulkApproveButton = screen.queryByRole('button', { name: /Approve.*\(2\)/i }) ||
-                                 screen.queryByText(/Approve All/i);
+      const bulkApproveButton =
+        screen.queryByRole('button', { name: /Approve.*\(2\)/i }) ||
+        screen.queryByText(/Approve All/i);
 
       if (bulkApproveButton) {
         await userEvent.click(bulkApproveButton);

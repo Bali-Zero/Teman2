@@ -22,7 +22,9 @@ describe('IntelligenceLayout', () => {
     );
 
     expect(screen.getByText('Intelligence Center')).toBeInTheDocument();
-    expect(screen.getByText('AI-powered monitoring of Indonesian immigration regulations')).toBeInTheDocument();
+    expect(
+      screen.getByText('AI-powered monitoring of Indonesian immigration regulations')
+    ).toBeInTheDocument();
   });
 
   it('should show "Agent Active" indicator', () => {

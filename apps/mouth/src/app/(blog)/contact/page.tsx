@@ -20,7 +20,9 @@ import {
  * McKinsey-inspired layout with contact form
  */
 export default function ContactPage() {
-  const [formState, setFormState] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [formState, setFormState] = React.useState<'idle' | 'loading' | 'success' | 'error'>(
+    'idle'
+  );
   const [formData, setFormData] = React.useState({
     name: '',
     email: '',
@@ -44,7 +46,9 @@ export default function ContactPage() {
     setFormState('success');
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -67,12 +71,11 @@ export default function ContactPage() {
               Contact Us
             </span>
             <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              Let's Start Your{' '}
-              <span className="text-[#e85c41]">Indonesian Journey</span>
+              Let's Start Your <span className="text-[#e85c41]">Indonesian Journey</span>
             </h1>
             <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              Have questions about visas, company setup, or taxes? We're here to help.
-              Get in touch and we'll respond within 24 hours.
+              Have questions about visas, company setup, or taxes? We're here to help. Get in touch
+              and we'll respond within 24 hours.
             </p>
           </div>
         </div>
@@ -101,7 +104,9 @@ export default function ContactPage() {
                     <h3 className="text-white font-medium mb-1 group-hover:text-[#25D366] transition-colors">
                       WhatsApp
                     </h3>
-                    <p className="text-white/60 text-sm mb-2">Fastest response - usually within minutes</p>
+                    <p className="text-white/60 text-sm mb-2">
+                      Fastest response - usually within minutes
+                    </p>
                     <p className="text-[#25D366] font-medium">+62 859 0436 9574</p>
                   </div>
                 </a>
@@ -118,7 +123,9 @@ export default function ContactPage() {
                     <h3 className="text-white font-medium mb-1 group-hover:text-[#2251ff] transition-colors">
                       Email
                     </h3>
-                    <p className="text-white/60 text-sm mb-2">For detailed inquiries and documents</p>
+                    <p className="text-white/60 text-sm mb-2">
+                      For detailed inquiries and documents
+                    </p>
                     <p className="text-[#2251ff] font-medium">info@balizero.com</p>
                   </div>
                 </a>
@@ -151,7 +158,9 @@ export default function ContactPage() {
                     <h3 className="text-white font-medium mb-1">Office Location</h3>
                     <p className="text-white/60 text-sm mb-2">By appointment only</p>
                     <p className="text-white/80">Kerobokan, Bali</p>
-                    <p className="text-white/50 text-sm mt-1">Exact location shared upon appointment</p>
+                    <p className="text-white/50 text-sm mt-1">
+                      Exact location shared upon appointment
+                    </p>
                   </div>
                 </div>
               </div>
@@ -191,8 +200,8 @@ export default function ContactPage() {
                   <CheckCircle className="w-16 h-16 text-[#22c55e] mx-auto mb-4" />
                   <h3 className="text-xl font-medium text-white mb-2">Message Sent!</h3>
                   <p className="text-white/60 mb-6">
-                    We've opened WhatsApp with your message. If it didn't open,
-                    please contact us directly.
+                    We've opened WhatsApp with your message. If it didn't open, please contact us
+                    directly.
                   </p>
                   <button
                     onClick={() => setFormState('idle')}
@@ -255,7 +264,10 @@ export default function ContactPage() {
 
                   {/* Service */}
                   <div>
-                    <label htmlFor="service" className="block text-sm font-medium text-white/80 mb-2">
+                    <label
+                      htmlFor="service"
+                      className="block text-sm font-medium text-white/80 mb-2"
+                    >
                       Service Interested In
                     </label>
                     <select
@@ -277,7 +289,10 @@ export default function ContactPage() {
 
                   {/* Message */}
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-white/80 mb-2">
+                    <label
+                      htmlFor="message"
+                      className="block text-sm font-medium text-white/80 mb-2"
+                    >
                       Message <span className="text-[#e85c41]">*</span>
                     </label>
                     <textarea
@@ -311,9 +326,7 @@ export default function ContactPage() {
                     )}
                   </button>
 
-                  <p className="text-center text-white/40 text-sm">
-                    We'll respond within 24 hours
-                  </p>
+                  <p className="text-center text-white/40 text-sm">We'll respond within 24 hours</p>
                 </form>
               )}
             </div>
@@ -325,12 +338,7 @@ export default function ContactPage() {
       <section className="bg-gradient-to-br from-[#0a2540] to-[#051C2C]">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="flex flex-col md:flex-row items-center gap-8 justify-center">
-            <Image
-              src="/assets/logo/zantara-lotus.png"
-              alt="Zantara AI"
-              width={120}
-              height={120}
-            />
+            <Image src="/assets/logo/zantara-lotus.png" alt="Zantara AI" width={120} height={120} />
             <div className="text-center md:text-left max-w-xl">
               <h3 className="font-serif text-2xl text-white mb-2">Need Instant Answers?</h3>
               <p className="text-white/60 mb-4">

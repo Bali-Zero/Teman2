@@ -162,17 +162,12 @@ export default function TeamPage() {
             className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: dept.color }}
-              />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color }} />
               <h3 className="font-medium text-[var(--foreground)]">{dept.name}</h3>
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-[var(--foreground-muted)]" />
-              <span className="text-sm text-[var(--foreground-muted)]">
-                {dept.members} members
-              </span>
+              <span className="text-sm text-[var(--foreground-muted)]">{dept.members} members</span>
             </div>
           </div>
         ))}
@@ -186,9 +181,7 @@ export default function TeamPage() {
         {isLoading ? (
           <div className="p-8 text-center">
             <UserCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50 animate-pulse" />
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Loading team members...
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">Loading team members...</p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
@@ -223,13 +216,16 @@ export default function TeamPage() {
                     )}
                     <Circle
                       className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${
-                        member.is_online ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'
+                        member.is_online
+                          ? 'text-green-500 fill-green-500'
+                          : 'text-gray-500 fill-gray-500'
                       }`}
                     />
                   </div>
                   <div>
                     <p className="font-medium text-[var(--foreground)]">
-                      {member.email.split('@')[0].charAt(0).toUpperCase() + member.email.split('@')[0].slice(1)}
+                      {member.email.split('@')[0].charAt(0).toUpperCase() +
+                        member.email.split('@')[0].slice(1)}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)]">
                       {getDepartment(member.email)} • {member.email}
@@ -237,11 +233,14 @@ export default function TeamPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-medium ${member.is_online ? 'text-green-500' : 'text-[var(--foreground-muted)]'}`}>
+                  <p
+                    className={`text-sm font-medium ${member.is_online ? 'text-green-500' : 'text-[var(--foreground-muted)]'}`}
+                  >
                     {member.is_online ? 'Online' : 'Offline'}
                   </p>
                   <p className="text-xs text-[var(--foreground-muted)]">
-                    {member.last_action_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} • {member.last_action}
+                    {member.last_action_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} •{' '}
+                    {member.last_action}
                   </p>
                 </div>
               </div>
@@ -253,8 +252,8 @@ export default function TeamPage() {
       {/* Info Box */}
       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          Manage the Bali Zero team with attendance, timesheet, leave and permissions.
-          View who is online and hours worked.
+          Manage the Bali Zero team with attendance, timesheet, leave and permissions. View who is
+          online and hours worked.
         </p>
       </div>
     </div>

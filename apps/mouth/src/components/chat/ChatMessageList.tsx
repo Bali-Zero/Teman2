@@ -49,9 +49,7 @@ export function ChatMessageList({
         </motion.div>
 
         <div className="space-y-4 text-center mb-12">
-          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">
-            Zantara
-          </h1>
+          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">Zantara</h1>
           <div className="flex items-center justify-center gap-4">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white/30" />
             <p className="text-xs text-[var(--foreground-muted)] tracking-[0.4em] uppercase font-medium">
@@ -100,10 +98,7 @@ export function ChatMessageList({
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
         const isEmptyAssistantPlaceholder =
-          message.role === 'assistant' &&
-          !message.content &&
-          isLastMessage &&
-          isLoading;
+          message.role === 'assistant' && !message.content && isLastMessage && isLoading;
 
         if (isEmptyAssistantPlaceholder) {
           return null;

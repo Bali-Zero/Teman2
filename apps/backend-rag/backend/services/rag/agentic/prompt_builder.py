@@ -664,7 +664,9 @@ class SystemPromptBuilder:
             # Fallback for email if not in profile but known from user_id (if it looks like an email)
             email_display = user_email if "@" in user_email else "Unknown"
             user_city = entities.get("user_city", "Unknown City")
-            memory_parts.append(f"User Name: {user_name}\nEmail: {email_display}\nCity: {user_city}")
+            memory_parts.append(
+                f"User Name: {user_name}\nEmail: {email_display}\nCity: {user_city}"
+            )
 
         # 2. Personal Facts
         if facts:
@@ -1001,7 +1003,8 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             # Casual statements about day/mood
             r"(hari ini|today|oggi|lagi|feeling|mood|vibes)",
             # General Chatters
-            r"^(ok|bene|good|great|thanks|grazie|terima kasih|si|no|yes|cool|wow|haha|wkwk|lol)$",
+            # General Chatters (Removed context-dependent 'si', 'no', 'yes' to allow RAG/LLM reasoning)
+            r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
         ]
 
         for pattern in casual_patterns:
@@ -1370,16 +1373,16 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         """
         profile = context.get("profile") or {}
         user_name = profile.get("name") or "Partner"
-        
+
         # Format memory strictly
         facts = context.get("facts", [])
-        tasks = context.get("tasks", []) # Assumptions: these might come from context enrichment
-        unread_items = context.get("unread", []) # Assumption
-        
+        tasks = context.get("tasks", [])  # Assumptions: these might come from context enrichment
+        unread_items = context.get("unread", [])  # Assumption
+
         # Flatten context for the prompt
         context_str = f"Event Context: {event_context}"
         memory_str = "\n".join([f"- {f}" for f in facts])
-        
+
         prompt = f"""
 # SYSTEM INSTRUCTION: PROACTIVE TRIGGER
 You are ZANTARA. A system event '{event_type}' has occurred for user '{user_name}'.

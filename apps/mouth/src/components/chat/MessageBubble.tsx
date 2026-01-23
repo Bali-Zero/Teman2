@@ -152,7 +152,12 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
   );
 };
 
-function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }: MessageBubbleProps) {
+function MessageBubbleComponent({
+  message,
+  userAvatar,
+  isLast,
+  onFollowUpClick,
+}: MessageBubbleProps) {
   const { role, content, sources, imageUrl, timestamp, steps, verification_score } = message;
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
@@ -176,7 +181,7 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
     // 2. It's from assistant
     // 3. It's new (less than 10 seconds old) to avoid animating history on reload
     // 4. Content is available
-    const isRecent = (Date.now() - timestamp.getTime()) < 10000;
+    const isRecent = Date.now() - timestamp.getTime() < 10000;
     const shouldAnimate = isLast && !isUser && isRecent && content;
 
     if (shouldAnimate) {
@@ -184,26 +189,26 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
       let currentIndex = 0;
       const text = content;
       let animationFrameId: number;
-      
+
       const typeChar = () => {
         if (currentIndex < text.length) {
           // Dynamic speed: faster for longer texts, slower for short ones
           // Base: 2 chars per frame (at 60fps = 120 chars/sec)
           // Long text (>500 chars): 5 chars per frame (300 chars/sec)
           const charsPerFrame = text.length > 500 ? 5 : 2;
-          
+
           currentIndex += charsPerFrame;
           if (currentIndex > text.length) currentIndex = text.length;
-          
+
           setDisplayedContent(text.slice(0, currentIndex));
           animationFrameId = requestAnimationFrame(typeChar);
         } else {
           setDisplayedContent(text);
         }
       };
-      
+
       animationFrameId = requestAnimationFrame(typeChar);
-      
+
       return () => cancelAnimationFrame(animationFrameId);
     } else {
       setDisplayedContent(content);
@@ -287,12 +292,12 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
               <User size={16} />
             )
           ) : (
-            <div className="relative w-full h-full"> 
-              <Image 
-                src="/assets/logo/logo_zan.png" 
-                alt="Zantara" 
-                fill 
-                className="object-contain brightness-110 drop-shadow-[0_0_15px_rgba(100,100,255,0.4)] scale-125" 
+            <div className="relative w-full h-full">
+              <Image
+                src="/assets/logo/logo_zan.png"
+                alt="Zantara"
+                fill
+                className="object-contain brightness-110 drop-shadow-[0_0_15px_rgba(100,100,255,0.4)] scale-125"
               />
             </div>
           )}
@@ -314,7 +319,7 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
             {!isUser && message.metadata && (
               <div className="flex flex-col gap-2 mb-3">
                 <TrustHeader metadata={message.metadata} />
-                
+
                 {/* Memory & Context Indicators */}
                 <div className="flex flex-wrap gap-2">
                   {message.metadata.golden_answer_used && (
@@ -323,16 +328,22 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
                       <span>Golden Answer</span>
                     </div>
                   )}
-                  
+
                   {(message.metadata.user_memory_facts?.length ?? 0) > 0 && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" title={`${message.metadata.user_memory_facts?.length} personal facts used`}>
+                    <div
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                      title={`${message.metadata.user_memory_facts?.length} personal facts used`}
+                    >
                       <User size={10} />
                       <span>Personalized</span>
                     </div>
                   )}
 
                   {(message.metadata.collective_memory_facts?.length ?? 0) > 0 && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20" title={`${message.metadata.collective_memory_facts?.length} collective facts used`}>
+                    <div
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20"
+                      title={`${message.metadata.collective_memory_facts?.length} collective facts used`}
+                    >
                       <Brain size={10} />
                       <span>Collective Wisdom</span>
                     </div>
@@ -399,7 +410,10 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
                                 <div className="flex items-center gap-1.5 font-medium">
                                   <Sparkles size={12} className="text-purple-400" />
                                   <span className="text-purple-400">
-                                    {step.data.phase ? `${step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: ` : ''}{step.data.status}
+                                    {step.data.phase
+                                      ? `${step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: `
+                                      : ''}
+                                    {step.data.status}
                                   </span>
                                 </div>
                                 {step.data.message && (
@@ -411,8 +425,14 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
                                 {step.data.details && (
                                   <div className="ml-4 text-[10px]">
                                     {(() => {
-                                      const details = step.data.details as { corrections?: unknown[] };
-                                      if (details.corrections && Array.isArray(details.corrections) && details.corrections.length > 0) {
+                                      const details = step.data.details as {
+                                        corrections?: unknown[];
+                                      };
+                                      if (
+                                        details.corrections &&
+                                        Array.isArray(details.corrections) &&
+                                        details.corrections.length > 0
+                                      ) {
                                         return (
                                           <div className="text-[var(--warning)] flex items-center gap-1">
                                             <ShieldAlert size={10} />
@@ -452,25 +472,27 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
             {!isUser && sources && sources.length > 0 && <CitationCard sources={sources} />}
 
             {/* Follow-up Questions */}
-            {!isUser && message.metadata?.followup_questions && message.metadata.followup_questions.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-[var(--border)]/50">
-                <p className="text-[10px] font-medium text-[var(--foreground-muted)] mb-2 flex items-center gap-1.5">
-                  <MessageSquarePlus size={12} />
-                  SUGGESTED FOLLOW-UPS
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {message.metadata.followup_questions.map((question, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => onFollowUpClick?.(question)}
-                      className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200"
-                    >
-                      {question}
-                    </button>
-                  ))}
+            {!isUser &&
+              message.metadata?.followup_questions &&
+              message.metadata.followup_questions.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-[var(--border)]/50">
+                  <p className="text-[10px] font-medium text-[var(--foreground-muted)] mb-2 flex items-center gap-1.5">
+                    <MessageSquarePlus size={12} />
+                    SUGGESTED FOLLOW-UPS
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {message.metadata.followup_questions.map((question, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => onFollowUpClick?.(question)}
+                        className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Image */}
             {imageUrl && (

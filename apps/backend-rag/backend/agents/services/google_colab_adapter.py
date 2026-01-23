@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class GoogleColabAdapter:
     """
     Adapter for Google Colab integration.
-    
+
     Google Colab è principalmente web-based.
     Integrazione possibile via:
     - Colab API (se disponibile)
@@ -53,7 +53,7 @@ class GoogleColabAdapter:
     async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> str:
         """
         Generate using Google Colab.
-        
+
         Note: Colab è principalmente web-based.
         Per uso programmatico, potrebbe essere necessario:
         - Colab API (se disponibile)

@@ -328,19 +328,34 @@ export default function DashboardPage() {
 
         {/* Data Previews */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <PratichePreview 
-            pratiche={practices.map((p: Practice): PraticaPreview => ({
-              id: p.id,
-              title: p.practice_type_name || p.practice_type_code || 'Unknown',
-              client: p.client_name || 'Unknown Client',
-              status: p.status === 'completed' ? 'completed' : 
-                      p.status === 'in_progress' ? 'in_progress' :
-                      p.status === 'quotation' ? 'quotation' :
-                      p.status === 'documents' ? 'documents' : 'inquiry',
-              daysRemaining: p.expiry_date ? Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : undefined,
-              completedAt: p.status === 'completed' && p.updated_at ? new Date(p.updated_at).toLocaleDateString() : undefined,
-            }))} 
-            isLoading={isLoading} 
+          <PratichePreview
+            pratiche={practices.map(
+              (p: Practice): PraticaPreview => ({
+                id: p.id,
+                title: p.practice_type_name || p.practice_type_code || 'Unknown',
+                client: p.client_name || 'Unknown Client',
+                status:
+                  p.status === 'completed'
+                    ? 'completed'
+                    : p.status === 'in_progress'
+                      ? 'in_progress'
+                      : p.status === 'quotation'
+                        ? 'quotation'
+                        : p.status === 'documents'
+                          ? 'documents'
+                          : 'inquiry',
+                daysRemaining: p.expiry_date
+                  ? Math.ceil(
+                      (new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                    )
+                  : undefined,
+                completedAt:
+                  p.status === 'completed' && p.updated_at
+                    ? new Date(p.updated_at).toLocaleDateString()
+                    : undefined,
+              })
+            )}
+            isLoading={isLoading}
           />
           <WhatsAppPreview
             messages={interactions}

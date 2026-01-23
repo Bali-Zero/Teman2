@@ -14,12 +14,13 @@ const MOCK_ALERTS: ComplianceAlert[] = [
     client_id: 'current-user',
     severity: 'urgent',
     title: 'URGENT: KITAS Expiry',
-    message: 'Your Investor KITAS expires in 25 days. Please start the renewal process immediately to avoid penalties.',
+    message:
+      'Your Investor KITAS expires in 25 days. Please start the renewal process immediately to avoid penalties.',
     deadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(),
     days_until_deadline: 25,
     action_required: 'Contact agent',
     status: 'pending',
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
   },
   {
     alert_id: 'alert-2',
@@ -32,8 +33,8 @@ const MOCK_ALERTS: ComplianceAlert[] = [
     days_until_deadline: 5,
     action_required: 'File taxes',
     status: 'pending',
-    created_at: new Date().toISOString()
-  }
+    created_at: new Date().toISOString(),
+  },
 ];
 
 interface SidebarProps {
@@ -122,7 +123,7 @@ export function Sidebar({
 
         {/* Compliance Alerts Widget */}
         <div className="px-4 pt-2 -mb-2 flex justify-end">
-           <ComplianceWidget alerts={MOCK_ALERTS} />
+          <ComplianceWidget alerts={MOCK_ALERTS} />
         </div>
 
         {/* AI Pulse Memory Widget */}

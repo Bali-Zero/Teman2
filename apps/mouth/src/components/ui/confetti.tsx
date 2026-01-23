@@ -96,9 +96,7 @@ export function useConfetti() {
     setActive(false);
   }, []);
 
-  const ConfettiComponent = (
-    <Confetti active={active} onComplete={handleComplete} />
-  );
+  const ConfettiComponent = <Confetti active={active} onComplete={handleComplete} />;
 
   return { triggerConfetti, ConfettiComponent, isActive: active };
 }

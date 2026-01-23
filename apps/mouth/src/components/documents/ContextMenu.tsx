@@ -178,9 +178,7 @@ export function ContextMenu({
       <div className="py-1">
         {menuItems.map((item, index) => (
           <div key={item.label}>
-            {item.divider && (
-              <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
-            )}
+            {item.divider && <div className="my-1 border-t border-gray-200 dark:border-gray-700" />}
             <button
               onClick={() => {
                 item.action();
