@@ -1,5 +1,135 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-23 - Google Drive Service Account Fix)
+
+### Problem Identified
+
+The documents page at `https://zantara.balizero.com/documents` was returning 500 errors with no folders visible.
+
+**Root Cause Analysis:**
+
+1. **OAuth Token Expired:** Backend logs showed `"error": "invalid_grant"` - OAuth token had expired
+2. **Service Account DISABLED:** The `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com` service account was disabled in Google Cloud Console
+3. **Credentials Parsing Failure:** Both `GOOGLE_SERVICE_ACCOUNT_JSON` and `GOOGLE_SERVICE_ACCOUNT` env vars failed to parse
+
+**Error Logs:**
+
+```
+[TEAM_DRIVE] Failed to parse credentials from env (tried raw JSON and base64)
+"error": "invalid_grant", "error_description": "Token has been expired or revoked."
+```
+
+---
+
+### Solution Implemented
+
+#### 1. Code Fix: Env Var Fallback (Previous Session)
+
+Modified `team_drive_service.py` to try both env var names:
+
+```python
+# Lines 284-286
+env_creds = os.environ.get(CREDENTIALS_ENV_VAR) or os.environ.get("GOOGLE_SERVICE_ACCOUNT")
+```
+
+Modified `is_configured()` method (lines 550-556):
+
+```python
+def is_configured(self) -> bool:
+    return (
+        CREDENTIALS_PATH.exists()
+        or os.environ.get(CREDENTIALS_ENV_VAR) is not None
+        or os.environ.get("GOOGLE_SERVICE_ACCOUNT") is not None
+    )
+```
+
+Modified `config.py` (lines 43-61) to add fallback chain in validator.
+
+#### 2. Google Cloud Console Fix (This Session)
+
+**Steps performed via browser automation:**
+
+1. ✅ Navigated to Google Cloud Console → IAM & Admin → Service Accounts
+2. ✅ Found `nuzantara-drive-bot` service account was **DISABLED**
+3. ✅ Enabled the service account (Actions → "Attiva")
+4. ✅ Created new JSON key (old key was marked "Esposto"/Exposed)
+5. ✅ Downloaded new credentials: `nuzantara-2846d801caee.json`
+
+#### 3. Fly.io Secret Update
+
+Set new credentials as Fly.io secret:
+
+```bash
+fly secrets set GOOGLE_SERVICE_ACCOUNT_JSON="$(cat nuzantara-2846d801caee.json)" -a nuzantara-rag
+```
+
+**Deployment Result:**
+
+```
+✔ [1/2] Machine 48e4d5db344398 [app] update succeeded
+✔ [2/2] Machine 7843e55cdd3ed8 [app] update succeeded
+✓ DNS configuration verified
+```
+
+---
+
+### Verification
+
+**Documents Page Test:** https://zantara.balizero.com/documents
+
+- ✅ Page loads successfully
+- ✅ Folders visible: Company, Company_vino, Individual_Damar
+- ✅ Recent files showing with timestamps
+- ✅ Storage indicator: 0 B / 30.0 TB
+
+---
+
+### Files Modified
+
+| File | Changes | Purpose |
+|------|---------|---------|
+| `backend/services/integrations/team_drive_service.py` | +3 lines | Add `GOOGLE_SERVICE_ACCOUNT` fallback |
+| `backend/app/core/config.py` | +6 lines | Add env var fallback in validator |
+
+---
+
+### Key Learnings
+
+1. **Service Account State Matters**
+   - A disabled service account causes all API calls to fail with `invalid_grant`
+   - Google Cloud Console shows status as "Abilitato"/"Disabilitato"
+
+2. **Multiple Credential Sources**
+   - Backend now supports: `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SERVICE_ACCOUNT`, and file-based credentials
+   - Fallback chain prevents single-point-of-failure
+
+3. **Key Rotation Best Practice**
+   - Old key was marked "Esposto" (Exposed) - likely leaked in logs or repo
+   - New key created with fresh ID: `2846d801caeeccd1deda202e245ee644fe6d6b58`
+
+4. **Fly.io Rolling Deployment**
+   - Setting a secret triggers automatic rolling update of all machines
+   - Health checks verify each machine before proceeding
+
+---
+
+### Service Account Details
+
+**Service Account:** `nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com`
+**Project:** Nuzantara
+**New Key ID:** `2846d801caeeccd1deda202e245ee644fe6d6b58`
+**Created:** 2026-01-23
+**Status:** ✅ Active
+
+---
+
+**Prepared by:** Claude Opus 4.5
+**Session Date:** 2026-01-23
+**Status:** ✅ Complete - Documents Page Operational
+**Deployment:** Fly.io nuzantara-rag (2 machines, Singapore)
+
+---
+
 ## Session Update (2026-01-21 - Code Quality Improvements Deployment)
 
 ### Obiettivo Sessione
