@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import asyncpg
 
 if TYPE_CHECKING:
+    from backend.app.metrics import MetricsCollector
     from backend.services.memory import MemoryOrchestrator
 
 logger = logging.getLogger(__name__)

@@ -18,6 +18,7 @@ from backend.app.dependencies import get_database, get_orchestrator
 from backend.app.metrics import (
     intel_items_approved,
     intel_items_rejected,
+    intel_qdrant_ingestion_duration,
     intel_qdrant_ingestion_total,
     intel_votes_cast,
     intel_voting_duration,

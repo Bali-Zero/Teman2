@@ -524,6 +524,7 @@ async def update_practice(
     - completed
     - cancelled
     """
+    user_email = current_user.get("email", "unknown")
     try:
         async with db_pool.acquire() as conn:
             # Build update query dynamically

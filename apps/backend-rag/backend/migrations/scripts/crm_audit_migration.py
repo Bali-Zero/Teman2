@@ -4,6 +4,7 @@ Creates tables and indexes for comprehensive audit trails
 """
 
 import asyncio
+import json
 from datetime import datetime
 
 from backend.app.dependencies import get_database_pool
