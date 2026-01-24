@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
-TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash
 
 
 class LLMGateway:
@@ -81,8 +81,9 @@ class LLMGateway:
     Attributes:
         gemini_tools (list): Function declarations for native tool calling
         _genai_client (GenAIClient): Centralized GenAI client instance
-        model_name_pro (str): Gemini 3 Flash Preview model name (same as flash)
-        model_name_flash (str): Gemini 3 Flash Preview model name
+        model_name_pro (str): Gemini 3 Flash Preview (same as flash tier)
+        model_name_flash (str): Gemini 3 Flash Preview (primary model)
+        model_name_fallback (str): Gemini 2.5 Flash (stable fallback)
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
 
     Note:
@@ -110,32 +111,15 @@ class LLMGateway:
 
         # Initialize GenAI client (new SDK)
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
-        logger.debug("LLMGateway: Initializing GenAI client...")
         self._genai_client: GenAIClient | None = None
-        self._available = False
 
-        if GENAI_AVAILABLE:
-            try:
-                # Use singleton client - it handles both API key and Service Account auth
-                self._genai_client = get_genai_client()
-                self._available = self._genai_client.is_available
-                if self._available:
-                    auth_method = getattr(self._genai_client, "_auth_method", "unknown")
-                    logger.info(f"✅ LLMGateway: GenAI client initialized (auth: {auth_method})")
-                else:
-                    logger.warning(
-                        "⚠️ LLMGateway: GenAI client not available - will use OpenRouter fallback"
-                    )
-            except Exception as e:
-                logger.warning(f"Failed to initialize GenAI client: {e}")
-
-        # Model name constants - Gemini 3 Flash Preview (Primary)
-        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro)
-        self.model_name_flash = "gemini-3-flash-preview"  # Primary: fast, cost-effective
-        self.model_name_fallback = "gemini-3-flash-preview"  # Force Gemini 3! No fallback to 2.0 unless truly dead.
+        # Model name constants - Gemini 3 Flash Preview (Primary), 2.5 Flash (Fallback)
+        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro tier)
+        self.model_name_flash = "gemini-3-flash-preview"  # Primary: latest preview
+        self.model_name_fallback = "gemini-2.5-flash"  # Stable fallback (2.0 deprecated Mar 2026)
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)"
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, gemini-2.5-flash fallback)"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -147,6 +131,35 @@ class LLMGateway:
         self._circuit_breaker_timeout = HttpTimeoutConstants.CIRCUIT_BREAKER_TIMEOUT  # seconds
         self._max_fallback_depth = 3
         self._max_fallback_cost_usd = 0.10  # Max $0.10 per query
+
+    def _get_genai_client(self) -> GenAIClient | None:
+        """Lazy load GenAI client."""
+        if self._genai_client is None and GENAI_AVAILABLE:
+            try:
+                # Use singleton client - it handles both API key and Service Account auth
+                client = get_genai_client()
+                if client.is_available:
+                    self._genai_client = client
+                    auth_method = getattr(self._genai_client, "_auth_method", "unknown")
+                    logger.debug(f"✅ LLMGateway: GenAI client loaded (auth: {auth_method})")
+            except Exception as e:
+                logger.warning(f"Failed to initialize GenAI client: {e}")
+        return self._genai_client
+
+    @property
+    def _available(self) -> bool:
+        """Check availability dynamically."""
+        client = self._get_genai_client()
+        return client.is_available if client else False
+
+    @property
+    def gemini_tools(self) -> list:
+        """Get the Gemini function declarations for tool calling.
+
+        Returns:
+            List of Gemini function declarations
+        """
+        return self._gemini_tools
 
     def set_gemini_tools(self, tools: list) -> None:
         """Set or update Gemini function declarations for tool calling.
@@ -202,7 +215,8 @@ class LLMGateway:
         Returns:
             ChatSession object with history
         """
-        if not self._genai_client or not self._available:
+        client = self._get_genai_client()
+        if not client or not client.is_available:
             logger.warning("GenAI client not available, returning mock session")
             return MockChatSession(history=history_to_use or [])
 
@@ -216,7 +230,7 @@ class LLMGateway:
         model_name = self._get_model_for_tier(model_tier)
 
         return ChatSession(
-            client=self._genai_client,
+            client=client,
             model=model_name,
             history=gemini_history,
             system_instruction=system_instruction,
@@ -420,7 +434,7 @@ class LLMGateway:
 
         config_kwargs = {
             "max_output_tokens": 8192,
-            "temperature": 0.4,
+            "temperature": 0.7,
         }
 
         if with_tools and self._gemini_tools:
@@ -701,8 +715,9 @@ class LLMGateway:
         _system_prompt: str = "",
     ) -> tuple[str, Any, TokenUsage]:
         """Call a specific model and return (text, response, token_usage)."""
-        if not self._genai_client or not self._genai_client.is_available:
+        if not self._available:
             raise RuntimeError("GenAI client not available")
+        client = self._get_genai_client()
 
         # Helper function to build multimodal content
         def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
@@ -764,7 +779,7 @@ class LLMGateway:
             contents = chat._format_contents(message)
             # Update chat history after we get response (ChatSession will do this)
             # But we need to call generate_content directly to get full response object for function calls
-            response = await self._genai_client._client.aio.models.generate_content(
+            response = await client._client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
                 config=self._build_config(with_tools),
@@ -811,7 +826,7 @@ class LLMGateway:
             if has_images:
                 logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
 
-            response = await self._genai_client._client.aio.models.generate_content(
+            response = await client._client.aio.models.generate_content(
                 model=model_name,
                 contents=content,
                 config=config,
