@@ -78,47 +78,47 @@ describe('DriveInfoPanel', () => {
     it('should display file type', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Tipo')).toBeTruthy();
+      expect(screen.getByText('Type')).toBeTruthy();
       expect(screen.getByText('pdf')).toBeTruthy();
     });
 
     it('should display file size for non-folder items', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Dimensione')).toBeTruthy();
+      expect(screen.getByText('Size')).toBeTruthy();
       expect(screen.getByText('2.5 MB')).toBeTruthy();
     });
 
     it('should display modified date', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Modificato')).toBeTruthy();
-      // Date should be formatted in Italian locale
-      expect(screen.getByText(/20 gennaio 2026/)).toBeTruthy();
+      expect(screen.getByText('Modified')).toBeTruthy();
+      // Date should be formatted in English locale (e.g. "Jan 20, 2026, 10:30 AM")
+      expect(screen.getByText(/Jan 20, 2026/)).toBeTruthy();
     });
 
     it('should display Google Drive link', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
       expect(screen.getByText('Link')).toBeTruthy();
-      expect(screen.getByText('Apri in Google Drive')).toBeTruthy();
+      expect(screen.getByText('Open in Google Drive')).toBeTruthy();
 
-      const link = screen.getByText('Apri in Google Drive');
+      const link = screen.getByText('Open in Google Drive');
       expect(link.getAttribute('href')).toBe('https://drive.google.com/file/d/file-1/view');
     });
   });
 
   describe('Folder Details', () => {
-    it('should display "Cartella" for folder type', () => {
+    it('should display "Folder" for folder type', () => {
       render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      expect(screen.getByText('Cartella')).toBeTruthy();
+      expect(screen.getByText('Folder')).toBeTruthy();
     });
 
     it('should not display size for folders', () => {
       render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      expect(screen.queryByText('Dimensione')).toBeFalsy();
+      expect(screen.queryByText('Size')).toBeFalsy();
     });
   });
 
@@ -126,35 +126,35 @@ describe('DriveInfoPanel', () => {
     it('should render preview button for files', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const previewButton = container.querySelector('button[title="Anteprima"]');
+      const previewButton = container.querySelector('button[title="Preview"]');
       expect(previewButton).toBeTruthy();
     });
 
     it('should not render preview button for folders', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      const previewButton = container.querySelector('button[title="Anteprima"]');
+      const previewButton = container.querySelector('button[title="Preview"]');
       expect(previewButton).toBeFalsy();
     });
 
     it('should render download button for files', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const downloadButton = container.querySelector('button[title="Scarica"]');
+      const downloadButton = container.querySelector('button[title="Download"]');
       expect(downloadButton).toBeTruthy();
     });
 
     it('should not render download button for folders', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      const downloadButton = container.querySelector('button[title="Scarica"]');
+      const downloadButton = container.querySelector('button[title="Download"]');
       expect(downloadButton).toBeFalsy();
     });
 
     it('should render delete button', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const deleteButton = container.querySelector('button[title="Elimina"]');
+      const deleteButton = container.querySelector('button[title="Delete"]');
       expect(deleteButton).toBeTruthy();
     });
 
@@ -171,7 +171,7 @@ describe('DriveInfoPanel', () => {
     it('should call onPreview when preview button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const previewButton = container.querySelector('button[title="Anteprima"]');
+      const previewButton = container.querySelector('button[title="Preview"]');
       fireEvent.click(previewButton!);
 
       expect(defaultProps.onPreview).toHaveBeenCalledWith(mockFile);
@@ -180,7 +180,7 @@ describe('DriveInfoPanel', () => {
     it('should call onDownload when download button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const downloadButton = container.querySelector('button[title="Scarica"]');
+      const downloadButton = container.querySelector('button[title="Download"]');
       fireEvent.click(downloadButton!);
 
       expect(defaultProps.onDownload).toHaveBeenCalledWith(mockFile);
@@ -189,7 +189,7 @@ describe('DriveInfoPanel', () => {
     it('should call onDelete when delete button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const deleteButton = container.querySelector('button[title="Elimina"]');
+      const deleteButton = container.querySelector('button[title="Delete"]');
       fireEvent.click(deleteButton!);
 
       expect(defaultProps.onDelete).toHaveBeenCalledWith(mockFile);

@@ -66,15 +66,18 @@ const heroVariants = {
 };
 
 export function DepartmentHome({
-  files,
+  files = [],
   onFolderClick,
   storageUsed = 0,
   storageTotal = 30 * 1024 * 1024 * 1024 * 1024,
 }: DepartmentHomeProps) {
+  // Safety: ensure files is always an array
+  const safeFiles = Array.isArray(files) ? files : [];
+
   // Separate department folders from other folders
-  const departmentFolders = files.filter((f) => f.is_folder && getDepartmentInfo(f.name));
-  const otherFolders = files.filter((f) => f.is_folder && !getDepartmentInfo(f.name));
-  const recentFiles = files.filter((f) => !f.is_folder).slice(0, 6);
+  const departmentFolders = safeFiles.filter((f) => f.is_folder && getDepartmentInfo(f.name));
+  const otherFolders = safeFiles.filter((f) => f.is_folder && !getDepartmentInfo(f.name));
+  const recentFiles = safeFiles.filter((f) => !f.is_folder).slice(0, 6);
 
   // Sort department folders by defined order
   const sortedDepartments = [...departmentFolders].sort((a, b) => {
@@ -92,7 +95,7 @@ export function DepartmentHome({
         variants={heroVariants}
         initial="hidden"
         animate="visible"
-        className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 px-8 py-12"
+        className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 px-8 py-12"
       >
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -105,20 +108,18 @@ export function DepartmentHome({
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-emerald-200" />
-                <span className="text-sm font-medium text-emerald-100">Workspace Documenti</span>
+                <Sparkles className="h-5 w-5 text-blue-200" />
+                <span className="text-sm font-medium text-blue-100">Documents Workspace</span>
               </div>
-              <h1 className="text-3xl font-bold text-white md:text-4xl">Benvenuto nel tuo Drive</h1>
-              <p className="mt-2 text-emerald-100">
-                Accedi ai tuoi documenti organizzati per dipartimento
-              </p>
+              <h1 className="text-3xl font-bold text-white md:text-4xl">Welcome to your Drive</h1>
+              <p className="mt-2 text-blue-100">Access your documents organized by department</p>
             </div>
 
             {/* Storage indicator */}
             <div className="flex items-center gap-4 rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
               <HardDrive className="h-10 w-10 text-white" />
               <div>
-                <div className="mb-1 text-sm text-emerald-100">Spazio utilizzato</div>
+                <div className="mb-1 text-sm text-blue-100">Storage used</div>
                 <div className="text-xl font-bold text-white">
                   {formatStorage(storageUsed)} / {formatStorage(storageTotal)}
                 </div>
@@ -145,8 +146,8 @@ export function DepartmentHome({
           className="mb-12"
         >
           <h2 className="mb-6 flex items-center gap-3 text-xl font-bold text-[var(--foreground)]">
-            <Building2 className="h-6 w-6 text-emerald-500" />
-            Dipartimenti
+            <Building2 className="h-6 w-6 text-blue-500" />
+            Departments
           </h2>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -178,7 +179,7 @@ export function DepartmentHome({
               >
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--foreground)]">
                   <FolderOpen className="h-5 w-5 text-amber-500" />
-                  Altre Cartelle
+                  Other Folders
                 </h3>
                 <div className="space-y-2">
                   {otherFolders.slice(0, 5).map((folder) => (
@@ -209,7 +210,7 @@ export function DepartmentHome({
               >
                 <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--foreground)]">
                   <Clock className="h-5 w-5 text-blue-500" />
-                  File Recenti
+                  Recent Files
                 </h3>
                 <div className="space-y-2">
                   {recentFiles.map((file) => (
@@ -229,7 +230,7 @@ export function DepartmentHome({
                         </div>
                         <div className="text-xs text-[var(--foreground-muted)]">
                           {file.modified_time &&
-                            new Date(file.modified_time).toLocaleDateString('it-IT')}
+                            new Date(file.modified_time).toLocaleDateString('en-US')}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-[var(--foreground-muted)]" />
@@ -303,7 +304,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
       <div className="pointer-events-none relative flex-1">
         <h3 className="mb-1 text-lg font-bold text-[var(--foreground)]">{folder.name}</h3>
         <p className="text-sm text-[var(--foreground-muted)]">
-          Accedi ai documenti del {deptInfo.label.toLowerCase()}
+          Access {deptInfo.label.toLowerCase()} documents
         </p>
 
         {/* Arrow indicator */}
@@ -311,7 +312,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
           className="mt-3 flex items-center gap-1 text-sm font-medium"
           style={{ color: deptInfo.primary }}
         >
-          <span>Apri cartella</span>
+          <span>Open folder</span>
           <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </div>
       </div>
