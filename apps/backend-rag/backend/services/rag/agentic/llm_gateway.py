@@ -113,13 +113,14 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 3 Flash Preview (Primary), 2.5 Flash (Fallback)
-        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro tier)
-        self.model_name_flash = "gemini-3-flash-preview"  # Primary: latest preview
-        self.model_name_fallback = "gemini-2.5-flash"  # Stable fallback (2.0 deprecated Mar 2026)
+        # Model name constants - Gemini 2.5 Flash (Primary GA), 2.0 Flash (Fallback until Mar 2026)
+        # NOTE: gemini-3-flash-preview requires project allowlist (returns 404 without access)
+        self.model_name_pro = "gemini-2.5-flash"  # Same as flash (no separate pro tier)
+        self.model_name_flash = "gemini-2.5-flash"  # Primary: GA stable model
+        self.model_name_fallback = "gemini-2.0-flash"  # Fallback (deprecated Mar 2026, still cheaper)
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, gemini-2.5-flash fallback)"
+            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, gemini-2.0-flash fallback)"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -762,34 +763,91 @@ class LLMGateway:
             return [{"parts": parts}]
 
         # Helper function to build config
-        def _build_config(with_tools: bool = False) -> Any:
+        def _build_config(with_tools: bool = False, sys_prompt: str = "") -> Any:
             """Build configuration for model generation."""
-            config = {}
+            config_args = {}
             if with_tools and self._gemini_tools:
-                config["tools"] = self._gemini_tools
-            return config
+                config_args["tools"] = self._gemini_tools
+            
+            # Inject system instruction if present
+            if sys_prompt:
+                config_args["system_instruction"] = sys_prompt
+                
+            return types.GenerateContentConfig(**config_args)
 
         # CRITICAL: Use chat session if available to maintain conversation context
         # This ensures Gemini 3 maintains full conversation history across ReAct loop steps
-        if chat and hasattr(chat, "_format_contents"):
-            # Use ChatSession's history-aware content formatting
-            # This preserves conversation context while maintaining compatibility with function calling
+        
+        # Build configuration first
+        config = _build_config(with_tools, sys_prompt=_system_prompt)
+        
+        # Determine contents (history + new message)
+        contents = []
+        
+        if chat and hasattr(chat, "history"):
             logger.debug(f"💬 Using ChatSession with {len(chat.history)} history messages")
-            # Format contents with full conversation history
-            contents = chat._format_contents(message)
-            # Update chat history after we get response (ChatSession will do this)
-            # But we need to call generate_content directly to get full response object for function calls
+            
+            # 1. Convert history to correct format/roles
+            for item in chat.history:
+                role = item.get("role", "user")
+                # Fix common role errors
+                if role == "assistant":
+                    role = "model"
+                
+                parts = item.get("parts", [])
+                # Ensure parts are valid
+                if parts:
+                    contents.append({"role": role, "parts": parts})
+            
+            # 2. Add new message
+            # Reset text content holder
+            text_content = ""
+            
+            # Build current message content
+            current_content_parts = []
+            
+            # Handle text
+            if message:
+                current_content_parts.append({"text": message})
+            
+            # Handle images (multimodal)
+            if images:
+                processed_images = _build_multimodal_content("", images)
+                if isinstance(processed_images, list) and processed_images:
+                    # _build_multimodal_content returns [{"parts": [...]}]
+                    # We need just the parts
+                     if "parts" in processed_images[0]:
+                         current_content_parts.extend(processed_images[0]["parts"])
+            
+            if current_content_parts:
+                contents.append({"role": "user", "parts": current_content_parts})
+            
+            # 3. Call model with full history
             response = await client._client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
-                config=self._build_config(with_tools),
+                config=config,
             )
-            # Update chat history manually since we bypassed send_message
+            
+            # 4. Update chat history manually
+            # Extract response text
             text_content = response.text if hasattr(response, "text") else ""
             if text_content is None:
                 text_content = ""
-            chat._history.append({"role": "user", "content": message})
-            chat._history.append({"role": "assistant", "content": text_content})
+            
+            # Add user message to history
+            chat.history.append({"role": "user", "parts": current_content_parts})
+            
+            # Add model response to history (if text exists)
+            # Function calls are handled separately in response object but history needs text or parts
+            # For simplicity in history we store text if available
+            if text_content:
+                chat.history.append({"role": "model", "parts": [{"text": text_content}]})
+            elif hasattr(response, "function_calls") and response.function_calls:
+                 # Store function call in history if needed, but for now we skip to avoid complexity
+                 # as ReAct loop handles function calls via tool outputs
+                 pass
+
             # Extract token usage
             prompt_tokens = 0
             completion_tokens = 0
@@ -798,6 +856,7 @@ class LLMGateway:
                 completion_tokens = (
                     getattr(response.usage_metadata, "candidates_token_count", 0) or 0
                 )
+            
             token_usage = create_token_usage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
@@ -821,7 +880,7 @@ class LLMGateway:
                 "image_count": len(images) if images else 0,
             },
         ):
-            config = self._build_config(with_tools)
+            config = _build_config(with_tools, sys_prompt=_system_prompt)
 
             if has_images:
                 logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
