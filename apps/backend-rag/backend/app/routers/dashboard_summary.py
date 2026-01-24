@@ -69,9 +69,9 @@ async def _get_email_stats(db_pool: asyncpg.Pool, user_id: str) -> dict:
         email_service = ZohoEmailService(db_pool)
         oauth_service = ZohoOAuthService(db_pool)
 
-        # Check if email is connected
-        tokens = await oauth_service.get_stored_tokens(user_id)
-        if not tokens:
+        # Check if email is connected using get_connection_status
+        connection_status = await oauth_service.get_connection_status(user_id)
+        if not connection_status.get("connected"):
             return {"connected": False, "unread_count": 0}
 
         # Get unread count
@@ -377,17 +377,6 @@ async def get_dashboard_summary(
             "system_status": "degraded",
             "last_updated": asyncio.get_event_loop().time(),
         }
-
-        # Add admin-only data even in error case
-        if is_admin:
-            error_response["revenue"] = {
-                "total_revenue": 0,
-                "paid_revenue": 0,
-                "outstanding_revenue": 0,
-            }
-            error_response["revenue_growth"] = 0.0
-
-        return error_response
 
 
 @router.get("/neural-pulse")

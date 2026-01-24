@@ -4,7 +4,7 @@ Unit tests for OrchestratorMetricsManager
 Test coverage target: >95%
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

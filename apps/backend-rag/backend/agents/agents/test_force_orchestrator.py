@@ -21,6 +21,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 # Import Test Force agents and services
 try:
     from backend.agents.agents.test_cleaner import TestCleanerAgent
@@ -34,8 +36,6 @@ try:
 except ImportError as e:
     logger.info(f"❌ Test Force imports failed: {e}")
     TEST_FORCE_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
 
 
 class TestForceOrchestrator:
