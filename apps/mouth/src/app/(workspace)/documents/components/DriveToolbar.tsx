@@ -8,12 +8,7 @@ import {
   Plus,
   Upload,
   Loader2,
-  Cloud,
   CloudOff,
-  FolderPlus,
-  FileText,
-  Table,
-  Presentation,
   ChevronDown,
   X,
   Info,
@@ -70,31 +65,31 @@ export function DriveToolbar({
   }, [isSearchFocused, onSearchChange]);
 
   return (
-    <div className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-sm">
-      <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
-        {/* Search Bar */}
+    <div className="sticky top-0 z-20 border-b border-slate-200/60 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+      <div className="flex flex-col gap-3 px-5 py-3 md:flex-row md:items-center md:justify-between">
+        {/* Search Bar - Elegant minimal */}
         <motion.div
           animate={{
             width: isSearchFocused ? '100%' : 'auto',
-            maxWidth: isSearchFocused ? '600px' : '320px',
+            maxWidth: isSearchFocused ? '520px' : '280px',
           }}
           transition={{ duration: 0.2 }}
           className="relative flex-1"
         >
           <div
             className={`
-              relative flex items-center rounded-xl border-2 bg-[var(--background-subtle)] transition-all duration-200
+              relative flex items-center rounded-xl border bg-slate-50/80 dark:bg-slate-800/50 transition-all duration-200
               ${
                 isSearchFocused
-                  ? 'border-[#1a73e8] shadow-lg shadow-[#1a73e8]/10'
-                  : 'border-transparent hover:border-[#dadce0]'
+                  ? 'border-blue-400/50 shadow-sm shadow-blue-500/10 bg-white dark:bg-slate-800'
+                  : 'border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600'
               }
             `}
           >
             <Search
               className={`
-              ml-4 h-5 w-5 transition-colors
-              ${isSearchFocused ? 'text-[#1a73e8]' : 'text-[var(--foreground-muted)]'}
+              ml-3.5 h-4 w-4 transition-colors
+              ${isSearchFocused ? 'text-blue-500' : 'text-slate-400'}
             `}
             />
             <input
@@ -105,7 +100,7 @@ export function DriveToolbar({
               onChange={(e) => onSearchChange(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
-              className="h-11 w-full bg-transparent px-3 text-sm text-[var(--foreground)] placeholder-[var(--foreground-muted)] focus:outline-none"
+              className="h-10 w-full bg-transparent px-3 text-[13px] text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none"
             />
 
             {/* Keyboard shortcut hint or clear button */}
@@ -116,16 +111,16 @@ export function DriveToolbar({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => onSearchChange('')}
-                  className="mr-3 rounded-full p-1 hover:bg-[var(--accent)]"
+                  className="mr-2.5 rounded-full p-1 hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
-                  <X className="h-4 w-4 text-[var(--foreground-muted)]" />
+                  <X className="h-3.5 w-3.5 text-slate-400" />
                 </motion.button>
               ) : (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="mr-3 flex items-center gap-1 rounded-md bg-[var(--background)] px-2 py-1 text-xs text-[var(--foreground-muted)]"
+                  className="mr-2.5 flex items-center gap-0.5 rounded-md bg-slate-100/80 dark:bg-slate-700/50 px-1.5 py-0.5 text-[10px] text-slate-400"
                 >
                   <kbd className="font-mono">⌘</kbd>
                   <kbd className="font-mono">K</kbd>
@@ -135,8 +130,8 @@ export function DriveToolbar({
           </div>
         </motion.div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
+        {/* Actions - Clean minimal */}
+        <div className="flex items-center gap-1.5">
           {/* Connection status */}
           {!isConnected && onConnect && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -145,28 +140,28 @@ export function DriveToolbar({
                 size="sm"
                 onClick={onConnect}
                 disabled={isConnecting}
-                className="border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+                className="h-9 border-amber-400/40 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50"
               >
                 {isConnecting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <CloudOff className="mr-2 h-4 w-4" />
+                  <CloudOff className="mr-2 h-3.5 w-3.5" />
                 )}
                 Connetti Drive
               </Button>
             </motion.div>
           )}
 
-          {/* View mode toggle */}
-          <div className="flex rounded-lg border border-[#dadce0] bg-white dark:bg-[var(--background-subtle)] p-1">
+          {/* View mode toggle - Elegant pill */}
+          <div className="flex rounded-lg bg-slate-100/80 dark:bg-slate-800/50 p-0.5">
             <button
               onClick={() => onViewModeChange('grid')}
               className={`
-                relative flex items-center justify-center rounded-md p-2 transition-all duration-200
+                relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
                   viewMode === 'grid'
-                    ? 'text-[#1a73e8]'
-                    : 'text-[#5f6368] hover:text-[#202124] hover:bg-[#f5f5f5]'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }
               `}
               title="Vista griglia"
@@ -174,8 +169,8 @@ export function DriveToolbar({
               {viewMode === 'grid' && (
                 <motion.div
                   layoutId="viewModeIndicator"
-                  className="absolute inset-0 rounded-md bg-[#e8f0fe]"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  className="absolute inset-0 rounded-md bg-white dark:bg-slate-700 shadow-sm"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <Grid className="relative z-10 h-4 w-4" />
@@ -183,11 +178,11 @@ export function DriveToolbar({
             <button
               onClick={() => onViewModeChange('list')}
               className={`
-                relative flex items-center justify-center rounded-md p-2 transition-all duration-200
+                relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
                   viewMode === 'list'
-                    ? 'text-[#1a73e8]'
-                    : 'text-[#5f6368] hover:text-[#202124] hover:bg-[#f5f5f5]'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }
               `}
               title="Vista lista"
@@ -195,54 +190,56 @@ export function DriveToolbar({
               {viewMode === 'list' && (
                 <motion.div
                   layoutId="viewModeIndicator"
-                  className="absolute inset-0 rounded-md bg-[#e8f0fe]"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  className="absolute inset-0 rounded-md bg-white dark:bg-slate-700 shadow-sm"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <List className="relative z-10 h-4 w-4" />
             </button>
           </div>
 
-          {/* Info panel toggle */}
+          {/* Info panel toggle - Minimal */}
           {onToggleInfoPanel && (
             <button
               onClick={onToggleInfoPanel}
               className={`
-                flex items-center justify-center rounded-full p-2 transition-all duration-200
+                flex items-center justify-center rounded-lg p-2 transition-all duration-200
                 ${
                   showInfoPanel
-                    ? 'bg-[#e8f0fe] text-[#1a73e8]'
-                    : 'text-[#5f6368] hover:bg-[#f5f5f5]'
+                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300'
                 }
-                ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}
+                ${!hasSelection ? 'opacity-40 cursor-not-allowed' : ''}
               `}
               title={showInfoPanel ? 'Nascondi dettagli' : 'Mostra dettagli'}
               disabled={!hasSelection}
             >
-              <Info className="h-5 w-5" />
+              <Info className="h-4 w-4" />
             </button>
           )}
 
-          <div className="mx-1 h-6 w-px bg-[#dadce0]" />
+          <div className="mx-1.5 h-5 w-px bg-slate-200/60 dark:bg-slate-700/40" />
 
-          {/* Upload Button */}
+          {/* Upload Button - Subtle */}
           <Button
             variant="outline"
+            size="sm"
             onClick={onUploadClick}
-            className="border-[var(--border)] hover:border-blue-500/50 hover:bg-blue-500/10"
+            className="h-9 border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
-            <Upload className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Carica</span>
+            <Upload className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline text-[13px]">Carica</span>
           </Button>
 
-          {/* Create Button */}
+          {/* Create Button - Primary action */}
           <Button
+            size="sm"
             onClick={onCreateClick}
-            className="bg-white border border-[#dadce0] text-[#3c4043] shadow-sm hover:bg-[#f8f9fa] hover:shadow-md transition-all"
+            className="h-9 bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow-md transition-all"
           >
-            <Plus className="mr-2 h-4 w-4 text-[#1a73e8]" />
-            <span className="hidden sm:inline">Nuovo</span>
-            <ChevronDown className="ml-1 h-3 w-3 opacity-70" />
+            <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline text-[13px] font-medium">Nuovo</span>
+            <ChevronDown className="ml-0.5 h-3 w-3 opacity-70" />
           </Button>
         </div>
       </div>

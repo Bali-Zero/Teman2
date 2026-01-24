@@ -1,9 +1,10 @@
 'use client';
 
+import React from 'react';
 import { motion } from 'framer-motion';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from './file-icon';
-import { MoreVertical, Star, Clock, Users } from 'lucide-react';
+import { MoreVertical, Clock, Users } from 'lucide-react';
 import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileGridProps {
@@ -12,6 +13,10 @@ interface FileGridProps {
   onFileClick: (file: FileItem, index: number, e: React.MouseEvent) => void;
   onFileDoubleClick: (file: FileItem) => void;
   onContextMenu: (file: FileItem, e: React.MouseEvent) => void;
+  // Infinite scroll props
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
 }
 
 // Animation variants for staggered grid
@@ -45,28 +50,51 @@ export function FileGrid({
   onFileClick,
   onFileDoubleClick,
   onContextMenu,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
 }: FileGridProps) {
   const { prefetchFolder } = usePrefetchFolder();
 
+  // Infinite scroll using Intersection Observer
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '200px', threshold: 0 }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  // Safety: ensure files is always an array
+  const safeFiles = Array.isArray(files) ? files : [];
+
   // Separate folders and files for better organization
-  const folders = files.filter((f) => f.is_folder);
-  const documents = files.filter((f) => !f.is_folder);
+  const folders = safeFiles.filter((f) => f.is_folder);
+  const documents = safeFiles.filter((f) => !f.is_folder);
 
   return (
-    <div className="p-6">
+    <div className="p-5">
       {/* Folders Section */}
       {folders.length > 0 && (
-        <div className="mb-8">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground-muted)] uppercase tracking-wider">
-            <span className="h-px flex-1 bg-gradient-to-r from-[var(--border)] to-transparent" />
+        <div className="mb-6">
+          <h3 className="mb-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Cartelle
-            <span className="h-px flex-1 bg-gradient-to-l from-[var(--border)] to-transparent" />
           </h3>
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
           >
             {folders.map((file, index) => (
               <FileCard
@@ -87,16 +115,14 @@ export function FileGrid({
       {/* Files Section */}
       {documents.length > 0 && (
         <div>
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground-muted)] uppercase tracking-wider">
-            <span className="h-px flex-1 bg-gradient-to-r from-[var(--border)] to-transparent" />
-            Documenti
-            <span className="h-px flex-1 bg-gradient-to-l from-[var(--border)] to-transparent" />
+          <h3 className="mb-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            File
           </h3>
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7"
           >
             {documents.map((file, index) => (
               <FileCard
@@ -114,17 +140,39 @@ export function FileGrid({
         </div>
       )}
 
-      {/* Empty State */}
-      {files.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-[var(--foreground-muted)]">
-          <div className="mb-4 rounded-full bg-[var(--background-subtle)] p-6">
-            <Users className="h-12 w-12 opacity-50" />
+      {/* Empty State - Clean minimal design */}
+      {safeFiles.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="mb-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-6">
+            <Users className="h-10 w-10 text-slate-300 dark:text-slate-600" />
           </div>
-          <p className="text-lg font-medium">Questa cartella è vuota</p>
-          <p className="text-sm">
-            Trascina file qui o usa il pulsante "Nuovo" per creare contenuti
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Questa cartella è vuota
+          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            Trascina file qui o clicca "Nuovo" per creare contenuti
           </p>
         </div>
+      )}
+
+      {/* Infinite Scroll Sentinel & Loading Indicator */}
+      {safeFiles.length > 0 && (
+        <>
+          <div ref={sentinelRef} className="h-1" aria-hidden="true" />
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3 text-[var(--foreground-muted)]">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                <span className="text-sm">Loading more files...</span>
+              </div>
+            </div>
+          )}
+          {!hasNextPage && safeFiles.length >= 50 && (
+            <div className="flex items-center justify-center py-6 text-sm text-[var(--foreground-muted)]">
+              All files loaded
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -165,111 +213,79 @@ function FileCard({
       onDoubleClick={() => onDoubleClick(file)}
       onContextMenu={(e) => onContextMenu(file, e)}
       onMouseEnter={handleMouseEnter}
-      whileHover={{ scale: 1.01, y: -2 }}
-      whileTap={{ scale: 0.99 }}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
       className={`
-        group relative flex cursor-pointer flex-col items-center rounded-lg border p-4
+        group relative flex cursor-pointer flex-col items-center rounded-xl p-4
         transition-all duration-200 ease-out
         ${
           isSelected
-            ? 'border-[#1a73e8] bg-[#e8f0fe] shadow-sm'
-            : 'border-transparent bg-white dark:bg-[var(--background-subtle)] hover:bg-[#f5f5f5] dark:hover:bg-[var(--accent)]'
+            ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-400/50 dark:ring-blue-500/40'
+            : 'bg-white/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/30 hover:border-slate-300/60 dark:hover:border-slate-600/50'
         }
-        ${deptInfo ? 'hover:shadow-md' : ''}
       `}
-      style={
-        deptInfo
-          ? ({
-              '--tw-shadow-color': `${deptInfo.primary}20`,
-            } as React.CSSProperties)
-          : undefined
-      }
     >
-      {/* Department badge for department folders */}
-      {deptInfo && (
-        <div
-          className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md"
-          style={{ backgroundColor: deptInfo.primary }}
-        >
-          {deptInfo.label}
-        </div>
-      )}
-
-      {/* Quick actions overlay */}
-      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          className="rounded-full bg-white/80 p-1.5 text-gray-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-amber-500 dark:bg-gray-800/80 dark:text-gray-400 dark:hover:bg-gray-800"
-        >
-          <Star className="h-3.5 w-3.5" />
-        </button>
+      {/* Quick actions - Clean minimal style */}
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onContextMenu(file, e);
           }}
-          className="rounded-full bg-white/80 p-1.5 text-gray-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-white dark:bg-gray-800/80 dark:text-gray-400 dark:hover:bg-gray-800"
+          className="rounded-lg bg-white/80 dark:bg-slate-700/80 p-1.5 text-slate-400 backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-600 dark:hover:bg-slate-600 dark:hover:text-slate-200"
         >
           <MoreVertical className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* Icon container with glow effect for departments */}
-      <div
-        className={`
-          relative mb-4 transition-transform duration-300 group-hover:scale-110
-          ${deptInfo ? 'drop-shadow-lg' : ''}
-        `}
-      >
-        {/* Glow effect for department folders */}
-        {deptInfo && (
-          <div
-            className="absolute inset-0 blur-xl opacity-30 scale-150"
-            style={{ backgroundColor: deptInfo.primary }}
-          />
-        )}
-        <div className="relative">{getFileIcon(file, 'lg')}</div>
+      {/* Icon container - Clean and minimal */}
+      <div className="relative mb-3 transition-transform duration-200 group-hover:scale-[1.02]">
+        {getFileIcon(file, 'lg')}
       </div>
 
-      {/* File name */}
-      <span className="w-full truncate text-center text-sm font-medium text-[var(--foreground)]">
+      {/* File name - Clean typography */}
+      <span className="w-full truncate text-center text-[13px] font-medium text-slate-700 dark:text-slate-200">
         {file.name}
       </span>
 
-      {/* Meta info */}
-      <div className="mt-1 flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
-        {file.is_folder ? (
-          <span className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            Cartella
-          </span>
-        ) : (
-          <>
-            <span>{formatSize(file.size)}</span>
-            {file.modified_time && (
-              <>
-                <span className="text-[var(--border)]">•</span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {formatRelativeTime(file.modified_time)}
-                </span>
-              </>
-            )}
-          </>
-        )}
-      </div>
+      {/* Meta info for files */}
+      {!file.is_folder && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+          <span>{formatSize(file.size)}</span>
+          {file.modified_time && (
+            <>
+              <span className="text-slate-300 dark:text-slate-600">·</span>
+              <span>{formatRelativeTime(file.modified_time)}</span>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* Selection indicator */}
+      {/* Folder type indicator */}
+      {file.is_folder && deptInfo && (
+        <span
+          className="mt-1.5 text-[10px] font-medium uppercase tracking-wide"
+          style={{ color: deptInfo.primary }}
+        >
+          {deptInfo.label}
+        </span>
+      )}
+
+      {/* Selection indicator - Subtle checkmark */}
       {isSelected && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1a73e8] text-white shadow-sm"
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white shadow-sm"
         >
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </motion.div>
       )}
@@ -295,10 +311,10 @@ const formatRelativeTime = (dateStr: string) => {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return 'Oggi';
-  if (diffDays === 1) return 'Ieri';
-  if (diffDays < 7) return `${diffDays}g fa`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}s fa`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}m fa`;
-  return `${Math.floor(diffDays / 365)}a fa`;
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
 };

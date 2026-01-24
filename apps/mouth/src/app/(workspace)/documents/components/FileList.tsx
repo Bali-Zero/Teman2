@@ -1,10 +1,10 @@
 'use client';
 
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { getFileIcon, getDepartmentInfo } from './file-icon';
-import { MoreVertical, Star, ArrowUpDown, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { MoreVertical, ChevronDown } from 'lucide-react';
 import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileListProps {
@@ -13,6 +13,10 @@ interface FileListProps {
   onFileClick: (file: FileItem, index: number, e: React.MouseEvent) => void;
   onFileDoubleClick: (file: FileItem) => void;
   onContextMenu: (file: FileItem, e: React.MouseEvent) => void;
+  // Infinite scroll props
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
 }
 
 type SortField = 'name' | 'modified' | 'size';
@@ -23,13 +27,13 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.03,
+      staggerChildren: 0.02,
     },
   },
 };
 
 const rowVariants = {
-  hidden: { opacity: 0, x: -10 },
+  hidden: { opacity: 0, x: -8 },
   visible: {
     opacity: 1,
     x: 0,
@@ -47,13 +51,37 @@ export function FileList({
   onFileClick,
   onFileDoubleClick,
   onContextMenu,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
 }: FileListProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { prefetchFolder } = usePrefetchFolder();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll using Intersection Observer
+  useEffect(() => {
+    if (!sentinelRef.current || !onLoadMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '200px', threshold: 0 }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  // Safety: ensure files is always an array
+  const safeFiles = Array.isArray(files) ? files : [];
 
   // Sort files - folders first, then by selected field
-  const sortedFiles = [...files].sort((a, b) => {
+  const sortedFiles = [...safeFiles].sort((a, b) => {
     // Folders always first
     if (a.is_folder && !b.is_folder) return -1;
     if (!a.is_folder && b.is_folder) return 1;
@@ -87,15 +115,15 @@ export function FileList({
     <button
       onClick={() => handleSort(field)}
       className={`
-        flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium uppercase tracking-wider
-        transition-colors hover:bg-[#f5f5f5]
-        ${sortField === field ? 'text-[#1a73e8]' : 'text-[#5f6368]'}
+        flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-wider
+        transition-colors hover:bg-slate-100 dark:hover:bg-slate-800
+        ${sortField === field ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}
       `}
     >
       {children}
       {sortField === field && (
         <ChevronDown
-          className={`h-3 w-3 transition-transform ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+          className={`h-3 w-3 transition-transform duration-200 ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
         />
       )}
     </button>
@@ -103,15 +131,15 @@ export function FileList({
 
   return (
     <div className="min-w-full">
-      {/* Table Header */}
-      <div className="sticky top-0 z-10 border-b border-[#dadce0] bg-white/95 dark:bg-[var(--background-subtle)]/95 backdrop-blur-sm">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-2">
+      {/* Table Header - Elegant minimal */}
+      <div className="sticky top-0 z-10 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md">
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-2">
           <span className="w-10" />
           <SortButton field="name">Nome</SortButton>
           <SortButton field="modified">
             <span className="hidden md:inline">Modificato</span>
           </SortButton>
-          <SortButton field="size">Dimensione</SortButton>
+          <SortButton field="size">Dim.</SortButton>
           <span className="w-8" />
         </div>
       </div>
@@ -121,7 +149,7 @@ export function FileList({
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="divide-y divide-[var(--border)]"
+        className="divide-y divide-slate-100 dark:divide-slate-800/50"
       >
         {sortedFiles.map((file, index) => {
           const isSelected = selectedFiles.has(file.id);
@@ -136,9 +164,13 @@ export function FileList({
               onContextMenu={(e) => onContextMenu(file, e)}
               onMouseEnter={() => file.is_folder && prefetchFolder(file.id)}
               className={`
-                group grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-2 cursor-pointer
+                group relative grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 cursor-pointer
                 transition-all duration-150
-                ${isSelected ? 'bg-[#e8f0fe] hover:bg-[#d3e3fd]' : 'hover:bg-[#f5f5f5]'}
+                ${
+                  isSelected
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100/80 dark:hover:bg-blue-950/50'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }
               `}
             >
               {/* Icon */}
@@ -147,7 +179,7 @@ export function FileList({
                   {getFileIcon(file, 'sm')}
                   {deptInfo && (
                     <div
-                      className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full border border-white shadow-sm"
+                      className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"
                       style={{ backgroundColor: deptInfo.primary }}
                     />
                   )}
@@ -156,13 +188,13 @@ export function FileList({
 
               {/* Name with department badge */}
               <div className="flex items-center gap-2 truncate">
-                <span className="truncate text-sm font-medium text-[var(--foreground)]">
+                <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200">
                   {file.name}
                 </span>
                 {deptInfo && (
                   <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
-                    style={{ backgroundColor: deptInfo.primary }}
+                    className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                    style={{ backgroundColor: `${deptInfo.primary}15`, color: deptInfo.primary }}
                   >
                     {deptInfo.label}
                   </span>
@@ -170,55 +202,43 @@ export function FileList({
               </div>
 
               {/* Modified Date */}
-              <span className="hidden text-sm text-[var(--foreground-muted)] md:block">
+              <span className="hidden text-[13px] text-slate-400 dark:text-slate-500 md:block">
                 {formatDate(file.modified_time)}
               </span>
 
               {/* Size */}
-              <span className="w-20 text-right text-sm text-[var(--foreground-muted)]">
+              <span className="w-20 text-right text-[13px] text-slate-400 dark:text-slate-500">
                 {file.is_folder ? '--' : formatSize(file.size)}
               </span>
 
-              {/* Actions */}
-              <div className="flex w-8 items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  className="rounded p-1 hover:bg-[var(--background)] hover:text-amber-500"
-                >
-                  <Star className="h-4 w-4" />
-                </button>
+              {/* Actions - Minimal */}
+              <div className="flex w-8 items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onContextMenu(file, e);
                   }}
-                  className="rounded p-1 hover:bg-[var(--background)]"
+                  className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </div>
 
-              {/* Selection indicator */}
+              {/* Selection indicator - Elegant checkmark */}
               {isSelected && (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute left-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#1a73e8] text-white"
+                  className="absolute left-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white shadow-sm"
                 >
                   <svg
                     className="h-2.5 w-2.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
+                    strokeWidth={3}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M5 13l4 4L19 7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
               )}
@@ -227,12 +247,34 @@ export function FileList({
         })}
       </motion.div>
 
-      {/* Empty State */}
-      {files.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-[var(--foreground-muted)]">
-          <p className="text-lg font-medium">Nessun file trovato</p>
-          <p className="text-sm">Questa cartella è vuota</p>
+      {/* Empty State - Elegant minimal */}
+      {safeFiles.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Nessun file trovato
+          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Questa cartella è vuota</p>
         </div>
+      )}
+
+      {/* Infinite Scroll Sentinel & Loading Indicator */}
+      {safeFiles.length > 0 && (
+        <>
+          <div ref={sentinelRef} className="h-1" aria-hidden="true" />
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3 text-slate-400">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                <span className="text-[13px]">Caricamento...</span>
+              </div>
+            </div>
+          )}
+          {!hasNextPage && safeFiles.length >= 50 && (
+            <div className="flex items-center justify-center py-6 text-[13px] text-slate-400">
+              Tutti i file caricati
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -260,11 +302,11 @@ const formatDate = (dateStr: string | undefined) => {
   // Show relative time for recent dates
   if (diffDays === 0) {
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (hours === 0) return 'Pochi minuti fa';
+    if (hours === 0) return 'Adesso';
     return `${hours}h fa`;
   }
   if (diffDays === 1) return 'Ieri';
-  if (diffDays < 7) return `${diffDays} giorni fa`;
+  if (diffDays < 7) return `${diffDays}g fa`;
 
   // Show full date for older items
   return date.toLocaleDateString('it-IT', {

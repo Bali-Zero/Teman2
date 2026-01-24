@@ -27,19 +27,17 @@ describe('DriveSidebar', () => {
   });
 
   describe('Expanded State', () => {
-    it('should render "Nuovo" button', () => {
+    it('should render "New" button', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      expect(screen.getByText('Nuovo')).toBeTruthy();
+      expect(screen.getByText('New')).toBeTruthy();
     });
 
-    it('should render all navigation items', () => {
+    it('should render navigation items', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      expect(screen.getByText('Il mio Drive')).toBeTruthy();
-      expect(screen.getByText('Recenti')).toBeTruthy();
-      expect(screen.getByText('Speciali')).toBeTruthy();
-      expect(screen.getByText('Cestino')).toBeTruthy();
+      expect(screen.getByText('Bali Zero Drive')).toBeTruthy();
+      // Other items were removed from implementation
     });
 
     it('should highlight active navigation item', () => {
@@ -48,14 +46,14 @@ describe('DriveSidebar', () => {
       // Active item should have blue background
       const activeItem = container.querySelector('.bg-\\[\\#e8f0fe\\]');
       expect(activeItem).toBeTruthy();
-      expect(activeItem?.textContent).toContain('Il mio Drive');
+      expect(activeItem?.textContent).toContain('Bali Zero Drive');
     });
 
-    it('should call onNewClick when "Nuovo" button is clicked', () => {
+    it('should call onNewClick when "New" button is clicked', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      const nuovoButton = screen.getByText('Nuovo').closest('button');
-      fireEvent.click(nuovoButton!);
+      const newButton = screen.getByText('New').closest('button');
+      fireEvent.click(newButton!);
 
       expect(defaultProps.onNewClick).toHaveBeenCalled();
     });
@@ -63,24 +61,16 @@ describe('DriveSidebar', () => {
     it('should call onViewChange when navigation item is clicked', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      const myDriveButton = screen.getByText('Il mio Drive').closest('button');
+      const myDriveButton = screen.getByText('Bali Zero Drive').closest('button');
       fireEvent.click(myDriveButton!);
 
       expect(defaultProps.onViewChange).toHaveBeenCalledWith('my-drive');
     });
 
-    it('should show disabled state for non-implemented views', () => {
-      render(<DriveSidebar {...defaultProps} />);
-
-      // Recenti, Speciali, Cestino should be disabled
-      const prestoLabels = screen.getAllByText('Presto');
-      expect(prestoLabels.length).toBe(3); // 3 disabled items
-    });
-
     it('should render storage indicator', () => {
       render(<DriveSidebar {...defaultProps} storageUsed={5 * 1024 * 1024 * 1024} />);
 
-      expect(screen.getByText('Spazio di archiviazione')).toBeTruthy();
+      expect(screen.getByText('Storage')).toBeTruthy();
       expect(screen.getByText(/5\.0 GB/)).toBeTruthy();
     });
 
@@ -102,7 +92,7 @@ describe('DriveSidebar', () => {
       const { container } = render(
         <DriveSidebar
           {...defaultProps}
-          storageUsed={12 * 1024 * 1024 * 1024}
+          storageUsed={11 * 1024 * 1024 * 1024} // ~73%
           storageTotal={15 * 1024 * 1024 * 1024}
         />
       );
@@ -141,7 +131,7 @@ describe('DriveSidebar', () => {
 
       // Should have icon buttons but no text labels visible
       const navButtons = container.querySelectorAll('.rounded-full.p-3');
-      expect(navButtons.length).toBe(4); // 4 nav items
+      expect(navButtons.length).toBe(1); // Only 'Bali Zero Drive' exists now
     });
 
     it('should have title attributes for accessibility in collapsed state', () => {
