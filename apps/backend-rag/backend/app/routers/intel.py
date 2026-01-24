@@ -4,9 +4,11 @@ Intel News API - Search and manage Bali intelligence news
 Refactored router using service layer architecture.
 """
 
+import base64
 import json
 import logging
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta
@@ -105,6 +107,204 @@ class IntelStoreRequest(BaseModel):
     embedding: list[float]
     metadata: dict
     full_data: dict
+
+
+class EditStagingItemRequest(BaseModel):
+    """Request body for editing staging item"""
+    title: str | None = None
+    content: str | None = None
+    category: str | None = None
+
+
+class CoverImageUploadRequest(BaseModel):
+    """Request body for cover image upload"""
+    cover_image_base64: str = Field(..., description="Base64 encoded image")
+    cover_image_filename: str | None = Field(None, description="Image filename (optional)")
+
+
+# --- CONVERSION FUNCTIONS ---
+
+
+def convert_staging_to_enriched_article(staging_data: dict) -> dict:
+    """
+    Convert staging item (markdown simple) to EnrichedArticle format.
+    
+    Parses markdown content to extract sections and generates EnrichedArticle structure.
+    
+    Args:
+        staging_data: Staging item dictionary with title, content (markdown), etc.
+    
+    Returns:
+        Dictionary ready to be converted to EnrichedArticle Pydantic model
+    """
+    import re
+    
+    title = staging_data.get("title", "Untitled")
+    content = staging_data.get("content", "")
+    category = staging_data.get("category", "news")
+    relevance_score = staging_data.get("relevance_score", 50)
+    source_url = staging_data.get("source_url", staging_data.get("url", ""))
+    source_name = staging_data.get("source_name", "Bali Intel Scraper")
+    
+    # Parse markdown content to extract sections
+    # Format: ## Summary\n...\n## Facts\n...\n## Bali Zero Take\n...\n## Next Steps\n...
+    
+    # Extract Summary section
+    summary_match = re.search(r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
+    ai_summary = summary_match.group(1).strip() if summary_match else title[:280]
+    
+    # Extract Facts section
+    facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
+    facts = facts_match.group(1).strip() if facts_match else content[:500]
+    
+    # Extract Bali Zero Take section
+    bali_zero_take_match = re.search(
+        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+    )
+    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else ""
+    
+    # Parse Bali Zero Take subsections if present
+    hidden_insight_match = re.search(
+        r"(?:###\s*)?Hidden Insight[:\s]*(.*?)(?=\n(?:###|##)|$)",
+        bali_zero_take_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    hidden_insight = hidden_insight_match.group(1).strip() if hidden_insight_match else bali_zero_take_text[:200]
+    
+    our_analysis_match = re.search(
+        r"(?:###\s*)?Our Analysis[:\s]*(.*?)(?=\n(?:###|##)|$)",
+        bali_zero_take_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    our_analysis = our_analysis_match.group(1).strip() if our_analysis_match else bali_zero_take_text[200:400]
+    
+    our_advice_match = re.search(
+        r"(?:###\s*)?Our Advice[:\s]*(.*?)(?=\n(?:###|##)|$)",
+        bali_zero_take_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    our_advice = our_analysis_match.group(1).strip() if our_advice_match else bali_zero_take_text[400:]
+    
+    # Extract Next Steps section
+    next_steps_match = re.search(
+        r"## Next Steps\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+    )
+    next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
+    
+    # Parse Next Steps for expat and investor
+    expat_steps = []
+    investor_steps = []
+    
+    # Try to extract expat and investor sections
+    expat_match = re.search(
+        r"(?:###\s*)?(?:For\s+)?Expat[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
+        next_steps_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if expat_match:
+        expat_text = expat_match.group(1).strip()
+        # Extract list items
+        expat_steps = [
+            item.strip().lstrip("- ").lstrip("* ")
+            for item in re.split(r"\n(?=-|\*)", expat_text)
+            if item.strip()
+        ]
+    
+    investor_match = re.search(
+        r"(?:###\s*)?(?:For\s+)?Investor[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
+        next_steps_text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if investor_match:
+        investor_text = investor_match.group(1).strip()
+        # Extract list items
+        investor_steps = [
+            item.strip().lstrip("- ").lstrip("* ")
+            for item in re.split(r"\n(?=-|\*)", investor_text)
+            if item.strip()
+        ]
+    
+    # If no specific sections found, try to extract all list items
+    if not expat_steps and not investor_steps:
+        all_steps = [
+            item.strip().lstrip("- ").lstrip("* ")
+            for item in re.split(r"\n(?=-|\*)", next_steps_text)
+            if item.strip() and len(item.strip()) > 10
+        ]
+        # Split between expat and investor (rough heuristic)
+        mid_point = len(all_steps) // 2
+        expat_steps = all_steps[:mid_point] if all_steps else ["Review the article for specific actions"]
+        investor_steps = all_steps[mid_point:] if all_steps else ["Review the article for specific actions"]
+    
+    # Ensure we have at least one step for each
+    if not expat_steps:
+        expat_steps = ["Review the article for specific actions"]
+    if not investor_steps:
+        investor_steps = ["Review the article for specific actions"]
+    
+    # Determine priority based on relevance_score
+    if relevance_score >= 75:
+        priority = "high"
+    elif relevance_score >= 50:
+        priority = "medium"
+    else:
+        priority = "low"
+    
+    # Generate TLDR from summary and facts
+    tldr_what = facts[:150] if facts else title
+    tldr_who = "Expats and investors in Indonesia"
+    tldr_when = "Check article for specific dates"
+    tldr_should_worry = "Depends" if priority == "medium" else ("Yes" if priority == "high" else "No")
+    tldr_risk_level = priority.capitalize()
+    
+    # Generate tags from category and title
+    ai_tags = [category]
+    title_words = title.lower().split()
+    for word in title_words[:4]:
+        if len(word) > 3 and word not in ["the", "and", "for", "with", "from"]:
+            ai_tags.append(word)
+    
+    # Suggested components based on content
+    suggested_components = ["InfoCard", "Checklist"]
+    if "timeline" in content.lower() or "date" in content.lower():
+        suggested_components.append("timeline")
+    if "comparison" in content.lower() or "vs" in content.lower():
+        suggested_components.append("comparison-table")
+    
+    # Build EnrichedArticle structure
+    enriched_article = {
+        "title": title,
+        "headline": title,
+        "tldr": {
+            "should_worry": tldr_should_worry,
+            "what": tldr_what,
+            "who": tldr_who,
+            "when": tldr_when,
+            "risk_level": tldr_risk_level,
+        },
+        "facts": facts,
+        "bali_zero_take": {
+            "hidden_insight": hidden_insight,
+            "our_analysis": our_analysis,
+            "our_advice": our_advice,
+        },
+        "next_steps": {
+            "expat": expat_steps[:5],  # Limit to 5 items
+            "investor": investor_steps[:5],  # Limit to 5 items
+        },
+        "category": category,
+        "priority": priority,
+        "relevance_score": relevance_score,
+        "ai_summary": ai_summary[:280],  # Limit to 280 chars
+        "ai_tags": ai_tags[:5],  # Limit to 5 tags
+        "suggested_components": suggested_components[:3],  # Limit to 3 components
+        "cover_image": None,  # Will be set from staging_data if available
+        "source": source_name,
+        "source_url": source_url,
+        "enriched_at": datetime.utcnow().isoformat(),
+    }
+    
+    return enriched_article
 
 
 # --- SCRAPER INTEGRATION ENDPOINTS ---
@@ -423,6 +623,128 @@ async def approve_staging_item(
     }
 
 
+@router.put("/api/intel/staging/{type}/{item_id}")
+async def edit_staging_item(type: str, item_id: str, request: EditStagingItemRequest):
+    """
+    Edit staging item (title, content, category).
+    
+    Only updates provided fields (partial update).
+    """
+    logger.info(
+        "Edit staging item requested",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/edit"},
+    )
+
+    intel_user_actions_total.labels(intel_type=type, action="edit").inc()
+
+    # Load existing staging item
+    data = staging_service.load_staging_item(type, item_id)
+    if not data:
+        logger.warning(
+            "Edit failed - item not found",
+            extra={"type": type, "item_id": item_id},
+        )
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Update only provided fields
+    updated_fields = {}
+    if request.title is not None:
+        data["title"] = request.title
+        updated_fields["title"] = request.title
+    if request.content is not None:
+        data["content"] = request.content
+        updated_fields["content"] = request.content
+    if request.category is not None:
+        data["category"] = request.category
+        updated_fields["category"] = request.category
+
+    # Save updated staging item
+    staging_service.save_staging_item(type, item_id, data)
+
+    logger.info(
+        "Edit completed successfully",
+        extra={
+            "type": type,
+            "item_id": item_id,
+            "updated_fields": list(updated_fields.keys()),
+        },
+    )
+
+    return {
+        "success": True,
+        "message": "Item updated successfully",
+        "id": item_id,
+        "updated_fields": updated_fields,
+    }
+
+
+@router.post("/api/intel/staging/{type}/{item_id}/cover")
+async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadRequest):
+    """
+    Upload cover image for staging item.
+    
+    Saves image to data/staging/{type}/covers/{item_id}.{ext}
+    Updates staging JSON with cover_image path.
+    """
+    logger.info(
+        "Cover image upload requested",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/cover"},
+    )
+
+    intel_user_actions_total.labels(intel_type=type, action="upload_cover").inc()
+
+    # Load existing staging item
+    data = staging_service.load_staging_item(type, item_id)
+    if not data:
+        logger.warning(
+            "Cover upload failed - item not found",
+            extra={"type": type, "item_id": item_id},
+        )
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Decode base64 image
+    try:
+        image_data = base64.b64decode(request.cover_image_base64)
+    except Exception as e:
+        logger.error(
+            f"Invalid base64 image: {e}",
+            extra={"type": type, "item_id": item_id},
+        )
+        raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}")
+
+    # Determine file extension
+    filename = request.cover_image_filename or f"{item_id}.jpg"
+    ext = PathLib(filename).suffix or ".jpg"
+
+    # Save cover image
+    covers_dir = staging_service.get_staging_dir(type) / "covers"
+    covers_dir.mkdir(parents=True, exist_ok=True)
+
+    cover_path = covers_dir / f"{item_id}{ext}"
+    cover_path.write_bytes(image_data)
+
+    # Update staging JSON
+    data["cover_image"] = str(cover_path.relative_to(staging_service.get_staging_dir(type)))
+    staging_service.save_staging_item(type, item_id, data)
+
+    logger.info(
+        "Cover image uploaded successfully",
+        extra={
+            "type": type,
+            "item_id": item_id,
+            "cover_image_path": str(cover_path),
+        },
+    )
+
+    return {
+        "success": True,
+        "message": "Cover image uploaded successfully",
+        "id": item_id,
+        "cover_image_path": str(cover_path),
+        "cover_image_url": f"/api/intel/staging/{type}/{item_id}/cover/preview",
+    }
+
+
 @router.post("/api/intel/staging/reject/{type}/{item_id}")
 async def reject_staging_item(type: str, item_id: str):
     """Reject item and move to archive"""
@@ -546,10 +868,136 @@ async def publish_staging_item(type: str, item_id: str):
                 extra={"type": type, "item_id": item_id},
             )
 
-        # Step 3: Update staging file with publish timestamp
+        # Step 3: Publish to GitHub/Vercel → balizero.com
+        published_url = f"https://balizero.com/{category}/{item_id}"
+        github_commit_sha = None
+        mdx_path = None
+        
+        try:
+            from backend.app.routers.article_composer import (
+                EnrichedArticle,
+                PublishRequest,
+                TLDRSection,
+                BaliZeroTake,
+                NextSteps,
+            )
+            
+            # Convert staging item to EnrichedArticle
+            enriched_dict = convert_staging_to_enriched_article(data)
+            
+            # Create Pydantic models from dict
+            enriched_article = EnrichedArticle(
+                title=enriched_dict["title"],
+                headline=enriched_dict["headline"],
+                tldr=TLDRSection(**enriched_dict["tldr"]),
+                facts=enriched_dict["facts"],
+                bali_zero_take=BaliZeroTake(**enriched_dict["bali_zero_take"]),
+                next_steps=NextSteps(**enriched_dict["next_steps"]),
+                category=enriched_dict["category"],
+                priority=enriched_dict["priority"],
+                relevance_score=enriched_dict["relevance_score"],
+                ai_summary=enriched_dict["ai_summary"],
+                ai_tags=enriched_dict["ai_tags"],
+                suggested_components=enriched_dict["suggested_components"],
+                cover_image=enriched_dict.get("cover_image"),
+                source=enriched_dict["source"],
+                source_url=enriched_dict["source_url"],
+                enriched_at=enriched_dict["enriched_at"],
+            )
+            
+            # Prepare cover image if available
+            cover_image_base64 = None
+            cover_image_filename = None
+            if data.get("cover_image"):
+                try:
+                    # Try to read cover image file
+                    cover_image_path = data["cover_image"]
+                    if not os.path.isabs(cover_image_path):
+                        # Relative path - resolve from staging directory
+                        staging_dir = staging_service.get_staging_dir(type)
+                        cover_image_path = staging_dir / cover_image_path
+                    else:
+                        cover_image_path = PathLib(cover_image_path)
+                    
+                    if cover_image_path.exists():
+                        cover_image_base64 = base64.b64encode(cover_image_path.read_bytes()).decode("utf-8")
+                        cover_image_filename = cover_image_path.name
+                        logger.info(
+                            "Cover image found and prepared for upload",
+                            extra={
+                                "type": type,
+                                "item_id": item_id,
+                                "cover_image_path": str(cover_image_path),
+                            },
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to read cover image: {e}",
+                        extra={"type": type, "item_id": item_id, "cover_image": data.get("cover_image")},
+                    )
+            
+            # Create publish request
+            publish_request = PublishRequest(
+                article=enriched_article,
+                cover_image_base64=cover_image_base64,
+                cover_image_filename=cover_image_filename,
+                position="normal",
+            )
+            
+            # Import publish_article function
+            # Note: publish_article is a FastAPI endpoint function, but we can call it directly
+            # since we're in the same application context
+            from backend.app.routers.article_composer import publish_article
+            
+            # Publish to GitHub/Vercel
+            publish_result = await publish_article(publish_request)
+            
+            if publish_result.success:
+                # Update with actual published URL
+                published_url = publish_result.article_url or published_url
+                github_commit_sha = publish_result.commit_sha
+                mdx_path = publish_result.mdx_path
+                
+                logger.info(
+                    "✅ Article published to GitHub/Vercel",
+                    extra={
+                        "type": type,
+                        "item_id": item_id,
+                        "title": title,
+                        "published_url": published_url,
+                        "commit_sha": github_commit_sha,
+                    },
+                )
+            else:
+                logger.error(
+                    f"⚠️ Failed to publish to GitHub/Vercel: {publish_result.error}",
+                    extra={"type": type, "item_id": item_id, "title": title},
+                )
+                # Don't block publication if GitHub fails
+                # Article is already in Qdrant
+                
+        except ImportError as e:
+            logger.warning(
+                f"⚠️ Article composer not available - skipping GitHub publish: {e}",
+                extra={"type": type, "item_id": item_id},
+            )
+        except Exception as e:
+            logger.error(
+                f"⚠️ Failed to publish to GitHub/Vercel: {e}",
+                exc_info=True,
+                extra={"type": type, "item_id": item_id, "title": title},
+            )
+            # Don't block publication if GitHub fails
+            # Article is already in Qdrant
+
+        # Step 4: Update staging file with publish timestamp
         data["published_at"] = datetime.utcnow().isoformat()
-        data["published_url"] = f"https://balizero.com/{category}/{item_id}"
+        data["published_url"] = published_url
         data["status"] = "published"
+        if github_commit_sha:
+            data["github_commit_sha"] = github_commit_sha
+        if mdx_path:
+            data["mdx_path"] = mdx_path
 
         # Note: The file has already been moved to archived/approved by ingest_intel_to_qdrant
         # We don't need to move it again
@@ -560,7 +1008,8 @@ async def publish_staging_item(type: str, item_id: str):
                 "type": type,
                 "item_id": item_id,
                 "title": title,
-                "published_url": data["published_url"],
+                "published_url": published_url,
+                "github_published": bool(github_commit_sha),
             },
         )
 
@@ -569,9 +1018,11 @@ async def publish_staging_item(type: str, item_id: str):
             "message": "Article published successfully",
             "id": item_id,
             "title": title,
-            "published_url": data["published_url"],
+            "published_url": published_url,
             "published_at": data["published_at"],
             "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news",
+            "github_commit_sha": github_commit_sha,
+            "mdx_path": mdx_path,
         }
 
     except HTTPException:

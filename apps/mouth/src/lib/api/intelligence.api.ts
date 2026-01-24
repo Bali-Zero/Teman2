@@ -46,6 +46,17 @@ export interface SystemMetrics {
   uptime_percentage: number;
 }
 
+export interface EditStagingItemRequest {
+  title?: string;
+  content?: string;
+  category?: string;
+}
+
+export interface CoverImageUploadRequest {
+  cover_image_base64: string;
+  cover_image_filename?: string;
+}
+
 export interface IntelligenceAnalytics {
   period_days: number;
   summary: {
@@ -270,6 +281,108 @@ export const intelligenceApi = {
       return response;
     } catch (error) {
       logger.apiError(endpoint, error as Error, { action: 'get_analytics', metadata: { days } });
+      throw error;
+    }
+  },
+
+  /**
+   * Edit staging item (title, content, category)
+   */
+  editItem: async (
+    type: 'visa' | 'news',
+    id: string,
+    updates: EditStagingItemRequest
+  ): Promise<{
+    success: boolean;
+    message: string;
+    id: string;
+    updated_fields: Record<string, unknown>;
+  }> => {
+    const endpoint = `/api/intel/staging/${type}/${id}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'PUT', { itemType: type, itemId: id, action: 'edit' });
+
+    try {
+      const response = await api.request<{
+        success: boolean;
+        message: string;
+        id: string;
+        updated_fields: Record<string, unknown>;
+      }>(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        action: 'edit',
+        metadata: { success: response.success },
+      });
+
+      logger.userAction('edit_item', type, id);
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'edit' });
+      throw error;
+    }
+  },
+
+  /**
+   * Upload cover image for staging item
+   */
+  uploadCoverImage: async (
+    type: 'visa' | 'news',
+    id: string,
+    base64: string,
+    filename?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    id: string;
+    cover_image_path: string;
+    cover_image_url: string;
+  }> => {
+    const endpoint = `/api/intel/staging/${type}/${id}/cover`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'upload_cover' });
+
+    try {
+      const response = await api.request<{
+        success: boolean;
+        message: string;
+        id: string;
+        cover_image_path: string;
+        cover_image_url: string;
+      }>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          cover_image_base64: base64,
+          cover_image_filename: filename,
+        }),
+      });
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        action: 'upload_cover',
+        metadata: { success: response.success },
+      });
+
+      logger.userAction('upload_cover_image', type, id);
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, {
+        itemType: type,
+        itemId: id,
+        action: 'upload_cover',
+      });
       throw error;
     }
   },

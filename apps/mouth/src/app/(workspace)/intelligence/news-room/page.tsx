@@ -37,7 +37,11 @@ import {
   Check,
   X,
   Eye,
+  Edit,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { ArticleEditor } from './components/ArticleEditor';
+import { CoverImageUploader } from './components/CoverImageUploader';
 
 type FilterType = 'all' | 'NEW' | 'UPDATED' | 'critical';
 type SortType = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc';
@@ -52,6 +56,8 @@ export default function NewsRoomPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [previewItem, setPreviewItem] = useState<StagingItem | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [editingItem, setEditingItem] = useState<StagingItem | null>(null);
+  const [coverUploadItem, setCoverUploadItem] = useState<StagingItem | null>(null);
   const toast = useToast();
 
   // Filtered and sorted items
@@ -512,9 +518,9 @@ export default function NewsRoomPage() {
               </CardContent>
 
               <CardFooter className="p-5 pt-0 mt-auto">
-                <div className="flex gap-2 w-full">
+                <div className="flex flex-wrap gap-2 w-full">
                   <Button
-                    className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+                    className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white min-w-[100px]"
                     size="sm"
                     onClick={() => handlePublish(item)}
                     disabled={publishingIds.has(item.id)}
@@ -531,27 +537,43 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  {/* VIEW BUTTON - CRITICAL FIX - MUST BE RENDERED - VERSION 2.0 */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('VIEW BUTTON CLICKED', item.id);
-                      handlePreview(item);
-                    }}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingItem(item)}
+                    className="gap-2"
+                    title="Edit Article"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCoverUploadItem(item)}
+                    className="gap-2"
+                    title="Upload Cover Image"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Cover
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePreview(item)}
                     disabled={previewLoading}
+                    className="gap-2"
                     title="View Full Article"
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-8 rounded-md px-3 text-xs border border-[var(--border)] bg-transparent shadow-sm hover:bg-[var(--background-elevated)] hover:text-[var(--foreground)] !flex !items-center !justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
-                    style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Eye className="h-4 w-4 mr-1.5" />
-                        <span className="text-xs font-medium">VIEW</span>
+                        <Eye className="h-4 w-4" />
+                        View
                       </>
                     )}
-                  </button>
+                  </Button>
                   {item.source && item.source.startsWith('http') && (
                     <Button size="sm" variant="secondary" asChild title="View Original Source">
                       <a href={item.source} target="_blank" rel="noreferrer">
@@ -655,6 +677,32 @@ export default function NewsRoomPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      {editingItem && (
+        <ArticleEditor
+          item={editingItem}
+          open={!!editingItem}
+          onOpenChange={(open) => !open && setEditingItem(null)}
+          onSaved={() => {
+            loadNews();
+            setEditingItem(null);
+          }}
+        />
+      )}
+
+      {/* Cover Image Upload Dialog */}
+      {coverUploadItem && (
+        <CoverImageUploader
+          item={coverUploadItem}
+          open={!!coverUploadItem}
+          onOpenChange={(open) => !open && setCoverUploadItem(null)}
+          onUploaded={() => {
+            loadNews();
+            setCoverUploadItem(null);
+          }}
+        />
+      )}
     </div>
   );
 }
