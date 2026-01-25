@@ -104,12 +104,14 @@ export function ChatSidebar({
             ) : (
               <div className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
-                  <button
+                  <div
                     key={conv.id}
                     onClick={() => onConversationClick(conv.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-left group ${
-                      currentConversationId === conv.id ? 'bg-white/10' : ''
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
+                      currentConversationId === conv.id ? 'sidebar-item-active text-white' : 'text-gray-400'
                     }`}
+                    role="button"
+                    tabIndex={0}
                   >
                     <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <span className="text-sm text-gray-400 truncate flex-1">
@@ -121,7 +123,7 @@ export function ChatSidebar({
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
