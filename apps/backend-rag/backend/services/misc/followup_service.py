@@ -16,33 +16,47 @@ import logging
 import time
 from typing import Any
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Histogram, REGISTRY
 
 from backend.llm.zantara_ai_client import ZantaraAIClient
 
 logger = logging.getLogger(__name__)
 
+def safe_register_counter(name, documentation, labelnames):
+    try:
+        return Counter(name, documentation, labelnames)
+    except ValueError:
+        return REGISTRY._names_to_collectors[name]
+
+def safe_register_histogram(name, documentation, labelnames, buckets=None):
+    try:
+        if buckets:
+            return Histogram(name, documentation, labelnames, buckets=buckets)
+        return Histogram(name, documentation, labelnames)
+    except ValueError:
+        return REGISTRY._names_to_collectors[name]
+
 # Prometheus Metrics for FollowupService
-followup_requests_total = Counter(
+followup_requests_total = safe_register_counter(
     "zantara_followup_requests_total",
     "Total follow-up generation requests",
     ["method", "topic", "language", "status"],
 )
 
-followup_generation_duration = Histogram(
+followup_generation_duration = safe_register_histogram(
     "zantara_followup_generation_duration_seconds",
     "Time taken to generate follow-ups",
     ["method", "topic", "language"],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0],
 )
 
-followup_ai_generation_total = Counter(
+followup_ai_generation_total = safe_register_counter(
     "zantara_followup_ai_generation_total",
     "Total AI-generated follow-ups",
     ["status"],  # success, failure, fallback
 )
 
-followup_topic_based_total = Counter(
+followup_topic_based_total = safe_register_counter(
     "zantara_followup_topic_based_total",
     "Total topic-based follow-ups (fallback)",
     ["topic", "language"],
