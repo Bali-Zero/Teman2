@@ -6,11 +6,8 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 
-backend_path = Path(__file__).parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-from app import metrics
+# Use absolute import instead of sys.path hacking
+from backend.app import metrics
 
 
 class TestMetrics:

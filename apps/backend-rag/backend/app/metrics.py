@@ -7,59 +7,77 @@ import logging
 import time
 
 import psutil
-from prometheus_client import Counter, Gauge, Histogram, generate_latest
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, REGISTRY
 
 logger = logging.getLogger(__name__)
 
+def safe_register_gauge(name, documentation, labelnames=()):
+    try:
+        return Gauge(name, documentation, labelnames)
+    except ValueError:
+        return REGISTRY._names_to_collectors[name]
+
+def safe_register_counter(name, documentation, labelnames=()):
+    try:
+        return Counter(name, documentation, labelnames)
+    except ValueError:
+        return REGISTRY._names_to_collectors[name]
+
+def safe_register_histogram(name, documentation, labelnames=(), buckets=Histogram.DEFAULT_BUCKETS):
+    try:
+        return Histogram(name, documentation, labelnames, buckets=buckets)
+    except ValueError:
+        return REGISTRY._names_to_collectors[name]
+
 # System Metrics
-active_sessions = Gauge("zantara_active_sessions_total", "Number of active user sessions")
-redis_latency = Gauge("zantara_redis_latency_ms", "Redis latency in milliseconds")
-sse_latency = Gauge("zantara_sse_latency_ms", "Average SSE handshake time")
-system_uptime = Gauge("zantara_system_uptime_seconds", "System uptime in seconds")
-cpu_usage = Gauge("zantara_cpu_usage_percent", "CPU usage percentage")
-memory_usage = Gauge("zantara_memory_usage_mb", "Memory usage in MB")
+active_sessions = safe_register_gauge("zantara_active_sessions_total", "Number of active user sessions")
+redis_latency = safe_register_gauge("zantara_redis_latency_ms", "Redis latency in milliseconds")
+sse_latency = safe_register_gauge("zantara_sse_latency_ms", "Average SSE handshake time")
+system_uptime = safe_register_gauge("zantara_system_uptime_seconds", "System uptime in seconds")
+cpu_usage = safe_register_gauge("zantara_cpu_usage_percent", "CPU usage percentage")
+memory_usage = safe_register_gauge("zantara_memory_usage_mb", "Memory usage in MB")
 
 # Request Metrics
-http_requests_total = Counter(
+http_requests_total = safe_register_counter(
     "zantara_http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
-request_duration = Histogram(
+request_duration = safe_register_histogram(
     "zantara_request_duration_seconds", "Request duration in seconds", ["method", "endpoint"]
 )
 
 # Public Endpoint Access Metrics (Security Audit)
-public_endpoint_access_total = Counter(
+public_endpoint_access_total = safe_register_counter(
     "zantara_public_endpoint_access_total",
     "Total access to public endpoints (no authentication required)",
     ["endpoint", "method"],
 )
-public_endpoint_access_by_ip = Counter(
+public_endpoint_access_by_ip = safe_register_counter(
     "zantara_public_endpoint_access_by_ip_total",
     "Public endpoint access by client IP",
     ["endpoint", "client_ip"],
 )
 
 # Cache Metrics
-cache_hits = Counter("zantara_cache_hits_total", "Total cache hits")
-cache_misses = Counter("zantara_cache_misses_total", "Total cache misses")
-cache_set_operations = Counter("zantara_cache_set_operations_total", "Total cache set operations")
+cache_hits = safe_register_counter("zantara_cache_hits_total", "Total cache hits")
+cache_misses = safe_register_counter("zantara_cache_misses_total", "Total cache misses")
+cache_set_operations = safe_register_counter("zantara_cache_set_operations_total", "Total cache set operations")
 
 # AI Metrics
-ai_requests = Counter("zantara_ai_requests_total", "Total AI requests", ["model"])
-ai_latency = Histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
-ai_tokens_used = Counter("zantara_ai_tokens_used_total", "Total AI tokens used", ["model"])
+ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
+ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
+ai_tokens_used = safe_register_counter("zantara_ai_tokens_used_total", "Total AI tokens used", ["model"])
 
 # LLM Token Usage Metrics (Detailed)
-llm_prompt_tokens = Counter(
+llm_prompt_tokens = safe_register_counter(
     "zantara_llm_prompt_tokens_total", "Total prompt/input tokens used", ["model", "endpoint"]
 )
-llm_completion_tokens = Counter(
+llm_completion_tokens = safe_register_counter(
     "zantara_llm_completion_tokens_total",
     "Total completion/output tokens used",
     ["model", "endpoint"],
 )
-llm_cost_usd = Counter("zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"])
-llm_request_tokens = Histogram(
+llm_cost_usd = safe_register_counter("zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"])
+llm_request_tokens = safe_register_histogram(
     "zantara_llm_request_tokens",
     "Tokens per request distribution",
     ["model", "type"],  # type = "prompt" or "completion"
@@ -67,59 +85,59 @@ llm_request_tokens = Histogram(
 )
 
 # Database Metrics
-db_connections_active = Gauge("zantara_db_connections_active", "Active database connections")
-db_query_duration = Histogram("zantara_db_query_duration_seconds", "Database query duration")
-db_pool_size = Gauge("zantara_db_pool_size", "Database connection pool size", ["service"])
-db_pool_idle = Gauge(
+db_connections_active = safe_register_gauge("zantara_db_connections_active", "Active database connections")
+db_query_duration = safe_register_histogram("zantara_db_query_duration_seconds", "Database query duration")
+db_pool_size = safe_register_gauge("zantara_db_pool_size", "Database connection pool size", ["service"])
+db_pool_idle = safe_register_gauge(
     "zantara_db_pool_idle", "Database connection pool idle connections", ["service"]
 )
 
 # RAG Pipeline Metrics (Performance Debug Phase 1)
-rag_embedding_duration = Histogram(
+rag_embedding_duration = safe_register_histogram(
     "zantara_rag_embedding_duration_seconds", "Embedding generation duration"
 )
-rag_vector_search_duration = Histogram(
+rag_vector_search_duration = safe_register_histogram(
     "zantara_rag_vector_search_duration_seconds", "Vector search duration"
 )
-rag_reranking_duration = Histogram("zantara_rag_reranking_duration_seconds", "Reranking duration")
-rag_pipeline_duration = Histogram(
+rag_reranking_duration = safe_register_histogram("zantara_rag_reranking_duration_seconds", "Reranking duration")
+rag_pipeline_duration = safe_register_histogram(
     "zantara_rag_pipeline_duration_seconds", "Total RAG pipeline duration"
 )
-rag_early_exit_total = Counter(
+rag_early_exit_total = safe_register_counter(
     "zantara_rag_early_exit_total", "Total early exits (skipped reranking)"
 )
-rag_cache_hit_rate = Gauge("zantara_rag_cache_hit_rate", "RAG cache hit rate")
-rag_parallel_searches = Counter(
+rag_cache_hit_rate = safe_register_gauge("zantara_rag_cache_hit_rate", "RAG cache hit rate")
+rag_parallel_searches = safe_register_counter(
     "zantara_rag_parallel_searches_total", "Parallel collection searches executed"
 )
 
 # RAG Query Metrics (Dec 2025 - Dashboard Alignment)
-rag_queries_total = Counter(
+rag_queries_total = safe_register_counter(
     "zantara_rag_queries_total",
     "Total RAG queries processed",
     ["collection", "route_used", "status"],
 )
-rag_tool_calls_total = Counter(
+rag_tool_calls_total = safe_register_counter(
     "zantara_rag_tool_calls_total", "Total tool calls in agentic RAG", ["tool_name", "status"]
 )
-rag_fallback_count = Counter(
+rag_fallback_count = safe_register_counter(
     "zantara_rag_fallback_count_total", "LLM model fallback events", ["from_model", "to_model"]
 )
-rag_context_length = Histogram(
+rag_context_length = safe_register_histogram(
     "zantara_rag_context_length_tokens",
     "Context length in tokens per query",
     ["collection"],
     buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000],
 )
 
-rag_evidence_score = Histogram(
+rag_evidence_score = safe_register_histogram(
     "zantara_rag_evidence_score",
     "Evidence score of RAG responses (0.0-1.0)",
     ["route_used"],
     buckets=[0.1, 0.3, 0.5, 0.7, 0.9, 1.0],
 )
 
-rag_documents_retrieved = Histogram(
+rag_documents_retrieved = safe_register_histogram(
     "zantara_rag_documents_retrieved_count",
     "Number of documents retrieved per query",
     ["collection"],
@@ -127,139 +145,139 @@ rag_documents_retrieved = Histogram(
 )
 
 # Knowledge Graph Metrics
-kg_extraction_total = Counter(
+kg_extraction_total = safe_register_counter(
     "zantara_kg_extraction_total",
     "Total entities/relationships extracted",
     ["type", "method"],  # type: entity/relationship, method: llm/regex
 )
 
-kg_relationship_density = Histogram(
+kg_relationship_density = safe_register_histogram(
     "zantara_kg_relationship_density",
     "Number of relationships per entity extracted",
     buckets=[0, 1, 2, 5, 10, 20],
 )
 
 # Race Condition Metrics (Dec 2025 - Lock Contention Monitoring)
-memory_lock_timeout_total = Counter(
+memory_lock_timeout_total = safe_register_counter(
     "zantara_memory_lock_timeout_total", "Number of memory lock timeouts", ["user_id"]
 )
-memory_lock_contention_seconds = Histogram(
+memory_lock_contention_seconds = safe_register_histogram(
     "zantara_memory_lock_contention_seconds",
     "Time spent waiting for memory locks",
     ["operation"],
     buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0],
 )
-collection_lock_timeout_total = Counter(
+collection_lock_timeout_total = safe_register_counter(
     "zantara_collection_lock_timeout_total",
     "Number of collection lock timeouts",
     ["collection_name"],
 )
-cache_db_consistency_errors_total = Counter(
+cache_db_consistency_errors_total = safe_register_counter(
     "zantara_cache_db_consistency_errors_total",
     "Number of cache-DB consistency errors",
     ["session_id"],
 )
 
 # Error Handling Metrics (Dec 2025 - Error Handling Fix)
-stream_event_none_total = Counter(
+stream_event_none_total = safe_register_counter(
     "zantara_stream_event_none_total",
     "Number of None events in stream",
 )
-stream_event_invalid_type_total = Counter(
+stream_event_invalid_type_total = safe_register_counter(
     "zantara_stream_event_invalid_type_total",
     "Number of stream events with invalid type",
 )
-stream_event_validation_failed_total = Counter(
+stream_event_validation_failed_total = safe_register_counter(
     "zantara_stream_event_validation_failed_total",
     "Number of stream events that failed validation",
 )
-stream_event_processing_error_total = Counter(
+stream_event_processing_error_total = safe_register_counter(
     "zantara_stream_event_processing_error_total",
     "Number of stream event processing errors",
 )
-stream_fatal_error_total = Counter(
+stream_fatal_error_total = safe_register_counter(
     "zantara_stream_fatal_error_total",
     "Number of fatal errors in stream",
 )
 
-search_hybrid_total = Counter(
+search_hybrid_total = safe_register_counter(
     "zantara_search_hybrid_total",
     "Number of hybrid searches (dense + BM25)",
 )
 
 # CRM Metrics (Jan 2026 - Client Management Operations)
-crm_client_operations = Counter(
+crm_client_operations = safe_register_counter(
     "zantara_crm_client_operations_total",
     "CRM client operations",
     ["operation", "status"],  # operation: create/update/delete, status: success/error
 )
-crm_validation_errors = Counter(
+crm_validation_errors = safe_register_counter(
     "zantara_crm_validation_errors_total",
     "CRM validation errors",
     ["field", "error_type"],  # field: email/date_of_birth/etc, error_type: empty/invalid/format
 )
-crm_client_creation_duration = Histogram(
+crm_client_creation_duration = safe_register_histogram(
     "zantara_crm_client_creation_duration_seconds",
     "Duration of client creation operations",
     buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
 )
-search_hybrid_failed_total = Counter(
+search_hybrid_failed_total = safe_register_counter(
     "zantara_search_hybrid_failed_total",
     "Number of hybrid search failures",
 )
-search_dense_only_total = Counter(
+search_dense_only_total = safe_register_counter(
     "zantara_search_dense_only_total",
     "Number of dense-only searches (fallback)",
 )
-search_failed_total = Counter(
+search_failed_total = safe_register_counter(
     "zantara_search_failed_total",
     "Number of complete search failures",
 )
 
 # Telegram Metrics (Jan 2026 - Stone Age Regression Tracking)
-telegram_identity_resolution_total = Counter(
+telegram_identity_resolution_total = safe_register_counter(
     "zantara_telegram_identity_resolution_total",
     "Telegram identity resolution results",
     ["status"],  # mapped, unmapped
 )
 
 # Memory Extraction Metrics (Jan 2026 - Fact Extraction Quality)
-memory_facts_extracted_total = Counter(
+memory_facts_extracted_total = safe_register_counter(
     "zantara_memory_facts_extracted_total",
     "Total memory facts extracted",
     ["fact_type", "source", "confidence_level"],  # confidence_level: high (>0.8), medium, low
 )
 
-memory_extraction_duration_seconds = Histogram(
+memory_extraction_duration_seconds = safe_register_histogram(
     "zantara_memory_extraction_duration_seconds",
     "Time spent extracting memory facts",
     buckets=[0.001, 0.005, 0.01, 0.05, 0.1],
 )
 
-bm25_initialization_success_total = Counter(
+bm25_initialization_success_total = safe_register_counter(
     "zantara_bm25_initialization_success_total",
     "Number of successful BM25 initializations",
 )
-bm25_initialization_failed_total = Counter(
+bm25_initialization_failed_total = safe_register_counter(
     "zantara_bm25_initialization_failed_total",
     "Number of BM25 initialization failures",
     ["error_type"],
 )
 
 # Intelligence Center Metrics (Jan 2026 - Scraper + Voting System)
-intel_articles_submitted = Counter(
+intel_articles_submitted = safe_register_counter(
     "zantara_intel_articles_submitted_total",
     "Articles submitted from scrapers",
     ["scraper_type", "intel_type", "tier"],  # scraper: unified/intelligent_visa, intel: visa/news
 )
-intel_articles_duplicates = Counter(
+intel_articles_duplicates = safe_register_counter(
     "zantara_intel_articles_duplicates_total",
     "Duplicate articles rejected",
     ["intel_type"],
 )
 
 # Tier 1 Fluid Intelligence Metrics (Jan 2026 - System Resilience)
-tier1_fallback_activated_total = Counter(
+tier1_fallback_activated_total = safe_register_counter(
     "zantara_tier1_fallback_activated_total",
     "Number of times Tier 1 (General Intelligence) fallback was activated",
     [
@@ -267,32 +285,32 @@ tier1_fallback_activated_total = Counter(
         "has_context",
     ],  # intent_type: business_simple/casual/etc, has_context: true/false
 )
-tier1_fallback_success_total = Counter(
+tier1_fallback_success_total = safe_register_counter(
     "zantara_tier1_fallback_success_total",
     "Number of successful Tier 1 fallback responses",
     ["intent_type"],
 )
-tier1_fallback_failed_total = Counter(
+tier1_fallback_failed_total = safe_register_counter(
     "zantara_tier1_fallback_failed_total",
     "Number of failed Tier 1 fallback attempts",
     ["intent_type", "error_type"],  # error_type: llm_error/timeout/etc
 )
-strict_abstain_critical_total = Counter(
+strict_abstain_critical_total = safe_register_counter(
     "zantara_strict_abstain_critical_total",
     "Number of strict ABSTAIN responses for critical domains",
     ["intent_type", "domain_type"],  # domain_type: visa/legal/pricing/procedure
 )
-abstain_decision_total = Counter(
+abstain_decision_total = safe_register_counter(
     "zantara_abstain_decision_total",
     "Total ABSTAIN decisions (both strict and Tier 1)",
     ["decision_type"],  # decision_type: strict_abstain/tier1_fallback
 )
-tier1_response_duration = Histogram(
+tier1_response_duration = safe_register_histogram(
     "zantara_tier1_response_duration_seconds",
     "Duration of Tier 1 fallback response generation",
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
 )
-intel_scraper_latency = Histogram(
+intel_scraper_latency = safe_register_histogram(
     "zantara_intel_scraper_submission_seconds",
     "Time to submit article to backend",
     ["scraper_type"],
@@ -300,34 +318,34 @@ intel_scraper_latency = Histogram(
 )
 
 # Classification Metrics
-intel_classification_total = Counter(
+intel_classification_total = safe_register_counter(
     "zantara_intel_classification_total",
     "Articles classified",
     ["category_input", "classified_as"],  # Track classification accuracy
 )
-intel_classification_duration = Histogram(
+intel_classification_duration = safe_register_histogram(
     "zantara_intel_classification_duration_seconds",
     "Classification time",
     buckets=[0.001, 0.005, 0.01, 0.05, 0.1],
 )
 
 # Voting Metrics
-intel_votes_cast = Counter(
+intel_votes_cast = safe_register_counter(
     "zantara_intel_votes_cast_total",
     "Votes cast on intel items",
     ["intel_type", "vote_type", "user"],  # vote_type: approve/reject
 )
-intel_items_approved = Counter(
+intel_items_approved = safe_register_counter(
     "zantara_intel_items_approved_total",
     "Items approved via voting",
     ["intel_type"],
 )
-intel_items_rejected = Counter(
+intel_items_rejected = safe_register_counter(
     "zantara_intel_items_rejected_total",
     "Items rejected via voting",
     ["intel_type"],
 )
-intel_voting_duration = Histogram(
+intel_voting_duration = safe_register_histogram(
     "zantara_intel_voting_duration_seconds",
     "Time from initiation to decision",
     ["intel_type"],
@@ -335,7 +353,7 @@ intel_voting_duration = Histogram(
 )
 
 # Ingestion Metrics (Data Processing - "The Mouth")
-documents_ingested_total = Counter(
+documents_ingested_total = safe_register_counter(
     "zantara_documents_ingested_total",
     "Total documents ingested into the system",
     [
@@ -345,52 +363,52 @@ documents_ingested_total = Counter(
         "status",
     ],  # source: file_upload, scraper, api; status: success, error
 )
-ingestion_failure_rate = Gauge(
+ingestion_failure_rate = safe_register_gauge(
     "zantara_ingestion_failure_rate",
     "Current ingestion failure rate (percentage)",
     ["source", "file_type"],  # Track failure rate by source and file type
 )
-parsing_duration_seconds = Histogram(
+parsing_duration_seconds = safe_register_histogram(
     "zantara_parsing_duration_seconds",
     "Time spent parsing documents",
     ["file_type", "source"],
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],  # 100ms to 1 minute
 )
-document_processing_duration_seconds = Histogram(
+document_processing_duration_seconds = safe_register_histogram(
     "zantara_document_processing_duration_seconds",
     "Total time to process documents from upload to storage",
     ["source", "collection"],
     buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 900.0],  # 1s to 15 minutes
 )
-chunks_created_total = Counter(
+chunks_created_total = safe_register_counter(
     "zantara_chunks_created_total",
     "Total chunks created during ingestion",
     ["collection", "source"],
 )
-parsing_errors_total = Counter(
+parsing_errors_total = safe_register_counter(
     "zantara_parsing_errors_total",
     "Total parsing errors encountered",
     ["file_type", "error_type", "source"],
 )
-metadata_extraction_duration_seconds = Histogram(
+metadata_extraction_duration_seconds = safe_register_histogram(
     "zantara_metadata_extraction_duration_seconds",
     "Time spent extracting metadata from documents",
     ["document_type", "source"],
     buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],  # 10ms to 2s
 )
-chunking_duration_seconds = Histogram(
+chunking_duration_seconds = safe_register_histogram(
     "zantara_chunking_duration_seconds",
     "Time spent chunking documents",
     ["file_type", "chunk_strategy"],
     buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],  # 10ms to 2s
 )
-embedding_generation_duration_seconds = Histogram(
+embedding_generation_duration_seconds = safe_register_histogram(
     "zantara_embedding_generation_duration_seconds",
     "Time spent generating embeddings",
     ["model", "batch_size"],
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],  # 100ms to 10s
 )
-vector_storage_duration_seconds = Histogram(
+vector_storage_duration_seconds = safe_register_histogram(
     "zantara_vector_storage_duration_seconds",
     "Time spent storing embeddings in vector database",
     ["collection", "operation"],  # operation: upsert, update, delete
@@ -398,30 +416,30 @@ vector_storage_duration_seconds = Histogram(
 )
 
 # Scraper Data Normalization Metrics
-scraper_data_normalized_total = Counter(
+scraper_data_normalized_total = safe_register_counter(
     "zantara_scraper_data_normalized_total",
     "Total scraper data items normalized",
     ["scraper_type", "source", "status"],
 )
-scraper_normalization_duration_seconds = Histogram(
+scraper_normalization_duration_seconds = safe_register_histogram(
     "zantara_scraper_normalization_duration_seconds",
     "Time spent normalizing scraper data",
     ["scraper_type", "data_complexity"],
     buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],
 )
-scraper_normalization_errors_total = Counter(
+scraper_normalization_errors_total = safe_register_counter(
     "zantara_scraper_normalization_errors_total",
     "Total errors during scraper data normalization",
     ["scraper_type", "error_type"],
 )
 
 # Ingestion Pipeline Metrics
-intel_qdrant_ingestion_total = Counter(
+intel_qdrant_ingestion_total = safe_register_counter(
     "zantara_intel_qdrant_ingestion_total",
     "Items ingested to Qdrant",
     ["collection", "status"],  # status: success/error
 )
-intel_qdrant_ingestion_duration = Histogram(
+intel_qdrant_ingestion_duration = safe_register_histogram(
     "zantara_intel_qdrant_ingestion_duration_seconds",
     "Qdrant ingestion time",
     ["collection"],
@@ -429,152 +447,152 @@ intel_qdrant_ingestion_duration = Histogram(
 )
 
 # System Health
-intel_staging_queue_size = Gauge(
+intel_staging_queue_size = safe_register_gauge(
     "zantara_intel_staging_queue_size",
     "Pending items in staging",
     ["intel_type"],
 )
-intel_approval_rate = Gauge(
+intel_approval_rate = safe_register_gauge(
     "zantara_intel_approval_rate",
     "Approval rate (approved / total voted)",
     ["intel_type"],
 )
 
 # Intelligence Center Advanced Metrics (Jan 2026 - Enhanced Features)
-intel_bulk_operations_total = Counter(
+intel_bulk_operations_total = safe_register_counter(
     "zantara_intel_bulk_operations_total",
     "Total bulk operations performed",
     ["intel_type", "operation"],  # operation: approve/reject/publish
 )
-intel_bulk_operation_items = Histogram(
+intel_bulk_operation_items = safe_register_histogram(
     "zantara_intel_bulk_operation_items",
     "Number of items processed in bulk operations",
     ["intel_type", "operation"],
     buckets=[1, 5, 10, 25, 50, 100],
 )
-intel_filter_usage_total = Counter(
+intel_filter_usage_total = safe_register_counter(
     "zantara_intel_filter_usage_total",
     "Filter usage statistics",
     ["intel_type", "filter_type"],  # filter_type: all/NEW/UPDATED/critical
 )
-intel_sort_usage_total = Counter(
+intel_sort_usage_total = safe_register_counter(
     "zantara_intel_sort_usage_total",
     "Sort usage statistics",
     ["intel_type", "sort_type"],  # sort_type: date-desc/date-asc/title-asc/title-desc
 )
-intel_search_queries_total = Counter(
+intel_search_queries_total = safe_register_counter(
     "zantara_intel_search_queries_total",
     "Search query usage",
     ["intel_type"],
 )
-intel_analytics_queries_total = Counter(
+intel_analytics_queries_total = safe_register_counter(
     "zantara_intel_analytics_queries_total",
     "Analytics dashboard queries",
     ["period_days"],
 )
-intel_user_actions_total = Counter(
+intel_user_actions_total = safe_register_counter(
     "zantara_intel_user_actions_total",
     "User action tracking",
     ["intel_type", "action"],  # action: preview/approve/reject/publish/select
 )
 
-memory_orchestrator_healthy_total = Counter(
+memory_orchestrator_healthy_total = safe_register_counter(
     "zantara_memory_orchestrator_healthy_total",
     "Number of times memory orchestrator initialized in healthy state",
 )
-memory_orchestrator_degraded_total = Counter(
+memory_orchestrator_degraded_total = safe_register_counter(
     "zantara_memory_orchestrator_degraded_total",
     "Number of times memory orchestrator entered degraded mode",
 )
-memory_orchestrator_unavailable_total = Counter(
+memory_orchestrator_unavailable_total = safe_register_counter(
     "zantara_memory_orchestrator_unavailable_total",
     "Number of times memory orchestrator initialization failed",
 )
-memory_context_degraded_total = Counter(
+memory_context_degraded_total = safe_register_counter(
     "zantara_memory_context_degraded_total",
     "Number of times context was returned in degraded mode",
 )
-memory_context_failed_total = Counter(
+memory_context_failed_total = safe_register_counter(
     "zantara_memory_context_failed_total",
     "Number of times context retrieval failed",
 )
 
-llm_circuit_breaker_open_total = Counter(
+llm_circuit_breaker_open_total = safe_register_counter(
     "zantara_llm_circuit_breaker_open_total",
     "Number of times circuit breaker was open (skipped model)",
     ["model"],
 )
-llm_circuit_breaker_opened_total = Counter(
+llm_circuit_breaker_opened_total = safe_register_counter(
     "zantara_llm_circuit_breaker_opened_total",
     "Number of times circuit breaker opened",
     ["model", "error_type"],
 )
-llm_quota_exhausted_total = Counter(
+llm_quota_exhausted_total = safe_register_counter(
     "zantara_llm_quota_exhausted_total", "Number of quota exhausted errors", ["model"]
 )
-llm_service_unavailable_total = Counter(
+llm_service_unavailable_total = safe_register_counter(
     "zantara_llm_service_unavailable_total", "Number of service unavailable errors", ["model"]
 )
-llm_model_error_total = Counter(
+llm_model_error_total = safe_register_counter(
     "zantara_llm_model_error_total", "Number of model errors", ["model", "error_type"]
 )
-llm_all_models_failed_total = Counter(
+llm_all_models_failed_total = safe_register_counter(
     "zantara_llm_all_models_failed_total",
     "Number of times all models failed",
 )
-llm_cost_limit_reached_total = Counter(
+llm_cost_limit_reached_total = safe_register_counter(
     "zantara_llm_cost_limit_reached_total",
     "Number of times cost limit was reached",
 )
-llm_max_depth_reached_total = Counter(
+llm_max_depth_reached_total = safe_register_counter(
     "zantara_llm_max_depth_reached_total",
     "Number of times max fallback depth was reached",
 )
-llm_fallback_depth = Histogram(
+llm_fallback_depth = safe_register_histogram(
     "zantara_llm_fallback_depth", "Fallback depth distribution", buckets=[0, 1, 2, 3, 4, 5]
 )
-llm_query_cost_usd = Histogram(
+llm_query_cost_usd = safe_register_histogram(
     "zantara_llm_query_cost_usd",
     "Query cost in USD distribution",
     buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0],
 )
 
-database_init_success_total = Counter(
+database_init_success_total = safe_register_counter(
     "zantara_database_init_success_total",
     "Number of successful database initializations",
 )
-database_init_failed_total = Counter(
+database_init_failed_total = safe_register_counter(
     "zantara_database_init_failed_total",
     "Number of database initialization failures",
     ["error_type", "is_transient"],
 )
-database_init_permanent_failure_total = Counter(
+database_init_permanent_failure_total = safe_register_counter(
     "zantara_database_init_permanent_failure_total",
     "Number of permanent database initialization failures",
 )
-database_health_check_success_total = Counter(
+database_health_check_success_total = safe_register_counter(
     "zantara_database_health_check_success_total",
     "Number of successful database health checks",
 )
-database_health_check_failed_total = Counter(
+database_health_check_failed_total = safe_register_counter(
     "zantara_database_health_check_failed_total",
     "Number of failed database health checks",
 )
 
-qdrant_timeout_total = Counter(
+qdrant_timeout_total = safe_register_counter(
     "zantara_qdrant_timeout_total", "Number of Qdrant timeout errors", ["error_type"]
 )
-qdrant_http_error_total = Counter(
+qdrant_http_error_total = safe_register_counter(
     "zantara_qdrant_http_error_total", "Number of Qdrant HTTP errors", ["status_code", "error_type"]
 )
 
-reasoning_low_context_quality_total = Counter(
+reasoning_low_context_quality_total = safe_register_counter(
     "zantara_reasoning_low_context_quality_total",
     "Number of times context quality was too low",
 )
 
 # Google Drive Metrics (Jan 2026 - Team Drive Integration)
-drive_operations_total = Counter(
+drive_operations_total = safe_register_counter(
     "zantara_drive_operations_total",
     "Total Google Drive operations",
     [
@@ -583,27 +601,27 @@ drive_operations_total = Counter(
         "status",
     ],  # operation: upload, download, create_folder, create_doc, rename, delete, move, copy
 )
-drive_operation_duration_seconds = Histogram(
+drive_operation_duration_seconds = safe_register_histogram(
     "zantara_drive_operation_duration_seconds",
     "Google Drive operation duration in seconds",
     ["operation"],
     buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
 )
-drive_file_size_bytes = Histogram(
+drive_file_size_bytes = safe_register_histogram(
     "zantara_drive_file_size_bytes",
     "Size of files uploaded/downloaded",
     ["operation"],
     buckets=[1024, 10240, 102400, 1048576, 10485760, 104857600],  # 1KB to 100MB
 )
-drive_oauth_refresh_total = Counter(
+drive_oauth_refresh_total = safe_register_counter(
     "zantara_drive_oauth_refresh_total",
     "Number of OAuth token refresh operations",
     ["status"],  # success, failed
 )
-drive_oauth_token_expiry_seconds = Gauge(
+drive_oauth_token_expiry_seconds = safe_register_gauge(
     "zantara_drive_oauth_token_expiry_seconds", "Seconds until OAuth token expires"
 )
-drive_errors_total = Counter(
+drive_errors_total = safe_register_counter(
     "zantara_drive_errors_total",
     "Total Google Drive errors",
     [
@@ -611,13 +629,13 @@ drive_errors_total = Counter(
         "operation",
     ],  # error_type: auth_failed, quota_exceeded, not_found, permission_denied, network_error
 )
-drive_quota_usage_percent = Gauge(
+drive_quota_usage_percent = safe_register_gauge(
     "zantara_drive_quota_usage_percent", "Google Drive quota usage percentage"
 )
-drive_active_users = Gauge(
+drive_active_users = safe_register_gauge(
     "zantara_drive_active_users", "Number of users who accessed Drive in last hour"
 )
-drive_files_accessed_total = Counter(
+drive_files_accessed_total = safe_register_counter(
     "zantara_drive_files_accessed_total",
     "Total files accessed by type",
     [
@@ -627,41 +645,41 @@ drive_files_accessed_total = Counter(
 )
 
 # Email Metrics (Jan 2026 - Zoho Mail Integration)
-email_operations_total = Counter(
+email_operations_total = safe_register_counter(
     "zantara_email_operations_total",
     "Total email operations",
     ["operation", "user_id", "status"],
     # operation: send, reply, forward, delete, mark_read, mark_unread, flag, unflag, move, list, search, get_attachment
 )
-email_operation_duration_seconds = Histogram(
+email_operation_duration_seconds = safe_register_histogram(
     "zantara_email_operation_duration_seconds",
     "Email operation duration in seconds",
     ["operation"],
     buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
 )
-email_attachment_size_bytes = Histogram(
+email_attachment_size_bytes = safe_register_histogram(
     "zantara_email_attachment_size_bytes",
     "Size of email attachments uploaded/downloaded",
     ["operation"],
     buckets=[1024, 10240, 102400, 1048576, 10485760],  # 1KB to 10MB
 )
-email_oauth_refresh_total = Counter(
+email_oauth_refresh_total = safe_register_counter(
     "zantara_email_oauth_refresh_total",
     "Number of Zoho OAuth token refresh operations",
     ["status"],  # success, failed
 )
-email_errors_total = Counter(
+email_errors_total = safe_register_counter(
     "zantara_email_errors_total",
     "Total email errors",
     ["error_type", "operation"],
     # error_type: auth_failed, rate_limited, not_found, api_error, network_error
 )
-email_unread_count = Gauge(
+email_unread_count = safe_register_gauge(
     "zantara_email_unread_count",
     "Total unread emails per user",
     ["user_id"],
 )
-email_active_users = Gauge(
+email_active_users = safe_register_gauge(
     "zantara_email_active_users",
     "Number of users with connected email accounts",
 )

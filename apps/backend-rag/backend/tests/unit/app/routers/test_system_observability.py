@@ -16,7 +16,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.app.routers.system_observability import router
-from backend.app.routers.team_activity import get_admin_email
+from backend.app.routers.team_activity import get_admin_user
 from backend.services.monitoring.unified_health_service import get_unified_health_service
 
 
@@ -35,7 +35,7 @@ def app(mock_unified_health_service):
     """Create FastAPI app with router and dependency overrides"""
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_admin_email] = lambda: "admin@example.com"
+    app.dependency_overrides[get_admin_user] = lambda: {"email": "admin@example.com", "role": "admin"}
     app.dependency_overrides[get_unified_health_service] = lambda: mock_unified_health_service
     return app
 
@@ -123,7 +123,7 @@ class TestSystemObservabilityRouter:
         """Test getting table data with invalid table name"""
         app = FastAPI()
         app.include_router(router)
-        app.dependency_overrides[get_admin_email] = lambda: "admin@example.com"
+        app.dependency_overrides[get_admin_user] = lambda: {"email": "admin@example.com", "role": "admin"}
         client = TestClient(app)
 
         response = client.get("/api/admin/postgres/data?table=test-table!")
