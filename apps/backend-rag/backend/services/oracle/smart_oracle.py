@@ -29,14 +29,19 @@ logger = logging.getLogger(__name__)
 # Initialize GenAI client singleton for this module (supports API Key & Service Account)
 _genai_client: GenAIClient | None = None
 
-if GENAI_AVAILABLE:
-    try:
-        _genai_client = get_genai_client()
-        if _genai_client.is_available:
-            auth_method = getattr(_genai_client, "_auth_method", "unknown")
-            logger.info(f"✅ Smart Oracle GenAI client initialized (auth: {auth_method})")
-    except Exception as e:
-        logger.warning(f"Failed to initialize Smart Oracle GenAI client: {e}")
+
+def get_oracle_client() -> GenAIClient | None:
+    """Lazy load GenAI client for Smart Oracle."""
+    global _genai_client
+    if _genai_client is None and GENAI_AVAILABLE:
+        try:
+            _genai_client = get_genai_client()
+            if _genai_client.is_available:
+                auth_method = getattr(_genai_client, "_auth_method", "unknown")
+                logger.info(f"✅ Smart Oracle GenAI client initialized (auth: {auth_method})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Smart Oracle GenAI client: {e}")
+    return _genai_client
 
 
 # 2. Google Drive Service (Using Service Account)
@@ -159,7 +164,8 @@ async def smart_oracle(query, best_filename_from_qdrant):
     if pdf_path:
         try:
             # --- AI PROCESSING BLOCK (New GenAI SDK Implementation) ---
-            if not _genai_client or not _genai_client.is_available:
+            client = get_oracle_client()
+            if not client or not client.is_available:
                 return "AI service not available. Please check configuration."
 
             logger.info(f"Analyzing document: {best_filename_from_qdrant}")
@@ -167,12 +173,31 @@ async def smart_oracle(query, best_filename_from_qdrant):
             # Upload file to Gemini's temporary cache using new SDK
             # The new SDK uses client.files.upload() via the underlying genai module
             if genai:
-                gemini_file = genai.Client(api_key=settings.google_api_key).files.upload(
-                    file=pdf_path
-                )
+                # Use a fresh client for file upload if needed, or re-use existing if compatible
+                # Note: GenAIClient wrapper doesn't expose file upload, so we use SDK direct
+                # But careful about auth! If using Service Account, we should use that client.
+                # Re-using the initialized client's underlying object is best if possible.
+                # However, GenAIClient wrapper property _client exposes it.
+
+                # Check auth method to decide how to upload
+                # Ideally, add upload_file to GenAIClient wrapper.
+                # For now using API Key fallback as original code did, but safer to use _genai_client._client.files.upload if possible?
+                # Original code used: genai.Client(api_key=settings.google_api_key) which creates NEW client (safe)
+                # We'll keep it for now but it might fail if no API Key provided and relying on Vertex SA.
+                # BETTER: Use valid client
+
+                upload_client = None
+                if client._auth_method == "service_account_vertexai":
+                    # Use the existing underlying client which has SA auth
+                    upload_client = client._client
+                else:
+                    # Fallback to creating new one with API key
+                    upload_client = genai.Client(api_key=settings.google_api_key)
+
+                gemini_file = upload_client.files.upload(file=pdf_path)
 
                 # Generate content using uploaded file
-                result = await _genai_client.generate_content(
+                result = await client.generate_content(
                     contents=[
                         {
                             "text": "You are an expert consultant. Answer the user query based ONLY on the provided document."
@@ -185,7 +210,7 @@ async def smart_oracle(query, best_filename_from_qdrant):
                         },
                         {"text": f"User Query: {query}"},
                     ],
-                    model="gemini-3-flash-preview",
+                    model="gemini-2.0-flash-001",
                     max_output_tokens=8192,
                 )
 

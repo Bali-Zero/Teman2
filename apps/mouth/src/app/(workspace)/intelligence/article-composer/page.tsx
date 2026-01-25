@@ -1,53 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  articlesApi,
-  ComposeRequest,
-  EnrichedArticle,
-  PublishRequest,
-} from '@/lib/api/articles.api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { articlesApi, ComposeRequest, EnrichedArticle, PublishRequest } from '@/lib/api/articles.api';
 import { useToast } from '@/components/ui/toast';
 import { logger } from '@/lib/logger';
+// 👇 Importiamo i moduli appena creati
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
+import { renderMiniMarkdown, fileToBase64 } from '@/lib/utils';
 import {
-  Loader2,
-  Sparkles,
-  FileText,
-  AlertTriangle,
-  CheckCircle,
-  Copy,
-  Download,
-  User,
-  Link as LinkIcon,
-  Tag,
-  Lightbulb,
-  TrendingUp,
-  Users,
-  Calendar,
-  Upload,
-  ImageIcon,
-  Send,
-  Globe,
-  X,
-  Pencil,
-  Save,
+  Loader2, Menu, Activity, Sparkles, FileText, Globe, ImageIcon,
+  X, Save, Pencil, Copy, Download, Send
 } from 'lucide-react';
 
 const CATEGORIES = [
-  { value: 'immigration', label: 'Immigration & Visas' },
   { value: 'business', label: 'Business & Company' },
+  { value: 'immigration', label: 'Immigration & Visas' },
   { value: 'tax', label: 'Tax & Legal' },
   { value: 'property', label: 'Property & Real Estate' },
   { value: 'lifestyle', label: 'Lifestyle' },
@@ -56,175 +23,109 @@ const CATEGORIES = [
 ];
 
 const POSITIONS = [
-  { value: 'main_featured', label: 'Main Featured (Homepage Hero)' },
-  { value: 'secondary', label: 'Secondary Featured' },
   { value: 'normal', label: 'Normal Article' },
+  { value: 'secondary', label: 'Secondary Featured' },
+  { value: 'main_featured', label: 'Main Featured (Homepage Hero)' },
 ];
 
+const DRAFT_KEY = 'bz_composer_draft_v2';
+
+// Classi CSS riutilizzabili (Tailwind arbitrary values per matchare il design HTML)
+const cardClass = "rounded-[14px] border border-[#27272a] bg-[#181818] shadow-[0_18px_40px_rgba(0,0,0,0.45)]";
+const inputClass = "w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)]";
+const textAreaClass = "w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)] resize-none";
+
 export default function ArticleComposerPage() {
-  const [loading, setLoading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const toast = useToast();
+
+  // --- STATE ---
   const [statusLoading, setStatusLoading] = useState(true);
   const [configured, setConfigured] = useState(false);
   const [publishConfigured, setPublishConfigured] = useState(false);
-  const [result, setResult] = useState<EnrichedArticle | null>(null);
-  const [apiCost, setApiCost] = useState<number>(0);
-  const [error, setError] = useState<string | null>(null);
-  const toast = useToast();
 
-  // Form state
+  // Form State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('business');
   const [sourceUrl, setSourceUrl] = useState('');
   const [author, setAuthor] = useState('Marketing Team');
 
-  // Cover image state
+  // Media State
   const [coverImage, setCoverImage] = useState<File | null>(null);
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Publish state
-  const [position, setPosition] = useState<'main_featured' | 'secondary' | 'normal'>('normal');
-  const [customSlug, setCustomSlug] = useState('');
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  // Process State
+  const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [apiCost, setApiCost] = useState<number>(0);
 
-  // Edit mode state
+  // Data State
+  const [result, setResult] = useState<EnrichedArticle | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(null);
 
+  // Publish State
+  const [position, setPosition] = useState<'normal' | 'secondary' | 'main_featured'>('normal');
+  const [customSlug, setCustomSlug] = useState('');
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+
+  // --- LIFECYCLE ---
+
   useEffect(() => {
     logger.componentMount('ArticleComposerPage');
-    checkStatus();
 
-    return () => {
-      logger.componentUnmount('ArticleComposerPage');
+    const init = async () => {
+      setStatusLoading(true);
+      try {
+        const [composeStatus, publishStatus] = await Promise.all([
+          articlesApi.getStatus().catch(() => ({ configured: false })),
+          articlesApi.getPublishStatus().catch(() => ({ configured: false })),
+        ]);
+        setConfigured(composeStatus.configured);
+        setPublishConfigured(publishStatus.configured);
+      } catch (err) {
+        logger.error('API Check failed', { component: 'ArticleComposerPage' }, err as Error);
+      } finally {
+        setStatusLoading(false);
+      }
     };
+    init();
+
+    // Load Draft (FIX: uso del logger invece di console.warn)
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft.title) setTitle(draft.title);
+        if (draft.content) setContent(draft.content);
+        if (draft.category) setCategory(draft.category);
+        if (draft.source) setSourceUrl(draft.source);
+        if (draft.author) setAuthor(draft.author);
+      }
+    } catch (e) {
+      logger.warn('Failed to load draft from localStorage', { component: 'ArticleComposerPage' }, e as Error);
+    }
   }, []);
 
-  const checkStatus = async () => {
-    setStatusLoading(true);
-    try {
-      const [composeStatus, publishStatus] = await Promise.all([
-        articlesApi.getStatus(),
-        articlesApi.getPublishStatus().catch(() => ({ configured: false })),
-      ]);
-      setConfigured(composeStatus.configured);
-      setPublishConfigured(publishStatus.configured);
-      logger.info('Article composer status', {
-        component: 'ArticleComposerPage',
-        metadata: { composeStatus, publishStatus },
-      });
-    } catch (err) {
-      logger.error(
-        'Failed to check composer status',
-        {
-          component: 'ArticleComposerPage',
-        },
-        err as Error
-      );
-      setConfigured(false);
-    } finally {
-      setStatusLoading(false);
-    }
-  };
-
-  // Handle cover image selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Invalid File', 'Please select an image file');
-        return;
+  // Autosave Draft
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (title || content) {
+        try {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, content, category, source: sourceUrl, author }));
+        } catch (e) { /* Silent fail quota exceeded */ }
       }
-      setCoverImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [title, content, category, sourceUrl, author]);
 
-  // Remove cover image
-  const removeCoverImage = () => {
-    setCoverImage(null);
-    setCoverImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Publish article
-  const handlePublish = async () => {
-    if (!result) {
-      toast.error('No Article', 'Please compose an article first');
-      return;
-    }
-
-    setPublishing(true);
-    setError(null);
-
-    try {
-      const request: PublishRequest = {
-        article: result,
-        position,
-        slug: customSlug || undefined,
-      };
-
-      // Add cover image if provided
-      if (coverImage) {
-        request.cover_image_base64 = await fileToBase64(coverImage);
-        request.cover_image_filename = coverImage.name;
-      }
-
-      const response = await articlesApi.publish(request);
-
-      if (response.success) {
-        setPublishedUrl(response.article_url || null);
-        toast.success('Published!', response.message);
-        logger.info('Article published', {
-          component: 'ArticleComposerPage',
-          action: 'publish_success',
-          metadata: { url: response.article_url, commit: response.commit_sha },
-        });
-      } else {
-        setError(response.error || 'Unknown error');
-        toast.error('Publish Failed', response.error || 'Unknown error');
-      }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      setError(errMsg);
-      toast.error('Publish Error', errMsg);
-      logger.error(
-        'Publish failed',
-        {
-          component: 'ArticleComposerPage',
-          action: 'publish_error',
-        },
-        err as Error
-      );
-    } finally {
-      setPublishing(false);
-    }
-  };
+  // --- HANDLERS ---
 
   const handleCompose = async () => {
     if (!title.trim() || !content.trim()) {
-      toast.error('Missing Fields', 'Please enter both title and content');
+      toast.error('Missing Data', 'Inserisci titolo e contenuto.');
       return;
     }
 
@@ -232,926 +133,431 @@ export default function ArticleComposerPage() {
     setError(null);
     setResult(null);
 
-    logger.info('Composing article', {
-      component: 'ArticleComposerPage',
-      action: 'compose_start',
-      metadata: { title, category },
-    });
-
     try {
-      const request: ComposeRequest = {
-        title,
-        content,
-        category,
-        source_url: sourceUrl || undefined,
-        author,
+      logger.info('Starting article composition', { component: 'ArticleComposerPage', metadata: { category } });
+      const req: ComposeRequest = {
+        title, content, category, source_url: sourceUrl || undefined, author,
       };
 
-      const response = await articlesApi.compose(request);
+      const res = await articlesApi.compose(req);
 
-      if (response.success && response.article) {
-        setResult(response.article);
-        setApiCost(response.api_cost_cents);
-        toast.success('Article Enriched!', `Cost: $${(response.api_cost_cents / 100).toFixed(4)}`);
-        logger.info('Article composed successfully', {
-          component: 'ArticleComposerPage',
-          action: 'compose_success',
-          metadata: { cost: response.api_cost_cents },
-        });
+      if (res.success && res.article) {
+        setResult(res.article);
+        setApiCost(res.api_cost_cents);
+        toast.success('Article Enriched!', `Cost: $${(res.api_cost_cents / 100).toFixed(4)}`);
+        localStorage.removeItem(DRAFT_KEY);
       } else {
-        setError(response.error || 'Unknown error');
-        toast.error('Enrichment Failed', response.error || 'Unknown error');
+        throw new Error(res.error || 'Unknown error');
       }
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      setError(errMsg);
-      toast.error('Error', errMsg);
-      logger.error(
-        'Compose failed',
-        {
-          component: 'ArticleComposerPage',
-          action: 'compose_error',
-        },
-        err as Error
-      );
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setError(msg);
+      logger.error('Composition failed', { component: 'ArticleComposerPage' }, err as Error);
+      toast.error('Enrichment Failed', msg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Start editing mode
+  const handlePublish = async () => {
+    if (!result) return;
+    setPublishing(true);
+    const articleToPublish = isEditing && editedResult ? editedResult : result;
+
+    try {
+      logger.info('Publishing article', { component: 'ArticleComposerPage', metadata: { position } });
+      const req: PublishRequest = {
+        article: articleToPublish,
+        position,
+        slug: customSlug || undefined,
+      };
+      if (coverImage) {
+        req.cover_image_base64 = await fileToBase64(coverImage);
+        req.cover_image_filename = coverImage.name;
+      }
+
+      const res = await articlesApi.publish(req);
+      if (res.success) {
+        setPublishedUrl(res.article_url || '#');
+        toast.success('Published!', 'Article is live.');
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Publish failed';
+      logger.error('Publish failed', { component: 'ArticleComposerPage' }, err as Error);
+      toast.error('Publish Error', msg);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // Helper: Images
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid File', 'Not an image.');
+      return;
+    }
+    setCoverImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setCoverPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeCoverImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCoverImage(null);
+    setCoverPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Helper: Editing
   const startEditing = () => {
     if (result) {
-      setEditedResult(JSON.parse(JSON.stringify(result))); // Deep copy
+      setEditedResult(JSON.parse(JSON.stringify(result)));
       setIsEditing(true);
     }
   };
 
-  // Save edits
   const saveEdits = () => {
     if (editedResult) {
       setResult(editedResult);
       setIsEditing(false);
-      toast.success('Saved!', 'Article changes saved');
+      toast.success('Saved', 'Changes updated locally.');
     }
   };
 
-  // Cancel editing
   const cancelEditing = () => {
     setEditedResult(null);
     setIsEditing(false);
   };
 
-  // Update edited field helper
-  const updateEditedField = (path: string, value: string | string[]) => {
+  const updateEditedField = (path: string, value: any) => {
     if (!editedResult) return;
-    const updated = { ...editedResult };
-    const keys = path.split('.');
-    let obj: Record<string, unknown> = updated;
-    for (let i = 0; i < keys.length - 1; i++) {
-      obj = obj[keys[i]] as Record<string, unknown>;
+    const newResult = JSON.parse(JSON.stringify(editedResult));
+    const parts = path.split('.');
+    let current = newResult;
+    for (let i = 0; i < parts.length - 1; i++) {
+      current = current[parts[i]];
     }
-    obj[keys[keys.length - 1]] = value;
-    setEditedResult(updated as EnrichedArticle);
+    current[parts[parts.length - 1]] = value;
+    setEditedResult(newResult);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied!', 'Content copied to clipboard');
+  // Helper: Copy/Export
+  const handleCopyJson = () => {
+    const data = isEditing ? editedResult : result;
+    if (!data) return;
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    toast.success('Copied', 'JSON copied to clipboard');
   };
 
-  const exportAsJson = () => {
-    if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], {
-      type: 'application/json',
-    });
+  const handleExportJson = () => {
+    const data = isEditing ? editedResult : result;
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `article-${result.headline.slice(0, 30).replace(/\s+/g, '-')}.json`;
+    a.download = `article-${(data.headline || 'draft').slice(0, 30).replace(/\s+/g, '-')}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  // --- RENDER ---
+
   if (statusLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin text-[var(--accent)]" />
-        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">
-          Checking API Configuration...
-        </p>
+      <div className="flex h-[80vh] items-center justify-center bg-[#111] text-[#f5f5f5]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-[#6366f1]" />
+          <p className="animate-pulse text-[#737373]">Initializing Intelligence Center...</p>
+        </div>
       </div>
     );
   }
 
-  if (!configured) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32">
-        <div className="bg-amber-100 p-6 rounded-full mb-6">
-          <AlertTriangle className="h-12 w-12 text-amber-600" />
-        </div>
-        <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">API Not Configured</h3>
-        <p className="text-[var(--foreground-muted)] max-w-md text-center">
-          The Anthropic API key is not configured. Please contact the admin to set up the
-          ANTHROPIC_API_KEY secret on Fly.io.
-        </p>
-      </div>
-    );
-  }
+  const activeArticle = isEditing && editedResult ? editedResult : result;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            Article Composer
-          </h2>
-          <p className="text-[var(--foreground-muted)] text-lg">
-            Transform raw content into Bali Zero style Executive Briefs
-          </p>
+    <div className="min-h-screen bg-[#111111] text-[#f5f5f5] font-sans selection:bg-[#6366f1] selection:text-white pb-20">
+      <style>{`
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        .custom-select {
+          background-image: linear-gradient(45deg, transparent 50%, #a3a3a3 50%),
+                            linear-gradient(135deg, #a3a3a3 50%, transparent 50%);
+          background-position: calc(100% - 14px) 13px, calc(100% - 9px) 13px;
+          background-size: 6px 6px;
+          background-repeat: no-repeat;
+        }
+      `}</style>
+
+      {/* TOP BAR */}
+      <header className="flex h-14 items-center justify-between border-b border-[#27272a] bg-[#101010] px-4 sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#27272a] text-[#a3a3a3] hover:bg-[#18181b] hover:text-white">
+            <Menu size={16} />
+          </div>
+          <span className="font-medium text-[#f5f5f5]">Intelligence Center</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-          <CheckCircle className="w-4 h-4 text-emerald-500" />
-          <span className="text-sm font-medium text-emerald-600">API Ready</span>
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${configured ? 'border-green-500/40 bg-green-500/10 text-green-500' : 'border-red-500/40 bg-red-500/10 text-red-500'}`}>
+            <div className={`h-2 w-2 rounded-full ${configured ? 'bg-green-500' : 'bg-red-500'}`} />
+            {configured ? 'API Ready' : 'API Missing'}
+          </div>
+          <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#27272a] bg-gradient-to-br from-[#a855f7] to-[#1d1b4f] text-xs text-white">BZ</div>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Input Form */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-[var(--accent)]" />
-              Raw Content Input
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Title */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Article Title *</Label>
-              <Input
-                id="title"
-                placeholder="e.g., New KITAS Rules for Digital Nomads in 2026"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
+      {/* MAIN CONTENT */}
+      <main className="mx-auto flex max-w-[1200px] flex-col gap-6 p-4 md:p-6">
 
-            {/* Content */}
-            <div className="space-y-2">
-              <Label htmlFor="content">Raw Content *</Label>
-              <Textarea
-                id="content"
-                placeholder="Paste your raw article content here. This can be from a news source, government announcement, or your own draft..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[200px] resize-y"
-              />
-              <p className="text-xs text-[var(--foreground-muted)]">
-                {content.length}/8000 characters (max)
-              </p>
-            </div>
+        <div className="flex items-end justify-between border-b border-[#27272a] pb-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-wide text-[#f5f5f5]">Article Composer</h1>
+            <p className="mt-1 text-sm text-[#737373]">Transform raw content into Bali Zero style Executive Briefs</p>
+          </div>
+          <div className="hidden items-center gap-1.5 rounded-lg border border-green-500/40 bg-green-500/10 px-2.5 py-1.5 text-[11px] font-medium text-green-500 md:flex">
+            <Activity size={14} />
+            <span>Anthropic Online</span>
+          </div>
+        </div>
 
-            {/* Category */}
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_1.2fr]">
 
-            {/* Source URL */}
-            <div className="space-y-2">
-              <Label htmlFor="sourceUrl" className="flex items-center gap-2">
-                <LinkIcon className="h-4 w-4" />
-                Source URL (optional)
-              </Label>
-              <Input
-                id="sourceUrl"
-                type="url"
-                placeholder="https://..."
-                value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
-              />
-            </div>
-
-            {/* Author */}
-            <div className="space-y-2">
-              <Label htmlFor="author" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Author
-              </Label>
-              <Input
-                id="author"
-                placeholder="Marketing Team"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-              />
-            </div>
-
-            {/* Cover Image Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                Cover Image (optional)
-              </Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              {coverImagePreview ? (
-                <div className="relative">
-                  <img
-                    src={coverImagePreview}
-                    alt="Cover preview"
-                    className="w-full h-48 object-cover rounded-lg border border-[var(--border)]"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8"
-                    onClick={removeCoverImage}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <p className="mt-1 text-xs text-[var(--foreground-muted)]">{coverImage?.name}</p>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-[var(--border)] rounded-lg cursor-pointer hover:bg-[var(--background-secondary)] transition-colors"
-                >
-                  <Upload className="h-8 w-8 text-[var(--foreground-muted)] mb-2" />
-                  <p className="text-sm text-[var(--foreground-muted)]">
-                    Click to upload cover image
-                  </p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    PNG, JPG, WebP (recommended 1200x630)
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              onClick={handleCompose}
-              disabled={loading || !title.trim() || !content.trim()}
-              className="w-full gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white h-12 text-lg"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Enriching with Claude...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5" />
-                  Compose Executive Brief
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
-                <p className="font-medium">Error:</p>
-                <p className="text-sm">{error}</p>
+          {/* LEFT: INPUT */}
+          <section className={`${cardClass} flex flex-col h-fit`}>
+            <div className="flex flex-col gap-1 border-b border-[#27272a]/90 px-4 py-3.5">
+              <div className="flex items-center gap-2 text-sm font-medium text-[#f5f5f5]">
+                <div className="flex h-[18px] w-[18px] items-center justify-center rounded-md bg-gradient-to-br from-[#4f46e5] to-[#818cf8] text-[10px]">📝</div>
+                <span>Raw Content Input</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-xs text-[#a3a3a3]">Incolla la fonte (news, regulation) e lascia che il sistema la riscriva.</p>
+            </div>
 
-        {/* Result Preview */}
-        <div className="space-y-4">
-          {result ? (
-            <>
-              {/* Actions Bar */}
-              <div className="flex flex-wrap gap-2 justify-between items-center">
-                <div className="flex gap-2">
-                  {isEditing ? (
-                    <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={saveEdits}
-                        className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        <Save className="h-4 w-4" />
-                        Save Changes
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={cancelEditing} className="gap-2">
-                        <X className="h-4 w-4" />
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={startEditing}
-                        className="gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-50"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Edit Article
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
-                        className="gap-2"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copy JSON
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={exportAsJson} className="gap-2">
-                        <Download className="h-4 w-4" />
-                        Export
-                      </Button>
-                    </>
-                  )}
-                </div>
+            <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[#a3a3a3]">Article Title <span className="text-[#ef4444]">*</span></label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. New KITAS Rules..." className={inputClass} />
               </div>
 
-              {/* Publish Section */}
-              {publishConfigured ? (
-                <Card
-                  className={`border-emerald-500/30 bg-emerald-500/5 ${isEditing ? 'opacity-50' : ''}`}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Globe className="h-5 w-5 text-emerald-500" />
-                      Publish to Site
-                      {isEditing && (
-                        <span className="text-xs text-amber-600 ml-2">(Save changes first)</span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Position Selector */}
-                      <div className="space-y-2">
-                        <Label>Position</Label>
-                        <Select
-                          value={position}
-                          onValueChange={(v) => setPosition(v as typeof position)}
-                          disabled={isEditing}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {POSITIONS.map((pos) => (
-                              <SelectItem key={pos.value} value={pos.value}>
-                                {pos.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {/* Custom Slug */}
-                      <div className="space-y-2">
-                        <Label>Custom Slug (optional)</Label>
-                        <Input
-                          placeholder="my-custom-article-url"
-                          value={customSlug}
-                          onChange={(e) => setCustomSlug(e.target.value)}
-                          disabled={isEditing}
-                        />
-                      </div>
-                    </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[#a3a3a3]">Raw Content <span className="text-[#ef4444]">*</span></label>
+                <AutoResizeTextarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Incolla contenuto..." className={`${inputClass} min-h-[140px]`} />
+                <div className="text-right text-[11px] text-[#737373]">{content.length}/8000 chars</div>
+              </div>
 
-                    {/* Publish Button */}
-                    <Button
-                      onClick={handlePublish}
-                      disabled={publishing || isEditing}
-                      className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-11"
-                    >
-                      {publishing ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          Publishing to BaliZero.com...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-5 w-5" />
-                          Publish Article
-                        </>
-                      )}
-                    </Button>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[#a3a3a3]">Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className={`${inputClass} custom-select appearance-none cursor-pointer`}>
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
 
-                    {/* Published URL */}
-                    {publishedUrl && (
-                      <div className="p-3 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800">
-                        <p className="font-medium flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Published Successfully!
-                        </p>
-                        <a
-                          href={publishedUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm underline hover:text-emerald-600"
-                        >
-                          {publishedUrl}
-                        </a>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-amber-500/30 bg-amber-500/5">
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-3 text-amber-700">
-                      <AlertTriangle className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Publishing Not Configured</p>
-                        <p className="text-sm">
-                          Set GITHUB_TOKEN environment variable to enable direct publishing.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1"><label className="text-xs text-[#a3a3a3]">Source URL</label><input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className={inputClass} placeholder="https://..." /></div>
+                <div className="flex flex-col gap-1"><label className="text-xs text-[#a3a3a3]">Author</label><input value={author} onChange={(e) => setAuthor(e.target.value)} className={inputClass} /></div>
+              </div>
 
-              {/* Headline Card */}
-              <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--accent)] uppercase">
-                      {result.category} | {result.priority} priority
-                    </span>
-                    <span className="text-xs text-[var(--foreground-muted)]">
-                      Relevance: {result.relevance_score}/100
-                    </span>
+              {/* Cover Image (Re-styled) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[#a3a3a3]">Cover Image (optional)</label>
+                <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageSelect} />
+                {!coverPreview ? (
+                  <div onClick={() => fileInputRef.current?.click()} className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-[#27272a] bg-[#18181b] p-4 text-center transition-colors hover:border-[#3f3f46] hover:bg-[#1f1f24]">
+                    <ImageIcon className="text-[#a3a3a3] h-5 w-5" /><div className="text-[11px] text-[#737373]">Click per caricare (1200×630)</div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {isEditing && editedResult ? (
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs text-amber-600">Headline</Label>
-                        <Input
-                          value={editedResult.headline}
-                          onChange={(e) => updateEditedField('headline', e.target.value)}
-                          className="text-lg font-bold"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">Summary</Label>
-                        <Textarea
-                          value={editedResult.ai_summary}
-                          onChange={(e) => updateEditedField('ai_summary', e.target.value)}
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="text-2xl font-bold text-[var(--foreground)] leading-tight">
-                        {result.headline}
-                      </h3>
-                      <p className="mt-2 text-[var(--foreground-muted)]">{result.ai_summary}</p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                ) : (
+                  <div className="relative overflow-hidden rounded-[10px] border border-[#27272a]">
+                    <img src={coverPreview} alt="Cover" className="h-[180px] w-full object-cover" />
+                    <button onClick={removeCoverImage} className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white hover:bg-red-900/80"><X size={14} /></button>
+                  </div>
+                )}
+              </div>
 
-              {/* TL;DR Card */}
-              <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    TL;DR
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {isEditing && editedResult ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs text-amber-600">Should Worry</Label>
-                          <Select
-                            value={editedResult.tldr.should_worry}
-                            onValueChange={(v) => updateEditedField('tldr.should_worry', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Yes">Yes</SelectItem>
-                              <SelectItem value="No">No</SelectItem>
-                              <SelectItem value="Maybe">Maybe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs text-amber-600">Risk Level</Label>
-                          <Select
-                            value={editedResult.tldr.risk_level}
-                            onValueChange={(v) => updateEditedField('tldr.risk_level', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">What</Label>
-                        <Textarea
-                          value={editedResult.tldr.what}
-                          onChange={(e) => updateEditedField('tldr.what', e.target.value)}
-                          className="min-h-[60px]"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">Who</Label>
-                        <Input
-                          value={editedResult.tldr.who}
-                          onChange={(e) => updateEditedField('tldr.who', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">When</Label>
-                        <Input
-                          value={editedResult.tldr.when}
-                          onChange={(e) => updateEditedField('tldr.when', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">Should Worry:</span>
-                          <span
-                            className={
-                              result.tldr.should_worry === 'Yes'
-                                ? 'text-red-600 font-bold'
-                                : result.tldr.should_worry === 'No'
-                                  ? 'text-green-600'
-                                  : 'text-amber-600'
-                            }
-                          >
-                            {result.tldr.should_worry}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">Risk Level:</span>
-                          <span
-                            className={
-                              result.tldr.risk_level === 'High'
-                                ? 'text-red-600 font-bold'
-                                : result.tldr.risk_level === 'Low'
-                                  ? 'text-green-600'
-                                  : 'text-amber-600'
-                            }
-                          >
-                            {result.tldr.risk_level}
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <strong>What:</strong> {result.tldr.what}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-[var(--foreground-muted)]" />
-                        <strong>Who:</strong> {result.tldr.who}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-[var(--foreground-muted)]" />
-                        <strong>When:</strong> {result.tldr.when}
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              {error && <div className="rounded-[9px] border border-red-500/50 bg-red-900/20 px-3 py-2 text-[12px] text-red-300">{error}</div>}
 
-              {/* Facts Card */}
-              <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                    The Facts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isEditing && editedResult ? (
-                    <Textarea
-                      value={editedResult.facts}
-                      onChange={(e) => updateEditedField('facts', e.target.value)}
-                      className="min-h-[150px]"
-                    />
-                  ) : (
-                    <p className="text-[var(--foreground)] whitespace-pre-line">{result.facts}</p>
-                  )}
-                </CardContent>
-              </Card>
+              <button onClick={handleCompose} disabled={loading || !configured} className="group mt-2 flex w-full items-center justify-center gap-2 rounded-full border-none bg-gradient-to-br from-[#6366f1] to-[#4f46e5] px-4 py-2.5 text-[13px] font-medium text-white shadow-[0_16px_35px_rgba(79,70,229,0.5)] transition-all hover:-translate-y-px hover:shadow-[0_20px_40px_rgba(79,70,229,0.75)] disabled:opacity-60 disabled:shadow-none">
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}{loading ? 'Enriching with Claude...' : 'Compose Executive Brief'}
+              </button>
 
-              {/* Bali Zero Take Card */}
-              <Card
-                className={`border-[var(--accent)]/30 bg-[var(--accent)]/5 ${isEditing ? 'border-amber-500/50' : ''}`}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Lightbulb className="h-5 w-5 text-[var(--accent)]" />
-                    Bali Zero Take
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isEditing && editedResult ? (
-                    <>
-                      <div>
-                        <Label className="text-xs text-amber-600">Hidden Insight</Label>
-                        <Textarea
-                          value={editedResult.bali_zero_take.hidden_insight}
-                          onChange={(e) =>
-                            updateEditedField('bali_zero_take.hidden_insight', e.target.value)
-                          }
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">Our Analysis</Label>
-                        <Textarea
-                          value={editedResult.bali_zero_take.our_analysis}
-                          onChange={(e) =>
-                            updateEditedField('bali_zero_take.our_analysis', e.target.value)
-                          }
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600">Our Advice</Label>
-                        <Textarea
-                          value={editedResult.bali_zero_take.our_advice}
-                          onChange={(e) =>
-                            updateEditedField('bali_zero_take.our_advice', e.target.value)
-                          }
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                          Hidden Insight
-                        </p>
-                        <p className="text-[var(--foreground)]">
-                          {result.bali_zero_take.hidden_insight}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                          Our Analysis
-                        </p>
-                        <p className="text-[var(--foreground)]">
-                          {result.bali_zero_take.our_analysis}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--accent)] mb-1">
-                          Our Advice
-                        </p>
-                        <p className="text-[var(--foreground)]">
-                          {result.bali_zero_take.our_advice}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              {apiCost > 0 && (
+                <div className="flex gap-2 text-[11px] text-[#737373] mt-1">
+                  <span className="rounded-full border border-[#6366f1]/80 bg-[#1e40af]/35 px-2 py-0.5 text-[#c7d2fe]">Cost: ${(apiCost / 100).toFixed(4)}</span>
+                </div>
+              )}
+            </div>
+          </section>
 
-              {/* Next Steps Card */}
-              <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
-                    Next Steps
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-6">
-                  {isEditing && editedResult ? (
-                    <>
-                      <div>
-                        <Label className="text-xs text-amber-600 mb-2 block">
-                          For Expats (one per line)
-                        </Label>
-                        <Textarea
-                          value={editedResult.next_steps.expat.join('\n')}
-                          onChange={(e) =>
-                            updateEditedField(
-                              'next_steps.expat',
-                              e.target.value.split('\n').filter((s) => s.trim())
-                            )
-                          }
-                          className="min-h-[120px]"
-                          placeholder="Enter each step on a new line"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600 mb-2 block">
-                          For Investors (one per line)
-                        </Label>
-                        <Textarea
-                          value={editedResult.next_steps.investor.join('\n')}
-                          onChange={(e) =>
-                            updateEditedField(
-                              'next_steps.investor',
-                              e.target.value.split('\n').filter((s) => s.trim())
-                            )
-                          }
-                          className="min-h-[120px]"
-                          placeholder="Enter each step on a new line"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="font-semibold text-[var(--foreground)] mb-2">For Expats</p>
-                        <ul className="space-y-1">
-                          {result.next_steps.expat.map((step, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                              <span className="text-[var(--accent)]">•</span>
-                              {step}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-[var(--foreground)] mb-2">For Investors</p>
-                        <ul className="space-y-1">
-                          {result.next_steps.investor.map((step, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                              <span className="text-[var(--accent)]">•</span>
-                              {step}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+          {/* --- RIGHT: RESULT --- */}
+          <section className={`${cardClass} flex flex-col h-fit relative`}>
+            <div className="flex flex-col gap-1 border-b border-[#27272a]/90 px-4 py-3.5">
+              <div className="flex items-center gap-2 text-sm font-medium text-[#f5f5f5]">
+                <div className="flex h-[18px] w-[18px] items-center justify-center rounded-md bg-gradient-to-br from-[#22c55e] to-[#a3e635] text-[10px] text-black">✨</div>
+                <span>Executive Brief Preview</span>
+              </div>
+              <p className="text-xs text-[#a3a3a3]">Rivedi, modifica e pubblica la versione Bali Zero.</p>
+            </div>
 
-              {/* Tags & Components */}
-              <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                <CardContent className="pt-4 space-y-4">
-                  {isEditing && editedResult ? (
-                    <>
-                      <div>
-                        <Label className="text-xs text-amber-600 mb-2 flex items-center gap-2">
-                          <Tag className="h-4 w-4" />
-                          AI Tags (comma separated)
-                        </Label>
-                        <Input
-                          value={editedResult.ai_tags.join(', ')}
-                          onChange={(e) =>
-                            updateEditedField(
-                              'ai_tags',
-                              e.target.value
-                                .split(',')
-                                .map((s) => s.trim())
-                                .filter((s) => s)
-                            )
-                          }
-                          placeholder="tag1, tag2, tag3"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-amber-600 mb-2 block">
-                          Suggested Components (comma separated)
-                        </Label>
-                        <Input
-                          value={editedResult.suggested_components.join(', ')}
-                          onChange={(e) =>
-                            updateEditedField(
-                              'suggested_components',
-                              e.target.value
-                                .split(',')
-                                .map((s) => s.trim())
-                                .filter((s) => s)
-                            )
-                          }
-                          placeholder="checklist, comparison-table, alert-box"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
-                          <Tag className="h-4 w-4" />
-                          AI Tags
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {result.ai_tags.map((tag, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 rounded-full text-xs bg-[var(--background-elevated)] text-[var(--foreground-muted)] border border-[var(--border)]"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-[var(--foreground)] mb-2">
-                          Suggested Components
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {result.suggested_components.map((comp, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 rounded text-xs bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
-                            >
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Image Prompt Card */}
-              {(result.image_prompt || isEditing) && (
-                <Card className={isEditing ? 'border-amber-500/50' : ''}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Cover Image Prompt</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {isEditing && editedResult ? (
-                      <Textarea
-                        value={editedResult.image_prompt || ''}
-                        onChange={(e) => updateEditedField('image_prompt', e.target.value)}
-                        className="min-h-[150px] font-mono text-sm"
-                        placeholder="Enter AI image generation prompt..."
-                      />
-                    ) : (
+            <div className="p-4 flex flex-col gap-5 min-h-[400px]">
+              {!activeArticle ? (
+                <div className="flex flex-1 flex-col items-center justify-center opacity-40 text-center">
+                  <div className="mb-4 rounded-full bg-[#27272a] p-4"><FileText className="h-8 w-8 text-[#525252]" /></div>
+                  <h3 className="text-[#a3a3a3] font-medium">Ready to Transform</h3>
+                  <p className="mt-1 max-w-xs text-[12px] text-[#525252]">Fill in the raw content to generate the brief.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {isEditing ? (
                       <>
-                        <div className="p-3 rounded bg-[var(--background-secondary)] text-sm font-mono text-[var(--foreground-muted)] whitespace-pre-line">
-                          {result.image_prompt}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copyToClipboard(result.image_prompt || '')}
-                          className="mt-2 gap-2"
-                        >
-                          <Copy className="h-4 w-4" />
-                          Copy Prompt
-                        </Button>
+                        <button onClick={saveEdits} className="flex h-[28px] items-center gap-1.5 rounded-full border border-[#6366f1] bg-[#6366f1]/20 px-3 text-[11px] text-[#c7d2fe] hover:bg-[#6366f1]/30 transition-colors"><Save size={12} /> Save Changes</button>
+                        <button onClick={cancelEditing} className="flex h-[28px] items-center gap-1.5 rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 text-[11px] text-[#fca5a5] hover:bg-[#ef4444]/20 transition-colors"><X size={12} /> Cancel</button>
+                      </>
+                    ) : (
+                      <button onClick={startEditing} className="flex h-[28px] items-center gap-1.5 rounded-full border border-[#27272a] bg-transparent px-3 text-[11px] text-[#a3a3a3] hover:bg-[#18181b] hover:text-[#f5f5f5] transition-colors"><Pencil size={12} /> Edit Article</button>
+                    )}
+
+                    {!isEditing && (
+                      <>
+                        <button onClick={handleCopyJson} className="flex h-[28px] items-center gap-1.5 rounded-full border border-[#27272a] bg-transparent px-3 text-[11px] text-[#a3a3a3] hover:bg-[#18181b] hover:text-[#f5f5f5] transition-colors"><Copy size={12} /> Copy JSON</button>
+                        <button onClick={handleExportJson} className="flex h-[28px] items-center gap-1.5 rounded-full border border-[#27272a] bg-transparent px-3 text-[11px] text-[#a3a3a3] hover:bg-[#18181b] hover:text-[#f5f5f5] transition-colors"><Download size={12} /> Export</button>
                       </>
                     )}
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
 
-              {/* Cost Info */}
-              <div className="text-center text-sm text-[var(--foreground-muted)]">
-                API Cost: ${(apiCost / 100).toFixed(4)} | Enriched at:{' '}
-                {new Date(result.enriched_at).toLocaleString()}
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-32 bg-[var(--background-secondary)] rounded-2xl border-2 border-dashed border-[var(--border)]">
-              <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
-                <Sparkles className="h-12 w-12 text-[var(--accent)]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">
-                Ready to Transform
-              </h3>
-              <p className="text-[var(--foreground-muted)] max-w-md text-center">
-                Enter your raw content on the left and click "Compose Executive Brief" to generate a
-                Bali Zero style article with TL;DR, strategic analysis, and actionable next steps.
-              </p>
+                  {/* PUBLISH CARD */}
+                  {publishConfigured && (
+                    <div className="rounded-[12px] border border-[#22c55e]/40 bg-[#202020] bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.15),transparent)] p-3.5 flex flex-col gap-3">
+                      <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]"><Globe size={14} className="text-[#22c55e]" /><span>Publish to Site</span></div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[11px] text-[#bbf7d0]">Position</label>
+                          <select value={position} onChange={(e) => setPosition(e.target.value as any)} disabled={isEditing} className="w-full rounded-[9px] border border-[#16a34a]/40 bg-[#052e16]/60 px-2.5 py-1.5 text-[12px] text-[#bbf7d0] outline-none custom-select appearance-none cursor-pointer">{POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[11px] text-[#bbf7d0]">Slug</label>
+                          <input value={customSlug} onChange={(e) => setCustomSlug(e.target.value)} disabled={isEditing} className="w-full rounded-[9px] border border-[#16a34a]/40 bg-[#052e16]/60 px-2.5 py-1.5 text-[12px] text-[#bbf7d0] placeholder-[#86efac]/50 outline-none" placeholder="auto-generated-slug" />
+                        </div>
+                      </div>
+                      <button onClick={handlePublish} disabled={publishing || isEditing} className="mt-1 w-full rounded-full bg-[#22c55e] py-1.5 text-[12px] font-medium text-[#052e16] hover:bg-[#16a34a] disabled:opacity-50 transition-colors flex justify-center items-center gap-2">
+                        {publishing ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}{publishing ? 'Publishing...' : 'Publish Article'}
+                      </button>
+                      {publishedUrl && <div className="text-[11px]"><span className="text-[#bbf7d0]">Published: </span><a href={publishedUrl} target="_blank" className="text-[#4ade80] underline break-all">{publishedUrl}</a></div>}
+                    </div>
+                  )}
+
+                  {/* SECTIONS */}
+
+                  {/* Headline */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5] mb-2"><div className="w-2 h-2 rounded-full bg-[#6366f1]" /> Headline & Summary</div>
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2">
+                        <AutoResizeTextarea value={activeArticle.headline} onChange={(e) => updateEditedField('headline', e.target.value)} className={`${inputClass} text-[16px] font-bold min-h-[50px]`} />
+                        <AutoResizeTextarea value={activeArticle.ai_summary} onChange={(e) => updateEditedField('ai_summary', e.target.value)} className={`${inputClass} min-h-[70px]`} />
+                      </div>
+                    ) : (
+                      <div>
+                        <h2 className="text-[18px] font-semibold leading-[1.2]">{activeArticle.headline}</h2>
+                        <p className="mt-1 text-[13px] text-[#a3a3a3]">{activeArticle.ai_summary}</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      <span className="rounded-full border border-[#3f3f46]/80 bg-[#27272a]/90 px-2 py-0.5 text-[11px] text-[#a3a3a3]">{activeArticle.category}</span>
+                      <span className="rounded-full border border-[#3f3f46]/80 bg-[#27272a]/90 px-2 py-0.5 text-[11px] text-[#a3a3a3]">Relevance: {activeArticle.relevance_score}/100</span>
+                    </div>
+                  </div>
+
+                  {/* TL;DR */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]"><div className="h-2 w-2 rounded-full bg-[#6366f1]" /> TL;DR</div>
+                    {isEditing ? (
+                      <div className="grid gap-2 text-[12px]">
+                        <div className="grid grid-cols-2 gap-2">
+                          <select value={activeArticle.tldr.should_worry} onChange={(e) => updateEditedField('tldr.should_worry', e.target.value)} className={`${inputClass} custom-select appearance-none cursor-pointer`}><option>Yes</option><option>No</option><option>Maybe</option></select>
+                          <select value={activeArticle.tldr.risk_level} onChange={(e) => updateEditedField('tldr.risk_level', e.target.value)} className={`${inputClass} custom-select appearance-none cursor-pointer`}><option>Low</option><option>Medium</option><option>High</option></select>
+                        </div>
+                        <AutoResizeTextarea value={activeArticle.tldr.what} onChange={(e) => updateEditedField('tldr.what', e.target.value)} className={`${inputClass} min-h-[60px]`} placeholder="What" />
+                        <input value={activeArticle.tldr.who} onChange={(e) => updateEditedField('tldr.who', e.target.value)} className={inputClass} placeholder="Who" />
+                        <input value={activeArticle.tldr.when} onChange={(e) => updateEditedField('tldr.when', e.target.value)} className={inputClass} placeholder="When" />
+                      </div>
+                    ) : (
+                      <div className="text-[12px]">
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div><span className="text-[#a3a3a3]">Worry: </span><span className={activeArticle.tldr.should_worry === 'Yes' ? 'text-[#fecaca]' : activeArticle.tldr.should_worry === 'No' ? 'text-[#bbf7d0]' : 'text-[#fed7aa]'}>{activeArticle.tldr.should_worry}</span></div>
+                          <div><span className="text-[#a3a3a3]">Risk: </span><span className={activeArticle.tldr.risk_level === 'High' ? 'text-[#fecaca]' : activeArticle.tldr.risk_level === 'Low' ? 'text-[#bbf7d0]' : 'text-[#fed7aa]'}>{activeArticle.tldr.risk_level}</span></div>
+                        </div>
+                        <div className="space-y-1 text-[13px]">
+                          <div><strong className="text-white">What:</strong> {activeArticle.tldr.what}</div>
+                          <div><strong className="text-white">Who:</strong> {activeArticle.tldr.who}</div>
+                          <div><strong className="text-white">When:</strong> {activeArticle.tldr.when}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Facts (Markdown Enabled) */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]"><div className="h-2 w-2 rounded-full bg-[#6366f1]" /> The Facts</div>
+                    {isEditing ? <AutoResizeTextarea value={activeArticle.facts} onChange={(e) => updateEditedField('facts', e.target.value)} className={`${inputClass} min-h-[120px]`} /> : <div className="text-[13px] leading-relaxed whitespace-pre-line text-[#f5f5f5]" dangerouslySetInnerHTML={renderMiniMarkdown(activeArticle.facts)} />}
+                  </div>
+
+                  {/* Bali Zero Take */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]"><div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Bali Zero Take</div>
+                    <div className="flex flex-col gap-3 text-[13px]">
+                      {['hidden_insight', 'our_analysis', 'our_advice'].map(key => {
+                        const val = (activeArticle.bali_zero_take as any)[key];
+                        return (
+                          <div key={key}>
+                            <strong className="block text-[#f5f5f5] mb-1 capitalize">{key.replace('_', ' ')}</strong>
+                            {isEditing ? <AutoResizeTextarea value={val} onChange={(e) => updateEditedField(`bali_zero_take.${key}`, e.target.value)} className={`${inputClass} min-h-[60px]`} /> : <div className="text-[#a3a3a3]">{val}</div>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Next Steps */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]"><div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Next Steps</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px]">
+                      {['expat', 'investor'].map((type) => (
+                        <div key={type}>
+                          <div className="font-medium text-[#f5f5f5] mb-1 capitalize">For {type}s</div>
+                          {isEditing ? (
+                            <AutoResizeTextarea value={activeArticle.next_steps[type as 'expat' | 'investor'].join('\n')} onChange={(e) => updateEditedField(`next_steps.${type}`, e.target.value.split('\n'))} className={`${inputClass} min-h-[100px]`} placeholder="One per line..." />
+                          ) : (
+                            <ul className="space-y-1">
+                              {activeArticle.next_steps[type as 'expat' | 'investor'].map((s, i) => (
+                                <li key={i} className="flex gap-2 items-start"><span className="text-[#6366f1] mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0"></span><span dangerouslySetInnerHTML={renderMiniMarkdown(s)} /></li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mt-2 pt-2 border-t border-[#27272a]">
+                    <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5] mb-2"><div className="h-2 w-2 rounded-full bg-[#6366f1]" /> AI Tags</div>
+                    {isEditing ? <input value={activeArticle.ai_tags.join(', ')} onChange={(e) => updateEditedField('ai_tags', e.target.value.split(',').map(s => s.trim()))} className={inputClass} /> : <div className="flex flex-wrap gap-1.5">{activeArticle.ai_tags.map((tag, i) => <span key={i} className="rounded-full border border-[#3f3f46]/80 bg-[#27272a]/90 px-2 py-0.5 text-[11px] text-[#a3a3a3]">#{tag}</span>)}</div>}
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </section>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }

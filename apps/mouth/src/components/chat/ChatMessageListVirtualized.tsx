@@ -64,21 +64,24 @@ export function ChatMessageListVirtualized({
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = useCallback(() => {
-    // Try parentRef first (virtualized mode)
-    if (parentRef.current) {
-      parentRef.current.scrollTop = parentRef.current.scrollHeight;
-    }
-    // Also use messagesEndRef for non-virtualized mode
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [messagesEndRef]);
+    // Use requestAnimationFrame to ensure DOM is updated before scrolling
+    requestAnimationFrame(() => {
+      if (parentRef.current) {
+        parentRef.current.scrollTop = parentRef.current.scrollHeight;
+      }
+    });
+  }, []);
 
   useEffect(() => {
-    // Force scroll to bottom when messages change, content updates, or thinking state changes
-    // Using setTimeout ensures the DOM has updated
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timeoutId);
+    // Scroll to bottom when messages change or content updates
+    // Multiple scrolls ensure we catch streamed content that renders progressively
+    scrollToBottom();
+    const timeoutId = setTimeout(scrollToBottom, 50);
+    const timeoutId2 = setTimeout(scrollToBottom, 150);
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(timeoutId2);
+    };
   }, [messages, scrollToBottom, thinkingElapsedTime, isLoading]);
 
   // Initial loading state
@@ -165,7 +168,7 @@ export function ChatMessageListVirtualized({
     return (
       <div
         ref={parentRef}
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-auto min-h-0"
         style={{ contain: 'strict' }}
         role="log"
         aria-label="Chat messages"
@@ -226,7 +229,7 @@ export function ChatMessageListVirtualized({
   return (
     <div
       ref={parentRef}
-      className="flex-1 overflow-auto"
+      className="flex-1 overflow-auto min-h-0"
       role="log"
       aria-label="Chat messages"
       aria-live="polite"

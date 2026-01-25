@@ -481,26 +481,58 @@ reader.readAsDataURL(file);
 
 ### Prometheus Metrics
 
-**(To be implemented - see CLAUDE.md for planned metrics)**
+**✅ IMPLEMENTED** - Metrics are exposed at `/metrics` endpoint
 
-**Planned metrics:**
+**Available metrics:**
 
-- `article_compose_requests_total{status, category}`
-- `article_compose_duration_seconds`
-- `article_enrichment_word_count{priority}`
-- `article_publish_requests_total{status, has_cover_image}`
-- `claude_api_cost_cents`
+- `article_compose_requests_total{status, category}` - Total compose requests by status and category
+- `article_compose_duration_seconds` - Histogram of compose duration
+- `article_enrichment_word_count{priority}` - Histogram of word count by priority (high/medium/low)
+- `article_publish_requests_total{status, has_cover_image}` - Total publish requests by status and image presence
+- `claude_api_cost_cents` - Histogram of Claude API cost per article (in cents)
+
+**Example Prometheus queries:**
+
+```promql
+# Compose success rate (last 5min)
+rate(article_compose_requests_total{status="success"}[5m])
+/ rate(article_compose_requests_total[5m])
+
+# Average enrichment word count by priority
+avg(article_enrichment_word_count{priority="high"})
+
+# 95th percentile compose duration
+histogram_quantile(0.95, article_compose_duration_seconds)
+
+# Total Claude API cost (daily)
+sum(increase(claude_api_cost_cents[24h])) / 100
+```
+
+**Access metrics:**
+
+```bash
+# View all metrics
+curl https://nuzantara-rag.fly.dev/metrics | grep article_compose
+
+# Example output:
+# article_compose_requests_total{category="immigration",status="success"} 15.0
+# article_compose_duration_seconds_bucket{le="1.0"} 5.0
+# article_compose_duration_seconds_bucket{le="2.0"} 12.0
+# article_compose_duration_seconds_bucket{le="5.0"} 15.0
+```
 
 ### Grafana Dashboards
 
-**(To be implemented)**
+**Status:** Metrics available, dashboard creation recommended
 
-**Planned queries:**
+**Recommended dashboard queries:**
 
 - Compose success rate (last 5min)
 - Average enrichment word count by priority
 - 95th percentile compose duration
 - Total Claude API cost (daily/monthly)
+- Publish success rate
+- Articles published per day by category
 
 ### Logging
 
@@ -649,12 +681,21 @@ curl https://nuzantara-rag.fly.dev/api/articles/publish/status
 
 ## Changelog
 
+### v1.1 (2026-01-24)
+
+**Updated:**
+
+- Metrics documentation: Changed from "To be implemented" to "✅ IMPLEMENTED"
+- Added Prometheus query examples
+- Added metrics access instructions
+
 ### v1.0 (2026-01-19)
 
 **Added:**
 
 - Dynamic word count by priority (400-600 words)
 - Proper JSON serialization for React components in MDX
+- Prometheus metrics (article_compose_requests_total, article_compose_duration_seconds, etc.)
 
 **Removed:**
 

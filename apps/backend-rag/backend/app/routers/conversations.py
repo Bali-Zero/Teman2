@@ -69,9 +69,7 @@ def get_auto_crm():
 
 
 async def _generate_and_update_title(
-    conversation_id: int,
-    first_user_message: str,
-    db_pool: asyncpg.Pool
+    conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool
 ):
     """
     Background task to generate and store conversation title.
@@ -90,8 +88,7 @@ async def _generate_and_update_title(
     try:
         # Generate title using LLM
         title = await generate_conversation_title(
-            conversation_id=str(conversation_id),
-            first_user_message=first_user_message
+            conversation_id=str(conversation_id), first_user_message=first_user_message
         )
 
         if title:
@@ -105,28 +102,24 @@ async def _generate_and_update_title(
                     WHERE id = $2
                     """,
                     title,
-                    conversation_id
+                    conversation_id,
                 )
 
             log_success(
                 logger,
                 "Generated conversation title",
                 conversation_id=conversation_id,
-                title=title[:50]
+                title=title[:50],
             )
         else:
             logger.info(
-                f"Title generation returned None for conversation {conversation_id}, "
-                "using fallback"
+                f"Title generation returned None for conversation {conversation_id}, using fallback"
             )
 
     except Exception as e:
         # Don't fail conversation save if title generation fails
         log_warning(
-            logger,
-            "Title generation failed",
-            conversation_id=conversation_id,
-            error=str(e)
+            logger, "Title generation failed", conversation_id=conversation_id, error=str(e)
         )
 
 
@@ -323,7 +316,7 @@ async def save_conversation(
                                         for msg in request.messages
                                         if isinstance(msg, dict) and msg.get("role") == "user"
                                     ),
-                                    None
+                                    None,
                                 )
 
                                 if first_user_msg:
@@ -331,7 +324,7 @@ async def save_conversation(
                                         _generate_and_update_title(
                                             conversation_id=conversation_id,
                                             first_user_message=first_user_msg,
-                                            db_pool=db_pool
+                                            db_pool=db_pool,
                                         )
                                     )
                                     logger.info(

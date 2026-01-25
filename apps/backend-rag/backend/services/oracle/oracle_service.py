@@ -25,30 +25,29 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 
 from backend.llm.adapters.gemini import GeminiAdapter
 from backend.prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
+from backend.services.classification.intent_classifier import IntentClassifier
+from backend.services.memory import MemoryOrchestrator
+from backend.services.memory.memory_fact_extractor import MemoryFactExtractor
+from backend.services.memory.memory_service_postgres import MemoryServicePostgres
+from backend.services.misc.clarification_service import ClarificationService
+from backend.services.misc.followup_service import FollowupService
+from backend.services.misc.golden_answer_service import GoldenAnswerService
+from backend.services.misc.personality_service import PersonalityService
 
-from ..classification.intent_classifier import IntentClassifier
-from ..memory import MemoryOrchestrator
-from ..memory.memory_fact_extractor import MemoryFactExtractor
-from ..memory.memory_service_postgres import MemoryServicePostgres
-from ..misc.clarification_service import ClarificationService
-from ..misc.followup_service import FollowupService
-from ..misc.golden_answer_service import GoldenAnswerService
-from ..misc.personality_service import PersonalityService
-from ..response.validator import ZantaraResponseValidator
+# Import directly from submodules to avoid circular import with __init__.py
+from backend.services.oracle.analytics import OracleAnalyticsService
+from backend.services.oracle.document_retrieval import DocumentRetrievalService
+from backend.services.oracle.language_detector import LanguageDetectionService
+from backend.services.oracle.oracle_config import oracle_config as config
+from backend.services.oracle.oracle_database import db_manager
+from backend.services.oracle.reasoning_engine import ReasoningEngineService
+from backend.services.oracle.user_context import UserContextService
+from backend.services.response.validator import ZantaraResponseValidator
 
 # Core Dependencies
 # Services
-from ..search.citation_service import CitationService
-from ..search.search_service import SearchService
-
-# Import directly from submodules to avoid circular import with __init__.py
-from .analytics import OracleAnalyticsService
-from .document_retrieval import DocumentRetrievalService
-from .language_detector import LanguageDetectionService
-from .oracle_config import oracle_config as config
-from .oracle_database import db_manager
-from .reasoning_engine import ReasoningEngineService
-from .user_context import UserContextService
+from backend.services.search.citation_service import CitationService
+from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +56,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Note: Request/Response models are typically defined in routers or a shared schemas file.
 # Since they are currently in the router, we will assume the service receives typed arguments
-from ..rag.agentic import create_agentic_rag
-from ..rag.agentic.entity_extractor import EntityExtractionService
-from ..rag.agentic.orchestrator import AgenticRAGOrchestrator
-from ..rag.agentic.schema import CoreResult
+from backend.services.rag.agentic import create_agentic_rag
+from backend.services.rag.agentic.entity_extractor import EntityExtractionService
+from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.schema import CoreResult
 
 # ---------------------------------------------------------------------------
 # HELPER FUNCTIONS (Backward Compatibility)

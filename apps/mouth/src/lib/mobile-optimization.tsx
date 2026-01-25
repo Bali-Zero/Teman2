@@ -171,7 +171,9 @@ class MobileOptimizationService {
       if (newBreakpoint !== this.currentBreakpoint) {
         this.currentBreakpoint = newBreakpoint;
         this.notifyListeners();
-        console.log(`📱 Breakpoint changed to: ${newBreakpoint}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`📱 Breakpoint changed to: ${newBreakpoint}`);
+        }
       }
     };
 

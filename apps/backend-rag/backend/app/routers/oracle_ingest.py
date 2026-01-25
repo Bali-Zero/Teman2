@@ -6,19 +6,15 @@ POST /api/oracle/ingest - Bulk upload di chunks con embeddings
 """
 
 import logging
-import sys
 import time
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-# Add backend to path
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-
 from backend.app.dependencies import get_search_service
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.qdrant_db import QdrantClient
 from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
@@ -111,8 +107,6 @@ async def ingest_documents(
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
                 logger.info(f"Auto-creating collection: {request.collection}")
-                from backend.core.qdrant_db import QdrantClient
-
                 vector_db = QdrantClient(collection_name=request.collection)
                 service.collections[request.collection] = vector_db
             else:
@@ -128,13 +122,12 @@ async def ingest_documents(
         vector_db = service.collections[request.collection]
 
         # Generate embeddings for all documents
-        from backend.core.embeddings import create_embeddings_generator
-
         embedder = create_embeddings_generator()
         contents = [doc.content for doc in request.documents]
 
         logger.info(f"Generating embeddings for {len(contents)} documents...")
-        embeddings = embedder.generate_batch_embeddings(contents)
+        # ASYNC CALL: No longer blocking
+        embeddings = await embedder.generate_batch_embeddings(contents)
 
         # Prepare data for Qdrant
         documents = []

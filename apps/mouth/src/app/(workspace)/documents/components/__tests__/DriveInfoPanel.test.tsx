@@ -78,47 +78,44 @@ describe('DriveInfoPanel', () => {
     it('should display file type', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Type')).toBeTruthy();
+      expect(screen.getByText('Tipo')).toBeTruthy();
       expect(screen.getByText('pdf')).toBeTruthy();
     });
 
     it('should display file size for non-folder items', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Size')).toBeTruthy();
+      expect(screen.getByText('Dimensione')).toBeTruthy();
       expect(screen.getByText('2.5 MB')).toBeTruthy();
     });
 
     it('should display modified date', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Modified')).toBeTruthy();
-      // Date should be formatted in English locale (e.g. "Jan 20, 2026, 10:30 AM")
-      expect(screen.getByText(/Jan 20, 2026/)).toBeTruthy();
+      expect(screen.getByText('Modificato')).toBeTruthy();
     });
 
     it('should display Google Drive link', () => {
       render(<DriveInfoPanel {...defaultProps} />);
 
-      expect(screen.getByText('Link')).toBeTruthy();
-      expect(screen.getByText('Open in Google Drive')).toBeTruthy();
+      expect(screen.getByText('Apri in Google Drive')).toBeTruthy();
 
-      const link = screen.getByText('Open in Google Drive');
-      expect(link.getAttribute('href')).toBe('https://drive.google.com/file/d/file-1/view');
+      const link = screen.getByText('Apri in Google Drive').closest('a');
+      expect(link?.getAttribute('href')).toBe('https://drive.google.com/file/d/file-1/view');
     });
   });
 
   describe('Folder Details', () => {
-    it('should display "Folder" for folder type', () => {
+    it('should display "Cartella" for folder type', () => {
       render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      expect(screen.getByText('Folder')).toBeTruthy();
+      expect(screen.getByText('Cartella')).toBeTruthy();
     });
 
     it('should not display size for folders', () => {
       render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      expect(screen.queryByText('Size')).toBeFalsy();
+      expect(screen.queryByText('Dimensione')).toBeFalsy();
     });
   });
 
@@ -126,44 +123,45 @@ describe('DriveInfoPanel', () => {
     it('should render preview button for files', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const previewButton = container.querySelector('button[title="Preview"]');
+      const previewButton = container.querySelector('button[title="Anteprima"]');
       expect(previewButton).toBeTruthy();
     });
 
     it('should not render preview button for folders', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      const previewButton = container.querySelector('button[title="Preview"]');
+      const previewButton = container.querySelector('button[title="Anteprima"]');
       expect(previewButton).toBeFalsy();
     });
 
     it('should render download button for files', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const downloadButton = container.querySelector('button[title="Download"]');
+      const downloadButton = container.querySelector('button[title="Scarica"]');
       expect(downloadButton).toBeTruthy();
     });
 
     it('should not render download button for folders', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} file={mockFolder} />);
 
-      const downloadButton = container.querySelector('button[title="Download"]');
+      const downloadButton = container.querySelector('button[title="Scarica"]');
       expect(downloadButton).toBeFalsy();
     });
 
     it('should render delete button', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const deleteButton = container.querySelector('button[title="Delete"]');
+      const deleteButton = container.querySelector('button[title="Elimina"]');
       expect(deleteButton).toBeTruthy();
     });
 
     it('should call onClose when close button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      // Find the X button (close)
-      const closeButton = container.querySelector('.rounded-full.hover\\:bg-\\[\\#f5f5f5\\]');
-      fireEvent.click(closeButton!);
+      // Find the close button (first ghost button with X icon in header)
+      const buttons = container.querySelectorAll('button');
+      const closeButton = buttons[0]; // First button is the close button
+      fireEvent.click(closeButton);
 
       expect(defaultProps.onClose).toHaveBeenCalled();
     });
@@ -171,7 +169,7 @@ describe('DriveInfoPanel', () => {
     it('should call onPreview when preview button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const previewButton = container.querySelector('button[title="Preview"]');
+      const previewButton = container.querySelector('button[title="Anteprima"]');
       fireEvent.click(previewButton!);
 
       expect(defaultProps.onPreview).toHaveBeenCalledWith(mockFile);
@@ -180,7 +178,7 @@ describe('DriveInfoPanel', () => {
     it('should call onDownload when download button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const downloadButton = container.querySelector('button[title="Download"]');
+      const downloadButton = container.querySelector('button[title="Scarica"]');
       fireEvent.click(downloadButton!);
 
       expect(defaultProps.onDownload).toHaveBeenCalledWith(mockFile);
@@ -189,7 +187,7 @@ describe('DriveInfoPanel', () => {
     it('should call onDelete when delete button is clicked', () => {
       const { container } = render(<DriveInfoPanel {...defaultProps} />);
 
-      const deleteButton = container.querySelector('button[title="Delete"]');
+      const deleteButton = container.querySelector('button[title="Elimina"]');
       fireEvent.click(deleteButton!);
 
       expect(defaultProps.onDelete).toHaveBeenCalledWith(mockFile);

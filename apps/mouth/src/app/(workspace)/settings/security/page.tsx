@@ -74,7 +74,7 @@ export default function SecuritySettingsPage() {
 
   const revokeSession = (sessionId: string) => {
     // API call to revoke session
-    console.log('Revoking session:', sessionId);
+    // console.log('Revoking session:', sessionId);
   };
 
   return (

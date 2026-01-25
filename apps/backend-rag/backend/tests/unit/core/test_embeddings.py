@@ -1,11 +1,11 @@
 """
-Unit tests for core/embeddings.py
+Unit tests for core/embeddings.py (Refactored for Async)
 Target: >95% coverage
 """
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -34,7 +34,7 @@ class TestEmbeddingsGenerator:
         assert generator.provider == "sentence-transformers"
         assert generator.dimensions == 384
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_init_openai_with_key(self, mock_openai_class):
         """Test initialization with OpenAI and API key"""
         mock_client = MagicMock()
@@ -48,7 +48,7 @@ class TestEmbeddingsGenerator:
     @patch("backend.core.embeddings._default_settings", None)
     def test_init_openai_no_key(self):
         """Test initialization with OpenAI without API key"""
-        with patch("openai.OpenAI"), pytest.raises(ValueError, match="API key"):
+        with patch("openai.AsyncOpenAI"), pytest.raises(ValueError, match="API key"):
             EmbeddingsGenerator(provider="openai", api_key=None)
 
     @patch("sentence_transformers.SentenceTransformer")
@@ -67,24 +67,24 @@ class TestEmbeddingsGenerator:
     def test_init_sentence_transformers_fallback_to_openai(self, mock_st):
         """Test fallback to OpenAI when Sentence Transformers unavailable"""
         # Will try to fallback to OpenAI but fail without API key
-        # The fallback happens in _init_sentence_transformers which calls _init_openai
-        # Since no API key is provided, it should raise ValueError
         with pytest.raises(ValueError, match="API key"):
             EmbeddingsGenerator(provider="sentence-transformers")
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_empty(self, mock_st):
+    async def test_generate_embeddings_empty(self, mock_st):
         """Test generating embeddings for empty list"""
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = generator.generate_embeddings([])
+        result = await generator.generate_embeddings([])
         assert result == []
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_sentence_transformers(self, mock_st):
+    async def test_generate_embeddings_sentence_transformers(self, mock_st):
         """Test generating embeddings with sentence-transformers"""
         import numpy as np
 
@@ -94,12 +94,13 @@ class TestEmbeddingsGenerator:
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = generator.generate_embeddings(["text1", "text2"])
+        result = await generator.generate_embeddings(["text1", "text2"])
         assert len(result) == 2
         assert len(result[0]) == 384
 
-    @patch("openai.OpenAI")
-    def test_generate_embeddings_openai(self, mock_openai_class):
+    @pytest.mark.asyncio
+    @patch("openai.AsyncOpenAI")
+    async def test_generate_embeddings_openai(self, mock_openai_class):
         """Test generating embeddings with OpenAI"""
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -108,16 +109,19 @@ class TestEmbeddingsGenerator:
         mock_item2 = MagicMock()
         mock_item2.embedding = [0.2] * 1536
         mock_response.data = [mock_item1, mock_item2]
-        mock_client.embeddings.create.return_value = mock_response
+
+        # Async mock for embeddings.create
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai_class.return_value = mock_client
 
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
-        result = generator.generate_embeddings(["text1", "text2"])
+        result = await generator.generate_embeddings(["text1", "text2"])
         assert len(result) == 2
         assert len(result[0]) == 1536
 
-    @patch("openai.OpenAI")
-    def test_generate_embeddings_openai_batch(self, mock_openai_class):
+    @pytest.mark.asyncio
+    @patch("openai.AsyncOpenAI")
+    async def test_generate_embeddings_openai_batch(self, mock_openai_class):
         """Test OpenAI batching for large requests"""
         mock_client = MagicMock()
 
@@ -133,20 +137,23 @@ class TestEmbeddingsGenerator:
             return mock_response
 
         # Mock to return different responses for each batch
-        mock_client.embeddings.create.side_effect = [
-            create_batch_response(2048),  # First batch
-            create_batch_response(952),  # Second batch (3000 - 2048)
-        ]
+        mock_client.embeddings.create = AsyncMock(
+            side_effect=[
+                create_batch_response(2048),  # First batch
+                create_batch_response(952),  # Second batch (3000 - 2048)
+            ]
+        )
         mock_openai_class.return_value = mock_client
 
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
         texts = ["text"] * 3000  # Larger than MAX_BATCH_SIZE
-        result = generator.generate_embeddings(texts)
+        result = await generator.generate_embeddings(texts)
         assert len(result) == 3000
         assert mock_client.embeddings.create.call_count == 2  # Should batch into 2 calls
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_single_embedding(self, mock_st):
+    async def test_generate_single_embedding(self, mock_st):
         """Test generating single embedding"""
         import numpy as np
 
@@ -156,11 +163,12 @@ class TestEmbeddingsGenerator:
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = generator.generate_single_embedding("test text")
+        result = await generator.generate_single_embedding("test text")
         assert len(result) == 384
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_query_embedding(self, mock_st):
+    async def test_generate_query_embedding(self, mock_st):
         """Test generating query embedding"""
         import numpy as np
 
@@ -170,11 +178,12 @@ class TestEmbeddingsGenerator:
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = generator.generate_query_embedding("query")
+        result = await generator.generate_query_embedding("query")
         assert len(result) == 384
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_batch_embeddings(self, mock_st):
+    async def test_generate_batch_embeddings(self, mock_st):
         """Test generate_batch_embeddings alias"""
         import numpy as np
 
@@ -184,19 +193,16 @@ class TestEmbeddingsGenerator:
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = generator.generate_batch_embeddings(["text"])
+        result = await generator.generate_batch_embeddings(["text"])
         assert len(result) == 1
 
-    @patch("openai.OpenAI")
-    def test_get_model_info_openai(self, mock_openai_class):
+    def test_get_model_info_openai(self):
         """Test getting model info for OpenAI"""
-        mock_client = MagicMock()
-        mock_openai_class.return_value = mock_client
-
-        generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
-        info = generator.get_model_info()
-        assert info["provider"] == "openai"
-        assert info["cost"] == "Paid (OpenAI API)"
+        with patch("openai.AsyncOpenAI"):
+            generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
+            info = generator.get_model_info()
+            assert info["provider"] == "openai"
+            assert info["cost"] == "Paid (OpenAI API)"
 
     @patch("sentence_transformers.SentenceTransformer")
     def test_get_model_info_sentence_transformers(self, mock_st):
@@ -222,8 +228,9 @@ class TestEmbeddingsGenerator:
         assert hasattr(generator, "provider")
         assert hasattr(generator, "generate_embeddings")
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_function(self, mock_st):
+    async def test_generate_embeddings_function(self, mock_st):
         """Test convenience function"""
         import numpy as np
 
@@ -232,15 +239,18 @@ class TestEmbeddingsGenerator:
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
 
-        result = generate_embeddings(
+        # Note: since the module level function uses synchronous EmbeddingsGenerator internally
+        # we might need to await it if we made the top level function async.
+        # Let's check generate_embeddings in embeddings.py
+        result = await generate_embeddings(
             ["test"], api_key=None
-        )  # Use None to force sentence-transformers
+        )  # Error expected if generate_embeddings is sync
         assert len(result) == 1
-        # May be 384 (sentence-transformers) or 1536 (OpenAI fallback)
-        assert len(result[0]) in [384, 1536]
+        assert len(result[0]) == 384
 
+    @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_error_handling(self, mock_st):
+    async def test_generate_embeddings_error_handling(self, mock_st):
         """Test error handling in generate_embeddings"""
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
@@ -249,4 +259,4 @@ class TestEmbeddingsGenerator:
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         with pytest.raises(Exception):
-            generator.generate_embeddings(["test"])
+            await generator.generate_embeddings(["test"])

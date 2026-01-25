@@ -79,6 +79,37 @@ If production issues occur:
 4. Execute rollback if critical (see Step 18 in workflow)
 5. Document incident
 
+## 🤖 GEMINI CLI AGENTICA INTEGRATION
+
+### EXEC Orders for Gemini CLI
+**⚠️ CRITICAL:** When generating EXEC orders for Gemini CLI, the agent mode is automatically enabled via `~/.gemini/config.json` configuration. Use the `-p` flag for non-interactive prompts or `-i` for interactive mode.
+
+**Example:**
+```bash
+# ✅ CORRECT - Non-interactive mode with prompt
+npm run ai:agent "Analyze the codebase structure"
+
+# ✅ CORRECT - Interactive mode (executes prompt then continues)
+gemini -i "Analyze the codebase structure"
+
+# ✅ CORRECT - Direct usage
+gemini -p "Analyze the codebase structure"
+```
+
+**Configuration:** 
+- Agent mode is enabled in `~/.gemini/config.json` (`agent.enabled: true`)
+- Skills enabled: `fs_read`, `fs_write`, `terminal_execute`, `web_search`
+- Conductor mode enabled for workspace context management
+- Temperature set to 0.2 for precision (prevents hallucinations)
+
+**Why:** The agent configuration allows Gemini CLI to:
+- Read/write files using `fs_read` and `fs_write` skills
+- Execute terminal commands using `terminal_execute` skill
+- Access web search capabilities
+- Use conductor mode for workspace context management
+
+**Project Alias:** Use `npm run ai:agent "your prompt"` for convenient access.
+
 ## 🚫 IGNORE PATTERNS
 Files and directories to ignore during code analysis:
 - `.cursor/` - Cursor IDE internal files
@@ -88,4 +119,4 @@ Files and directories to ignore during code analysis:
 
 ---
 **Last Updated**: 2026-01-21
-**Version**: 1.1
+**Version**: 1.2

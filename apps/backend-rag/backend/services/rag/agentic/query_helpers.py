@@ -26,6 +26,9 @@ RECALL_TRIGGERS = [
     "il cliente di cui",
     "che mi hai detto",
     "prima hai detto",
+    "il mio nome",
+    "chi sono",
+    "chi sono io",
     # English
     "do you remember",
     "remember when",
@@ -36,6 +39,8 @@ RECALL_TRIGGERS = [
     "you mentioned before",
     "recall our conversation",
     "what we talked about",
+    "my name",
+    "who am i",
     # Indonesian
     "ingat tidak",
     "kamu ingat",

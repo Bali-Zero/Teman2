@@ -258,3 +258,4 @@ scripts/data/*_creds.json
 test_github_token.py
 apps/mouth/SESSION_2026_01_19_SUMMARY.md
 apps/mouth/QUICK_ARTICLE_PUBLISHING.md
+apps/backend-rag/backend/db/migrations_legacy_archive/044_google_drive_oauth_tokens.sql

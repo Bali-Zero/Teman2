@@ -129,6 +129,12 @@ if not api_key:
 - **Business Logic** → `backend/services/`
 - **Never** hardcode data in code
 
+### 9. CLEAN LOGGING (NO NOISE)
+
+- **Backend:** MAI usare `print()`. Usa sempre `logger.info()`, `logger.warning()`, ecc.
+- **Frontend:** MAI lasciare `console.log()` in produzione. Rimuovili o commentali prima del commit.
+- **Why:** I log sporchi rendono impossibile il debugging su Fly.io e sporcano la console dell'utente.
+
 ### 8. PRODUCTION-READY STANDARD (MANDATORY)
 
 **⚠️ CRITICAL:** Every implementation MUST follow the Production-Ready Standard.
@@ -387,15 +393,16 @@ fly ssh console -a nuzantara-rag
 
 ## 📚 ESSENTIAL DOCUMENTATION
 
-| Document                 | Path                                                     | When to Read                        |
-| ------------------------ | -------------------------------------------------------- | ----------------------------------- |
-| **AI Handover Protocol** | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (this is the brain)          |
-| **System Map 4D**        | `docs/SYSTEM_MAP_4D.md`                                  | To understand architecture          |
-| **Observability Guide**  | `docs/operations/OBSERVABILITY_GUIDE.md`                 | For debugging/monitoring            |
-| **Deploy Checklist**     | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                    |
-| **Intel Pipeline**       | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | For news scraper                    |
-| **ZANTARA Fluidity**     | `docs/ZANTARA_FLUIDITY_AND_STRENGTH.md`                  | Miglioramenti fluidità (2026-01-19) |
-| **Test Best Practices**  | `docs/TEST_CONFIGURATION_BEST_PRACTICES.md`              | Configurazione test (2026-01-19)    |
+| Document                  | Path                                                     | When to Read                        |
+| ------------------------- | -------------------------------------------------------- | ----------------------------------- |
+| **AI Handover Protocol**  | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (this is the brain)          |
+| **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | To understand architecture          |
+| **Observability Guide**   | `docs/operations/OBSERVABILITY_GUIDE.md`                 | For debugging/monitoring            |
+| **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                    |
+| **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | For news scraper                    |
+| **ZANTARA Fluidity**      | `docs/ZANTARA_FLUIDITY_AND_STRENGTH.md`                  | Miglioramenti fluidità (2026-01-19) |
+| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | Architettura DB V2 (2026-01-25)     |
+| **Test Best Practices**   | `docs/TEST_CONFIGURATION_BEST_PRACTICES.md`              | Configurazione test (2026-01-19)    |
 
 ---
 

@@ -44,13 +44,12 @@ except ImportError:
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
 from backend.core.cache import cached
-
-from ..ingestion.collection_manager import CollectionManager
-from ..ingestion.collection_warmup_service import CollectionWarmupService
-from ..misc.cultural_insights_service import CulturalInsightsService
-from ..misc.result_formatter import format_search_results
-from ..routing.conflict_resolver import ConflictResolver
-from .search_filters import build_search_filter
+from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
+from backend.services.misc.cultural_insights_service import CulturalInsightsService
+from backend.services.misc.result_formatter import format_search_results
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.search.search_filters import build_search_filter
 
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
 
@@ -296,7 +295,7 @@ class SearchService:
         """Access to CulturalInsightsService (public API)."""
         return self._cultural_insights
 
-    def _prepare_search_context(
+    async def _prepare_search_context(
         self,
         query: str,
         user_level: int,
@@ -334,7 +333,7 @@ class SearchService:
             raise ValueError(f"User level must be between 0 and 3, got {user_level}")
 
         # Generate query embedding
-        query_embedding = self.embedder.generate_query_embedding(query)
+        query_embedding = await self.embedder.generate_query_embedding(query)
 
         # Validate embedding was generated
         if not query_embedding or len(query_embedding) == 0:
@@ -411,7 +410,7 @@ class SearchService:
                 vector_db,
                 chroma_filter,
                 tier_values,
-            ) = self._prepare_search_context(
+            ) = await self._prepare_search_context(
                 query, user_level, tier_filter, collection_override, apply_filters
             )
             if METRICS_AVAILABLE and embedding_start:
@@ -462,7 +461,7 @@ class SearchService:
                         metrics_collector.search_hybrid_failed_total.inc()
                     # Fall through to dense-only search
                     # CRITICAL: Hybrid collections require named vector "dense"
-                    use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                    use_vector_name = "dense" if collection_name.endswith("_hybrid") or collection_name == "kbli_unified" else None
                     raw_results = await vector_db.search(
                         query_embedding=query_embedding,
                         filter=chroma_filter,
@@ -474,7 +473,7 @@ class SearchService:
             else:
                 # Fallback: Dense-only search
                 # CRITICAL: Hybrid collections require named vector "dense"
-                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                use_vector_name = "dense" if collection_name.endswith("_hybrid") or collection_name == "kbli_unified" else None
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,
                     filter=chroma_filter,
@@ -653,7 +652,7 @@ class SearchService:
                 vector_db,
                 chroma_filter,
                 tier_values,
-            ) = self._prepare_search_context(
+            ) = await self._prepare_search_context(
                 query, user_level, tier_filter, collection_override, apply_filters
             )
             if METRICS_AVAILABLE and embedding_start:
@@ -875,7 +874,7 @@ class SearchService:
             self.conflict_stats["total_multi_collection_searches"] += 1
 
             # Generate query embedding once (reuse for all collections)
-            query_embedding = self.embedder.generate_query_embedding(query)
+            query_embedding = await self.embedder.generate_query_embedding(query)
 
             # Route query with fallbacks (using QueryRouterIntegration)
             routing_info = self.query_router.route_query(

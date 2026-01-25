@@ -1,12 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiClient } from '../api-client';
 import { UserProfile } from '@/types';
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
-// Mock localStorage
+// Mock localStorage setup
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
@@ -28,10 +24,16 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 describe('Streaming Integration Tests', () => {
   let api: ApiClient;
   const baseUrl = 'https://api.test.com';
+  // Create a fresh mock for each test
+  const mockFetch = vi.fn();
 
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
+
+    // Stub global fetch for this test scope
+    vi.stubGlobal('fetch', mockFetch);
+
     api = new ApiClient(baseUrl);
 
     const mockProfile: UserProfile = {
@@ -43,6 +45,10 @@ describe('Streaming Integration Tests', () => {
     api.setUserProfile(mockProfile);
     api.setToken('test-token');
     api.setCsrfToken('csrf-token');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('SSE Streaming Parsing', () => {

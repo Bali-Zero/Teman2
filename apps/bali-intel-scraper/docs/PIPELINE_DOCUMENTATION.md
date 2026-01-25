@@ -21,6 +21,13 @@ The BaliZero Intel Pipeline is a complete news processing system that:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│  0. SEMANTIC DEDUPLICATION (Qdrant)                             │
+│     - Check vector similarity > 88% with recent news            │
+│     - Skip immediately if duplicate (Save $$$)                  │
+│     - Uses OpenAI embeddings + Qdrant vector search             │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓ (only if not duplicate)
+┌─────────────────────────────────────────────────────────────────┐
 │  1. RSS FETCHER                                                 │
 │     Raw article: {title, summary, url}                          │
 └─────────────────────────────────────────────────────────────────┘
@@ -65,15 +72,30 @@ The BaliZero Intel Pipeline is a complete news processing system that:
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  6. TELEGRAM APPROVAL (NEW)                                     │
-│     - Generate HTML preview                                     │
-│     - Send notification to Telegram                             │
-│     - Wait for manual approval/rejection                        │
+│  6. SUBMIT FOR APPROVAL (parallel channels)                     │
+│     6a. Telegram → voting via bot (2/3 majority)                │
+│         - Generate HTML preview                                 │
+│         - Send notification to Telegram                        │
+│         - Wait for manual approval/rejection                    │
+│     6b. News Room UI → zantara.balizero.com/intelligence        │
+│         - Frontend deployed on Vercel, custom domain            │
+│         - Team can review articles in web interface              │
+│         - Includes preview URL for E-E-A-T human review         │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ (only approved)
 ┌─────────────────────────────────────────────────────────────────┐
-│  7. PUBLISH TO API                                              │
+│  7. AUTO-MEMORY (Qdrant)                                        │
+│     - Save article vector to Qdrant collection                  │
+│     - Enables future deduplication (Step 0)                     │
+│     - Uses enriched content for better semantic matching         │
+│     - Collection: 'balizero_news_history'                       │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  8. PUBLISH TO API (if approved)                                │
 │     - Article + cover image + SEO metadata → BaliZero API       │
+│     - Ingests to Qdrant knowledge base                          │
+│     - Registers in anti-duplicate system                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,16 +103,81 @@ The BaliZero Intel Pipeline is a complete news processing system that:
 
 ## Cost Breakdown
 
-| Step                  | Cost           | Provider              |
-| --------------------- | -------------- | --------------------- |
-| LLAMA scoring         | $0             | Local Ollama          |
-| Claude validation     | ~$0.01/article | Anthropic             |
-| Claude Max enrichment | ~$0.05/article | Anthropic             |
-| Gemini image          | $0             | Google One AI Premium |
-| SEO/AEO optimization  | $0             | Local processing      |
-| Telegram notification | $0             | Telegram Bot API      |
+| Step                   | Cost           | Provider                |
+| ---------------------- | -------------- | ----------------------- |
+| Semantic deduplication | $0             | Qdrant (infrastructure) |
+| LLAMA scoring          | $0             | Local Ollama            |
+| Claude validation      | ~$0.01/article | Anthropic               |
+| Claude Max enrichment  | ~$0.05/article | Anthropic               |
+| Gemini image           | $0             | Google One AI Premium   |
+| SEO/AEO optimization   | $0             | Local processing        |
+| Telegram notification  | $0             | Telegram Bot API        |
 
 **Total cost per article: ~$0.06**
+
+**Note:** Semantic deduplication (Step 0) saves costs by filtering duplicates before expensive AI processing.
+
+---
+
+## Pipeline Components
+
+### 0. Semantic Deduplicator (`semantic_deduplicator.py` / `semantic_deduplicator_httpx.py`)
+
+**Purpose:** Prevents processing duplicate articles by checking semantic similarity with recent news.
+
+**How it works:**
+
+1. Generates embedding vector for article title + summary using OpenAI `text-embedding-3-small`
+2. Searches Qdrant collection `balizero_news_history` for similar articles
+3. Filters by date (last 5 days by default)
+4. If similarity > 88% threshold → marks as duplicate and skips processing
+
+**Benefits:**
+
+- **Cost savings:** Avoids expensive Claude API calls for duplicates (~$0.05 saved per duplicate)
+- **Semantic matching:** Detects duplicates even with different wording
+- **Fast:** Vector search is much faster than full article processing
+
+**Configuration:**
+
+```python
+SIMILARITY_THRESHOLD = 0.88  # 88% similarity = duplicate
+SEARCH_WINDOW_DAYS = 5       # Check last 5 days
+COLLECTION_NAME = "balizero_news_history"
+```
+
+**Usage:**
+
+```python
+from semantic_deduplicator_httpx import SemanticDeduplicator
+
+deduplicator = SemanticDeduplicator()
+
+is_dup, original_title, score = await deduplicator.is_duplicate(
+    title="Indonesia Extends Digital Nomad Visa",
+    summary="The Indonesian government announced...",
+    url="https://example.com/article"
+)
+
+if is_dup:
+    print(f"Duplicate of: {original_title} (similarity: {score:.2%})")
+    # Skip processing
+else:
+    # Continue with pipeline
+```
+
+**Two implementations:**
+
+- `semantic_deduplicator.py`: Uses `qdrant-client` library (may have TLS issues)
+- `semantic_deduplicator_httpx.py`: Uses `httpx` directly (more reliable, recommended)
+
+**Environment Variables:**
+
+```bash
+QDRANT_URL=https://nuzantara-qdrant.fly.dev
+QDRANT_API_KEY=your_qdrant_key
+OPENAI_API_KEY=your_openai_key  # Required for embeddings
+```
 
 ---
 
@@ -158,7 +245,7 @@ article["seo"] = {
 
 ### 2. Telegram Approval System (`telegram_approval.py`)
 
-Sends article previews to Telegram for manual approval before publishing.
+Sends article previews to Telegram for manual approval before publishing. Works in parallel with News Room UI (Step 6b).
 
 #### Features
 
@@ -263,6 +350,8 @@ approved_list = approval.list_approved()
 apps/bali-intel-scraper/
 ├── scripts/
 │   ├── intel_pipeline.py       # Main orchestrator
+│   ├── semantic_deduplicator.py # Step 0: Semantic deduplication (qdrant-client)
+│   ├── semantic_deduplicator_httpx.py # Step 0: Alternative (httpx, more reliable)
 │   ├── rss_fetcher.py          # Step 1: RSS fetching
 │   ├── professional_scorer.py   # Step 2: Keyword scoring
 │   ├── ollama_scorer.py        # Step 2: Ollama enhancement
@@ -270,7 +359,7 @@ apps/bali-intel-scraper/
 │   ├── article_deep_enricher.py # Step 4: Content enrichment
 │   ├── gemini_image_generator.py # Step 5: Image generation
 │   ├── seo_aeo_optimizer.py    # Step 5.5: SEO/AEO
-│   ├── telegram_approval.py    # Step 6: Approval
+│   ├── telegram_approval.py    # Step 6a: Telegram approval
 │   ├── preview_generator.py    # E-E-A-T HTML previews
 │   ├── logging_config.py       # Centralized logging
 │   ├── metrics.py              # Prometheus metrics
@@ -379,16 +468,34 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_CHAT_ID" -a nuzant
 
 ## Current Configuration
 
-| Setting          | Value                                                   |
-| ---------------- | ------------------------------------------------------- |
-| Telegram Bot     | @Balizerobot (Zantara - Bali Zero)                      |
-| Approvers        | Zero (8290313965), Dea (6217157548), Damar (1813875994) |
-| Bot Token Secret | TELEGRAM_BOT_TOKEN                                      |
-| Chat ID Secret   | TELEGRAM_APPROVAL_CHAT_ID                               |
+| Setting          | Value                              |
+| ---------------- | ---------------------------------- |
+| Telegram Bot     | @Balizerobot (Zantara - Bali Zero) |
+| Approvers        | @archangelsamyaza (1125336968)     |
+| Bot Token Secret | TELEGRAM_BOT_TOKEN                 |
+| Chat ID Secret   | TELEGRAM_APPROVAL_CHAT_ID          |
 
 ---
 
 ## Changelog
+
+### 2026-01-24
+
+- **Added Step 0: Semantic Deduplication** (`semantic_deduplicator.py`, `semantic_deduplicator_httpx.py`)
+  - Prevents processing duplicate articles using vector similarity
+  - Saves ~$0.05 per duplicate article
+  - Uses OpenAI embeddings + Qdrant vector search
+  - Threshold: 88% similarity, checks last 5 days
+
+- **Updated Step 6: Approval Channels**
+  - Documented parallel approval channels (Telegram + News Room UI)
+  - News Room UI: `zantara.balizero.com/intelligence` (Vercel)
+  - Telegram: Bot notifications with inline buttons
+
+- **Updated Step 7: Auto-Memory**
+  - Clarified that Step 7 saves to Qdrant for future deduplication
+  - Uses enriched content for better semantic matching
+  - Collection: `balizero_news_history`
 
 ### 2026-01-04
 

@@ -483,7 +483,7 @@ async def main():
 
     # Common options
     parser.add_argument(
-        "--api-url", default="https://balizero.com", help="BaliZero API URL"
+        "--api-url", default="https://nuzantara-rag.fly.dev", help="Backend API URL"
     )
     parser.add_argument("--api-key", help="API key (or set NUZANTARA_API_KEY env)")
     parser.add_argument(

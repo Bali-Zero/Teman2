@@ -18,6 +18,7 @@ OpenRouter tries models in order until one succeeds.
 import json
 import logging
 import os
+
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from enum import Enum
@@ -286,7 +287,12 @@ class OpenRouterClient:
 
 
 # Singleton instance
-openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
+try:
+    openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
+    logger.debug("OpenRouterClient singleton created.")
+except Exception as e:
+    logger.error(f"Failed to create OpenRouterClient: {e}")
+    openrouter_client = None
 
 
 # Convenience functions

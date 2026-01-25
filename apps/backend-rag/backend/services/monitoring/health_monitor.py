@@ -265,27 +265,55 @@ class HealthMonitor:
 
     async def _check_ai_router(self, intelligent_router) -> bool:
         """Check if AI Router is actually working"""
-        if intelligent_router is None:
+        # Strategy 1: Use passed intelligent_router
+        router = intelligent_router
+
+        # Strategy 2: Try to get from app_state dynamically (if passed router is None)
+        if router is None and self.app_state:
+            router = getattr(self.app_state, "intelligent_router", None)
+            logger.debug(f"AI Router Strategy 2: Got from app_state={router is not None}")
+
+        if router is None:
+            # Log at warning level (only once) to diagnose production issues
+            if not hasattr(self, "_ai_router_none_logged"):
+                self._ai_router_none_logged = True
+                logger.warning(
+                    "AI Router health check: router is None. "
+                    f"injected_router={intelligent_router is not None}, "
+                    f"app_state={self.app_state is not None}, "
+                    f"app_state.intelligent_router={getattr(self.app_state, 'intelligent_router', 'NOT_SET') if self.app_state else 'NO_APP_STATE'}"
+                )
             return False
 
         try:
-            # NEW: Check if router has the Agentic RAG orchestrator
-            has_orchestrator = (
-                hasattr(intelligent_router, "orchestrator")
-                and intelligent_router.orchestrator is not None
-            )
+            # Check if router has the Agentic RAG orchestrator
+            has_orchestrator_attr = hasattr(router, "orchestrator")
+            orchestrator_value = getattr(router, "orchestrator", None)
+            has_orchestrator = has_orchestrator_attr and orchestrator_value is not None
 
             if has_orchestrator:
                 return True
 
             # Legacy fallback: check old attributes
-            has_llama = (
-                hasattr(intelligent_router, "llama_client")
-                and intelligent_router.llama_client is not None
-            )
-            return has_orchestrator or has_llama
+            has_llama = hasattr(router, "llama_client") and router.llama_client is not None
+
+            if has_llama:
+                return True
+
+            # Debug: Log why check failed (only on first failure to avoid spam)
+            if not hasattr(self, "_ai_router_debug_logged"):
+                self._ai_router_debug_logged = True
+                logger.warning(
+                    f"AI Router health check failed: "
+                    f"router_type={type(router).__name__}, "
+                    f"has_orchestrator_attr={has_orchestrator_attr}, "
+                    f"orchestrator_is_none={orchestrator_value is None}, "
+                    f"has_llama={has_llama}"
+                )
+
+            return False
         except Exception as e:
-            logger.debug(f"AI Router health check failed: {e}")
+            logger.warning(f"AI Router health check exception: {e}")
             return False
 
     def get_status(self) -> dict[str, Any]:

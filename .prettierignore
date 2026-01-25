@@ -20,3 +20,6 @@ venv/
 .env.local
 .env.*.local
 .cursorrules
+
+# Extracted data (PDFs, raw text)
+lampiran/

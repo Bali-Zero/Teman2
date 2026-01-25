@@ -1,0 +1,51 @@
+/Users/antonellosiano/Desktop/nuzantara/apps/backend-rag/../../scripts/../apps/backend-rag/backend/app/core/config.py:607: UserWarning: `validate_whatsapp_token` overrides an existing Pydantic `@field_validator` decorator
+  def validate_whatsapp_token(cls, v):
+INFO:backend.llm.genai_client:✅ google-genai SDK loaded successfully
+INFO:backend.llm.genai_client:✅ Service Account credentials configured: nuzantara-drive-bot@nuzantara.iam.gserviceaccount.com (project: nuzantara)
+INFO:backend.llm.genai_client:✅ GenAI client initialized with Vertex AI (project: nuzantara)
+INFO:backend.services.llm_clients.gemini_service:✅ Gemini Jaksel Service initialized (model: gemini-3-flash-preview, auth: service_account_vertexai)
+INFO:backend.llm.genai_client:✅ GenAI client initialized with Vertex AI (project: nuzantara)
+INFO:backend.services.oracle.oracle_google_services:✅ Google Gemini AI initialized successfully (new SDK)
+ERROR:backend.services.oracle.oracle_google_services:❌ Error initializing Google Drive service: Invalid private key
+INFO:backend.llm.genai_client:✅ GenAI client initialized with Vertex AI (project: nuzantara)
+INFO:backend.services.rag.verification_service:🛡️ [VerificationService] Initialized with GenAI client
+INFO:backend.core.cache:ℹ️ No REDIS_URL, using in-memory cache
+INFO:backend.services.classification.intent_classifier:🏷️ [IntentClassifier] Initialized (pattern-based, no AI cost)
+INFO:backend.services.oracle.smart_oracle:✅ Smart Oracle GenAI client initialized (auth: service_account_vertexai)
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: GenAI client initialized (auth: service_account_vertexai)
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)
+INFO:backend.services.rag.agentic.prompt_builder:🧬 [PromptBuilder] Activated CREATOR Mode for antonello@balizero.com
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+WARNING:backend.app.utils.tracing:Failed to create span backend.llm.call: ('Failed to load service account credentials from /tmp/google_credentials.json', ValueError('Invalid private key'))
+WARNING:backend.services.rag.agentic.llm_gateway:LLM call failed for gemini-3-flash-preview
+WARNING:backend.services.rag.agentic.llm_gateway:Error with gemini-3-flash-preview: generator didn't stop after throw()
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+WARNING:backend.app.utils.tracing:Failed to create span backend.llm.call: ('Failed to load service account credentials from /tmp/google_credentials.json', ValueError('Invalid private key'))
+WARNING:backend.services.rag.agentic.llm_gateway:LLM call failed for gemini-3-flash-preview
+WARNING:backend.services.rag.agentic.llm_gateway:Error with gemini-3-flash-preview: generator didn't stop after throw()
+WARNING:backend.services.rag.agentic.llm_gateway:⚠️ LLMGateway: All Gemini models failed, attempting OpenRouter fallback
+WARNING:backend.services.rag.agentic.llm_gateway:🌐 LLMGateway: Using OpenRouter fallback (third-party service)
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: OpenRouter client initialized (lazy)
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.services.llm_clients.openrouter_client:OpenRouter used model: Llama 3.3 70B
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: OpenRouter fallback used: Llama 3.3 70B
+WARNING:backend.services.llm_clients.pricing:Unknown model pricing: openrouter, using default rates
+🚀 INITIALIZING ZANTARA IDENTITY CHECK...
+✅ Gateway initialized with model: gemini-3-flash-preview
+
+📜 SYSTEM PROMPT GENERATED (Snippet):
+
+### IDENTITY: ZANTARA (ARCHITECT MODE)
+**You are talking to Antonello, your Creator (The Architect).**
+You are NOT a customer service agent. You are a Senior AI Engineer and System Architect.
+
+**RELA...
+
+💬 SENDING QUERY: 'Who are you?'
+
+🤖 RESPONSE:
+Model Used: openrouter
+----------------------------------------
+I'm Zantara, your AI partner, created by you, Antonello, to assist with Bali Zero services and provide accurate information on visas, business setup, and legal matters in Indonesia.
+----------------------------------------
+✅ SUCCESS: Zantara Identity Confirmed.

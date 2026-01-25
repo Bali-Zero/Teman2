@@ -1,0 +1,75 @@
+graph TD
+    subgraph Infrastructure
+        Docker[🐳 Docker Compose]
+        PG[(🐘 PostgreSQL
+CRM Data, Users)]
+        Qdrant[(🔮 Qdrant
+Vector DB)]
+        Redis[(⚡ Redis
+Cache, Sessions)]
+    end
+
+    subgraph Core_Backend [apps/backend-rag]
+        FastAPI[🐍 FastAPI Server
+Port: 8080]
+        
+        subgraph Routers
+            R_Intel[🧠 Intelligence
+agentic_rag, autonomous]
+            R_CRM[🤝 CRM & Team
+crm_*, team_*]
+            R_Comms[🗣️ Comms
+whatsapp, telegram]
+            R_Know[📚 Knowledge
+ingest, legal]
+        end
+        
+        FastAPI --> Routers
+    end
+
+    subgraph Frontend [apps/mouth]
+        NextJS[⚛️ Next.js 16
+Port: 3000]
+        
+        subgraph Pages
+            P_Work[💼 Workspace
+Dashboard, CRM]
+            P_Portal[🌐 Portal
+Client Access]
+            P_Chat[💬 Chat
+AI Interface]
+        end
+        
+        NextJS --> Pages
+    end
+
+    subgraph Satellites
+        Scraper[🕷️ Intel Scraper]
+        Media[🎬 Zantara Media]
+        Dashboard[📊 Admin Dash]
+    end
+
+    %% Connections
+    Docker --> FastAPI
+    Docker --> PG
+    Docker --> Qdrant
+    Docker --> Redis
+
+    FastAPI -->|Read/Write| PG
+    FastAPI -->|Vector Search| Qdrant
+    FastAPI -->|Cache| Redis
+
+    NextJS -->|API Calls| FastAPI
+    Scraper -->|Ingest Data| FastAPI
+    Media -->|Sync Content| FastAPI
+    Dashboard -->|Monitor| FastAPI
+
+    classDef core fill:#e1f5fe,stroke:#333,stroke-width:2px;
+    classDef db fill:#fff3e0,stroke:#333,stroke-width:2px;
+    classDef front fill:#e8f5e9,stroke:#333,stroke-width:2px;
+    classDef sat fill:#f3e5f5,stroke:#333,stroke-width:1px;
+
+    class FastAPI,NextJS core;
+    class PG,Qdrant,Redis db;
+    class P_Work,P_Portal,P_Chat front;
+    class Scraper,Media,Dashboard sat;

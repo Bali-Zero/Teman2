@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { monitoringDashboard, monitoringHelpers } from './monitoring-dashboard';
 import { conversationMonitor } from './monitoring';
+import { logger } from './logger';
 
 // Mock logger
 vi.mock('./logger', () => ({
@@ -59,11 +60,9 @@ describe('MonitoringDashboard', () => {
       vi.mocked(conversationMonitor.getSummary).mockReturnValue(mockSummary);
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
 
-      const consoleSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
-
       monitoringDashboard.showSummary();
 
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should display summary without active sessions', () => {
@@ -78,10 +77,9 @@ describe('MonitoringDashboard', () => {
       vi.mocked(conversationMonitor.getSummary).mockReturnValue(mockSummary);
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
 
-      const consoleSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
       monitoringDashboard.showSummary();
 
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should display alert history when present', () => {
@@ -99,10 +97,10 @@ describe('MonitoringDashboard', () => {
       // Add alert history
       monitoringDashboard.recordAlert('TEST_ALERT', { test: 'data' });
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showSummary();
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      // Should call logger.warn instead of console.warn
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 
@@ -110,10 +108,12 @@ describe('MonitoringDashboard', () => {
     it('should show no alerts when none exist', () => {
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
 
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       monitoringDashboard.showAlerts();
 
-      expect(consoleLogSpy).toHaveBeenCalledWith('✅ No active alerts');
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('No active alerts'),
+        expect.any(Object)
+      );
     });
 
     it('should detect LONG_CONVERSATION alert', () => {
@@ -131,10 +131,9 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showAlerts();
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should detect MULTIPLE_ERRORS alert', () => {
@@ -156,10 +155,9 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showAlerts();
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should detect MULTIPLE_TIMEOUTS alert', () => {
@@ -177,10 +175,9 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showAlerts();
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should detect RATE_LIMIT_ISSUES alert', () => {
@@ -198,10 +195,9 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showAlerts();
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 
@@ -219,19 +215,17 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(mockMetrics);
 
-      const consoleSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
       monitoringDashboard.showSessionDetails('session-123');
 
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should warn when session does not exist', () => {
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(undefined);
 
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       monitoringDashboard.showSessionDetails('nonexistent');
 
-      expect(consoleWarnSpy).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should display error history when present', () => {
@@ -247,10 +241,9 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(mockMetrics);
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       monitoringDashboard.showSessionDetails('session-123');
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
@@ -353,16 +346,14 @@ describe('MonitoringDashboard', () => {
 
   describe('monitoringHelpers', () => {
     it('should provide summary helper', () => {
-      const consoleSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
       monitoringHelpers.summary();
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should provide alerts helper', () => {
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       monitoringHelpers.alerts();
-      expect(consoleLogSpy).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should provide export helper', () => {

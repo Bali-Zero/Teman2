@@ -29,7 +29,7 @@ import time
 from functools import wraps
 
 # Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def retry_qdrant(max_retries=3, delay=2):
@@ -59,6 +59,8 @@ def retry_qdrant(max_retries=3, delay=2):
 
 import asyncpg
 import httpx
+
+from backend.llm.genai_client import get_genai_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -147,7 +149,9 @@ class KGIncrementalExtractor:
     def _qdrant_request(self, method: str, endpoint: str, json_data: dict = None) -> dict:
         """Make HTTP request to Qdrant API with retries."""
         url = f"{self.qdrant_url}{endpoint}"
-        headers = {"api-key": self.qdrant_api_key, "Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"}
+        if self.qdrant_api_key:
+            headers["api-key"] = self.qdrant_api_key
 
         for attempt in range(5):
             try:
@@ -330,7 +334,7 @@ class KGIncrementalExtractor:
                 "relationships_extracted": 0,
             }
 
-        if not self.gemini:
+        if not self.gemini or not self.gemini.is_available:
             logger.warning("Gemini client not available - skipping extraction")
             return {"chunks_processed": 0, "entities_extracted": 0, "relationships_extracted": 0}
 
@@ -368,18 +372,19 @@ class KGIncrementalExtractor:
 
     async def extract_with_gemini(self, text: str) -> dict:
         """Extract entities using Gemini."""
-        if not self.gemini:
+        if not self.gemini or not self.gemini.is_available:
             return {"entities": [], "relationships": []}
 
         prompt = EXTRACTION_PROMPT.format(text=text[:8000])
 
         try:
-            # Use the new google-genai API
-            response = self.gemini.models.generate_content(
-                model="gemini-2.0-flash",  # 2.0 Flash - try without -exp suffix
+            # Use the new GenAIClient wrapper
+            response = await self.gemini.generate_content(
+                model="gemini-2.0-flash-001",
                 contents=prompt,
+                temperature=0.1,  # Low temperature for extraction
             )
-            response_text = response.text.strip()
+            response_text = response["text"].strip()
 
             # Clean JSON from markdown
             if "```json" in response_text:
@@ -546,7 +551,7 @@ class KGIncrementalExtractor:
             logger.info("DRY RUN - No extraction performed")
             return self.stats
 
-        if not self.gemini:
+        if not self.gemini or not self.gemini.is_available:
             logger.error("Gemini client not available - cannot proceed")
             return self.stats
 
@@ -621,28 +626,11 @@ async def main():
     gemini = None
     if not args.dry_run:
         try:
-            import tempfile
-
-            from google import genai
-
-            # Get credentials from env var (JSON string)
-            creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-            project_id = os.environ.get("GOOGLE_PROJECT_ID", "gen-lang-client-0498009027")
-            location = os.environ.get("GOOGLE_LOCATION", "us-central1")
-
-            if creds_json:
-                # Write to temp file for auth
-                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-                    f.write(creds_json)
-                    creds_path = f.name
-
-                # Set for ADC
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-                logger.info("Set GOOGLE_APPLICATION_CREDENTIALS from secret")
-
-            client = genai.Client(vertexai=True, project=project_id, location=location)
-            gemini = client
-            logger.info(f"Gemini client initialized (project: {project_id})")
+            gemini = get_genai_client()
+            if gemini.is_available:
+                logger.info(f"✅ GenAI Client initialized (auth: {gemini._auth_method})")
+            else:
+                logger.warning("⚠️ GenAI Client initialized but not available")
         except Exception as e:
             logger.warning(f"Could not initialize Gemini: {e}")
 

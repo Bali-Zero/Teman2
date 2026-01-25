@@ -46,7 +46,9 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     db_pool = None
     try:
         from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
+        )
 
         if not GENAI_AVAILABLE:
             logger.warning("Auto OCR: GenAI not available")

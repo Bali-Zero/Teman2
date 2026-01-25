@@ -79,10 +79,10 @@ class MigrationManager:
         return url
 
     async def _ensure_migration_log(self, conn: asyncpg.Connection) -> None:
-        """Ensure schema_migrations table exists"""
+        """Ensure _schema_versions table exists"""
         await conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS schema_migrations (
+            CREATE TABLE IF NOT EXISTS _schema_versions (
                 id SERIAL PRIMARY KEY,
                 migration_name VARCHAR(255) UNIQUE NOT NULL,
                 migration_number INTEGER NOT NULL,
@@ -93,14 +93,6 @@ class MigrationManager:
                 rollback_sql TEXT,
                 applied_by VARCHAR(255) DEFAULT 'system'
             );
-            -- Fix for legacy schema: Ensure ALL columns exist
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS migration_number INTEGER DEFAULT 0;
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS description TEXT;
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS rollback_sql TEXT;
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum VARCHAR(64) DEFAULT '';
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS execution_time_ms INTEGER DEFAULT 0;
-            ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS applied_by VARCHAR(255) DEFAULT 'system';
         """
         )
 
@@ -123,7 +115,7 @@ class MigrationManager:
             rows = await conn.fetch(
                 """
                 SELECT migration_name, migration_number, executed_at, description
-                FROM schema_migrations
+                FROM _schema_versions
                 ORDER BY migration_number
             """
             )
@@ -155,7 +147,7 @@ class MigrationManager:
             result = await conn.fetchval(
                 """
                 SELECT EXISTS(
-                    SELECT 1 FROM schema_migrations
+                    SELECT 1 FROM _schema_versions
                     WHERE migration_number = $1
                 )
             """,
@@ -183,7 +175,7 @@ class MigrationManager:
             row = await conn.fetchrow(
                 """
                 SELECT rollback_sql
-                FROM schema_migrations
+                FROM _schema_versions
                 WHERE migration_name = $1
             """,
                 migration_name,
@@ -200,7 +192,7 @@ class MigrationManager:
                 # Remove from log
                 await conn.execute(
                     """
-                    DELETE FROM schema_migrations
+                    DELETE FROM _schema_versions
                     WHERE migration_name = $1
                 """,
                     migration_name,
@@ -216,12 +208,16 @@ class MigrationManager:
         Returns:
             List of BaseMigration instances (not yet initialized with SQL files)
         """
-        migrations_dir = Path(__file__).parent / "migrations"
+        # SWITCH TO V2 DIRECTORY
+        migrations_dir = Path(__file__).parent / "migrations_v2"
+        # Create directory if it doesn't exist (first run)
+        migrations_dir.mkdir(exist_ok=True)
+        
         sql_files = sorted(migrations_dir.glob("*.sql"))
 
         migrations = []
         for sql_file in sql_files:
-            # Extract migration number from filename (e.g., "007_crm_system_schema.sql" -> 7)
+            # Extract migration number from filename (e.g., "001_baseline_v2.sql" -> 1)
             try:
                 migration_number = int(sql_file.stem.split("_")[0])
                 migrations.append(
@@ -281,6 +277,49 @@ class MigrationManager:
 
         applied = []
         failed = []
+
+        # CHECK FOR LEGACY DB STATE (FAKE APPLY STRATEGY)
+        # If we have pending migration 001 AND the DB already has tables (e.g. users)
+        # We skip the SQL execution of 001 but mark it as applied.
+        is_migration_001_pending = any(m["number"] == 1 for m in pending)
+        is_schema_empty = len(applied_numbers) == 0  # Based on _schema_versions table
+
+        if is_migration_001_pending and is_schema_empty:
+            # Check if real user tables exist (to distinguish from fresh DB)
+            async with self.pool.acquire() as conn:
+                tables_exist = await conn.fetchval(
+                    """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'clients'
+                    );
+                """
+                )
+
+                if tables_exist:
+                    logger.warning(
+                        "🚀 DETECTED LEGACY DATABASE! FAKE-APPLYING BASELINE (001)..."
+                    )
+
+                    # Manually insert into _schema_versions
+                    await conn.execute(
+                        """
+                        INSERT INTO _schema_versions (migration_name, migration_number, description, applied_by, checksum)
+                        VALUES ($1, $2, $3, $4, $5)
+                    """,
+                        "001_baseline_v2.sql",
+                        1,
+                        "Baseline V2 (Fake Applied on Legacy DB)",
+                        "system-auto",
+                        "legacy_fake_checksum",
+                    )
+
+                    logger.info("✅ Baseline V2 marked as applied (SQL execution skipped).")
+
+                    # Add to results and remove from pending list to execute
+                    applied.append(1)
+                    pending = [m for m in pending if m["number"] != 1]
 
         for migration_info in sorted(pending, key=lambda x: x["number"]):
             migration_number = migration_info["number"]

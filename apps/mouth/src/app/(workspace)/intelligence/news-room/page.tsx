@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
+import { cn, renderMiniMarkdown } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import {
   Loader2,
@@ -488,26 +488,7 @@ export default function NewsRoomPage() {
                   <div className="text-sm text-[var(--foreground-muted)] prose prose-sm max-w-none">
                     <div
                       className="line-clamp-4"
-                      dangerouslySetInnerHTML={{
-                        __html: item.content
-                          .replace(/\n/g, '<br />')
-                          .replace(
-                            /## Summary/g,
-                            '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Summary</strong>'
-                          )
-                          .replace(
-                            /## Facts/g,
-                            '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Facts</strong>'
-                          )
-                          .replace(
-                            /## Bali Zero Take/g,
-                            '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Bali Zero Take</strong>'
-                          )
-                          .replace(
-                            /## Next Steps/g,
-                            '<strong class="block mt-3 mb-1 text-[var(--foreground)]">Next Steps</strong>'
-                          ),
-                      }}
+                      dangerouslySetInnerHTML={renderMiniMarkdown(item.content)}
                     />
                   </div>
                 ) : (
@@ -618,28 +599,7 @@ export default function NewsRoomPage() {
             <div className="prose prose-sm max-w-none text-[var(--foreground)] mt-4">
               <div
                 className="whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{
-                  __html: previewItem.content
-                    .replace(/\n\n/g, '<br /><br />')
-                    .replace(
-                      /## Summary/g,
-                      '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Summary</h3>'
-                    )
-                    .replace(
-                      /## Facts/g,
-                      '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Facts</h3>'
-                    )
-                    .replace(
-                      /## Bali Zero Take/g,
-                      '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Bali Zero Take</h3>'
-                    )
-                    .replace(
-                      /## Next Steps/g,
-                      '<h3 class="text-xl font-bold mt-6 mb-3 text-[var(--foreground)] border-b border-[var(--border)] pb-2">Next Steps</h3>'
-                    )
-                    .replace(/^- /g, '<li>')
-                    .replace(/\n<li>/g, '</li><li>'),
-                }}
+                dangerouslySetInnerHTML={renderMiniMarkdown(previewItem.content)}
               />
             </div>
           )}

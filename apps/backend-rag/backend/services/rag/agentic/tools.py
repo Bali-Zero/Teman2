@@ -368,6 +368,15 @@ class TeamKnowledgeTool(BaseTool):
                 Path("/app/data/team_members.json"),
                 # 4. Fallback: Current Working Directory
                 Path(os.getcwd()) / "backend" / "data" / "team_members.json",
+                # 5. Monorepo Fallback
+                Path(os.getcwd())
+                / "apps"
+                / "backend-rag"
+                / "backend"
+                / "data"
+                / "team_members.json",
+                # 6. Monorepo Root Fallback
+                Path(os.getcwd()) / "data" / "team_members.json",
             ]
 
             for path in possible_paths:

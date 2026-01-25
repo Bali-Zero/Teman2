@@ -19,3 +19,10 @@ e2e/.auth/
 tsconfig.tsbuildinfo
 next-env.d.ts
 .vercel
+apps/backend-rag/scripts/generate_oauth_token.py
+apps/backend-rag/scripts/setup_oauth_token.py
+apps/backend-rag/oauth_tokens.json
+apps/backend-rag/scripts/generate_oauth_token.py
+apps/backend-rag/scripts/setup_oauth_token.py
+apps/backend-rag/oauth_tokens.json
+.tmp.driveupload/

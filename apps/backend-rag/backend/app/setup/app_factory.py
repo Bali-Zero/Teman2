@@ -69,6 +69,15 @@ def create_app() -> FastAPI:
     app.include_router(streaming_router)
     app.include_router(system_observability_router)  # [NEW]
 
+    # Setup rate limiter for article composer (must be after router inclusion)
+    from slowapi import _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+
+    from backend.app.routers import article_composer
+
+    app.state.limiter = article_composer.limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     # Register lifecycle handlers (startup, shutdown) - MUST be before observability
     register_startup_handlers(app)
     register_shutdown_handlers(app)

@@ -185,7 +185,7 @@ describe('useChatSend', () => {
     });
 
     expect(mockCallbacks.onToast).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to send message'),
+      expect.stringContaining('Something went wrong'),
       'error'
     );
     expect(mockCallbacks.onError).toHaveBeenCalledWith(error);

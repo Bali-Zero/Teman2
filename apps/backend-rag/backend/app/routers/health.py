@@ -13,8 +13,8 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Request
 
-from ..core.config import settings
-from ..models import HealthResponse
+from backend.app.core.config import settings
+from backend.app.models import HealthResponse
 
 logger = logging.getLogger(__name__)
 
