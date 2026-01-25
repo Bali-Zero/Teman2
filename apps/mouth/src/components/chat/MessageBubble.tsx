@@ -310,7 +310,7 @@ function MessageBubbleComponent({
             relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed overflow-hidden
             ${
               isUser
-                ? 'bg-[var(--background-secondary)] text-[var(--foreground)] rounded-tr-sm'
+                ? 'user-message-gradient text-white rounded-tr-sm shadow-md border-0'
                 : 'bg-[var(--background-elevated)] text-[var(--foreground)] rounded-tl-sm border border-[var(--border)]/50'
             }
           `}

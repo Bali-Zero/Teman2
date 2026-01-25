@@ -276,6 +276,46 @@ body {
 
 /* === COMPONENT-SPECIFIC OVERRIDES === */
 
+/* Glass effect for panels */
+.glass-panel {
+  background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.12), transparent),
+    rgba(6, 7, 20, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Glow effect for primary buttons */
+.glow-button {
+  background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.7), transparent),
+    linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 10px 25px rgba(88, 80, 236, 0.4);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(88, 80, 236, 0.6);
+}
+
+.glow-button:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* Active sidebar item gradient */
+.sidebar-item-active {
+  background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.25), transparent),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+}
+
+/* User message gradient bubble */
+.user-message-gradient {
+  background: linear-gradient(135deg, var(--accent), var(--accent-muted));
+  color: white;
+  border: none;
+}
+
 /* Progress bar with dynamic width */
 .progress-bar-fill[data-width] {
   width: attr(data-width);

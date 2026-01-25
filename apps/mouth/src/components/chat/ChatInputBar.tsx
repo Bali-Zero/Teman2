@@ -86,9 +86,9 @@ export function ChatInputBar({
         )}
 
         {/* Input Container */}
-        <div className="bg-[#202225] rounded-2xl shadow-2xl border border-[#D8D6D0]/30 p-2 relative overflow-hidden group">
+        <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
           {/* Subtle inner glow */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
           {/* Quick Media Bar */}
           <div className="flex items-center gap-1 px-2 pt-1 pb-1 mb-1 border-b border-[var(--border)]/50">
@@ -199,7 +199,7 @@ export function ChatInputBar({
               onClick={showImagePrompt ? onImageGenerate : onSend}
               disabled={!input.trim() || isLoading}
               size="icon"
-              className="rounded-xl flex-shrink-0"
+              className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0"
               aria-label={
                 isLoading ? 'Sending...' : showImagePrompt ? 'Generate image' : 'Send message'
               }

@@ -44,8 +44,6 @@ export default function AgentsPage() {
       // Use direct API request since generated client is not available
       const response = await api.get<{ agents?: AgentStatus[] }>('/api/autonomous-agents/status');
 
-      console.log('Backend response:', response);
-
       // Transform backend response to our format
       const agentsData: AgentStatus[] =
         response.agents?.map((agent) => ({
