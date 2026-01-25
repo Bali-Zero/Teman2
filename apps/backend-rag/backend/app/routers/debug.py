@@ -298,6 +298,30 @@ async def clear_traces(
     }
 
 
+# In-memory RAG pipeline trace storage (limited to last 100 traces)
+_rag_traces: dict[str, dict[str, Any]] = {}
+_MAX_RAG_TRACES = 100
+
+
+def store_rag_trace(correlation_id: str, trace_data: dict[str, Any]) -> None:
+    """Store a RAG pipeline trace (called by RAG pipeline components)"""
+    global _rag_traces
+    _rag_traces[correlation_id] = {
+        **trace_data,
+        "stored_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Cleanup old traces if limit exceeded
+    if len(_rag_traces) > _MAX_RAG_TRACES:
+        oldest_keys = sorted(_rag_traces.keys(), key=lambda k: _rag_traces[k].get("stored_at", ""))
+        for key in oldest_keys[: len(_rag_traces) - _MAX_RAG_TRACES]:
+            del _rag_traces[key]
+
+
+def get_rag_trace(correlation_id: str) -> dict[str, Any] | None:
+    """Get a RAG pipeline trace by correlation ID"""
+    return _rag_traces.get(correlation_id)
+
+
 @router.get("/rag/pipeline/{correlation_id}")
 async def get_rag_pipeline_trace(
     correlation_id: str,
@@ -306,7 +330,8 @@ async def get_rag_pipeline_trace(
     """
     Get RAG pipeline trace for a correlation ID.
 
-    Note: This requires RAG pipeline to use RAGPipelineDebugger.
+    Traces are stored automatically by RAG pipeline components when they call
+    store_rag_trace(). Traces are kept in-memory (last 100 traces).
 
     Args:
         correlation_id: Correlation ID
@@ -314,11 +339,21 @@ async def get_rag_pipeline_trace(
     Returns:
         RAG pipeline trace
     """
-    # TODO: Implement RAG pipeline trace storage
+    trace = get_rag_trace(correlation_id)
+
+    if trace:
+        return {
+            "success": True,
+            "trace": trace,
+            "correlation_id": correlation_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
     return {
         "success": False,
-        "message": "RAG pipeline tracing not yet implemented. Use RAGPipelineDebugger in pipeline.",
+        "message": f"No RAG trace found for correlation_id: {correlation_id}. Ensure pipeline components call store_rag_trace().",
         "correlation_id": correlation_id,
+        "available_traces": len(_rag_traces),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

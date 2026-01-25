@@ -9,7 +9,8 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_database_pool, get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.schemas.feedback import (
     ConversationRatingResponse,
     FeedbackResponse,
@@ -207,17 +208,22 @@ async def get_conversation_rating(
 
 @router.get("/stats", response_model=ReviewQueueStatsResponse)
 async def get_feedback_stats(
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> ReviewQueueStatsResponse:
     """
-    Get feedback statistics (Admin only - mock for now)
+    Get feedback statistics (Admin only)
 
     Returns:
         Statistics about review queue and feedback
     """
     try:
-        # TODO: Add admin authentication check
-        # For now, this is a mock endpoint
+        # Admin authentication check
+        if not is_crm_admin(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Admin privileges required."
+            )
 
         async with db_pool.acquire() as conn:
             # Get review queue stats

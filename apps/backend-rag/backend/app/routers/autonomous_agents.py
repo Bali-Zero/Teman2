@@ -566,6 +566,33 @@ async def get_autonomous_agents_status():
         Format matches frontend AgentStatus interface
     """
 
+    # Helper function to get next_run from scheduler
+    def get_next_run_from_scheduler(agent_id: str) -> str | None:
+        """Get next scheduled run time for an agent from the scheduler"""
+        try:
+            from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
+
+            scheduler = get_autonomous_scheduler()
+            status = scheduler.get_status()
+
+            # Map agent_id to scheduler task name (they match in our case)
+            task_info = status.get("tasks", {}).get(agent_id)
+
+            if task_info and task_info.get("enabled") and task_info.get("last_run"):
+                from datetime import datetime, timedelta
+
+                last_run = datetime.fromisoformat(task_info["last_run"])
+                interval = task_info.get("interval_seconds", 0)
+
+                if interval > 0:
+                    next_run = last_run + timedelta(seconds=interval)
+                    return next_run.isoformat()
+
+            return None
+        except Exception as e:
+            logger.debug(f"Could not get next_run from scheduler: {e}")
+            return None
+
     # Helper function to get agent execution stats
     def get_agent_stats(agent_id: str) -> dict[str, Any]:
         """Calculate execution statistics for an agent"""
@@ -580,7 +607,7 @@ async def get_autonomous_agents_status():
             return {
                 "status": "idle",
                 "last_run": None,
-                "next_run": None,
+                "next_run": get_next_run_from_scheduler(agent_id),
                 "success_rate": None,
                 "total_runs": 0,
                 "latest_result": None,
@@ -615,7 +642,7 @@ async def get_autonomous_agents_status():
         return {
             "status": status,
             "last_run": last_run,
-            "next_run": None,  # TODO: Get from scheduler if available
+            "next_run": get_next_run_from_scheduler(agent_id),
             "success_rate": round(success_rate, 1) if success_rate is not None else None,
             "total_runs": total_runs,
             "latest_result": latest_result,

@@ -1,0 +1,1 @@
+admin-dashboard,backend-rag,bali-intel-scraper,core,evaluator,kb,mouth,webapp,zantara-media
