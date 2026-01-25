@@ -84,10 +84,39 @@ services:
       timeout: 10s
       retries: 3
 
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nuzantara-grafana
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=changeme123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - monitoring
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   prometheus_data:
     driver: local
   alertmanager_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

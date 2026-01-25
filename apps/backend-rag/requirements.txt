@@ -120,5 +120,9 @@ sendgrid>=6.11.0  # For email notifications via SendGrid API
 twilio>=9.0.0  # For WhatsApp and SMS notifications via Twilio API
 tenacity>=8.2.3  # For retry logic with exponential backoff
 
+# Rate Limiting & Caching (Article Composer Best Practices 2026)
+slowapi>=0.1.9  # Rate limiting for FastAPI
+redis>=7.1.0  # Already present, used for caching
+
 # MCP (Model Context Protocol)
 mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility

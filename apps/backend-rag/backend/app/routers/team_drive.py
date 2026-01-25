@@ -31,7 +31,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/drive", tags=["Team Drive"])
 
 # Shared folders visible to everyone
-SHARED_FOLDERS = ["_Shared", "Shared", "Common", "Templates"]
+# Includes department folders from AMBARADAM Shared Drive
+SHARED_FOLDERS = [
+    "_Shared",
+    "Shared",
+    "Common",
+    "Templates",
+    # Department folders (AMBARADAM Shared Drive)
+    "BOARD",
+    "CRM",
+    "MARKETING",
+    "TAX DEPARTMENT",
+    "PERATURAN",
+]
 
 
 class FileItem(BaseModel):
@@ -212,9 +224,8 @@ async def get_user_allowed_folders(
                 allowed.add(first_name)
                 allowed.add(full_name)
 
-            # Fallback to shared folders if no rules matched
-            if not allowed:
-                allowed.update(SHARED_FOLDERS)
+            # Always include shared folders (department folders visible to everyone)
+            allowed.update(SHARED_FOLDERS)
 
             logger.info(
                 f"[TEAM_DRIVE] Permissions for {user_email} in context={context_folder}: {list(allowed)}"
@@ -251,13 +262,16 @@ def folder_matches_allowed(folder_name: str, allowed_folders: list[str]) -> bool
 
         # 2. Word boundary match - folder name starts with allowed pattern
         # e.g., "Legal Documents" matches "Legal" but "Illegal" does not
-        if folder_lower.startswith(allowed_lower + " ") or folder_lower.startswith(allowed_lower + "_"):
+        if folder_lower.startswith(allowed_lower + " ") or folder_lower.startswith(
+            allowed_lower + "_"
+        ):
             return True
 
         # 3. Word boundary match - allowed pattern is a complete word in folder name
         # e.g., "Client Tax Files" matches "Tax" but "Taxation Info" does not
         import re
-        pattern = r'\b' + re.escape(allowed_lower) + r'\b'
+
+        pattern = r"\b" + re.escape(allowed_lower) + r"\b"
         if re.search(pattern, folder_lower):
             return True
 

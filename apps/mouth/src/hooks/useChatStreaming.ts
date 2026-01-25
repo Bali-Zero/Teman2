@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { api, type ApiError } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 import { Message, AgentStep, Source } from '@/types';
 import { useConversationMonitoring } from '@/lib/monitoring';
 

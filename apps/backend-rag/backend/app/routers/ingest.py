@@ -3,6 +3,7 @@ ZANTARA RAG - Ingestion Router
 Book ingestion endpoints
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -10,19 +11,24 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 
-from backend.core.qdrant_db import QdrantClient
-from backend.services.ingestion.ingestion_service import IngestionService
-
-from ..models import (
+from backend.app.models import (
     BatchIngestionRequest,
     BatchIngestionResponse,
     BookIngestionRequest,
     BookIngestionResponse,
     TierLevel,
 )
+from backend.core.qdrant_db import QdrantClient
+from backend.services.ingestion.ingestion_service import IngestionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ingest", tags=["ingestion"])
+
+
+def save_upload_file_sync(path: Path, content: bytes):
+    """Helper for sync file writing"""
+    with open(path, "wb") as f:
+        f.write(content)
 
 
 @router.post("/upload", response_model=BookIngestionResponse)
@@ -50,9 +56,12 @@ async def upload_and_ingest(
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         temp_path = temp_dir / file.filename
-        with open(temp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+
+        # Non-blocking file reading
+        content = await file.read()
+
+        # Non-blocking file writing (offload to thread)
+        await asyncio.to_thread(save_upload_file_sync, temp_path, content)
 
         logger.info(f"Uploaded file saved: {temp_path}")
 

@@ -3,6 +3,7 @@ Legal Document Ingestion Router
 API endpoints for Indonesian legal document ingestion pipeline
 """
 
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -19,6 +20,13 @@ from backend.services.ingestion.legal_ingestion_service import LegalIngestionSer
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/legal", tags=["legal-ingestion"])
+
+
+def save_upload_file_sync(path: Path, content: bytes):
+    """Helper for sync file writing"""
+    with open(path, "wb") as f:
+        f.write(content)
+
 
 # Initialize service (singleton pattern)
 _legal_service: LegalIngestionService | None = None
@@ -157,9 +165,12 @@ async def upload_legal_document(
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         temp_path = temp_dir / file.filename
-        with open(temp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+
+        # Non-blocking file reading
+        content = await file.read()
+
+        # Non-blocking file writing (offload to thread)
+        await asyncio.to_thread(save_upload_file_sync, temp_path, content)
 
         logger.info(f"Uploaded legal document saved: {temp_path} ({len(content)} bytes)")
 

@@ -13,7 +13,6 @@ Date: 2026-01-22
 
 import logging
 import os
-from typing import Optional
 
 import anthropic
 
@@ -21,10 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 async def generate_conversation_title(
-    conversation_id: str,
-    first_user_message: str,
-    max_length: int = 50
-) -> Optional[str]:
+    conversation_id: str, first_user_message: str, max_length: int = 50
+) -> str | None:
     """
     Generate concise title from first user message.
 
@@ -99,7 +96,7 @@ Return ONLY the title text, nothing else."""
 
         # Log success
         logger.info(
-            f"✅ Generated title for conv {conversation_id}: \"{title}\" "
+            f'✅ Generated title for conv {conversation_id}: "{title}" '
             f"(input: {message.usage.input_tokens} tokens, "
             f"output: {message.usage.output_tokens} tokens)"
         )
@@ -107,14 +104,11 @@ Return ONLY the title text, nothing else."""
         return title
 
     except anthropic.APIError as e:
-        logger.warning(
-            f"Anthropic API error generating title for conv {conversation_id}: {e}"
-        )
+        logger.warning(f"Anthropic API error generating title for conv {conversation_id}: {e}")
         return None
 
     except Exception as e:
         logger.error(
-            f"Unexpected error generating title for conv {conversation_id}: {e}",
-            exc_info=True
+            f"Unexpected error generating title for conv {conversation_id}: {e}", exc_info=True
         )
         return None

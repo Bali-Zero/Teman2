@@ -34,7 +34,7 @@ export class DriveApi {
   async getStatus(): Promise<ConnectionStatus> {
     const response = await this.client.request<{
       status: string;
-      connected_as?: string;  // OAuth email or service account email
+      connected_as?: string; // OAuth email or service account email
       files_accessible: boolean;
     }>('/api/drive/status');
 

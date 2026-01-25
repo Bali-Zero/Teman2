@@ -54,7 +54,7 @@ describe('usePrefetchFolder', () => {
   });
 
   it('should call prefetchQuery when folder is not cached', async () => {
-    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery');
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchInfiniteQuery');
 
     const { result } = renderHook(() => usePrefetchFolder(), { wrapper });
 
@@ -77,7 +77,7 @@ describe('usePrefetchFolder', () => {
       breadcrumb: [],
     });
 
-    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery');
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchInfiniteQuery');
 
     const { result } = renderHook(() => usePrefetchFolder(), { wrapper });
 
@@ -110,7 +110,7 @@ describe('usePrefetchFolder', () => {
     // Wait for prefetch to complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(api.drive.listFiles).toHaveBeenCalledWith({ folder_id: 'folder-abc' });
+    expect(api.drive.listFiles).toHaveBeenCalledWith(expect.objectContaining({ folder_id: 'folder-abc' }));
   });
 
   it('should be stable across re-renders (memoized)', () => {
@@ -124,7 +124,7 @@ describe('usePrefetchFolder', () => {
   });
 
   it('should handle multiple prefetch calls for different folders', async () => {
-    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery');
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchInfiniteQuery');
 
     const { result } = renderHook(() => usePrefetchFolder(), { wrapper });
 

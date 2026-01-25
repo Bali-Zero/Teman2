@@ -508,11 +508,10 @@ export default function ChatPage() {
   }, [chatInput]);
 
   // Handle send message (simplified - will be replaced by useChatSend)
-  const handleSend = useCallback(async () => {
-    // TODO: Integrate useChatSend hook here
-    // For now, this is a placeholder
-    console.log('Send message:', chatInput.input);
-  }, [chatInput.input]);
+  const handleSendMessage = () => {
+    // console.log('Send message:', chatInput.input);
+    // ... logic to send message
+  };
 
   // Handle audio transcription
   useEffect(() => {

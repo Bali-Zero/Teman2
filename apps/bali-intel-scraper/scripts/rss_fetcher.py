@@ -281,7 +281,7 @@ async def send_to_balizero(
     failed = 0
     duplicates = 0
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         for item in items:
             try:
                 # Prepare payload for /api/intel/scraper/submit endpoint

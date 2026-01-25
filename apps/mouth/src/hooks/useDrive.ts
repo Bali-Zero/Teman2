@@ -1,5 +1,11 @@
-import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  QueryClient,
+} from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { driveLogger } from '@/lib/logging/drive-logger';
 import type {
@@ -16,19 +22,63 @@ interface DriveFilesData {
   breadcrumb: BreadcrumbItem[];
 }
 
+/** Default page size for file listing */
+const DEFAULT_PAGE_SIZE = 50;
+
+/**
+ * Hook for fetching drive files with infinite scroll pagination
+ * Supports automatic loading of more files when scrolling
+ */
 export function useDriveFiles(folderId: string | null, searchQuery: string = '') {
-  return useQuery({
+  const infiniteQuery = useInfiniteQuery({
     queryKey: ['drive', 'files', folderId, searchQuery],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       if (searchQuery) {
+        // Search doesn't support pagination yet
         const results = await api.drive.searchFiles(searchQuery);
-        return { files: results, breadcrumb: [] };
+        return { files: results, breadcrumb: [], next_page_token: null };
       }
-      return api.drive.listFiles({ folder_id: folderId || undefined });
+      return api.drive.listFiles({
+        folder_id: folderId || undefined,
+        page_token: pageParam,
+        page_size: DEFAULT_PAGE_SIZE,
+      });
     },
-    placeholderData: (previousData) => previousData, // Keep previous data while fetching new folder
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.next_page_token || undefined,
     staleTime: 1000 * 60, // 1 minute cache
   });
+
+  // Flatten all pages into a single files array
+  const data = useMemo(() => {
+    if (!infiniteQuery.data?.pages) return undefined;
+
+    const allFiles: FileItem[] = [];
+    let breadcrumb: BreadcrumbItem[] = [];
+
+    infiniteQuery.data.pages.forEach((page, index) => {
+      // Safety check: ensure page and page.files exist
+      if (page?.files) {
+        allFiles.push(...page.files);
+      }
+      // Use breadcrumb from first page
+      if (index === 0 && page?.breadcrumb) {
+        breadcrumb = page.breadcrumb;
+      }
+    });
+
+    return { files: allFiles, breadcrumb };
+  }, [infiniteQuery.data]);
+
+  return {
+    data,
+    isLoading: infiniteQuery.isLoading,
+    error: infiniteQuery.error,
+    // Infinite scroll helpers (with safe defaults)
+    hasNextPage: infiniteQuery.hasNextPage ?? false,
+    isFetchingNextPage: infiniteQuery.isFetchingNextPage ?? false,
+    fetchNextPage: infiniteQuery.fetchNextPage,
+  };
 }
 
 /** Prefetch folder contents on hover for instant navigation */
@@ -47,11 +97,15 @@ export function usePrefetchFolder() {
       driveLogger.logPrefetchStarted(folderId);
       const startTime = performance.now();
 
-      queryClient.prefetchQuery({
+      // Prefetch as infinite query to match main query structure
+      queryClient.prefetchInfiniteQuery({
         queryKey: ['drive', 'files', folderId, ''],
         queryFn: async () => {
           try {
-            const result = await api.drive.listFiles({ folder_id: folderId });
+            const result = await api.drive.listFiles({
+              folder_id: folderId,
+              page_size: DEFAULT_PAGE_SIZE,
+            });
             const duration = Math.round(performance.now() - startTime);
             driveLogger.logPrefetchCompleted(folderId, duration, result.files.length);
             return result;
@@ -63,6 +117,7 @@ export function usePrefetchFolder() {
             throw error;
           }
         },
+        initialPageParam: undefined,
         staleTime: 1000 * 60, // 1 minute
       });
     },
@@ -110,13 +165,20 @@ export function useDriveMutations() {
       await queryClient.cancelQueries({ queryKey: ['drive', 'files'] });
       const previousData = queryClient.getQueriesData({ queryKey: ['drive', 'files'] });
 
-      queryClient.setQueriesData<DriveFilesData>({ queryKey: ['drive', 'files'] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          files: old.files.filter((f) => f.id !== fileId),
-        };
-      });
+      // Update infinite query data structure (pages array)
+      queryClient.setQueriesData<{ pages: FileListResponse[]; pageParams: unknown[] }>(
+        { queryKey: ['drive', 'files'] },
+        (old) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              files: page.files?.filter((f) => f.id !== fileId) || [],
+            })),
+          };
+        }
+      );
 
       return { previousData };
     },

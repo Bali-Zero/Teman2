@@ -15,8 +15,19 @@ import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
+from decimal import Decimal
 from functools import wraps
 from typing import Any
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """JSON encoder that handles Decimal types by converting to float."""
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
+
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +269,7 @@ class CacheService:
         """Set value in cache with TTL (seconds)"""
         try:
             if self.redis_available and self.redis_client:
-                self.redis_client.setex(key, ttl, json.dumps(value))
+                self.redis_client.setex(key, ttl, json.dumps(value, cls=DecimalEncoder))
                 return True
             else:
                 # In-memory fallback with LRU + TTL (instance-level)

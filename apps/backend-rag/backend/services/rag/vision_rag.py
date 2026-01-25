@@ -47,18 +47,25 @@ class VisionRAGService:
 
     def __init__(self):
         self._genai_client: GenAIClient | None = None
-        self._available = False
-        self.vision_model_name = "gemini-3-flash-preview"  # Vision capable
-        self.text_model_name = "gemini-3-flash-preview"
+        self.vision_model_name = "gemini-2.0-flash-001"  # Vision capable
+        self.text_model_name = "gemini-2.0-flash-001"
 
-        if settings.google_api_key and GENAI_AVAILABLE:
+    def _get_genai_client(self) -> GenAIClient | None:
+        """Lazy load GenAI client."""
+        if self._genai_client is None and settings.google_api_key and GENAI_AVAILABLE:
             try:
                 self._genai_client = GenAIClient(api_key=settings.google_api_key)
-                self._available = self._genai_client.is_available
-                if self._available:
-                    logger.info("✅ VisionRAGService initialized with GenAI client")
+                if self._genai_client.is_available:
+                    logger.debug("✅ VisionRAGService GenAI client loaded")
             except Exception as e:
                 logger.warning(f"Failed to initialize VisionRAGService: {e}")
+        return self._genai_client
+
+    @property
+    def _available(self) -> bool:
+        """Check availability dynamically."""
+        client = self._get_genai_client()
+        return client.is_available if client else False
 
     async def process_pdf(self, pdf_path: str | Path) -> MultiModalDocument:
         """
@@ -142,7 +149,8 @@ class VisionRAGService:
             """
 
             # Use GenAI client for vision analysis
-            if not self._available or not self._genai_client:
+            client = self._get_genai_client()
+            if not client or not client.is_available:
                 logger.warning("GenAI client not available for vision analysis")
                 return None
 
@@ -162,7 +170,7 @@ class VisionRAGService:
                 {"inline_data": {"mime_type": "image/png", "data": image_base64}},
             ]
 
-            result_response = await self._genai_client.generate_content(
+            result_response = await client.generate_content(
                 contents=contents,
                 model=self.vision_model_name,
                 max_output_tokens=8192,
@@ -288,7 +296,8 @@ class VisionRAGService:
         prompt_parts.append("\n\nProvide a comprehensive answer using all available information:")
 
         # 4. Query Gemini Vision
-        if not self._available or not self._genai_client:
+        client = self._get_genai_client()
+        if not client or not client.is_available:
             return {
                 "answer": "Vision service not available",
                 "visuals_used": [],
@@ -308,7 +317,7 @@ class VisionRAGService:
                 image_base64 = base64.b64encode(buffered.getvalue()).decode()
                 contents.append({"inline_data": {"mime_type": "image/png", "data": image_base64}})
 
-        result_response = await self._genai_client.generate_content(
+        result_response = await client.generate_content(
             contents=contents,
             model=self.vision_model_name,
             max_output_tokens=8192,

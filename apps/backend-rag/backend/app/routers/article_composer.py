@@ -1,6 +1,17 @@
 """
 Article Composer API - Manual article creation with Bali Style enrichment
 
+Best Practices 2026 Implementation:
+- Retry logic with exponential backoff
+- Rate limiting
+- Structured error handling
+- Input validation
+- Caching
+- Circuit breaker
+- Dependency injection
+- Background tasks
+- Improved logging
+
 For marketing team to create articles manually with:
 - Claude enrichment (Anthropic API)
 - Image generation
@@ -10,15 +21,33 @@ For marketing team to create articles manually with:
 import json
 import logging
 import os
+import time
+import uuid
 from datetime import datetime
 
 import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+from backend.services.article_composer import (
+    APIError,
+    ComposeRequestValidator,
+    ErrorCode,
+    cache_service,
+    call_claude_with_retry,
+    handle_anthropic_error,
+    handle_json_error,
+    log_error_with_context,
+)
 
 router = APIRouter(prefix="/api/articles", tags=["Article Composer"])
 logger = logging.getLogger(__name__)
+
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
 
 # --- PROMETHEUS METRICS ---
 
@@ -53,20 +82,24 @@ claude_api_cost_cents = Histogram(
     buckets=[1, 2, 5, 10, 20, 50],
 )
 
+article_cache_hits = Counter(
+    "article_cache_hits_total",
+    "Total cache hits",
+    ["operation"],
+)
+
+article_cache_misses = Counter(
+    "article_cache_misses_total",
+    "Total cache misses",
+    ["operation"],
+)
+
 # --- PYDANTIC MODELS ---
 
 
-class ComposeRequest(BaseModel):
-    """Request to compose/enrich an article"""
-
-    title: str = Field(..., description="Article title")
-    content: str = Field(..., description="Raw article content")
-    category: str = Field(
-        default="business",
-        description="Category: immigration|business|tax|property|lifestyle|tech|legal",
-    )
-    source_url: str | None = Field(default=None, description="Original source URL if any")
-    author: str = Field(default="Marketing Team", description="Author name")
+# ComposeRequest is now ComposeRequestValidator (imported from validators)
+# Keeping alias for backward compatibility
+ComposeRequest = ComposeRequestValidator
 
 
 class TLDRSection(BaseModel):
@@ -114,8 +147,12 @@ class ComposeResponse(BaseModel):
 
     success: bool
     article: EnrichedArticle | None = None
-    error: str | None = None
+    error: APIError | str | None = (
+        None  # Support both APIError and string for backward compatibility
+    )
     api_cost_cents: float = 0
+    cached: bool = False
+    request_id: str | None = None
 
 
 # --- ENRICHMENT PROMPT ---
@@ -207,13 +244,51 @@ NOTES:
 """
 
 
+# --- DEPENDENCY INJECTION ---
+
+
+def get_request_id() -> str:
+    """Generate unique request ID for tracing"""
+    return str(uuid.uuid4())
+
+
+# --- STARTUP/SHUTDOWN EVENTS ---
+
+
+@router.on_event("startup")
+async def startup_event():
+    """Initialize cache service on startup"""
+    await cache_service.initialize()
+
+
+@router.on_event("shutdown")
+async def shutdown_event():
+    """Close cache service on shutdown"""
+    await cache_service.close()
+
+
 # --- API ENDPOINTS ---
 
 
 @router.post("/compose", response_model=ComposeResponse)
-async def compose_article(request: ComposeRequest):
+@limiter.limit("10/minute")  # Rate limiting: 10 requests per minute per IP
+async def compose_article(
+    request: ComposeRequest,  # Alias for ComposeRequestValidator
+    background_tasks: BackgroundTasks,
+    req: Request,
+    request_id: str = Depends(get_request_id),
+):
     """
     Compose/enrich an article with Bali Zero style using Anthropic API.
+
+    Best Practices 2026:
+    - Rate limiting (10 req/min)
+    - Retry logic with exponential backoff
+    - Circuit breaker protection
+    - Caching for duplicate requests
+    - Structured error handling
+    - Input validation
+    - Request tracing
 
     Transforms raw content into a complete BaliZero Executive Brief with:
     - Strategic headline
@@ -222,35 +297,66 @@ async def compose_article(request: ComposeRequest):
     - BaliZero Take (strategic analysis)
     - Next steps by profile
     - AI tags and summary
-    - Image generation prompt
     """
-    import time
-
     start_time = time.time()
 
+    # Validate API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        logger.error("ANTHROPIC_API_KEY not set")
+        error = APIError.create(
+            code=ErrorCode.API_KEY_NOT_CONFIGURED,
+            message="ANTHROPIC_API_KEY not configured",
+            request_id=request_id,
+        )
         article_compose_requests.labels(status="error", category=request.category).inc()
-        raise HTTPException(status_code=500, detail="API key not configured")
+        raise HTTPException(status_code=500, detail=error.model_dump())
 
-    logger.info(f"Composing article: {request.title[:50]}...")
+    # Log request start
+    logger.info(
+        "Article composition started",
+        extra={
+            "request_id": request_id,
+            "article_title": request.title,
+            "category": request.category,
+            "content_length": len(request.content),
+        },
+    )
 
     try:
-        # Initialize Anthropic client
-        client = anthropic.Anthropic(api_key=api_key)
+        # Check cache first
+        cached_result = await cache_service.get_compose_cache(
+            request.title, request.content, request.category
+        )
+        if cached_result:
+            logger.info(
+                "Cache hit",
+                extra={"request_id": request_id, "article_title": request.title},
+            )
+            article_cache_hits.labels(operation="compose").inc()
+            return ComposeResponse(
+                success=True,
+                article=EnrichedArticle(**cached_result["article"]),
+                api_cost_cents=cached_result.get("api_cost_cents", 0),
+                cached=True,
+                request_id=request_id,
+            )
+
+        article_cache_misses.labels(operation="compose").inc()
 
         # Build prompt
         prompt = build_enrichment_prompt(
             title=request.title, content=request.content, category=request.category
         )
 
-        # Call Claude
-        logger.info("Calling Claude API for enrichment...")
-        message = client.messages.create(
+        # Call Claude with retry logic
+        logger.info(
+            "Calling Claude API",
+            extra={"request_id": request_id, "model": "claude-sonnet-4-20250514"},
+        )
+        message = await call_claude_with_retry(
+            prompt=prompt,
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
         )
 
         # Extract response text
@@ -267,7 +373,12 @@ async def compose_article(request: ComposeRequest):
             response_text = response_text[json_start:json_end].strip()
 
         # Parse JSON
-        data = json.loads(response_text)
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            error = handle_json_error(e, response_text, request.title, request_id)
+            article_compose_requests.labels(status="json_error", category=request.category).inc()
+            return ComposeResponse(success=False, error=error, request_id=request_id)
 
         # Calculate approximate cost (Claude Sonnet: $3/$15 per 1M tokens)
         input_tokens = message.usage.input_tokens
@@ -309,8 +420,18 @@ async def compose_article(request: ComposeRequest):
             enriched_at=datetime.utcnow().isoformat(),
         )
 
-        logger.info(f"✅ Article enriched: {enriched.headline[:50]}...")
-        logger.info(f"   Cost: ${cost_cents / 100:.4f} ({input_tokens} in, {output_tokens} out)")
+        # Cache result in background
+        cache_data = {
+            "article": enriched.model_dump(),
+            "api_cost_cents": cost_cents,
+        }
+        background_tasks.add_task(
+            cache_service.set_compose_cache,
+            request.title,
+            request.content,
+            request.category,
+            cache_data,
+        )
 
         # Track metrics
         duration = time.time() - start_time
@@ -322,21 +443,60 @@ async def compose_article(request: ComposeRequest):
         facts_word_count = len(enriched.facts.split())
         article_enrichment_word_count.labels(priority=enriched.priority).observe(facts_word_count)
 
-        return ComposeResponse(success=True, article=enriched, api_cost_cents=round(cost_cents, 2))
+        logger.info(
+            "Article enriched successfully",
+            extra={
+                "request_id": request_id,
+                "headline": enriched.headline[:50],
+                "cost_cents": cost_cents,
+                "duration_seconds": duration,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
+        )
 
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parse error: {e}")
-        logger.debug(f"Raw response: {response_text[:500] if 'response_text' in dir() else 'N/A'}")
-        article_compose_requests.labels(status="json_error", category=request.category).inc()
-        return ComposeResponse(success=False, error=f"Failed to parse Claude response: {str(e)}")
+        return ComposeResponse(
+            success=True,
+            article=enriched,
+            api_cost_cents=round(cost_cents, 2),
+            cached=False,
+            request_id=request_id,
+        )
+
     except anthropic.APIError as e:
-        logger.error(f"Anthropic API error: {e}")
+        error = handle_anthropic_error(e, request.title, request.category, request_id)
         article_compose_requests.labels(status="api_error", category=request.category).inc()
-        return ComposeResponse(success=False, error=f"Claude API error: {str(e)}")
+        log_error_with_context(
+            e,
+            {
+                "request_id": request_id,
+                "article_title": request.title,
+                "category": request.category,
+            },
+        )
+        raise error
+
     except Exception as e:
-        logger.error(f"Enrichment failed: {e}")
+        error = APIError.create(
+            code=ErrorCode.ENRICHMENT_FAILED,
+            message=f"Enrichment failed: {str(e)}",
+            details={
+                "request_id": request_id,
+                "article_title": request.title,
+                "category": request.category,
+            },
+            request_id=request_id,
+        )
         article_compose_requests.labels(status="error", category=request.category).inc()
-        return ComposeResponse(success=False, error=str(e))
+        log_error_with_context(
+            e,
+            {
+                "request_id": request_id,
+                "article_title": request.title,
+                "category": request.category,
+            },
+        )
+        return ComposeResponse(success=False, error=error, request_id=request_id)
 
 
 @router.get("/compose/status")
@@ -349,6 +509,8 @@ async def compose_status():
         "api_key_set": bool(api_key),
         "model": "claude-sonnet-4-20250514",
         "estimated_cost_per_article": "$0.02-0.05",
+        "cache_enabled": cache_service.enabled,
+        "rate_limit": "10 requests/minute per IP",
     }
 
 

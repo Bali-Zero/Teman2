@@ -43,19 +43,24 @@ class VerificationService:
 
     def __init__(self):
         self._genai_client: GenAIClient | None = None
-        self._available = False
-        self.model_name = (
-            "gemini-3-flash-preview"  # Use Flash for verification (fast, good at reading)
-        )
+        self.model_name = "gemini-2.0-flash-001"
 
-        if settings.google_api_key and GENAI_AVAILABLE:
+    def _get_genai_client(self) -> GenAIClient | None:
+        """Lazy load GenAI client."""
+        if self._genai_client is None and settings.google_api_key and GENAI_AVAILABLE:
             try:
                 self._genai_client = GenAIClient(api_key=settings.google_api_key)
-                self._available = self._genai_client.is_available
-                if self._available:
-                    logger.info("🛡️ [VerificationService] Initialized with GenAI client")
+                if self._genai_client.is_available:
+                    logger.debug("🛡️ [VerificationService] GenAI client loaded")
             except Exception as e:
                 logger.warning(f"⚠️ [VerificationService] Failed to initialize client: {e}")
+        return self._genai_client
+
+    @property
+    def _available(self) -> bool:
+        """Check availability dynamically."""
+        client = self._get_genai_client()
+        return client.is_available if client else False
 
     async def verify_response(
         self, query: str, draft_answer: str, context_chunks: list[str]
@@ -63,7 +68,8 @@ class VerificationService:
         """
         Verify if the draft answer is supported by the context chunks.
         """
-        if not self._available or not self._genai_client:
+        client = self._get_genai_client()
+        if not client or not client.is_available:
             # Fallback if no model: Assume valid but log warning
             return VerificationResult(
                 is_valid=True,

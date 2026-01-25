@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 def sanitize_filename(filename: str, max_length: int = 200) -> str:
-    """
+    r"""
     Sanitize filename for email attachment upload.
 
     Removes/replaces problematic characters that cause Zoho API issues:
@@ -80,7 +80,7 @@ def sanitize_filename(filename: str, max_length: int = 200) -> str:
     name = re.sub(r'[<>:"/\\|?*,]', "", name)
 
     # Remove multiple consecutive underscores
-    name = re.sub(r'_{2,}', "_", name)
+    name = re.sub(r"_{2,}", "_", name)
 
     # Remove leading/trailing underscores
     name = name.strip("_")

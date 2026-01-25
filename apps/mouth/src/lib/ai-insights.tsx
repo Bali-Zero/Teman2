@@ -141,7 +141,9 @@ class AIInsightsService {
     // In production, this would load actual ML models
     // For now, we'll simulate the initialization
     this.isInitialized = true;
-    console.log('🤖 AI Insights Service initialized');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🤖 AI Insights Service initialized');
+    }
   }
 
   // Generate specific insights
@@ -515,7 +517,9 @@ class AIInsightsService {
     model.lastTrained = new Date().toISOString();
     model.accuracy = Math.min(0.95, model.accuracy + 0.02);
 
-    console.log(`🤖 Model ${modelId} retrained. New accuracy: ${model.accuracy}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🤖 Model ${modelId} retrained. New accuracy: ${model.accuracy}`);
+    }
     return true;
   }
 }

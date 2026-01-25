@@ -125,6 +125,7 @@ Before marking a feature "complete":
 
 - **Backend:** Python 3.11, FastAPI, Uvicorn.
 - **DB:** Qdrant (Vector), PostgreSQL (Metadata), Redis (Cache).
+- **CRM Access:** Pure `asyncpg` (Raw SQL) for performance. NO ORM (like SQLAlchemy) for high-traffic paths.
 - **AI Architecture:** Agentic RAG with ReAct Pattern (Thought→Action→Observation loop).
 - **LLM Cascade:** Gemini 3 Flash Preview → 2.0 Flash fallback.
 - **Providers:** Google Gemini (`google-genai` SDK), OpenAI (embeddings), ZeroEntropy (reranker).
@@ -190,8 +191,8 @@ Use these tools to diagnose and fix issues autonomously:
 
 Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 
-- **< 0.3** → ABSTAIN (rifiuta di rispondere)
-- **0.3-0.6** → Risponde con cautela
+- **< 0.15** → ABSTAIN (rifiuta di rispondere)
+- **0.15-0.6** → Risponde con cautela
 - **> 0.6** → Risposta normale
 
 **File critico:** `backend/services/rag/agentic/reasoning.py`
@@ -213,6 +214,8 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 | 2026-01-01 | Visa PDF generation (25 types, Bali Zero style) | `/tmp/create_visa_pdf_v2.py`                     | -        |
 | 2026-01-01 | KBLI PDF generator prototype                    | `/tmp/create_kbli_pdf.py`                        | -        |
 | 2026-01-10 | CRM date conversion (asyncpg DATE fix)          | `crm_enhanced.py`, `crm_clients.py`              | v1490    |
+| 2026-01-24 | Evidence threshold 0.3→0.15 (Fluidity)          | `backend/app/core/constants.py`                  | -        |
+| 2026-01-24 | Image Cleaning migrated to Backend              | `agentic_rag.py`                                 | -        |
 
 #### 6.3 Trusted Tools
 
@@ -228,13 +231,13 @@ Questi tool bypassano l'evidence check perché forniscono evidence propria:
 
 **NON modificare il trusted tools check senza capire il flusso completo.**
 
-#### 6.4 Image Generation (Frontend)
+#### 6.4 Image Generation (Backend - Single Source of Truth)
 
-Il frontend ha un sistema di pulizia per le risposte di generazione immagini:
+Il backend gestisce la pulizia per le risposte di generazione immagini (spostato dal frontend per centralizzazione):
 
-**File:** `apps/mouth/src/lib/api/chat/chat.api.ts`
+**File:** `apps/backend-rag/backend/app/routers/agentic_rag.py`
 
-**Funzione:** `cleanImageResponse()` - Rimuove:
+**Funzione:** `clean_image_generation_response` - Rimuove:
 
 - URL pollinations.ai dal testo
 - Pattern "Versione 1", "Versione 2" (multiple options)
@@ -244,7 +247,30 @@ Il frontend ha un sistema di pulizia per le risposte di generazione immagini:
 **UI:**
 
 - Sparkles icon (✨) nella chat bar apre modal "Genera Immagine"
+- Sparkles icon (✨) nella chat bar apre modal "Genera Immagine"
 - Paperclip gestisce sia file attachment che image upload (vision)
+
+```bash
+# Automatic via Vercel on push to main
+# Or manually:
+./scripts/fly-frontend.sh deploy
+```
+
+### Release Process (Standard)
+
+**Script:** `scripts/zantara-release.sh`
+
+Use this script for **all** production releases. It ensures:
+
+1.  **Linting** (Soft check)
+2.  **Testing** (Hard check - must pass)
+3.  **Building** (Frontend + Backend validation)
+4.  **Versioning** (Auto-tagging)
+
+```bash
+# Run the full release pipeline
+./scripts/zantara-release.sh
+```
 
 #### 6.5 Debug Pattern nei Log
 
@@ -341,9 +367,9 @@ Mostra vista completa del cliente:
 
 **Prossimi step:**
 
-1. Definire lista 200 KBLI prioritari
-2. Generare tutti i PDF Basic in batch
-3. Ingestire PDF NotebookLM in Qdrant come `kbli_premium_guides`
+1.  Definire lista 200 KBLI prioritari
+2.  Generare tutti i PDF Basic in batch
+3.  Ingestire PDF NotebookLM in Qdrant come `kbli_premium_guides`
 
 #### 6.10 Intel Scraper Pipeline (BaliZero News) - NEW 2026-01-04
 
@@ -351,13 +377,13 @@ Mostra vista completa del cliente:
 
 7-step news processing pipeline:
 
-1. **RSS Fetcher** (`rss_fetcher.py`) - Fetch from 12 sources
-2. **LLAMA Scorer** (`professional_scorer.py`) - Keyword scoring 0-100
-3. **Claude Validator** (`claude_validator.py`) - AI gate for 40-75 range
-4. **Claude Enricher** (`article_deep_enricher.py`) - Full article rewrite
-5. **Gemini Image** (`gemini_image_generator.py`) - Cover image generation
-   5.5. **SEO/AEO Optimizer** (`seo_aeo_optimizer.py`) - NEW: Schema.org, meta tags, FAQ, entities
-6. **Telegram Approval** (`telegram_approval.py`) - NEW: @zantara_bot notifications
+1.  **RSS Fetcher** (`rss_fetcher.py`) - Fetch from 12 sources
+2.  **LLAMA Scorer** (`professional_scorer.py`) - Keyword scoring 0-100
+3.  **Claude Validator** (`claude_validator.py`) - AI gate for 40-75 range
+4.  **Claude Enricher** (`article_deep_enricher.py`) - Full article rewrite
+5.  **Gemini Image** (`gemini_image_generator.py`) - Cover image generation
+    5.5. **SEO/AEO Optimizer** (`seo_aeo_optimizer.py`) - NEW: Schema.org, meta tags, FAQ, entities
+6.  **Telegram Approval** (`telegram_approval.py`) - NEW: @zantara_bot notifications
 
 **Cost per article:** ~$0.06
 
@@ -397,4 +423,11 @@ Maintain code quality. If you see legacy code violating these rules, **refactor 
 
 ---
 
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-24
+
+### DevOps & Quality (2026-01-24)
+
+- ✅ **Unified Release Script**: `./scripts/zantara-release.sh` handles Lint, Test, Build, and Versioning.
+- ✅ **Test Suite Resurrection**: Fixed 31+ critical failures (Monitoring, Drive, Chat).
+- ✅ **Strict Hooks**: Husky blocks commits if linting fails.
+- ✅ **Integration Verified**: `streaming.integration.test.ts` is now part of the golden standard.

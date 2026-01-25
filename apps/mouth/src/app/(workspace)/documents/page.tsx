@@ -40,7 +40,14 @@ export default function DocumentsPage() {
   // React Query Hooks
   const queryClient = useQueryClient();
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
-  const { data, isLoading: filesLoading, error } = useDriveFiles(currentFolderId, searchQuery);
+  const {
+    data,
+    isLoading: filesLoading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useDriveFiles(currentFolderId, searchQuery);
 
   const { createFolder, createDoc, renameFile, deleteFile, moveFiles } = useDriveMutations();
 
@@ -214,7 +221,7 @@ export default function DocumentsPage() {
               ? {
                   ...u,
                   status: 'error',
-                  error: error instanceof Error ? error.message : 'Errore di upload',
+                  error: error instanceof Error ? error.message : 'Upload error',
                 }
               : u
           )
@@ -268,7 +275,7 @@ export default function DocumentsPage() {
     onOpen: handleFileDoubleClick,
     onDelete: (filesToDelete) => {
       const names = filesToDelete.map((f) => f.name).join(', ');
-      if (confirm(`Eliminare ${filesToDelete.length > 1 ? 'i seguenti file' : ''}: ${names}?`)) {
+      if (confirm(`Delete ${filesToDelete.length > 1 ? 'these files' : ''}: ${names}?`)) {
         driveLogger.logFileDeleted(
           filesToDelete.map((f) => f.id),
           filesToDelete.map((f) => f.name)
@@ -282,14 +289,14 @@ export default function DocumentsPage() {
 
   if (statusLoading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[var(--background)]">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         >
-          <Loader2 className="h-10 w-10 text-[#1a73e8]" />
+          <Loader2 className="h-10 w-10 text-blue-500" />
         </motion.div>
-        <p className="text-[#5f6368]">Caricamento documenti...</p>
+        <p className="text-slate-500">Loading documents...</p>
       </div>
     );
   }
@@ -328,10 +335,10 @@ export default function DocumentsPage() {
             <Button
               onClick={handleConnect}
               size="lg"
-              className="bg-[#1a73e8] px-8 py-6 text-lg text-white shadow-lg hover:bg-[#1557b0] hover:shadow-xl transition-all"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-lg text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all rounded-2xl"
             >
               <Cloud className="mr-3 h-5 w-5" />
-              Connetti Google Drive
+              Connect Google Drive
               <Sparkles className="ml-3 h-5 w-5" />
             </Button>
           </motion.div>
@@ -344,9 +351,9 @@ export default function DocumentsPage() {
           className="mt-8 grid max-w-2xl grid-cols-3 gap-6 text-center"
         >
           {[
-            { label: '30TB', desc: 'Storage disponibile' },
-            { label: '6', desc: 'Dipartimenti' },
-            { label: '100%', desc: 'Sicuro' },
+            { label: '30TB', desc: 'Available storage' },
+            { label: '6', desc: 'Departments' },
+            { label: '100%', desc: 'Secure' },
           ].map((stat, i) => (
             <div
               key={i}
@@ -366,7 +373,7 @@ export default function DocumentsPage() {
     selectedFiles.size === 1 ? files.find((f) => selectedFiles.has(f.id)) || null : null;
 
   return (
-    <div className="flex h-full bg-white dark:bg-[var(--background)]">
+    <div className="flex h-full bg-gradient-to-br from-slate-50/80 via-white to-blue-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950/30">
       {/* Left Sidebar - Only show when not at root */}
       {!isAtRoot && (
         <DriveSidebar
@@ -453,6 +460,9 @@ export default function DocumentsPage() {
                 onFileClick={handleFileClick}
                 onFileDoubleClick={handleFileDoubleClick}
                 onContextMenu={handleContextMenu}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onLoadMore={() => fetchNextPage()}
               />
             ) : (
               <FileList
@@ -461,6 +471,9 @@ export default function DocumentsPage() {
                 onFileClick={handleFileClick}
                 onFileDoubleClick={handleFileDoubleClick}
                 onContextMenu={handleContextMenu}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onLoadMore={() => fetchNextPage()}
               />
             )}
           </div>
@@ -494,7 +507,7 @@ export default function DocumentsPage() {
             }
           }}
           onDelete={(file) => {
-            if (confirm(`Eliminare ${file.name}?`)) {
+            if (confirm(`Delete ${file.name}?`)) {
               driveLogger.logFileDeleted([file.id], [file.name]);
               deleteFile.mutate(file.id);
               setShowInfoPanel(false);
@@ -558,7 +571,7 @@ export default function DocumentsPage() {
             setModalMode('rename');
           }}
           onDelete={(file) => {
-            if (confirm(`Eliminare ${file.name}?`)) {
+            if (confirm(`Delete ${file.name}?`)) {
               deleteFile.mutate(file.id);
             }
           }}

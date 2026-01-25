@@ -27,32 +27,31 @@ describe('DriveSidebar', () => {
   });
 
   describe('Expanded State', () => {
-    it('should render "New" button', () => {
+    it('should render "Nuovo" button', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      expect(screen.getByText('New')).toBeTruthy();
+      expect(screen.getByText('Nuovo')).toBeTruthy();
     });
 
     it('should render navigation items', () => {
       render(<DriveSidebar {...defaultProps} />);
 
       expect(screen.getByText('Bali Zero Drive')).toBeTruthy();
-      // Other items were removed from implementation
     });
 
     it('should highlight active navigation item', () => {
       const { container } = render(<DriveSidebar {...defaultProps} activeView="my-drive" />);
 
-      // Active item should have blue background
-      const activeItem = container.querySelector('.bg-\\[\\#e8f0fe\\]');
+      // Active item should have blue background (bg-blue-50)
+      const activeItem = container.querySelector('.bg-blue-50');
       expect(activeItem).toBeTruthy();
       expect(activeItem?.textContent).toContain('Bali Zero Drive');
     });
 
-    it('should call onNewClick when "New" button is clicked', () => {
+    it('should call onNewClick when "Nuovo" button is clicked', () => {
       render(<DriveSidebar {...defaultProps} />);
 
-      const newButton = screen.getByText('New').closest('button');
+      const newButton = screen.getByText('Nuovo').closest('button');
       fireEvent.click(newButton!);
 
       expect(defaultProps.onNewClick).toHaveBeenCalled();
@@ -70,11 +69,11 @@ describe('DriveSidebar', () => {
     it('should render storage indicator', () => {
       render(<DriveSidebar {...defaultProps} storageUsed={5 * 1024 * 1024 * 1024} />);
 
-      expect(screen.getByText('Storage')).toBeTruthy();
-      expect(screen.getByText(/5\.0 GB/)).toBeTruthy();
+      expect(screen.getByText('Spazio')).toBeTruthy();
+      expect(screen.getByText(/utilizzati/)).toBeTruthy();
     });
 
-    it('should show progress bar with correct color for low usage', () => {
+    it('should show progress bar with blue color', () => {
       const { container } = render(
         <DriveSidebar
           {...defaultProps}
@@ -83,27 +82,25 @@ describe('DriveSidebar', () => {
         />
       );
 
-      // Low usage should be blue
-      const progressBar = container.querySelector('.bg-\\[\\#1a73e8\\]');
+      // Progress bar should be blue
+      const progressBar = container.querySelector('.bg-blue-500');
       expect(progressBar).toBeTruthy();
     });
 
-    it('should show yellow progress bar for medium usage (70-90%)', () => {
-      const { container } = render(
+    it('should show storage usage text', () => {
+      render(
         <DriveSidebar
           {...defaultProps}
-          storageUsed={11 * 1024 * 1024 * 1024} // ~73%
+          storageUsed={11 * 1024 * 1024 * 1024}
           storageTotal={15 * 1024 * 1024 * 1024}
         />
       );
 
-      // Medium usage should be yellow
-      const progressBar = container.querySelector('.bg-\\[\\#fbbc04\\]');
-      expect(progressBar).toBeTruthy();
+      expect(screen.getByText(/utilizzati/)).toBeTruthy();
     });
 
-    it('should show red progress bar for high usage (>90%)', () => {
-      const { container } = render(
+    it('should show total storage', () => {
+      render(
         <DriveSidebar
           {...defaultProps}
           storageUsed={14 * 1024 * 1024 * 1024}
@@ -111,9 +108,7 @@ describe('DriveSidebar', () => {
         />
       );
 
-      // High usage should be red
-      const progressBar = container.querySelector('.bg-\\[\\#ea4335\\]');
-      expect(progressBar).toBeTruthy();
+      expect(screen.getByText(/15\.0 GB/)).toBeTruthy();
     });
   });
 
@@ -121,7 +116,7 @@ describe('DriveSidebar', () => {
     it('should render compact "New" button in collapsed state', () => {
       const { container } = render(<DriveSidebar {...defaultProps} isCollapsed />);
 
-      // Should have a plus icon button
+      // Should have a plus icon button with specific size
       const plusButton = container.querySelector('.w-12.h-12');
       expect(plusButton).toBeTruthy();
     });

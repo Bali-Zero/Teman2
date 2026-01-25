@@ -3,8 +3,10 @@ ZANTARA RAG - Embeddings Generation
 Supports both OpenAI and Sentence Transformers
 """
 
+import asyncio
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +27,11 @@ except ImportError:
         pass
 
 
-# Import settings - try both absolute paths
+# Import settings
 try:
     from backend.app.core.config import settings as _default_settings
 except ImportError:
-    try:
-        import sys
-        from pathlib import Path
-
-        # Add parent dir to path for imports
-        sys.path.insert(0, str(Path(__file__).parent.parent))
-        from backend.app.core.config import settings as _default_settings
-    except ImportError:
-        # Fallback if config not available
-        _default_settings = None
+    _default_settings = None
 
 
 class EmbeddingsGenerator:
@@ -68,6 +61,7 @@ class EmbeddingsGenerator:
             settings: Optional settings object (for testing). If None, uses module-level settings.
         """
         self._settings = settings if settings is not None else _default_settings
+        self._executor = ThreadPoolExecutor(max_workers=2)  # For CPU-bound tasks
 
         # Determine provider from settings or parameter
         if provider:
@@ -87,7 +81,7 @@ class EmbeddingsGenerator:
 
     def _init_openai(self, api_key: str | None = None, model: str | None = None):
         """Initialize OpenAI embeddings provider"""
-        from openai import OpenAI
+        from openai import AsyncOpenAI
 
         self.provider = "openai"  # Ensure provider is set to openai
         self.model = (
@@ -110,9 +104,9 @@ class EmbeddingsGenerator:
 
             raise ValueError("OpenAI API key is required for OpenAI provider")
 
-        self.client = OpenAI(api_key=self.api_key)
+        self.client = AsyncOpenAI(api_key=self.api_key)
         logger.info(
-            f"🔌 [EmbeddingsGenerator] Initialized with OpenAI: {self.model} ({self.dimensions} dims)"
+            f"🔌 [EmbeddingsGenerator] Initialized with OpenAI (Async): {self.model} ({self.dimensions} dims)"
         )
 
     def _init_sentence_transformers(self, model: str | None = None):
@@ -158,9 +152,9 @@ class EmbeddingsGenerator:
                 logger.error(f"🔌 [EmbeddingsGenerator] Both providers failed: {openai_error}")
                 raise
 
-    def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+    async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
-        Generate embeddings for a list of texts.
+        Generate embeddings for a list of texts (ASYNC).
 
         Args:
             texts: List of text strings to embed
@@ -190,9 +184,9 @@ class EmbeddingsGenerator:
             try:
                 start_time = time.perf_counter()
                 if self.provider == "openai":
-                    result = self._generate_embeddings_openai(texts)
+                    result = await self._generate_embeddings_openai(texts)
                 else:
-                    result = self._generate_embeddings_sentence_transformers(texts)
+                    result = await self._generate_embeddings_sentence_transformers(texts)
 
                 latency_ms = (time.perf_counter() - start_time) * 1000
                 set_span_attribute("latency_ms", round(latency_ms, 2))
@@ -205,12 +199,12 @@ class EmbeddingsGenerator:
                 set_span_status("error", str(e))
                 raise
 
-    def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
+    async def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
         """
-        Generate embeddings using OpenAI API.
+        Generate embeddings using OpenAI API (ASYNC).
         Automatically batches large requests (OpenAI max batch size: 2048).
         """
-        logger.info(f"Generating embeddings for {len(texts)} texts using OpenAI")
+        logger.info(f"Generating embeddings for {len(texts)} texts using OpenAI (Async)")
 
         MAX_BATCH_SIZE = 2048  # OpenAI API limit
         all_embeddings = []
@@ -220,10 +214,8 @@ class EmbeddingsGenerator:
             batch = texts[i : i + MAX_BATCH_SIZE]
             logger.debug(f"Processing batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts")
 
-            # Call OpenAI API
-            # Note: dimensions parameter removed - text-embedding-3-small defaults to 1536 dims
-            # which matches our Qdrant collections configuration
-            response = self.client.embeddings.create(model=self.model, input=batch)
+            # Call OpenAI API Async
+            response = await self.client.embeddings.create(model=self.model, input=batch)
 
             batch_embeddings = [item.embedding for item in response.data]
             all_embeddings.extend(batch_embeddings)
@@ -233,13 +225,21 @@ class EmbeddingsGenerator:
         )
         return all_embeddings
 
-    def _generate_embeddings_sentence_transformers(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings using Sentence Transformers"""
+    async def _generate_embeddings_sentence_transformers(
+        self, texts: list[str]
+    ) -> list[list[float]]:
+        """Generate embeddings using Sentence Transformers (Thread Pool Offload)"""
         logger.info(f"Generating embeddings for {len(texts)} texts using Sentence Transformers")
 
         try:
-            embeddings = self.transformer.encode(
-                texts, convert_to_numpy=True, show_progress_bar=len(texts) > 10
+            loop = asyncio.get_running_loop()
+
+            # Offload CPU-bound task to executor
+            embeddings = await loop.run_in_executor(
+                self._executor,
+                lambda: self.transformer.encode(
+                    texts, convert_to_numpy=True, show_progress_bar=False
+                ),
             )
 
             # Convert numpy array to list of lists
@@ -251,9 +251,9 @@ class EmbeddingsGenerator:
             logger.error(f"Sentence Transformers error: {e}")
             raise
 
-    def generate_single_embedding(self, text: str) -> list[float]:
+    async def generate_single_embedding(self, text: str) -> list[float]:
         """
-        Generate embedding for a single text.
+        Generate embedding for a single text (ASYNC).
 
         Args:
             text: Text string to embed
@@ -261,12 +261,12 @@ class EmbeddingsGenerator:
         Returns:
             Embedding vector as list of floats
         """
-        embeddings = self.generate_embeddings([text])
+        embeddings = await self.generate_embeddings([text])
         return embeddings[0] if embeddings else []
 
-    def generate_query_embedding(self, query: str) -> list[float]:
+    async def generate_query_embedding(self, query: str) -> list[float]:
         """
-        Generate embedding optimized for query/search.
+        Generate embedding optimized for query/search (ASYNC).
 
         Args:
             query: Search query text
@@ -275,11 +275,11 @@ class EmbeddingsGenerator:
             Query embedding vector
         """
         # For text-embedding-3-small, same process as document embedding
-        return self.generate_single_embedding(query)
+        return await self.generate_single_embedding(query)
 
-    def generate_batch_embeddings(self, texts: list[str]) -> list[list[float]]:
+    async def generate_batch_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
-        Generate embeddings for a batch of texts.
+        Generate embeddings for a batch of texts (ASYNC).
 
         Alias for generate_embeddings() for backward compatibility.
 
@@ -289,7 +289,7 @@ class EmbeddingsGenerator:
         Returns:
             List of embedding vectors (each vector is a list of floats)
         """
-        return self.generate_embeddings(texts)
+        return await self.generate_embeddings(texts)
 
     def get_model_info(self) -> dict:
         """
@@ -331,9 +331,9 @@ def create_embeddings_generator(
 
 
 # Convenience function
-def generate_embeddings(texts: list[str], api_key: str | None = None) -> list[list[float]]:
+async def generate_embeddings(texts: list[str], api_key: str | None = None) -> list[list[float]]:
     """
-    Quick function to generate embeddings without instantiating class.
+    Quick function to generate embeddings without instantiating class (ASYNC).
 
     Args:
         texts: List of texts to embed
@@ -343,4 +343,4 @@ def generate_embeddings(texts: list[str], api_key: str | None = None) -> list[li
         List of embedding vectors
     """
     generator = EmbeddingsGenerator(api_key=api_key)
-    return generator.generate_embeddings(texts)
+    return await generator.generate_embeddings(texts)

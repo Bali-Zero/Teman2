@@ -21,22 +21,25 @@ export function useKeyboardNavigation({
   onDelete,
   enabled = true,
 }: UseKeyboardNavigationOptions) {
+  // Safety: ensure files is always an array
+  const safeFiles = Array.isArray(files) ? files : [];
+
   const getSelectedIndex = useCallback(() => {
     if (selectedFiles.size === 0) return -1;
     const firstSelectedId = Array.from(selectedFiles)[0];
-    return files.findIndex((f) => f.id === firstSelectedId);
-  }, [files, selectedFiles]);
+    return safeFiles.findIndex((f) => f.id === firstSelectedId);
+  }, [safeFiles, selectedFiles]);
 
   const getLastSelectedIndex = useCallback(() => {
     if (selectedFiles.size === 0) return -1;
     const selectedIds = Array.from(selectedFiles);
     const lastSelectedId = selectedIds[selectedIds.length - 1];
-    return files.findIndex((f) => f.id === lastSelectedId);
-  }, [files, selectedFiles]);
+    return safeFiles.findIndex((f) => f.id === lastSelectedId);
+  }, [safeFiles, selectedFiles]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!enabled || files.length === 0) return;
+      if (!enabled || safeFiles.length === 0) return;
 
       // Don't intercept if user is typing in an input
       if (
@@ -53,7 +56,7 @@ export function useKeyboardNavigation({
         case 'ArrowUp':
         case 'ArrowLeft': {
           e.preventDefault();
-          if (files.length === 0) return;
+          if (safeFiles.length === 0) return;
 
           let newIndex = currentIndex - 1;
           if (newIndex < 0) newIndex = 0;
@@ -66,13 +69,13 @@ export function useKeyboardNavigation({
             const end = Math.max(newIndex, currentIndex);
             const newSelection = new Set<string>();
             for (let i = start; i <= end; i++) {
-              newSelection.add(files[i].id);
+              newSelection.add(safeFiles[i].id);
             }
             driveLogger.logKeyboardShortcut(e.key, 'range_select_up', { shift: true });
             onSelect(newSelection);
           } else {
             // Single selection
-            onSelect(new Set([files[newIndex].id]));
+            onSelect(new Set([safeFiles[newIndex].id]));
           }
           break;
         }
@@ -80,10 +83,10 @@ export function useKeyboardNavigation({
         case 'ArrowDown':
         case 'ArrowRight': {
           e.preventDefault();
-          if (files.length === 0) return;
+          if (safeFiles.length === 0) return;
 
           let newIndex = currentIndex + 1;
-          if (newIndex >= files.length) newIndex = files.length - 1;
+          if (newIndex >= safeFiles.length) newIndex = safeFiles.length - 1;
           if (currentIndex === -1) newIndex = 0;
 
           driveLogger.logKeyboardNavigation('down', newIndex);
@@ -94,13 +97,13 @@ export function useKeyboardNavigation({
             const end = Math.max(currentIndex, newIndex);
             const newSelection = new Set<string>();
             for (let i = start; i <= end; i++) {
-              newSelection.add(files[i].id);
+              newSelection.add(safeFiles[i].id);
             }
             driveLogger.logKeyboardShortcut(e.key, 'range_select_down', { shift: true });
             onSelect(newSelection);
           } else {
             // Single selection
-            onSelect(new Set([files[newIndex].id]));
+            onSelect(new Set([safeFiles[newIndex].id]));
           }
           break;
         }
@@ -109,7 +112,7 @@ export function useKeyboardNavigation({
           e.preventDefault();
           driveLogger.logKeyboardShortcut('Enter', 'open', {});
           if (selectedFiles.size === 1) {
-            const selectedFile = files.find((f) => selectedFiles.has(f.id));
+            const selectedFile = safeFiles.find((f) => selectedFiles.has(f.id));
             if (selectedFile) {
               onOpen(selectedFile);
             }
@@ -121,8 +124,8 @@ export function useKeyboardNavigation({
           // Space: Toggle selection on current item
           e.preventDefault();
           driveLogger.logKeyboardShortcut('Space', 'toggle_selection', {});
-          if (currentIndex >= 0) {
-            const file = files[currentIndex];
+          if (currentIndex >= 0 && currentIndex < safeFiles.length) {
+            const file = safeFiles[currentIndex];
             const newSelection = new Set(selectedFiles);
             if (newSelection.has(file.id)) {
               newSelection.delete(file.id);
@@ -143,7 +146,7 @@ export function useKeyboardNavigation({
               meta: e.metaKey,
               ctrl: e.ctrlKey,
             });
-            const allIds = new Set(files.map((f) => f.id));
+            const allIds = new Set(safeFiles.map((f) => f.id));
             onSelect(allIds);
           }
           break;
@@ -163,7 +166,7 @@ export function useKeyboardNavigation({
           if (onDelete && selectedFiles.size > 0) {
             e.preventDefault();
             driveLogger.logKeyboardShortcut(e.key, 'delete', {});
-            const filesToDelete = files.filter((f) => selectedFiles.has(f.id));
+            const filesToDelete = safeFiles.filter((f) => selectedFiles.has(f.id));
             onDelete(filesToDelete);
           }
           break;
@@ -173,8 +176,8 @@ export function useKeyboardNavigation({
           // Jump to first item
           e.preventDefault();
           driveLogger.logKeyboardShortcut('Home', 'jump_to_first', {});
-          if (files.length > 0) {
-            onSelect(new Set([files[0].id]));
+          if (safeFiles.length > 0) {
+            onSelect(new Set([safeFiles[0].id]));
           }
           break;
         }
@@ -183,8 +186,8 @@ export function useKeyboardNavigation({
           // Jump to last item
           e.preventDefault();
           driveLogger.logKeyboardShortcut('End', 'jump_to_last', {});
-          if (files.length > 0) {
-            onSelect(new Set([files[files.length - 1].id]));
+          if (safeFiles.length > 0) {
+            onSelect(new Set([safeFiles[safeFiles.length - 1].id]));
           }
           break;
         }
@@ -192,7 +195,7 @@ export function useKeyboardNavigation({
     },
     [
       enabled,
-      files,
+      safeFiles,
       selectedFiles,
       getSelectedIndex,
       getLastSelectedIndex,

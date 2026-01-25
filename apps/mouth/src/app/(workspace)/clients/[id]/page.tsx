@@ -37,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { fileToBase64 } from '@/lib/utils';
 import type {
   ClientProfile,
   FamilyMember,
@@ -1182,32 +1183,25 @@ function PassportCard({
 
     setIsUploading(true);
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(',')[1];
+      // Convert file to base64 using utility function
+      const base64 = await fileToBase64(file);
 
-        const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
-          file: base64,
-          file_name: file.name,
-          document_type: 'passport',
-          mime_type: file.type,
-        })) as {
-          success: boolean;
-          message?: string;
-        };
+      const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
+        file: base64,
+        file_name: file.name,
+        document_type: 'passport',
+        mime_type: file.type,
+      })) as {
+        success: boolean;
+        message?: string;
+      };
 
-        if (response.success) {
-          toast.success('Passport uploaded successfully');
-          window.location.reload();
-        } else {
-          toast.error('Upload failed', { description: response.message });
-        }
-      };
-      reader.onerror = () => {
-        toast.error('Failed to read file');
-      };
-      reader.readAsDataURL(file);
+      if (response.success) {
+        toast.success('Passport uploaded successfully');
+        window.location.reload();
+      } else {
+        toast.error('Upload failed', { description: response.message });
+      }
     } catch (err) {
       toast.error('Upload failed', { description: (err as Error).message });
     } finally {
@@ -1439,32 +1433,25 @@ function ActualVisaCard({
 
     setIsUploading(true);
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(',')[1];
+      // Convert file to base64 using utility function
+      const base64 = await fileToBase64(file);
 
-        const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
-          file: base64,
-          file_name: file.name,
-          document_type: 'visa',
-          mime_type: file.type,
-        })) as {
-          success: boolean;
-          message?: string;
-        };
+      const response = (await api.post(`/api/crm/clients/${client.id}/documents/upload`, {
+        file: base64,
+        file_name: file.name,
+        document_type: 'visa',
+        mime_type: file.type,
+      })) as {
+        success: boolean;
+        message?: string;
+      };
 
-        if (response.success) {
-          toast.success('Visa uploaded successfully');
-          window.location.reload();
-        } else {
-          toast.error('Upload failed', { description: response.message });
-        }
-      };
-      reader.onerror = () => {
-        toast.error('Failed to read file');
-      };
-      reader.readAsDataURL(file);
+      if (response.success) {
+        toast.success('Visa uploaded successfully');
+        window.location.reload();
+      } else {
+        toast.error('Upload failed', { description: response.message });
+      }
     } catch (err) {
       toast.error('Upload failed', { description: (err as Error).message });
     } finally {

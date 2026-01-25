@@ -862,7 +862,7 @@ Each article deserves a UNIQUE, REASONED image - not a random selection.
             headers["X-API-Key"] = api_key
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await client.post(endpoint, json=payload, headers=headers)
 
                 if response.status_code == 200:

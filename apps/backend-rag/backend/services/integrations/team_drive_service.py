@@ -450,16 +450,30 @@ class TeamDriveService:
         """
         Get or create the Drive API service (async version with OAuth support).
 
-        PRIORITY:
-        1. OAuth SYSTEM token (30TB quota)
-        2. Domain-Wide Delegation (Workspace quota)
+        PRIORITY (configurable via GOOGLE_DRIVE_PREFER_SERVICE_ACCOUNT):
+        1. OAuth SYSTEM token (30TB quota) - default
+        2. Domain-Wide Delegation (Workspace quota) - preferred for Shared Drives
         3. Service Account direct (15GB limit)
+
+        Set GOOGLE_DRIVE_PREFER_SERVICE_ACCOUNT=true to skip OAuth and use
+        Domain-Wide Delegation for Google Workspace Shared Drive access.
         """
         if self._service is not None:
             return self._service
 
-        # Try OAuth SYSTEM token first (30TB quota)
-        oauth_data = await self._get_oauth_token()
+        # Check if Service Account mode is preferred (for Shared Drive access)
+        prefer_service_account = os.environ.get(
+            "GOOGLE_DRIVE_PREFER_SERVICE_ACCOUNT", ""
+        ).lower() in ("true", "1", "yes")
+
+        # Try OAuth SYSTEM token first (30TB quota) - unless Service Account preferred
+        oauth_data = None
+        if not prefer_service_account:
+            oauth_data = await self._get_oauth_token()
+        else:
+            logger.info(
+                "[TEAM_DRIVE] Skipping OAuth mode (GOOGLE_DRIVE_PREFER_SERVICE_ACCOUNT=true)"
+            )
         if oauth_data:
             try:
                 # Create credentials with ALL required fields for auto-refresh
@@ -595,6 +609,8 @@ class TeamDriveService:
             "pageSize": min(page_size, 100),
             "fields": "nextPageToken, files(id, name, mimeType, size, modifiedTime, iconLink, webViewLink, thumbnailLink, parents)",
             "orderBy": "folder, name",
+            "supportsAllDrives": True,  # Required for Shared Drive access
+            "includeItemsFromAllDrives": True,  # Include files from all Shared Drives
         }
 
         if page_token:

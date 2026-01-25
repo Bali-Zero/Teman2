@@ -11,7 +11,7 @@ The project is structured as a **Monorepo** managed with `npm workspaces` and Do
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4.
 - **Backend:** Python 3.11+, FastAPI, Uvicorn.
 - **Database:**
-  - **PostgreSQL:** Relational data (CRM, Auth, Memory).
+  - **PostgreSQL:** Relational data (CRM, Auth, Memory). **Architettura V2 (Gen 2026):** Gestione migrazioni rifattorizzata ("Squash & Reset") in `migrations_v2/`. Vedi `docs/DATABASE_ARCHITECTURE_V2.md`.
   - **Qdrant:** Vector database for RAG (53,000+ documents).
   - **Redis:** Caching and queue management.
 - **AI/LLM:**

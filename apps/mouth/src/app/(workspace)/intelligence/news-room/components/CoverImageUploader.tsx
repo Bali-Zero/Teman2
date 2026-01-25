@@ -13,6 +13,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { Loader2, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { fileToBase64 } from '@/lib/utils';
 
 interface CoverImageUploaderProps {
   item: StagingItem;
@@ -71,14 +72,8 @@ export function CoverImageUploader({
 
     setUploading(true);
     try {
-      // Convert to base64 (remove data:image/...;base64, prefix)
-      const base64Match = preview.match(/^data:image\/\w+;base64,(.+)$/);
-      if (!base64Match) {
-        toast.error('Error', 'Failed to process image');
-        return;
-      }
-
-      const base64 = base64Match[1];
+      // Convert to base64 using utility function
+      const base64 = await fileToBase64(file);
       const filename = file.name;
 
       await intelligenceApi.uploadCoverImage(item.type, item.id, base64, filename);

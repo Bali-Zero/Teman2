@@ -1,143 +1,67 @@
 # 📊 Report Progresso Fix Codebase
 
-**Data:** 2026-01-21  
-**Status:** In Corso
+**Data:** 2026-01-25  
+**Status:** In Corso (Stabile)
 
 ---
 
-## ✅ COMPLETATI (Problemi Critici)
+## ✅ COMPLETATI (Major Milestones)
 
-### 1. ✅ Struttura Ricorsiva Duplicata
+### 1. 🏛️ Database Refactoring V2 (New)
 
-- Rimossa struttura `apps/backend-rag/apps/backend-rag/apps/backend-rag/`
-- Rimosso `.venv` tracciato da git
-- Aggiornato `.gitignore`
+- **Problema:** Migrazioni legacy frammentate e irrecuperabili.
+- **Soluzione:** Implementato sistema V2 "Squash & Reset".
+- **Azioni:** Creato snapshot baseline, archiviato legacy, aggiornato MigrationManager con supporto "Fake Apply".
+- **Risultato:** DB migrato con successo, 0 perdita dati, documentazione completa.
 
-### 2. ✅ Console.log/error/warn
+### 2. 🧹 Clean Logging (Aggiornato)
 
-- **Prima:** 257+ occorrenze
-- **Dopo:** ~118 occorrenze
-- **Riduzione:** 54%
-- Sostituiti con logger centralizzato
+- **Status:** Completato (25/01/2026)
+- **Backend:** Rimossi `print()` da `openrouter_client.py`.
+- **Frontend:** Rimossi `console.log` da pagine critiche e protetti da env flag nelle librerie.
+- **Policy:** Aggiornata `AI_ONBOARDING.md` con regole severe.
 
-### 3. ✅ Uso eccessivo di `any`
+### 3. 🛠️ Fix Import & Test Backend (New)
 
-- **Prima:** 464+ occorrenze
-- **Dopo:** ~11 occorrenze
-- **Riduzione:** 98%
-- Creati tipi comuni (`JsonObject`, `Metadata`, etc.)
+- **Problema:** Crash `TypeError: MagicMock` nei test causato da side-effect all'importazione.
+- **Soluzione:** Refactoring `GenAIClient` per usare **Lazy Loading** delle credenziali.
+- **Risultato:** Test backend (`test_migration_runner.py`) passati (22/22).
 
----
+### 4. ✅ Struttura Ricorsiva Duplicata
 
-## 🔄 IN CORSO (Problemi Medi)
+- Rimossa struttura ricorsiva `apps/backend-rag/apps/backend-rag/...`
+- Pulizia filesystem completata.
 
-### 4. Import Wildcard (`import *`)
+### 5. ✅ Sicurezza & Vulnerabilità
 
-**Status:** Parzialmente completato
-
-**File Sistemati:**
-
-- ✅ `apps/backend-rag/backend/app/main.py` - sostituito con import espliciti
-- ✅ `apps/backend-rag/backend/tests/unit/llm/test_base.py` - sostituito
-- ✅ `apps/backend-rag/backend/tests/unit/llm/test_provider_registry.py` - sostituito
-
-**File Rimanenti:**
-
-- ⏳ `apps/backend-rag/backend/tests/unit/llm/providers/test_vertex.py`
-- ⏳ `apps/backend-rag/backend/tests/unit/llm/providers/test_deepseek.py`
-- ⏳ `apps/backend-rag/backend/tests/unit/llm/adapters/test_gemini.py`
-- ⏳ `apps/backend-rag/backend/tests/unit/llm/adapters/test_base.py`
-- ⏳ `apps/backend-rag/scripts/create_module.py`
-
-**Totale:** 3/8 completati (38%)
+- 0 vulnerabilità critiche (verificato 21/01).
+- Nessuna credenziale hardcoded (verificato).
 
 ---
 
-### 5. File Non Tracciati nel Git
+## 🔄 IN CORSO (Debito Tecnico Residuo)
 
-**Status:** Da analizzare
+### 6. Import Wildcard (`import *`)
 
-**File trovati:**
+**Status:** Parzialmente completato (3/8 file)
 
-```
-?? CODEBASE_ISSUES_REPORT.md
-?? FIX_COMPLETION_REPORT.md
-?? apps/backend-rag/tests/unit/test_prompt_identity_injection.py
-?? apps/mouth/QUICK_ARTICLE_PUBLISHING.md
-?? apps/mouth/README.md
-?? apps/mouth/SESSION_2026_01_19_SUMMARY.md
-?? apps/mouth/src/app/edge/
-?? apps/mouth/src/components/debug/
-?? apps/mouth/src/hooks/useEdgeSanitizer.ts
-?? apps/mouth/src/hooks/useGeminiNano.ts
-?? apps/mouth/src/lib/edge/
-?? apps/mouth/src/lib/types/common.ts
-?? apps/webapp/src/
-?? docs/CLOUDFLARE_DNS_SETUP.md
-?? docs/CLOUDFLARE_DNS_SETUP_COMPLETE.md
-?? docs/CRM_GOOGLE_DRIVE_INTEGRATION_PLAN.md
-?? docs/DEPLOY_MONITORING_2026_01_21.md
-?? docs/DEPLOY_MONITORING_FINAL.md
-?? docs/DEPLOY_STATUS_FINAL.md
-?? scripts/fix-console-and-any.py
-?? test_github_token.py
-```
+- Rimanenti: Test legacy in `tests/unit/llm/...`
 
-**Azione Richiesta:** Decidere cosa tracciare
+### 7. File Untracked (Git)
+
+**Status:** Bassa Priorità
+
+- Molti file temporanei o report in root.
+- Action: Pulizia periodica (eseguita parzialmente oggi).
 
 ---
 
-### 6. TODO/FIXME Critici
+## 🎯 Prossimi Passi Suggeriti
 
-**Status:** Analizzati, da risolvere
-
-**TODO Critici Trovati:**
-
-1. `apps/backend-rag/CLAUDE.md:166` - "TODO: Fix pytest configuration in future session"
-2. `apps/backend-rag/CLAUDE.md:1376` - "TODO: Fix pytest configuration for pre-push hook"
-3. `apps/backend-rag/CLAUDE.md:1359` - "TODO: Fix file TypeScript corrotto, poi run Sentinel"
-
-**Analisi:**
-
-- Pytest config già presente (`pytest.ini`)
-- Pre-push hook già configurato (`.husky/pre-push`)
-- Potrebbe essere problema di path o configurazione
+1. **Monitoraggio V2:** Verificare stabilità DB in produzione (quando deployato).
+2. **Estensione Test:** Aumentare coverage sui nuovi componenti V2 (se necessario).
+3. **Frontend Polish:** Continuare pulizia UI/UX (oltre ai log).
 
 ---
 
-## ⏳ DA FARE (Problemi Minori)
-
-### 7. Audit Sicurezza
-
-**Status:** ✅ Verificato
-
-- Nessuna credenziale hardcoded trovata
-- Tutti i secret in variabili d'ambiente
-
-### 8. Dipendenze
-
-**Status:** Da verificare
-
-- `pip-audit` non installato
-- Requirements aggiornati recentemente (2025-12-29)
-- Da verificare vulnerabilità
-
-### 9. Documentazione Struttura
-
-**Status:** Da migliorare
-
-- Creare documentazione chiara della struttura monorepo
-
----
-
-## 🎯 Prossimi Passi
-
-1. **Completare import wildcard** (5 file rimanenti)
-2. **Decidere file da tracciare** (analisi e decisione)
-3. **Risolvere TODO pytest** (verificare configurazione)
-4. **Verificare dipendenze** (installare pip-audit e controllare)
-5. **Migliorare documentazione** (creare README struttura)
-
----
-
-**Ultimo Aggiornamento:** 2026-01-21
+**Ultimo Aggiornamento:** 2026-01-25

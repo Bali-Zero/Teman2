@@ -34,7 +34,7 @@ class BaseMigration:
     - Consistent error handling
     """
 
-    MIGRATIONS_DIR = Path(__file__).parent / "migrations"
+    MIGRATIONS_DIR = Path(__file__).parent / "migrations_v2"
 
     # Dangerous SQL patterns that should not be in migrations
     DANGEROUS_PATTERNS = [

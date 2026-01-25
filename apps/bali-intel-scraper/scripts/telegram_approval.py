@@ -703,10 +703,41 @@ _Article ID: `{article.article_id}`_"""
                                     if first_message_id is None:
                                         first_message_id = message_id
                                 else:
-                                    error = await resp.text()
-                                    logger.error(
-                                        f"Telegram API error for {chat_id}: {error}"
-                                    )
+                                    error_text = await resp.text()
+                                    try:
+                                        error_data = await resp.json()
+                                        error_code = error_data.get("error_code", 0)
+                                        error_desc = error_data.get(
+                                            "description", error_text
+                                        )
+
+                                        if error_code == 403:
+                                            if "deactivated" in error_desc.lower():
+                                                logger.error(
+                                                    f"❌ Telegram user {chat_id} è DISATTIVATO"
+                                                )
+                                                logger.warning(
+                                                    "   ⚠️  L'utente Telegram è disattivato o non esiste più"
+                                                )
+                                                logger.info(
+                                                    "   💡 Soluzione: Verificare chat ID o ottenere un nuovo chat ID valido"
+                                                )
+                                            elif "blocked" in error_desc.lower():
+                                                logger.error(
+                                                    f"❌ Bot bloccato dall'utente {chat_id}"
+                                                )
+                                            else:
+                                                logger.error(
+                                                    f"❌ Telegram API error {error_code} per {chat_id}: {error_desc}"
+                                                )
+                                        else:
+                                            logger.error(
+                                                f"Telegram API error for {chat_id}: {error_code} - {error_desc}"
+                                            )
+                                    except:
+                                        logger.error(
+                                            f"Telegram API error for {chat_id}: {error_text[:200]}"
+                                        )
                     else:
                         # Send as text message (no image)
                         url = TELEGRAM_API.format(
@@ -730,10 +761,56 @@ _Article ID: `{article.article_id}`_"""
                                 if first_message_id is None:
                                     first_message_id = message_id
                             else:
-                                error = await resp.text()
-                                logger.error(
-                                    f"Telegram API error for {chat_id}: {error}"
-                                )
+                                error_text = await resp.text()
+                                try:
+                                    error_data = await resp.json()
+                                    error_code = error_data.get("error_code", 0)
+                                    error_desc = error_data.get(
+                                        "description", error_text
+                                    )
+
+                                    if error_code == 403:
+                                        if "deactivated" in error_desc.lower():
+                                            logger.error(
+                                                f"❌ Telegram user {chat_id} è DISATTIVATO"
+                                            )
+                                            logger.warning(
+                                                "   ⚠️  L'utente Telegram è disattivato o non esiste più"
+                                            )
+                                            logger.info(
+                                                "   💡 Soluzione: Verificare chat ID o ottenere un nuovo chat ID valido"
+                                            )
+                                            logger.info(
+                                                "   📱 Come ottenere chat ID: Invia /start a @userinfobot su Telegram"
+                                            )
+                                        elif "blocked" in error_desc.lower():
+                                            logger.error(
+                                                f"❌ Bot bloccato dall'utente {chat_id}"
+                                            )
+                                            logger.warning(
+                                                "   ⚠️  L'utente ha bloccato il bot"
+                                            )
+                                            logger.info(
+                                                "   💡 Soluzione: L'utente deve sbloccare il bot"
+                                            )
+                                        else:
+                                            logger.error(
+                                                f"❌ Telegram API error {error_code} per {chat_id}: {error_desc}"
+                                            )
+                                            logger.warning(
+                                                "   ⚠️  L'utente non può ricevere messaggi da questo bot"
+                                            )
+                                            logger.info(
+                                                "   💡 Soluzione: L'utente deve avviare il bot con /start"
+                                            )
+                                    else:
+                                        logger.error(
+                                            f"Telegram API error for {chat_id}: {error_code} - {error_desc}"
+                                        )
+                                except:
+                                    logger.error(
+                                        f"Telegram API error for {chat_id}: {error_text[:200]}"
+                                    )
 
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")

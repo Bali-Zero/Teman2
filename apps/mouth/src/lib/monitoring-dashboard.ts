@@ -69,7 +69,10 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Recent Alerts');
       this.alertHistory.slice(-10).forEach((alert) => {
         const timeAgo = Math.floor((Date.now() - alert.timestamp.getTime()) / 1000);
-        console.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data);
+        logger.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data, {
+          component: 'AUTO',
+          action: 'warn',
+        });
         logger.warn(`[${timeAgo}s ago] ${alert.type}:`, {
           component: 'AUTO',
           action: 'warn',
@@ -121,13 +124,16 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     });
 
     if (alerts.length === 0) {
-      console.log('✅ No active alerts');
+      logger.debug('✅ No active alerts', { component: 'AUTO', action: 'log' });
       return;
     }
 
     console.group('⚠️ Active Alerts');
     alerts.forEach((alert) => {
-      console.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, alert.data);
+      logger.warn(
+        `[${alert.type}] Session: ${alert.sessionId.substring(0, 8, { component: 'AUTO', action: 'warn' })}...`,
+        alert.data
+      );
       logger.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, {
         component: 'AUTO',
         action: 'warn',
@@ -143,7 +149,7 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
   showSessionDetails(sessionId: string): void {
     const metrics = conversationMonitor.getMetrics(sessionId);
     if (!metrics) {
-      console.warn(`Session ${sessionId} not found`);
+      logger.warn(`Session ${sessionId} not found`, { component: 'AUTO', action: 'warn' });
       logger.warn(`Session ${sessionId} not found`, { component: 'AUTO', action: 'warn' });
       return;
     }
@@ -169,7 +175,11 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Error History');
       metrics.errors.forEach((error, idx) => {
         const timeAgo = Math.floor((Date.now() - error.timestamp.getTime()) / 1000);
-        console.error(`[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`);
+        logger.error(
+          `[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`,
+          { component: 'AUTO', action: 'error' },
+          toError(`[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`)
+        );
         logger.error(
           `[${idx + 1}] [${timeAgo}s ago] ${error.type}: ${error.message}`,
           {

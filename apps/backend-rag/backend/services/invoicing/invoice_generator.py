@@ -6,14 +6,12 @@ Generates professional invoices for practice quotations with company branding.
 
 import io
 from datetime import datetime, timedelta
-from typing import Optional
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from backend.app.utils.logging_utils import get_logger
 
@@ -78,13 +76,13 @@ class InvoiceGenerator:
         self,
         practice_id: int,
         client_name: str,
-        client_email: Optional[str],
-        client_phone: Optional[str],
-        client_address: Optional[str],
+        client_email: str | None,
+        client_phone: str | None,
+        client_address: str | None,
         practice_type: str,
-        practice_description: Optional[str],
+        practice_description: str | None,
         quoted_price: float,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> bytes:
         """
         Generate invoice PDF as bytes.
@@ -167,9 +165,9 @@ class InvoiceGenerator:
 
         client_info = f"""
         <b>{client_name}</b><br/>
-        {client_email or 'N/A'}<br/>
-        {client_phone or 'N/A'}<br/>
-        {client_address or 'N/A'}
+        {client_email or "N/A"}<br/>
+        {client_phone or "N/A"}<br/>
+        {client_address or "N/A"}
         """
         elements.append(Paragraph(client_info, self.styles["Normal"]))
         elements.append(Spacer(1, 1 * cm))
@@ -182,7 +180,12 @@ class InvoiceGenerator:
 
         service_data = [
             ["Description", "Quantity", "Unit Price", "Total"],
-            [service_description, "1", f"{self.CURRENCY} {quoted_price:,.0f}", f"{self.CURRENCY} {quoted_price:,.0f}"],
+            [
+                service_description,
+                "1",
+                f"{self.CURRENCY} {quoted_price:,.0f}",
+                f"{self.CURRENCY} {quoted_price:,.0f}",
+            ],
         ]
 
         service_table = Table(service_data, colWidths=[8 * cm, 2 * cm, 3 * cm, 3 * cm])
@@ -201,7 +204,12 @@ class InvoiceGenerator:
                     # Grid
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                     # Alternating row colors
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f9f9f9")]),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.white, colors.HexColor("#f9f9f9")],
+                    ),
                 ]
             )
         )

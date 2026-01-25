@@ -274,7 +274,12 @@ class QueryGates:
 
         return GateResult(triggered=False)
 
-    def gate_result_to_core_result(self, gate_result: GateResult, start_time: float) -> CoreResult:
+    def gate_result_to_core_result(
+        self,
+        gate_result: GateResult,
+        start_time: float,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> CoreResult:
         """
         Convert a triggered GateResult to a CoreResult.
 
@@ -304,7 +309,11 @@ class QueryGates:
             clarification_question=gate_result.response
             if gate_result.gate_name == "clarification"
             else None,
-            entities=gate_result.metadata.get("entities", {}) if gate_result.metadata else {},
+            # Merge extracted entities with any entities from gate logic
+            entities={
+                **(extracted_entities or {}),
+                **(gate_result.metadata.get("entities", {}) if gate_result.metadata else {}),
+            },
             model_used=f"{gate_result.gate_name}-gate",
             timings={"total": time.time() - start_time},
             verification_status=verification_status,

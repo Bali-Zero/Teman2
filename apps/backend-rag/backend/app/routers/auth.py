@@ -161,7 +161,7 @@ async def login(
             query = """
                 SELECT id, email, full_name as name, pin_hash as password_hash, role,
                        'active' as status, NULL::jsonb as metadata, language as language_preference,
-                       active, linked_client_id, portal_access, avatar
+                       active, avatar
                 FROM team_members
                 WHERE LOWER(email) = LOWER($1)
             """
@@ -215,8 +215,9 @@ async def login(
             }
 
             # For client users, include linked_client_id in JWT
-            if user["role"] == "client" and user.get("linked_client_id"):
-                jwt_data["client_id"] = user["linked_client_id"]
+            # linked_client_id logic disabled due to schema mismatch
+            # if user["role"] == "client" and user.get("linked_client_id"):
+            #    jwt_data["client_id"] = user["linked_client_id"]
 
             access_token_expires = timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
             access_token = create_access_token(
@@ -242,8 +243,8 @@ async def login(
 
             # Add client-specific fields
             if user["role"] == "client":
-                user_profile["client_id"] = user.get("linked_client_id")
-                user_profile["portal_access"] = user.get("portal_access", False)
+                # client specific logic temporarily disabled due to schema mismatch
+                pass
 
             # Log success
             await audit_service.log_auth_event(

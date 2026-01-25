@@ -157,7 +157,7 @@ export default function TeamPage() {
             key={dept.name}
             onClick={() => {
               // Filter team members by department - can be implemented with real API
-              console.log(`Filter by ${dept.name}`);
+              // console.log(`Filter by ${dept.name}`);
             }}
             className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
           >

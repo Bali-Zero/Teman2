@@ -9,18 +9,15 @@ Orchestrates the complete invoice workflow:
 5. Update practice with invoice details
 """
 
-import asyncio
 import json
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any
 
 import asyncpg
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
+
 from .invoice_generator import InvoiceGenerator
 
 logger = get_logger(__name__)
@@ -57,9 +54,7 @@ class InvoiceAutomationService:
         Returns:
             dict with results of all operations
         """
-        logger.info(
-            f"Invoice automation triggered for practice {practice_id} by {triggered_by}"
-        )
+        logger.info(f"Invoice automation triggered for practice {practice_id} by {triggered_by}")
 
         try:
             # Step 1: Fetch practice and client data
@@ -182,7 +177,7 @@ class InvoiceAutomationService:
             )
             return {"success": False, "error": str(error)}
 
-    async def _fetch_practice_data(self, practice_id: int) -> Optional[dict]:
+    async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -199,7 +194,7 @@ class InvoiceAutomationService:
             )
             return dict(row) if row else None
 
-    async def _fetch_client_data(self, client_id: int) -> Optional[dict]:
+    async def _fetch_client_data(self, client_id: int) -> dict | None:
         """Fetch client data from database."""
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -220,7 +215,7 @@ class InvoiceAutomationService:
         amount: float,
         pdf_bytes: bytes,
         filename: str,
-        drive_link: Optional[str] = None,
+        drive_link: str | None = None,
     ) -> None:
         """
         Send invoice email to client.
@@ -242,7 +237,7 @@ Please find attached your invoice {invoice_number} for the amount of IDR {amount
 
 Payment is due within 7 days from the invoice date.
 
-{f'You can also view/download your invoice here: {drive_link}' if drive_link else ''}
+{f"You can also view/download your invoice here: {drive_link}" if drive_link else ""}
 
 If you have any questions, please don't hesitate to contact us.
 
@@ -274,7 +269,7 @@ Zantara Indonesia Team
         client_name: str,
         invoice_number: str,
         amount: float,
-        drive_link: Optional[str] = None,
+        drive_link: str | None = None,
     ) -> None:
         """
         Send WhatsApp notification to client.
@@ -291,7 +286,7 @@ Hello {client_name},
 
 Your invoice {invoice_number} for IDR {amount:,.0f} has been generated.
 
-{f'View/Download: {drive_link}' if drive_link else ''}
+{f"View/Download: {drive_link}" if drive_link else ""}
 
 Payment is due within 7 days. Contact us for any questions.
 
@@ -299,9 +294,7 @@ Best regards,
 Zantara Indonesia
 """
 
-        logger.info(
-            f"[WHATSAPP PLACEHOLDER] Would send to {phone}:\n{message}"
-        )
+        logger.info(f"[WHATSAPP PLACEHOLDER] Would send to {phone}:\n{message}")
 
         # TODO: Actual implementation using WhatsApp Business API
         # await whatsapp_api.send_message(

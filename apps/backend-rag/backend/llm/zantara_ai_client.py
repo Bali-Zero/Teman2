@@ -124,8 +124,8 @@ class ZantaraAIClient:
             self.mock_mode = True
             self._genai_client = None
 
-        # Default: use Gemini 3 Flash Preview (latest, fast, cost-effective)
-        self.model = model or "gemini-3-flash-preview"
+        # Default: use Gemini 2.0 Flash (latest stable, fast, cost-effective)
+        self.model = model or "gemini-2.0-flash-001"
 
         # Initialize pricing even in mock mode
         self.pricing = {

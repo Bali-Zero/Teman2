@@ -152,9 +152,7 @@ class TestHandleValidationError:
         """Test handling validation error"""
         error = ValueError("Invalid category")
 
-        api_error = handle_validation_error(
-            error, article_title="Test", request_id="test-123"
-        )
+        api_error = handle_validation_error(error, article_title="Test", request_id="test-123")
 
         assert isinstance(api_error, APIError)
         assert api_error.code == "VALIDATION_ERROR"

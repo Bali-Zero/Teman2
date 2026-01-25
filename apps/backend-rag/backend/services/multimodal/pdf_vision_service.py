@@ -41,18 +41,28 @@ class PDFVisionService:
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None
         self._available = False
-        self.model_name = "gemini-3-flash-preview"  # Gemini 3 Flash for speed
+        self.model_name = "gemini-2.0-flash-001"
+        self._genai_client = None
 
         if not self.api_key:
             logger.warning("⚠️ No Gemini API key found for Vision Service")
-        elif GENAI_AVAILABLE:
+
+    def _get_genai_client(self) -> GenAIClient | None:
+        """Lazy load GenAI client."""
+        if self._genai_client is None and self.api_key and GENAI_AVAILABLE:
             try:
                 self._genai_client = GenAIClient(api_key=self.api_key)
-                self._available = self._genai_client.is_available
-                if self._available:
-                    logger.info("✅ PDFVisionService initialized with GenAI client")
+                if self._genai_client.is_available:
+                    logger.debug("✅ PDFVisionService GenAI client loaded")
             except Exception as e:
                 logger.warning(f"Failed to initialize PDFVisionService GenAI client: {e}")
+        return self._genai_client
+
+    @property
+    def _available(self) -> bool:
+        """Check availability dynamically."""
+        client = self._get_genai_client()
+        return client.is_available if client else False
 
     async def analyze_page(
         self,
@@ -80,7 +90,8 @@ class PDFVisionService:
             image = self._render_page_to_image(local_path, page_number)
 
             # 3. Check if GenAI client is available
-            if not self._available or not self._genai_client:
+            client = self._get_genai_client()
+            if not client or not client.is_available:
                 return "Vision service not available. Please check configuration."
 
             # 4. Convert image to base64 and send to Gemini Vision
@@ -96,7 +107,7 @@ class PDFVisionService:
                 {"inline_data": {"mime_type": "image/png", "data": image_base64}},
             ]
 
-            result = await self._genai_client.generate_content(
+            result = await client.generate_content(
                 contents=contents,
                 model=self.model_name,
                 max_output_tokens=8192,

@@ -283,7 +283,7 @@ class AgenticRAGOrchestrator:
         ):
             # Delegate to OrchestratorCore
             logger.debug("Delegating process_query to OrchestratorCore")
-            return await self.core.process_query_core(
+            result = await self.core.process_query_core(
                 query=query,
                 user_id=user_id,
                 conversation_history=conversation_history,
@@ -291,6 +291,22 @@ class AgenticRAGOrchestrator:
                 session_id=session_id,
                 tool_execution_counter=tool_execution_counter,
             )
+
+            # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)
+            # This ensures parity with stream_query
+            if user_id and user_id != "anonymous":
+                try:
+                    self.memory_handler.create_save_task(
+                        user_id=user_id,
+                        query=query,
+                        answer=result.answer,
+                        metrics_collector=metrics_collector,
+                    )
+                    logger.debug(f"🧠 [Sync] Dispatched memory save task for {user_id}")
+                except Exception as mem_err:
+                    logger.warning(f"⚠️ [Sync] Failed to dispatch memory save: {mem_err}")
+
+            return result
 
     def _create_error_event(
         self,
@@ -453,21 +469,24 @@ class AgenticRAGOrchestrator:
             yield {"type": "metadata", "data": {"status": "team-query", "route": "team-knowledge"}}
             yield {"type": "status", "data": "Fetching team data..."}
             try:
-                team_result = await execute_tool(
+                team_result_str, _ = await execute_tool(
                     self.tools,  # Changed self.tool_map to self.tools
                     "team_knowledge",
                     {"query_type": team_query_type, "search_term": team_search_term},
                     user_id,
                     tool_execution_counter,
                 )
-                if team_result and len(team_result) > 20:
+                if team_result_str:
+                    logger.info(f"Team Knowledge Result Length: {len(team_result_str)}")
+
+                if team_result_str and len(team_result_str) > 20:
                     # Build simple prompt with team context
                     # Language handling: model will match user's language automatically
                     team_prompt = f"""You are ZANTARA. Answer this question using the team data below.
 Be direct and factual. IMPORTANT: Respond in the SAME language the user is writing in.
 
 TEAM DATA:
-{team_result}
+{team_result_str}
 
 USER QUESTION: {query}
 

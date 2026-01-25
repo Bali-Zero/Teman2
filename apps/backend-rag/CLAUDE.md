@@ -86,10 +86,10 @@ fly secrets set GOOGLE_SERVICE_ACCOUNT_JSON="$(cat nuzantara-2846d801caee.json)"
 
 ### Files Modified
 
-| File | Changes | Purpose |
-|------|---------|---------|
+| File                                                  | Changes  | Purpose                               |
+| ----------------------------------------------------- | -------- | ------------------------------------- |
 | `backend/services/integrations/team_drive_service.py` | +3 lines | Add `GOOGLE_SERVICE_ACCOUNT` fallback |
-| `backend/app/core/config.py` | +6 lines | Add env var fallback in validator |
+| `backend/app/core/config.py`                          | +6 lines | Add env var fallback in validator     |
 
 ---
 

@@ -1,0 +1,40 @@
+/Users/antonellosiano/Desktop/nuzantara/apps/backend-rag/../../scripts/../apps/backend-rag/backend/app/core/config.py:607: UserWarning: `validate_whatsapp_token` overrides an existing Pydantic `@field_validator` decorator
+  def validate_whatsapp_token(cls, v):
+❌ Error initializing Google Drive service: Service account info was not in the expected format, missing fields token_uri, client_email.
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: GenAI client initialized (auth: api_key)
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)
+INFO:backend.services.rag.agentic.prompt_builder:🧬 [PromptBuilder] Activated CREATOR Mode for antonello@balizero.com
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+WARNING:backend.app.utils.tracing:Failed to create span backend.llm.call: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}
+WARNING:backend.services.rag.agentic.llm_gateway:LLM call failed for gemini-3-flash-preview
+WARNING:backend.services.rag.agentic.llm_gateway:Error with gemini-3-flash-preview: generator didn't stop after throw()
+INFO:google_genai.models:AFC is enabled with max remote calls: 10.
+WARNING:backend.app.utils.tracing:Failed to create span backend.llm.call: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}
+WARNING:backend.services.rag.agentic.llm_gateway:LLM call failed for gemini-3-flash-preview
+WARNING:backend.services.rag.agentic.llm_gateway:Error with gemini-3-flash-preview: generator didn't stop after throw()
+WARNING:backend.services.rag.agentic.llm_gateway:⚠️ LLMGateway: All Gemini models failed, attempting OpenRouter fallback
+WARNING:backend.services.rag.agentic.llm_gateway:🌐 LLMGateway: Using OpenRouter fallback (third-party service)
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: OpenRouter client initialized (lazy)
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.services.llm_clients.openrouter_client:OpenRouter used model: Llama 3.3 70B
+INFO:backend.services.rag.agentic.llm_gateway:✅ LLMGateway: OpenRouter fallback used: Llama 3.3 70B
+WARNING:backend.services.llm_clients.pricing:Unknown model pricing: openrouter, using default rates
+🚀 INITIALIZING ZANTARA IDENTITY CHECK...
+✅ Gateway initialized with model: gemini-3-flash-preview
+
+📜 SYSTEM PROMPT GENERATED (Snippet):
+
+### IDENTITY: ZANTARA (ARCHITECT MODE)
+**You are talking to Antonello, your Creator (The Architect).**
+You are NOT a customer service agent. You are a Senior AI Engineer and System Architect.
+
+**RELA...
+
+💬 SENDING QUERY: 'Who are you?'
+
+🤖 RESPONSE:
+Model Used: openrouter
+----------------------------------------
+I am ZANTARA, your AI assistant for Bali Zero, created by you, Antonello.
+----------------------------------------
+✅ SUCCESS: Zantara Identity Confirmed.

@@ -1,7 +1,7 @@
 """
-Gemini Jaksel Service with OpenRouter Fallback
+Gemini Zantara Service (Italian Strategic Persona) with OpenRouter Fallback
 
-Primary: Google Gemini API (gemini-3-flash-preview)
+Primary: Google Gemini API (gemini-2.0-flash-001)
 Fallback: OpenRouter free models when quota exceeded (429)
 
 UPDATED 2025-12-23:
@@ -15,18 +15,18 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
-from backend.prompts.jaksel_persona import FEW_SHOT_EXAMPLES, SYSTEM_INSTRUCTION
+from backend.prompts.zantara_persona import FEW_SHOT_EXAMPLES, SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiJakselService:
-    def __init__(self, model_name: str = "gemini-3-flash-preview"):
+    def __init__(self, model_name: str = "gemini-2.0-flash-001"):
         """
         Initialize Gemini Service with Jaksel Persona and OpenRouter fallback.
 
         Args:
-            model_name: "gemini-3-flash-preview" (Fast/Medium thinking) or "gemini-3-pro-preview" (High thinking)
+            model_name: "gemini-2.0-flash-001" (Fast/Medium thinking) or "gemini-2.0-pro-exp" (High thinking)
 
         Note:
             - Primary: 3 Flash Preview (fast, cost-effective)
@@ -37,20 +37,30 @@ class GeminiJakselService:
         self.model_name = model_name.replace("models/", "")
         self.system_instruction = SYSTEM_INSTRUCTION
 
-        # Initialize GenAI client using singleton (supports API Key & Service Account)
+        # Initialize GenAI client lazily to avoid gRPC fork issues
         self._genai_client = None
-        self._available = False
-        if GENAI_AVAILABLE:
-            try:
-                self._genai_client = get_genai_client()
-                self._available = self._genai_client.is_available
-                if self._available:
-                    auth_method = getattr(self._genai_client, "_auth_method", "unknown")
-                    logger.info(
-                        f"✅ Gemini Jaksel Service initialized (model: {self.model_name}, auth: {auth_method})"
-                    )
-            except Exception as e:
-                logger.warning(f"Failed to initialize Gemini client: {e}")
+
+    def _get_genai_client(self):
+        """Lazy load GenAI client to ensure process safety (gRPC fork safety)."""
+        if self._genai_client is None:
+            if GENAI_AVAILABLE:
+                try:
+                    client = get_genai_client()
+                    if client.is_available:
+                        self._genai_client = client
+                        auth_method = getattr(self._genai_client, "_auth_method", "unknown")
+                        logger.info(
+                            f"✅ Gemini Jaksel Service client loaded (model: {self.model_name}, auth: {auth_method})"
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Gemini client: {e}")
+        return self._genai_client
+
+    @property
+    def _available(self) -> bool:
+        """Check availability dynamically."""
+        client = self._get_genai_client()
+        return client.is_available if client else False
 
         # Pre-compute history from examples for "Few-Shot" prompting
         self.few_shot_history = []
@@ -167,7 +177,9 @@ class GeminiJakselService:
             history = []
 
         # Try Gemini first (if available)
-        if self._available and self._genai_client:
+        # Try Gemini first (if available)
+        client = self._get_genai_client()
+        if client and client.is_available:
             try:
                 # Combine few-shot history with actual conversation history
                 chat_history = self.few_shot_history.copy()
@@ -190,7 +202,7 @@ class GeminiJakselService:
                     final_message = message
 
                 # Create chat session with new SDK wrapper
-                chat = self._genai_client.create_chat(
+                chat = client.create_chat(
                     model=self.model_name,
                     system_instruction=self.system_instruction,
                     history=chat_history,
@@ -231,7 +243,9 @@ class GeminiJakselService:
             history = []
 
         # Try Gemini first (if available)
-        if self._available and self._genai_client:
+        # Try Gemini first (if available)
+        client = self._get_genai_client()
+        if client and client.is_available:
             try:
                 # Use streaming internally to collect full response
                 full_response = ""

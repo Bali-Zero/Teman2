@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { Loader2, Edit } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 
 interface ArticleEditorProps {
   item: StagingItem;
@@ -112,11 +113,11 @@ export function ArticleEditor({ item, open, onOpenChange, onSaved }: ArticleEdit
 
           <div>
             <Label htmlFor="content">Content (Markdown)</Label>
-            <textarea
+            <AutoResizeTextarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm mt-1 resize-y"
+              className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm mt-1"
               placeholder="Article content in Markdown format..."
             />
           </div>

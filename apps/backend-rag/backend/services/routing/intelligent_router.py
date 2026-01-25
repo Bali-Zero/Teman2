@@ -2,9 +2,9 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from ..misc.clarification_service import ClarificationService
-from ..misc.context_suggestion_service import get_context_suggestion_service
-from ..rag.agentic import create_agentic_rag
+from backend.services.misc.clarification_service import ClarificationService
+from backend.services.misc.context_suggestion_service import get_context_suggestion_service
+from backend.services.rag.agentic import create_agentic_rag
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ class IntelligentRouter:
                 "response": answer,
                 "ai_used": "agentic-rag",
                 "category": "agentic",
-                "model": "gemini-3-flash-preview",  # Zantara AI
+                "model": "gemini-2.0-flash-001",  # Zantara AI
                 "tokens": {},
                 "used_rag": True,
                 "used_tools": False,
@@ -202,6 +202,6 @@ class IntelligentRouter:
     def get_stats(self) -> dict:
         return {
             "router": "agentic_rag_wrapper",
-            "model": "gemini-3-flash-preview",
+            "model": "gemini-2.0-flash-001",
             "rag_available": True,
         }
