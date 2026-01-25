@@ -64,17 +64,22 @@ export function ChatMessageListVirtualized({
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = useCallback(() => {
+    // Try parentRef first (virtualized mode)
     if (parentRef.current) {
       parentRef.current.scrollTop = parentRef.current.scrollHeight;
     }
-  }, []);
+    // Also use messagesEndRef for non-virtualized mode
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messagesEndRef]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
-    if (messages.length > 0) {
-      requestAnimationFrame(scrollToBottom);
-    }
-  }, [messages.length, scrollToBottom]);
+    // Force scroll to bottom when messages change, content updates, or thinking state changes
+    // Using setTimeout ensures the DOM has updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
+  }, [messages, scrollToBottom, thinkingElapsedTime, isLoading]);
 
   // Initial loading state
   if (isInitialLoading) {
@@ -220,36 +225,39 @@ export function ChatMessageListVirtualized({
   // Regular rendering for small lists
   return (
     <div
-      className="max-w-3xl mx-auto px-4 py-6 space-y-4"
+      ref={parentRef}
+      className="flex-1 overflow-auto"
       role="log"
       aria-label="Chat messages"
       aria-live="polite"
     >
-      {filteredMessages.map((message, index) => {
-        const isLastMessage = index === filteredMessages.length - 1;
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        {filteredMessages.map((message, index) => {
+          const isLastMessage = index === filteredMessages.length - 1;
 
-        return (
-          <MessageBubble
-            key={message.id || message.timestamp.getTime()}
-            message={message}
-            userAvatar={userAvatar}
-            isLast={isLastMessage}
-            onFollowUpClick={onFollowUpClick}
+          return (
+            <MessageBubble
+              key={message.id || message.timestamp.getTime()}
+              message={message}
+              userAvatar={userAvatar}
+              isLast={isLastMessage}
+              onFollowUpClick={onFollowUpClick}
+            />
+          );
+        })}
+
+        {/* Thinking Indicator */}
+        {isLoading && (
+          <ThinkingIndicator
+            isVisible={isLoading}
+            currentStatus={messages[messages.length - 1]?.currentStatus}
+            steps={messages[messages.length - 1]?.steps}
+            elapsedTime={thinkingElapsedTime}
           />
-        );
-      })}
+        )}
 
-      {/* Thinking Indicator */}
-      {isLoading && (
-        <ThinkingIndicator
-          isVisible={isLoading}
-          currentStatus={messages[messages.length - 1]?.currentStatus}
-          steps={messages[messages.length - 1]?.steps}
-          elapsedTime={thinkingElapsedTime}
-        />
-      )}
-
-      <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} />
+      </div>
     </div>
   );
 }
