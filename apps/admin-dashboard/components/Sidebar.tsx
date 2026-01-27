@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog } from 'lucide-react';
+import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -13,6 +13,7 @@ export function Sidebar() {
     { href: '/qdrant', label: 'Qdrant', icon: FolderTree },
     { href: '/rag', label: 'RAG Playground', icon: Sparkles },
     { href: '/knowledge-graph', label: 'Knowledge Graph', icon: Network },
+    { href: '/legal', label: 'Legal Documents', icon: Scale },
     { href: '/activity', label: 'Agent Activity', icon: Activity },
     { href: '/users', label: 'User Context', icon: UserCog },
   ];
