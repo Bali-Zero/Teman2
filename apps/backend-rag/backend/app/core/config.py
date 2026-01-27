@@ -125,8 +125,8 @@ class Settings(BaseSettings):
         description="Ollama API URL - Set via OLLAMA_URL env var (default: localhost for local Ollama)",
     )
     ollama_model: str = Field(
-        default="qwen2.5:latest",
-        description="Ollama model name - Set via OLLAMA_MODEL env var (default: qwen2.5:latest)",
+        default="deepseek-r1",
+        description="Ollama model name - Set via OLLAMA_MODEL env var (default: deepseek-r1)",
     )
 
     # ========================================

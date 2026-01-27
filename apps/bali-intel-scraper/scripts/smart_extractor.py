@@ -50,7 +50,7 @@ class SmartExtractor:
 
     def __init__(
         self,
-        ollama_model: str = "llama3.2:3b",
+        ollama_model: str = "deepseek-r1",
         ollama_url: str = "http://localhost:11434",
     ):
         # Allow override via env vars
