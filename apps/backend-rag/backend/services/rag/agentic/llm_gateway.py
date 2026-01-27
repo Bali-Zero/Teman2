@@ -121,14 +121,9 @@ class LLMGateway:
         self.model_name_flash = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview
         self.model_name_fallback = "gemini-2.5-flash"  # Fallback: stable GA model
 
-        # Gemini 3 thinking level configuration
-        # Options: "minimal", "low", "medium", "high"
-        # "medium" balances speed and reasoning quality for agentic RAG
-        self.thinking_level = "medium"
-
         logger.info(
-            f"✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
-            f"gemini-2.5-flash fallback, thinking_level={self.thinking_level})"
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            "gemini-2.5-flash fallback)"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -444,9 +439,6 @@ class LLMGateway:
         config_kwargs = {
             "max_output_tokens": 8192,
             "temperature": 0.7,
-            # Gemini 3 Flash Preview: thinking_level controls reasoning depth
-            # Options: "minimal", "low", "medium", "high"
-            "thinking_level": self.thinking_level,
         }
 
         if with_tools and self._gemini_tools:
@@ -776,10 +768,7 @@ class LLMGateway:
         # Helper function to build config
         def _build_config(with_tools: bool = False, sys_prompt: str = "") -> Any:
             """Build configuration for model generation."""
-            config_args = {
-                # Gemini 3 Flash Preview: thinking_level controls reasoning depth
-                "thinking_level": self.thinking_level,
-            }
+            config_args = {}
             if with_tools and self._gemini_tools:
                 # Convert tool dicts to proper FunctionDeclaration format for new SDK
                 # (Same conversion as in the class-level _build_config method)
