@@ -41,12 +41,16 @@ class TestResponseCleaner:
         assert is_out is False
         assert category is None
 
-    def test_is_out_of_domain_off_topic(self):
-        """Test detecting off-topic queries"""
+    def test_is_out_of_domain_off_topic_now_allowed(self):
+        """Test that off-topic queries are NOW ALLOWED (2026-01-28 change)
+
+        Gemini 3 is allowed to answer any question, not just business-related.
+        Off-topic patterns (ricetta, calcio, film, etc.) no longer trigger blocking.
+        """
         query = "ricetta per la pasta"
         is_out, category = is_out_of_domain(query)
-        assert is_out is True
-        assert category == "off_topic"
+        assert is_out is False  # NOW ALLOWED
+        assert category is None
 
     def test_is_out_of_domain_in_domain(self):
         """Test detecting in-domain queries"""
@@ -190,33 +194,33 @@ class TestResponseCleaner:
         assert is_out is True
         assert category == "realtime_info"
 
-    def test_is_out_of_domain_risultati_calcio(self):
-        """Test calcio results pattern"""
+    def test_is_out_of_domain_risultati_calcio_now_allowed(self):
+        """Test calcio results pattern - NOW ALLOWED (2026-01-28)"""
         query = "risultati di calcio di oggi"
         is_out, category = is_out_of_domain(query)
-        assert is_out is True
-        assert category == "off_topic"
+        assert is_out is False  # NOW ALLOWED
+        assert category is None
 
-    def test_is_out_of_domain_scrivi_poema(self):
-        """Test poetry pattern"""
+    def test_is_out_of_domain_scrivi_poema_now_allowed(self):
+        """Test poetry pattern - NOW ALLOWED (2026-01-28)"""
         query = "scrivi un poema per me"
         is_out, category = is_out_of_domain(query)
-        assert is_out is True
-        assert category == "off_topic"
+        assert is_out is False  # NOW ALLOWED
+        assert category is None
 
-    def test_is_out_of_domain_gossip(self):
-        """Test gossip pattern"""
+    def test_is_out_of_domain_gossip_now_allowed(self):
+        """Test gossip pattern - NOW ALLOWED (2026-01-28)"""
         query = "ultimo gossip su celebrities"
         is_out, category = is_out_of_domain(query)
-        assert is_out is True
-        assert category == "off_topic"
+        assert is_out is False  # NOW ALLOWED
+        assert category is None
 
-    def test_is_out_of_domain_oroscopo(self):
-        """Test horoscope pattern"""
+    def test_is_out_of_domain_oroscopo_now_allowed(self):
+        """Test horoscope pattern - NOW ALLOWED (2026-01-28)"""
         query = "oroscopo di oggi"
         is_out, category = is_out_of_domain(query)
-        assert is_out is True
-        assert category == "off_topic"
+        assert is_out is False  # NOW ALLOWED
+        assert category is None
 
     def test_clean_response_removes_let_me_check(self):
         """Test removing Let me check patterns"""
