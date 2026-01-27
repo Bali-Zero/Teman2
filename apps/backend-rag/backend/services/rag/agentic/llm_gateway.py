@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
-TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash (was 2.0)
 
 
 class LLMGateway:
@@ -84,6 +84,7 @@ class LLMGateway:
         model_name_pro (str): Gemini 3 Flash Preview (same as flash tier)
         model_name_flash (str): Gemini 3 Flash Preview (primary model)
         model_name_fallback (str): Gemini 2.5 Flash (stable fallback)
+        thinking_level (str): Gemini 3 reasoning depth ("minimal", "low", "medium", "high")
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
 
     Note:
@@ -113,14 +114,21 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 2.5 Flash (Primary GA), 2.0 Flash (Fallback until Mar 2026)
-        # NOTE: gemini-3-flash-preview requires project allowlist (returns 404 without access)
-        self.model_name_pro = "gemini-2.5-flash"  # Same as flash (no separate pro tier)
-        self.model_name_flash = "gemini-2.5-flash"  # Primary: GA stable model
-        self.model_name_fallback = "gemini-2.0-flash"  # Fallback (deprecated Mar 2026, still cheaper)
+        # Model name constants - Gemini 3 Flash Preview (Primary), 2.5 Flash (Fallback)
+        # UPDATED 2026-01-27: Upgraded to Gemini 3 Flash Preview (now GA, no allowlist needed)
+        # Benefits: Better reasoning, thinking_level parameter, faster for agentic workflows
+        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro tier)
+        self.model_name_flash = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview
+        self.model_name_fallback = "gemini-2.5-flash"  # Fallback: stable GA model
+
+        # Gemini 3 thinking level configuration
+        # Options: "minimal", "low", "medium", "high"
+        # "medium" balances speed and reasoning quality for agentic RAG
+        self.thinking_level = "medium"
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, gemini-2.0-flash fallback)"
+            f"✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            f"gemini-2.5-flash fallback, thinking_level={self.thinking_level})"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -436,6 +444,9 @@ class LLMGateway:
         config_kwargs = {
             "max_output_tokens": 8192,
             "temperature": 0.7,
+            # Gemini 3 Flash Preview: thinking_level controls reasoning depth
+            # Options: "minimal", "low", "medium", "high"
+            "thinking_level": self.thinking_level,
         }
 
         if with_tools and self._gemini_tools:
@@ -765,88 +776,91 @@ class LLMGateway:
         # Helper function to build config
         def _build_config(with_tools: bool = False, sys_prompt: str = "") -> Any:
             """Build configuration for model generation."""
-            config_args = {}
+            config_args = {
+                # Gemini 3 Flash Preview: thinking_level controls reasoning depth
+                "thinking_level": self.thinking_level,
+            }
             if with_tools and self._gemini_tools:
                 config_args["tools"] = self._gemini_tools
-            
+
             # Inject system instruction if present
             if sys_prompt:
                 config_args["system_instruction"] = sys_prompt
-                
+
             return types.GenerateContentConfig(**config_args)
 
         # CRITICAL: Use chat session if available to maintain conversation context
         # This ensures Gemini 3 maintains full conversation history across ReAct loop steps
-        
+
         # Build configuration first
         config = _build_config(with_tools, sys_prompt=_system_prompt)
-        
+
         # Determine contents (history + new message)
         contents = []
-        
+
         if chat and hasattr(chat, "history"):
             logger.debug(f"💬 Using ChatSession with {len(chat.history)} history messages")
-            
+
             # 1. Convert history to correct format/roles
             for item in chat.history:
                 role = item.get("role", "user")
                 # Fix common role errors
                 if role == "assistant":
                     role = "model"
-                
+
                 parts = item.get("parts", [])
                 # Ensure parts are valid
                 if parts:
                     contents.append({"role": role, "parts": parts})
-            
+
             # 2. Add new message
             # Reset text content holder
             text_content = ""
-            
+
             # Build current message content
             current_content_parts = []
-            
+
             # Handle text
             if message:
                 current_content_parts.append({"text": message})
-            
+
             # Handle images (multimodal)
             if images:
                 processed_images = _build_multimodal_content("", images)
                 if isinstance(processed_images, list) and processed_images:
                     # _build_multimodal_content returns [{"parts": [...]}]
                     # We need just the parts
-                     if "parts" in processed_images[0]:
-                         current_content_parts.extend(processed_images[0]["parts"])
-            
+                    if "parts" in processed_images[0]:
+                        current_content_parts.extend(processed_images[0]["parts"])
+
             if current_content_parts:
                 contents.append({"role": "user", "parts": current_content_parts})
-            
+
             # 3. Call model with full history
             response = await client._client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
                 config=config,
             )
-            
+
             # 4. Update chat history manually
             # Extract response text
             text_content = response.text if hasattr(response, "text") else ""
             if text_content is None:
                 text_content = ""
-            
+
             # Add user message to history
             chat.history.append({"role": "user", "parts": current_content_parts})
-            
+
             # Add model response to history (if text exists)
             # Function calls are handled separately in response object but history needs text or parts
             # For simplicity in history we store text if available
             if text_content:
                 chat.history.append({"role": "model", "parts": [{"text": text_content}]})
             elif hasattr(response, "function_calls") and response.function_calls:
-                 # Store function call in history if needed, but for now we skip to avoid complexity
-                 # as ReAct loop handles function calls via tool outputs
-                 pass
+                # Store function call in history if needed, but for now we skip to avoid complexity
+                # as ReAct loop handles function calls via tool outputs
+                pass
 
             # Extract token usage
             prompt_tokens = 0
@@ -856,7 +870,7 @@ class LLMGateway:
                 completion_tokens = (
                     getattr(response.usage_metadata, "candidates_token_count", 0) or 0
                 )
-            
+
             token_usage = create_token_usage(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
