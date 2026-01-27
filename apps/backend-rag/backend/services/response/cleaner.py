@@ -67,21 +67,11 @@ def is_out_of_domain(query: str) -> tuple[bool, str | None]:
         if re.search(pattern, query_lower):
             return True, "realtime_info"
 
-    # Off-topic
-    off_topic_patterns = [
-        r"ricetta (di|per|del)",
-        r"risultat[oi] (di )?calcio",
-        r"film (da )?vedere",
-        r"canzone (di|del)",
-        r"politica italian[ao]",
-        r"scrivi (un[ao]? )?(poema|poesia)",
-        r"gossip",
-        r"oroscopo",
-    ]
-
-    for pattern in off_topic_patterns:
-        if re.search(pattern, query_lower):
-            return True, "off_topic"
+    # NOTE: off_topic patterns REMOVED (2026-01-28)
+    # Gemini 3 is now allowed to answer ANY question, not just business-related.
+    # This allows users to leverage the full power of the LLM while still using
+    # RAG for Tier 1 (business-specific) queries.
+    # Previous patterns blocked: ricetta, calcio, film, canzone, politica, poesia, gossip, oroscopo
 
     # Questions about people's personal info
     if re.search(r"(sindaco|presidente|ministro) di", query_lower):

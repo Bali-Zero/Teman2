@@ -584,13 +584,15 @@ class TestProcessQueryBranches:
             mock_pb.return_value.check_greetings.return_value = None
             mock_pb.return_value.get_casual_response.return_value = None
             mock_pb.return_value.check_identity_questions.return_value = None
-            mock_ood.return_value = (True, "off_topic")
+            # NOTE: Changed from "off_topic" to "realtime_info" (2026-01-28)
+            # off_topic no longer triggers blocking - Gemini 3 can answer any question
+            mock_ood.return_value = (True, "realtime_info")
 
             tools = [MockTool()]
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
             orch.clarification_service = None
 
-            result = await orch.process_query("ricetta carbonara", user_id="test")
+            result = await orch.process_query("what is the stock price of Apple", user_id="test")
 
             assert "out-of-domain" in result.model_used
             assert result.verification_score == 0.0
@@ -1350,14 +1352,16 @@ class TestStreamQuery:
             mock_pb.return_value.check_greetings.return_value = None
             mock_pb.return_value.get_casual_response.return_value = None
             mock_pb.return_value.check_identity_questions.return_value = None
-            mock_ood.return_value = (True, "off_topic")
+            # NOTE: Changed from "off_topic" to "personal_data" (2026-01-28)
+            # off_topic no longer triggers blocking - Gemini 3 can answer any question
+            mock_ood.return_value = (True, "personal_data")
 
             tools = [MockTool()]
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
             orch.clarification_service = None
 
             events = []
-            async for event in orch.stream_query("ricetta pizza", user_id="test"):
+            async for event in orch.stream_query("codice fiscale di Mario Rossi", user_id="test"):
                 events.append(event)
 
             metadata_events = [e for e in events if e.get("type") == "metadata"]
