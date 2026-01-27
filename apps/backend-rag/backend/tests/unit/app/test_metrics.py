@@ -3,9 +3,6 @@ Unit tests for app/metrics.py
 Target: >95% coverage
 """
 
-import sys
-from pathlib import Path
-
 # Use absolute import instead of sys.path hacking
 from backend.app import metrics
 

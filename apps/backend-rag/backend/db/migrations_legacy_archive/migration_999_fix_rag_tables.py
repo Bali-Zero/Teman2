@@ -3,8 +3,8 @@ Migration 999: Fix Missing Agentic RAG Tables
 Ensures parent_documents, golden_routes and query_route_clusters exist.
 """
 
-import asyncio
 from backend.db.migration_base import BaseMigration
+
 
 class Migration999(BaseMigration):
     def __init__(self):

@@ -16,17 +16,19 @@ import logging
 import time
 from typing import Any
 
-from prometheus_client import Counter, Histogram, REGISTRY
+from prometheus_client import REGISTRY, Counter, Histogram
 
 from backend.llm.zantara_ai_client import ZantaraAIClient
 
 logger = logging.getLogger(__name__)
+
 
 def safe_register_counter(name, documentation, labelnames):
     try:
         return Counter(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
+
 
 def safe_register_histogram(name, documentation, labelnames, buckets=None):
     try:
@@ -35,6 +37,7 @@ def safe_register_histogram(name, documentation, labelnames, buckets=None):
         return Histogram(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
+
 
 # Prometheus Metrics for FollowupService
 followup_requests_total = safe_register_counter(

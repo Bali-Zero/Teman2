@@ -7,9 +7,10 @@ import logging
 import time
 
 import psutil
-from prometheus_client import Counter, Gauge, Histogram, generate_latest, REGISTRY
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
 logger = logging.getLogger(__name__)
+
 
 def safe_register_gauge(name, documentation, labelnames=()):
     try:
@@ -17,11 +18,13 @@ def safe_register_gauge(name, documentation, labelnames=()):
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
+
 def safe_register_counter(name, documentation, labelnames=()):
     try:
         return Counter(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
+
 
 def safe_register_histogram(name, documentation, labelnames=(), buckets=Histogram.DEFAULT_BUCKETS):
     try:
@@ -29,8 +32,11 @@ def safe_register_histogram(name, documentation, labelnames=(), buckets=Histogra
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
+
 # System Metrics
-active_sessions = safe_register_gauge("zantara_active_sessions_total", "Number of active user sessions")
+active_sessions = safe_register_gauge(
+    "zantara_active_sessions_total", "Number of active user sessions"
+)
 redis_latency = safe_register_gauge("zantara_redis_latency_ms", "Redis latency in milliseconds")
 sse_latency = safe_register_gauge("zantara_sse_latency_ms", "Average SSE handshake time")
 system_uptime = safe_register_gauge("zantara_system_uptime_seconds", "System uptime in seconds")
@@ -60,12 +66,16 @@ public_endpoint_access_by_ip = safe_register_counter(
 # Cache Metrics
 cache_hits = safe_register_counter("zantara_cache_hits_total", "Total cache hits")
 cache_misses = safe_register_counter("zantara_cache_misses_total", "Total cache misses")
-cache_set_operations = safe_register_counter("zantara_cache_set_operations_total", "Total cache set operations")
+cache_set_operations = safe_register_counter(
+    "zantara_cache_set_operations_total", "Total cache set operations"
+)
 
 # AI Metrics
 ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
 ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
-ai_tokens_used = safe_register_counter("zantara_ai_tokens_used_total", "Total AI tokens used", ["model"])
+ai_tokens_used = safe_register_counter(
+    "zantara_ai_tokens_used_total", "Total AI tokens used", ["model"]
+)
 
 # LLM Token Usage Metrics (Detailed)
 llm_prompt_tokens = safe_register_counter(
@@ -76,7 +86,9 @@ llm_completion_tokens = safe_register_counter(
     "Total completion/output tokens used",
     ["model", "endpoint"],
 )
-llm_cost_usd = safe_register_counter("zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"])
+llm_cost_usd = safe_register_counter(
+    "zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"]
+)
 llm_request_tokens = safe_register_histogram(
     "zantara_llm_request_tokens",
     "Tokens per request distribution",
@@ -85,9 +97,15 @@ llm_request_tokens = safe_register_histogram(
 )
 
 # Database Metrics
-db_connections_active = safe_register_gauge("zantara_db_connections_active", "Active database connections")
-db_query_duration = safe_register_histogram("zantara_db_query_duration_seconds", "Database query duration")
-db_pool_size = safe_register_gauge("zantara_db_pool_size", "Database connection pool size", ["service"])
+db_connections_active = safe_register_gauge(
+    "zantara_db_connections_active", "Active database connections"
+)
+db_query_duration = safe_register_histogram(
+    "zantara_db_query_duration_seconds", "Database query duration"
+)
+db_pool_size = safe_register_gauge(
+    "zantara_db_pool_size", "Database connection pool size", ["service"]
+)
 db_pool_idle = safe_register_gauge(
     "zantara_db_pool_idle", "Database connection pool idle connections", ["service"]
 )
@@ -99,7 +117,9 @@ rag_embedding_duration = safe_register_histogram(
 rag_vector_search_duration = safe_register_histogram(
     "zantara_rag_vector_search_duration_seconds", "Vector search duration"
 )
-rag_reranking_duration = safe_register_histogram("zantara_rag_reranking_duration_seconds", "Reranking duration")
+rag_reranking_duration = safe_register_histogram(
+    "zantara_rag_reranking_duration_seconds", "Reranking duration"
+)
 rag_pipeline_duration = safe_register_histogram(
     "zantara_rag_pipeline_duration_seconds", "Total RAG pipeline duration"
 )
