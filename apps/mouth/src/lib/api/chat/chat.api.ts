@@ -122,7 +122,7 @@ export class ChatApi {
     conversationHistory?: Array<{ role: string; content: string }>,
     abortSignal?: AbortSignal,
     correlationId?: string,
-    idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
+    idleTimeoutMs: number = 300000, // 5min idle timeout for testing (reset on data)
     maxTotalTimeMs: number = 600000, // 10min max total time
     images?: Array<{ base64: string; name: string }> // Vision images
   ): Promise<void> {
