@@ -18,7 +18,6 @@ OpenRouter tries models in order until one succeeds.
 import json
 import logging
 import os
-
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from enum import Enum

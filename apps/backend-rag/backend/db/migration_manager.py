@@ -212,7 +212,7 @@ class MigrationManager:
         migrations_dir = Path(__file__).parent / "migrations_v2"
         # Create directory if it doesn't exist (first run)
         migrations_dir.mkdir(exist_ok=True)
-        
+
         sql_files = sorted(migrations_dir.glob("*.sql"))
 
         migrations = []
@@ -298,9 +298,7 @@ class MigrationManager:
                 )
 
                 if tables_exist:
-                    logger.warning(
-                        "🚀 DETECTED LEGACY DATABASE! FAKE-APPLYING BASELINE (001)..."
-                    )
+                    logger.warning("🚀 DETECTED LEGACY DATABASE! FAKE-APPLYING BASELINE (001)...")
 
                     # Manually insert into _schema_versions
                     await conn.execute(

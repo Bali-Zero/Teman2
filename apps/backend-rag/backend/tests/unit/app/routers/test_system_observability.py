@@ -35,7 +35,10 @@ def app(mock_unified_health_service):
     """Create FastAPI app with router and dependency overrides"""
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_admin_user] = lambda: {"email": "admin@example.com", "role": "admin"}
+    app.dependency_overrides[get_admin_user] = lambda: {
+        "email": "admin@example.com",
+        "role": "admin",
+    }
     app.dependency_overrides[get_unified_health_service] = lambda: mock_unified_health_service
     return app
 
@@ -123,7 +126,10 @@ class TestSystemObservabilityRouter:
         """Test getting table data with invalid table name"""
         app = FastAPI()
         app.include_router(router)
-        app.dependency_overrides[get_admin_user] = lambda: {"email": "admin@example.com", "role": "admin"}
+        app.dependency_overrides[get_admin_user] = lambda: {
+            "email": "admin@example.com",
+            "role": "admin",
+        }
         client = TestClient(app)
 
         response = client.get("/api/admin/postgres/data?table=test-table!")

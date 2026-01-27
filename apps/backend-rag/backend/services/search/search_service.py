@@ -461,7 +461,11 @@ class SearchService:
                         metrics_collector.search_hybrid_failed_total.inc()
                     # Fall through to dense-only search
                     # CRITICAL: Hybrid collections require named vector "dense"
-                    use_vector_name = "dense" if collection_name.endswith("_hybrid") or collection_name == "kbli_unified" else None
+                    use_vector_name = (
+                        "dense"
+                        if collection_name.endswith("_hybrid") or collection_name == "kbli_unified"
+                        else None
+                    )
                     raw_results = await vector_db.search(
                         query_embedding=query_embedding,
                         filter=chroma_filter,
@@ -473,7 +477,11 @@ class SearchService:
             else:
                 # Fallback: Dense-only search
                 # CRITICAL: Hybrid collections require named vector "dense"
-                use_vector_name = "dense" if collection_name.endswith("_hybrid") or collection_name == "kbli_unified" else None
+                use_vector_name = (
+                    "dense"
+                    if collection_name.endswith("_hybrid") or collection_name == "kbli_unified"
+                    else None
+                )
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,
                     filter=chroma_filter,

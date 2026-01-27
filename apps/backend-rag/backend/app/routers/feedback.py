@@ -9,14 +9,14 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from backend.app.dependencies import get_database_pool, get_current_user
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.schemas.feedback import (
     ConversationRatingResponse,
     FeedbackResponse,
     RateConversationRequest,
     ReviewQueueStatsResponse,
 )
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -220,10 +220,7 @@ async def get_feedback_stats(
     try:
         # Admin authentication check
         if not is_crm_admin(current_user):
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Admin privileges required."
-            )
+            raise HTTPException(status_code=403, detail="Access denied. Admin privileges required.")
 
         async with db_pool.acquire() as conn:
             # Get review queue stats
