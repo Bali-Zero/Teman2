@@ -781,7 +781,35 @@ class LLMGateway:
                 "thinking_level": self.thinking_level,
             }
             if with_tools and self._gemini_tools:
-                config_args["tools"] = self._gemini_tools
+                # Convert tool dicts to proper FunctionDeclaration format for new SDK
+                # (Same conversion as in the class-level _build_config method)
+                function_declarations = []
+                for tool_dict in self._gemini_tools:
+                    params = tool_dict.get("parameters", {})
+                    func_decl = types.FunctionDeclaration(
+                        name=tool_dict["name"],
+                        description=tool_dict["description"],
+                        parameters=types.Schema(
+                            type=params.get("type", "OBJECT"),
+                            properties={
+                                k: types.Schema(
+                                    type=v.get("type", "STRING"),
+                                    description=v.get("description", ""),
+                                )
+                                for k, v in params.get("properties", {}).items()
+                            },
+                            required=params.get("required", []),
+                        ),
+                    )
+                    function_declarations.append(func_decl)
+                config_args["tools"] = [types.Tool(function_declarations=function_declarations)]
+                # Add tool_config to encourage function calling
+                try:
+                    config_args["tool_config"] = types.ToolConfig(
+                        function_calling_config=types.FunctionCallingConfig(mode="AUTO")
+                    )
+                except (AttributeError, TypeError):
+                    pass  # Older SDK version
 
             # Inject system instruction if present
             if sys_prompt:
