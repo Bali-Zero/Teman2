@@ -15,7 +15,7 @@ class OllamaScorer:
     """Score news articles using local Ollama LLM"""
 
     def __init__(
-        self, model: str = "llama3.2:3b", base_url: str = "http://localhost:11434"
+        self, model: str = "deepseek-r1", base_url: str = "http://localhost:11434"
     ):
         self.model = model
         self.base_url = base_url

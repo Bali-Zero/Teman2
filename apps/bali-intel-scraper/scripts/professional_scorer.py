@@ -789,7 +789,9 @@ async def enhance_with_ollama(
     content: str,
     base_result: ScoreResult,
     ollama_url: str = "http://localhost:11434/api/generate",
-    model: str = "llama3.2:3b",
+class ScoringConfig(BaseModel):
+    model: str = "deepseek-r1",
+    temperature: float = 0.1
 ) -> ScoreResult:
     """
     Optionally enhance scoring with Ollama for edge cases.
