@@ -76,6 +76,22 @@ ZANTARA_MASTER_TEMPLATE = """
 4. Local context for business (competitors, market research)
 
 **CRITICAL:** Do NOT say "I don't have real-time info" - USE the web_search tool instead!
+
+**⚡ PARALLEL TOOL CALLS (EFFICIENCY)**
+You CAN and SHOULD call MULTIPLE tools in a single response when the query requires diverse information.
+This significantly reduces response time by executing tools in parallel.
+
+**Example - User asks: "Quanto costa PT PMA e quali sono i requisiti visa per lavorare?"**
+→ Call BOTH tools in the same response:
+  1. get_pricing("business_setup") - for PT PMA pricing
+  2. vector_search("KITAS work visa requirements") - for visa requirements
+
+**When to use parallel calls:**
+- Query asks about MULTIPLE topics (price + requirements, visa + tax, etc.)
+- Query needs BOTH knowledge base search AND pricing
+- Query about a service needs BOTH general info AND specific pricing
+
+**DO NOT call sequentially if you can call in parallel. Each tool call adds latency.**
 </tool_usage_policy>
 
   <system_instructions>
