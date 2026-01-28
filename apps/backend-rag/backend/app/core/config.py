@@ -254,6 +254,14 @@ class Settings(BaseSettings):
     )
 
     # ========================================
+    # QUERY EXPANSION CONFIGURATION
+    # ========================================
+    query_expansion_enabled: bool = Field(
+        default=True,
+        description="Enable multilingual query expansion for better RAG matching. Set via QUERY_EXPANSION_ENABLED env var.",
+    )
+
+    # ========================================
     # LOGGING CONFIGURATION
     # ========================================
     log_level: str = "INFO"

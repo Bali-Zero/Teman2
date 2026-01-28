@@ -48,6 +48,7 @@ from backend.services.ingestion.collection_manager import CollectionManager
 from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
 from backend.services.misc.cultural_insights_service import CulturalInsightsService
 from backend.services.misc.result_formatter import format_search_results
+from backend.services.search.query_expander import QueryExpander
 from backend.services.routing.conflict_resolver import ConflictResolver
 from backend.services.search.search_filters import build_search_filter
 
@@ -90,6 +91,7 @@ class SearchService:
         conflict_resolver: ConflictResolver | None = None,
         cultural_insights: CulturalInsightsService | None = None,
         query_router: Any | None = None,
+        query_expander: QueryExpander | None = None,
     ):
         """Initialize SearchService with dependency injection.
 
@@ -190,6 +192,10 @@ class SearchService:
         self.warmup_service = CollectionWarmupService(
             collection_manager=self.collection_manager, embedder=self.embedder
         )
+
+        # Initialize query expander for multilingual support
+        self.query_expander = query_expander or QueryExpander()
+        logger.info("✅ QueryExpander initialized for multilingual query expansion")
 
         # Conflict resolution tracking (delegated to ConflictResolver)
         # Initialize with all fields for backward compatibility with tests
@@ -402,6 +408,11 @@ class SearchService:
             Search results with metadata
         """
         try:
+            # Query Expansion - translate to multiple languages for better matching
+            original_query = query
+            expanded_query = await self.query_expander.expand(query)
+            search_query = expanded_query  # Use expanded query for embedding
+            
             # Prepare search context (DRY: shared logic with search_with_reranking)
             embedding_start = time.time() if METRICS_AVAILABLE else None
             (
@@ -411,7 +422,7 @@ class SearchService:
                 chroma_filter,
                 tier_values,
             ) = await self._prepare_search_context(
-                query, user_level, tier_filter, collection_override, apply_filters
+                search_query, user_level, tier_filter, collection_override, apply_filters
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
