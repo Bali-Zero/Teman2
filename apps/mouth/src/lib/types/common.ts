@@ -16,9 +16,10 @@ export type JsonObject = Record<string, unknown>;
 export type StringRecord = Record<string, unknown>;
 
 /**
- * JSON-serializable value (can be object, array, string, number, boolean, null)
+ * JSON-serializable value (can be object, array, string, number, boolean, null, undefined)
+ * Note: undefined is included for optional fields in objects
  */
-export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+export type JsonValue = string | number | boolean | null | undefined | JsonObject | JsonValue[];
 
 /**
  * Generic error type (replaces error: any in catch blocks)
@@ -53,8 +54,9 @@ export function toError(error: unknown): Error {
 
 /**
  * Metadata object for logging/analytics (replaces Record<string, any>)
+ * Allows undefined values for optional fields
  */
-export type Metadata = Record<string, JsonValue>;
+export type Metadata = Record<string, JsonValue | undefined>;
 
 /**
  * Properties object for analytics events

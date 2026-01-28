@@ -4,6 +4,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import type { Metadata } from '@/lib/types/common';
 
 export interface TypeSafetyMetrics {
   totalAnyCount: number;
@@ -100,7 +101,7 @@ class TypeSafetyMetricsTracker {
     logger.info('Type safety metrics summary', {
       component: 'TypeSafetyMetrics',
       action: 'summary',
-      metadata: this.metrics,
+      metadata: this.metrics as unknown as Metadata,
     });
   }
 }

@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 import type { Practice } from '@/lib/api/crm/crm.types';
 import {
   trackViewModeChange,
@@ -106,7 +107,7 @@ export default function PratichePage() {
         const data = await api.crm.getPractices({ limit: 100 });
         setPractices(data);
       } catch (error) {
-        logger.error('Failed to load practices:', error);
+        logger.error('Failed to load practices', { component: 'Process', action: 'loadPractices' }, toError(error));
         toast.error('Error', 'Failed to load process');
       } finally {
         setIsLoading(false);
@@ -189,7 +190,7 @@ export default function PratichePage() {
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
-      logger.error('Failed to update status:', error);
+      logger.error('Failed to update status', { component: 'Process', action: 'updateStatus' }, toError(error));
       toast.error('Error', 'Failed to update process status');
     } finally {
       setUpdatingId(null);

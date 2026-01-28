@@ -3,6 +3,8 @@ import { serialize } from 'next-mdx-remote/serialize';
 import remarkGfm from 'remark-gfm';
 import type { Article } from '@/lib/blog/types';
 import { getArticleBySlug } from '@/lib/blog/articles';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 interface RouteParams {
   params: Promise<{
@@ -53,10 +55,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
       } catch (mdxError) {
         logger.error(
-          'MDX serialization failed, falling back to raw content:',
-          mdxError,
-          { component: 'AUTO', action: 'error' },
-          toError('MDX serialization failed, falling back to raw content:', mdxError)
+          'MDX serialization failed, falling back to raw content',
+          { component: 'BlogArticle', action: 'mdxSerialize' },
+          toError(mdxError)
         );
         // Fallback: return article without mdxSource (will render as plain text)
         return NextResponse.json({
@@ -76,10 +77,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Article not found' }, { status: 404 });
   } catch (error) {
     logger.error(
-      'Failed to fetch article:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('Failed to fetch article:', error)
+      'Failed to fetch article',
+      { component: 'BlogArticle', action: 'fetch' },
+      toError(error)
     );
 
     // Try mock data as fallback

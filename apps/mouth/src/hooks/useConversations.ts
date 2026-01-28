@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ConversationListItem } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 /**
  * Query key factory for conversations
@@ -106,10 +108,9 @@ export function useConversations() {
       }
     } catch (error) {
       logger.error(
-        'Failed to delete conversation:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('Failed to delete conversation:', error)
+        'Failed to delete conversation',
+        { component: 'Conversations', action: 'delete' },
+        toError(error)
       );
     }
   };
@@ -120,10 +121,9 @@ export function useConversations() {
       setCurrentConversationId(null);
     } catch (error) {
       logger.error(
-        'Failed to clear history:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('Failed to clear history:', error)
+        'Failed to clear history',
+        { component: 'Conversations', action: 'clearHistory' },
+        toError(error)
       );
     }
   };

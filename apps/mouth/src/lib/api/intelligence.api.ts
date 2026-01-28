@@ -13,6 +13,7 @@ export interface StagingItem {
   is_critical?: boolean;
   cover_image?: string; // Optional for tests
   source_name?: string;
+  category?: string; // Article category for publishing
 }
 
 export interface StagingResponse {

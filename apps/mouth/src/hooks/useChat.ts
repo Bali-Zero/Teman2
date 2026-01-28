@@ -3,6 +3,8 @@ import { api, type ApiError } from '@/lib/api';
 import { Message } from '@/types';
 import { useChatMessages } from './useChatMessages';
 import { useChatStreaming } from './useChatStreaming';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 export function useChat() {
   const [input, setInput] = useState('');
@@ -96,10 +98,9 @@ export function useChat() {
           api.saveConversation(messagesToSave, sessionId!, metadata).catch((err) => {
             if (isMountedRef.current)
               logger.error(
-                'Failed to save conversation:',
-                err,
-                { component: 'AUTO', action: 'error' },
-                toError('Failed to save conversation:', err)
+                'Failed to save conversation',
+                { component: 'Chat', action: 'saveConversation' },
+                toError(err)
               );
           });
         }
@@ -153,10 +154,9 @@ export function useChat() {
     } catch (error) {
       if (!isMountedRef.current) return;
       logger.error(
-        'Failed to generate image:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('Failed to generate image:', error)
+        'Failed to generate image',
+        { component: 'Chat', action: 'generateImage' },
+        toError(error)
       );
       const errorMessage: Message = {
         role: 'assistant',
@@ -202,10 +202,9 @@ export function useChat() {
       } catch (error) {
         if (!isMountedRef.current) return;
         logger.error(
-          'Failed to load conversation:',
-          error,
-          { component: 'AUTO', action: 'error' },
-          toError('Failed to load conversation:', error)
+          'Failed to load conversation',
+          { component: 'Chat', action: 'loadConversation' },
+          toError(error)
         );
       } finally {
         if (isMountedRef.current) {
@@ -225,10 +224,9 @@ export function useChat() {
     } catch (error) {
       if (!isMountedRef.current) return null;
       logger.error(
-        'Failed to upload file:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('Failed to upload file:', error)
+        'Failed to upload file',
+        { component: 'Chat', action: 'uploadFile' },
+        toError(error)
       );
       return null;
     } finally {

@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 export interface AudioRecorderState {
   isRecording: boolean;
@@ -62,10 +64,9 @@ export const useAudioRecorder = () => {
       }, 1000);
     } catch (error) {
       logger.error(
-        'Error accessing microphone:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('Error accessing microphone:', error)
+        'Error accessing microphone',
+        { component: 'AudioRecorder', action: 'startRecording' },
+        toError(error)
       );
       throw error;
     }

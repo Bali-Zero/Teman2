@@ -131,7 +131,7 @@ class ConversationMonitor {
       // Always log in browser (both dev and production)
       if (process.env.NODE_ENV === 'production') {
         // In production, send to monitoring service
-        logger.warn(`[MONITORING ALERT] ${type}:`, data, { component: 'AUTO', action: 'warn' });
+        logger.warn(`[MONITORING ALERT] ${type}: ${JSON.stringify(data)}`, { component: 'Monitoring', action: 'alert' });
 
         // Make monitor available globally for debugging
         if (
@@ -151,7 +151,11 @@ class ConversationMonitor {
         // }
       } else {
         // In development, just log
-        logger.debug(`[DEV MONITORING] ${type}:`, data, { component: 'AUTO', action: 'log' });
+        logger.debug(`[DEV MONITORING] ${type}`, { 
+          component: 'Monitoring', 
+          action: 'alert',
+          metadata: { data: JSON.stringify(data) }
+        });
 
         // Make monitor available globally for debugging
         if (

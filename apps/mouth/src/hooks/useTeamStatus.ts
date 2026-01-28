@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
-const logError = (...args: unknown[]) => {
-  logger.error(...args, { component: 'AUTO', action: 'error' }, toError(...args));
+const logError = (message: string, error?: unknown) => {
+  logger.error(message, { component: 'AUTO', action: 'error' }, toError(error));
 };
 
 export function useTeamStatus() {

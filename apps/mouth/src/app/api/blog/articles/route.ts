@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ArticleCategory, ArticleSearchParams } from '@/lib/blog/types';
 import { getAllArticles, searchArticles, getCategoryCounts } from '@/lib/blog/articles';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 /**
  * GET /api/blog/articles
@@ -42,10 +44,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error(
-      'Failed to fetch articles:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('Failed to fetch articles:', error)
+      'Failed to fetch articles',
+      { component: 'BlogArticles', action: 'list' },
+      toError(error)
     );
 
     // Return mock data as fallback

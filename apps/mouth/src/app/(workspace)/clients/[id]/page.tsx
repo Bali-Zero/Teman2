@@ -823,7 +823,7 @@ function OverviewTab({
                       router.push('/clients');
                       router.refresh();
                     } catch (err) {
-                      toast.error('Error deleting client', (err as Error).message);
+                      toast.error('Error deleting client', { description: (err as Error).message });
                     }
                   }
                 }}
@@ -2329,7 +2329,7 @@ function EditClientModal({
       const resizedImage = await cropToSquare(file, 400, 0.85);
       setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
     } catch (error) {
-      logger.error('Failed to process image:', {}, error);
+      logger.error('Failed to process image', { component: 'ClientDetail', action: 'processImage' }, error instanceof Error ? error : new Error(String(error)));
       alert('Failed to process image. Please try again.');
     }
   };

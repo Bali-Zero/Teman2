@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { api } from '@/lib/api';
 import { WEBSOCKET } from '@/constants';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 type MessageHandler = (data: WebSocketMessage) => void;
 
@@ -117,22 +119,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       try {
         const data = JSON.parse(event.data) as WebSocketMessage;
         onMessage?.(data);
-      } catch {
+      } catch (e) {
         logger.error(
-          'Failed to parse WebSocket message:',
-          event.data,
-          { component: 'AUTO', action: 'error' },
-          toError('Failed to parse WebSocket message:', event.data)
+          'Failed to parse WebSocket message',
+          { component: 'WebSocket', action: 'parseMessage' },
+          toError(e)
         );
       }
     };
 
     ws.onerror = (error) => {
       logger.error(
-        'WebSocket error:',
-        error,
-        { component: 'AUTO', action: 'error' },
-        toError('WebSocket error:', error)
+        'WebSocket error',
+        { component: 'WebSocket', action: 'connection' },
+        toError(error)
       );
       setIsConnecting(false);
       onError?.(error);

@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import type { CreatePracticeParams, Client } from '@/lib/api/crm/crm.types';
 import { casesMetrics } from '@/lib/metrics/cases-metrics';
 import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 export default function NewPracticePage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function NewPracticePage() {
         userEmail.current = user.email;
         casesMetrics.trackPageView('new', undefined, user.email);
       } catch (err) {
-        logger.error('Failed to init metrics:', err);
+        logger.error('Failed to init metrics', { component: 'NewProcess', action: 'initMetrics' }, toError(err));
       }
     };
 
@@ -109,7 +110,7 @@ export default function NewPracticePage() {
           undefined,
           userEmail.current || undefined
         );
-        logger.error('Failed to search clients:', error);
+        logger.error('Failed to search clients', { component: 'NewProcess', action: 'searchClients' }, toError(error));
       } finally {
         setIsSearchingClients(false);
       }
@@ -231,7 +232,7 @@ export default function NewPracticePage() {
         userEmail.current || undefined
       );
 
-      logger.error('Failed to create case', error);
+      logger.error('Failed to create case', { component: 'NewProcess', action: 'createCase' }, toError(error));
       toast.error('Error', (error as Error).message);
     } finally {
       setIsLoading(false);

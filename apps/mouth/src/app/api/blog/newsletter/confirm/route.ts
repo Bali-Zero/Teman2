@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
 
@@ -38,10 +40,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/insights?newsletter=confirmed', request.url));
   } catch (error) {
     logger.error(
-      'Newsletter confirmation error:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('Newsletter confirmation error:', error)
+      'Newsletter confirmation error',
+      { component: 'Newsletter', action: 'confirm' },
+      toError(error)
     );
     return NextResponse.redirect(
       new URL('/insights?newsletter=error&message=server-error', request.url)
