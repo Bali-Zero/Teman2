@@ -86,8 +86,8 @@ class EvidenceScoreConstants:
     # Thresholds
     HIERARCHICAL_BONUS: float = 0.2
     CONTEXT_KEYWORD_BONUS: float = 0.35  # Increased (was 0.3) to tolerate typos/partial matches
-    ABSTAIN_THRESHOLD: float = 0.15  # Lowered (was 0.2) to reduce false negatives
-    HIGH_QUALITY_SOURCE_THRESHOLD = 0.3  # Minimum score for a source to be considered high-quality
+    ABSTAIN_THRESHOLD: float = 0.10  # Lowered (was 0.15→0.10) to reduce false negatives with reranker
+    HIGH_QUALITY_SOURCE_THRESHOLD = 0.15  # Lowered (was 0.3→0.15) - reranker scores are normalized lower
     MIN_SOURCES_FOR_BONUS = 3  # Minimum number of sources to get bonus score
     KEYWORD_MATCH_THRESHOLD = 0.3  # Minimum keyword match ratio (30%) to add score
 

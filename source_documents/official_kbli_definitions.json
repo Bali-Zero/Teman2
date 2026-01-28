@@ -9322,5 +9322,11 @@
     "judul": "AKTIVITAS  BADAN",
     "uraian": "INTERNASIONAL DAN BADAN EKSTRA INTERNASIONAL LAINNYA Kelompok ini mencakup kegiatan lembaga/badan/instansi dari perwakilan negara asing, badan internasional dan regional lainnya, badan keuangan dan moneter internasional, bank dunia, organisasi bea cukai dunia, organisasi untuk kerjasama dan pengembangan ekonomi, organisasi negara-negara pengekspor minyak, perhimpunan negara-negara Eropa, perhimpunan perdagangan bebas negara- negara Eropa dan lain-lain, seperti perwakilan PBB dan suborganisasi, UNICEF, UNESCO, UNDP, WHO, ILO, ASEAN, IMF, OECD dan OPEC dan lain-lain serta kedutaan besar, konsulat, pangkalan militer, pangkalan ilmiah, dan lain-lain yang ditentukan oleh negara dimana berada daripada negara yang diwakilinya. KEPALA BADAN PUSAT STATISTIK, ttd. AMALIA ADININGGAR WIDYASANTI",
     "source": "Perban BPS No. 7 Tahun 2025"
+  },
+  "68200": {
+    "kode": "68200",
+    "judul": "Real Estat Atas Dasar Balas Jasa (Fee) Atau Kontrak",
+    "uraian": "Kelompok ini mencakup kegiatan penyediaan real estat atas dasar balas jasa atau kontrak, termasuk kegiatan agen dan makelar real estat, perantara pembelian, penjualan, dan penyewaan real estat, pengelolaan real estat atas dasar balas jasa atau kontrak, jasa penaksiran real estat, dan jasa agen pemegang wasiat real estat.",
+    "source": "Perban BPS No. 7 Tahun 2025 (Manual Patch)"
   }
 }
