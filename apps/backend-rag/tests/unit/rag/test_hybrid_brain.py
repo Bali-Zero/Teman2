@@ -1,16 +1,14 @@
 """
 Unit Tests for Hybrid Brain (Deep Dive) Capabilities
 Verifies the integration of 'VectorSearchTool' (ID extraction) and 'DatabaseQueryTool' (Deep Dive).
+
+Note: Uses deferred imports to avoid conflicts with other tests that mock modules.
 """
 
 import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from backend.services.rag.agent.tools import DatabaseQueryTool
-from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
-from backend.services.rag.agentic.tools import VectorSearchTool
 
 
 @pytest.mark.asyncio
@@ -19,6 +17,9 @@ class TestHybridBrainTools:
 
     async def test_vector_search_includes_document_id(self):
         """Verify VectorSearchTool includes document ID in output for agent visibility"""
+        # Deferred import to avoid conflicts with other tests
+        from backend.services.rag.agentic.tools import VectorSearchTool
+
         # Mock retriever
         mock_retriever = AsyncMock()
 
@@ -64,6 +65,9 @@ class TestHybridBrainTools:
 
     async def test_database_query_by_id(self):
         """Verify DatabaseQueryTool handles 'by_id' queries correctly"""
+        # Deferred import to avoid conflicts with other tests
+        from backend.services.rag.agent.tools import DatabaseQueryTool
+
         # Mock DB pool and connection
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -93,6 +97,9 @@ class TestHybridBrainTools:
 
     async def test_prompt_includes_core_instructions(self):
         """Verify SystemPromptBuilder includes core Zantara instructions"""
+        # Deferred import to avoid conflicts with other tests
+        from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+
         builder = SystemPromptBuilder()
 
         # Build prompt

@@ -2,6 +2,9 @@
 Comprehensive tests for clean_image_generation_response
 
 Tests all patterns from frontend implementation to ensure parity.
+
+NOTE: This module uses module-level mocking to isolate imports.
+The mocks are carefully managed to avoid polluting sys.modules for other tests.
 """
 
 import sys
@@ -14,40 +17,60 @@ backend_path = Path(__file__).resolve().parents[4] / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+# Track modules we mock so we can avoid overwriting real modules
+_MOCKED_MODULES = set()
+
 
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
-    # Mock NumPy and PIL
-    numpy_mock = types.ModuleType("numpy")
-    numpy_mock.__version__ = "1.26.4"
-    numpy_mock.__path__ = []
-    sys.modules["numpy"] = numpy_mock
-    sys.modules["numpy.typing"] = MagicMock()
-    sys.modules["numpy._typing"] = MagicMock()
-    sys.modules["numpy._typing._char_codes"] = MagicMock()
+    """
+    Mock modules that cause import issues during test collection.
+    Only mocks if the module is not already loaded (preserves real modules).
+    """
+    global _MOCKED_MODULES
+
+    # Mock NumPy and PIL only if not already imported
+    if "numpy" not in sys.modules:
+        numpy_mock = types.ModuleType("numpy")
+        numpy_mock.__version__ = "1.26.4"
+        numpy_mock.__path__ = []
+        sys.modules["numpy"] = numpy_mock
+        sys.modules["numpy.typing"] = MagicMock()
+        sys.modules["numpy._typing"] = MagicMock()
+        sys.modules["numpy._typing._char_codes"] = MagicMock()
+        _MOCKED_MODULES.update(["numpy", "numpy.typing", "numpy._typing", "numpy._typing._char_codes"])
 
     for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
-        mock = types.ModuleType(m)
-        if m == "PIL":
-            mock.__version__ = "10.0.0"
-            mock.Image = types.ModuleType("PIL.Image")
-            mock.Image.Image = MagicMock
-        sys.modules[m] = mock
+        if m not in sys.modules:
+            mock = types.ModuleType(m)
+            if m == "PIL":
+                mock.__version__ = "10.0.0"
+                mock.Image = types.ModuleType("PIL.Image")
+                mock.Image.Image = MagicMock
+            sys.modules[m] = mock
+            _MOCKED_MODULES.add(m)
 
-    # Mock backend services to avoid cascade
-    for m in [
+    # Mock backend services to avoid cascade - BUT SKIP backend.services.rag
+    # because other tests need the real rag module
+    modules_to_mock = [
         "backend.services.oracle",
-        "backend.services.search",
-        "backend.services.rag",
-        "backend.services.rag.agentic",
-        "backend.services.ingestion",
+        # Skip "backend.services.rag" - let other tests use the real module
+        # Skip "backend.services.rag.agentic" - let other tests use the real module
         "backend.services.analytics",
         "backend.services.llm_clients",
         "backend.services.monitoring",
         "backend.services.pricing",
-        "qdrant_client",
-    ]:
-        sys.modules[m] = MagicMock()
+    ]
+
+    # Only mock qdrant_client if not already imported
+    if "qdrant_client" not in sys.modules:
+        sys.modules["qdrant_client"] = MagicMock()
+        _MOCKED_MODULES.add("qdrant_client")
+
+    for m in modules_to_mock:
+        if m not in sys.modules:
+            sys.modules[m] = MagicMock()
+            _MOCKED_MODULES.add(m)
 
     # Special handling for misc to allow submodule imports
     misc_mock = types.ModuleType("backend.services.misc")

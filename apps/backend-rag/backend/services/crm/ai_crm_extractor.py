@@ -13,9 +13,26 @@ from backend.llm.zantara_ai_client import ZantaraAIClient
 
 
 class AsyncpgJSONEncoder(json.JSONEncoder):
-    """Custom JSON encoder to handle asyncpg types (UUID, datetime, etc.)"""
+    """
+    Custom JSON encoder to handle asyncpg types.
 
-    def default(self, obj):
+    Extends json.JSONEncoder to serialize UUID and datetime objects
+    that are common in asyncpg query results.
+    """
+
+    def default(self, obj: object) -> str:
+        """
+        Override default serialization for unsupported types.
+
+        Args:
+            obj: Object to serialize.
+
+        Returns:
+            String representation for UUID/datetime, delegates to parent otherwise.
+
+        Raises:
+            TypeError: If object type is not JSON serializable.
+        """
         if isinstance(obj, UUID):
             return str(obj)
         if isinstance(obj, (datetime, date)):

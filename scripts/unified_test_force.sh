@@ -39,7 +39,7 @@ fi
 # Set environment
 export PYTHONPATH="$PROJECT_ROOT/apps/backend-rag/backend:${PYTHONPATH:-}"
 export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
-export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
+export OLLAMA_MODEL="${OLLAMA_MODEL:-deepseek-r1:1.5b}"
 
 echo -e "${BLUE}🤖 Running Unified Test Force Orchestrator...${NC}"
 log "Starting Unified Test Force with provider=local"

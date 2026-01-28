@@ -56,7 +56,7 @@ from .chat_session import ChatSession, MockChatSession
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.0-flash-001
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
 TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash (was 2.0)
@@ -117,12 +117,12 @@ class LLMGateway:
         # Model name constants - Gemini 3 Flash Preview (Primary), 2.5 Flash (Fallback)
         # UPDATED 2026-01-27: Upgraded to Gemini 3 Flash Preview (now GA, no allowlist needed)
         # Benefits: Better reasoning, thinking_level parameter, faster for agentic workflows
-        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro tier)
-        self.model_name_flash = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview
+        self.model_name_pro = "gemini-2.0-flash-001"  # Same as flash (no separate pro tier)
+        self.model_name_flash = "gemini-2.0-flash-001"  # Primary: Gemini 3 Flash Preview
         self.model_name_fallback = "gemini-2.5-flash"  # Fallback: stable GA model
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            "✅ LLMGateway: Model configuration ready (gemini-2.0-flash-001 primary, "
             "gemini-2.5-flash fallback)"
         )
 

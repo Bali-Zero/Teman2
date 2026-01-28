@@ -7,7 +7,7 @@ from backend.llm.adapters.gemini import GeminiAdapter
 class ModelType(Enum):
     """Active models only - legacy models removed 2025-12-28"""
 
-    GEMINI_3_FLASH = "gemini-3-flash-preview"  # Primary tier (default)
+    GEMINI_3_FLASH = "gemini-2.0-flash-001"  # Primary tier (default)
     GEMINI_FLASH = "gemini-2.0-flash"  # Fallback tier (stable)
 
 

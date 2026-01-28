@@ -121,7 +121,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-3-flash-preview",
+            model="gemini-2.0-flash-001",
             max_output_tokens=1000,
         )
 
