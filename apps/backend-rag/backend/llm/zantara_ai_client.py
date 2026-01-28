@@ -76,7 +76,7 @@ class ZantaraAIClient:
 
         Args:
             api_key: Google API key (defaults to settings.google_api_key)
-            model: Model name (defaults to gemini-3-flash-preview)
+            model: Model name (defaults to gemini-2.0-flash-001)
 
         Raises:
             ValueError: If no valid credentials in production environment

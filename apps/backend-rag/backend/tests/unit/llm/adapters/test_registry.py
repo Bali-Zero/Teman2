@@ -22,7 +22,7 @@ class TestModelType:
 
     def test_model_type_values(self):
         """Test ModelType enum values"""
-        assert ModelType.GEMINI_3_FLASH.value == "gemini-3-flash-preview"
+        assert ModelType.GEMINI_3_FLASH.value == "gemini-2.0-flash-001"
         assert ModelType.GEMINI_FLASH.value == "gemini-2.0-flash"
 
     def test_model_type_enum(self):
@@ -51,10 +51,10 @@ class TestGetAdapter:
     """Tests for get_adapter function"""
 
     def test_get_adapter_exact_match_gemini_3_flash(self):
-        """Test getting adapter with exact match for gemini-3-flash-preview"""
+        """Test getting adapter with exact match for gemini-2.0-flash-001"""
         from backend.llm.adapters.gemini import GeminiAdapter
 
-        result = get_adapter("gemini-3-flash-preview")
+        result = get_adapter("gemini-2.0-flash-001")
         assert isinstance(result, GeminiAdapter)
 
     def test_get_adapter_exact_match_gemini_flash(self):

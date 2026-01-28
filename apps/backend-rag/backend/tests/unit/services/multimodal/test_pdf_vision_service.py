@@ -46,7 +46,7 @@ class TestPDFVisionService:
     def test_init(self, pdf_vision_service):
         """Test initialization"""
         assert pdf_vision_service.api_key == "test_key"
-        assert pdf_vision_service.model_name == "gemini-3-flash-preview"
+        assert pdf_vision_service.model_name == "gemini-2.0-flash-001"
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""

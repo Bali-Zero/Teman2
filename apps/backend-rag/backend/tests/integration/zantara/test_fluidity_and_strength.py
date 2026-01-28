@@ -212,7 +212,7 @@ class TestZantaraIntegration:
             verification_score=0.9,
             is_ambiguous=False,
             entities={},
-            model_used="gemini-3-flash-preview",
+            model_used="gemini-2.0-flash-001",
             timings={"total": 1.5},
         )
 

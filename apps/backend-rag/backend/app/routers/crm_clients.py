@@ -1043,7 +1043,7 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-3-flash-preview",
+            model="gemini-2.0-flash-001",
             max_output_tokens=500,
         )
 
@@ -1252,7 +1252,7 @@ Use null for unclear fields. Return ONLY JSON."""
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-3-flash-preview",
+            model="gemini-2.0-flash-001",
             max_output_tokens=4000,  # Increased further to prevent JSON truncation
         )
 

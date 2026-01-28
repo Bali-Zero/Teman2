@@ -20,13 +20,35 @@ logger = logging.getLogger(__name__)
 
 
 class VerificationStatus(str, Enum):
-    VERIFIED = "verified"  # Fully supported by context
-    PARTIALLY_VERIFIED = "partial"  # Mostly supported, some minor unsupported claims
-    UNVERIFIED = "unverified"  # Not supported or contradicts context
-    HALLUCINATION = "hallucination"  # Clear fabrication
+    """
+    Verification status for RAG-generated responses.
+
+    Attributes:
+        VERIFIED: Response is fully supported by retrieved context.
+        PARTIALLY_VERIFIED: Mostly supported with minor unsupported claims.
+        UNVERIFIED: Not supported or contradicts the context.
+        HALLUCINATION: Clear fabrication with no basis in context.
+    """
+
+    VERIFIED = "verified"
+    PARTIALLY_VERIFIED = "partial"
+    UNVERIFIED = "unverified"
+    HALLUCINATION = "hallucination"
 
 
 class VerificationResult(BaseModel):
+    """
+    Result of response verification against source context.
+
+    Attributes:
+        is_valid: Whether the response passes verification.
+        status: Detailed verification status.
+        score: Confidence score from 0.0 to 1.0.
+        reasoning: Explanation of the verification decision.
+        corrected_answer: Suggested correction if verification failed.
+        missing_citations: List of claims that lack source citations.
+    """
+
     is_valid: bool
     status: VerificationStatus
     score: float = Field(ge=0.0, le=1.0)

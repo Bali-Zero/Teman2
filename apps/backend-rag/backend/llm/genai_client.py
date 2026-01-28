@@ -308,7 +308,7 @@ class GenAIClient:
 
         Args:
             contents: User message or list of messages
-            model: Model name (defaults to gemini-3-flash-preview)
+            model: Model name (defaults to gemini-2.0-flash-001)
             system_instruction: System prompt
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
@@ -361,7 +361,7 @@ class GenAIClient:
 
         Args:
             contents: User message or list of messages
-            model: Model name (defaults to gemini-3-flash-preview)
+            model: Model name (defaults to gemini-2.0-flash-001)
             system_instruction: System prompt
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
@@ -403,7 +403,7 @@ class GenAIClient:
         Create a new chat session.
 
         Args:
-            model: Model name (defaults to gemini-3-flash-preview)
+            model: Model name (defaults to gemini-2.0-flash-001)
             system_instruction: System prompt
             history: Optional conversation history
 

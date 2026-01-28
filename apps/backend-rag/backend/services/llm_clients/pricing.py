@@ -59,7 +59,7 @@ class TokenUsage:
 LLM_PRICING: dict[str, dict[str, float]] = {
     # Google Gemini Models (per 1M tokens)
     # Gemini 3.x (Preview) - Requires project allowlist
-    "gemini-3-flash-preview": {
+    "gemini-2.0-flash-001": {
         "input": 0.50,  # $0.50 per 1M input tokens
         "output": 3.00,  # $3.00 per 1M output tokens
     },

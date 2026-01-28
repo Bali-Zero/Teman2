@@ -814,7 +814,7 @@ class MetricsCollector:
         """Record detailed LLM token usage metrics.
 
         Args:
-            model: Model name (e.g., 'gemini-3-flash-preview')
+            model: Model name (e.g., 'gemini-2.0-flash-001')
             prompt_tokens: Number of input/prompt tokens
             completion_tokens: Number of output/completion tokens
             cost_usd: Cost in USD for this request
@@ -924,7 +924,7 @@ class MetricsCollector:
         """Record an LLM model fallback event.
 
         Args:
-            from_model: Model that failed (e.g., 'gemini-3-flash-preview')
+            from_model: Model that failed (e.g., 'gemini-2.0-flash-001')
             to_model: Fallback model used (e.g., 'gemini-2.0-flash')
         """
         rag_fallback_count.labels(from_model=from_model, to_model=to_model).inc()

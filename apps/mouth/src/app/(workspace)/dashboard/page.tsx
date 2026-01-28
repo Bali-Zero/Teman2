@@ -69,6 +69,11 @@ export default function DashboardPage() {
   // Performance tracking
   const startTime = React.useRef(performance.now());
 
+  // Start performance mark on mount
+  React.useEffect(() => {
+    dashboardMetrics.startPerformanceMark('dashboard_load');
+  }, []);
+
   // Initialize all advanced features
   React.useEffect(() => {
     if (user?.email && !isLoading) {
