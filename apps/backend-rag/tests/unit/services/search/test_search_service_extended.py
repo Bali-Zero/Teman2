@@ -51,7 +51,7 @@ def mock_query_router():
 def mock_embedder():
     """Create mock embedder"""
     mock_embedder = MagicMock()
-    mock_embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 384)
+    mock_embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 384)
     mock_embedder.provider = "test"
     mock_embedder.dimensions = 384
     return mock_embedder
@@ -139,10 +139,11 @@ class TestCulturalInsights:
 class TestPrepareSearchContext:
     """Tests for _prepare_search_context method"""
 
-    def test_prepare_search_context_success(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_success(self, search_service):
         """Test successful preparation of search context"""
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -154,10 +155,11 @@ class TestPrepareSearchContext:
         assert collection == "visa_oracle"
         assert vector_db is not None
 
-    def test_prepare_search_context_empty_query(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_empty_query(self, search_service):
         """Test _prepare_search_context raises error for empty query"""
         with pytest.raises(ValueError, match="Query cannot be empty"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="",
                 user_level=1,
                 tier_filter=None,
@@ -165,10 +167,11 @@ class TestPrepareSearchContext:
                 apply_filters=None,
             )
 
-    def test_prepare_search_context_invalid_user_level(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_invalid_user_level(self, search_service):
         """Test _prepare_search_context raises error for invalid user level"""
         with pytest.raises(ValueError, match="User level must be between 0 and 3"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test",
                 user_level=5,
                 tier_filter=None,
@@ -176,10 +179,11 @@ class TestPrepareSearchContext:
                 apply_filters=None,
             )
 
-    def test_prepare_search_context_with_tier_filter(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_with_tier_filter(self, search_service):
         """Test _prepare_search_context with tier filter"""
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=2,
                 tier_filter=[TierLevel.S, TierLevel.A],
@@ -189,13 +193,14 @@ class TestPrepareSearchContext:
         )
         assert len(tier_values) >= 0  # May be empty if not zantara_books
 
-    def test_prepare_search_context_with_collection_override(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_with_collection_override(self, search_service):
         """Test _prepare_search_context with collection override"""
         search_service.query_router.route_query = MagicMock(
             return_value={"collection_name": "custom_collection", "confidence": 0.9}
         )
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -205,10 +210,11 @@ class TestPrepareSearchContext:
         )
         assert collection == "custom_collection"
 
-    def test_prepare_search_context_apply_filters_false(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_apply_filters_false(self, search_service):
         """Test _prepare_search_context with apply_filters=False"""
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -218,11 +224,12 @@ class TestPrepareSearchContext:
         )
         assert chroma_filter is None
 
-    def test_prepare_search_context_failed_embedding(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_failed_embedding(self, search_service):
         """Test _prepare_search_context handles failed embedding generation"""
-        search_service.embedder.generate_query_embedding = MagicMock(return_value=None)
+        search_service.embedder.generate_query_embedding = AsyncMock(return_value=None)
         with pytest.raises(ValueError, match="Failed to generate query embedding"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -230,11 +237,12 @@ class TestPrepareSearchContext:
                 apply_filters=None,
             )
 
-    def test_prepare_search_context_empty_embedding(self, search_service):
+    @pytest.mark.asyncio
+    async def test_prepare_search_context_empty_embedding(self, search_service):
         """Test _prepare_search_context handles empty embedding"""
-        search_service.embedder.generate_query_embedding = MagicMock(return_value=[])
+        search_service.embedder.generate_query_embedding = AsyncMock(return_value=[])
         with pytest.raises(ValueError, match="Failed to generate query embedding"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
