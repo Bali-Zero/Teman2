@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ArticleCategory } from '@/lib/blog/types';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
 
@@ -72,10 +74,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'AI generation error:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('AI generation error:', error)
+      'AI generation error',
+      { component: 'BlogAI', action: 'generate' },
+      toError(error)
     );
 
     // Return mock generated content for demo
@@ -130,10 +131,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'Failed to fetch AI triggers:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('Failed to fetch AI triggers:', error)
+      'Failed to fetch AI triggers',
+      { component: 'BlogAI', action: 'fetchTriggers' },
+      toError(error)
     );
     return NextResponse.json({ triggers: [] });
   }

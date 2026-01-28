@@ -25,7 +25,7 @@ export function useDashboardData() {
         const errorDetails = {
           message: err instanceof Error ? err.message : String(err),
           name: err instanceof Error ? err.name : 'UnknownError',
-          stack: err instanceof Error ? err.stack : undefined,
+          stack: err instanceof Error ? (err.stack ?? '') : '',
           timestamp: new Date().toISOString(),
           endpoint: '/api/dashboard/summary',
         };

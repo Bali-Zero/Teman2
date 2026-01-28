@@ -4,6 +4,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import type { Metadata } from '@/lib/types/common';
 import { typeSafetyMetrics } from '@/lib/metrics/type-safety-metrics';
 import { logTypeSafety } from './type-safety-logger';
 
@@ -81,9 +82,9 @@ export class TypeSafetyMonitor {
           metadata: {
             anyDelta,
             progressDelta,
-            current: currentMetrics,
-            previous: this.lastMetrics,
-          },
+            current: currentMetrics as unknown as Metadata,
+            previous: this.lastMetrics as unknown as Metadata,
+          } as Metadata,
         });
 
         // Alert if `any` count increased

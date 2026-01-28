@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 import {
   ZohoConnectBanner,
   FolderSidebar,
@@ -171,7 +172,7 @@ export default function EmailPage() {
         await loadFolders();
       }
     } catch (error) {
-      logger.error('Failed to check connection:', error);
+      logger.error('Failed to check connection', { component: 'Email', action: 'checkConnection' }, toError(error));
       setConnectionStatus({ connected: false, email: null, account_id: null, expires_at: null });
     } finally {
       setIsCheckingConnection(false);
@@ -191,7 +192,7 @@ export default function EmailPage() {
         setSelectedFolderId(inbox.folder_id);
       }
     } catch (error) {
-      logger.error('Failed to load folders:', error);
+      logger.error('Failed to load folders', { component: 'Email', action: 'loadFolders' }, toError(error));
     } finally {
       setIsFoldersLoading(false);
     }
@@ -212,7 +213,7 @@ export default function EmailPage() {
       setHasMore(response.has_more);
       setTotalEmails(response.total);
     } catch (error) {
-      logger.error('Failed to load emails:', error);
+      logger.error('Failed to load emails', { component: 'Email', action: 'loadEmails' }, toError(error));
     } finally {
       setIsEmailsLoading(false);
     }
@@ -233,7 +234,7 @@ export default function EmailPage() {
         );
       }
     } catch (error) {
-      logger.error('Failed to load email:', error);
+      logger.error('Failed to load email', { component: 'Email', action: 'loadEmail' }, toError(error));
     } finally {
       setIsEmailDetailLoading(false);
     }
@@ -247,7 +248,7 @@ export default function EmailPage() {
       // Redirect to Zoho OAuth
       window.location.href = auth_url;
     } catch (error) {
-      logger.error('Failed to get auth URL:', error);
+      logger.error('Failed to get auth URL', { component: 'Email', action: 'getAuthUrl' }, toError(error));
       setIsConnecting(false);
     }
   };
@@ -263,7 +264,7 @@ export default function EmailPage() {
       setEmails([]);
       setSelectedEmail(null);
     } catch (error) {
-      logger.error('Failed to disconnect:', error);
+      logger.error('Failed to disconnect', { component: 'Email', action: 'disconnect' }, toError(error));
     }
   };
 
@@ -314,7 +315,7 @@ export default function EmailPage() {
       );
       setSelectedIds(new Set());
     } catch (error) {
-      logger.error('Failed to mark emails:', error);
+      logger.error('Failed to mark emails', { component: 'Email', action: 'markEmails' }, toError(error));
     }
   };
 
@@ -333,7 +334,7 @@ export default function EmailPage() {
         setSelectedEmail({ ...selectedEmail, is_flagged: newFlagged });
       }
     } catch (error) {
-      logger.error('Failed to toggle flag:', error);
+      logger.error('Failed to toggle flag', { component: 'Email', action: 'toggleFlag' }, toError(error));
     }
   };
 
@@ -357,7 +358,7 @@ export default function EmailPage() {
         throw new Error('Delete operation failed');
       }
     } catch (error) {
-      logger.error('Failed to delete emails:', error);
+      logger.error('Failed to delete emails', { component: 'Email', action: 'deleteEmails' }, toError(error));
       alert(
         `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -412,7 +413,7 @@ export default function EmailPage() {
         loadEmails(selectedFolderId, searchQuery, currentPage);
       }
     } catch (error) {
-      logger.error('Failed to save draft:', error);
+      logger.error('Failed to save draft', { component: 'Email', action: 'saveDraft' }, toError(error));
       alert('Failed to save draft. Please try again.');
     }
   };
@@ -548,7 +549,7 @@ ${originalContent}`,
         loadEmails(selectedFolderId, searchQuery);
       }
     } catch (error) {
-      logger.error('Failed to send email:', error);
+      logger.error('Failed to send email', { component: 'Email', action: 'sendEmail' }, toError(error));
       alert('Failed to send email. Please try again.');
     } finally {
       setIsSending(false);
@@ -568,7 +569,7 @@ ${originalContent}`,
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      logger.error('Failed to download attachment:', error);
+      logger.error('Failed to download attachment', { component: 'Email', action: 'downloadAttachment' }, toError(error));
     }
   };
 
@@ -593,7 +594,7 @@ ${originalContent}`,
         loadEmailDetail(selectedEmailId, selectedFolderId);
       }
     } catch (error) {
-      logger.error('Failed to create client:', error);
+      logger.error('Failed to create client', { component: 'Email', action: 'createClient' }, toError(error));
       alert('Errore nella creazione del cliente. Riprova.');
     }
   };

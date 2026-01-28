@@ -20,6 +20,7 @@ import type {
   RegistrationResponse,
   PortalApiResponse,
 } from './portal.types';
+import type { TimelineResponse } from '../types/timeline.types';
 
 export class PortalApi {
   constructor(private client: ApiClientBase) {}
@@ -31,6 +32,14 @@ export class PortalApi {
   async getDashboard(): Promise<PortalDashboard> {
     const response = await this.client.request<PortalApiResponse<PortalDashboard>>(
       '/api/portal/dashboard',
+      { method: 'GET' }
+    );
+    return response.data!;
+  }
+
+  async getTimeline(limit: number = 50): Promise<TimelineResponse> {
+    const response = await this.client.request<PortalApiResponse<TimelineResponse>>(
+      `/api/portal/timeline?limit=${limit}`,
       { method: 'GET' }
     );
     return response.data!;

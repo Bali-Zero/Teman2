@@ -5,6 +5,7 @@
 
 import { logger } from './logger';
 import { toError } from './types/common';
+import type { Metadata } from './types/common';
 import { conversationMonitor } from './monitoring';
 import type { ConversationMetrics } from './monitoring';
 
@@ -29,15 +30,14 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     const activeSessions = conversationMonitor.getActiveSessions();
 
     console.group('📊 Conversation Monitoring Summary');
-    logger.debug('Active Sessions:', summary.activeSessions, { component: 'AUTO', action: 'log' });
-    logger.debug('Total Turns:', summary.totalTurns, { component: 'AUTO', action: 'log' });
-    logger.debug('Total Errors:', summary.totalErrors, { component: 'AUTO', action: 'log' });
-    logger.debug('Total Timeouts:', summary.totalTimeouts, { component: 'AUTO', action: 'log' });
-    logger.debug('Total Rate Limit Hits:', summary.totalRateLimitHits, {
-      component: 'AUTO',
-      action: 'log',
+    logger.debug(`Active Sessions: ${summary.activeSessions}`, { component: 'Monitoring', action: 'summary' });
+    logger.debug(`Total Turns: ${summary.totalTurns}`, { component: 'Monitoring', action: 'summary' });
+    logger.debug(`Total Errors: ${summary.totalErrors}`, { component: 'Monitoring', action: 'summary' });
+    logger.debug(`Total Timeouts: ${summary.totalTimeouts}`, { component: 'Monitoring', action: 'summary' });
+    logger.debug(`Total Rate Limit Hits: ${summary.totalRateLimitHits}`, {
+      component: 'Monitoring',
+      action: 'summary',
     });
-    logger.debug('', { component: 'AUTO', action: 'log' });
 
     if (activeSessions.length > 0) {
       console.group('Active Sessions Details');
@@ -69,14 +69,10 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
       console.group('Recent Alerts');
       this.alertHistory.slice(-10).forEach((alert) => {
         const timeAgo = Math.floor((Date.now() - alert.timestamp.getTime()) / 1000);
-        logger.warn(`[${timeAgo}s ago] ${alert.type}:`, alert.data, {
-          component: 'AUTO',
-          action: 'warn',
-        });
         logger.warn(`[${timeAgo}s ago] ${alert.type}:`, {
           component: 'AUTO',
           action: 'warn',
-          metadata: alert.data,
+          metadata: alert.data as Metadata,
         });
       });
       console.groupEnd();
@@ -130,14 +126,10 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
 
     console.group('⚠️ Active Alerts');
     alerts.forEach((alert) => {
-      logger.warn(
-        `[${alert.type}] Session: ${alert.sessionId.substring(0, 8, { component: 'AUTO', action: 'warn' })}...`,
-        alert.data
-      );
       logger.warn(`[${alert.type}] Session: ${alert.sessionId.substring(0, 8)}...`, {
         component: 'AUTO',
         action: 'warn',
-        metadata: alert.data,
+        metadata: alert.data as Metadata,
       });
     });
     console.groupEnd();
@@ -160,16 +152,15 @@ class MonitoringDashboardImpl implements MonitoringDashboard {
     const lastActivitySeconds = Math.floor(lastActivity / 1000);
 
     console.group(`📋 Session Details: ${sessionId.substring(0, 16)}...`);
-    logger.debug('Turn Count:', metrics.turnCount, { component: 'AUTO', action: 'log' });
-    logger.debug('Duration:', `${durationMinutes} minutes`, { component: 'AUTO', action: 'log' });
-    logger.debug('Last Activity:', `${lastActivitySeconds} seconds ago`, {
-      component: 'AUTO',
-      action: 'log',
+    logger.debug(`Turn Count: ${metrics.turnCount}`, { component: 'Monitoring', action: 'sessionDetails' });
+    logger.debug(`Duration: ${durationMinutes} minutes`, { component: 'Monitoring', action: 'sessionDetails' });
+    logger.debug(`Last Activity: ${lastActivitySeconds} seconds ago`, {
+      component: 'Monitoring',
+      action: 'sessionDetails',
     });
-    logger.debug('Errors:', metrics.errors.length, { component: 'AUTO', action: 'log' });
-    logger.debug('Timeouts:', metrics.timeouts, { component: 'AUTO', action: 'log' });
-    logger.debug('Rate Limit Hits:', metrics.rateLimitHits, { component: 'AUTO', action: 'log' });
-    logger.debug('', { component: 'AUTO', action: 'log' });
+    logger.debug(`Errors: ${metrics.errors.length}`, { component: 'Monitoring', action: 'sessionDetails' });
+    logger.debug(`Timeouts: ${metrics.timeouts}`, { component: 'Monitoring', action: 'sessionDetails' });
+    logger.debug(`Rate Limit Hits: ${metrics.rateLimitHits}`, { component: 'Monitoring', action: 'sessionDetails' });
 
     if (metrics.errors.length > 0) {
       console.group('Error History');

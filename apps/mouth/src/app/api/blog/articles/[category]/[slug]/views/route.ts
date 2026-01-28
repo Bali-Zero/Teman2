@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
 
@@ -40,20 +42,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!response.ok) {
       // Silent fail for view tracking
       logger.error(
-        'Failed to track view:',
-        response.status,
-        { component: 'AUTO', action: 'error' },
-        toError('Failed to track view:', response.status)
+        `Failed to track view: ${response.status}`,
+        { component: 'BlogViews', action: 'track' }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error(
-      'View tracking error:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('View tracking error:', error)
+      'View tracking error',
+      { component: 'BlogViews', action: 'track' },
+      toError(error)
     );
     // Silent fail - don't disrupt user experience
     return NextResponse.json({ success: true });
@@ -83,10 +82,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'Failed to fetch view count:',
-      error,
-      { component: 'AUTO', action: 'error' },
-      toError('Failed to fetch view count:', error)
+      'Failed to fetch view count',
+      { component: 'BlogViews', action: 'fetch' },
+      toError(error)
     );
     return NextResponse.json({ views: 0 });
   }

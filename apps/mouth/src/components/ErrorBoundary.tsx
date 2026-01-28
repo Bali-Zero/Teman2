@@ -34,7 +34,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       {
         component: 'ErrorBoundary',
         action: 'componentDidCatch',
-        metadata: { componentStack: errorInfo.componentStack },
+        metadata: { componentStack: errorInfo.componentStack ?? '' },
       },
       error
     );
@@ -129,7 +129,7 @@ export function DashboardErrorBoundary({ children }: { children: React.ReactNode
           {
             component: 'DashboardErrorBoundary',
             action: 'onError',
-            metadata: { componentStack: errorInfo.componentStack },
+            metadata: { componentStack: errorInfo.componentStack ?? '' },
           },
           error
         );
@@ -189,7 +189,7 @@ export function ApiErrorBoundary({ children }: { children: React.ReactNode }) {
           {
             component: 'ApiErrorBoundary',
             action: 'onError',
-            metadata: { componentStack: errorInfo.componentStack },
+            metadata: { componentStack: errorInfo.componentStack ?? '' },
           },
           error
         );

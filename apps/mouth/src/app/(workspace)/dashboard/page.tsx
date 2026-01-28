@@ -7,13 +7,12 @@ import {
   StatsCard,
   PratichePreview,
   WhatsAppPreview,
-  PraticaPreview,
-  WhatsAppMessage,
   AiPulseWidget,
   FinancialRealityWidget,
   AutoCRMWidget,
   FeaturedArticlesWidget,
 } from '@/components/dashboard';
+import type { PraticaPreview, WhatsAppMessage } from '@/components/dashboard';
 import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useQuery } from '@tanstack/react-query';
@@ -28,7 +27,6 @@ import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
 import type { Practice } from '@/lib/api/crm/crm.types';
-import type { PraticaPreview } from '@/components/dashboard/PratichePreview';
 
 export default function DashboardPage() {
   const {
@@ -335,28 +333,15 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <PratichePreview
             pratiche={practices.map(
-              (p: Practice): PraticaPreview => ({
+              (p): PraticaPreview => ({
                 id: p.id,
-                title: p.practice_type_name || p.practice_type_code || 'Unknown',
-                client: p.client_name || 'Unknown Client',
-                status:
-                  p.status === 'completed'
-                    ? 'completed'
-                    : p.status === 'in_progress'
-                      ? 'in_progress'
-                      : p.status === 'quotation'
-                        ? 'quotation'
-                        : p.status === 'documents'
-                          ? 'documents'
-                          : 'inquiry',
-                daysRemaining: p.expiry_date
-                  ? Math.ceil(
-                      (new Date(p.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                    )
-                  : undefined,
+                title: p.title || 'Unknown',
+                client: p.client || 'Unknown Client',
+                status: p.status,
+                daysRemaining: p.daysRemaining,
                 completedAt:
-                  p.status === 'completed' && p.updated_at
-                    ? new Date(p.updated_at).toLocaleDateString()
+                  p.status === 'completed'
+                    ? new Date().toLocaleDateString()
                     : undefined,
               })
             )}

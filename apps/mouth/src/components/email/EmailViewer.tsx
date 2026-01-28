@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
 import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 import {
   X,
   Reply,
@@ -70,7 +71,7 @@ export function EmailViewer({
         const client = await api.crm.getClientByEmail(email.from.address);
         setSenderClient(client);
       } catch (error) {
-        logger.error('Failed to lookup client:', error);
+        logger.error('Failed to lookup client', { component: 'EmailViewer', action: 'lookupClient' }, toError(error));
         setSenderClient(null);
       } finally {
         setIsLoadingClient(false);

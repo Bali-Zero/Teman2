@@ -292,7 +292,7 @@ class DashboardMetricsCollector {
    */
   private getMemoryUsage(): number | undefined {
     if (typeof window !== 'undefined' && 'memory' in performance) {
-      const memory = (performance as unknown).memory;
+      const memory = (performance as any).memory;
       return memory?.usedJSHeapSize || undefined;
     }
     return undefined;

@@ -5,6 +5,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AgenticRAGQueryRequest, Source } from '@/lib/api/zantara-sdk/types';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 export interface AgenticRAGStreamEvent {
   type: 'status' | 'token' | 'sources' | 'done' | 'error';
@@ -100,10 +102,9 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
                   handleSSEEvent(event);
                 } catch (e) {
                   logger.error(
-                    'Failed to parse SSE event:',
-                    e,
-                    { component: 'AUTO', action: 'error' },
-                    toError('Failed to parse SSE event:', e)
+                    'Failed to parse SSE event',
+                    { component: 'AgenticRAG', action: 'parseSSE' },
+                    toError(e)
                   );
                 }
               }

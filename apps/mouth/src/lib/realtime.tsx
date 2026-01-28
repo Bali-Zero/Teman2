@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { logger } from './logger';
+import type { Metadata } from './types/common';
 import type {
   WebSocketMessage,
   WebSocketMessageType,
@@ -313,7 +314,7 @@ class RealtimeService {
     logger.debug('User presence updated', {
       component: 'RealtimeService',
       action: 'presence_update',
-      metadata: data,
+      metadata: data as unknown as Metadata,
     });
   }
 
@@ -322,7 +323,7 @@ class RealtimeService {
     logger.debug('Dashboard update received', {
       component: 'RealtimeService',
       action: 'dashboard_update',
-      metadata: data,
+      metadata: data as unknown as Metadata,
     });
     // Trigger refresh of relevant data
     this.notifyDashboardUpdate(data);
@@ -333,7 +334,7 @@ class RealtimeService {
     logger.info('System alert', {
       component: 'RealtimeService',
       action: 'system_alert',
-      metadata: data,
+      metadata: data as unknown as Metadata,
     });
     // Show toast notification or banner
   }

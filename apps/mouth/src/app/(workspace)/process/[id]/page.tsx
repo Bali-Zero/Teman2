@@ -25,6 +25,7 @@ import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
 import { casesMetrics } from '@/lib/metrics/cases-metrics';
 import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 // Status mapping for display
 const STATUS_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -90,7 +91,7 @@ export default function CaseDetailPage() {
           casesMetrics.trackPageView('detail', caseId, user.email);
         }
       } catch (err) {
-        logger.error('Failed to init metrics:', err);
+        logger.error('Failed to init metrics', { component: 'CaseDetail', action: 'initMetrics' }, toError(err));
       }
     };
 
@@ -143,7 +144,7 @@ export default function CaseDetailPage() {
           userEmail.current || undefined
         );
 
-        logger.error('Failed to load process:', err);
+        logger.error('Failed to load process', { component: 'CaseDetail', action: 'loadProcess' }, toError(err));
         setError('Failed to load process details');
         toast.error('Error', 'Failed to load process details');
         casesMetrics.trackError(
@@ -234,13 +235,10 @@ export default function CaseDetailPage() {
       const updateType = updates.status ? 'status' : updates.payment_status ? 'payment' : 'details';
 
       // Log pre-request details
-      logger.info('[Cases] Attempting to update case:', {
-        caseId,
-        updates,
-        userEmail: user.email,
-        fieldsUpdated,
-        updateType,
-        timestamp: new Date().toISOString(),
+      logger.info(`Attempting to update case ${caseId}`, {
+        component: 'CaseDetail',
+        action: 'updateCase',
+        user: user.email,
       });
 
       await api.crm.updatePractice(caseId, updates, user.email);
@@ -300,26 +298,26 @@ export default function CaseDetailPage() {
         endpoint: `/api/crm/practices/${caseId}`,
       };
 
-      logger.error('[Cases] Failed to update case details:', errorDetails);
+      logger.error('Failed to update case details', { component: 'CaseDetail', action: 'updateCase' }, toError(err));
 
       // Check for specific error types and provide user-friendly messages
       let errorMessage = 'Failed to update process details.';
       if (err instanceof Error) {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
           errorMessage = 'Authentication failed. Please login again.';
-          logger.error('[Cases] Authentication error - user may need to re-authenticate');
+          logger.error('Authentication error - user may need to re-authenticate', { component: 'CaseDetail', action: 'updateCase' });
         } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
           errorMessage = 'You do not have permission to update this process.';
-          logger.error('[Cases] Authorization error - user may not have permission');
+          logger.error('Authorization error - user may not have permission', { component: 'CaseDetail', action: 'updateCase' });
         } else if (err.message.includes('404') || err.message.includes('Not Found')) {
           errorMessage = 'Process not found. It may have been deleted.';
-          logger.error('[Cases] Case not found - may have been deleted');
+          logger.error('Case not found - may have been deleted', { component: 'CaseDetail', action: 'updateCase' });
         } else if (err.message.includes('Network') || err.message.includes('fetch')) {
           errorMessage = 'Network error. Please check your connection and try again.';
-          logger.error('[Cases] Network error - backend may be unreachable');
+          logger.error('Network error - backend may be unreachable', { component: 'CaseDetail', action: 'updateCase' });
         } else if (err.message.includes('CORS')) {
           errorMessage = 'CORS error. Please contact support.';
-          logger.error('[Cases] CORS error - backend CORS configuration may be incorrect');
+          logger.error('CORS error - backend CORS configuration may be incorrect', { component: 'CaseDetail', action: 'updateCase' });
         }
       }
 

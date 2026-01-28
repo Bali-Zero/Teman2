@@ -513,6 +513,9 @@ export default function ChatPage() {
     // ... logic to send message
   };
 
+  // Alias for backward compatibility
+  const handleSend = handleSendMessage;
+
   // Handle audio transcription
   useEffect(() => {
     const processAudio = async () => {

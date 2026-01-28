@@ -3,6 +3,7 @@
  */
 
 import { api } from '@/lib/api';
+import type { TimelineResponse } from '@/lib/api/types/timeline.types';
 
 export interface DashboardStats {
   activeCases: number;
@@ -60,5 +61,9 @@ export const dashboardApi = {
    */
   async getDashboardSummary(): Promise<DashboardData> {
     return api.request<DashboardData>('/api/dashboard/summary');
+  },
+
+  async getTimeline(limit: number = 50): Promise<TimelineResponse> {
+    return api.request<TimelineResponse>(`/api/dashboard/timeline?limit=${limit}`);
   },
 };
