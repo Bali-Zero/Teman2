@@ -265,3 +265,4 @@ apps/backend-rag/oauth_tokens.json
 apps/backend-rag/scripts/generate_oauth_token.py
 apps/backend-rag/scripts/setup_oauth_token.py
 OVERLORD_LOG.md
+data/exports/legal_unified_hybrid_*.json
