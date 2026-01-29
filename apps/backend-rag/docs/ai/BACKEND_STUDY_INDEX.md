@@ -6,29 +6,32 @@
 
 ## 🗺️ Mappa Documenti
 
-| # | Documento | Contenuto | LOC Coperti |
-|---|-----------|-----------|-------------|
-| 0 | [BACKEND_DEEP_STUDY.md](./BACKEND_DEEP_STUDY.md) | Overview completo | Tutti |
-| 1 | [STUDY_01_ORACLE_RAG.md](./STUDY_01_ORACLE_RAG.md) | Oracle Service (RAG Core) | ~3,000 |
-| 2 | [STUDY_02_LLM_PROVIDERS.md](./STUDY_02_LLM_PROVIDERS.md) | LLM Multi-Provider | ~5,000 |
-| 3 | [STUDY_03_CORE_ENGINE.md](./STUDY_03_CORE_ENGINE.md) | Vector DB, Embeddings | ~3,600 |
-| 4 | [STUDY_04_SERVICES_AND_MORE.md](./STUDY_04_SERVICES_AND_MORE.md) | Services, DB, Middleware | ~30,000 |
+| #   | Documento                                                        | Contenuto                 | LOC Coperti |
+| --- | ---------------------------------------------------------------- | ------------------------- | ----------- |
+| 0   | [BACKEND_DEEP_STUDY.md](./BACKEND_DEEP_STUDY.md)                 | Overview completo         | Tutti       |
+| 1   | [STUDY_01_ORACLE_RAG.md](./STUDY_01_ORACLE_RAG.md)               | Oracle Service (RAG Core) | ~3,000      |
+| 2   | [STUDY_02_LLM_PROVIDERS.md](./STUDY_02_LLM_PROVIDERS.md)         | LLM Multi-Provider        | ~5,000      |
+| 3   | [STUDY_03_CORE_ENGINE.md](./STUDY_03_CORE_ENGINE.md)             | Vector DB, Embeddings     | ~3,600      |
+| 4   | [STUDY_04_SERVICES_AND_MORE.md](./STUDY_04_SERVICES_AND_MORE.md) | Services, DB, Middleware  | ~30,000     |
 
 ---
 
 ## 🎯 Quick Start per Ruolo
 
 ### 👨‍💻 Sviluppatore Backend
+
 1. Leggi `BACKEND_DEEP_STUDY.md` per overview
 2. Studia `STUDY_03_CORE_ENGINE.md` per Qdrant/Embeddings
 3. Studia `STUDY_01_ORACLE_RAG.md` per capire il flow
 
 ### 🤖 AI/ML Engineer
+
 1. Leggi `STUDY_02_LLM_PROVIDERS.md` per i provider
 2. Studia `STUDY_01_ORACLE_RAG.md` per prompting
 3. Esplora `services/memory/` per il sistema memoria
 
 ### 🏗️ Architect
+
 1. Leggi `BACKEND_DEEP_STUDY.md` per architettura
 2. Studia `STUDY_04_SERVICES_AND_MORE.md` per i domini
 3. Analizza `middleware/` per auth/security
@@ -56,14 +59,14 @@ TOTALE             →  ~70,000 LOC
 
 ## 🔑 File Critici (Must-Read)
 
-| File | Perché | Dimensione |
-|------|--------|------------|
-| `services/oracle/oracle_service.py` | Cuore del RAG | 500 LOC |
-| `llm/zantara_ai_client.py` | Orchestratore LLM | 700 LOC |
-| `core/qdrant_db.py` | Vector operations | 1,225 LOC |
-| `middleware/hybrid_auth.py` | Sistema auth | 800 LOC |
-| `app/metrics.py` | Prometheus metrics | 1,200 LOC |
-| `app/dependencies.py` | DI container | 400 LOC |
+| File                                | Perché             | Dimensione |
+| ----------------------------------- | ------------------ | ---------- |
+| `services/oracle/oracle_service.py` | Cuore del RAG      | 500 LOC    |
+| `llm/zantara_ai_client.py`          | Orchestratore LLM  | 700 LOC    |
+| `core/qdrant_db.py`                 | Vector operations  | 1,225 LOC  |
+| `middleware/hybrid_auth.py`         | Sistema auth       | 800 LOC    |
+| `app/metrics.py`                    | Prometheus metrics | 1,200 LOC  |
+| `app/dependencies.py`               | DI container       | 400 LOC    |
 
 ---
 
@@ -100,17 +103,20 @@ Layer 5: Infrastructure (DB, Qdrant, LLM)
 ## 📝 Convenzioni Codice
 
 ### Naming
+
 - Services: `*_service.py` → `ServiceNameService`
 - Routers: `*.py` → `router = APIRouter()`
 - Models: `models.py` → `PascalCase`
 
 ### Patterns
+
 - Singleton via `get_service()` functions
 - Async everywhere (`async def`)
 - Type hints required
 - Structured logging (no `print()`)
 
 ### Testing
+
 - Unit tests: `tests/unit/`
 - Integration: `tests/integration/`
 - Coverage target: >80%
@@ -140,22 +146,27 @@ pytest --cov=backend --cov-report=html
 ## 📖 Ordine di Lettura Consigliato
 
 ### Giorno 1: Overview
+
 - [ ] `BACKEND_DEEP_STUDY.md`
 - [ ] Esplora struttura cartelle
 
 ### Giorno 2: Core RAG
+
 - [ ] `STUDY_01_ORACLE_RAG.md`
 - [ ] Leggi `oracle_service.py`
 
 ### Giorno 3: LLM & Embeddings
+
 - [ ] `STUDY_02_LLM_PROVIDERS.md`
 - [ ] `STUDY_03_CORE_ENGINE.md`
 
 ### Giorno 4: Services
+
 - [ ] `STUDY_04_SERVICES_AND_MORE.md`
 - [ ] Esplora 3 services a scelta
 
 ### Giorno 5: Integrazione
+
 - [ ] Leggi un router completo
 - [ ] Segui un request flow end-to-end
 
@@ -169,4 +180,4 @@ pytest --cov=backend --cov-report=html
 
 ---
 
-*Generato il 2026-01-28 | "Capire prima, codare poi" 🧠*
+_Generato il 2026-01-28 | "Capire prima, codare poi" 🧠_

@@ -28,4 +28,3 @@ export interface TimelineResponse {
   entries: TimelineEntry[];
   lastUpdated: number;
 }
-

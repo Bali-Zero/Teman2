@@ -6,15 +6,15 @@
 
 ## 📊 Overview
 
-| Metrica | Valore |
-|---------|--------|
-| **Framework** | Next.js 14+ (App Router) |
-| **Linguaggio** | TypeScript |
-| **Styling** | Tailwind CSS |
-| **Components** | 127 file TSX |
-| **Hooks** | 28 custom hooks |
-| **API Client** | 30+ moduli |
-| **Test E2E** | Playwright |
+| Metrica        | Valore                   |
+| -------------- | ------------------------ |
+| **Framework**  | Next.js 14+ (App Router) |
+| **Linguaggio** | TypeScript               |
+| **Styling**    | Tailwind CSS             |
+| **Components** | 127 file TSX             |
+| **Hooks**      | 28 custom hooks          |
+| **API Client** | 30+ moduli               |
+| **Test E2E**   | Playwright               |
 
 ---
 
@@ -99,31 +99,32 @@ app/layout.tsx (root)
 
 ### Component Categories
 
-| Folder | Components | Description |
-|--------|------------|-------------|
-| `ui/` | 23 | Base UI (shadcn/ui based) |
-| `chat/` | 19 | Chat interface components |
-| `dashboard/` | 14 | Dashboard widgets |
-| `crm/` | 5 | CRM components |
-| `documents/` | 8 | Google Drive-like UI |
-| `blog/` | 10 | Blog/article components |
-| `admin/` | 3 | Admin panel |
-| `agents/` | 4 | AI agents UI |
-| `workspace/` | 3 | Sidebar, header |
-| `memory/` | 5 | Memory visualization |
-| `email/` | 6 | Email components |
-| `search/` | 4 | Search UI |
-| `seo/` | 4 | SEO components |
-| `pricing/` | 2 | Pricing tables |
-| `voice/` | 2 | Voice recording |
-| `whatsapp/` | 3 | WhatsApp integration |
-| `telegram/` | 3 | Telegram integration |
-| `instagram/` | 3 | Instagram integration |
-| `twitter/` | 3 | Twitter integration |
+| Folder       | Components | Description               |
+| ------------ | ---------- | ------------------------- |
+| `ui/`        | 23         | Base UI (shadcn/ui based) |
+| `chat/`      | 19         | Chat interface components |
+| `dashboard/` | 14         | Dashboard widgets         |
+| `crm/`       | 5          | CRM components            |
+| `documents/` | 8          | Google Drive-like UI      |
+| `blog/`      | 10         | Blog/article components   |
+| `admin/`     | 3          | Admin panel               |
+| `agents/`    | 4          | AI agents UI              |
+| `workspace/` | 3          | Sidebar, header           |
+| `memory/`    | 5          | Memory visualization      |
+| `email/`     | 6          | Email components          |
+| `search/`    | 4          | Search UI                 |
+| `seo/`       | 4          | SEO components            |
+| `pricing/`   | 2          | Pricing tables            |
+| `voice/`     | 2          | Voice recording           |
+| `whatsapp/`  | 3          | WhatsApp integration      |
+| `telegram/`  | 3          | Telegram integration      |
+| `instagram/` | 3          | Instagram integration     |
+| `twitter/`   | 3          | Twitter integration       |
 
 ### Key Components
 
 #### Chat System
+
 ```
 components/chat/
 ├── ChatHeader.tsx           # Conversation header
@@ -140,6 +141,7 @@ components/chat/
 ```
 
 #### Dashboard Widgets
+
 ```
 components/dashboard/
 ├── AiPulseWidget.tsx        # AI activity
@@ -157,6 +159,7 @@ components/dashboard/
 ```
 
 #### UI Components (shadcn/ui based)
+
 ```
 components/ui/
 ├── button.tsx       # Variants: default, outline, ghost, etc.
@@ -182,35 +185,35 @@ components/ui/
 
 ### 28 Custom Hooks
 
-| Hook | LOC | Purpose |
-|------|-----|---------|
-| `useChatPage.ts` | 650 | Main chat orchestrator ⭐ |
-| `useChatTTS.ts` | 260 | Text-to-speech |
-| `useChat.ts` | 225 | Chat state management |
-| `useOptimisticChat.ts` | 220 | Optimistic updates |
-| `useChatMessages.ts` | 135 | Message handling |
-| `useChatInput.ts` | 200 | Input handling |
-| `useChatSend.ts` | 220 | Message sending |
-| `useChatStreaming.ts` | 155 | SSE streaming |
-| `useChatSidebar.ts` | 70 | Sidebar state |
-| `useWebSocket.ts` | 195 | WebSocket connection |
-| `useConversations.ts` | 120 | Conversation list |
-| `useDashboardData.ts` | 150 | Dashboard data |
-| `useDrive.ts` | 190 | Google Drive operations |
-| `useAgenticRAGStream.ts` | 155 | Agentic RAG streaming |
-| `useAudioRecorder.ts` | 110 | Voice recording |
-| `useGeminiNano.ts` | 155 | Chrome Gemini Nano |
-| `useKeyboardShortcuts.ts` | 135 | Keyboard shortcuts |
-| `useKeyboardNavigation.ts` | 190 | Grid navigation |
-| `useInfiniteScroll.ts` | 50 | Infinite scrolling |
-| `useEdgeSanitizer.ts` | 50 | Input sanitization |
-| `useTeamStatus.ts` | 45 | Team online status |
-| `useSystemSound.ts` | 45 | System sounds |
-| `useClickOutside.ts` | 70 | Click outside detection |
-| `useDebounce.ts` | 25 | Debounced values |
-| `useIsMounted.ts` | 30 | Mount detection |
-| `useAutoAnimate.ts` | 15 | Auto-animate |
-| `useData.ts` | 30 | Generic data fetching |
+| Hook                       | LOC | Purpose                   |
+| -------------------------- | --- | ------------------------- |
+| `useChatPage.ts`           | 650 | Main chat orchestrator ⭐ |
+| `useChatTTS.ts`            | 260 | Text-to-speech            |
+| `useChat.ts`               | 225 | Chat state management     |
+| `useOptimisticChat.ts`     | 220 | Optimistic updates        |
+| `useChatMessages.ts`       | 135 | Message handling          |
+| `useChatInput.ts`          | 200 | Input handling            |
+| `useChatSend.ts`           | 220 | Message sending           |
+| `useChatStreaming.ts`      | 155 | SSE streaming             |
+| `useChatSidebar.ts`        | 70  | Sidebar state             |
+| `useWebSocket.ts`          | 195 | WebSocket connection      |
+| `useConversations.ts`      | 120 | Conversation list         |
+| `useDashboardData.ts`      | 150 | Dashboard data            |
+| `useDrive.ts`              | 190 | Google Drive operations   |
+| `useAgenticRAGStream.ts`   | 155 | Agentic RAG streaming     |
+| `useAudioRecorder.ts`      | 110 | Voice recording           |
+| `useGeminiNano.ts`         | 155 | Chrome Gemini Nano        |
+| `useKeyboardShortcuts.ts`  | 135 | Keyboard shortcuts        |
+| `useKeyboardNavigation.ts` | 190 | Grid navigation           |
+| `useInfiniteScroll.ts`     | 50  | Infinite scrolling        |
+| `useEdgeSanitizer.ts`      | 50  | Input sanitization        |
+| `useTeamStatus.ts`         | 45  | Team online status        |
+| `useSystemSound.ts`        | 45  | System sounds             |
+| `useClickOutside.ts`       | 70  | Click outside detection   |
+| `useDebounce.ts`           | 25  | Debounced values          |
+| `useIsMounted.ts`          | 30  | Mount detection           |
+| `useAutoAnimate.ts`        | 15  | Auto-animate              |
+| `useData.ts`               | 30  | Generic data fetching     |
 
 ### Key Hook: useChatPage
 
@@ -222,33 +225,31 @@ export function useChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Sub-hooks composition
   const { sendMessage } = useChatSend();
   const { startStreaming } = useChatStreaming();
   const { conversations, loadConversations } = useConversations();
   const { playTTS } = useChatTTS();
-  
+
   // Main send handler
   const handleSend = async (content: string, files?: File[]) => {
     // Optimistic update
     const tempMessage = createTempMessage(content);
-    setMessages(prev => [...prev, tempMessage]);
-    
+    setMessages((prev) => [...prev, tempMessage]);
+
     // Send to backend
     const response = await sendMessage(content, files);
-    
+
     // Handle streaming response
     if (response.stream) {
       await handleStreaming(response.stream);
     }
-    
+
     // Update with real message
-    setMessages(prev => 
-      prev.map(m => m.id === tempMessage.id ? response : m)
-    );
+    setMessages((prev) => prev.map((m) => (m.id === tempMessage.id ? response : m)));
   };
-  
+
   return {
     messages,
     isLoading,
@@ -320,26 +321,26 @@ lib/
 export class APIClient {
   private baseURL: string;
   private token: string | null;
-  
+
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL;
     this.token = this.getToken();
   }
-  
+
   // Base methods
   async get<T>(path: string): Promise<T>;
   async post<T>(path: string, data?: unknown): Promise<T>;
   async put<T>(path: string, data?: unknown): Promise<T>;
   async delete<T>(path: string): Promise<T>;
-  
+
   // Streaming
   async stream(path: string, data?: unknown): AsyncGenerator<string>;
-  
+
   // Auth
   login(email: string, password: string): Promise<AuthResponse>;
   logout(): Promise<void>;
   getToken(): string | null;
-  
+
   // Profile
   getProfile(): Promise<UserProfile>;
   getUserProfile(): UserProfile | null;
@@ -404,16 +405,16 @@ e2e/
 
 ## 📁 Key Files Summary
 
-| File | Size | Purpose |
-|------|------|---------|
-| `hooks/useChatPage.ts` | 23KB | Main chat orchestrator |
-| `components/chat/ThinkingIndicator.tsx` | 25KB | AI thinking UI |
-| `components/chat/MessageBubble.tsx` | 21KB | Message display |
-| `lib/api/api-client.ts` | 16KB | Extended API client |
-| `lib/ai-insights.tsx` | 19KB | AI insights |
-| `lib/funnel-analytics.tsx` | 16KB | Analytics funnel |
-| `components/dashboard/NusantaraHealthWidget.tsx` | 16KB | Health dashboard |
-| `components/dashboard/AutoCRMWidget.tsx` | 15KB | CRM widget |
+| File                                             | Size | Purpose                |
+| ------------------------------------------------ | ---- | ---------------------- |
+| `hooks/useChatPage.ts`                           | 23KB | Main chat orchestrator |
+| `components/chat/ThinkingIndicator.tsx`          | 25KB | AI thinking UI         |
+| `components/chat/MessageBubble.tsx`              | 21KB | Message display        |
+| `lib/api/api-client.ts`                          | 16KB | Extended API client    |
+| `lib/ai-insights.tsx`                            | 19KB | AI insights            |
+| `lib/funnel-analytics.tsx`                       | 16KB | Analytics funnel       |
+| `components/dashboard/NusantaraHealthWidget.tsx` | 16KB | Health dashboard       |
+| `components/dashboard/AutoCRMWidget.tsx`         | 15KB | CRM widget             |
 
 ---
 
@@ -423,15 +424,9 @@ e2e/
 
 ```css
 /* Dark theme (default) */
---background: #2a2a2a
---foreground: #fafafa
---accent: #10b981 (emerald)
---muted: #6b7280
-
-/* Google Drive theme (documents) */
---drive-primary: #1a73e8
---drive-selected: #e8f0fe
---drive-hover: #f5f5f5
+--background: #2a2a2a --foreground: #fafafa --accent: #10b981 (emerald) --muted: #6b7280
+  /* Google Drive theme (documents) */ --drive-primary: #1a73e8 --drive-selected: #e8f0fe
+  --drive-hover: #f5f5f5;
 ```
 
 ### Spacing
@@ -501,4 +496,4 @@ npm run lint
 
 ---
 
-*"Beautiful interfaces, powerful functionality" 🎨*
+_"Beautiful interfaces, powerful functionality" 🎨_

@@ -67,7 +67,7 @@ Il frontend usa un **catch-all API route** che fa da proxy:
 async function proxy(req: NextRequest): Promise<Response> {
   const backendBase = process.env.NUZANTARA_API_URL || 'https://nuzantara-rag.fly.dev';
   const targetUrl = `${backendBase}${url.pathname}${url.search}`;
-  
+
   // Forward request con cookies e headers
   const response = await fetch(targetUrl, {
     method: req.method,
@@ -75,7 +75,7 @@ async function proxy(req: NextRequest): Promise<Response> {
     body: req.body,
     credentials: 'include',
   });
-  
+
   return new Response(response.body, {...});
 }
 ```
@@ -117,14 +117,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 
 ### Auth Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `POST /api/auth/login` | `auth.py: /login` | Login |
-| `POST /api/auth/logout` | `auth.py: /logout` | Logout |
-| `GET /api/auth/profile` | `auth.py: /profile` | Get user |
-| `GET /api/auth/check` | `auth.py: /check` | Verify token |
-| `POST /api/auth/refresh` | `auth.py: /refresh` | Refresh token |
-| `GET /api/auth/csrf-token` | `auth.py: /csrf-token` | Get CSRF |
+| Frontend                   | Backend                | Purpose       |
+| -------------------------- | ---------------------- | ------------- |
+| `POST /api/auth/login`     | `auth.py: /login`      | Login         |
+| `POST /api/auth/logout`    | `auth.py: /logout`     | Logout        |
+| `GET /api/auth/profile`    | `auth.py: /profile`    | Get user      |
+| `GET /api/auth/check`      | `auth.py: /check`      | Verify token  |
+| `POST /api/auth/refresh`   | `auth.py: /refresh`    | Refresh token |
+| `GET /api/auth/csrf-token` | `auth.py: /csrf-token` | Get CSRF      |
 
 ---
 
@@ -168,31 +168,31 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 
 ### Chat Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `POST /api/agentic-rag/query` | `agentic_rag.py: /query` | Single response |
-| `POST /api/agentic-rag/stream` | `agentic_rag.py: /stream` | SSE streaming |
-| `GET /api/conversations/list` | `conversations.py: /list` | List convos |
-| `GET /api/conversations/{id}` | `conversations.py: /{id}` | Get convo |
-| `DELETE /api/conversations/{id}` | `conversations.py: /{id}` | Delete convo |
-| `POST /api/conversations/save` | `conversations.py: /save` | Save message |
+| Frontend                         | Backend                   | Purpose         |
+| -------------------------------- | ------------------------- | --------------- |
+| `POST /api/agentic-rag/query`    | `agentic_rag.py: /query`  | Single response |
+| `POST /api/agentic-rag/stream`   | `agentic_rag.py: /stream` | SSE streaming   |
+| `GET /api/conversations/list`    | `conversations.py: /list` | List convos     |
+| `GET /api/conversations/{id}`    | `conversations.py: /{id}` | Get convo       |
+| `DELETE /api/conversations/{id}` | `conversations.py: /{id}` | Delete convo    |
+| `POST /api/conversations/save`   | `conversations.py: /save` | Save message    |
 
 ### SSE Event Types
 
-| Event Type | Purpose | Example |
-|------------|---------|---------|
-| `token` | Text chunk | `{"type":"token","content":"Hello"}` |
-| `sources` | RAG citations | `{"type":"sources","data":[...]}` |
-| `metadata` | Response metadata | `{"type":"metadata","data":{...}}` |
-| `phase` | Processing phase | `{"type":"phase","data":{"name":"searching"}}` |
-| `status` | Status update | `{"type":"status","data":"Processing..."}` |
-| `thinking` | AI thinking | `{"type":"thinking","data":"Analyzing..."}` |
-| `tool_call` | Tool execution | `{"type":"tool_call","data":{"tool":"search"}}` |
-| `tool_start` | Tool started | `{"type":"tool_start","data":{...}}` |
-| `tool_end` | Tool completed | `{"type":"tool_end","data":{"result":"..."}}` |
-| `image` | Generated image | `{"type":"image","data":{"url":"..."}}` |
-| `error` | Error | `{"type":"error","data":{"message":"..."}}` |
-| `keepalive` | Connection alive | `{"type":"keepalive"}` |
+| Event Type   | Purpose           | Example                                         |
+| ------------ | ----------------- | ----------------------------------------------- |
+| `token`      | Text chunk        | `{"type":"token","content":"Hello"}`            |
+| `sources`    | RAG citations     | `{"type":"sources","data":[...]}`               |
+| `metadata`   | Response metadata | `{"type":"metadata","data":{...}}`              |
+| `phase`      | Processing phase  | `{"type":"phase","data":{"name":"searching"}}`  |
+| `status`     | Status update     | `{"type":"status","data":"Processing..."}`      |
+| `thinking`   | AI thinking       | `{"type":"thinking","data":"Analyzing..."}`     |
+| `tool_call`  | Tool execution    | `{"type":"tool_call","data":{"tool":"search"}}` |
+| `tool_start` | Tool started      | `{"type":"tool_start","data":{...}}`            |
+| `tool_end`   | Tool completed    | `{"type":"tool_end","data":{"result":"..."}}`   |
+| `image`      | Generated image   | `{"type":"image","data":{"url":"..."}}`         |
+| `error`      | Error             | `{"type":"error","data":{"message":"..."}}`     |
+| `keepalive`  | Connection alive  | `{"type":"keepalive"}`                          |
 
 ---
 
@@ -233,21 +233,21 @@ Frontend Page                  API Module                  Backend
 
 ### CRM Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `GET /api/crm/clients` | `crm_clients.py` | List clients |
-| `POST /api/crm/clients` | `crm_clients.py` | Create client |
-| `GET /api/crm/clients/{id}` | `crm_clients.py` | Get client |
-| `PATCH /api/crm/clients/{id}` | `crm_clients.py` | Update client |
-| `DELETE /api/crm/clients/{id}` | `crm_clients.py` | Delete client |
-| `GET /api/crm/clients/{id}/summary` | `crm_clients.py` | Full summary |
-| `GET /api/crm/clients/{id}/profile` | `crm_clients.py` | Profile |
-| `GET /api/crm/practices` | `crm_practices.py` | List practices |
-| `POST /api/crm/practices` | `crm_practices.py` | Create practice |
-| `GET /api/crm/practices/{id}` | `crm_practices.py` | Get practice |
-| `PATCH /api/crm/practices/{id}` | `crm_practices.py` | Update practice |
-| `GET /api/crm/interactions` | `crm_interactions.py` | List interactions |
-| `POST /api/crm/interactions` | `crm_interactions.py` | Create interaction |
+| Frontend                            | Backend               | Purpose            |
+| ----------------------------------- | --------------------- | ------------------ |
+| `GET /api/crm/clients`              | `crm_clients.py`      | List clients       |
+| `POST /api/crm/clients`             | `crm_clients.py`      | Create client      |
+| `GET /api/crm/clients/{id}`         | `crm_clients.py`      | Get client         |
+| `PATCH /api/crm/clients/{id}`       | `crm_clients.py`      | Update client      |
+| `DELETE /api/crm/clients/{id}`      | `crm_clients.py`      | Delete client      |
+| `GET /api/crm/clients/{id}/summary` | `crm_clients.py`      | Full summary       |
+| `GET /api/crm/clients/{id}/profile` | `crm_clients.py`      | Profile            |
+| `GET /api/crm/practices`            | `crm_practices.py`    | List practices     |
+| `POST /api/crm/practices`           | `crm_practices.py`    | Create practice    |
+| `GET /api/crm/practices/{id}`       | `crm_practices.py`    | Get practice       |
+| `PATCH /api/crm/practices/{id}`     | `crm_practices.py`    | Update practice    |
+| `GET /api/crm/interactions`         | `crm_interactions.py` | List interactions  |
+| `POST /api/crm/interactions`        | `crm_interactions.py` | Create interaction |
 
 ---
 
@@ -276,13 +276,13 @@ useDrive()
 
 ### Drive Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `GET /api/drive/files` | `google_drive.py` | List files |
-| `GET /api/drive/files/{id}` | `google_drive.py` | Get file |
-| `POST /api/drive/upload` | `google_drive.py` | Upload file |
-| `POST /api/drive/folders` | `google_drive.py` | Create folder |
-| `DELETE /api/drive/files/{id}` | `google_drive.py` | Delete file |
+| Frontend                             | Backend                | Purpose       |
+| ------------------------------------ | ---------------------- | ------------- |
+| `GET /api/drive/files`               | `google_drive.py`      | List files    |
+| `GET /api/drive/files/{id}`          | `google_drive.py`      | Get file      |
+| `POST /api/drive/upload`             | `google_drive.py`      | Upload file   |
+| `POST /api/drive/folders`            | `google_drive.py`      | Create folder |
+| `DELETE /api/drive/files/{id}`       | `google_drive.py`      | Delete file   |
 | `GET /api/clients/{id}/drive-folder` | `crm_drive_folders.py` | Client folder |
 
 ---
@@ -311,14 +311,14 @@ ArticleComposer
 
 ### Intel Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `GET /api/intel/articles` | `intel.py` | List articles |
-| `POST /api/intel/articles` | `intel.py` | Create article |
-| `GET /api/intel/articles/{id}` | `intel.py` | Get article |
-| `POST /api/intel/articles/{id}/publish` | `intel.py` | Publish |
-| `POST /api/article-composer/compose` | `article_composer.py` | Generate AI |
-| `GET /api/intel/analytics` | `intel.py` | Analytics |
+| Frontend                                | Backend               | Purpose        |
+| --------------------------------------- | --------------------- | -------------- |
+| `GET /api/intel/articles`               | `intel.py`            | List articles  |
+| `POST /api/intel/articles`              | `intel.py`            | Create article |
+| `GET /api/intel/articles/{id}`          | `intel.py`            | Get article    |
+| `POST /api/intel/articles/{id}/publish` | `intel.py`            | Publish        |
+| `POST /api/article-composer/compose`    | `article_composer.py` | Generate AI    |
+| `GET /api/intel/analytics`              | `intel.py`            | Analytics      |
 
 ---
 
@@ -343,16 +343,16 @@ useDashboardData()
 
 ### Analytics Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `GET /api/analytics/overview` | `analytics.py` | Overview stats |
-| `GET /api/analytics/rag` | `analytics.py` | RAG metrics |
-| `GET /api/analytics/crm` | `analytics.py` | CRM stats |
-| `GET /api/analytics/team` | `analytics.py` | Team metrics |
-| `GET /api/analytics/system` | `analytics.py` | System health |
-| `GET /api/analytics/all` | `analytics.py` | All combined |
-| `GET /api/health` | `health.py` | Health check |
-| `GET /api/health/detailed` | `health.py` | Detailed health |
+| Frontend                      | Backend        | Purpose         |
+| ----------------------------- | -------------- | --------------- |
+| `GET /api/analytics/overview` | `analytics.py` | Overview stats  |
+| `GET /api/analytics/rag`      | `analytics.py` | RAG metrics     |
+| `GET /api/analytics/crm`      | `analytics.py` | CRM stats       |
+| `GET /api/analytics/team`     | `analytics.py` | Team metrics    |
+| `GET /api/analytics/system`   | `analytics.py` | System health   |
+| `GET /api/analytics/all`      | `analytics.py` | All combined    |
+| `GET /api/health`             | `health.py`    | Health check    |
+| `GET /api/health/detailed`    | `health.py`    | Detailed health |
 
 ---
 
@@ -391,10 +391,10 @@ useAudioRecorder()
 
 ### Audio Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
+| Frontend                     | Backend    | Purpose        |
+| ---------------------------- | ---------- | -------------- |
 | `POST /api/audio/transcribe` | `audio.py` | Speech-to-text |
-| `POST /api/audio/speech` | `audio.py` | Text-to-speech |
+| `POST /api/audio/speech`     | `audio.py` | Text-to-speech |
 
 ---
 
@@ -402,13 +402,13 @@ useAudioRecorder()
 
 ### Admin Endpoints
 
-| Frontend | Backend | Purpose |
-|----------|---------|---------|
-| `GET /api/admin/logs/activity` | `admin_logs.py` | Activity logs |
-| `GET /api/admin/team/overview` | `admin_team_activity.py` | Team overview |
-| `GET /api/admin/team/timesheet` | `admin_team_activity.py` | Timesheet |
-| `GET /api/admin/system/health` | `health.py` | System health |
-| `GET /api/autonomous-agents/status` | `autonomous_agents.py` | Agents status |
+| Frontend                            | Backend                  | Purpose       |
+| ----------------------------------- | ------------------------ | ------------- |
+| `GET /api/admin/logs/activity`      | `admin_logs.py`          | Activity logs |
+| `GET /api/admin/team/overview`      | `admin_team_activity.py` | Team overview |
+| `GET /api/admin/team/timesheet`     | `admin_team_activity.py` | Timesheet     |
+| `GET /api/admin/system/health`      | `health.py`              | System health |
+| `GET /api/autonomous-agents/status` | `autonomous_agents.py`   | Agents status |
 
 ---
 
@@ -456,13 +456,13 @@ class PracticeResponse(BaseModel):
 
 ### Type Alignment
 
-| Frontend Type | Backend Model | Notes |
-|---------------|---------------|-------|
-| `Client` | `ClientResponse` | 1:1 mapping |
-| `Practice` | `PracticeResponse` | 1:1 mapping |
-| `Message` | `MessageModel` | Slight differences |
-| `Conversation` | `ConversationResponse` | 1:1 mapping |
-| `AgentStep` | SSE event types | Event-based |
+| Frontend Type  | Backend Model          | Notes              |
+| -------------- | ---------------------- | ------------------ |
+| `Client`       | `ClientResponse`       | 1:1 mapping        |
+| `Practice`     | `PracticeResponse`     | 1:1 mapping        |
+| `Message`      | `MessageModel`         | Slight differences |
+| `Conversation` | `ConversationResponse` | 1:1 mapping        |
+| `AgentStep`    | SSE event types        | Event-based        |
 
 ---
 
@@ -470,38 +470,40 @@ class PracticeResponse(BaseModel):
 
 ### Complete Mapping
 
-| Domain | Frontend API Module | Backend Router | Base Path |
-|--------|--------------------|--------------------|-----------|
-| **Auth** | `lib/api/auth/` | `auth.py` | `/api/auth` |
-| **Chat** | `lib/api/chat/` | `agentic_rag.py` | `/api/agentic-rag` |
-| **Conversations** | `lib/api/conversations/` | `conversations.py` | `/api/conversations` |
-| **CRM Clients** | `lib/api/crm/` | `crm_clients.py` | `/api/crm/clients` |
-| **CRM Practices** | `lib/api/crm/` | `crm_practices.py` | `/api/crm/practices` |
-| **CRM Interactions** | `lib/api/crm/` | `crm_interactions.py` | `/api/crm/interactions` |
-| **Drive** | `lib/api/drive/` | `google_drive.py` | `/api/drive` |
-| **Intelligence** | `lib/api/intelligence.api.ts` | `intel.py` | `/api/intel` |
-| **Articles** | `lib/api/articles.api.ts` | `article_composer.py` | `/api/article-composer` |
-| **Analytics** | `lib/api/analytics/` | `analytics.py` | `/api/analytics` |
-| **Admin** | `lib/api/admin/` | `admin_*.py` | `/api/admin` |
-| **Team** | `lib/api/team/` | `admin_team_activity.py` | `/api/team` |
-| **Portal** | `lib/api/portal/` | `portal.py` | `/api/portal` |
-| **Knowledge** | `lib/api/knowledge/` | `knowledge_visa.py` | `/api/knowledge` |
-| **Media** | `lib/api/media/` | `media.py` | `/api/media` |
-| **Audio** | (inline) | `audio.py` | `/api/audio` |
-| **Health** | (inline) | `health.py` | `/api/health` |
-| **Feedback** | (inline) | `feedback.py` | `/api/feedback` |
+| Domain               | Frontend API Module           | Backend Router           | Base Path               |
+| -------------------- | ----------------------------- | ------------------------ | ----------------------- |
+| **Auth**             | `lib/api/auth/`               | `auth.py`                | `/api/auth`             |
+| **Chat**             | `lib/api/chat/`               | `agentic_rag.py`         | `/api/agentic-rag`      |
+| **Conversations**    | `lib/api/conversations/`      | `conversations.py`       | `/api/conversations`    |
+| **CRM Clients**      | `lib/api/crm/`                | `crm_clients.py`         | `/api/crm/clients`      |
+| **CRM Practices**    | `lib/api/crm/`                | `crm_practices.py`       | `/api/crm/practices`    |
+| **CRM Interactions** | `lib/api/crm/`                | `crm_interactions.py`    | `/api/crm/interactions` |
+| **Drive**            | `lib/api/drive/`              | `google_drive.py`        | `/api/drive`            |
+| **Intelligence**     | `lib/api/intelligence.api.ts` | `intel.py`               | `/api/intel`            |
+| **Articles**         | `lib/api/articles.api.ts`     | `article_composer.py`    | `/api/article-composer` |
+| **Analytics**        | `lib/api/analytics/`          | `analytics.py`           | `/api/analytics`        |
+| **Admin**            | `lib/api/admin/`              | `admin_*.py`             | `/api/admin`            |
+| **Team**             | `lib/api/team/`               | `admin_team_activity.py` | `/api/team`             |
+| **Portal**           | `lib/api/portal/`             | `portal.py`              | `/api/portal`           |
+| **Knowledge**        | `lib/api/knowledge/`          | `knowledge_visa.py`      | `/api/knowledge`        |
+| **Media**            | `lib/api/media/`              | `media.py`               | `/api/media`            |
+| **Audio**            | (inline)                      | `audio.py`               | `/api/audio`            |
+| **Health**           | (inline)                      | `health.py`              | `/api/health`           |
+| **Feedback**         | (inline)                      | `feedback.py`            | `/api/feedback`         |
 
 ---
 
 ## ⚠️ Critical Points
 
 ### 1. Proxy Configuration
+
 ```
 SEMPRE usare /api/* prefix nel frontend
 Il proxy catch-all redirige TUTTO al backend
 ```
 
 ### 2. Authentication
+
 ```
 - Cookie-based auth (httpOnly) = PRIMARY
 - Bearer token = BACKUP for WebSocket
@@ -509,6 +511,7 @@ Il proxy catch-all redirige TUTTO al backend
 ```
 
 ### 3. Streaming
+
 ```
 - SSE per chat streaming
 - Content-Type: text/event-stream
@@ -516,6 +519,7 @@ Il proxy catch-all redirige TUTTO al backend
 ```
 
 ### 4. Error Handling
+
 ```typescript
 // Frontend cattura errori HTTP
 if (response.status === 401) {
@@ -530,6 +534,7 @@ if (response.status === 422) {
 ```
 
 ### 5. FormData Upload
+
 ```typescript
 // NON settare Content-Type per FormData
 // Il browser lo setta automaticamente con boundary
@@ -540,4 +545,4 @@ formData.append('file', file);
 
 ---
 
-*"Frontend and Backend, united as one" 🔗*
+_"Frontend and Backend, united as one" 🔗_

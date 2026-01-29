@@ -93,7 +93,7 @@ class ZantaraAIClientConstants:
 class ZantaraAIClient:
     """
     Primary AI engine for Nuzantara.
-    
+
     Features:
     - Multi-provider support
     - Automatic fallback
@@ -102,26 +102,26 @@ class ZantaraAIClient:
     - Cost tracking
     - Mock mode for testing
     """
-    
+
     def __init__(self, api_key: str = None, model: str = None):
         # Auth: Service Account preferred, API Key fallback
         has_service_account = bool(
             os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or
             os.environ.get("GOOGLE_CREDENTIALS_JSON")
         )
-        
+
         # Initialize GenAI client
         self._genai_client = GenAIClient(api_key=api_key)
-        
+
         # Default model
         self.model = model or "gemini-2.0-flash-001"
-        
+
         # Pricing (per 1M tokens)
         self.pricing = {
             "input": 0.15,   # $0.15/1M input
             "output": 0.60   # $0.60/1M output
         }
-        
+
         # Helper services
         self.prompt_manager = PromptManager()
         self.retry_handler = RetryHandler(...)
@@ -141,14 +141,14 @@ async def chat(
 ) -> dict:
     """
     Async chat completion.
-    
+
     Args:
         messages: [{"role": "user/assistant", "content": "..."}]
         temperature: 0.0-2.0
         max_tokens: Max output tokens
         tools: Function definitions for tool calling
         system_prompt: Override system prompt
-    
+
     Returns:
         {
             "content": "...",
@@ -167,7 +167,7 @@ async def stream(
 ) -> AsyncGenerator[str, None]:
     """
     Streaming chat completion.
-    
+
     Yields chunks of text as they're generated.
     """
     async for chunk in self._genai_client.stream(...):
@@ -184,9 +184,9 @@ async def stream(
 class GenAIClient:
     """
     Direct Google GenAI SDK wrapper.
-    
+
     Uses new google-genai SDK (not deprecated google-generativeai).
-    
+
     Features:
     - Service Account auth (ADC)
     - API Key auth (fallback)
@@ -195,10 +195,10 @@ class GenAIClient:
     - Code execution
     - Function calling
     """
-    
+
     def __init__(self, api_key: str = None):
         from google import genai
-        
+
         # Try Service Account first
         if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
             self.client = genai.Client()
@@ -208,7 +208,7 @@ class GenAIClient:
             self._auth_method = "api_key"
         else:
             raise ValueError("No credentials")
-    
+
     async def generate(
         self,
         prompt: str,
@@ -222,7 +222,7 @@ class GenAIClient:
             config=config
         )
         return response
-    
+
     async def stream(self, prompt: str, model: str, config: dict):
         """Stream content."""
         async for chunk in self.client.aio.models.generate_content_stream(
@@ -239,14 +239,14 @@ class GenAIClient:
 async def generate_with_grounding(self, prompt: str) -> dict:
     """
     Generate with Google Search grounding.
-    
+
     Useful for:
     - Current events
     - Fact checking
     - Up-to-date information
     """
     from google.genai import types
-    
+
     response = await self.client.aio.models.generate_content(
         model="gemini-2.0-flash-001",
         contents=prompt,
@@ -265,18 +265,19 @@ async def generate_with_grounding(self, prompt: str) -> dict:
 ## Providers
 
 ### 1. Gemini (Primary)
+
 **File:** `llm/providers/gemini.py`
 
 ```python
 class GeminiProvider:
     """
     Google Gemini via AI Studio.
-    
+
     Models:
     - gemini-2.0-flash-001 (default, fast)
     - gemini-1.5-pro (complex tasks)
     - gemini-1.5-flash (cheaper)
-    
+
     Pricing (per 1M tokens):
     - Input: $0.15
     - Output: $0.60
@@ -284,17 +285,18 @@ class GeminiProvider:
 ```
 
 ### 2. Vertex AI
+
 **File:** `llm/providers/vertex.py`
 
 ```python
 class VertexAIProvider:
     """
     Google Vertex AI (enterprise).
-    
+
     Requires:
     - GCP project
     - Service Account
-    
+
     Benefits:
     - SLA guarantees
     - Enterprise features
@@ -303,41 +305,43 @@ class VertexAIProvider:
 ```
 
 ### 3. DeepSeek
+
 **File:** `llm/providers/deepseek.py`
 
 ```python
 class DeepSeekProvider:
     """
     DeepSeek for cheap, fast responses.
-    
+
     Models:
     - deepseek-chat (main)
     - deepseek-coder (code)
-    
+
     Pricing: ~10x cheaper than GPT-4
     Good for: Simple queries, bulk processing
     """
 ```
 
 ### 4. Ollama (Local)
+
 **File:** `llm/providers/ollama.py`
 
 ```python
 class OllamaProvider:
     """
     Local LLM via Ollama.
-    
+
     Models:
     - qwen2.5:32b
     - llama3.2
     - codellama
     - mistral
-    
+
     Benefits:
     - Free (no API costs)
     - Privacy (local)
     - Offline capability
-    
+
     Drawbacks:
     - Requires GPU
     - Lower quality than cloud
@@ -345,20 +349,21 @@ class OllamaProvider:
 ```
 
 ### 5. OpenRouter
+
 **File:** `llm/providers/openrouter.py`
 
 ```python
 class OpenRouterProvider:
     """
     Multi-provider gateway.
-    
+
     Access to:
     - Claude (Anthropic)
     - GPT-4 (OpenAI)
     - Llama (Meta)
     - Mistral
     - etc.
-    
+
     Unified API, pay-per-use.
     """
 ```
@@ -368,56 +373,58 @@ class OpenRouterProvider:
 ## Helper Services
 
 ### PromptManager
+
 **File:** `llm/prompt_manager.py`
 
 ```python
 class PromptManager:
     """
     Manages system prompts and templates.
-    
+
     Templates:
     - ZANTARA identity
     - Language-specific
     - Task-specific
     - Safety guidelines
     """
-    
+
     def __init__(self):
         self._base_system_prompt = """
-        You are ZANTARA, an AI assistant specialized in 
+        You are ZANTARA, an AI assistant specialized in
         Indonesian immigration, business, and legal matters.
-        
+
         Key traits:
         - Professional but friendly
         - Accurate and fact-based
         - Cite sources when available
         - Admit uncertainty when unsure
         """
-    
+
     def get_system_prompt(self, context: dict) -> str:
         """Build context-aware system prompt."""
         pass
 ```
 
 ### RetryHandler
+
 **File:** `llm/retry_handler.py`
 
 ```python
 class RetryHandler:
     """
     Handles retries with exponential backoff.
-    
+
     Retryable errors:
     - 429 (rate limit)
     - 500, 502, 503, 504 (server errors)
     - Timeout
-    
+
     Non-retryable:
     - 400 (bad request)
     - 401, 403 (auth)
     - 404 (not found)
     """
-    
+
     async def execute_with_retry(self, func, *args, **kwargs):
         for attempt in range(self.max_retries):
             try:
@@ -429,23 +436,24 @@ class RetryHandler:
 ```
 
 ### TokenEstimator
+
 **File:** `llm/token_estimator.py`
 
 ```python
 class TokenEstimator:
     """
     Estimates token count for cost tracking.
-    
+
     Methods:
     - count_tokens(text) -> int
     - estimate_cost(input_tokens, output_tokens) -> float
     """
-    
+
     def count_tokens(self, text: str) -> int:
         # Approximate: 1 token ≈ 4 chars for English
         # Adjust for other languages
         return len(text) // 4
-    
+
     def estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
         input_cost = (input_tokens / 1_000_000) * self.pricing["input"]
         output_cost = (output_tokens / 1_000_000) * self.pricing["output"]
@@ -476,26 +484,26 @@ services/llm_clients/
 def select_model(query: str, context: dict) -> str:
     """
     Select best model for query.
-    
+
     Decision factors:
     - Query complexity
     - Required accuracy
     - Cost constraints
     - Response time needs
     """
-    
+
     # Complex queries → Gemini 1.5 Pro
     if context.get("complex") or len(query) > 1000:
         return "gemini-1.5-pro"
-    
+
     # Code-related → Gemini 2.0 Flash or DeepSeek Coder
     if context.get("code"):
         return "gemini-2.0-flash-001"
-    
+
     # Bulk/cheap → DeepSeek
     if context.get("batch") or context.get("low_priority"):
         return "deepseek-chat"
-    
+
     # Default → Gemini 2.0 Flash
     return "gemini-2.0-flash-001"
 ```
@@ -525,6 +533,7 @@ OLLAMA_HOST=http://localhost:11434
 ## Usage Examples
 
 ### Basic Chat
+
 ```python
 from backend.llm import ZantaraAIClient
 
@@ -537,6 +546,7 @@ print(response["content"])
 ```
 
 ### Streaming
+
 ```python
 async for chunk in client.stream([
     {"role": "user", "content": "Explain PT PMA setup"}
@@ -545,6 +555,7 @@ async for chunk in client.stream([
 ```
 
 ### With Tools
+
 ```python
 tools = [{
     "name": "get_visa_price",
@@ -569,4 +580,4 @@ if response.get("tool_calls"):
 
 ---
 
-*"Multi-brain, one voice" 🧠*
+_"Multi-brain, one voice" 🧠_

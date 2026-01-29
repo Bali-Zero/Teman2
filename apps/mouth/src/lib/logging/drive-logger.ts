@@ -122,16 +122,36 @@ class DriveLogger {
 
       switch (logData.level) {
         case LogLevel.DEBUG:
-          logger.debug(message, { metadata: logData.metadata as Record<string, string | number | boolean | null | undefined> });
+          logger.debug(message, {
+            metadata: logData.metadata as Record<
+              string,
+              string | number | boolean | null | undefined
+            >,
+          });
           break;
         case LogLevel.INFO:
-          logger.info(message, { metadata: logData.metadata as Record<string, string | number | boolean | null | undefined> });
+          logger.info(message, {
+            metadata: logData.metadata as Record<
+              string,
+              string | number | boolean | null | undefined
+            >,
+          });
           break;
         case LogLevel.WARN:
-          logger.warn(message, { metadata: logData.metadata as Record<string, string | number | boolean | null | undefined> });
+          logger.warn(message, {
+            metadata: logData.metadata as Record<
+              string,
+              string | number | boolean | null | undefined
+            >,
+          });
           break;
         case LogLevel.ERROR:
-          logger.error(message, { metadata: logData.metadata as Record<string, string | number | boolean | null | undefined> });
+          logger.error(message, {
+            metadata: logData.metadata as Record<
+              string,
+              string | number | boolean | null | undefined
+            >,
+          });
           break;
       }
     }
@@ -566,7 +586,11 @@ class DriveLogger {
 
   debug(message: string, metadata?: LogMetadata) {
     if (this.isDevelopment) {
-      logger.debug(`📁 ${message}`, { metadata: metadata as Record<string, string | number | boolean | null | undefined> | undefined });
+      logger.debug(`📁 ${message}`, {
+        metadata: metadata as
+          | Record<string, string | number | boolean | null | undefined>
+          | undefined,
+      });
     }
   }
 }

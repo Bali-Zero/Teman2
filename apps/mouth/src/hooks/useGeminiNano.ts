@@ -64,7 +64,9 @@ export const useGeminiNano = (): UseGeminiNanoReturn => {
         }
 
         const capabilities = await window.ai.assistant.capabilities();
-        logger.debug('[EdgeAI] Capabilities checked', { metadata: { available: capabilities.available } });
+        logger.debug('[EdgeAI] Capabilities checked', {
+          metadata: { available: capabilities.available },
+        });
 
         if (capabilities.available === 'no') {
           if (active) setStatus('unsupported');

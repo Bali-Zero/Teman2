@@ -82,10 +82,10 @@ class QdrantErrorType(Enum):
 
 class QdrantErrorClassifier:
     """Classify errors for retry decisions."""
-    
+
     RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
     NON_RETRYABLE_STATUS_CODES = {400, 401, 403, 404, 422}
-    
+
     def classify(self, error: Exception) -> tuple[QdrantErrorType, bool]:
         """Returns (error_type, should_retry)."""
         if isinstance(error, httpx.TimeoutException):
@@ -118,15 +118,15 @@ DEFAULT_SENTENCE_TRANSFORMERS_DIMENSIONS = 384
 class QdrantDB:
     """
     Async Qdrant client wrapper.
-    
+
     Uses httpx for async HTTP with connection pooling.
     All operations are async to avoid blocking.
     """
-    
+
     def __init__(self, url: str = None, api_key: str = None):
         self.url = url or settings.qdrant_url
         self.api_key = api_key or settings.qdrant_api_key
-        
+
         # HTTP client with pooling
         self._client = httpx.AsyncClient(
             base_url=self.url,
@@ -177,11 +177,11 @@ async def upsert_vectors(
 ) -> dict:
     """
     Upsert vectors to collection.
-    
+
     Args:
         collection_name: Target collection
         points: [{"id": "...", "vector": [...], "payload": {...}}]
-    
+
     Returns:
         {"status": "ok", "result": {...}}
     """
@@ -202,7 +202,7 @@ async def search(
 ) -> list[dict]:
     """
     Search for similar vectors.
-    
+
     Args:
         collection_name: Collection to search
         query_vector: Query embedding
@@ -210,7 +210,7 @@ async def search(
         filter: Qdrant filter conditions
         with_payload: Include metadata
         score_threshold: Minimum similarity score
-    
+
     Returns:
         [{"id": "...", "score": 0.95, "payload": {...}}, ...]
     """
@@ -219,12 +219,12 @@ async def search(
         "limit": limit,
         "with_payload": with_payload
     }
-    
+
     if filter:
         payload["filter"] = filter
     if score_threshold:
         payload["score_threshold"] = score_threshold
-    
+
     response = await self._client.post(
         f"/collections/{collection_name}/points/search",
         json=payload
@@ -245,34 +245,34 @@ async def hybrid_search(
 ) -> list[dict]:
     """
     Hybrid search combining dense and sparse vectors.
-    
+
     Uses Reciprocal Rank Fusion (RRF) for result merging.
     """
     # Dense search
     dense_results = await self.search(
         collection_name, dense_vector, limit=limit*2
     )
-    
+
     # Sparse search (BM25)
     sparse_results = await self._sparse_search(
         collection_name, sparse_vector, limit=limit*2
     )
-    
+
     # RRF fusion
     return self._rrf_fusion(dense_results, sparse_results, alpha, limit)
 ```
 
 ### Collections Used
 
-| Collection | Purpose | Vector Size |
-|------------|---------|-------------|
-| `visa_knowledge` | Visa/immigration info | 768 |
-| `business_knowledge` | Business setup, PT/CV | 768 |
-| `legal_knowledge` | Indonesian laws | 768 |
-| `politics_knowledge` | Political news | 768 |
-| `pricing_knowledge` | Service pricing | 768 |
-| `team_knowledge` | Internal team info | 768 |
-| `client_memory` | Per-client memory | 768 |
+| Collection           | Purpose               | Vector Size |
+| -------------------- | --------------------- | ----------- |
+| `visa_knowledge`     | Visa/immigration info | 768         |
+| `business_knowledge` | Business setup, PT/CV | 768         |
+| `legal_knowledge`    | Indonesian laws       | 768         |
+| `politics_knowledge` | Political news        | 768         |
+| `pricing_knowledge`  | Service pricing       | 768         |
+| `team_knowledge`     | Internal team info    | 768         |
+| `client_memory`      | Per-client memory     | 768         |
 
 ---
 
@@ -284,22 +284,22 @@ async def hybrid_search(
 class EmbeddingService:
     """
     Text embedding generation.
-    
+
     Providers:
     - Google text-embedding-004 (default)
     - OpenAI text-embedding-3-large
     - Local via Ollama
-    
+
     Features:
     - Batch processing
     - Caching (optional)
     - Fallback chain
     """
-    
+
     def __init__(self, provider: str = "google"):
         self.provider = provider
         self.dimension = 768  # Default for Google
-        
+
         if provider == "google":
             self._client = self._init_google()
         elif provider == "openai":
@@ -307,11 +307,11 @@ class EmbeddingService:
             self.dimension = 1536
         elif provider == "ollama":
             self._client = self._init_ollama()
-    
+
     async def embed(self, text: str) -> list[float]:
         """Generate embedding for single text."""
         return await self.embed_batch([text])[0]
-    
+
     async def embed_batch(
         self,
         texts: list[str],
@@ -319,7 +319,7 @@ class EmbeddingService:
     ) -> list[list[float]]:
         """
         Generate embeddings for multiple texts.
-        
+
         Processes in batches to respect API limits.
         """
         embeddings = []
@@ -328,7 +328,7 @@ class EmbeddingService:
             batch_embeddings = await self._embed_batch_internal(batch)
             embeddings.extend(batch_embeddings)
         return embeddings
-    
+
     async def _embed_batch_internal(self, texts: list[str]) -> list[list[float]]:
         """Provider-specific batch embedding."""
         if self.provider == "google":
@@ -359,7 +359,7 @@ class ChunkerStrategy(Enum):
 class Chunker:
     """
     Text chunking for RAG.
-    
+
     Strategies:
     - Fixed: Simple fixed-size chunks
     - Sentence: Respect sentence boundaries
@@ -367,7 +367,7 @@ class Chunker:
     - Semantic: Group by semantic similarity
     - Recursive: Try largest then smaller splits
     """
-    
+
     def __init__(
         self,
         strategy: ChunkerStrategy = ChunkerStrategy.RECURSIVE,
@@ -377,7 +377,7 @@ class Chunker:
         self.strategy = strategy
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-    
+
     def chunk(self, text: str) -> list[str]:
         """Split text into chunks."""
         if self.strategy == ChunkerStrategy.FIXED:
@@ -387,11 +387,11 @@ class Chunker:
         elif self.strategy == ChunkerStrategy.RECURSIVE:
             return self._recursive_chunk(text)
         # ...
-    
+
     def _recursive_chunk(self, text: str) -> list[str]:
         """
         Recursive chunking (LangChain style).
-        
+
         Try splits in order: \n\n, \n, . , " "
         Fall back to smaller if chunks too large.
         """
@@ -415,29 +415,29 @@ class CacheLevel(Enum):
 class MultiLevelCache:
     """
     Multi-level caching system.
-    
+
     Hierarchy:
     1. Memory (LRU, ~1000 items)
     2. Redis (distributed, TTL-based)
     3. Disk (persistent, for large items)
-    
+
     Features:
     - Automatic promotion/demotion
     - TTL per level
     - Compression for large values
     """
-    
+
     def __init__(self):
         self._memory = LRUCache(maxsize=1000)
         self._redis = None  # Lazy init
         self._disk = None   # Lazy init
-    
+
     async def get(self, key: str) -> Any | None:
         """Get from cache (tries all levels)."""
         # Try memory first
         if key in self._memory:
             return self._memory[key]
-        
+
         # Try Redis
         if self._redis:
             value = await self._redis.get(key)
@@ -445,7 +445,7 @@ class MultiLevelCache:
                 # Promote to memory
                 self._memory[key] = value
                 return value
-        
+
         # Try disk
         if self._disk:
             value = self._disk.get(key)
@@ -453,9 +453,9 @@ class MultiLevelCache:
                 # Promote to memory
                 self._memory[key] = value
                 return value
-        
+
         return None
-    
+
     async def set(
         self,
         key: str,
@@ -465,13 +465,13 @@ class MultiLevelCache:
     ):
         """Set in cache (specified levels)."""
         levels = levels or [CacheLevel.MEMORY, CacheLevel.REDIS]
-        
+
         if CacheLevel.MEMORY in levels:
             self._memory[key] = value
-        
+
         if CacheLevel.REDIS in levels and self._redis:
             await self._redis.setex(key, ttl, value)
-        
+
         if CacheLevel.DISK in levels and self._disk:
             self._disk.set(key, value)
 ```
@@ -482,23 +482,23 @@ class MultiLevelCache:
 class SemanticCache:
     """
     Cache based on semantic similarity.
-    
+
     For queries like:
     - "What is KITAS?" → cached
     - "Can you explain KITAS?" → cache HIT (similar meaning)
-    
+
     Uses embedding similarity for cache lookup.
     """
-    
+
     def __init__(self, similarity_threshold: float = 0.92):
         self.threshold = similarity_threshold
         self.embedding_service = EmbeddingService()
         self._cache = {}  # {embedding_key: (query, response)}
-    
+
     async def get(self, query: str) -> str | None:
         """Find similar cached query."""
         query_embedding = await self.embedding_service.embed(query)
-        
+
         for cached_embedding, (cached_query, response) in self._cache.items():
             similarity = self._cosine_similarity(
                 query_embedding, cached_embedding
@@ -506,7 +506,7 @@ class SemanticCache:
             if similarity >= self.threshold:
                 logger.info(f"Semantic cache hit: {query} ≈ {cached_query}")
                 return response
-        
+
         return None
 ```
 
@@ -520,7 +520,7 @@ class SemanticCache:
 class DocumentParser:
     """
     Parse various document formats.
-    
+
     Supported:
     - PDF (PyPDF2, pdfplumber)
     - DOCX (python-docx)
@@ -528,11 +528,11 @@ class DocumentParser:
     - HTML (BeautifulSoup)
     - Markdown
     """
-    
+
     def parse(self, file_path: str) -> ParsedDocument:
         """Auto-detect and parse document."""
         ext = Path(file_path).suffix.lower()
-        
+
         if ext == ".pdf":
             return self._parse_pdf(file_path)
         elif ext == ".docx":
@@ -545,11 +545,11 @@ class DocumentParser:
             return self._parse_markdown(file_path)
         else:
             raise UnsupportedFormatError(ext)
-    
+
     def _parse_pdf(self, file_path: str) -> ParsedDocument:
         """
         Parse PDF with fallback strategies.
-        
+
         1. Try pdfplumber (better for tables)
         2. Fallback to PyPDF2 (more robust)
         3. OCR if needed (pytesseract)
@@ -567,20 +567,20 @@ class DocumentParser:
 class Reranker:
     """
     Rerank search results for relevance.
-    
+
     Methods:
     - Cross-encoder (most accurate, slow)
     - BM25 (fast, keyword-based)
     - Reciprocal Rank Fusion (combine rankings)
     """
-    
+
     def __init__(self, method: str = "cross_encoder"):
         self.method = method
-        
+
         if method == "cross_encoder":
             from sentence_transformers import CrossEncoder
             self.model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-    
+
     def rerank(
         self,
         query: str,
@@ -589,12 +589,12 @@ class Reranker:
     ) -> list[dict]:
         """
         Rerank documents by relevance to query.
-        
+
         Args:
             query: Original query
             documents: [{"content": "...", "score": 0.8, ...}]
             top_k: Number of results to return
-        
+
         Returns:
             Reranked documents with updated scores
         """
@@ -604,7 +604,7 @@ class Reranker:
             return self._rerank_bm25(query, documents, top_k)
         elif self.method == "rrf":
             return self._rerank_rrf(query, documents, top_k)
-    
+
     def _rerank_cross_encoder(
         self,
         query: str,
@@ -614,10 +614,10 @@ class Reranker:
         """Rerank using cross-encoder model."""
         pairs = [(query, doc["content"]) for doc in documents]
         scores = self.model.predict(pairs)
-        
+
         for doc, score in zip(documents, scores):
             doc["rerank_score"] = float(score)
-        
+
         return sorted(
             documents,
             key=lambda x: x["rerank_score"],
@@ -635,44 +635,44 @@ class Reranker:
 class BM25Vectorizer:
     """
     BM25 sparse vector generation.
-    
+
     Used for:
     - Hybrid search (dense + sparse)
     - Keyword matching
     - Fast initial filtering
     """
-    
+
     def __init__(self, k1: float = 1.5, b: float = 0.75):
         self.k1 = k1  # Term frequency saturation
         self.b = b    # Length normalization
         self._vocabulary = {}
         self._idf = {}
-    
+
     def fit(self, documents: list[str]):
         """Build vocabulary and IDF from documents."""
         from collections import Counter
-        
+
         # Build vocabulary
         all_terms = set()
         doc_freqs = Counter()
-        
+
         for doc in documents:
             terms = set(self._tokenize(doc))
             all_terms.update(terms)
             for term in terms:
                 doc_freqs[term] += 1
-        
+
         # Calculate IDF
         n_docs = len(documents)
         for term, df in doc_freqs.items():
             self._idf[term] = math.log((n_docs - df + 0.5) / (df + 0.5))
-        
+
         self._vocabulary = {term: i for i, term in enumerate(all_terms)}
-    
+
     def vectorize(self, text: str) -> dict:
         """
         Convert text to sparse BM25 vector.
-        
+
         Returns:
             {"indices": [...], "values": [...]}
         """
@@ -680,23 +680,23 @@ class BM25Vectorizer:
         term_freqs = Counter(terms)
         doc_len = len(terms)
         avg_len = self._avg_doc_length
-        
+
         indices = []
         values = []
-        
+
         for term, tf in term_freqs.items():
             if term in self._vocabulary:
                 idx = self._vocabulary[term]
                 idf = self._idf.get(term, 0)
-                
+
                 # BM25 score
                 numerator = tf * (self.k1 + 1)
                 denominator = tf + self.k1 * (1 - self.b + self.b * doc_len / avg_len)
                 score = idf * numerator / denominator
-                
+
                 indices.append(idx)
                 values.append(score)
-        
+
         return {"indices": indices, "values": values}
 ```
 
@@ -719,12 +719,12 @@ _qdrant_metrics = {
 def get_qdrant_metrics() -> dict:
     """Get operation metrics for monitoring."""
     metrics = _qdrant_metrics.copy()
-    
+
     if metrics["search_calls"] > 0:
         metrics["search_avg_time_ms"] = (
             metrics["search_total_time"] / metrics["search_calls"]
         ) * 1000
-    
+
     return metrics
 ```
 
@@ -733,6 +733,7 @@ def get_qdrant_metrics() -> dict:
 ## Usage Examples
 
 ### Search
+
 ```python
 from backend.core.qdrant_db import QdrantDB
 from backend.core.embeddings import EmbeddingService
@@ -756,6 +757,7 @@ for r in results:
 ```
 
 ### Ingest
+
 ```python
 from backend.core.chunker import Chunker
 
@@ -775,4 +777,4 @@ await db.upsert_vectors("visa_knowledge", points)
 
 ---
 
-*"Vectors speak louder than words" 📐*
+_"Vectors speak louder than words" 📐_

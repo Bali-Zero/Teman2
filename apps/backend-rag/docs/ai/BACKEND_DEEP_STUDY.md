@@ -6,13 +6,13 @@
 
 ## 📊 Overview
 
-| Metrica | Valore |
-|---------|--------|
-| **Linee di codice** | ~50,000+ |
-| **Routers** | 63 endpoint files |
-| **Services** | 26 domini |
-| **Core Engine** | 3,617 LOC |
-| **LLM Providers** | 5 (Gemini, Vertex, DeepSeek, Ollama, OpenRouter) |
+| Metrica             | Valore                                           |
+| ------------------- | ------------------------------------------------ |
+| **Linee di codice** | ~50,000+                                         |
+| **Routers**         | 63 endpoint files                                |
+| **Services**        | 26 domini                                        |
+| **Core Engine**     | 3,617 LOC                                        |
+| **LLM Providers**   | 5 (Gemini, Vertex, DeepSeek, Ollama, OpenRouter) |
 
 ---
 
@@ -40,18 +40,18 @@ app/
 
 ### Routers Principali (per categoria)
 
-| Categoria | Routers | Endpoints |
-|-----------|---------|-----------|
-| **CRM** | crm_clients, crm_practices, crm_interactions, crm_enhanced | ~80 |
-| **Intel** | intel (54KB!), intel_staging | ~40 |
-| **RAG** | agentic_rag, conversations, knowledge_visa | ~30 |
-| **Portal** | portal, portal_invite, auth | ~25 |
-| **Analytics** | analytics, dashboard_summary | ~20 |
-| **Memory** | collective_memory, episodic_memory | ~15 |
-| **Admin** | admin_logs, admin_team_activity, debug | ~30 |
-| **Agents** | autonomous_agents, agents | ~20 |
-| **Content** | article_composer, article_composer_v2 | ~15 |
-| **Health** | health, feedback | ~10 |
+| Categoria     | Routers                                                    | Endpoints |
+| ------------- | ---------------------------------------------------------- | --------- |
+| **CRM**       | crm_clients, crm_practices, crm_interactions, crm_enhanced | ~80       |
+| **Intel**     | intel (54KB!), intel_staging                               | ~40       |
+| **RAG**       | agentic_rag, conversations, knowledge_visa                 | ~30       |
+| **Portal**    | portal, portal_invite, auth                                | ~25       |
+| **Analytics** | analytics, dashboard_summary                               | ~20       |
+| **Memory**    | collective_memory, episodic_memory                         | ~15       |
+| **Admin**     | admin_logs, admin_team_activity, debug                     | ~30       |
+| **Agents**    | autonomous_agents, agents                                  | ~20       |
+| **Content**   | article_composer, article_composer_v2                      | ~15       |
+| **Health**    | health, feedback                                           | ~10       |
 
 ### File Critici
 
@@ -81,34 +81,34 @@ app/
 
 ### 26 Domini di Business
 
-| Dominio | Files | Responsabilità |
-|---------|-------|----------------|
-| **analytics** | 14 | Team metrics, burnout detection, productivity |
-| **article_composer** | 5 | Blog/news AI generation |
-| **autonomous_agents** | 2 | Background AI agents |
-| **classification** | 2 | Intent classification |
-| **communication** | 5 | Language detection, emotion analysis |
-| **compliance** | 5 | Legal compliance tracking |
-| **crm** | 11 | Customer relationship management |
-| **ingestion** | 12 | Document ingestion pipeline |
-| **integrations** | 12 | Google Drive, GitHub, messaging |
-| **intel** | 5 | Intelligence gathering/approval |
-| **invoicing** | 3 | Invoice generation |
-| **journey** | 5 | Client journey tracking |
-| **knowledge_graph** | 7 | Entity extraction, graph building |
-| **llm_clients** | 6 | LLM provider wrappers |
-| **memory** | 11 | Episodic + collective memory |
-| **misc** | 25 | Various utilities |
-| **monitoring** | 6 | Health checks, alerts |
-| **multimodal** | 1 | PDF vision |
-| **oracle** | 12 | Main RAG oracle service |
-| **portal** | 3 | Client portal |
-| **pricing** | 4 | Dynamic pricing |
-| **rag** | 4 | RAG utilities |
-| **response** | 3 | Response formatting |
-| **routing** | 13 | Query routing intelligence |
-| **search** | 5 | Semantic search, citations |
-| **tools** | 3 | Tool definitions |
+| Dominio               | Files | Responsabilità                                |
+| --------------------- | ----- | --------------------------------------------- |
+| **analytics**         | 14    | Team metrics, burnout detection, productivity |
+| **article_composer**  | 5     | Blog/news AI generation                       |
+| **autonomous_agents** | 2     | Background AI agents                          |
+| **classification**    | 2     | Intent classification                         |
+| **communication**     | 5     | Language detection, emotion analysis          |
+| **compliance**        | 5     | Legal compliance tracking                     |
+| **crm**               | 11    | Customer relationship management              |
+| **ingestion**         | 12    | Document ingestion pipeline                   |
+| **integrations**      | 12    | Google Drive, GitHub, messaging               |
+| **intel**             | 5     | Intelligence gathering/approval               |
+| **invoicing**         | 3     | Invoice generation                            |
+| **journey**           | 5     | Client journey tracking                       |
+| **knowledge_graph**   | 7     | Entity extraction, graph building             |
+| **llm_clients**       | 6     | LLM provider wrappers                         |
+| **memory**            | 11    | Episodic + collective memory                  |
+| **misc**              | 25    | Various utilities                             |
+| **monitoring**        | 6     | Health checks, alerts                         |
+| **multimodal**        | 1     | PDF vision                                    |
+| **oracle**            | 12    | Main RAG oracle service                       |
+| **portal**            | 3     | Client portal                                 |
+| **pricing**           | 4     | Dynamic pricing                               |
+| **rag**               | 4     | RAG utilities                                 |
+| **response**          | 3     | Response formatting                           |
+| **routing**           | 13    | Query routing intelligence                    |
+| **search**            | 5     | Semantic search, citations                    |
+| **tools**             | 3     | Tool definitions                              |
 
 ### Services Chiave
 
@@ -153,16 +153,16 @@ class MemoryOrchestrator:
 
 ### Componenti (3,617 LOC totali)
 
-| File | LOC | Funzione |
-|------|-----|----------|
-| **qdrant_db.py** | 1,225 | Vector database operations |
-| **parsers.py** | 502 | Document parsing (PDF, DOCX, etc.) |
-| **cache.py** | 415 | Multi-level caching |
-| **bm25_vectorizer.py** | 366 | Sparse vector search |
-| **embeddings.py** | 346 | Text → vectors |
-| **exceptions.py** | 327 | Custom exceptions |
-| **chunker.py** | 251 | Text chunking strategies |
-| **reranker.py** | 184 | Result reranking |
+| File                   | LOC   | Funzione                           |
+| ---------------------- | ----- | ---------------------------------- |
+| **qdrant_db.py**       | 1,225 | Vector database operations         |
+| **parsers.py**         | 502   | Document parsing (PDF, DOCX, etc.) |
+| **cache.py**           | 415   | Multi-level caching                |
+| **bm25_vectorizer.py** | 366   | Sparse vector search               |
+| **embeddings.py**      | 346   | Text → vectors                     |
+| **exceptions.py**      | 327   | Custom exceptions                  |
+| **chunker.py**         | 251   | Text chunking strategies           |
+| **reranker.py**        | 184   | Result reranking                   |
 
 ### qdrant_db.py - Il Motore Vector
 
@@ -170,7 +170,7 @@ class MemoryOrchestrator:
 class QdrantDB:
     """
     Gestisce tutte le operazioni su Qdrant:
-    
+
     Collections:
     - visa_knowledge
     - business_knowledge
@@ -179,7 +179,7 @@ class QdrantDB:
     - team_knowledge
     - pricing_knowledge
     - client_memory
-    
+
     Operazioni:
     - create_collection()
     - upsert_vectors()
@@ -198,7 +198,7 @@ class EmbeddingService:
     - Google text-embedding-004 (default)
     - OpenAI text-embedding-3-large
     - Local (Ollama)
-    
+
     Features:
     - Batch processing
     - Caching
@@ -240,7 +240,7 @@ class EmbeddingService:
 class ZantaraAIClient:
     """
     Unified LLM interface:
-    
+
     - Multi-provider fallback
     - Token counting
     - Rate limiting
@@ -248,7 +248,7 @@ class ZantaraAIClient:
     - Streaming support
     - Tool/function calling
     - Structured output (JSON mode)
-    
+
     Modelli configurati:
     - gemini-2.0-flash (default)
     - gemini-1.5-pro (complex)
@@ -312,13 +312,13 @@ db/
 
 **Location:** `backend/middleware/`
 
-| File | LOC | Funzione |
-|------|-----|----------|
-| **hybrid_auth.py** | 800+ | API key + JWT + Portal auth |
-| **rate_limiter.py** | 250 | Redis-based rate limiting |
-| **activity_logging.py** | 200 | Request/response logging |
-| **request_tracing.py** | 170 | Correlation IDs |
-| **error_monitoring.py** | 200 | Error tracking |
+| File                    | LOC  | Funzione                    |
+| ----------------------- | ---- | --------------------------- |
+| **hybrid_auth.py**      | 800+ | API key + JWT + Portal auth |
+| **rate_limiter.py**     | 250  | Redis-based rate limiting   |
+| **activity_logging.py** | 200  | Request/response logging    |
+| **request_tracing.py**  | 170  | Correlation IDs             |
+| **error_monitoring.py** | 200  | Error tracking              |
 
 ### hybrid_auth.py - Sistema Auth
 
@@ -326,19 +326,19 @@ db/
 class HybridAuthMiddleware:
     """
     Multi-strategy authentication:
-    
+
     1. API Key (header: X-API-Key)
        - Per integrazioni esterne
        - Scoped permissions
-    
+
     2. JWT (header: Authorization: Bearer)
        - Per frontend/mobile
        - User identity
-    
+
     3. Portal Token
        - Per client portal
        - Client-scoped access
-    
+
     4. Service Account
        - Per microservices interni
     """
@@ -369,13 +369,13 @@ agents/
 
 ### Agent Types
 
-| Agent | Funzione | Schedule |
-|-------|----------|----------|
-| **ClientValuePredictor** | Predice valore lifetime cliente | Daily |
-| **ComplianceMonitor** | Monitora scadenze documenti | Hourly |
-| **KnowledgeGraphBuilder** | Costruisce grafo conoscenza | On-demand |
-| **ProactiveOutreach** | Suggerisce follow-up | Daily |
-| **IntelCollector** | Raccoglie news/updates | Every 4h |
+| Agent                     | Funzione                        | Schedule  |
+| ------------------------- | ------------------------------- | --------- |
+| **ClientValuePredictor**  | Predice valore lifetime cliente | Daily     |
+| **ComplianceMonitor**     | Monitora scadenze documenti     | Hourly    |
+| **KnowledgeGraphBuilder** | Costruisce grafo conoscenza     | On-demand |
+| **ProactiveOutreach**     | Suggerisce follow-up            | Daily     |
+| **IntelCollector**        | Raccoglie news/updates          | Every 4h  |
 
 ---
 
@@ -409,7 +409,7 @@ class PluginRegistry:
     - Lifecycle management
     """
 
-# executor.py  
+# executor.py
 class PluginExecutor:
     """
     Esegue plugins con:
@@ -488,32 +488,37 @@ Services più complessi:
 ## 🎯 Entry Points per Studio
 
 ### Per capire il RAG:
+
 1. `services/oracle/oracle_service.py`
 2. `core/qdrant_db.py`
 3. `core/embeddings.py`
 4. `app/routers/agentic_rag.py`
 
 ### Per capire il CRM:
+
 1. `app/routers/crm_clients.py`
 2. `services/crm/`
 3. `app/routers/crm_practices.py`
 
 ### Per capire l'Auth:
+
 1. `middleware/hybrid_auth.py`
 2. `app/auth/`
 3. `app/routers/auth.py`
 
 ### Per capire gli LLM:
+
 1. `llm/zantara_ai_client.py`
 2. `llm/genai_client.py`
 3. `services/llm_clients/`
 
 ### Per capire la Memory:
+
 1. `services/memory/memory_orchestrator.py`
 2. `services/memory/episodic_memory_service.py`
 3. `app/routers/collective_memory.py`
 
 ---
 
-*Documento generato il 2026-01-28*
-*"Production-Ready or Nothing" 🦞*
+_Documento generato il 2026-01-28_
+_"Production-Ready or Nothing" 🦞_

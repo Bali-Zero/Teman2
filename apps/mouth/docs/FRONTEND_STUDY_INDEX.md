@@ -6,11 +6,11 @@
 
 ## 🗺️ Mappa Documenti
 
-| # | Documento | Contenuto |
-|---|-----------|-----------|
-| 0 | [FRONTEND_DEEP_STUDY.md](./FRONTEND_DEEP_STUDY.md) | Overview completo |
-| 1 | [STUDY_01_CHAT_SYSTEM.md](./STUDY_01_CHAT_SYSTEM.md) | Sistema Chat AI |
-| 2 | [STUDY_02_API_AND_STATE.md](./STUDY_02_API_AND_STATE.md) | API Client & State |
+| #   | Documento                                                | Contenuto          |
+| --- | -------------------------------------------------------- | ------------------ |
+| 0   | [FRONTEND_DEEP_STUDY.md](./FRONTEND_DEEP_STUDY.md)       | Overview completo  |
+| 1   | [STUDY_01_CHAT_SYSTEM.md](./STUDY_01_CHAT_SYSTEM.md)     | Sistema Chat AI    |
+| 2   | [STUDY_02_API_AND_STATE.md](./STUDY_02_API_AND_STATE.md) | API Client & State |
 
 ---
 
@@ -34,7 +34,7 @@ TOTALE             →  ~30,000 LOC
 
 ```
 1️⃣ APP (Routes)      → Pages, layouts, API routes
-2️⃣ COMPONENTS        → 127 UI components  
+2️⃣ COMPONENTS        → 127 UI components
 3️⃣ HOOKS             → 28 custom React hooks
 4️⃣ LIB               → API client, utilities
 5️⃣ PROVIDERS         → Context providers
@@ -45,14 +45,14 @@ TOTALE             →  ~30,000 LOC
 
 ## 🔑 File Critici (Must-Read)
 
-| File | Perché | Size |
-|------|--------|------|
-| `hooks/useChatPage.ts` | Chat orchestrator | 23KB |
-| `components/chat/MessageBubble.tsx` | Message display | 21KB |
-| `lib/api/client.ts` | Base API client | 11KB |
-| `components/chat/ThinkingIndicator.tsx` | AI thinking UI | 25KB |
-| `lib/ai-insights.tsx` | AI insights | 19KB |
-| `app/(workspace)/layout.tsx` | Workspace layout | 5KB |
+| File                                    | Perché            | Size |
+| --------------------------------------- | ----------------- | ---- |
+| `hooks/useChatPage.ts`                  | Chat orchestrator | 23KB |
+| `components/chat/MessageBubble.tsx`     | Message display   | 21KB |
+| `lib/api/client.ts`                     | Base API client   | 11KB |
+| `components/chat/ThinkingIndicator.tsx` | AI thinking UI    | 25KB |
+| `lib/ai-insights.tsx`                   | AI insights       | 19KB |
+| `app/(workspace)/layout.tsx`            | Workspace layout  | 5KB  |
 
 ---
 
@@ -93,37 +93,37 @@ TOTALE             →  ~30,000 LOC
 
 ## 📁 Route Groups (Next.js 14+)
 
-| Group | Path | Scopo |
-|-------|------|-------|
-| `(blog)` | `/`, `/news`, `/services` | Sito pubblico |
-| `(portal)` | `/portal/*` | Portal clienti |
+| Group         | Path                           | Scopo            |
+| ------------- | ------------------------------ | ---------------- |
+| `(blog)`      | `/`, `/news`, `/services`      | Sito pubblico    |
+| `(portal)`    | `/portal/*`                    | Portal clienti   |
 | `(workspace)` | `/dashboard`, `/clients`, etc. | App team interno |
 
 ---
 
 ## 🧩 Component Categories
 
-| Categoria | Files | Descrizione |
-|-----------|-------|-------------|
-| `ui/` | 23 | Base UI (shadcn) |
-| `chat/` | 19 | Chat interface |
-| `dashboard/` | 14 | Dashboard widgets |
-| `crm/` | 5 | CRM components |
-| `documents/` | 8 | Google Drive-like |
-| `blog/` | 10 | Blog/articles |
+| Categoria    | Files | Descrizione       |
+| ------------ | ----- | ----------------- |
+| `ui/`        | 23    | Base UI (shadcn)  |
+| `chat/`      | 19    | Chat interface    |
+| `dashboard/` | 14    | Dashboard widgets |
+| `crm/`       | 5     | CRM components    |
+| `documents/` | 8     | Google Drive-like |
+| `blog/`      | 10    | Blog/articles     |
 
 ---
 
 ## 🪝 Key Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useChatPage` | Main chat orchestrator |
-| `useChatStreaming` | SSE streaming |
-| `useChatTTS` | Text-to-speech |
-| `useDrive` | Google Drive ops |
-| `useDashboardData` | Dashboard data |
-| `useWebSocket` | Real-time connection |
+| Hook               | Purpose                |
+| ------------------ | ---------------------- |
+| `useChatPage`      | Main chat orchestrator |
+| `useChatStreaming` | SSE streaming          |
+| `useChatTTS`       | Text-to-speech         |
+| `useDrive`         | Google Drive ops       |
+| `useDashboardData` | Dashboard data         |
+| `useWebSocket`     | Real-time connection   |
 
 ---
 
@@ -152,18 +152,22 @@ npm run lint
 ## 📖 Ordine di Lettura Consigliato
 
 ### Giorno 1: Overview
+
 - [ ] `FRONTEND_DEEP_STUDY.md`
 - [ ] Esplora struttura `src/`
 
 ### Giorno 2: Chat System
+
 - [ ] `STUDY_01_CHAT_SYSTEM.md`
 - [ ] Leggi `useChatPage.ts`
 
 ### Giorno 3: API & State
+
 - [ ] `STUDY_02_API_AND_STATE.md`
 - [ ] Esplora `lib/api/`
 
 ### Giorno 4: Components
+
 - [ ] Esplora `components/chat/`
 - [ ] Esplora `components/dashboard/`
 
@@ -171,13 +175,13 @@ npm run lint
 
 ## 📚 Docs Esistenti
 
-| Doc | Size | Contenuto |
-|-----|------|-----------|
-| `DOCUMENTATION.md` | 48KB | Full docs |
-| `CLAUDE.md` | 5KB | AI context |
-| `README.md` | 9KB | Overview |
-| `DRIVE_SYSTEM.md` | - | Documents page |
+| Doc                | Size | Contenuto      |
+| ------------------ | ---- | -------------- |
+| `DOCUMENTATION.md` | 48KB | Full docs      |
+| `CLAUDE.md`        | 5KB  | AI context     |
+| `README.md`        | 9KB  | Overview       |
+| `DRIVE_SYSTEM.md`  | -    | Documents page |
 
 ---
 
-*Generato il 2026-01-28 | "UI/UX prima di tutto" 🎨*
+_Generato il 2026-01-28 | "UI/UX prima di tutto" 🎨_

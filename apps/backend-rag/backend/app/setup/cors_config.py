@@ -34,8 +34,10 @@ def get_allowed_origins() -> list[str]:
     default_origins = [
         "https://balizero.com",  # Primary production domain
         "https://www.balizero.com",  # Primary production domain (www)
-        "https://zantara.balizero.com",
+        "https://zantara.balizero.com",  # Admin dashboard
         "https://www.zantara.balizero.com",
+        "https://my.balizero.com",  # Portal clienti
+        "https://www.my.balizero.com",
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",  # Local development
     ]
