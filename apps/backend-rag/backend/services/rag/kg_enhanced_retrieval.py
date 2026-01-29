@@ -6,15 +6,29 @@ Enhances RAG retrieval by:
 2. Finding related entities in KG (1-2 hops)
 3. Retrieving source chunks linked to those entities
 4. Augmenting context with structured graph knowledge
+5. Matching golden routes for common business queries
 """
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class GoldenRoute:
+    """Pre-computed path for common business scenarios"""
+
+    route_id: str
+    name: str
+    description: str
+    path: list[str]
+    key_conditions: list[str] = field(default_factory=list)
+    estimated_timeline_months: float | None = None
+    estimated_cost_range_usd: tuple[int, int] | None = None
 
 
 @dataclass
@@ -26,6 +40,7 @@ class KGContext:
     source_chunk_ids: list[str]
     graph_summary: str
     confidence: float
+    golden_route: GoldenRoute | None = None
 
 
 class KGEnhancedRetrieval:
@@ -303,16 +318,144 @@ class KGEnhancedRetrieval:
 
         return list(chunk_ids)
 
+    # Golden route patterns for common business scenarios
+    GOLDEN_ROUTES = {
+        "pt_pma_setup": GoldenRoute(
+            route_id="pt_pma_setup",
+            name="PT PMA Company Setup",
+            description="Complete process to establish a foreign-owned company in Indonesia",
+            path=[
+                "Choose business sector (check DNI/Positive List)",
+                "Prepare documents (passport, domicile letter)",
+                "Reserve company name via AHU Online",
+                "Obtain NIB via OSS RBA",
+                "Apply for business licenses (SIUP, etc.)",
+                "Open bank account",
+                "Register for taxes (NPWP)",
+            ],
+            key_conditions=[
+                "Minimum capital: IDR 10 billion",
+                "Paid-up capital: minimum 25%",
+                "Foreign ownership limits apply per sector",
+            ],
+            estimated_timeline_months=2.0,
+            estimated_cost_range_usd=(3000, 8000),
+        ),
+        "kitas_work": GoldenRoute(
+            route_id="kitas_work",
+            name="Work KITAS Application",
+            description="Process to obtain work permit and stay permit for foreign workers",
+            path=[
+                "Employer applies for RPTKA (foreign worker plan)",
+                "Apply for work permit (IMTA) via TKA Online",
+                "Apply for VITAS at Indonesian embassy",
+                "Enter Indonesia and convert VITAS to KITAS",
+                "Complete biometrics and obtain KITAS card",
+            ],
+            key_conditions=[
+                "Sponsor company must be registered",
+                "Position must be on approved list",
+                "Valid passport with 18+ months validity",
+            ],
+            estimated_timeline_months=1.5,
+            estimated_cost_range_usd=(1500, 3500),
+        ),
+        "nib_oss": GoldenRoute(
+            route_id="nib_oss",
+            name="NIB Registration via OSS",
+            description="Obtain business identification number through OSS system",
+            path=[
+                "Register account on OSS RBA portal",
+                "Complete company profile",
+                "Select KBLI business codes",
+                "Submit NIB application",
+                "Receive NIB (usually instant)",
+                "Apply for relevant sector licenses",
+            ],
+            key_conditions=[
+                "Company must be legally registered",
+                "Valid NPWP required",
+                "Correct KBLI codes selection",
+            ],
+            estimated_timeline_months=0.25,
+            estimated_cost_range_usd=(0, 500),
+        ),
+    }
+
+    # Keywords to match golden routes
+    ROUTE_KEYWORDS = {
+        "pt_pma_setup": ["pt pma", "perusahaan asing", "foreign company", "setup company", "establish company", "buat pt", "dirikan perusahaan"],
+        "kitas_work": ["kitas", "work permit", "izin kerja", "working visa", "imta", "rptka", "stay permit"],
+        "nib_oss": ["nib", "oss", "nomor induk berusaha", "business number", "izin usaha"],
+    }
+
+    def match_golden_route(self, query: str) -> GoldenRoute | None:
+        """
+        Match user query to a predefined golden route.
+
+        Returns the best matching route or None.
+        """
+        query_lower = query.lower()
+        best_match: tuple[str, int] | None = None
+
+        for route_id, keywords in self.ROUTE_KEYWORDS.items():
+            match_count = sum(1 for kw in keywords if kw in query_lower)
+            if match_count > 0:
+                if best_match is None or match_count > best_match[1]:
+                    best_match = (route_id, match_count)
+
+        if best_match and best_match[0] in self.GOLDEN_ROUTES:
+            route = self.GOLDEN_ROUTES[best_match[0]]
+            logger.info(f"Matched golden route: {route.route_id} (score: {best_match[1]})")
+            return route
+
+        return None
+
+    def format_golden_route(self, route: GoldenRoute) -> str:
+        """Format golden route for LLM context."""
+        lines = [
+            f"\n[GOLDEN ROUTE: {route.name}]",
+            f"Description: {route.description}",
+            "\nRecommended Path:",
+        ]
+
+        for i, step in enumerate(route.path, 1):
+            lines.append(f"  {i}. {step}")
+
+        if route.key_conditions:
+            lines.append("\nKey Conditions:")
+            for cond in route.key_conditions:
+                lines.append(f"  ⚠️ {cond}")
+
+        if route.estimated_timeline_months:
+            lines.append(f"\nEstimated Timeline: ~{route.estimated_timeline_months} months")
+
+        if route.estimated_cost_range_usd:
+            low, high = route.estimated_cost_range_usd
+            lines.append(f"Estimated Cost: ${low:,} - ${high:,} USD")
+
+        lines.append("")
+        return "\n".join(lines)
+
     def build_graph_summary(
-        self, entities: list[dict], relationships: list[dict], query_mentions: list[tuple[str, str]]
+        self,
+        entities: list[dict],
+        relationships: list[dict],
+        query_mentions: list[tuple[str, str]],
+        golden_route: GoldenRoute | None = None,
     ) -> str:
         """
         Build a human-readable summary of the KG context for the LLM.
+        Includes golden route if matched.
         """
-        if not entities and not relationships:
+        if not entities and not relationships and not golden_route:
             return ""
 
         lines = ["[KNOWLEDGE GRAPH CONTEXT]"]
+
+        # Include golden route if matched
+        if golden_route:
+            lines.append(self.format_golden_route(golden_route))
 
         # Group entities by type
         entity_by_type = {}
@@ -357,12 +500,15 @@ class KGEnhancedRetrieval:
             max_entities: Max entities to include
 
         Returns:
-            KGContext with entities, relationships, chunk IDs, and summary
+            KGContext with entities, relationships, chunk IDs, summary, and golden_route
         """
+        # Step 0: Check for golden route match first
+        golden_route = self.match_golden_route(query)
+
         # Step 1: Extract entity mentions from query
         mentions = self.extract_entities_from_query(query)
 
-        if not mentions:
+        if not mentions and not golden_route:
             logger.debug(f"No entity mentions found in query: {query[:100]}")
             return KGContext(
                 entities_found=[],
@@ -370,28 +516,22 @@ class KGEnhancedRetrieval:
                 source_chunk_ids=[],
                 graph_summary="",
                 confidence=0.0,
+                golden_route=None,
             )
 
         logger.info(f"Extracted {len(mentions)} entity mentions from query")
 
         # Step 2: Find matching KG entities
-        kg_entities = await self.find_kg_entities(mentions)
-
-        if not kg_entities:
-            logger.debug("No KG entities matched the mentions")
-            return KGContext(
-                entities_found=[],
-                relationships=[],
-                source_chunk_ids=[],
-                graph_summary="",
-                confidence=0.0,
-            )
+        kg_entities = await self.find_kg_entities(mentions) if mentions else []
 
         # Step 3: Get related entities (graph traversal)
-        entity_ids = [e["entity_id"] for e in kg_entities]
-        related_entities, relationships = await self.get_related_entities(
-            entity_ids, max_depth=max_depth, limit=max_entities * 2
-        )
+        if kg_entities:
+            entity_ids = [e["entity_id"] for e in kg_entities]
+            related_entities, relationships = await self.get_related_entities(
+                entity_ids, max_depth=max_depth, limit=max_entities * 2
+            )
+        else:
+            related_entities, relationships = [], []
 
         all_entities = kg_entities + related_entities
 
@@ -399,19 +539,23 @@ class KGEnhancedRetrieval:
         all_entity_ids = [e["entity_id"] for e in all_entities]
         chunk_ids = await self.get_source_chunks(all_entity_ids)
 
-        # Step 5: Build summary for LLM
-        graph_summary = self.build_graph_summary(all_entities, relationships, mentions)
+        # Step 5: Build summary for LLM (include golden route if found)
+        graph_summary = self.build_graph_summary(
+            all_entities, relationships, mentions, golden_route
+        )
 
         # Calculate confidence based on match quality
-        avg_confidence = (
-            sum(e.get("confidence", 0.5) for e in kg_entities) / len(kg_entities)
-            if kg_entities
-            else 0.0
-        )
+        if kg_entities:
+            avg_confidence = sum(e.get("confidence", 0.5) for e in kg_entities) / len(kg_entities)
+        elif golden_route:
+            avg_confidence = 0.8  # High confidence for golden route match
+        else:
+            avg_confidence = 0.0
 
         logger.info(
             f"KG context: {len(all_entities)} entities, "
-            f"{len(relationships)} relationships, {len(chunk_ids)} chunks"
+            f"{len(relationships)} relationships, {len(chunk_ids)} chunks, "
+            f"golden_route={'matched' if golden_route else 'none'}"
         )
 
         return KGContext(
@@ -420,4 +564,5 @@ class KGEnhancedRetrieval:
             source_chunk_ids=chunk_ids[:50],  # Limit chunk IDs
             graph_summary=graph_summary,
             confidence=avg_confidence,
+            golden_route=golden_route,
         )

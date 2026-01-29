@@ -36,6 +36,7 @@ from backend.services.misc.graph_service import GraphService
 from backend.services.rag.agentic.graph_tool import GraphTraversalTool
 from backend.services.search.semantic_cache import SemanticCache
 
+from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator
 from .orchestrator import AgenticRAGOrchestrator
 from .pipeline import (
     CitationStage,
@@ -61,7 +62,10 @@ logger = logging.getLogger(__name__)
 # Export all public classes
 __all__ = [
     "AgenticRAGOrchestrator",
+    "KGAgenticOrchestrator",
+    "AgenticResponse",
     "create_agentic_rag",
+    "create_kg_agentic_rag",
     "TimeSheetTool",
     "VectorSearchTool",
     "CalculatorTool",
@@ -149,4 +153,32 @@ def create_agentic_rag(
         clarification_service=clarification_service,
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")
+    return orchestrator
+
+
+def create_kg_agentic_rag(
+    retriever,
+    db_pool,
+) -> KGAgenticOrchestrator:
+    """
+    Factory function to create a KG-enhanced Agentic RAG Orchestrator.
+
+    This orchestrator combines Knowledge Graph traversal with vector search
+    and LLM reasoning for explainable, high-quality answers.
+
+    Args:
+        retriever: Knowledge base retriever (SearchService)
+        db_pool: PostgreSQL connection pool for KG database access
+
+    Returns:
+        Configured KGAgenticOrchestrator instance
+    """
+    logger.debug("create_kg_agentic_rag: Initializing KG orchestrator...")
+
+    orchestrator = KGAgenticOrchestrator(
+        db_pool=db_pool,
+        retriever=retriever,
+    )
+
+    logger.info("✅ KGAgenticOrchestrator created")
     return orchestrator

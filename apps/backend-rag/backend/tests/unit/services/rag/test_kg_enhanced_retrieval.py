@@ -162,12 +162,14 @@ class TestKGEnhancedRetrieval:
 
         mock_pool.acquire = mock_acquire
 
-        mock_row = MagicMock()
-        mock_row.entity_id = "entity1"
-        mock_row.entity_type = "undang_undang"
-        mock_row.name = "UU No 12 Tahun 2024"
-        mock_row.confidence = 0.9
-        mock_row.source_chunk_ids = ["chunk1", "chunk2"]
+        # Use dict to match what dict(row) produces
+        mock_row = {
+            "entity_id": "entity1",
+            "entity_type": "undang_undang",
+            "name": "UU No 12 Tahun 2024",
+            "confidence": 0.9,
+            "source_chunk_ids": ["chunk1", "chunk2"],
+        }
 
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
 
@@ -205,25 +207,28 @@ class TestKGEnhancedRetrieval:
 
         mock_pool.acquire = mock_acquire
 
-        # Mock edge
-        mock_edge = MagicMock()
-        mock_edge.source_entity_id = "entity1"
-        mock_edge.target_entity_id = "entity2"
-        mock_edge.relationship_type = "related_to"
-        mock_edge.confidence = 0.8
-        mock_edge.source_chunk_ids = ["chunk1"]
-        mock_edge.source_name = "Entity 1"
-        mock_edge.source_type = "undang_undang"
-        mock_edge.target_name = "Entity 2"
-        mock_edge.target_type = "peraturan_pemerintah"
+        # Mock edge as dict
+        mock_edge = {
+            "relationship_id": "rel1",
+            "source_entity_id": "entity1",
+            "target_entity_id": "entity2",
+            "relationship_type": "related_to",
+            "confidence": 0.8,
+            "source_chunk_ids": ["chunk1"],
+            "source_name": "Entity 1",
+            "source_type": "undang_undang",
+            "target_name": "Entity 2",
+            "target_type": "peraturan_pemerintah",
+        }
 
-        # Mock related entity
-        mock_entity = MagicMock()
-        mock_entity.entity_id = "entity2"
-        mock_entity.entity_type = "peraturan_pemerintah"
-        mock_entity.name = "Entity 2"
-        mock_entity.confidence = 0.7
-        mock_entity.source_chunk_ids = ["chunk2"]
+        # Mock related entity as dict
+        mock_entity = {
+            "entity_id": "entity2",
+            "entity_type": "peraturan_pemerintah",
+            "name": "Entity 2",
+            "confidence": 0.7,
+            "source_chunk_ids": ["chunk2"],
+        }
 
         mock_conn.fetch = AsyncMock(side_effect=[[mock_edge], [mock_entity]])
 
@@ -258,13 +263,11 @@ class TestKGEnhancedRetrieval:
 
         mock_pool.acquire = mock_acquire
 
-        # Mock node with chunks
-        mock_node = MagicMock()
-        mock_node.source_chunk_ids = ["chunk1", "chunk2"]
+        # Mock node with chunks as dict
+        mock_node = {"source_chunk_ids": ["chunk1", "chunk2"]}
 
-        # Mock edge with chunks
-        mock_edge = MagicMock()
-        mock_edge.source_chunk_ids = ["chunk3"]
+        # Mock edge with chunks as dict
+        mock_edge = {"source_chunk_ids": ["chunk3"]}
 
         mock_conn.fetch = AsyncMock(side_effect=[[mock_node], [mock_edge]])
 
@@ -399,20 +402,32 @@ class TestKGEnhancedRetrieval:
 
         mock_pool.acquire = mock_acquire
 
-        # Mock entity
-        mock_entity = MagicMock()
-        mock_entity.entity_id = "entity1"
-        mock_entity.entity_type = "undang_undang"
-        mock_entity.name = "UU No 12 Tahun 2024"
-        mock_entity.confidence = 0.9
-        mock_entity.source_chunk_ids = ["chunk1"]
-        mock_entity.matched_mention = "UU No 12 Tahun 2024"
+        # Mock entity as dict (required for dict(row) in the code)
+        mock_entity = {
+            "entity_id": "entity1",
+            "entity_type": "undang_undang",
+            "name": "UU No 12 Tahun 2024",
+            "confidence": 0.9,
+            "source_chunk_ids": ["chunk1"],
+        }
 
-        # Mock chunk IDs
-        mock_chunk_row = MagicMock()
-        mock_chunk_row.source_chunk_ids = ["chunk1", "chunk2"]
+        # Mock chunk IDs as dict
+        mock_chunk_row = {"source_chunk_ids": ["chunk1", "chunk2"]}
 
-        mock_conn.fetch = AsyncMock(side_effect=[[mock_entity], [], [mock_chunk_row], []])
+        # Query "Bagaimana UU No 12 Tahun 2024?" extracts 4 mentions:
+        # - UU NO 12 TAHUN 2024, 12, 2024, 12 TAHUN
+        # So find_kg_entities makes 4 fetch calls, then:
+        # - get_related_entities: 1 fetch for edges
+        # - get_source_chunks: 2 fetches (nodes, edges)
+        mock_conn.fetch = AsyncMock(side_effect=[
+            [mock_entity],   # find_kg_entities - UU mention
+            [],              # find_kg_entities - 12
+            [],              # find_kg_entities - 2024
+            [],              # find_kg_entities - 12 TAHUN
+            [],              # get_related_entities - edges
+            [mock_chunk_row],  # get_source_chunks - nodes
+            [],              # get_source_chunks - edges
+        ])
 
         retrieval = KGEnhancedRetrieval(mock_pool)
 
@@ -438,41 +453,52 @@ class TestKGEnhancedRetrieval:
 
         mock_pool.acquire = mock_acquire
 
-        # Mock entity
-        mock_entity = MagicMock()
-        mock_entity.entity_id = "entity1"
-        mock_entity.entity_type = "undang_undang"
-        mock_entity.name = "UU No 12"
-        mock_entity.confidence = 0.9
-        mock_entity.source_chunk_ids = ["chunk1"]
-        mock_entity.matched_mention = "UU No 12"
+        # Mock entity as dict
+        mock_entity = {
+            "entity_id": "entity1",
+            "entity_type": "undang_undang",
+            "name": "UU No 12",
+            "confidence": 0.9,
+            "source_chunk_ids": ["chunk1"],
+        }
 
-        # Mock edge
-        mock_edge = MagicMock()
-        mock_edge.source_entity_id = "entity1"
-        mock_edge.target_entity_id = "entity2"
-        mock_edge.relationship_type = "related_to"
-        mock_edge.confidence = 0.8
-        mock_edge.source_chunk_ids = ["chunk2"]
-        mock_edge.source_name = "UU No 12"
-        mock_edge.source_type = "undang_undang"
-        mock_edge.target_name = "PP No 5"
-        mock_edge.target_type = "peraturan_pemerintah"
+        # Mock edge as dict
+        mock_edge = {
+            "relationship_id": "rel1",
+            "source_entity_id": "entity1",
+            "target_entity_id": "entity2",
+            "relationship_type": "related_to",
+            "confidence": 0.8,
+            "source_chunk_ids": ["chunk2"],
+            "source_name": "UU No 12",
+            "source_type": "undang_undang",
+            "target_name": "PP No 5",
+            "target_type": "peraturan_pemerintah",
+        }
 
-        # Mock related entity
-        mock_related = MagicMock()
-        mock_related.entity_id = "entity2"
-        mock_related.entity_type = "peraturan_pemerintah"
-        mock_related.name = "PP No 5"
-        mock_related.confidence = 0.7
-        mock_related.source_chunk_ids = ["chunk3"]
+        # Mock related entity as dict
+        mock_related = {
+            "entity_id": "entity2",
+            "entity_type": "peraturan_pemerintah",
+            "name": "PP No 5",
+            "confidence": 0.7,
+            "source_chunk_ids": ["chunk3"],
+        }
 
-        # Mock chunk rows
-        mock_chunk_row = MagicMock()
-        mock_chunk_row.source_chunk_ids = ["chunk1", "chunk2", "chunk3"]
+        # Mock chunk rows as dict
+        mock_chunk_row = {"source_chunk_ids": ["chunk1", "chunk2", "chunk3"]}
 
+        # Query "Bagaimana UU No 12?" extracts 2 mentions: UU NO 12, 12
+        # Flow: find_kg_entities (2 fetches) + get_related_entities (2 fetches with edges) + get_source_chunks (2 fetches)
         mock_conn.fetch = AsyncMock(
-            side_effect=[[mock_entity], [mock_edge], [mock_related], [mock_chunk_row], []]
+            side_effect=[
+                [mock_entity],   # find_kg_entities - UU mention
+                [],              # find_kg_entities - 12 mention
+                [mock_edge],     # get_related_entities - edges
+                [mock_related],  # get_related_entities - related entities
+                [mock_chunk_row],  # get_source_chunks - nodes
+                [],              # get_source_chunks - edges
+            ]
         )
 
         retrieval = KGEnhancedRetrieval(mock_pool)
