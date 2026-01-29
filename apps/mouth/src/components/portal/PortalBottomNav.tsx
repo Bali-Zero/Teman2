@@ -50,7 +50,7 @@ export function PortalBottomNav() {
 
   // Only show on mobile
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t bg-background/80 backdrop-blur-lg md:hidden z-50 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#242424]/95 backdrop-blur-lg md:hidden z-50 safe-area-bottom">
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -63,8 +63,8 @@ export function PortalBottomNav() {
               className={cn(
                 'flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative',
                 isActive
-                  ? 'text-primary font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'text-[var(--accent)] font-medium'
+                  : 'text-[#9AA0AE] hover:text-[#E6E7EB]'
               )}
             >
               <div className="relative">

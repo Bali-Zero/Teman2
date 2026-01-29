@@ -19,8 +19,10 @@ import {
   LogOut,
   ChevronDown,
   Activity,
+  Briefcase,
+  FileText,
 } from 'lucide-react';
-import { navigation, NavSection, NavItem } from '@/types/navigation';
+import { navigation, portalNavigation, NavSection, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
 
 // Icon mapping
@@ -37,6 +39,8 @@ const iconMap: Record<string, React.ElementType> = {
   BarChart3,
   Settings,
   Activity,
+  Briefcase,
+  FileText,
 };
 
 // Color configuration for nav items
@@ -55,28 +59,45 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/team': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
   '/analytics': { cssClass: 'nav-icon-pink', activeColor: '#F472B6' },
   '/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
+  // Portal routes
+  '/portal': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
+  '/portal/vault': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
+  '/portal/messages': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
+  '/portal/visa': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
+  '/portal/taxes': { cssClass: 'nav-icon-red', activeColor: '#F87171' },
+  '/portal/profile': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
+  '/portal/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
 };
 
 interface AppSidebarProps {
   user: {
     name: string;
     email: string;
-    role: string;
-    team: string;
+    role?: string;
+    team?: string;
     avatar?: string;
-    isOnline: boolean;
+    isOnline?: boolean;
     hoursToday?: string;
   };
   unreadWhatsApp?: number;
   onLogout: () => void;
+  navigationConfig?: NavSection[]; // Allow custom navigation
+  isPortal?: boolean; // Portal mode flag
 }
 
-export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarProps) {
+export function AppSidebar({ 
+  user, 
+  unreadWhatsApp = 0, 
+  onLogout,
+  navigationConfig,
+  isPortal = false,
+}: AppSidebarProps) {
   const pathname = usePathname();
+  const nav = navigationConfig || navigation;
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
+    if (href === '/dashboard' || href === '/portal') {
+      return pathname === href;
     }
     return pathname.startsWith(href);
   };
@@ -151,7 +172,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {navigation.map(renderNavSection)}
+        {nav.map(renderNavSection)}
       </nav>
 
       {/* User Profile Footer */}
@@ -167,32 +188,41 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
               )}
             </div>
             {/* Online indicator */}
-            <span
-              className={cn(
-                'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13]',
-                user.isOnline ? 'bg-[#4FD1C5]' : 'bg-[#9AA0AE]'
-              )}
-            />
+            {!isPortal && (
+              <span
+                className={cn(
+                  'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13]',
+                  user.isOnline ? 'bg-[#4FD1C5]' : 'bg-[#9AA0AE]'
+                )}
+              />
+            )}
+            {isPortal && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13] bg-[#4FD1C5]" />
+            )}
           </div>
 
           {/* User Info */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-[#E6E7EB] truncate">{user.name}</p>
-            <p className="text-xs text-[#9AA0AE] truncate">{user.team}</p>
+            <p className="text-xs text-[#9AA0AE] truncate">
+              {isPortal ? 'Client Portal' : user.team || 'Team'}
+            </p>
           </div>
 
           {/* Status */}
-          <div className="flex flex-col items-end text-right">
-            <span
-              className={cn(
-                'text-xs font-medium',
-                user.isOnline ? 'text-[#4FD1C5]' : 'text-[#9AA0AE]'
-              )}
-            >
-              {user.isOnline ? 'Online' : 'Offline'}
-            </span>
-            {user.hoursToday && <span className="text-xs text-[#9AA0AE]">{user.hoursToday}</span>}
-          </div>
+          {!isPortal && (
+            <div className="flex flex-col items-end text-right">
+              <span
+                className={cn(
+                  'text-xs font-medium',
+                  user.isOnline ? 'text-[#4FD1C5]' : 'text-[#9AA0AE]'
+                )}
+              >
+                {user.isOnline ? 'Online' : 'Offline'}
+              </span>
+              {user.hoursToday && <span className="text-xs text-[#9AA0AE]">{user.hoursToday}</span>}
+            </div>
+          )}
         </div>
 
         {/* Logout Button */}

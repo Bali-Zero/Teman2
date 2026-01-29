@@ -64,6 +64,31 @@ export const navigation: NavSection[] = [
   },
 ];
 
+// Portal navigation configuration
+export const portalNavigation: NavSection[] = [
+  {
+    items: [
+      { title: 'Dashboard', href: '/portal', icon: 'Home' },
+      { title: 'Vault', href: '/portal/vault', icon: 'FolderOpen' },
+      { title: 'Messages', href: '/portal/messages', icon: 'MessageCircle' },
+    ],
+  },
+  {
+    title: 'Services',
+    items: [
+      { title: 'Visa', href: '/portal/visa', icon: 'Briefcase' },
+      { title: 'Taxes', href: '/portal/taxes', icon: 'FileText' },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [
+      { title: 'Profile', href: '/portal/profile', icon: 'UserCircle' },
+      { title: 'Settings', href: '/portal/settings', icon: 'Settings' },
+    ],
+  },
+];
+
 // Route titles for breadcrumbs and page titles
 export const routeTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -88,4 +113,12 @@ export const routeTitles: Record<string, string> = {
   '/analytics': 'Analytics',
   '/settings': 'Settings',
   '/settings/users': 'User Management',
+  // Portal routes
+  '/portal': 'Dashboard',
+  '/portal/vault': 'Vault',
+  '/portal/messages': 'Messages',
+  '/portal/visa': 'Visa Status',
+  '/portal/taxes': 'Taxes',
+  '/portal/profile': 'Profile',
+  '/portal/settings': 'Settings',
 };

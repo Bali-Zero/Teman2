@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -89,10 +90,10 @@ function RegisterContent() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Validating your invitation...</p>
+          <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
+          <p className="text-[#9AA0AE]">Validating your invitation...</p>
         </div>
       </div>
     );
@@ -105,11 +106,21 @@ function RegisterContent() {
           <div className="p-4 bg-emerald-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Welcome to Bali Zero!</h1>
-          <p className="text-slate-600 mb-6">
+          <div className="flex items-center justify-center mb-4">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden">
+              <Image
+                src="/assets/logo/balizero-logo-clean.png"
+                alt="Bali Zero"
+                fill
+                className="object-cover scale-110"
+              />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Welcome to Bali Zero!</h1>
+          <p className="text-[#9AA0AE] mb-6">
             Your portal account has been activated. Redirecting you to login...
           </p>
-          <div className="flex items-center justify-center gap-2 text-emerald-600">
+          <div className="flex items-center justify-center gap-2 text-[#4FD1C5]">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Redirecting...</span>
           </div>
@@ -120,19 +131,19 @@ function RegisterContent() {
 
   if (!isValid) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="p-4 bg-red-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <AlertCircle className="w-10 h-10 text-red-600" />
+      <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center p-4">
+        <div className="bg-[#242424] border border-white/5 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Invalid Invitation</h1>
-          <p className="text-slate-600 mb-6">
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Invalid Invitation</h1>
+          <p className="text-[#9AA0AE] mb-6">
             {error ||
               'This invitation link is no longer valid. Please contact your account manager for a new invitation.'}
           </p>
           <a
             href="mailto:support@balizero.com"
-            className="inline-block px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+            className="inline-block px-6 py-3 bg-[#4FD1C5] text-[#0B0E13] rounded-lg font-medium hover:bg-[#4FD1C5]/80 transition-colors"
           >
             Contact Support
           </a>
@@ -142,15 +153,25 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+    <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center p-4">
+      <div className="bg-[#242424] border border-white/5 rounded-2xl shadow-lg p-8 max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="p-4 bg-emerald-100 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <Lock className="w-10 h-10 text-emerald-600" />
+          <div className="flex items-center justify-center mb-4">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden">
+              <Image
+                src="/assets/logo/balizero-logo-clean.png"
+                alt="Bali Zero"
+                fill
+                className="object-cover scale-110"
+              />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Create Your PIN</h1>
-          <p className="text-slate-600">
-            Welcome, <span className="font-medium text-slate-800">{clientName}</span>!
+          <div className="p-4 bg-[#4FD1C5]/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <Lock className="w-10 h-10 text-[#4FD1C5]" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Create Your PIN</h1>
+          <p className="text-[#9AA0AE]">
+            Welcome, <span className="font-medium text-[#E6E7EB]">{clientName}</span>!
             <br />
             Set a 4-6 digit PIN to secure your portal access.
           </p>
@@ -158,17 +179,17 @@ function RegisterContent() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">Email</label>
             <input
               type="email"
               value={clientEmail}
               disabled
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-600"
+              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg text-[#9AA0AE]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
               Create PIN (4-6 digits)
             </label>
             <input
@@ -179,12 +200,12 @@ function RegisterContent() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
               placeholder="Enter PIN"
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center text-2xl tracking-widest"
+              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Confirm PIN</label>
+            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">Confirm PIN</label>
             <input
               type="password"
               inputMode="numeric"
@@ -193,13 +214,13 @@ function RegisterContent() {
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
               placeholder="Confirm PIN"
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center text-2xl tracking-widest"
+              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600 text-center">{error}</p>
+            <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+              <p className="text-sm text-red-400 text-center">{error}</p>
             </div>
           )}
 
@@ -208,8 +229,8 @@ function RegisterContent() {
             disabled={isSubmitting || pin.length < 4 || confirmPin.length < 4}
             className={`w-full py-3 rounded-lg font-medium transition-colors ${
               isSubmitting || pin.length < 4 || confirmPin.length < 4
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                ? 'bg-[#1A1D24] text-[#9AA0AE] cursor-not-allowed'
+                : 'bg-[#4FD1C5] text-[#0B0E13] hover:bg-[#4FD1C5]/80'
             }`}
           >
             {isSubmitting ? (
@@ -223,7 +244,7 @@ function RegisterContent() {
           </button>
         </form>
 
-        <p className="text-xs text-slate-400 text-center mt-6">
+        <p className="text-xs text-[#9AA0AE] text-center mt-6">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
@@ -235,10 +256,10 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-            <p className="text-slate-600">Loading...</p>
+            <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
+            <p className="text-[#9AA0AE]">Loading...</p>
           </div>
         </div>
       }
