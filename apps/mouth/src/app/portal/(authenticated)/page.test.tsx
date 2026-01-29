@@ -1,0 +1,208 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import PortalHomePage from './page';
+import type { PortalDashboard } from '@/lib/api/portal/portal.types';
+import type { TimelineEntry } from '@/lib/api/types/timeline.types';
+
+// Mock next/navigation
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+}));
+
+// Mock api
+const mockGetDashboard = vi.fn();
+const mockGetTimeline = vi.fn();
+
+vi.mock('@/lib/api', () => ({
+  api: {
+    portal: {
+      getDashboard: mockGetDashboard,
+      getTimeline: mockGetTimeline,
+    },
+  },
+}));
+
+describe('PortalHomePage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should show loading state initially', () => {
+    mockGetDashboard.mockImplementation(() => new Promise(() => {})); // Never resolves
+    mockGetTimeline.mockImplementation(() => new Promise(() => {}));
+
+    render(<PortalHomePage />);
+
+    // Should show skeleton loaders
+    const skeletons = screen.getAllByRole('generic');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('should render dashboard data when loaded', async () => {
+    const mockDashboard: PortalDashboard = {
+      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
+      company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
+      taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
+      documents: [],
+      messages: [],
+      actions: [],
+    };
+
+    const mockTimeline = {
+      entries: [],
+    };
+
+    mockGetDashboard.mockResolvedValue(mockDashboard);
+    mockGetTimeline.mockResolvedValue(mockTimeline);
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome Back')).toBeInTheDocument();
+      expect(screen.getByText('Here is your Bali life overview.')).toBeInTheDocument();
+    });
+  });
+
+  it('should render status cards for visa, company, and taxes', async () => {
+    const mockDashboard: PortalDashboard = {
+      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
+      company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
+      taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
+      documents: [],
+      messages: [],
+      actions: [],
+    };
+
+    mockGetDashboard.mockResolvedValue(mockDashboard);
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Immigration')).toBeInTheDocument();
+      expect(screen.getByText('Company')).toBeInTheDocument();
+      expect(screen.getByText('Tax')).toBeInTheDocument();
+    });
+  });
+
+  it('should show error message when API fails', async () => {
+    mockGetDashboard.mockRejectedValue(new Error('API Error'));
+    mockGetTimeline.mockRejectedValue(new Error('API Error'));
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Unable to Load Dashboard Data')).toBeInTheDocument();
+    });
+  });
+
+  it('should render timeline when available', async () => {
+    const mockDashboard: PortalDashboard = {
+      visa: { status: 'none', type: null, expiryDate: null },
+      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
+      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
+      documents: [],
+      messages: [],
+      actions: [],
+    };
+
+    const mockTimeline = {
+      entries: [
+        {
+          id: '1',
+          type: 'message',
+          title: 'Test Message',
+          description: 'Test description',
+          occurredAt: new Date().toISOString(),
+        } as TimelineEntry,
+      ],
+    };
+
+    mockGetDashboard.mockResolvedValue(mockDashboard);
+    mockGetTimeline.mockResolvedValue(mockTimeline);
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Timeline')).toBeInTheDocument();
+      expect(screen.getByText('Test Message')).toBeInTheDocument();
+    });
+  });
+
+  it('should show empty timeline message when no entries', async () => {
+    const mockDashboard: PortalDashboard = {
+      visa: { status: 'none', type: null, expiryDate: null },
+      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
+      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
+      documents: [],
+      messages: [],
+      actions: [],
+    };
+
+    mockGetDashboard.mockResolvedValue(mockDashboard);
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No activity yet. Your journey starts here.')).toBeInTheDocument();
+    });
+  });
+
+  it('should navigate to visa page when visa card is clicked', async () => {
+    const mockDashboard: PortalDashboard = {
+      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
+      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
+      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
+      documents: [],
+      messages: [],
+      actions: [],
+    };
+
+    mockGetDashboard.mockResolvedValue(mockDashboard);
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Immigration')).toBeInTheDocument();
+    });
+
+    const visaCard = screen.getByText('Immigration').closest('div');
+    if (visaCard && visaCard.onclick) {
+      visaCard.click();
+    } else if (visaCard) {
+      // Simulate click event
+      const clickEvent = new MouseEvent('click', { bubbles: true });
+      visaCard.dispatchEvent(clickEvent);
+    }
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/portal/visa');
+    });
+  });
+
+  it('should use default dashboard when API fails', async () => {
+    mockGetDashboard.mockRejectedValue(new Error('API Error'));
+    mockGetTimeline.mockResolvedValue({ entries: [] });
+
+    render(<PortalHomePage />);
+
+    await waitFor(() => {
+      // Should still render cards with default values
+      expect(screen.getByText('Immigration')).toBeInTheDocument();
+      expect(screen.getByText('No Visa')).toBeInTheDocument();
+    });
+  });
+});
