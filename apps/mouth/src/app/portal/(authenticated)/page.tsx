@@ -22,6 +22,7 @@ export default function PortalHomePage() {
   const [dashboard, setDashboard] = useState<PortalDashboard | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -34,6 +35,7 @@ export default function PortalHomePage() {
         setTimeline(timelineData.entries);
       } catch (error) {
         console.error('Failed to load portal data', error);
+        setHasError(true);
         // If 401/403, middleware/interceptor should handle redirect, 
         // but as a fallback:
         // router.push('/login'); 
@@ -47,65 +49,90 @@ export default function PortalHomePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-24 bg-[var(--muted)] rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
+          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
+        </div>
       </div>
     );
   }
 
-  if (!dashboard) return null;
+  // Show content even if dashboard is null (API errors)
+  const defaultDashboard: PortalDashboard = dashboard || {
+    visa: { status: 'none', type: null, expiryDate: null },
+    company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
+    taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Section */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
           Welcome Back
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-[var(--foreground-muted)]">
           Here is your Bali life overview.
         </p>
       </section>
+
+      {/* Error Message if API failed */}
+      {hasError && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+          <h3 className="font-semibold text-amber-500">Unable to Load Dashboard Data</h3>
+          <p className="text-sm text-amber-500/80 mt-1">
+            Some features may be limited. Please try refreshing the page.
+          </p>
+        </div>
+      )}
 
       {/* Status Cards (Traffic Lights) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatusCard 
           title="Immigration"
-          status={dashboard.visa.status}
-          label={dashboard.visa.type || 'No Visa'}
-          expiry={dashboard.visa.expiryDate}
+          status={defaultDashboard.visa.status}
+          label={defaultDashboard.visa.type || 'No Visa'}
+          expiry={defaultDashboard.visa.expiryDate}
           onClick={() => router.push('/portal/visa')}
         />
         <StatusCard 
           title="Company"
-          status={dashboard.company.status}
-          label={dashboard.company.primaryCompanyName || 'No Company'}
-          subLabel={`${dashboard.company.totalCompanies} compan${dashboard.company.totalCompanies !== 1 ? 'ies' : 'y'}`}
-          onClick={() => router.push('/portal/companies')}
+          status={defaultDashboard.company.status}
+          label={defaultDashboard.company.primaryCompanyName || 'No Company'}
+          subLabel={`${defaultDashboard.company.totalCompanies} compan${defaultDashboard.company.totalCompanies !== 1 ? 'ies' : 'y'}`}
+          onClick={() => router.push('/portal/vault')}
         />
         <StatusCard 
           title="Tax"
-          status={dashboard.taxes.status}
-          label={dashboard.taxes.nextDeadline ? new Date(dashboard.taxes.nextDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'All Good'}
-          subLabel={dashboard.taxes.daysToDeadline ? `${dashboard.taxes.daysToDeadline} days` : 'Up to date'}
+          status={defaultDashboard.taxes.status}
+          label={defaultDashboard.taxes.nextDeadline ? new Date(defaultDashboard.taxes.nextDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'All Good'}
+          subLabel={defaultDashboard.taxes.daysToDeadline ? `${defaultDashboard.taxes.daysToDeadline} days` : 'Up to date'}
           onClick={() => router.push('/portal/taxes')}
         />
       </section>
 
       {/* The Timeline */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Clock className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-semibold flex items-center gap-2 text-[var(--foreground)]">
+          <Clock className="w-5 h-5 text-[var(--accent)]" />
           Timeline
         </h2>
         
-        <div className="relative border-l-2 border-muted ml-3 space-y-8 pb-10">
+        <div className="relative border-l-2 border-[var(--border)] ml-3 space-y-8 pb-10">
           {timeline.map((entry, index) => (
             <TimelineItem key={entry.id} entry={entry} isLast={index === timeline.length - 1} />
           ))}
           
           {timeline.length === 0 && (
-            <div className="pl-6 py-4 text-muted-foreground italic">
+            <div className="pl-6 py-4 text-[var(--foreground-muted)] italic">
               No activity yet. Your journey starts here.
             </div>
           )}

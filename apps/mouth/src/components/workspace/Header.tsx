@@ -9,24 +9,26 @@ import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   userName: string;
-  isClockIn: boolean;
-  isClockLoading: boolean;
-  onToggleClock: () => void;
+  isClockIn?: boolean;
+  isClockLoading?: boolean;
+  onToggleClock?: () => void;
   onMobileMenuToggle: () => void;
   isMobileMenuOpen: boolean;
   notificationCount?: number;
   whatsappUnread?: number;
+  showClock?: boolean; // Show clock in/out button
 }
 
 export function Header({
   userName,
-  isClockIn,
-  isClockLoading,
+  isClockIn = false,
+  isClockLoading = false,
   onToggleClock,
   onMobileMenuToggle,
   isMobileMenuOpen,
   notificationCount = 0,
   whatsappUnread = 0,
+  showClock = true,
 }: HeaderProps) {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -150,38 +152,42 @@ export function Header({
           </div>
 
           {/* Clock In/Out Button */}
-          <Button
-            onClick={onToggleClock}
-            disabled={isClockLoading}
-            variant="outline"
-            size="sm"
-            className={cn(
-              'hidden sm:flex items-center gap-2 transition-all',
-              isClockIn
-                ? 'border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)]/10'
-                : 'border-[var(--border)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
-            )}
-          >
-            <Clock className="w-4 h-4" />
-            <span className="hidden md:inline">
-              {isClockLoading ? 'Loading...' : isClockIn ? 'Clock Out' : 'Clock In'}
-            </span>
-          </Button>
+          {showClock && onToggleClock && (
+            <>
+              <Button
+                onClick={onToggleClock}
+                disabled={isClockLoading}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'hidden sm:flex items-center gap-2 transition-all',
+                  isClockIn
+                    ? 'border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)]/10'
+                    : 'border-[var(--border)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+                )}
+              >
+                <Clock className="w-4 h-4" />
+                <span className="hidden md:inline">
+                  {isClockLoading ? 'Loading...' : isClockIn ? 'Clock Out' : 'Clock In'}
+                </span>
+              </Button>
 
-          {/* Mobile Clock Button */}
-          <Button
-            onClick={onToggleClock}
-            disabled={isClockLoading}
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'sm:hidden',
-              isClockIn ? 'text-[var(--success)]' : 'text-[var(--foreground-secondary)]'
-            )}
-            aria-label={isClockIn ? 'Clock out' : 'Clock in'}
-          >
-            <Clock className="w-5 h-5" />
-          </Button>
+              {/* Mobile Clock Button */}
+              <Button
+                onClick={onToggleClock}
+                disabled={isClockLoading}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'sm:hidden',
+                  isClockIn ? 'text-[var(--success)]' : 'text-[var(--foreground-secondary)]'
+                )}
+                aria-label={isClockIn ? 'Clock out' : 'Clock in'}
+              >
+                <Clock className="w-5 h-5" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
