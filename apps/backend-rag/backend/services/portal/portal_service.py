@@ -53,30 +53,39 @@ class PortalService:
                 raise ValueError(f"Client {client_id} not found")
 
             # Get visa status (most recent KITAS/KITAP practice)
-            visa_practice = await conn.fetchrow(
-                """
-                SELECT p.id, p.status, p.expiry_date, pt.code, pt.name
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'visa'
-                AND p.status NOT IN ('cancelled', 'rejected')
-                ORDER BY p.expiry_date DESC NULLS LAST
-                LIMIT 1
-                """,
-                client_id,
-            )
+            # Use try-except to handle missing tables gracefully
+            visa_practice = None
+            try:
+                visa_practice = await conn.fetchrow(
+                    """
+                    SELECT p.id, p.status, p.expiry_date, pt.code, pt.name
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND pt.category = 'visa'
+                    AND p.status NOT IN ('cancelled', 'rejected')
+                    ORDER BY p.expiry_date DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch visa practice: {e}")
 
             # Get companies
-            companies = await conn.fetch(
-                """
-                SELECT cc.id, cc.role, cc.is_primary, cp.company_name, cp.entity_type
-                FROM client_companies cc
-                JOIN company_profiles cp ON cp.id = cc.company_id
-                WHERE cc.client_id = $1
-                """,
-                client_id,
-            )
+            companies = []
+            try:
+                companies = await conn.fetch(
+                    """
+                    SELECT cc.id, cc.role, cc.is_primary, cp.company_name, cp.entity_type
+                    FROM client_companies cc
+                    JOIN company_profiles cp ON cp.id = cc.company_id
+                    WHERE cc.client_id = $1
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch companies: {e}")
 
             # Get primary company name
             primary_company = next(
@@ -89,45 +98,57 @@ class PortalService:
             next_deadline = tax_deadlines[0] if tax_deadlines else None
 
             # Get action items (practices with required documents)
-            action_items = await conn.fetch(
-                """
-                SELECT p.id, pt.name as practice_name, p.missing_documents, p.status
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND p.status IN ('inquiry', 'in_progress', 'waiting_documents')
-                ORDER BY p.created_at DESC
-                LIMIT 5
-                """,
-                client_id,
-            )
-
-            # Get unread messages count
-            unread_count = (
-                await conn.fetchval(
+            action_items = []
+            try:
+                action_items = await conn.fetch(
                     """
-                SELECT COUNT(*) FROM portal_messages
-                WHERE client_id = $1
-                AND direction = 'team_to_client'
-                AND read_at IS NULL
-                """,
+                    SELECT p.id, pt.name as practice_name, p.missing_documents, p.status
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND p.status IN ('inquiry', 'in_progress', 'waiting_documents')
+                    ORDER BY p.created_at DESC
+                    LIMIT 5
+                    """,
                     client_id,
                 )
-                or 0
-            )
+            except Exception as e:
+                logger.warning(f"Could not fetch action items: {e}")
+
+            # Get unread messages count
+            unread_count = 0
+            try:
+                unread_count = (
+                    await conn.fetchval(
+                        """
+                    SELECT COUNT(*) FROM portal_messages
+                    WHERE client_id = $1
+                    AND direction = 'team_to_client'
+                    AND read_at IS NULL
+                    """,
+                        client_id,
+                    )
+                    or 0
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch unread messages count: {e}")
 
             # Get document counts
-            doc_counts = await conn.fetchrow(
-                """
-                SELECT
-                    COUNT(*) as total,
-                    COUNT(*) FILTER (WHERE status = 'pending') as pending
-                FROM documents
-                WHERE client_id = $1
-                AND client_visible = true
-                """,
-                client_id,
-            )
+            doc_counts = None
+            try:
+                doc_counts = await conn.fetchrow(
+                    """
+                    SELECT
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending
+                    FROM documents
+                    WHERE client_id = $1
+                    AND client_visible = true
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch document counts: {e}")
 
             # Build visa response
             visa_data = self._build_visa_dashboard_data(visa_practice)
@@ -590,55 +611,85 @@ class PortalService:
     # ================================================
 
     async def get_tax_overview(self, client_id: int) -> dict[str, Any]:
-        """Get tax overview and upcoming deadlines."""
+        """
+        Get tax overview and upcoming deadlines.
+
+        Returns format expected by frontend TaxOverview:
+        - summary: { status, totalDue, nextDeadline, daysToDeadline }
+        - obligations: list of TaxObligation
+        - history: list of TaxHistoryItem
+        """
         async with self.pool.acquire() as conn:
-            # Get client's companies for tax context
-            companies = await conn.fetch(
-                """
-                SELECT cp.id, cp.company_name, cp.entity_type
-                FROM client_companies cc
-                JOIN company_profiles cp ON cp.id = cc.company_id
-                WHERE cc.client_id = $1
-                """,
-                client_id,
-            )
+            # Get tax-related practices (for obligations)
+            tax_practices = []
+            try:
+                tax_practices = await conn.fetch(
+                    """
+                    SELECT p.id, pt.code, pt.name, p.status, p.expiry_date, p.created_at
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND pt.category = 'tax'
+                    ORDER BY p.expiry_date ASC NULLS LAST
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch tax practices: {e}")
 
-            # Get tax-related practices
-            tax_practices = await conn.fetch(
-                """
-                SELECT p.id, pt.code, pt.name, p.status, p.expiry_date
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'tax'
-                ORDER BY p.expiry_date ASC NULLS LAST
-                """,
-                client_id,
-            )
-
-            # Generate tax deadlines
+            # Generate standard tax deadlines
             today = datetime.now(timezone.utc)
             deadlines = self._get_standard_tax_deadlines(today)
 
-            return {
-                "companies": [
-                    {
-                        "id": c["id"],
-                        "name": c["company_name"],
-                        "type": c["entity_type"],
-                    }
-                    for c in companies
-                ],
-                "deadlines": deadlines,
-                "services": [
-                    {
-                        "id": p["id"],
-                        "code": p["code"],
+            # Build obligations from deadlines (upcoming tax filings)
+            obligations = []
+            for i, d in enumerate(deadlines):
+                obligations.append({
+                    "id": f"deadline-{i}",
+                    "name": d["type"],
+                    "type": "Monthly Filing",
+                    "period": d["period"],
+                    "dueDate": d["due_date"],
+                    "status": "overdue" if d["days_until"] < 0 else "pending",
+                    "amount": None,
+                })
+
+            # Build history from completed tax practices
+            history = []
+            for p in tax_practices:
+                if p["status"] in ("completed", "filed"):
+                    history.append({
+                        "id": str(p["id"]),
                         "name": p["name"],
-                        "status": p["status"],
-                    }
-                    for p in tax_practices
-                ],
+                        "period": p["created_at"].strftime("%b %Y") if p["created_at"] else "N/A",
+                        "filedDate": p["created_at"].isoformat() if p["created_at"] else None,
+                        "amount": 0,  # No amount stored in practices
+                    })
+
+            # Calculate summary
+            next_deadline = None
+            days_to_deadline = None
+            if deadlines:
+                next_deadline = deadlines[0]["due_date"]
+                days_to_deadline = deadlines[0]["days_until"]
+
+            # Determine status based on deadlines
+            status = "compliant"
+            if days_to_deadline is not None:
+                if days_to_deadline < 0:
+                    status = "overdue"
+                elif days_to_deadline <= 14:
+                    status = "attention"
+
+            return {
+                "summary": {
+                    "status": status,
+                    "totalDue": 0,  # No payment tracking yet
+                    "nextDeadline": next_deadline,
+                    "daysToDeadline": days_to_deadline,
+                },
+                "obligations": obligations,
+                "history": history,
             }
 
     # ================================================
@@ -945,6 +996,154 @@ class PortalService:
             )
 
             return await self.get_preferences(client_id)
+
+    # ================================================
+    # TIMELINE
+    # ================================================
+
+    async def get_timeline(self, client_id: int, limit: int = 50) -> dict[str, Any]:
+        """
+        Get client activity timeline.
+
+        Combines:
+        - Messages (sent and received)
+        - Document uploads
+        - Practice status changes
+        - Upcoming deadlines
+
+        Returns format expected by frontend TimelineResponse:
+            - scope: 'portal'
+            - entries: list of TimelineEntry
+            - lastUpdated: timestamp
+        """
+        import time
+
+        entries = []
+
+        async with self.pool.acquire() as conn:
+            # Get recent messages
+            try:
+                messages = await conn.fetch(
+                    """
+                    SELECT id, subject, content, direction, created_at, read_at
+                    FROM portal_messages
+                    WHERE client_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2
+                    """,
+                    client_id,
+                    limit // 3,  # Allocate 1/3 of limit to messages
+                )
+                for msg in messages:
+                    entries.append(
+                        {
+                            "id": f"msg-{msg['id']}",
+                            "type": "message",
+                            "occurredAt": msg["created_at"].isoformat(),
+                            "title": msg["subject"] or "New Message",
+                            "description": msg["content"][:100]
+                            + ("..." if len(msg["content"]) > 100 else ""),
+                            "status": "sent" if msg["direction"] == "client_to_team" else "received",
+                            "unread": msg["direction"] == "team_to_client"
+                            and msg["read_at"] is None,
+                            "isFuture": False,
+                            "entity": {"messageId": str(msg["id"])},
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Could not fetch messages for timeline: {e}")
+
+            # Get recent documents
+            try:
+                documents = await conn.fetch(
+                    """
+                    SELECT id, document_type, file_name, status, created_at
+                    FROM documents
+                    WHERE client_id = $1 AND client_visible = true
+                    ORDER BY created_at DESC
+                    LIMIT $2
+                    """,
+                    client_id,
+                    limit // 3,
+                )
+                for doc in documents:
+                    entries.append(
+                        {
+                            "id": f"doc-{doc['id']}",
+                            "type": "document",
+                            "occurredAt": doc["created_at"].isoformat(),
+                            "title": f"Document: {doc['file_name']}",
+                            "description": f"Type: {doc['document_type']}",
+                            "status": doc["status"],
+                            "unread": False,
+                            "isFuture": False,
+                            "entity": {"documentId": str(doc["id"])},
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Could not fetch documents for timeline: {e}")
+
+            # Get recent practice updates
+            try:
+                practices = await conn.fetch(
+                    """
+                    SELECT p.id, pt.name, pt.category, p.status, p.updated_at
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    ORDER BY p.updated_at DESC
+                    LIMIT $2
+                    """,
+                    client_id,
+                    limit // 3,
+                )
+                for p in practices:
+                    entries.append(
+                        {
+                            "id": f"practice-{p['id']}",
+                            "type": "practice",
+                            "occurredAt": p["updated_at"].isoformat()
+                            if p["updated_at"]
+                            else datetime.now(timezone.utc).isoformat(),
+                            "title": f"{p['name']} Update",
+                            "description": f"Status: {p['status']}",
+                            "status": p["status"],
+                            "unread": False,
+                            "isFuture": False,
+                            "entity": {
+                                "practiceId": p["id"],
+                                "practiceCategory": p["category"],
+                            },
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Could not fetch practices for timeline: {e}")
+
+            # Add upcoming deadlines (future events)
+            today = datetime.now(timezone.utc)
+            deadlines = self._get_standard_tax_deadlines(today)
+            for deadline in deadlines[:3]:  # Max 3 deadlines
+                entries.append(
+                    {
+                        "id": f"deadline-{deadline['type'].lower().replace(' ', '-')}",
+                        "type": "deadline",
+                        "occurredAt": deadline["due_date"],
+                        "title": f"Tax Deadline: {deadline['type']}",
+                        "description": f"Due in {deadline['days_until']} days",
+                        "status": deadline["urgency"],
+                        "unread": False,
+                        "isFuture": True,
+                    }
+                )
+
+        # Sort by date descending
+        entries.sort(key=lambda x: x["occurredAt"], reverse=True)
+
+        return {
+            "scope": "portal",
+            "entries": entries[:limit],
+            "lastUpdated": int(time.time() * 1000),
+        }
 
     # ================================================
     # HELPER METHODS
