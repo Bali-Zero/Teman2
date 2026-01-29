@@ -21,11 +21,17 @@ from typing import Any
 
 
 class DecimalEncoder(json.JSONEncoder):
-    """JSON encoder that handles Decimal types by converting to float."""
+    """JSON encoder that handles Decimal types and Pydantic models."""
 
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        # Handle Pydantic v2 models
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        # Handle Pydantic v1 models
+        if hasattr(obj, "dict"):
+            return obj.dict()
         return super().default(obj)
 
 

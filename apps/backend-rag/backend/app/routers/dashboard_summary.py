@@ -18,12 +18,18 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.crm_interactions import get_interactions_stats, list_interactions
 from backend.app.routers.crm_practices import get_practices_stats, list_practices
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import get_cache_service
 from backend.core.qdrant_db import QdrantClient
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
 logger = get_logger(__name__)
+
+# Cache service for dashboard data
+_cache = get_cache_service()
+DASHBOARD_CACHE_TTL = 30  # 30 seconds cache for dashboard
+NEURAL_PULSE_CACHE_TTL = 60  # 60 seconds cache for neural pulse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -385,7 +391,14 @@ async def get_neural_pulse(
 ) -> dict[str, Any]:
     """
     Get real-time AI status metrics (Neural Pulse).
+    Cached for 60 seconds to reduce load.
     """
+    # Check cache first
+    cache_key = "dashboard:neural_pulse"
+    cached_result = _cache.get(cache_key)
+    if cached_result:
+        return cached_result
+
     start_time = time.time()
     try:
         # 1. Get memory facts count (graceful fallback if table missing)
@@ -411,14 +424,16 @@ async def get_neural_pulse(
         last_activity = "Initializing neural link..."
         try:
             async with db_pool.acquire() as conn:
-                # Check last conversation or interaction
-                # We check multiple tables to find the most recent activity
+                # Check last conversation or interaction from the conversations table
                 last_conv = await conn.fetchval(
-                    "SELECT content FROM conversation_messages ORDER BY created_at DESC LIMIT 1"
+                    """SELECT title FROM conversations 
+                       WHERE title IS NOT NULL 
+                       ORDER BY updated_at DESC LIMIT 1"""
                 )
                 if last_conv:
                     last_activity = f"Last chat: {last_conv[:30]}..."
                 else:
+                    # Fallback to interactions table
                     last_int = await conn.fetchval(
                         "SELECT summary FROM interactions ORDER BY created_at DESC LIMIT 1"
                     )
@@ -430,7 +445,7 @@ async def get_neural_pulse(
 
         latency_ms = int((time.time() - start_time) * 1000)
 
-        return {
+        result = {
             "status": "healthy",
             "memory_facts": memory_facts or 42,  # Fallback to 42 if 0 for visual pulse
             "knowledge_docs": knowledge_docs or 53757,  # Legacy fallback
@@ -438,6 +453,11 @@ async def get_neural_pulse(
             "model_version": "Gemini 1.5 Pro",
             "last_activity": last_activity,
         }
+
+        # Cache the result
+        _cache.set(cache_key, result, NEURAL_PULSE_CACHE_TTL)
+        return result
+
     except Exception as e:
         logger.error(f"Failed to generate neural pulse: {e}")
         return {
