@@ -42,6 +42,7 @@ const PUBLIC_CATEGORIES = [
 // Domains
 const PUBLIC_DOMAIN = 'balizero.com';
 const APP_DOMAIN = 'zantara.balizero.com';
+const PORTAL_DOMAIN = 'my.balizero.com';
 const MOBILE_DOMAIN = 'mo.balizero.com';
 
 export function middleware(request: NextRequest) {
@@ -76,8 +77,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Determine if we're on the public domain
-  const isPublicDomain = hostname.includes(PUBLIC_DOMAIN) && !hostname.includes('zantara');
-  const isAppDomain = hostname.includes(APP_DOMAIN) || hostname.includes('zantara');
+  const isPublicDomain =
+    hostname.includes(PUBLIC_DOMAIN) && !hostname.includes('zantara') && !hostname.includes('my');
+  const isAppDomain =
+    hostname.includes(APP_DOMAIN) || (hostname.includes('zantara') && !hostname.includes('my'));
+  const isPortalDomain = hostname.includes(PORTAL_DOMAIN) || hostname.includes('my.balizero.com');
 
   // Development and Fly.dev: allow all routes (public-facing)
   const isDevelopment = hostname.includes('localhost') || hostname.includes('127.0.0.1');
@@ -87,8 +91,40 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // === PORTAL DOMAIN (my.balizero.com) ===
+  if (isPortalDomain) {
+    // Portal domain: only allow /portal/* routes
+    if (pathname.startsWith('/portal')) {
+      // Allow portal routes
+      return response;
+    }
+
+    // Redirect root to portal login
+    if (pathname === '/') {
+      const redirectResponse = NextResponse.redirect(new URL('/portal/login', request.url));
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
+    }
+
+    // Redirect non-portal routes to public domain
+    const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
+    publicUrl.search = request.nextUrl.search;
+    const redirectResponse = NextResponse.redirect(publicUrl);
+    redirectResponse.headers.set('x-pathname', pathname);
+    return redirectResponse;
+  }
+
   // === PUBLIC DOMAIN (balizero.com) ===
   if (isPublicDomain) {
+    // Check if trying to access portal routes - redirect to portal domain
+    if (pathname.startsWith('/portal')) {
+      const portalUrl = new URL(pathname, `https://${PORTAL_DOMAIN}`);
+      portalUrl.search = request.nextUrl.search;
+      const redirectResponse = NextResponse.redirect(portalUrl, 301); // Permanent redirect
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
+    }
+
     // Check if trying to access internal routes
     const isInternalRoute = INTERNAL_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -128,6 +164,15 @@ export function middleware(request: NextRequest) {
 
   // === APP DOMAIN (zantara.balizero.com) ===
   if (isAppDomain) {
+    // Redirect portal routes to portal domain
+    if (pathname.startsWith('/portal')) {
+      const portalUrl = new URL(pathname, `https://${PORTAL_DOMAIN}`);
+      portalUrl.search = request.nextUrl.search;
+      const redirectResponse = NextResponse.redirect(portalUrl, 301); // Permanent redirect
+      redirectResponse.headers.set('x-pathname', pathname);
+      return redirectResponse;
+    }
+
     // Redirect root to login on app domain
     if (pathname === '/') {
       const redirectResponse = NextResponse.redirect(new URL('/login', request.url));

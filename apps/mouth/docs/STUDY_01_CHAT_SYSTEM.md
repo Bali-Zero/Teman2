@@ -7,6 +7,7 @@
 ## Overview
 
 Il chat è il cuore dell'interazione utente-AI. Supporta:
+
 - Messaggi di testo
 - Voice notes (recording + TTS)
 - File attachments
@@ -56,6 +57,7 @@ Il chat è il cuore dell'interazione utente-AI. Supporta:
 ## Components
 
 ### 1. ChatSidebar
+
 **File:** `components/chat/ChatSidebar.tsx`
 
 ```typescript
@@ -79,7 +81,7 @@ export function ChatSidebar({
       <Button onClick={onNew}>
         <Plus /> New Chat
       </Button>
-      
+
       <ScrollArea>
         {conversations.map(conv => (
           <ConversationItem
@@ -97,6 +99,7 @@ export function ChatSidebar({
 ```
 
 ### 2. ChatMessageList
+
 **File:** `components/chat/ChatMessageList.tsx`
 
 ```typescript
@@ -112,12 +115,12 @@ export function ChatMessageList({
   onRetry
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  
+
   // Auto-scroll on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {messages.map(message => (
@@ -127,9 +130,9 @@ export function ChatMessageList({
           onRetry={() => onRetry(message.id)}
         />
       ))}
-      
+
       {isLoading && <ThinkingIndicator />}
-      
+
       <div ref={bottomRef} />
     </div>
   );
@@ -137,6 +140,7 @@ export function ChatMessageList({
 ```
 
 ### 3. MessageBubble
+
 **File:** `components/chat/MessageBubble.tsx` (21KB)
 
 ```typescript
@@ -153,7 +157,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isStreaming = message.isStreaming;
-  
+
   return (
     <div className={cn(
       "flex gap-3",
@@ -163,11 +167,11 @@ export function MessageBubble({
       <Avatar>
         {isUser ? <UserIcon /> : <BotIcon />}
       </Avatar>
-      
+
       {/* Message content */}
       <div className={cn(
         "rounded-lg p-3 max-w-[80%]",
-        isUser 
+        isUser
           ? "bg-primary text-primary-foreground"
           : "bg-muted"
       )}>
@@ -181,15 +185,15 @@ export function MessageBubble({
         >
           {message.content}
         </ReactMarkdown>
-        
+
         {/* Streaming indicator */}
         {isStreaming && <StreamingCursor />}
-        
+
         {/* Sources (RAG citations) */}
         {message.sources?.length > 0 && (
           <SourcesList sources={message.sources} />
         )}
-        
+
         {/* Actions */}
         {!isUser && (
           <MessageActions
@@ -205,6 +209,7 @@ export function MessageBubble({
 ```
 
 ### 4. ChatInputBar
+
 **File:** `components/chat/ChatInputBar.tsx` (8KB)
 
 ```typescript
@@ -222,47 +227,47 @@ export function ChatInputBar({
   const [content, setContent] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = 
+      textareaRef.current.style.height =
         `${textareaRef.current.scrollHeight}px`;
     }
   }, [content]);
-  
+
   const handleSubmit = () => {
     if (!content.trim() && files.length === 0) return;
     onSend(content, files);
     setContent('');
     setFiles([]);
   };
-  
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
   };
-  
+
   return (
     <div className="border-t p-4">
       {/* File preview */}
       {files.length > 0 && (
-        <FilePreviewList 
-          files={files} 
+        <FilePreviewList
+          files={files}
           onRemove={(i) => setFiles(f => f.filter((_, j) => j !== i))}
         />
       )}
-      
+
       <div className="flex items-end gap-2">
         {/* File upload */}
         <FileUploadButton onFiles={setFiles} />
-        
+
         {/* Voice recording */}
         <VoiceRecordButton onRecording={handleVoice} />
-        
+
         {/* Text input */}
         <textarea
           ref={textareaRef}
@@ -273,9 +278,9 @@ export function ChatInputBar({
           className="flex-1 resize-none"
           rows={1}
         />
-        
+
         {/* Send button */}
-        <Button 
+        <Button
           onClick={handleSubmit}
           disabled={isLoading || (!content.trim() && files.length === 0)}
         >
@@ -288,6 +293,7 @@ export function ChatInputBar({
 ```
 
 ### 5. ThinkingIndicator
+
 **File:** `components/chat/ThinkingIndicator.tsx` (25KB)
 
 ```typescript
@@ -307,7 +313,7 @@ export function ThinkingIndicator({
       <Avatar>
         <BotIcon className="animate-bounce" />
       </Avatar>
-      
+
       <div className="bg-muted rounded-lg p-3">
         {/* Stage indicator */}
         <div className="flex items-center gap-2">
@@ -318,7 +324,7 @@ export function ThinkingIndicator({
             {stage === 'generating' && `Found ${sourcesFound} sources, generating response...`}
           </span>
         </div>
-        
+
         {/* Animated dots */}
         <div className="flex gap-1 mt-2">
           {[0, 1, 2].map(i => (
@@ -342,6 +348,7 @@ export function ThinkingIndicator({
 ## Hooks
 
 ### useChatPage (Main Orchestrator)
+
 **File:** `hooks/useChatPage.ts` (23KB)
 
 ```typescript
@@ -351,13 +358,13 @@ export function useChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  
+
   // Sub-hooks
   const { sendMessage, sendWithFiles } = useChatSend();
   const { startStream, stopStream } = useChatStreaming();
   const { playTTS, stopTTS, isSpeaking } = useChatTTS();
   const { conversations, refreshConversations } = useConversations();
-  
+
   // Load conversation
   const loadConversation = useCallback(async (id: string) => {
     setIsLoading(true);
@@ -369,97 +376,93 @@ export function useChatPage() {
       setIsLoading(false);
     }
   }, []);
-  
+
   // Send message handler
-  const handleSend = useCallback(async (
-    content: string,
-    files?: File[]
-  ) => {
-    // Create optimistic message
-    const tempId = `temp-${Date.now()}`;
-    const userMessage: Message = {
-      id: tempId,
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    };
-    
-    // Optimistic update
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    
-    try {
-      // Send to backend
-      const response = await sendMessage({
-        conversationId,
+  const handleSend = useCallback(
+    async (content: string, files?: File[]) => {
+      // Create optimistic message
+      const tempId = `temp-${Date.now()}`;
+      const userMessage: Message = {
+        id: tempId,
+        role: 'user',
         content,
-        files,
-      });
-      
-      // Handle streaming response
-      if (response.stream) {
-        setIsStreaming(true);
-        
-        // Add placeholder for assistant
-        const assistantMessage: Message = {
-          id: response.messageId,
-          role: 'assistant',
-          content: '',
-          isStreaming: true,
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        
-        // Stream chunks
-        for await (const chunk of response.stream) {
-          setMessages(prev => prev.map(m => 
-            m.id === response.messageId
-              ? { ...m, content: m.content + chunk }
-              : m
-          ));
+        timestamp: new Date().toISOString(),
+      };
+
+      // Optimistic update
+      setMessages((prev) => [...prev, userMessage]);
+      setIsLoading(true);
+
+      try {
+        // Send to backend
+        const response = await sendMessage({
+          conversationId,
+          content,
+          files,
+        });
+
+        // Handle streaming response
+        if (response.stream) {
+          setIsStreaming(true);
+
+          // Add placeholder for assistant
+          const assistantMessage: Message = {
+            id: response.messageId,
+            role: 'assistant',
+            content: '',
+            isStreaming: true,
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+
+          // Stream chunks
+          for await (const chunk of response.stream) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === response.messageId ? { ...m, content: m.content + chunk } : m
+              )
+            );
+          }
+
+          // Mark as complete
+          setMessages((prev) =>
+            prev.map((m) => (m.id === response.messageId ? { ...m, isStreaming: false } : m))
+          );
+
+          setIsStreaming(false);
         }
-        
-        // Mark as complete
-        setMessages(prev => prev.map(m =>
-          m.id === response.messageId
-            ? { ...m, isStreaming: false }
-            : m
-        ));
-        
-        setIsStreaming(false);
+
+        // Auto-play TTS if enabled
+        if (settings.autoTTS) {
+          playTTS(response.content);
+        }
+      } catch (error) {
+        // Mark message as failed
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, error: true } : m)));
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Auto-play TTS if enabled
-      if (settings.autoTTS) {
-        playTTS(response.content);
-      }
-      
-    } catch (error) {
-      // Mark message as failed
-      setMessages(prev => prev.map(m =>
-        m.id === tempId
-          ? { ...m, error: true }
-          : m
-      ));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, sendMessage, playTTS]);
-  
+    },
+    [conversationId, sendMessage, playTTS]
+  );
+
   // New conversation
   const handleNewConversation = useCallback(() => {
     setConversationId(null);
     setMessages([]);
   }, []);
-  
+
   // Delete conversation
-  const handleDeleteConversation = useCallback(async (id: string) => {
-    await api.deleteConversation(id);
-    await refreshConversations();
-    if (conversationId === id) {
-      handleNewConversation();
-    }
-  }, [conversationId, refreshConversations, handleNewConversation]);
-  
+  const handleDeleteConversation = useCallback(
+    async (id: string) => {
+      await api.deleteConversation(id);
+      await refreshConversations();
+      if (conversationId === id) {
+        handleNewConversation();
+      }
+    },
+    [conversationId, refreshConversations, handleNewConversation]
+  );
+
   return {
     // State
     messages,
@@ -468,7 +471,7 @@ export function useChatPage() {
     conversationId,
     conversations,
     isSpeaking,
-    
+
     // Actions
     handleSend,
     loadConversation,
@@ -481,33 +484,34 @@ export function useChatPage() {
 ```
 
 ### useChatStreaming
+
 **File:** `hooks/useChatStreaming.ts`
 
 ```typescript
 export function useChatStreaming() {
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+
   const startStream = useCallback(async function* (
     conversationId: string,
     content: string
   ): AsyncGenerator<string> {
     // Create abort controller
     abortControllerRef.current = new AbortController();
-    
+
     const response = await fetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversationId, content }),
       signal: abortControllerRef.current.signal,
     });
-    
+
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
-    
+
     while (reader) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       const chunk = decoder.decode(value);
       // Parse SSE format
       const lines = chunk.split('\n');
@@ -519,16 +523,17 @@ export function useChatStreaming() {
       }
     }
   }, []);
-  
+
   const stopStream = useCallback(() => {
     abortControllerRef.current?.abort();
   }, []);
-  
+
   return { startStream, stopStream };
 }
 ```
 
 ### useChatTTS
+
 **File:** `hooks/useChatTTS.ts`
 
 ```typescript
@@ -536,46 +541,52 @@ export function useChatTTS() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [queue, setQueue] = useState<string[]>([]);
-  
-  const playTTS = useCallback(async (text: string) => {
-    setIsSpeaking(true);
-    
-    try {
-      // Request TTS from backend
-      const response = await api.generateTTS(text);
-      const audioUrl = response.audioUrl;
-      
-      // Play audio
-      audioRef.current = new Audio(audioUrl);
-      audioRef.current.onended = () => {
+
+  const playTTS = useCallback(
+    async (text: string) => {
+      setIsSpeaking(true);
+
+      try {
+        // Request TTS from backend
+        const response = await api.generateTTS(text);
+        const audioUrl = response.audioUrl;
+
+        // Play audio
+        audioRef.current = new Audio(audioUrl);
+        audioRef.current.onended = () => {
+          setIsSpeaking(false);
+          // Play next in queue
+          if (queue.length > 0) {
+            const [next, ...rest] = queue;
+            setQueue(rest);
+            playTTS(next);
+          }
+        };
+        await audioRef.current.play();
+      } catch (error) {
         setIsSpeaking(false);
-        // Play next in queue
-        if (queue.length > 0) {
-          const [next, ...rest] = queue;
-          setQueue(rest);
-          playTTS(next);
-        }
-      };
-      await audioRef.current.play();
-    } catch (error) {
-      setIsSpeaking(false);
-    }
-  }, [queue]);
-  
+      }
+    },
+    [queue]
+  );
+
   const stopTTS = useCallback(() => {
     audioRef.current?.pause();
     setIsSpeaking(false);
     setQueue([]);
   }, []);
-  
-  const queueTTS = useCallback((text: string) => {
-    if (isSpeaking) {
-      setQueue(prev => [...prev, text]);
-    } else {
-      playTTS(text);
-    }
-  }, [isSpeaking, playTTS]);
-  
+
+  const queueTTS = useCallback(
+    (text: string) => {
+      if (isSpeaking) {
+        setQueue((prev) => [...prev, text]);
+      } else {
+        playTTS(text);
+      }
+    },
+    [isSpeaking, playTTS]
+  );
+
   return { playTTS, stopTTS, queueTTS, isSpeaking };
 }
 ```
@@ -585,6 +596,7 @@ export function useChatTTS() {
 ## API Integration
 
 ### Chat API Client
+
 **File:** `lib/api/chat/index.ts`
 
 ```typescript
@@ -593,32 +605,32 @@ export const chatApi = {
   async send(data: SendMessageRequest): Promise<SendMessageResponse> {
     return api.post('/api/chat/send', data);
   },
-  
+
   // Stream message
   stream(data: SendMessageRequest): EventSource {
     return api.stream('/api/chat/stream', data);
   },
-  
+
   // Get conversation
   async getConversation(id: string): Promise<Conversation> {
     return api.get(`/api/conversations/${id}`);
   },
-  
+
   // List conversations
   async listConversations(): Promise<Conversation[]> {
     return api.get('/api/conversations');
   },
-  
+
   // Delete conversation
   async deleteConversation(id: string): Promise<void> {
     return api.delete(`/api/conversations/${id}`);
   },
-  
+
   // Generate TTS
   async generateTTS(text: string): Promise<TTSResponse> {
     return api.post('/api/tts/generate', { text });
   },
-  
+
   // Transcribe audio
   async transcribe(audio: Blob): Promise<TranscribeResponse> {
     const formData = new FormData();
@@ -638,7 +650,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
-  
+
   // Optional
   isStreaming?: boolean;
   error?: boolean;
@@ -673,15 +685,15 @@ interface Conversation {
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Enter` | Send message |
-| `Shift+Enter` | New line |
-| `Cmd+K` | New conversation |
-| `Cmd+/` | Toggle sidebar |
-| `Escape` | Stop streaming |
-| `Cmd+.` | Stop TTS |
+| Shortcut      | Action           |
+| ------------- | ---------------- |
+| `Enter`       | Send message     |
+| `Shift+Enter` | New line         |
+| `Cmd+K`       | New conversation |
+| `Cmd+/`       | Toggle sidebar   |
+| `Escape`      | Stop streaming   |
+| `Cmd+.`       | Stop TTS         |
 
 ---
 
-*"Conversation is intelligence" 💬*
+_"Conversation is intelligence" 💬_

@@ -41,10 +41,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!response.ok) {
       // Silent fail for view tracking
-      logger.error(
-        `Failed to track view: ${response.status}`,
-        { component: 'BlogViews', action: 'track' }
-      );
+      logger.error(`Failed to track view: ${response.status}`, {
+        component: 'BlogViews',
+        action: 'track',
+      });
     }
 
     return NextResponse.json({ success: true });

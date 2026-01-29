@@ -60,6 +60,7 @@ Query Utente
 ## Sub-Services
 
 ### 1. LanguageDetectionService
+
 **File:** `oracle/language_detector.py`
 
 ```python
@@ -67,13 +68,13 @@ class LanguageDetectionService:
     """
     Detecta lingua della query:
     - Italian
-    - English  
+    - English
     - Indonesian
     - Mixed
-    
+
     Usa pattern matching + langdetect library
     """
-    
+
     def detect_language(self, query: str) -> str:
         # Pattern per indonesiano
         indonesian_patterns = ["apa", "bagaimana", "mengapa", "saya"]
@@ -83,6 +84,7 @@ class LanguageDetectionService:
 ```
 
 ### 2. UserContextService
+
 **File:** `oracle/user_context.py`
 
 ```python
@@ -94,7 +96,7 @@ class UserContextService:
     - Preferenze comunicazione
     - Storico conversazioni
     """
-    
+
     async def get_user_context(self, user_id: str) -> UserContext:
         memory_facts = await self.memory_service.get_facts(user_id)
         personality = await self.personality_service.get(user_id)
@@ -102,19 +104,20 @@ class UserContextService:
 ```
 
 ### 3. ReasoningEngineService
+
 **File:** `oracle/reasoning_engine.py`
 
 ```python
 class ReasoningEngineService:
     """
     Cuore del reasoning con Gemini:
-    
+
     1. Costruisce prompt con contesto
     2. Chiama Gemini
     3. Valida risposta
     4. Estrae citazioni
     """
-    
+
     async def reason_with_gemini(
         self,
         documents: list[str],
@@ -131,17 +134,18 @@ class ReasoningEngineService:
             memory_facts=user_memory_facts,
             history=conversation_history
         )
-        
+
         # Call Gemini
         response = await self.gemini_client.generate(prompt)
-        
+
         # Validate
         validated = self.response_validator.validate(response)
-        
+
         return validated
 ```
 
 ### 4. DocumentRetrievalService
+
 **File:** `oracle/document_retrieval.py`
 
 ```python
@@ -152,17 +156,18 @@ class DocumentRetrievalService:
     - Vector store (chunks)
     - Cache locale
     """
-    
+
     def download_pdf_from_drive(self, filename: str) -> str | None:
         # Usa Google Drive API
         pass
-    
+
     async def get_relevant_chunks(self, query_embedding, limit=10):
         # Search in Qdrant
         pass
 ```
 
 ### 5. OracleAnalyticsService
+
 **File:** `oracle/analytics.py`
 
 ```python
@@ -186,14 +191,14 @@ class OracleService:
         self.prompt_builder = ZantaraPromptBuilder(model_adapter=GeminiAdapter())
         self.intent_classifier = IntentClassifier()
         self.response_validator = ZantaraResponseValidator(...)
-        
+
         # Sub-services
         self.language_service = LanguageDetectionService()
         self.user_context_service = UserContextService()
         self.reasoning_engine = ReasoningEngineService(...)
         self.document_service = DocumentRetrievalService()
         self.analytics_service = OracleAnalyticsService()
-        
+
     async def process_query(
         self,
         query: str,
@@ -206,23 +211,23 @@ class OracleService:
         """
         # 1. Detect language
         language = self.language_service.detect_language(query)
-        
+
         # 2. Classify intent
         intent = await self.intent_classifier.classify(query)
-        
+
         # 3. Get user context
         user_context = await self.user_context_service.get_user_context(user_id)
-        
+
         # 4. Route query
         route = await self.router.route(query, intent)
-        
+
         # 5. Search relevant documents
         documents = await self.search_service.search(
             query=query,
             collection=route.collection,
             filters=route.filters
         )
-        
+
         # 6. Reason with LLM
         response = await self.reasoning_engine.reason_with_gemini(
             documents=documents,
@@ -235,10 +240,10 @@ class OracleService:
             user_memory_facts=user_context.facts,
             conversation_history=history
         )
-        
+
         # 7. Track analytics
         await self.analytics_service.track(query, response)
-        
+
         return response
 ```
 
@@ -252,7 +257,7 @@ class OracleService:
 class ZantaraPromptBuilder:
     """
     Costruisce prompt strutturati per Gemini.
-    
+
     Template sections:
     1. System identity (ZANTARA persona)
     2. User context (memory, preferences)
@@ -261,28 +266,28 @@ class ZantaraPromptBuilder:
     5. Current query
     6. Output format instructions
     """
-    
+
     def build(self, query, context, documents, memory_facts, history):
         sections = []
-        
+
         # Identity
         sections.append(self._build_identity(context.language))
-        
+
         # Documents
         if documents:
             sections.append(self._build_documents_section(documents))
-        
+
         # Memory
         if memory_facts:
             sections.append(self._build_memory_section(memory_facts))
-        
+
         # History
         if history:
             sections.append(self._build_history_section(history))
-        
+
         # Query
         sections.append(f"USER QUERY: {query}")
-        
+
         return "\n\n".join(sections)
 ```
 
@@ -292,15 +297,15 @@ class ZantaraPromptBuilder:
 
 Il sistema usa diverse collection Qdrant:
 
-| Collection | Contenuto |
-|------------|-----------|
-| `visa_knowledge` | Info visti, permessi, KITAS |
-| `business_knowledge` | PT, CV, company setup |
-| `legal_knowledge` | Leggi indonesiane |
-| `politics_knowledge` | News politica |
-| `pricing_knowledge` | Prezzi servizi |
-| `team_knowledge` | Info team interno |
-| `client_memory` | Memoria per-client |
+| Collection           | Contenuto                   |
+| -------------------- | --------------------------- |
+| `visa_knowledge`     | Info visti, permessi, KITAS |
+| `business_knowledge` | PT, CV, company setup       |
+| `legal_knowledge`    | Leggi indonesiane           |
+| `politics_knowledge` | News politica               |
+| `pricing_knowledge`  | Prezzi servizi              |
+| `team_knowledge`     | Info team interno           |
+| `client_memory`      | Memoria per-client          |
 
 ---
 
@@ -319,7 +324,7 @@ class IntentClassifier:
     - complaint (lamentele)
     - follow_up (follow-up precedenti)
     """
-    
+
     async def classify(self, query: str) -> Intent:
         # Uses keyword matching + optional LLM classification
         pass
@@ -341,7 +346,7 @@ class ZantaraResponseValidator:
     - No sensitive info leakage
     - Format compliance
     """
-    
+
     def validate(self, response: str) -> ValidatedResponse:
         # Check citations exist in documents
         # Check language matches
@@ -362,26 +367,26 @@ Per query complesse, usa Agentic RAG:
 class AgenticRAGOrchestrator:
     """
     Multi-step reasoning per query complesse:
-    
+
     1. Decompose query in sub-queries
     2. Execute each sub-query
     3. Synthesize results
     4. Verify coherence
     """
-    
+
     async def process(self, query: str) -> CoreResult:
         # Step 1: Analyze complexity
         complexity = await self.analyze_complexity(query)
-        
+
         if complexity.needs_decomposition:
             # Step 2: Break down
             sub_queries = await self.decompose(query)
-            
+
             # Step 3: Execute in parallel
             results = await asyncio.gather(*[
                 self.execute_subquery(sq) for sq in sub_queries
             ])
-            
+
             # Step 4: Synthesize
             final = await self.synthesize(results, query)
             return final
@@ -426,12 +431,12 @@ modes:
     tone: formal
     emoji_usage: minimal
     response_length: detailed
-  
+
   friendly:
     tone: warm
     emoji_usage: moderate
     response_length: concise
-  
+
   technical:
     tone: precise
     emoji_usage: none
@@ -464,4 +469,4 @@ print(response.confidence)
 
 ---
 
-*"The Oracle knows all" 🔮*
+_"The Oracle knows all" 🔮_

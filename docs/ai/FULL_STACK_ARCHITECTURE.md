@@ -36,6 +36,7 @@
 ## 🎨 FRONTEND (mouth)
 
 ### Tech Stack
+
 - **Framework:** Next.js 14+ (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
@@ -44,6 +45,7 @@
 - **Domain:** balizero.com
 
 ### Structure
+
 ```
 mouth/src/
 ├── app/                 # Pages & Routes (Next.js App Router)
@@ -60,18 +62,20 @@ mouth/src/
 ```
 
 ### Key Files
-| File | Purpose |
-|------|---------|
-| `app/api/[...path]/route.ts` | Proxy ALL /api/* to backend |
-| `lib/api/client.ts` | Base HTTP client |
-| `hooks/useChatPage.ts` | Main chat orchestrator |
-| `components/chat/MessageBubble.tsx` | Message rendering |
+
+| File                                | Purpose                      |
+| ----------------------------------- | ---------------------------- |
+| `app/api/[...path]/route.ts`        | Proxy ALL /api/\* to backend |
+| `lib/api/client.ts`                 | Base HTTP client             |
+| `hooks/useChatPage.ts`              | Main chat orchestrator       |
+| `components/chat/MessageBubble.tsx` | Message rendering            |
 
 ---
 
 ## ⚙️ BACKEND (backend-rag)
 
 ### Tech Stack
+
 - **Framework:** FastAPI
 - **Language:** Python 3.11+
 - **Database:** PostgreSQL
@@ -82,6 +86,7 @@ mouth/src/
 - **Domain:** nuzantara-rag.fly.dev
 
 ### Structure
+
 ```
 backend-rag/backend/
 ├── app/                 # FastAPI application
@@ -97,12 +102,13 @@ backend-rag/backend/
 ```
 
 ### Key Files
-| File | Purpose |
-|------|---------|
-| `app/routers/agentic_rag.py` | Main RAG endpoint |
-| `services/oracle/oracle_service.py` | RAG orchestrator |
-| `llm/zantara_ai_client.py` | LLM client |
-| `core/qdrant_db.py` | Vector operations |
+
+| File                                | Purpose           |
+| ----------------------------------- | ----------------- |
+| `app/routers/agentic_rag.py`        | Main RAG endpoint |
+| `services/oracle/oracle_service.py` | RAG orchestrator  |
+| `llm/zantara_ai_client.py`          | LLM client        |
+| `core/qdrant_db.py`                 | Vector operations |
 
 ---
 
@@ -224,6 +230,7 @@ backend-rag/backend/
 ```
 
 ### Login Flow
+
 ```
 1. POST /api/auth/login { email, password }
 2. Backend validates → returns { token, user, csrf_token }
@@ -233,6 +240,7 @@ backend-rag/backend/
 ```
 
 ### Request Auth Flow
+
 ```
 1. Request made with credentials: 'include'
 2. Browser automatically sends cookies
@@ -247,23 +255,24 @@ backend-rag/backend/
 
 ### Core Domains
 
-| Domain | Frontend Module | Backend Router | Endpoints |
-|--------|-----------------|----------------|-----------|
-| **Auth** | `auth/` | `auth.py` | login, logout, profile, check |
-| **Chat/RAG** | `chat/` | `agentic_rag.py` | query, stream |
-| **Conversations** | `conversations/` | `conversations.py` | list, get, save, delete |
-| **CRM Clients** | `crm/` | `crm_clients.py` | CRUD, summary, profile |
-| **CRM Practices** | `crm/` | `crm_practices.py` | CRUD, stats, renewals |
-| **CRM Interactions** | `crm/` | `crm_interactions.py` | list, create, timeline |
-| **Drive** | `drive/` | `google_drive.py` | files, upload, folders |
-| **Intel/News** | `intelligence.api.ts` | `intel.py` | articles, publish |
-| **Analytics** | `analytics/` | `analytics.py` | overview, rag, crm, team |
-| **Admin** | `admin/` | `admin_*.py` | logs, team, system |
-| **Portal** | `portal/` | `portal.py` | client portal |
-| **Audio** | (inline) | `audio.py` | transcribe, speech |
-| **Health** | (inline) | `health.py` | health, detailed |
+| Domain               | Frontend Module       | Backend Router        | Endpoints                     |
+| -------------------- | --------------------- | --------------------- | ----------------------------- |
+| **Auth**             | `auth/`               | `auth.py`             | login, logout, profile, check |
+| **Chat/RAG**         | `chat/`               | `agentic_rag.py`      | query, stream                 |
+| **Conversations**    | `conversations/`      | `conversations.py`    | list, get, save, delete       |
+| **CRM Clients**      | `crm/`                | `crm_clients.py`      | CRUD, summary, profile        |
+| **CRM Practices**    | `crm/`                | `crm_practices.py`    | CRUD, stats, renewals         |
+| **CRM Interactions** | `crm/`                | `crm_interactions.py` | list, create, timeline        |
+| **Drive**            | `drive/`              | `google_drive.py`     | files, upload, folders        |
+| **Intel/News**       | `intelligence.api.ts` | `intel.py`            | articles, publish             |
+| **Analytics**        | `analytics/`          | `analytics.py`        | overview, rag, crm, team      |
+| **Admin**            | `admin/`              | `admin_*.py`          | logs, team, system            |
+| **Portal**           | `portal/`             | `portal.py`           | client portal                 |
+| **Audio**            | (inline)              | `audio.py`            | transcribe, speech            |
+| **Health**           | (inline)              | `health.py`           | health, detailed              |
 
 ### Endpoint Count
+
 - **Frontend API Modules:** 30+ files
 - **Backend Routers:** 62 files
 - **Total Endpoints:** ~400
@@ -273,6 +282,7 @@ backend-rag/backend/
 ## 💾 DATA STORAGE
 
 ### PostgreSQL (Main DB)
+
 ```
 Tables:
 ├── users              # System users
@@ -291,6 +301,7 @@ Tables:
 ```
 
 ### Qdrant (Vector DB)
+
 ```
 Collections:
 ├── visa_knowledge      # Visa/immigration
@@ -303,6 +314,7 @@ Collections:
 ```
 
 ### Redis (Cache)
+
 ```
 Keys:
 ├── session:<id>        # Session data
@@ -317,39 +329,42 @@ Keys:
 
 ### LLM Providers
 
-| Provider | Use Case | Model |
-|----------|----------|-------|
+| Provider          | Use Case      | Model            |
+| ----------------- | ------------- | ---------------- |
 | **Google Gemini** | Primary (RAG) | gemini-2.0-flash |
-| **Google Vertex** | Enterprise | gemini-pro |
-| **DeepSeek** | Cheap/fast | deepseek-chat |
-| **Ollama** | Local dev | qwen2.5 |
-| **OpenRouter** | Fallback | various |
+| **Google Vertex** | Enterprise    | gemini-pro       |
+| **DeepSeek**      | Cheap/fast    | deepseek-chat    |
+| **Ollama**        | Local dev     | qwen2.5          |
+| **OpenRouter**    | Fallback      | various          |
 
 ### External APIs
 
-| Service | Purpose |
-|---------|---------|
-| **Google Drive** | Document storage |
-| **Google Search** | Grounding |
-| **ElevenLabs** | Text-to-speech |
-| **Whisper** | Speech-to-text |
-| **Pollinations** | Image generation |
+| Service           | Purpose          |
+| ----------------- | ---------------- |
+| **Google Drive**  | Document storage |
+| **Google Search** | Grounding        |
+| **ElevenLabs**    | Text-to-speech   |
+| **Whisper**       | Speech-to-text   |
+| **Pollinations**  | Image generation |
 
 ---
 
 ## 📊 MONITORING
 
 ### Frontend
+
 - Sentry (errors)
 - Web Vitals (performance)
 - Custom logger
 
 ### Backend
+
 - Prometheus metrics
 - Structured logging
 - Health endpoints
 
 ### Observability
+
 ```
 Frontend → Sentry
 Backend → Prometheus → Grafana
@@ -361,6 +376,7 @@ Logs → Structured JSON → Log aggregator
 ## 🚀 DEPLOYMENT
 
 ### Frontend (Vercel)
+
 ```bash
 # Auto-deploy on push to main
 git push origin main
@@ -368,6 +384,7 @@ git push origin main
 ```
 
 ### Backend (Fly.io)
+
 ```bash
 # Deploy
 fly deploy
@@ -380,6 +397,7 @@ fly logs
 ```
 
 ### URLs
+
 ```
 Production:
 - Frontend: https://balizero.com
@@ -395,6 +413,7 @@ Development:
 ## 📁 Key Files Reference
 
 ### Frontend
+
 ```
 mouth/
 ├── src/app/api/[...path]/route.ts    # API proxy
@@ -406,6 +425,7 @@ mouth/
 ```
 
 ### Backend
+
 ```
 backend-rag/
 ├── backend/app/main_cloud.py         # App entry
@@ -421,12 +441,14 @@ backend-rag/
 ## 🧪 TESTING
 
 ### Frontend
+
 ```bash
 npm run test      # Vitest unit tests
 npm run e2e       # Playwright E2E
 ```
 
 ### Backend
+
 ```bash
 pytest            # All tests
 ./sentinel        # Quality checks (ruff + pytest)
@@ -434,4 +456,4 @@ pytest            # All tests
 
 ---
 
-*"Full stack, full power" 🏗️*
+_"Full stack, full power" 🏗️_

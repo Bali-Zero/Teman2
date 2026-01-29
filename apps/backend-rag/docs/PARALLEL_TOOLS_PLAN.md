@@ -58,11 +58,13 @@ async def run_react_step(state: AgentState, llm_gateway: LLMGateway):
 ```
 
 **Vantaggi**:
+
 - Minimo refactoring (modifica solo il loop interno)
 - Backward compatible
 - LLM decide cosa parallelizzare
 
 **Svantaggi**:
+
 - Dipende dalla capacità dell'LLM di chiamare multipli tool
 - Gemini 2.5 Flash supporta `parallel_tool_calls`? Da verificare.
 
@@ -98,11 +100,13 @@ async def run_query(query: str, ...):
 ```
 
 **Vantaggi**:
+
 - Garantito parallelo (non dipende dall'LLM)
 - Riduce max_steps a 1
 - Più prevedibile
 
 **Svantaggi**:
+
 - Spreca risorse se alcuni tool non servono
 - Richiede più refactoring
 - Meno flessibile per query che richiedono tool specifici
@@ -142,11 +146,13 @@ async def run_query(query: str, ...):
 ```
 
 **Vantaggi**:
+
 - Bilancia efficienza e flessibilità
 - Non spreca risorse
 - Mantiene capacità ReAct per casi edge
 
 **Svantaggi**:
+
 - Più complesso da implementare
 - Richiede buon intent classifier
 
@@ -154,29 +160,30 @@ async def run_query(query: str, ...):
 
 ## File da Modificare
 
-| File | Modifiche | Effort |
-|------|-----------|--------|
-| `reasoning.py` | Loop principale, multi-tool extraction | Alto |
-| `tool_executor.py` | Supporto batch execution | Medio |
-| `orchestrator.py` | Pre-fetch logic (se Strategia 2/3) | Medio |
-| `definitions.py` | `AgentState.prefetched_context` | Basso |
-| `llm_gateway.py` | `parallel_tool_calls` config | Basso |
+| File               | Modifiche                              | Effort |
+| ------------------ | -------------------------------------- | ------ |
+| `reasoning.py`     | Loop principale, multi-tool extraction | Alto   |
+| `tool_executor.py` | Supporto batch execution               | Medio  |
+| `orchestrator.py`  | Pre-fetch logic (se Strategia 2/3)     | Medio  |
+| `definitions.py`   | `AgentState.prefetched_context`        | Basso  |
+| `llm_gateway.py`   | `parallel_tool_calls` config           | Basso  |
 
 ---
 
 ## Stima Tempi
 
-| Strategia | Effort Dev | Rischio | Latency Attesa |
-|-----------|------------|---------|----------------|
-| 1. Multi-Tool per Step | 2-3 giorni | Medio | ~40-50s |
-| 2. Pre-fetch Parallel | 3-4 giorni | Basso | ~25-35s |
-| 3. Hybrid | 4-5 giorni | Medio | ~30-40s |
+| Strategia              | Effort Dev | Rischio | Latency Attesa |
+| ---------------------- | ---------- | ------- | -------------- |
+| 1. Multi-Tool per Step | 2-3 giorni | Medio   | ~40-50s        |
+| 2. Pre-fetch Parallel  | 3-4 giorni | Basso   | ~25-35s        |
+| 3. Hybrid              | 4-5 giorni | Medio   | ~30-40s        |
 
 ---
 
 ## Raccomandazione
 
 **Start con Strategia 1** (Multi-Tool per Step):
+
 1. Minimo refactoring
 2. Testabile incrementalmente
 3. Se Gemini supporta `parallel_tool_calls`, beneficio immediato
@@ -196,12 +203,12 @@ async def run_query(query: str, ...):
 
 ## Metriche Successo
 
-| Metrica | Attuale | Target |
-|---------|---------|--------|
-| Latency P50 | ~85s | <35s |
-| Latency P95 | ~120s | <50s |
+| Metrica              | Attuale       | Target        |
+| -------------------- | ------------- | ------------- |
+| Latency P50          | ~85s          | <35s          |
+| Latency P95          | ~120s         | <50s          |
 | Tool calls per query | 3 sequenziali | 1-3 parallele |
-| LLM calls per query | 3 | 1-2 |
+| LLM calls per query  | 3             | 1-2           |
 
 ---
 

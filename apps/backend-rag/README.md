@@ -64,12 +64,12 @@ pytest -v
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [CLAUDE.md](CLAUDE.md) | AI assistant context and guidelines |
-| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation |
-| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) | Testing best practices |
-| [docs/ai/](docs/ai/) | AI-specific documentation |
+| Document                                                                   | Description                         |
+| -------------------------------------------------------------------------- | ----------------------------------- |
+| [CLAUDE.md](CLAUDE.md)                                                     | AI assistant context and guidelines |
+| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation          |
+| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)                             | Testing best practices              |
+| [docs/ai/](docs/ai/)                                                       | AI-specific documentation           |
 
 ## API Endpoints
 
@@ -85,6 +85,7 @@ Core endpoints available at `/docs` (Swagger UI):
 All services follow these documentation standards:
 
 ### Module Docstring
+
 ```python
 """
 Service Name - Brief Description
@@ -94,6 +95,7 @@ Detailed description of the service's purpose and responsibilities.
 ```
 
 ### Class Docstring
+
 ```python
 class ServiceClass:
     """
@@ -107,6 +109,7 @@ class ServiceClass:
 ```
 
 ### Method Docstring
+
 ```python
 def method_name(self, param: str, limit: int = 10) -> Result:
     """
@@ -153,4 +156,4 @@ Proprietary - Nuzantara Business Systems
 
 ---
 
-*"The lobster way"* 🦞
+_"The lobster way"_ 🦞
