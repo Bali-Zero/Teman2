@@ -155,6 +155,24 @@ export default function TeamPage() {
         </div>
       </section>
 
+      {/* Accounting Department Section */}
+      <section className="border-b border-white/10">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
+          <div className="text-center mb-12">
+            <h2 className="font-serif text-3xl text-white mb-4">Accounting</h2>
+            <p className="text-white/60 max-w-2xl mx-auto">
+              Managing financial operations with precision and reliability.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {ACCOUNTING_TEAM.map((member) => (
+              <TeamCard key={member.initials} member={member} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Support Team Section */}
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
@@ -420,6 +438,16 @@ const TAX_TEAM: TeamMember[] = [
     initials: 'FA',
     role: 'Tax Care',
     gradient: 'bg-gradient-to-br from-amber-500 to-yellow-600',
+  },
+];
+
+const ACCOUNTING_TEAM: TeamMember[] = [
+  {
+    name: 'Asya Nadia',
+    initials: 'AN',
+    role: 'Accounting',
+    gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+    photo: '/static/team/asya.jpg',
   },
 ];
 
