@@ -266,3 +266,20 @@ apps/backend-rag/scripts/generate_oauth_token.py
 apps/backend-rag/scripts/setup_oauth_token.py
 OVERLORD_LOG.md
 data/exports/legal_unified_hybrid_*.json
+
+# ========================================
+# UTILITY SCRIPTS (one-off, not tracked)
+# ========================================
+apps/backend-rag/backend/scripts/add_*.py
+apps/backend-rag/backend/scripts/create_portal_*.py
+apps/backend-rag/backend/scripts/create_portal_*.sh
+apps/backend-rag/backend/scripts/check_portal_*.py
+apps/backend-rag/backend/scripts/update_portal_*.sql
+apps/backend-rag/backend/scripts/kg_query.py
+apps/backend-rag/backend/scripts/search_client.py
+
+# Temp upload folders
+.tmp.driveupload/
+
+# Lock files (use package-lock.json instead)
+pnpm-lock.yaml
