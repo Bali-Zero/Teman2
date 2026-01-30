@@ -581,6 +581,40 @@ async def update_preferences(
 
 
 # ================================================
+# TIMELINE ENDPOINT
+# ================================================
+
+
+@router.get("/timeline")
+async def get_timeline(
+    limit: int = Query(50, ge=1, le=100),
+    client: dict = Depends(get_current_client),
+    portal_service: PortalService = Depends(get_portal_service),
+) -> dict[str, Any]:
+    """
+    Get client activity timeline.
+
+    Returns recent activity including:
+    - Messages sent/received
+    - Document uploads
+    - Practice updates
+    - Upcoming deadlines
+    """
+    try:
+        data = await portal_service.get_timeline(client["client_id"], limit=limit)
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get timeline for client {client['client_id']}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load timeline",
+        ) from e
+
+
+# ================================================
 # PROFILE ENDPOINT
 # ================================================
 

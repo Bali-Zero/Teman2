@@ -337,6 +337,26 @@ Location: Jakarta | Lingue: Indonesiano, Giavanese
 
 Sahira è specialist junior che copre sia marketing che accounting. Stilosa e ambiziosa, vuole proiettare un'immagine professionale. Per supporto marketing operativo e task di accounting base, Sahira sta crescendo e costruendo le sue competenze.""",
     },
+    {
+        "id": "asya",
+        "name": "Asya Nadia Firdauzi",
+        "email": "asya@balizero.com",
+        "role": "Accounting",
+        "department": "accounting",
+        "team": "accounting",
+        "location": "Denpasar, Bali",
+        "languages": ["id"],
+        "bio": """Email: asya@balizero.com | Personal: nadiasyafr@gmail.com
+Role: Accounting
+Phone: +62 089528509736
+Location: Padang Sambian, Denpasar Barat, Bali | Languages: Indonesian
+
+Asya Nadia Firdauzi is a fresh graduate joining the accounting team. She holds a Bachelor of Applied Science (Sarjana Terapan) in Agribusiness Livestock from Politeknik Negeri Malang with an excellent GPA of 3.7. Certified as Production Manager Assistant in Agribusiness.
+
+Technical skills: Advanced Excel (Pivot Tables, complex formulas, data analysis), basic accounting (payroll processing, salary calculations), administration and reporting, data entry and document management.
+
+Recent experience includes an internship at Dinas Pertanian Kabupaten Bima (Sep-Dec 2025) and various internships at agricultural and livestock companies. Well-organized, detail-oriented, and eager to learn. For accounting support, payroll assistance, data entry, and administrative tasks, Asya is a reliable and meticulous team member.""",
+    },
 ]
 
 
