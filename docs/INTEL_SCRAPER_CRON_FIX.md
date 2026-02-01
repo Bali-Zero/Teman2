@@ -10,7 +10,7 @@
 ### Errore nei Log
 
 ```
-/bin/bash: /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh: Operation not permitted
+/bin/bash: /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh: Operation not permitted
 ```
 
 Questo errore si ripete ogni volta che il cron tenta di eseguire lo script.
@@ -43,11 +43,11 @@ Questo errore si ripete ogni volta che il cron tenta di eseguire lo script.
 
 ```bash
 # Rimuovere attributi di quarantena
-xattr -d com.apple.quarantine /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh 2>/dev/null || true
-xattr -d com.apple.provenance /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh 2>/dev/null || true
+xattr -d com.apple.quarantine /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh 2>/dev/null || true
+xattr -d com.apple.provenance /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh 2>/dev/null || true
 
 # Verificare permessi
-chmod +x /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh
+chmod +x /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh
 ```
 
 ### 2. Pulire Crontab Duplicati
@@ -60,7 +60,7 @@ crontab -l > crontab.backup.$(date +%Y%m%d-%H%M%S)
 crontab -l | grep -v "auto_intel_scraper.sh" | crontab -
 
 # Aggiungere solo UNA entry pulita
-(crontab -l 2>/dev/null; echo "0 4 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1"; echo "0 16 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "0 4 * * * /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log 2>&1"; echo "0 16 * * * /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log 2>&1") | crontab -
 ```
 
 ### 3. Migliorare Script con Environment Setup
@@ -148,7 +148,7 @@ Su macOS, `launchd` è più affidabile di `cron`:
     <string>com.balizero.intel-scraper</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -158,9 +158,9 @@ Su macOS, `launchd` è più affidabile di `cron`:
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log</string>
+    <string>/Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper_error.log</string>
+    <string>/Users/antonellosiano/Projects/nuzantara/logs/intel_scraper_error.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

@@ -18,7 +18,7 @@ Questa guida descrive come avviare l'Intel Scraper e monitorare dove vengono col
 #### 1. Avvio con Monitoraggio Completo
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/run_and_monitor_intel.sh
 ```
 
@@ -32,7 +32,7 @@ cd /Users/antonellosiano/Desktop/nuzantara
 #### 2. Avvio Semplice con Notifiche
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 export TELEGRAM_BOT_TOKEN=your_token
 export TELEGRAM_APPROVAL_CHAT_ID=1125336968
 ./scripts/start_intel_with_notifications.sh
@@ -236,7 +236,7 @@ ID: 475c0ba228d7
 ### Avviare Scraper con Monitoraggio
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/run_and_monitor_intel.sh
 ```
 

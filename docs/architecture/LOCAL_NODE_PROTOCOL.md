@@ -60,7 +60,7 @@ Since both systems integrate with Telegram, we use it as the "Bus".
 To prevent "SkyNet" scenarios, we implement strict Rules of Engagement:
 
 1. **Human-in-the-Loop (Level 1):** MoltBot requires a 👍 reaction on Telegram from YOU before executing any `write` or `delete` command.
-2. **Sandbox:** MoltBot operates ONLY within `/Users/antonellosiano/Desktop/nuzantara`.
+2. **Sandbox:** MoltBot operates ONLY within `/Users/antonellosiano/Projects/nuzantara`.
 3. **Kill Switch:** A specific Telegram command (`/shutdown`) instantly kills the MoltBot process.
 
 ## 5. Implementation Roadmap
