@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "@qdrant/js-client-rest": "^1.7.0",
+    "@vercel/toolbar": "^0.2.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.363.0",
-    "next": "14.2.16",
+    "next": "^16.1.6",
     "openai": "^6.16.0",
     "pg": "^8.11.3",
     "react": "^18",

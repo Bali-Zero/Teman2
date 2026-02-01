@@ -5,8 +5,14 @@ import PortalHomePage from './page';
 import type { PortalDashboard } from '@/lib/api/portal/portal.types';
 import type { TimelineEntry } from '@/lib/api/types/timeline.types';
 
+// Hoisted mocks (must be defined before vi.mock)
+const { mockPush, mockGetDashboard, mockGetTimeline } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockGetDashboard: vi.fn(),
+  mockGetTimeline: vi.fn(),
+}));
+
 // Mock next/navigation
-const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -17,9 +23,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock api
-const mockGetDashboard = vi.fn();
-const mockGetTimeline = vi.fn();
-
 vi.mock('@/lib/api', () => ({
   api: {
     portal: {
