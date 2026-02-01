@@ -98,7 +98,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
-    "@vercel/toolbar": "^0.1.32",
+    "@vercel/toolbar": "^0.2.1",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "botid": "^1.5.10",
@@ -134,5 +134,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "resolutions": {
+    "path-to-regexp": "^8.0.0"
+  }
 }

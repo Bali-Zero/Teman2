@@ -784,14 +784,18 @@ def calculate_final_score(
 # =============================================================================
 
 
+@dataclass
+class ScoringConfig:
+    """Configuration for Ollama scoring."""
+    model: str = "deepseek-r1"
+    temperature: float = 0.1
+
+
 async def enhance_with_ollama(
     title: str,
     content: str,
     base_result: ScoreResult,
     ollama_url: str = "http://localhost:11434/api/generate",
-class ScoringConfig(BaseModel):
-    model: str = "deepseek-r1",
-    temperature: float = 0.1
 ) -> ScoreResult:
     """
     Optionally enhance scoring with Ollama for edge cases.
@@ -946,17 +950,17 @@ if __name__ == "__main__":
     ]
 
     async def test():
-        print("=" * 70)
-        print("PROFESSIONAL NEWS SCORER - TEST")
-        print("=" * 70)
+        logger.info("=" * 70)
+        logger.info("PROFESSIONAL NEWS SCORER - TEST")
+        logger.info("=" * 70)
 
         for article in test_articles:
             result = await score_article(**article)
-            print(f"\n📰 {article['title'][:60]}...")
-            print(f"   Source: {article['source']}")
-            print(f"   Score: {result.final_score} → {result.priority.upper()}")
-            print(f"   {result.explanation}")
-            print(f"   Keywords: {', '.join(result.matched_keywords) or 'none'}")
-            print(f"   Category: {result.matched_category}")
+            logger.info(f"\n📰 {article['title'][:60]}...")
+            logger.info(f"   Source: {article['source']}")
+            logger.info(f"   Score: {result.final_score} → {result.priority.upper()}")
+            logger.info(f"   {result.explanation}")
+            logger.info(f"   Keywords: {', '.join(result.matched_keywords) or 'none'}")
+            logger.info(f"   Category: {result.matched_category}")
 
     asyncio.run(test())
