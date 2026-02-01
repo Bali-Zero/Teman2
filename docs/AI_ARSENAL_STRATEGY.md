@@ -309,7 +309,7 @@ Via WhatsApp/Telegram:
     "list": [
       {
         "id": "nuzantara-ops",
-        "workspace": "/Users/antonellosiano/Desktop/nuzantara",
+        "workspace": "/Users/antonellosiano/Projects/nuzantara",
         "identity": {
           "name": "Nuzantara Ops",
           "emoji": "🚀"

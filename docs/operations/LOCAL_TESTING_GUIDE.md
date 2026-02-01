@@ -122,7 +122,7 @@ set -a && source .env && set +a
 
 ```bash
 # Torna alla root
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 
 # Run all tests
 ./scripts/run_tests.sh

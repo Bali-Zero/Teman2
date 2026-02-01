@@ -13,8 +13,8 @@
 **Dopo:** 2 entry pulite (4:00 AM e 4:00 PM)
 
 ```bash
-0 4 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1
-0 16 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1
+0 4 * * * /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log 2>&1
+0 16 * * * /Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh >> /Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log 2>&1
 ```
 
 ### 2. ✅ Script Migliorato

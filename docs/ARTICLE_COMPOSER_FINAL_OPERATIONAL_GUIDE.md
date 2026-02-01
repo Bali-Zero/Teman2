@@ -24,7 +24,7 @@ fly secrets list -a nuzantara-rag | grep ADMIN_API_KEY
 ### Eseguire Test
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 export ADMIN_API_KEY=69ff6340462fd10b
 ./scripts/test_article_composer_endpoint.sh
 ```
@@ -71,7 +71,7 @@ export ADMIN_API_KEY=69ff6340462fd10b
 ### Script Automatico
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/setup_prometheus_article_composer.sh
 ```
 
@@ -144,7 +144,7 @@ curl http://localhost:9090/api/v1/rules | jq '.data.groups[] | select(.name=="ar
 ### Script Automatico
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 export GRAFANA_URL=http://localhost:3000
 export GRAFANA_USER=admin
 export GRAFANA_PASSWORD=admin
@@ -185,7 +185,7 @@ export GRAFANA_PASSWORD=admin
 ### Script Automatico
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/setup_alertmanager.sh
 ```
 

@@ -11,7 +11,7 @@ Scribe automatically generates and updates system documentation daily via cron j
 ### Install Cron Job
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/setup_scribe_cron.sh
 ```
 

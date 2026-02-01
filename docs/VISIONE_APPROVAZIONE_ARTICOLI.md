@@ -16,7 +16,7 @@ Ci sono **4 modi** per visionare gli articoli pending prima di pubblicarli:
 ### Visualizza Lista Articoli
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/view_pending_articles.sh
 ```
 

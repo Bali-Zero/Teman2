@@ -127,6 +127,7 @@ Before marking a feature "complete":
 - **DB:** Qdrant (Vector), PostgreSQL (Metadata), Redis (Cache).
 - **CRM Access:** Pure `asyncpg` (Raw SQL) for performance. NO ORM (like SQLAlchemy) for high-traffic paths.
 - **AI Architecture:** Agentic RAG with ReAct Pattern (Thought→Action→Observation loop).
+- **Knowledge Architecture:** Nuzantara Nexus (Graph-Native Workflows). Procedures are stored in Postgres KG tables, not hardcoded.
 - **LLM Cascade:** Gemini 3 Flash Preview → 2.0 Flash fallback.
 - **Providers:** Google Gemini (`google-genai` SDK), OpenAI (embeddings), ZeroEntropy (reranker).
 - **Deploy:**

@@ -44,7 +44,7 @@ cat > ~/Library/LaunchAgents/com.balizero.intel-scraper.plist << 'EOF'
     <string>com.balizero.intel-scraper</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/antonellosiano/Desktop/nuzantara/scripts/auto_intel_scraper.sh</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/auto_intel_scraper.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <array>
@@ -62,9 +62,9 @@ cat > ~/Library/LaunchAgents/com.balizero.intel-scraper.plist << 'EOF'
         </dict>
     </array>
     <key>StandardOutPath</key>
-    <string>/Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log</string>
+    <string>/Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper_error.log</string>
+    <string>/Users/antonellosiano/Projects/nuzantara/logs/intel_scraper_error.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -102,7 +102,7 @@ launchctl list | grep intel-scraper
 launchctl start com.balizero.intel-scraper
 
 # Verificare log
-tail -f ~/Desktop/nuzantara/logs/intel_scraper.log
+tail -f ~/Projects/nuzantara/logs/intel_scraper.log
 ```
 
 **5. Rimuovere cron job vecchio:**
@@ -141,14 +141,14 @@ Crea `scripts/run_intel_scraper_cron.sh`:
 #!/bin/zsh -l
 # Wrapper per cron che carica tutto l'ambiente
 
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 exec ./scripts/auto_intel_scraper.sh
 ```
 
 Poi nel crontab:
 
 ```bash
-0 4 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/run_intel_scraper_cron.sh >> /Users/antonellosiano/Desktop/nuzantara/logs/intel_scraper.log 2>&1
+0 4 * * * /Users/antonellosiano/Projects/nuzantara/scripts/run_intel_scraper_cron.sh >> /Users/antonellosiano/Projects/nuzantara/logs/intel_scraper.log 2>&1
 ```
 
 ---

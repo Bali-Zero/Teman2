@@ -57,7 +57,7 @@ crontab -e
 
 ```bash
 # Aggiungere a crontab
-0 1 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/backup-db.sh
+0 1 * * * /Users/antonellosiano/Projects/nuzantara/scripts/backup-db.sh
 ```
 
 ### 3. Aggiungere Daily Monitoring
@@ -68,7 +68,7 @@ crontab -e
 
 ```bash
 # Aggiungere a crontab
-0 8 * * * /Users/antonellosiano/Desktop/nuzantara/scripts/daily-monitoring.sh
+0 8 * * * /Users/antonellosiano/Projects/nuzantara/scripts/daily-monitoring.sh
 ```
 
 ### 4. Verificare Sentinel Coverage

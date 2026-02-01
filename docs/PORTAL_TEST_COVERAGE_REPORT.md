@@ -38,6 +38,7 @@
 ## ✅ Test Passati
 
 **33 test passati** su 33 test eseguibili:
+
 - ✅ 24/24 Portal API Unit Tests
 - ✅ 9/9 Portal API Integration Tests
 
@@ -48,6 +49,7 @@
 ## 🎯 Coverage per Area
 
 ### API Portal (`portal.api.ts`)
+
 - ✅ `getDashboard()` - Testato
 - ✅ `getTimeline()` - Testato
 - ✅ `getProfile()` - Testato
@@ -67,6 +69,7 @@
 - ✅ `completeRegistration()` - Testato (public endpoint)
 
 ### Integration Flows
+
 - ✅ Dashboard + Timeline parallel fetch
 - ✅ Partial failures handling
 - ✅ Authentication flow (token inclusion, 401 handling)
@@ -75,6 +78,7 @@
 - ✅ Invitation flow (public endpoints, no auth)
 
 ### Componenti
+
 - ✅ PortalBottomNav rendering
 - ✅ Active tab highlighting
 - ✅ Unread count display
@@ -83,6 +87,7 @@
 - ✅ Mobile-only rendering
 
 ### Layout & Pages
+
 - ✅ Authentication check
 - ✅ Redirect logic
 - ✅ Loading states
@@ -97,12 +102,14 @@
 ### Test "Reali e Intelligenti"
 
 ✅ **Mock Realistici:**
+
 - Headers completi (`content-type`, `status`, `statusText`)
 - FormData per upload
 - Error handling completo
 - Status codes corretti (200, 401, etc.)
 
 ✅ **Edge Cases Testati:**
+
 - API failures
 - Partial failures
 - Empty data
@@ -111,12 +118,14 @@
 - Timeout scenarios
 
 ✅ **Integration Testing:**
+
 - Flussi completi (login → dashboard → actions)
 - Parallel requests
 - Error propagation
 - State management
 
 ✅ **Component Testing:**
+
 - Rendering conditions
 - User interactions
 - State updates
@@ -127,12 +136,14 @@
 ## 📈 Coverage Metrics
 
 **API Portal:**
+
 - Statements: ~95%
 - Branches: ~90%
 - Functions: 100%
 - Lines: ~95%
 
 **Components:**
+
 - Rendering: ✅
 - Interactions: ✅
 - Error states: ✅

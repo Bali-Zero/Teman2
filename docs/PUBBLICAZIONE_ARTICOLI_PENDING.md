@@ -44,7 +44,7 @@ Gli articoli devono essere:
 ### Opzione 1: Script Automatico (Raccomandato)
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 
 # Configura API key
 export ADMIN_API_KEY=69ff6340462fd10b
@@ -164,7 +164,7 @@ Attualmente ci sono **12 articoli completi** in attesa di pubblicazione:
 ### Pubblica Tutti gli Articoli Pending
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 export ADMIN_API_KEY=69ff6340462fd10b
 python3 scripts/publish_pending_articles.py
 ```

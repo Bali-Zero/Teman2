@@ -118,7 +118,7 @@ https://balizero.com/{category}/{slug}
 ### Script Automatico
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/monitor_intel_published_articles.sh
 ```
 

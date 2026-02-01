@@ -31,7 +31,7 @@ export ADMIN_API_KEY=your_key_here
 ### Eseguire Test
 
 ```bash
-cd /Users/antonellosiano/Desktop/nuzantara
+cd /Users/antonellosiano/Projects/nuzantara
 ./scripts/test_article_composer_endpoint.sh
 ```
 

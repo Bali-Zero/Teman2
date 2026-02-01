@@ -145,7 +145,7 @@ chmod +x scripts/*.sh
 
 ### Path issues?
 
-- All scripts use absolute paths: `/Users/antonellosiano/Desktop/nuzantara/`
+- All scripts use absolute paths: `/Users/antonellosiano/Projects/nuzantara/`
 - Python scripts use explicit `/usr/bin/python3`
 
 ---
