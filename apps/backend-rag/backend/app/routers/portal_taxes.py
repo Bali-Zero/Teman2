@@ -1,11 +1,10 @@
 """Portal Tax API endpoints."""
 import time
 
-import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Counter, Histogram
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_portal_client, get_database_pool
 from backend.schemas.portal import TaxSummary
 from backend.services.portal.tax_service import TaxService
 
@@ -16,50 +15,6 @@ tax_requests = Counter(
     "portal_tax_requests_total", "Tax endpoint requests", ["endpoint", "status"]
 )
 tax_latency = Histogram("portal_tax_latency_seconds", "Tax endpoint latency")
-
-
-async def get_current_portal_client(
-    request: Request, db_pool: asyncpg.Pool = Depends(get_database_pool)
-) -> dict:
-    """
-    Get current authenticated client from JWT token.
-
-    Requires:
-    - Valid JWT token (from middleware)
-    - role = 'client'
-    - linked_client_id set
-
-    Returns:
-        dict with: id, email, full_name
-    """
-    # Get user from middleware
-    if not hasattr(request.state, "user") or not request.state.user:
-        raise HTTPException(
-            status_code=401, detail="Authentication required", headers={"WWW-Authenticate": "Bearer"}
-        )
-
-    user = request.state.user
-
-    # Check role is client
-    if user.get("role") != "client":
-        raise HTTPException(status_code=403, detail="This endpoint is only accessible to clients")
-
-    # Get linked_client_id from user record
-    async with db_pool.acquire() as conn:
-        client_row = await conn.fetchrow(
-            """
-            SELECT c.id, c.email, c.full_name
-            FROM clients c
-            JOIN user_profiles up ON up.linked_client_id = c.id
-            WHERE up.id = $1 AND up.role = 'client'
-        """,
-            user.get("user_id"),
-        )
-
-        if not client_row:
-            raise HTTPException(status_code=404, detail="Client profile not found")
-
-        return dict(client_row)
 
 
 @router.get("/", response_model=dict)
