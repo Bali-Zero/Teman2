@@ -1,0 +1,53 @@
+name: Deadline Checker - Daily Job
+
+on:
+  schedule:
+    # Run daily at 6:00 AM Singapore time (22:00 UTC previous day)
+    - cron: '0 22 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  run-deadline-checker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --no-cache-dir -r requirements-prod.txt
+
+      - name: Run deadline checker
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: apps/backend-rag
+        run: |
+          cd apps/backend-rag
+          python -m backend.jobs.deadline_checker
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deadline Checker Failed',
+              body: `The deadline checker job failed on ${new Date().toISOString()}.
+              
+              **Workflow:** ${context.workflow}
+              **Run ID:** ${context.runId}
+              **Run URL:** ${context.payload.repository.html_url}/actions/runs/${context.runId}
+              
+              Please check the logs and investigate.`,
+              labels: ['bug', 'automated', 'cron-job']
+            })
