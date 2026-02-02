@@ -672,6 +672,15 @@ kbd {
   color: #f472b6;
 }
 
+.nav-icon-rose {
+  color: #fb718580;
+  transition: color 0.2s;
+}
+.nav-icon-rose:hover,
+.group:hover .nav-icon-rose {
+  color: #fb7185;
+}
+
 .nav-icon-gray {
   color: #9ca3af80;
   transition: color 0.2s;
