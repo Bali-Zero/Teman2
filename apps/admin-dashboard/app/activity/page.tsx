@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 export default function ActivityPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchActivity = async () => {
@@ -53,7 +53,7 @@ export default function ActivityPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-muted-foreground">
-            Updated: {lastUpdated.toLocaleTimeString()}
+            Updated: {lastUpdated?.toLocaleTimeString() ?? '...'}
           </span>
           <Button variant="outline" size="sm" onClick={fetchActivity}>
             <RefreshCcw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
