@@ -50,6 +50,8 @@ from backend.app.routers import (
     performance,
     portal,
     portal_invite,
+    portal_taxes,
+    portal_visa,
     session,
     team,
     team_activity,
@@ -113,6 +115,8 @@ def include_routers(api: FastAPI) -> None:
     # Portal routers (Client-facing)
     api.include_router(portal.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_taxes.router)
+    api.include_router(portal_visa.router)
 
     # Ingestion routers
     api.include_router(ingest.router)
