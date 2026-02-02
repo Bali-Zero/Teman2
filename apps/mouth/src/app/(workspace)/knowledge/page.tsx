@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Search, Filter, Plus, FileText, FolderOpen, Tag } from 'lucide-react';
+import { BookOpen, Search, Filter, Plus, FileText, FolderOpen, Tag, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -191,6 +191,13 @@ export default function KnowledgePage() {
             href: '/knowledge/our-journey',
             hasPage: true,
           },
+          {
+            name: 'TKA & Jabatan',
+            icon: Users,
+            key: 'tka',
+            href: '/knowledge/tka-jabatan',
+            hasPage: true,
+          },
         ].map((category) => {
           const count = searchResults.filter((r) => {
             const collection = r.metadata?.collection?.toLowerCase() || '';
@@ -251,7 +258,9 @@ export default function KnowledgePage() {
                         ? 'NPWP, SPT, BPJS, LKPM'
                         : category.key === 'journey'
                           ? 'Coming soon'
-                          : ''
+                          : category.key === 'tka'
+                            ? 'TKA Regulations'
+                            : ''
                   : (category as any).subtitle || `${count} documents`}
               </p>
             </div>
