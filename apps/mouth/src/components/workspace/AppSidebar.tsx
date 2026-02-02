@@ -21,6 +21,8 @@ import {
   Activity,
   Briefcase,
   FileText,
+  Cloud,
+  Calendar,
 } from 'lucide-react';
 import { navigation, portalNavigation, NavSection, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,8 @@ const iconMap: Record<string, React.ElementType> = {
   Activity,
   Briefcase,
   FileText,
+  Cloud,
+  Calendar,
 };
 
 // Color configuration for nav items
@@ -49,6 +53,7 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/dashboard': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
   '/intelligence': { cssClass: 'nav-icon-orange', activeColor: '#FB923C' },
   '/chat': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
+  '/dream': { cssClass: 'nav-icon-indigo', activeColor: '#818CF8' },
   '/omnichannel': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
@@ -57,6 +62,7 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/documents': { cssClass: 'nav-icon-yellow', activeColor: '#FACC15' },
   '/knowledge': { cssClass: 'nav-icon-violet', activeColor: '#C084FC' },
   '/team': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
+  '/calendar': { cssClass: 'nav-icon-rose', activeColor: '#FB7185' },
   '/analytics': { cssClass: 'nav-icon-pink', activeColor: '#F472B6' },
   '/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
   // Portal routes
