@@ -425,3 +425,90 @@ def get_retriever(request: Request):
             },
         )
     return retriever
+
+
+# ============================================================================
+# PORTAL CLIENT DEPENDENCIES
+# ============================================================================
+
+
+async def get_current_portal_client(
+    request: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Get current authenticated client from JWT token for Portal endpoints.
+
+    This dependency is used by all Portal API endpoints (taxes, visa, documents)
+    to authenticate and authorize client access. It validates that:
+    1. User has valid JWT token (set by middleware)
+    2. User role is 'client' (not team member)
+    3. User has a linked client profile in the database
+
+    Args:
+        request: FastAPI Request object to access request.state.user
+        db_pool: Database connection pool for client lookup
+
+    Returns:
+        dict: Client information with keys:
+            - id: Client database ID (int)
+            - email: Client email address (str)
+            - full_name: Client full name (str)
+
+    Raises:
+        HTTPException 401: If no valid JWT token present
+        HTTPException 403: If user role is not 'client'
+        HTTPException 404: If client profile not found in database
+
+    Usage:
+        from fastapi import Depends
+        from backend.app.dependencies import get_current_portal_client
+
+        @router.get("/my-data")
+        async def get_my_data(
+            current_client: dict = Depends(get_current_portal_client)
+        ):
+            client_id = current_client["id"]
+            # ... fetch client-specific data
+    """
+    # Check for authenticated user from middleware
+    if not hasattr(request.state, "user") or not request.state.user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = request.state.user
+
+    # Verify role is 'client' (not team member or admin)
+    if user.get("role") != "client":
+        raise HTTPException(
+            status_code=403,
+            detail="This endpoint is only accessible to clients",
+        )
+
+    # Look up linked client profile
+    async with db_pool.acquire() as conn:
+        client_row = await conn.fetchrow(
+            """
+            SELECT c.id, c.email, c.full_name
+            FROM clients c
+            JOIN user_profiles up ON up.linked_client_id = c.id
+            WHERE up.id = $1 AND up.role = 'client'
+            """,
+            user.get("user_id"),
+        )
+
+        if not client_row:
+            logger.warning(
+                "Portal client lookup failed",
+                user_id=user.get("user_id"),
+                email=user.get("email"),
+            )
+            raise HTTPException(
+                status_code=404,
+                detail="Client profile not found. Please contact support.",
+            )
+
+        return dict(client_row)

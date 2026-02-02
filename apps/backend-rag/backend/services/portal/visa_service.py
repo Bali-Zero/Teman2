@@ -55,10 +55,10 @@ class VisaService:
 
         if active_visa.expiry_date:
             days_until = (active_visa.expiry_date - date.today()).days
-            if days_until <= 30:
-                status = "expiring_soon"
-            elif days_until <= 0:
+            if days_until <= 0:
                 status = "expired"
+            elif days_until <= 30:
+                status = "expiring_soon"
 
         logger.info(
             "Generated visa summary", client_id=client_id, status=status, days_until=days_until
