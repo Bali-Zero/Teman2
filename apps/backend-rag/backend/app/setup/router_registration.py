@@ -118,6 +118,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
 
+    # Analytics routers (Admin/reporting)
+    api.include_router(analytics.router)
+
     # Ingestion routers
     api.include_router(ingest.router)
     api.include_router(legal_ingest.router)
