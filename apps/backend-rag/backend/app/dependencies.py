@@ -207,8 +207,9 @@ def get_database_pool(request: Request) -> asyncpg.Pool | None:
     return db_pool
 
 
-# Alias for backward compatibility
+# Aliases for backward compatibility
 get_database = get_database_pool
+get_db = get_database_pool
 
 
 def get_current_user(
