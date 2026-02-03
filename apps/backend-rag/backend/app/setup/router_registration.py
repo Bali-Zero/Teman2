@@ -59,9 +59,12 @@ from backend.app.routers import (
     team_drive,
     telegram,
     voice,
+    webhooks,
     websocket,
     whatsapp_chat,
+    whatsapp_chat,
     zoho_email,
+    dream, # [NEW] Dream Room Router
 )
 
 # NOTE: Removed routers (will be MCP):
@@ -139,6 +142,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
+    api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router
     )  # Admin: Manage phone/telegram → team_member mappings
@@ -161,6 +165,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(performance.router)
 
     # Module routers (Prime Standard)
+    api.include_router(dream.router) # [NEW] Dream Room
     api.include_router(identity_router, prefix="/api/auth")
     api.include_router(knowledge_router)
 

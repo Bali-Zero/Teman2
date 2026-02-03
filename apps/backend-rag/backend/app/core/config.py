@@ -637,6 +637,14 @@ class Settings(BaseSettings):
         return v
 
     # ========================================
+    # OPENCLAW WEBHOOK CONFIGURATION
+    # ========================================
+    openclaw_webhook_secret: str | None = Field(
+        default=None,
+        description="OpenClaw webhook secret for HMAC signature verification. Set via OPENCLAW_WEBHOOK_SECRET env var.",
+    )
+
+    # ========================================
     # META INSTAGRAM CONFIGURATION
     # ========================================
     instagram_verify_token: str = Field(

@@ -129,6 +129,8 @@ class PracticeUpdate(BaseModel):
     expiry_date: date | None = None
     notes: str | None = None
     internal_notes: str | None = None
+    client_visible: bool | None = None
+    client_summary: str | None = None
     documents: list[dict] | None = None
     missing_documents: list[str] | None = None
 
@@ -202,7 +204,7 @@ async def create_practice(
         async with db_pool.acquire() as conn:
             # Get practice_type_id from code
             practice_type_row = await conn.fetchrow(
-                "SELECT id, base_price FROM practice_types WHERE code = $1",
+                "SELECT id, base_price, category, name FROM practice_types WHERE code = $1",
                 practice.practice_type_code,
             )
 
@@ -246,6 +248,29 @@ async def create_practice(
             # Convert UUID to string for Pydantic validation
             if new_practice.get("uuid"):
                 new_practice["uuid"] = str(new_practice["uuid"])
+
+            # Create a client-visible timeline event (optional; requires timeline_events table)
+            try:
+                practice_type_name = practice_type_row["name"] or practice.practice_type_code
+                practice_category = practice_type_row["category"] or "practice"
+                await conn.execute(
+                    """
+                    INSERT INTO timeline_events (
+                        client_id, practice_id, event_type, title, description,
+                        event_date, client_visible, color, created_by
+                    )
+                    VALUES ($1, $2, 'milestone', $3, $4, NOW(), true, 'info', $5)
+                    """,
+                    practice.client_id,
+                    new_practice["id"],
+                    f"New {practice_category} case started",
+                    f"{practice_type_name} started",
+                    created_by,
+                )
+            except Exception as e:
+                # Undefined table (timeline_events missing) is safe to ignore during rollout.
+                if getattr(e, "sqlstate", None) != "42P01":
+                    logger.warning(f"Could not create timeline event for practice create: {e}")
 
             # Update client's last_interaction_date
             await conn.execute(
@@ -527,6 +552,45 @@ async def update_practice(
     user_email = current_user.get("email", "unknown")
     try:
         async with db_pool.acquire() as conn:
+            # Fetch old state for timeline events (status changes)
+            old_status: str | None = None
+            practice_client_id: int | None = None
+            practice_client_visible: bool = True
+            try:
+                old_row = await conn.fetchrow(
+                    """
+                    SELECT status, client_id, client_visible
+                    FROM practices
+                    WHERE id = $1
+                    """,
+                    practice_id,
+                )
+                if old_row:
+                    old_status = old_row["status"]
+                    practice_client_id = old_row["client_id"]
+                    practice_client_visible = (
+                        bool(old_row["client_visible"])
+                        if old_row["client_visible"] is not None
+                        else True
+                    )
+            except Exception as e:
+                # Backward compatibility: client_visible column may not exist yet.
+                if getattr(e, "sqlstate", None) == "42703":
+                    old_row = await conn.fetchrow(
+                        """
+                        SELECT status, client_id
+                        FROM practices
+                        WHERE id = $1
+                        """,
+                        practice_id,
+                    )
+                    if old_row:
+                        old_status = old_row["status"]
+                        practice_client_id = old_row["client_id"]
+                        practice_client_visible = True
+                else:
+                    raise
+
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -546,6 +610,8 @@ async def update_practice(
                 "expiry_date": "expiry_date",
                 "notes": "notes",
                 "internal_notes": "internal_notes",
+                "client_visible": "client_visible",
+                "client_summary": "client_summary",
                 "documents": "documents",
                 "missing_documents": "missing_documents",
             }
@@ -583,6 +649,51 @@ async def update_practice(
                 raise HTTPException(status_code=404, detail="Practice not found")
 
             updated_practice = dict(row)
+
+            # Create timeline event for client-visible status changes (optional)
+            if (
+                updates.status is not None
+                and old_status is not None
+                and updates.status != old_status
+                and practice_client_id is not None
+            ):
+                # Respect client visibility flag (defaulting to visible)
+                is_visible = bool(updated_practice.get("client_visible", practice_client_visible))
+                if is_visible:
+                    status_event_map = {
+                        "waiting_documents": ("document_request", "Documents needed", "warning"),
+                        "payment_pending": ("payment_due", "Payment needed", "warning"),
+                        "submitted_to_gov": ("milestone", "Application submitted", "info"),
+                        "approved": ("milestone", "Application approved", "success"),
+                        "completed": ("completion", "Case completed", "success"),
+                        "cancelled": ("status_change", "Case cancelled", "error"),
+                    }
+
+                    if updates.status in status_event_map:
+                        event_type, title, color = status_event_map[updates.status]
+                        description = updated_practice.get("client_summary") or f"Status: {updates.status}"
+                        try:
+                            await conn.execute(
+                                """
+                                INSERT INTO timeline_events (
+                                    client_id, practice_id, event_type, title, description,
+                                    event_date, client_visible, color, created_by
+                                )
+                                VALUES ($1, $2, $3, $4, $5, NOW(), true, $6, $7)
+                                """,
+                                practice_client_id,
+                                practice_id,
+                                event_type,
+                                title,
+                                description,
+                                color,
+                                user_email,
+                            )
+                        except Exception as e:
+                            if getattr(e, "sqlstate", None) != "42P01":
+                                logger.warning(
+                                    f"Could not create timeline event for status change: {e}"
+                                )
 
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
