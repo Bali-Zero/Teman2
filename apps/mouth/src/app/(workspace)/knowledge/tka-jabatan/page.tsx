@@ -471,8 +471,8 @@ export default function TkaJabatanPage() {
                 <Building2 className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--foreground)]">20</p>
-                <p className="text-xs text-[var(--foreground-muted)]">Sektor Diizinkan TKA</p>
+                <p className="text-2xl font-bold text-[var(--foreground)]">22</p>
+                <p className="text-xs text-[var(--foreground-muted)]">Kategori KBLI 2025</p>
               </div>
             </div>
           </div>
@@ -493,7 +493,7 @@ export default function TkaJabatanPage() {
                 <Briefcase className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--foreground)]">2,818</p>
+                <p className="text-2xl font-bold text-[var(--foreground)]">1.562</p>
                 <p className="text-xs text-[var(--foreground-muted)]">Kode KBLI 2025</p>
               </div>
             </div>
