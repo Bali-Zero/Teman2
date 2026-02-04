@@ -1,8 +1,7 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "builds": [],
-  "github": {
-    "silent": true
-  }
+  "buildCommand": "pnpm build --filter=mouth",
+  "devCommand": "cd apps/mouth && pnpm dev",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/mouth/.next"
 }
