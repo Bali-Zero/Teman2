@@ -1,0 +1,307 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              🚀 SENTRY PRODUCTION DEPLOYMENT - NEXT STEPS                    ║
+║                                                                              ║
+║                     apps/mouth/ → Vercel (not Fly.io)                        ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📊 CURRENT STATUS                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Sentry Configuration Complete
+  ✅ @sentry/nextjs v10.29.0 installed
+  ✅ All config files created (4 files)
+  ✅ TypeScript compilation successful
+  ✅ Production build successful
+  ✅ Documentation complete (1,200+ lines)
+  ✅ Deployment platform identified: Vercel
+
+  ⚠️  MISSING: Sentry credentials (DSN, Org, Auth Token)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 DEPLOYMENT OPTIONS                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Option 1: Interactive Script (Easiest)
+    $ cd apps/mouth
+    $ ./deploy-sentry.sh
+    
+    → Guides you through all steps interactively
+    → Creates Sentry project
+    → Collects credentials
+    → Adds to .env.local (optional)
+    → Adds to Vercel environment variables
+    → Triggers deployment
+    
+    Time: ~15 minutes
+
+  Option 2: Manual Steps (Full Control)
+    → Follow the detailed guide:
+    $ cat apps/mouth/SENTRY_PRODUCTION_DEPLOYMENT.md
+    
+    Time: ~20 minutes
+
+  Option 3: Quick Steps (If you already have credentials)
+    → Follow the quick guide:
+    $ cat apps/mouth/SENTRY_SETUP.md
+    
+    Time: ~5 minutes
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📋 QUICK DEPLOYMENT CHECKLIST                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Step 1: Create Sentry Project (5 min)
+    [ ] Go to https://sentry.io
+    [ ] Create new project → Select "Next.js" → Name: "mouth"
+    [ ] Copy DSN from project settings
+
+  Step 2: Get Credentials (2 min)
+    [ ] Get DSN: Settings → Projects → mouth → Client Keys (DSN)
+    [ ] Get Org: Settings → General Settings → Organization Slug
+    [ ] Create Auth Token: Settings → Developer Settings → Auth Tokens
+        Permissions: "Project: Read & Write" + "Release: Admin"
+
+  Step 3: Add to Vercel (3 min)
+    [ ] Go to https://vercel.com/dashboard
+    [ ] Select project: "mouth"
+    [ ] Go to Settings → Environment Variables
+    [ ] Add 5 variables for Production + Preview + Development:
+        - NEXT_PUBLIC_SENTRY_DSN
+        - SENTRY_DSN
+        - SENTRY_ORG
+        - SENTRY_PROJECT (value: "mouth")
+        - SENTRY_AUTH_TOKEN
+
+  Step 4: Deploy (2 min)
+    [ ] Push to main: git push origin main
+    [ ] Or manual: vercel --prod
+    [ ] Wait for deployment (~2-3 min)
+
+  Step 5: Verify (3 min)
+    [ ] Visit https://balizero.com
+    [ ] Open DevTools Console
+    [ ] Run: throw new Error('[TEST] Sentry tracking');
+    [ ] Check Sentry dashboard (within 5-10 sec)
+    [ ] Verify stack trace shows original file names (source maps work)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ⚡ FASTEST PATH (if you already have Sentry account)                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Total time: ~15 minutes
+
+  1. Run interactive script:
+     $ cd apps/mouth && ./deploy-sentry.sh
+
+  2. Follow the prompts:
+     - Create Sentry project
+     - Copy/paste DSN
+     - Copy/paste Org slug
+     - Create and copy Auth Token
+     - Choose Vercel deployment method
+
+  3. Done! 🎉
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📚 DOCUMENTATION GUIDE                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  For Quick Start:
+    $ cd apps/mouth
+    $ cat SENTRY_SETUP.md
+
+  For Complete Deployment Guide:
+    $ cat SENTRY_PRODUCTION_DEPLOYMENT.md
+
+  For Configuration Details:
+    $ cat ../../docs/SENTRY_CONFIGURATION.md
+
+  For Code Examples:
+    $ cat SENTRY_INTEGRATION_EXAMPLES.ts
+    $ cat ../../docs/SENTRY_USAGE_EXAMPLES.md
+
+  For Verification:
+    $ ./verify-sentry.sh
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔑 CREDENTIALS YOU NEED FROM SENTRY                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  1. SENTRY_DSN (Data Source Name)
+     Location: Settings → Projects → mouth → Client Keys (DSN)
+     Format: https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxx@o123456.ingest.sentry.io/123456
+     
+  2. SENTRY_ORG (Organization Slug)
+     Location: Settings → General Settings
+     Format: my-company (lowercase, no spaces)
+     
+  3. SENTRY_AUTH_TOKEN (for source maps)
+     Location: Settings → Developer Settings → Auth Tokens
+     Create new with permissions: "Project: Read & Write" + "Release: Admin"
+     ⚠️  Copy immediately (won't be shown again)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔧 VERCEL ENVIRONMENT VARIABLES TO ADD                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Go to: https://vercel.com/dashboard → mouth → Settings → Environment Variables
+
+  Add these 5 variables for Production, Preview, and Development:
+
+  | Variable Name              | Value                                      |
+  |---------------------------|--------------------------------------------|
+  | NEXT_PUBLIC_SENTRY_DSN    | https://xxx...@o123456.ingest.sentry.io/...| 
+  | SENTRY_DSN                | https://xxx...@o123456.ingest.sentry.io/...| 
+  | SENTRY_ORG                | your-org-slug                              |
+  | SENTRY_PROJECT            | mouth                                      |
+  | SENTRY_AUTH_TOKEN         | your-auth-token                            |
+
+  ⚠️  Make sure to enable all 3 environments: Production + Preview + Development
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🧪 TESTING AFTER DEPLOYMENT                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Method 1: Console Test (Fastest)
+    1. Visit https://balizero.com
+    2. Open DevTools (F12)
+    3. Console tab
+    4. Run: throw new Error('[TEST] Sentry tracking');
+    5. Check Sentry: https://sentry.io/organizations/[your-org]/issues/
+
+  Method 2: Create Test Page (More thorough)
+    1. Create: apps/mouth/src/app/test-sentry/page.tsx
+       'use client';
+       import { useEffect } from 'react';
+       export default function TestPage() {
+         useEffect(() => {
+           throw new Error('[TEST] Sentry production');
+         }, []);
+         return <div>Testing...</div>;
+       }
+    
+    2. Deploy: git add . && git commit -m "test" && git push
+    3. Visit: https://balizero.com/test-sentry
+    4. Check Sentry dashboard
+    5. Delete test page when done
+
+  Expected Results:
+    ✅ Error appears in Sentry within 5-10 seconds
+    ✅ Stack trace shows original TypeScript file names (not minified)
+    ✅ Correct line numbers
+    ✅ Browser info (user agent, viewport, etc.)
+    ✅ URL and request context
+    ✅ Session replay available (if error captured during active session)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 💰 COST ESTIMATE (for reference)                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  For ~1,000 users/day with 10% sample rate:
+
+  | Metric               | Daily  | Monthly | Sentry Plan Required   |
+  |----------------------|--------|---------|------------------------|
+  | Traced Requests      | ~100   | ~3,000  | Free: 5k/month ✅      |
+  | Session Replays      | ~100   | ~3,000  | Team: 500/month 💰     |
+  | Errors (all)         | varies | varies  | Free: 5k/month ✅      |
+
+  Recommendation: Start with Free plan, upgrade to Team ($26/mo) if needed
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🛠️ TROUBLESHOOTING                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Problem: Errors not appearing in Sentry
+  Solution:
+    1. Check Vercel env vars: vercel env ls
+    2. Verify all 5 SENTRY_* variables are set
+    3. Check deployment logs: vercel logs --follow
+    4. Look for "Sentry webpack plugin" in logs
+    5. Force redeploy: vercel --prod --force
+
+  Problem: Stack traces are minified (no source maps)
+  Solution:
+    1. Verify SENTRY_AUTH_TOKEN is set on Vercel
+    2. Check token permissions: Project: Read & Write + Release: Admin
+    3. Regenerate token if needed
+    4. Redeploy after updating token
+
+  Problem: Too many events (quota exceeded)
+  Solution:
+    1. Reduce sample rates in sentry.client.config.ts:
+       tracesSampleRate: 0.05 (instead of 0.1)
+       replaysSessionSampleRate: 0.05 (instead of 0.1)
+    2. Add ignoreErrors for known issues
+    3. Upgrade to paid plan if necessary
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📞 QUICK COMMANDS                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Verify local configuration:
+    $ cd apps/mouth && ./verify-sentry.sh
+
+  Interactive deployment:
+    $ cd apps/mouth && ./deploy-sentry.sh
+
+  Check Vercel env vars:
+    $ vercel env ls
+
+  Manual deploy:
+    $ vercel --prod
+
+  View deployment logs:
+    $ vercel logs --follow
+
+  Test local build:
+    $ pnpm build
+
+  Open Sentry dashboard:
+    $ open https://sentry.io
+
+  Open Vercel dashboard:
+    $ open https://vercel.com/dashboard
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔗 USEFUL LINKS                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Sentry:
+    • Dashboard: https://sentry.io/organizations/[your-org]/issues/
+    • Projects: https://sentry.io/settings/projects/
+    • Auth Tokens: https://sentry.io/settings/account/api/auth-tokens/
+    • Documentation: https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+  Vercel:
+    • Dashboard: https://vercel.com/dashboard
+    • Project Settings: https://vercel.com/dashboard → mouth → Settings
+    • Deployments: https://vercel.com/dashboard → Deployments
+    • Documentation: https://vercel.com/docs
+
+  Production Site:
+    • URL: https://balizero.com
+    • Status: Live on Vercel Edge Network
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 RECOMMENDED NEXT STEP                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  👉 Run the interactive deployment script:
+
+     $ cd apps/mouth
+     $ ./deploy-sentry.sh
+
+  This will guide you through all steps and handle the deployment automatically.
+
+  Time estimate: 15-20 minutes
+  Difficulty: Easy (fully guided)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                   Ready to deploy? Run ./deploy-sentry.sh                    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝

@@ -67,9 +67,12 @@ export default function PortalHomePage() {
 
   // Show content even if dashboard is null (API errors)
   const defaultDashboard: PortalDashboard = dashboard || {
-    visa: { status: 'none', type: null, expiryDate: null },
+    visa: { status: 'none', type: null, expiryDate: null, daysRemaining: null },
     company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-    taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
+    taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
+    documents: { total: 0, pending: 0 },
+    messages: { unread: 0 },
+    actions: [],
   };
 
   return (

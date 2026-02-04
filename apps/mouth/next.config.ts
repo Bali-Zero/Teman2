@@ -1,12 +1,17 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  // TypeScript errors are now fixed - strict type checking enabled
   typescript: {
-    // Allow build to complete despite pre-existing TypeScript errors
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Redirect 301: mo.balizero.com → balizero.com
   // SEO: Prevent duplicate content and consolidate domain authority
@@ -82,7 +87,9 @@ const sentryWebpackPluginOptions = {
   disableClientWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
 };
 
-// Export with Sentry wrapper (only if Sentry is configured)
+// Export with Sentry and Bundle Analyzer wrappers
+const configWithAnalyzer = withBundleAnalyzer(nextConfig);
+
 export default process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-  : nextConfig;
+  ? withSentryConfig(configWithAnalyzer, sentryWebpackPluginOptions)
+  : configWithAnalyzer;

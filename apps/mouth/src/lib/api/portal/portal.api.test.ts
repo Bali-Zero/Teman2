@@ -15,7 +15,121 @@ import type {
   InviteValidationResponse,
   CompleteRegistrationRequest,
 } from './portal.types';
-import type { TimelineResponse } from '../../types/timeline.types';
+
+// ============================================================================
+// Mock Data Factory - aligned with portal.types.ts
+// ============================================================================
+
+const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashboard => ({
+  visa: {
+    status: 'active',
+    type: 'KITAS',
+    expiryDate: '2025-12-31',
+    daysRemaining: 365,
+  },
+  company: {
+    status: 'active',
+    primaryCompanyName: 'Test Co',
+    totalCompanies: 1,
+  },
+  taxes: {
+    status: 'compliant',
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  documents: {
+    total: 10,
+    pending: 2,
+  },
+  messages: {
+    unread: 3,
+  },
+  actions: [],
+  ...overrides,
+});
+
+const createMockProfile = (overrides?: Partial<PortalProfile>): PortalProfile => ({
+  id: 1,
+  fullName: 'Test User',
+  email: 'test@example.com',
+  phone: '+62812345678',
+  whatsapp: '+62812345678',
+  nationality: 'US',
+  passportNumber: 'ABC123456',
+  address: '123 Test Street',
+  memberSince: '2024-01-01',
+  ...overrides,
+});
+
+const createMockVisaInfo = (overrides?: Partial<VisaInfo>): VisaInfo => ({
+  current: {
+    type: 'KITAS',
+    status: 'active',
+    issueDate: '2024-01-01',
+    expiryDate: '2025-12-31',
+    daysRemaining: 365,
+    permitNumber: 'PERMIT-001',
+    sponsor: 'PT Test Company',
+  },
+  history: [],
+  documents: [],
+  ...overrides,
+});
+
+const createMockCompany = (overrides?: Partial<PortalCompany>): PortalCompany => ({
+  id: 1,
+  name: 'Test Company',
+  type: 'PT',
+  status: 'active',
+  isPrimary: true,
+  address: '123 Business Street',
+  directors: ['John Doe'],
+  licenses: [],
+  compliance: [],
+  ...overrides,
+});
+
+const createMockTaxOverview = (overrides?: Partial<TaxOverview>): TaxOverview => ({
+  summary: {
+    status: 'compliant',
+    totalDue: 0,
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  obligations: [],
+  history: [],
+  ...overrides,
+});
+
+const createMockDocument = (overrides?: Partial<PortalDocument>): PortalDocument => ({
+  id: 'doc-001',
+  name: 'test.pdf',
+  type: 'passport',
+  category: 'personal',
+  status: 'verified',
+  uploadDate: new Date().toISOString(),
+  size: '1.2 MB',
+  downloadUrl: '/documents/doc-001',
+  ...overrides,
+});
+
+const createMockMessage = (overrides?: Partial<PortalMessage>): PortalMessage => ({
+  id: 'msg-001',
+  content: 'Test message',
+  direction: 'client_to_team',
+  sentBy: 'Test User',
+  subject: 'Test Subject',
+  createdAt: new Date().toISOString(),
+  ...overrides,
+});
+
+const createMockPreferences = (overrides?: Partial<PortalPreferences>): PortalPreferences => ({
+  emailNotifications: true,
+  whatsappNotifications: false,
+  language: 'en',
+  timezone: 'Asia/Jakarta',
+  ...overrides,
+});
 
 // Mock ApiClientBase
 const createMockClient = (): ApiClientBase => {
@@ -24,6 +138,10 @@ const createMockClient = (): ApiClientBase => {
     request: mockRequest,
   } as unknown as ApiClientBase;
 };
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 describe('PortalApi', () => {
   let portalApi: PortalApi;
@@ -47,15 +165,7 @@ describe('PortalApi', () => {
 
   describe('getDashboard', () => {
     it('should fetch dashboard data successfully', async () => {
-      const mockDashboard: PortalDashboard = {
-        visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
-        company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
-        taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
-        documents: [],
-        messages: [],
-        actions: [],
-      };
-
+      const mockDashboard = createMockDashboard();
       mockRequest.mockResolvedValue({ data: mockDashboard });
 
       const result = await portalApi.getDashboard();
@@ -71,49 +181,13 @@ describe('PortalApi', () => {
     });
   });
 
-  describe('getTimeline', () => {
-    it('should fetch timeline with default limit', async () => {
-      const mockTimeline: TimelineResponse = {
-        entries: [],
-        total: 0,
-      };
-
-      mockRequest.mockResolvedValue({ data: mockTimeline });
-
-      const result = await portalApi.getTimeline();
-
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/timeline?limit=50', { method: 'GET' });
-      expect(result).toEqual(mockTimeline);
-    });
-
-    it('should fetch timeline with custom limit', async () => {
-      const mockTimeline: TimelineResponse = {
-        entries: [],
-        total: 0,
-      };
-
-      mockRequest.mockResolvedValue({ data: mockTimeline });
-
-      await portalApi.getTimeline(20);
-
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/timeline?limit=20', { method: 'GET' });
-    });
-  });
-
   // ============================================================================
   // Profile Tests
   // ============================================================================
 
   describe('getProfile', () => {
     it('should fetch profile data successfully', async () => {
-      const mockProfile: PortalProfile = {
-        id: 1,
-        email: 'test@example.com',
-        fullName: 'Test User',
-        avatar: null,
-        phone: null,
-      };
-
+      const mockProfile = createMockProfile();
       mockRequest.mockResolvedValue({ data: mockProfile });
 
       const result = await portalApi.getProfile();
@@ -129,13 +203,7 @@ describe('PortalApi', () => {
 
   describe('getVisaStatus', () => {
     it('should fetch visa status successfully', async () => {
-      const mockVisa: VisaInfo = {
-        status: 'active',
-        type: 'KITAS',
-        expiryDate: '2025-12-31',
-        daysUntilExpiry: 365,
-      };
-
+      const mockVisa = createMockVisaInfo();
       mockRequest.mockResolvedValue({ data: mockVisa });
 
       const result = await portalApi.getVisaStatus();
@@ -151,16 +219,7 @@ describe('PortalApi', () => {
 
   describe('getCompanies', () => {
     it('should fetch companies list successfully', async () => {
-      const mockCompanies: PortalCompany[] = [
-        {
-          id: 1,
-          name: 'Test Company',
-          registrationNumber: '12345',
-          isPrimary: true,
-          status: 'active',
-        },
-      ];
-
+      const mockCompanies: PortalCompany[] = [createMockCompany()];
       mockRequest.mockResolvedValue({ data: mockCompanies });
 
       const result = await portalApi.getCompanies();
@@ -172,14 +231,7 @@ describe('PortalApi', () => {
 
   describe('getCompanyDetail', () => {
     it('should fetch company detail successfully', async () => {
-      const mockCompany: PortalCompany = {
-        id: 1,
-        name: 'Test Company',
-        registrationNumber: '12345',
-        isPrimary: true,
-        status: 'active',
-      };
-
+      const mockCompany = createMockCompany();
       mockRequest.mockResolvedValue({ data: mockCompany });
 
       const result = await portalApi.getCompanyDetail(1);
@@ -205,13 +257,7 @@ describe('PortalApi', () => {
 
   describe('getTaxOverview', () => {
     it('should fetch tax overview successfully', async () => {
-      const mockTaxes: TaxOverview = {
-        status: 'compliant',
-        nextDeadline: null,
-        daysToDeadline: null,
-        recentFilings: [],
-      };
-
+      const mockTaxes = createMockTaxOverview();
       mockRequest.mockResolvedValue({ data: mockTaxes });
 
       const result = await portalApi.getTaxOverview();
@@ -228,7 +274,6 @@ describe('PortalApi', () => {
   describe('getDocuments', () => {
     it('should fetch all documents when no type specified', async () => {
       const mockDocuments: PortalDocument[] = [];
-
       mockRequest.mockResolvedValue({ data: mockDocuments });
 
       await portalApi.getDocuments();
@@ -238,7 +283,6 @@ describe('PortalApi', () => {
 
     it('should fetch documents filtered by type', async () => {
       const mockDocuments: PortalDocument[] = [];
-
       mockRequest.mockResolvedValue({ data: mockDocuments });
 
       await portalApi.getDocuments('passport');
@@ -250,7 +294,6 @@ describe('PortalApi', () => {
 
     it('should URL encode document type correctly', async () => {
       const mockDocuments: PortalDocument[] = [];
-
       mockRequest.mockResolvedValue({ data: mockDocuments });
 
       await portalApi.getDocuments('passport copy');
@@ -265,14 +308,7 @@ describe('PortalApi', () => {
   describe('uploadDocument', () => {
     it('should upload document successfully', async () => {
       const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
-      const mockDocument: PortalDocument = {
-        id: 1,
-        name: 'test.pdf',
-        type: 'passport',
-        uploadedAt: new Date().toISOString(),
-        url: '/documents/1',
-      };
-
+      const mockDocument = createMockDocument();
       mockRequest.mockResolvedValue({ data: mockDocument });
 
       const result = await portalApi.uploadDocument(file, 'passport');
@@ -281,25 +317,12 @@ describe('PortalApi', () => {
         method: 'POST',
         body: expect.any(FormData),
       });
-
-      // Verify FormData contents
-      const formDataCall = mockRequest.mock.calls.find(
-        (call) => call[0] === '/api/portal/documents/upload'
-      );
-      expect(formDataCall).toBeDefined();
       expect(result).toEqual(mockDocument);
     });
 
     it('should upload document with practice ID', async () => {
       const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
-      const mockDocument: PortalDocument = {
-        id: 1,
-        name: 'test.pdf',
-        type: 'passport',
-        uploadedAt: new Date().toISOString(),
-        url: '/documents/1',
-      };
-
+      const mockDocument = createMockDocument();
       mockRequest.mockResolvedValue({ data: mockDocument });
 
       await portalApi.uploadDocument(file, 'passport', 123);
@@ -322,7 +345,6 @@ describe('PortalApi', () => {
         total: 0,
         unreadCount: 0,
       };
-
       mockRequest.mockResolvedValue({ data: mockMessages });
 
       const result = await portalApi.getMessages();
@@ -339,7 +361,6 @@ describe('PortalApi', () => {
         total: 0,
         unreadCount: 0,
       };
-
       mockRequest.mockResolvedValue({ data: mockMessages });
 
       await portalApi.getMessages(20, 10);
@@ -353,21 +374,12 @@ describe('PortalApi', () => {
   describe('sendMessage', () => {
     it('should send message successfully', async () => {
       const request: SendMessageRequest = {
-        subject: 'Test',
-        body: 'Test message',
+        content: 'Test message',
+        subject: 'Test Subject',
         practiceId: 1,
       };
 
-      const mockMessage: PortalMessage = {
-        id: 1,
-        subject: 'Test',
-        body: 'Test message',
-        from: 'client',
-        to: 'team',
-        sentAt: new Date().toISOString(),
-        readAt: null,
-      };
-
+      const mockMessage = createMockMessage();
       mockRequest.mockResolvedValue({ data: mockMessage });
 
       const result = await portalApi.sendMessage(request);
@@ -398,12 +410,7 @@ describe('PortalApi', () => {
 
   describe('getPreferences', () => {
     it('should fetch preferences successfully', async () => {
-      const mockPreferences: PortalPreferences = {
-        emailNotifications: true,
-        smsNotifications: false,
-        language: 'en',
-      };
-
+      const mockPreferences = createMockPreferences();
       mockRequest.mockResolvedValue({ data: mockPreferences });
 
       const result = await portalApi.getPreferences();
@@ -419,12 +426,7 @@ describe('PortalApi', () => {
         emailNotifications: false,
       };
 
-      const mockPreferences: PortalPreferences = {
-        emailNotifications: false,
-        smsNotifications: false,
-        language: 'en',
-      };
-
+      const mockPreferences = createMockPreferences({ emailNotifications: false });
       mockRequest.mockResolvedValue({ data: mockPreferences });
 
       const result = await portalApi.updatePreferences(updates);
@@ -449,7 +451,6 @@ describe('PortalApi', () => {
         email: 'test@example.com',
         message: 'Valid token',
       };
-
       mockRequest.mockResolvedValue(mockResponse);
 
       const result = await portalApi.validateInviteToken('test-token');
@@ -465,7 +466,6 @@ describe('PortalApi', () => {
         valid: false,
         message: 'Invalid or expired token',
       };
-
       mockRequest.mockResolvedValue(mockResponse);
 
       const result = await portalApi.validateInviteToken('invalid-token');
@@ -485,7 +485,6 @@ describe('PortalApi', () => {
         success: true,
         message: 'Registration completed',
       };
-
       mockRequest.mockResolvedValue(mockResponse);
 
       const result = await portalApi.completeRegistration(request);

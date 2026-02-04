@@ -3,7 +3,62 @@ import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import PortalHomePage from './page';
 import type { PortalDashboard } from '@/lib/api/portal/portal.types';
-import type { TimelineEntry } from '@/lib/api/types/timeline.types';
+
+// Mock Data Factory - aligned with portal.types.ts
+const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashboard => ({
+  visa: {
+    status: 'active',
+    type: 'KITAS',
+    expiryDate: '2025-12-31',
+    daysRemaining: 365,
+  },
+  company: {
+    status: 'active',
+    primaryCompanyName: 'Test Co',
+    totalCompanies: 1,
+  },
+  taxes: {
+    status: 'compliant',
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  documents: {
+    total: 10,
+    pending: 2,
+  },
+  messages: {
+    unread: 0,
+  },
+  actions: [],
+  ...overrides,
+});
+
+const createEmptyDashboard = (): PortalDashboard => ({
+  visa: {
+    status: 'none',
+    type: null,
+    expiryDate: null,
+    daysRemaining: null,
+  },
+  company: {
+    status: 'none',
+    primaryCompanyName: null,
+    totalCompanies: 0,
+  },
+  taxes: {
+    status: 'compliant', // Default to compliant for empty state
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  documents: {
+    total: 0,
+    pending: 0,
+  },
+  messages: {
+    unread: 0,
+  },
+  actions: [],
+});
 
 // Hoisted mocks (must be defined before vi.mock)
 const { mockPush, mockGetDashboard, mockGetTimeline } = vi.hoisted(() => ({
@@ -53,18 +108,8 @@ describe('PortalHomePage', () => {
   });
 
   it('should render dashboard data when loaded', async () => {
-    const mockDashboard: PortalDashboard = {
-      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
-      company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
-      taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
-      documents: [],
-      messages: [],
-      actions: [],
-    };
-
-    const mockTimeline = {
-      entries: [],
-    };
+    const mockDashboard = createMockDashboard();
+    const mockTimeline = { entries: [] };
 
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue(mockTimeline);
@@ -78,14 +123,7 @@ describe('PortalHomePage', () => {
   });
 
   it('should render status cards for visa, company, and taxes', async () => {
-    const mockDashboard: PortalDashboard = {
-      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
-      company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
-      taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
-      documents: [],
-      messages: [],
-      actions: [],
-    };
+    const mockDashboard = createMockDashboard();
 
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });
@@ -111,14 +149,7 @@ describe('PortalHomePage', () => {
   });
 
   it('should render timeline when available', async () => {
-    const mockDashboard: PortalDashboard = {
-      visa: { status: 'none', type: null, expiryDate: null },
-      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
-      documents: [],
-      messages: [],
-      actions: [],
-    };
+    const mockDashboard = createEmptyDashboard();
 
     const mockTimeline = {
       entries: [
@@ -128,7 +159,7 @@ describe('PortalHomePage', () => {
           title: 'Test Message',
           description: 'Test description',
           occurredAt: new Date().toISOString(),
-        } as TimelineEntry,
+        },
       ],
     };
 
@@ -144,14 +175,7 @@ describe('PortalHomePage', () => {
   });
 
   it('should show empty timeline message when no entries', async () => {
-    const mockDashboard: PortalDashboard = {
-      visa: { status: 'none', type: null, expiryDate: null },
-      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
-      documents: [],
-      messages: [],
-      actions: [],
-    };
+    const mockDashboard = createEmptyDashboard();
 
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });
@@ -164,14 +188,7 @@ describe('PortalHomePage', () => {
   });
 
   it('should navigate to visa page when visa card is clicked', async () => {
-    const mockDashboard: PortalDashboard = {
-      visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
-      company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-      taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
-      documents: [],
-      messages: [],
-      actions: [],
-    };
+    const mockDashboard = createMockDashboard();
 
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });

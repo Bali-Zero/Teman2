@@ -133,5 +133,143 @@ describe('AuthApi', () => {
       expect(mockClient.setUserProfile).toHaveBeenCalledWith(profile);
       expect(result).toEqual(profile);
     });
+
+    it('should handle profile fetch error', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('Unauthorized'));
+
+      await expect(authApi.getProfile()).rejects.toThrow('Unauthorized');
+    });
+  });
+
+  describe('refresh token', () => {
+    it('should handle token refresh via cookie', async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: true,
+        message: 'Token refreshed',
+        data: {
+          token: 'new-token',
+          token_type: 'Bearer',
+          expiresIn: 3600,
+          user: {
+            id: '123',
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'user',
+          },
+        },
+      };
+
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      const result = await authApi.login('test@example.com', '1234');
+
+      expect(result.access_token).toBe('new-token');
+    });
+  });
+
+  describe('network errors', () => {
+    it('should handle network timeout on login', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('Network timeout'));
+
+      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow('Network timeout');
+    });
+
+    it('should handle server error on login', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('500 Internal Server Error'));
+
+      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow(
+        '500 Internal Server Error'
+      );
+    });
+
+    it('should handle malformed response', async () => {
+      mockRequest.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: null,
+      });
+
+      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow('OK');
+    });
+  });
+
+  describe('CSRF token handling', () => {
+    it('should set CSRF token when provided', async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: true,
+        message: 'Login successful',
+        data: {
+          token: 'test-token',
+          token_type: 'Bearer',
+          expiresIn: 3600,
+          user: {
+            id: '123',
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'user',
+          },
+          csrfToken: 'csrf-123',
+        },
+      };
+
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      await authApi.login('test@example.com', '1234');
+
+      expect(mockClient.setCsrfToken).toHaveBeenCalledWith('csrf-123');
+    });
+
+    it('should not fail when CSRF token is missing', async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: true,
+        message: 'Login successful',
+        data: {
+          token: 'test-token',
+          token_type: 'Bearer',
+          expiresIn: 3600,
+          user: {
+            id: '123',
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'user',
+          },
+        },
+      };
+
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      const result = await authApi.login('test@example.com', '1234');
+
+      expect(result.access_token).toBe('test-token');
+      expect(mockClient.setCsrfToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty email', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('Email is required'));
+
+      await expect(authApi.login('', '1234')).rejects.toThrow('Email is required');
+    });
+
+    it('should handle empty PIN', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('PIN is required'));
+
+      await expect(authApi.login('test@example.com', '')).rejects.toThrow('PIN is required');
+    });
+
+    it('should handle account locked error', async () => {
+      const mockResponse: BackendLoginResponse = {
+        success: false,
+        message: 'Account locked due to too many failed attempts',
+        data: undefined as any,
+      };
+
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow(
+        'Account locked due to too many failed attempts'
+      );
+    });
   });
 });

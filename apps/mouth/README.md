@@ -157,7 +157,7 @@ apps/mouth/
 
 ### External Services
 
-- **Sentry:** Error tracking & performance monitoring
+- **Sentry:** Error tracking & performance monitoring ([Setup Guide](./SENTRY_SETUP.md))
 - **Zoho:** Email & CRM integration
 - **Pollinations AI:** Image generation
 - **Qdrant:** Vector database (via backend)
@@ -295,6 +295,7 @@ See [DOCUMENTATION.md § 16 Troubleshooting](./DOCUMENTATION.md#16-troubleshooti
 - **CSRF Protection:** Double-submit pattern
 - **CORS:** Configured for backend-rag origin
 - **Headers:** CSP, X-Frame-Options, etc.
+- **Error Tracking:** Sentry for production monitoring ([Setup](./SENTRY_SETUP.md))
 
 See [DOCUMENTATION.md § 12](./DOCUMENTATION.md#12-autenticazione-e-sicurezza)
 
@@ -339,6 +340,7 @@ npm run test
 | ---------------------------------- | -------------------------------------------------------------------- |
 | How do I publish articles quickly? | [QUICK_ARTICLE_PUBLISHING.md](./QUICK_ARTICLE_PUBLISHING.md)         |
 | How do I run tests?                | [QUICK_TEST_GUIDE.md](./QUICK_TEST_GUIDE.md)                         |
+| How do I setup error tracking?     | [SENTRY_SETUP.md](./SENTRY_SETUP.md)                                 |
 | Where is the full documentation?   | [DOCUMENTATION.md](./DOCUMENTATION.md)                               |
 | How do I deploy?                   | [DOCUMENTATION.md § 14](./DOCUMENTATION.md#14-deployment)            |
 | What's the architecture?           | [DOCUMENTATION.md § 2](./DOCUMENTATION.md#2-architettura-di-sistema) |
@@ -361,4 +363,36 @@ Proprietary - Nuzantara Project
 
 ---
 
-**Last Updated:** January 19, 2026
+**Last Updated:** February 4, 2026
+
+## 🐛 Error Tracking & Monitoring
+
+Sentry is fully configured for production error tracking:
+
+- ✅ Client-side error capture
+- ✅ Server-side error capture
+- ✅ Session replay (10% sample rate)
+- ✅ Performance monitoring (10% in production)
+- ✅ Source map support for readable stack traces
+
+**Quick Setup:**
+```bash
+# 1. Create Sentry project at https://sentry.io
+# 2. Add credentials to .env.local
+# 3. Add secrets to Fly.io
+# 4. Deploy
+
+# See full guide:
+cat SENTRY_SETUP.md
+```
+
+**Documentation:**
+- [Quick Setup Guide](./SENTRY_SETUP.md) - 5 min setup
+- [Full Configuration](../../docs/SENTRY_CONFIGURATION.md) - Complete reference
+- [Usage Examples](../../docs/SENTRY_USAGE_EXAMPLES.md) - Best practices
+- [Integration Examples](./SENTRY_INTEGRATION_EXAMPLES.ts) - Code patterns
+
+**Verification:**
+```bash
+./verify-sentry.sh
+```
