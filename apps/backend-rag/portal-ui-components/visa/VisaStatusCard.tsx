@@ -135,30 +135,26 @@ export function VisaStatusCard({ clientId, apiUrl = process.env.NEXT_PUBLIC_API_
         </div>
 
         {/* Expiry Countdown */}
-        <div className={`p-4 rounded-lg border-2 ${
-          urgency === 'critical' ? 'bg-red-50 border-red-200' :
-          urgency === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-          'bg-green-50 border-green-200'
-        }`}>
+        <div className={`p-4 rounded-lg border-2 ${urgency === 'critical' ? 'bg-red-50 border-red-200' :
+            urgency === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+              'bg-green-50 border-green-200'
+          }`}>
           <div className="flex items-center gap-2 mb-1">
-            <Calendar className={`w-4 h-4 ${
-              urgency === 'critical' ? 'text-red-600' :
-              urgency === 'warning' ? 'text-yellow-600' :
-              'text-green-600'
-            }`} />
-            <p className={`text-sm font-medium ${
-              urgency === 'critical' ? 'text-red-800' :
-              urgency === 'warning' ? 'text-yellow-800' :
-              'text-green-800'
-            }`}>
+            <Calendar className={`w-4 h-4 ${urgency === 'critical' ? 'text-red-600' :
+                urgency === 'warning' ? 'text-yellow-600' :
+                  'text-green-600'
+              }`} />
+            <p className={`text-sm font-medium ${urgency === 'critical' ? 'text-red-800' :
+                urgency === 'warning' ? 'text-yellow-800' :
+                  'text-green-800'
+              }`}>
               {daysUntilExpiry < 0 ? 'EXPIRED' : `Expires in ${daysUntilExpiry} days`}
             </p>
           </div>
-          <p className={`text-xs ${
-            urgency === 'critical' ? 'text-red-600' :
-            urgency === 'warning' ? 'text-yellow-600' :
-            'text-green-600'
-          }`}>
+          <p className={`text-xs ${urgency === 'critical' ? 'text-red-600' :
+              urgency === 'warning' ? 'text-yellow-600' :
+                'text-green-600'
+            }`}>
             Expiry Date: {formatDate(data.expiry_date)}
           </p>
         </div>

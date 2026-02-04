@@ -115,7 +115,6 @@ export const routeTitles: Record<string, string> = {
   '/calendar': 'Bali Zero Calendar',
   '/analytics': 'Analytics',
   '/settings': 'Settings',
-  '/settings': 'Settings',
   '/settings/users': 'User Management',
   '/dream': 'Dream Room',
   // Portal routes

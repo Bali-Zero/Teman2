@@ -1,9 +1,35 @@
 'use client';
 
 import React from 'react';
-import { ResponsiveLine } from '@nivo/line';
-import { ResponsiveBar } from '@nivo/bar';
-import { ResponsivePie } from '@nivo/pie';
+import dynamic from 'next/dynamic';
+
+// Lazy load Nivo components to reduce initial bundle size (~200KB savings)
+const ResponsiveLine = dynamic(
+  () => import('@nivo/line').then((m) => m.ResponsiveLine),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const ResponsiveBar = dynamic(
+  () => import('@nivo/bar').then((m) => m.ResponsiveBar),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const ResponsivePie = dynamic(
+  () => import('@nivo/pie').then((m) => m.ResponsivePie),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+// Loading skeleton for charts
+function ChartSkeleton() {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-[var(--background-secondary)] rounded-lg animate-pulse">
+      <div className="flex flex-col items-center gap-2 text-[var(--foreground-muted)]">
+        <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs">Loading chart...</span>
+      </div>
+    </div>
+  );
+}
 
 // Dark theme for Nivo charts matching our design system
 const darkTheme = {

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog, Scale } from 'lucide-react';
+import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog, Scale, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -14,6 +14,7 @@ export function Sidebar() {
     { href: '/rag', label: 'RAG Playground', icon: Sparkles },
     { href: '/knowledge-graph', label: 'Knowledge Graph', icon: Network },
     { href: '/legal', label: 'Legal Documents', icon: Scale },
+    { href: '/calendar', label: 'Bali Zero Calendar', icon: Calendar },
     { href: '/activity', label: 'Agent Activity', icon: Activity },
     { href: '/users', label: 'User Context', icon: UserCog },
   ];

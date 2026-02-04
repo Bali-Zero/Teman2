@@ -27,6 +27,16 @@ class PortalService:
     def __init__(self, pool: asyncpg.Pool):
         self.pool = pool
 
+    @staticmethod
+    def _is_undefined_column_error(exc: Exception) -> bool:
+        # PostgreSQL: undefined_column = 42703
+        return getattr(exc, "sqlstate", None) == "42703"
+
+    @staticmethod
+    def _is_undefined_table_error(exc: Exception) -> bool:
+        # PostgreSQL: undefined_table = 42P01
+        return getattr(exc, "sqlstate", None) == "42P01"
+
     # ================================================
     # DASHBOARD
     # ================================================
@@ -63,6 +73,7 @@ class PortalService:
                     JOIN practice_types pt ON pt.id = p.practice_type_id
                     WHERE p.client_id = $1
                     AND pt.category = 'visa'
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
                     AND p.status NOT IN ('cancelled', 'rejected')
                     ORDER BY p.expiry_date DESC NULLS LAST
                     LIMIT 1
@@ -106,6 +117,7 @@ class PortalService:
                     FROM practices p
                     JOIN practice_types pt ON pt.id = p.practice_type_id
                     WHERE p.client_id = $1
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
                     AND p.status IN ('inquiry', 'in_progress', 'waiting_documents')
                     ORDER BY p.created_at DESC
                     LIMIT 5
@@ -298,35 +310,74 @@ class PortalService:
                 raise ValueError(f"Client {client_id} not found")
 
             # Get current visa practice (completed, not expired)
-            current_visa = await conn.fetchrow(
-                """
-                SELECT p.id, p.status, p.start_date, p.completion_date, p.expiry_date,
-                       p.notes, pt.code, pt.name as type_name
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'visa'
-                AND p.status = 'completed'
-                AND (p.expiry_date IS NULL OR p.expiry_date > NOW())
-                ORDER BY p.expiry_date DESC NULLS LAST
-                LIMIT 1
-                """,
-                client_id,
-            )
+            try:
+                current_visa = await conn.fetchrow(
+                    """
+                    SELECT p.id, p.status, p.start_date, p.completion_date, p.expiry_date,
+                           p.notes, pt.code, pt.name as type_name
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND pt.category = 'visa'
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
+                    AND p.status = 'completed'
+                    AND (p.expiry_date IS NULL OR p.expiry_date > NOW())
+                    ORDER BY p.expiry_date DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                if self._is_undefined_column_error(e):
+                    current_visa = await conn.fetchrow(
+                        """
+                        SELECT p.id, p.status, p.start_date, p.completion_date, p.expiry_date,
+                               p.notes, pt.code, pt.name as type_name
+                        FROM practices p
+                        JOIN practice_types pt ON pt.id = p.practice_type_id
+                        WHERE p.client_id = $1
+                        AND pt.category = 'visa'
+                        AND p.status = 'completed'
+                        AND (p.expiry_date IS NULL OR p.expiry_date > NOW())
+                        ORDER BY p.expiry_date DESC NULLS LAST
+                        LIMIT 1
+                        """,
+                        client_id,
+                    )
+                else:
+                    raise
 
             # Get visa history (all visa practices)
-            visa_history = await conn.fetch(
-                """
-                SELECT p.id, pt.code, pt.name, p.start_date, p.completion_date,
-                       p.expiry_date, p.status
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'visa'
-                ORDER BY p.start_date DESC
-                """,
-                client_id,
-            )
+            try:
+                visa_history = await conn.fetch(
+                    """
+                    SELECT p.id, pt.code, pt.name, p.start_date, p.completion_date,
+                           p.expiry_date, p.status
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND pt.category = 'visa'
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
+                    ORDER BY p.start_date DESC
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                if self._is_undefined_column_error(e):
+                    visa_history = await conn.fetch(
+                        """
+                        SELECT p.id, pt.code, pt.name, p.start_date, p.completion_date,
+                               p.expiry_date, p.status
+                        FROM practices p
+                        JOIN practice_types pt ON pt.id = p.practice_type_id
+                        WHERE p.client_id = $1
+                        AND pt.category = 'visa'
+                        ORDER BY p.start_date DESC
+                        """,
+                        client_id,
+                    )
+                else:
+                    raise
 
             # Get immigration documents
             documents = await conn.fetch(
@@ -518,18 +569,36 @@ class PortalService:
             )
 
             # Get company practices (licenses, registrations)
-            practices = await conn.fetch(
-                """
-                SELECT p.id, pt.code, pt.name, p.status, p.expiry_date,
-                       p.completion_date
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'company'
-                ORDER BY p.expiry_date ASC NULLS LAST
-                """,
-                client_id,
-            )
+            try:
+                practices = await conn.fetch(
+                    """
+                    SELECT p.id, pt.code, pt.name, p.status, p.expiry_date,
+                           p.completion_date
+                    FROM practices p
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.client_id = $1
+                    AND pt.category = 'company'
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
+                    ORDER BY p.expiry_date ASC NULLS LAST
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                if self._is_undefined_column_error(e):
+                    practices = await conn.fetch(
+                        """
+                        SELECT p.id, pt.code, pt.name, p.status, p.expiry_date,
+                               p.completion_date
+                        FROM practices p
+                        JOIN practice_types pt ON pt.id = p.practice_type_id
+                        WHERE p.client_id = $1
+                        AND pt.category = 'company'
+                        ORDER BY p.expiry_date ASC NULLS LAST
+                        """,
+                        client_id,
+                    )
+                else:
+                    raise
 
             # Get company documents
             documents = await conn.fetch(
@@ -630,6 +699,7 @@ class PortalService:
                     JOIN practice_types pt ON pt.id = p.practice_type_id
                     WHERE p.client_id = $1
                     AND pt.category = 'tax'
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
                     ORDER BY p.expiry_date ASC NULLS LAST
                     """,
                     client_id,
@@ -774,24 +844,63 @@ class PortalService:
             )
 
             # Insert document record
-            doc = await conn.fetchrow(
-                """
-                INSERT INTO documents (
-                    client_id, practice_id, document_type, file_name,
-                    status, uploaded_by, file_size_kb, mime_type,
-                    storage_type, client_visible
+            try:
+                doc = await conn.fetchrow(
+                    """
+                    INSERT INTO documents (
+                        client_id, practice_id, document_type, file_name,
+                        status, uploaded_by, uploaded_source, file_size_kb, mime_type,
+                        storage_type, client_visible
+                    )
+                    VALUES ($1, $2, $3, $4, 'pending', $5, 'client', $6, $7, 'pending', true)
+                    RETURNING id, document_type, file_name, status, created_at
+                    """,
+                    client_id,
+                    practice_id,
+                    document_type,
+                    file_name,
+                    client["email"],
+                    file_size_kb,
+                    mime_type,
                 )
-                VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, 'pending', true)
-                RETURNING id, document_type, file_name, status, created_at
-                """,
-                client_id,
-                practice_id,
-                document_type,
-                file_name,
-                client["email"],
-                file_size_kb,
-                mime_type,
-            )
+            except Exception as e:
+                # Backward compatibility: uploaded_source column may not exist yet.
+                if self._is_undefined_column_error(e):
+                    doc = await conn.fetchrow(
+                        """
+                        INSERT INTO documents (
+                            client_id, practice_id, document_type, file_name,
+                            status, uploaded_by, file_size_kb, mime_type,
+                            storage_type, client_visible
+                        )
+                        VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, 'pending', true)
+                        RETURNING id, document_type, file_name, status, created_at
+                        """,
+                        client_id,
+                        practice_id,
+                        document_type,
+                        file_name,
+                        client["email"],
+                        file_size_kb,
+                        mime_type,
+                    )
+                else:
+                    raise
+
+            # Create a persistent timeline confirmation (optional; requires timeline_events table)
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO timeline_events (client_id, practice_id, event_type, title, description, event_date, client_visible, color)
+                    VALUES ($1, $2, 'document_received', 'Document received', $3, NOW(), true, 'success')
+                    """,
+                    client_id,
+                    practice_id,
+                    f"{file_name} uploaded successfully",
+                )
+            except Exception as e:
+                if not self._is_undefined_table_error(e):
+                    logger.warning(f"Could not create timeline event for upload: {e}")
 
             logger.info(
                 f"Document uploaded: {file_name} for client {client_id}, "
@@ -1021,6 +1130,52 @@ class PortalService:
         entries = []
 
         async with self.pool.acquire() as conn:
+            # Persisted portal timeline events (preferred when available)
+            try:
+                timeline_events = await conn.fetch(
+                    """
+                    SELECT id, practice_id, event_type, title, description, event_date
+                    FROM timeline_events
+                    WHERE client_id = $1
+                      AND client_visible = true
+                    ORDER BY event_date DESC
+                    LIMIT $2
+                    """,
+                    client_id,
+                    limit,
+                )
+
+                now = datetime.now(timezone.utc)
+                for ev in timeline_events:
+                    event_type = ev["event_type"]
+                    # Map event types to the frontend-supported TimelineEntryType union.
+                    if event_type in ("document_request", "document_received"):
+                        entry_type = "document"
+                    elif event_type in ("deadline", "payment_due", "appointment", "reminder"):
+                        entry_type = "deadline"
+                    else:
+                        entry_type = "practice"
+
+                    occurred_at = ev["event_date"]
+                    is_future = bool(occurred_at and occurred_at > now)
+
+                    entries.append(
+                        {
+                            "id": f"event-{ev['id']}",
+                            "type": entry_type,
+                            "occurredAt": occurred_at.isoformat() if occurred_at else now.isoformat(),
+                            "title": ev["title"],
+                            "description": ev["description"],
+                            "status": event_type,
+                            "unread": False,
+                            "isFuture": is_future,
+                            "entity": {"practiceId": ev["practice_id"]} if ev["practice_id"] else {},
+                        }
+                    )
+            except Exception as e:
+                if not self._is_undefined_table_error(e):
+                    logger.warning(f"Could not fetch timeline_events: {e}")
+
             # Get recent messages
             try:
                 messages = await conn.fetch(
@@ -1091,6 +1246,7 @@ class PortalService:
                     FROM practices p
                     JOIN practice_types pt ON pt.id = p.practice_type_id
                     WHERE p.client_id = $1
+                    AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
                     ORDER BY p.updated_at DESC
                     LIMIT $2
                     """,

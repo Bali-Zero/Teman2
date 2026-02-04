@@ -90,7 +90,7 @@ describe('PortalBottomNav', () => {
   it('should not show badge when unread count is 0', async () => {
     mockGetMessages.mockResolvedValue({ messages: [], total: 0, unreadCount: 0 });
 
-    render(<PortalBottomNav />);
+    const { container } = render(<PortalBottomNav />);
 
     // Wait for API call to complete
     await waitFor(() => {
@@ -101,8 +101,8 @@ describe('PortalBottomNav', () => {
     // The badge element has specific classes, so we check for absence of badge content
     expect(screen.queryByText('99+')).not.toBeInTheDocument();
     // No numeric badge should be visible (checking for the badge span specifically)
-    const badges = screen.container?.querySelectorAll('.bg-red-500');
-    expect(badges?.length ?? 0).toBe(0);
+    const badges = container.querySelectorAll('.bg-red-500');
+    expect(badges.length).toBe(0);
   });
 
   it('should poll for unread count every 30 seconds', async () => {

@@ -482,5 +482,176 @@ describe('ChatApi', () => {
         })
       );
     });
+
+    it('should handle network connection loss during streaming', async () => {
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {"type":"token","content":"Hello"}\n'),
+          })
+          .mockRejectedValueOnce(new Error('Network connection lost')),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toContain('Network connection lost');
+    });
+
+    it('should handle HTTP 500 error response', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalled();
+      const error = onError.mock.calls[0][0];
+      expect(error.message).toContain('500');
+    });
+
+    it('should handle HTTP 429 rate limit error', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      });
+
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalled();
+      const error = onError.mock.calls[0][0];
+      expect(error.message).toContain('429');
+    });
+
+    it('should handle malformed SSE data gracefully', async () => {
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {invalid json}\n'),
+          })
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: [DONE]\n'),
+          })
+          .mockResolvedValueOnce({ done: true }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onChunk = vi.fn();
+      const onDone = vi.fn();
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, onChunk, onDone, onError);
+
+      expect(onDone).toHaveBeenCalled();
+    });
+
+    it('should handle empty stream response', async () => {
+      const mockReader = {
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onDone = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), onDone, vi.fn());
+
+      expect(onDone).toHaveBeenCalled();
+    });
+
+    it('should handle fetch network error', async () => {
+      (global.fetch as any).mockRejectedValueOnce(new Error('Failed to fetch'));
+
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(onError.mock.calls[0][0].message).toContain('Failed to fetch');
+    });
+
+    it('should handle reader.read() throwing error', async () => {
+      const mockReader = {
+        read: vi.fn().mockRejectedValueOnce(new Error('Stream read error')),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onError = vi.fn();
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
+      expect(mockReader.cancel).toHaveBeenCalled();
+    });
+
+    it('should properly clean up resources on error', async () => {
+      const mockReader = {
+        read: vi.fn().mockRejectedValueOnce(new Error('Test error')),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      await chatApi.sendMessageStreaming('Hello', undefined, vi.fn(), vi.fn(), vi.fn());
+
+      expect(mockReader.cancel).toHaveBeenCalled();
+    });
   });
 });

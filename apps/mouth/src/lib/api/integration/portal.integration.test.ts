@@ -1,6 +1,62 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { api } from '../../api';
-import type { PortalDashboard } from '../portal/portal.types';
+import type { PortalDashboard, SendMessageRequest } from '../portal/portal.types';
+
+// Mock Data Factory - aligned with portal.types.ts
+const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashboard => ({
+  visa: {
+    status: 'active',
+    type: 'KITAS',
+    expiryDate: '2025-12-31',
+    daysRemaining: 365,
+  },
+  company: {
+    status: 'active',
+    primaryCompanyName: 'Test Co',
+    totalCompanies: 1,
+  },
+  taxes: {
+    status: 'compliant',
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  documents: {
+    total: 10,
+    pending: 2,
+  },
+  messages: {
+    unread: 0,
+  },
+  actions: [],
+  ...overrides,
+});
+
+const createEmptyDashboard = (): PortalDashboard => ({
+  visa: {
+    status: 'none',
+    type: null,
+    expiryDate: null,
+    daysRemaining: null,
+  },
+  company: {
+    status: 'none',
+    primaryCompanyName: null,
+    totalCompanies: 0,
+  },
+  taxes: {
+    status: 'compliant',
+    nextDeadline: null,
+    daysToDeadline: null,
+  },
+  documents: {
+    total: 0,
+    pending: 0,
+  },
+  messages: {
+    unread: 0,
+  },
+  actions: [],
+});
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -41,14 +97,7 @@ describe('Portal API Integration Tests', () => {
 
   describe('Dashboard Flow', () => {
     it('should fetch dashboard and timeline in parallel', async () => {
-      const mockDashboard: PortalDashboard = {
-        visa: { status: 'active', type: 'KITAS', expiryDate: '2025-12-31' },
-        company: { status: 'active', primaryCompanyName: 'Test Co', totalCompanies: 1 },
-        taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
-        documents: [],
-        messages: [],
-        actions: [],
-      };
+      const mockDashboard = createMockDashboard();
 
       const mockTimeline = {
         entries: [],
@@ -80,22 +129,15 @@ describe('Portal API Integration Tests', () => {
     });
 
     it('should handle partial failures gracefully', async () => {
+      const emptyDashboard = createEmptyDashboard();
+
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           statusText: 'OK',
           headers: new Headers({ 'content-type': 'application/json' }),
-          json: async () => ({
-            data: {
-              visa: { status: 'none', type: null, expiryDate: null },
-              company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-              taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
-              documents: [],
-              messages: [],
-              actions: [],
-            },
-          }),
+          json: async () => ({ data: emptyDashboard }),
         })
         .mockRejectedValueOnce(new Error('Timeline API Error'));
 
@@ -110,14 +152,7 @@ describe('Portal API Integration Tests', () => {
 
   describe('Authentication Flow', () => {
     it('should include auth token in portal API requests', async () => {
-      const mockDashboard: PortalDashboard = {
-        visa: { status: 'none', type: null, expiryDate: null },
-        company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-        taxes: { status: 'none', nextDeadline: null, daysToDeadline: null },
-        documents: [],
-        messages: [],
-        actions: [],
-      };
+      const mockDashboard = createEmptyDashboard();
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -179,13 +214,12 @@ describe('Portal API Integration Tests', () => {
 
     it('should send message correctly', async () => {
       const mockMessage = {
-        id: 1,
+        id: 'msg-001',
+        content: 'Test message',
+        direction: 'client_to_team',
+        sentBy: 'Test User',
         subject: 'Test',
-        body: 'Test message',
-        from: 'client',
-        to: 'team',
-        sentAt: new Date().toISOString(),
-        readAt: null,
+        createdAt: new Date().toISOString(),
       };
 
       mockFetch.mockResolvedValue({
@@ -196,11 +230,13 @@ describe('Portal API Integration Tests', () => {
         json: async () => ({ data: mockMessage }),
       });
 
-      const result = await api.portal.sendMessage({
+      const request: SendMessageRequest = {
+        content: 'Test message',
         subject: 'Test',
-        body: 'Test message',
         practiceId: 1,
-      });
+      };
+
+      const result = await api.portal.sendMessage(request);
 
       expect(result).toEqual(mockMessage);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -217,11 +253,14 @@ describe('Portal API Integration Tests', () => {
     it('should upload document with FormData', async () => {
       const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
       const mockDocument = {
-        id: 1,
+        id: 'doc-001',
         name: 'test.pdf',
         type: 'passport',
-        uploadedAt: new Date().toISOString(),
-        url: '/documents/1',
+        category: 'personal',
+        status: 'verified',
+        uploadDate: new Date().toISOString(),
+        size: '1.2 MB',
+        downloadUrl: '/documents/doc-001',
       };
 
       mockFetch.mockResolvedValue({
