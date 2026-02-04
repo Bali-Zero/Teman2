@@ -1,8 +1,10 @@
 /**
- * Comprehensive Logging Utility
+ * Comprehensive Logging Utility with Sentry Integration
  * Provides structured logging for Intelligence Center and all frontend components
+ * Sends errors and warnings to Sentry in production
  */
 
+import * as Sentry from '@sentry/nextjs';
 import type { Metadata } from './types/common';
 
 export enum LogLevel {
@@ -131,26 +133,96 @@ class Logger {
   warn(message: string, context: LogContext = {}, error?: Error): void {
     const entry = this.createEntry(LogLevel.WARN, message, context, error);
     this.formatConsoleOutput(entry);
+
+    // Send warnings to Sentry in production
+    if (!this.isDevelopment) {
+      this.sendToSentry(entry);
+    }
   }
 
   error(message: string, context: LogContext = {}, error?: Error): void {
     const entry = this.createEntry(LogLevel.ERROR, message, context, error);
     this.formatConsoleOutput(entry);
 
-    // In production, you could send to a logging service here
+    // Send errors to Sentry in production
     if (!this.isDevelopment) {
-      this.sendToRemoteLogger(entry);
+      this.sendToSentry(entry);
+      this.sendToRemoteLogger(entry); // Still keep local storage for backup
     }
   }
 
-  private async sendToRemoteLogger(entry: LogEntry): Promise<void> {
-    // TODO: Implement remote logging service integration
-    // Examples: Sentry, LogRocket, DataDog, etc.
-    // For now, just store in localStorage for debugging
+  /**
+   * Send log entry to Sentry (production only)
+   */
+  private sendToSentry(entry: LogEntry): void {
     try {
+      // Set context for Sentry
+      if (entry.context && Object.keys(entry.context).length > 0) {
+        Sentry.setContext('log_context', {
+          component: entry.context.component,
+          action: entry.context.action,
+          user: entry.context.user,
+          itemId: entry.context.itemId,
+          itemType: entry.context.itemType,
+          code: entry.context.code,
+          reason: entry.context.reason,
+          note: entry.context.note,
+          metadata: entry.context.metadata,
+        });
+      }
+
+      // Send to Sentry based on level
+      if (entry.level === LogLevel.ERROR && entry.error) {
+        // For errors with exception object, use captureException
+        Sentry.captureException(entry.error, {
+          extra: {
+            message: entry.message,
+            context: entry.context,
+            timestamp: entry.timestamp,
+          },
+          tags: {
+            component: entry.context.component || 'unknown',
+            action: entry.context.action || 'unknown',
+          },
+        });
+      } else if (entry.level === LogLevel.ERROR || entry.level === LogLevel.WARN) {
+        // For errors/warnings without exception, use captureMessage
+        Sentry.captureMessage(entry.message, {
+          level: entry.level === LogLevel.ERROR ? 'error' : 'warning',
+          extra: {
+            context: entry.context,
+            timestamp: entry.timestamp,
+            stack: entry.stack,
+          },
+          tags: {
+            component: entry.context.component || 'unknown',
+            action: entry.context.action || 'unknown',
+          },
+        });
+      }
+    } catch (sentryError) {
+      // Don't let Sentry errors break the application
+      console.error('Failed to send to Sentry:', sentryError);
+    }
+  }
+
+  /**
+   * Store error logs in localStorage as backup (production only)
+   */
+  private async sendToRemoteLogger(entry: LogEntry): Promise<void> {
+    try {
+      if (typeof window === 'undefined') return; // Skip on server-side
+
       const logs = localStorage.getItem('error_logs');
       const errorLogs = logs ? JSON.parse(logs) : [];
-      errorLogs.push(entry);
+      errorLogs.push({
+        timestamp: entry.timestamp,
+        level: entry.level,
+        message: entry.message,
+        context: entry.context,
+        error: entry.error ? entry.error.message : undefined,
+        stack: entry.stack,
+      });
 
       // Keep only last 50 errors
       if (errorLogs.length > 50) {
@@ -169,6 +241,53 @@ class Logger {
 
   clearHistory(): void {
     this.logHistory = [];
+  }
+
+  /**
+   * Set user context for Sentry (call on login)
+   */
+  setUser(userId: string, email?: string, username?: string): void {
+    if (!this.isDevelopment) {
+      Sentry.setUser({
+        id: userId,
+        email,
+        username,
+      });
+    }
+  }
+
+  /**
+   * Clear user context from Sentry (call on logout)
+   */
+  clearUser(): void {
+    if (!this.isDevelopment) {
+      Sentry.setUser(null);
+    }
+  }
+
+  /**
+   * Get stored error logs from localStorage
+   */
+  getStoredLogs(): unknown[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const logs = localStorage.getItem('error_logs');
+      return logs ? JSON.parse(logs) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Clear stored error logs from localStorage
+   */
+  clearStoredLogs(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem('error_logs');
+    } catch {
+      // Ignore
+    }
   }
 
   // Convenience methods for Intelligence Center specific logging
