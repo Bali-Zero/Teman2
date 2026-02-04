@@ -124,6 +124,16 @@ class SafeStorage {
   isLocalStorageAvailable(): boolean {
     return this.isAvailable;
   }
+
+  /**
+   * Reset internal state for testing purposes.
+   * Re-checks localStorage availability and clears memory fallback.
+   * @internal Only use in tests
+   */
+  _resetForTesting(): void {
+    this.memoryFallback.clear();
+    this.isAvailable = this.checkAvailability();
+  }
 }
 
 // Singleton instance
