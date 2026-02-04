@@ -1,5 +1,6 @@
 {
-  "buildCommand": "pnpm build",
+  "buildCommand": "cd ../.. && pnpm build --filter=mouth",
   "framework": "nextjs",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "cd ../.. && pnpm install",
+  "outputDirectory": ".next"
 }
