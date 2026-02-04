@@ -1,5 +1,85 @@
 # Claude Memory - Mouth (Frontend)
 
+## Session Update (2026-02-05 - Test Infrastructure & Bundle Optimization)
+
+### Task Overview
+
+Fixed failing test infrastructure and performed bundle analysis to identify optimization opportunities.
+
+---
+
+### Test Infrastructure Fixes
+
+**Problem:** 63 tests failing due to localStorage mock and NextRequest host header issues.
+
+**Root Causes:**
+
+1. `setup.tsx` used `vi.fn()` mocks that didn't actually store values
+2. `NextRequest` in Vitest doesn't auto-set host header from URL
+
+**Solutions:**
+
+1. Created `LocalStorageMock` class implementing full `Storage` interface
+2. Added `_resetForTesting()` method to `SafeStorage` for test isolation
+3. Created `createRequest()` helper that sets host header from URL
+
+**Files Modified:**
+
+| File | Changes |
+|------|---------|
+| `src/test/setup.tsx` | Added `LocalStorageMock` class with Map-based storage |
+| `src/lib/utils/storage.ts` | Added `_resetForTesting()` method |
+| `src/__tests__/middleware.test.ts` | Added `createRequest()` helper for host headers |
+| `src/lib/utils/__tests__/storage.test.ts` | New comprehensive test file (21 tests) |
+
+**Result:** 1013 tests passing, 3 skipped.
+
+---
+
+### Bundle Analysis
+
+**Total Bundle Size:** 412 KB (parsed) - Good for complex app
+
+**Breakdown:**
+
+| Component | Size | Status |
+|-----------|------|--------|
+| React framework | 186 KB | Normal |
+| framer-motion | ~120 KB | Used for animations |
+| Sentry | ~80 KB | Error tracking |
+| lucide-react | ~50 KB | 114 icons used |
+
+**Findings:**
+
+- `@nivo` charts: Correctly lazy loaded with dynamic imports
+- `googleapis`: Server-side only (API routes)
+- `lucide-react`: 114 icons, all named imports (correct)
+- **`sal.js`: 0 references - REMOVED**
+
+**Optimization Applied:**
+
+Removed unused `sal.js` dependency (scroll animation library with 0 references).
+
+---
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| `511eebef3` | fix(mouth): fix test infrastructure for localStorage and middleware |
+| `213b78d71` | perf(mouth): remove unused sal.js dependency |
+
+---
+
+### Disk Cleanup
+
+Freed 7.6 GB by removing:
+- Yarn cache (5.7 GB)
+- .next folders (1.1 GB)
+- pnpm/pip/Homebrew caches (~800 MB)
+
+---
+
 ## Session Update (2026-01-23 - Google Drive-like Documents Page Transformation)
 
 ### Task Overview
