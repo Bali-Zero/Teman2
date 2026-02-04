@@ -1,0 +1,574 @@
+// Sentry Integration Examples for Mouth App
+// Copy these patterns into your components as needed
+
+import * as Sentry from '@sentry/nextjs';
+
+// =============================================================================
+// 1. PORTAL - User Authentication Error Tracking
+// =============================================================================
+
+// app/portal/login/page.tsx
+'use client';
+
+import * as Sentry from '@sentry/nextjs';
+
+export default function PortalLoginPage() {
+  const handleLogin = async (email: string, pin: string) => {
+    try {
+      const response = await fetch('/api/portal/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, pin }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const { user } = await response.json();
+
+      // ✅ Set user context for all future errors
+      Sentry.setUser({
+        id: user.id,
+        email: user.email,
+        username: user.name,
+      });
+
+      // ✅ Add breadcrumb for successful login
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'User logged in successfully',
+        level: 'info',
+      });
+
+      return user;
+    } catch (error) {
+      // ✅ Capture login errors with context
+      Sentry.captureException(error, {
+        tags: {
+          feature: 'portal-login',
+        },
+        extra: {
+          email, // Safe to log email for debugging
+          // Never log PIN!
+        },
+      });
+
+      throw error;
+    }
+  };
+
+  const handleLogout = () => {
+    // ✅ Clear user context on logout
+    Sentry.setUser(null);
+  };
+
+  return <div>{/* Login form */ } </div>;
+}
+
+// =============================================================================
+// 2. CHAT - AI Response Error Tracking
+// =============================================================================
+
+// app/chat/page.tsx
+'use client';
+
+import * as Sentry from '@sentry/nextjs';
+
+export default function ChatPage() {
+  const sendMessage = async (message: string) => {
+    // ✅ Add breadcrumb for user action
+    Sentry.addBreadcrumb({
+      category: 'chat',
+      message: 'User sent message',
+      level: 'info',
+      data: {
+        messageLength: message.length,
+      },
+    });
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chat API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // ✅ Track performance of AI responses
+      Sentry.addBreadcrumb({
+        category: 'chat',
+        message: 'AI response received',
+        level: 'info',
+        data: {
+          responseLength: data.response?.length || 0,
+        },
+      });
+
+      return data;
+    } catch (error) {
+      // ✅ Capture chat errors with context
+      Sentry.captureException(error, {
+        tags: {
+          feature: 'chat',
+          messageType: 'user-message',
+        },
+        extra: {
+          messageLength: message.length,
+          // Don't log full message (may contain sensitive data)
+        },
+      });
+
+      throw error;
+    }
+  };
+
+  return <div>{/* Chat UI */ } </div>;
+}
+
+// =============================================================================
+// 3. DOCUMENTS - Drive API Error Tracking
+// =============================================================================
+
+// app/documents/hooks/useDrive.ts
+import * as Sentry from '@sentry/nextjs';
+
+export function useDrive() {
+  const fetchFolder = async (folderId: string) => {
+    const transaction = Sentry.startTransaction({
+      op: 'api.fetch',
+      name: 'Fetch Drive Folder',
+    });
+
+    try {
+      const span = transaction.startChild({
+        op: 'http.client',
+        description: `GET /api/drive/folders/${folderId}`,
+      });
+
+      const response = await fetch(`/api/drive/folders/${folderId}`);
+
+      span.finish();
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch folder: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      transaction.setStatus('ok');
+      return data;
+    } catch (error) {
+      transaction.setStatus('internal_error');
+
+      Sentry.captureException(error, {
+        tags: {
+          feature: 'documents',
+          operation: 'fetch-folder',
+        },
+        extra: {
+          folderId,
+        },
+      });
+
+      throw error;
+    } finally {
+      transaction.finish();
+    }
+  };
+
+  return { fetchFolder };
+}
+
+// =============================================================================
+// 4. INTELLIGENCE - Article Composer Error Tracking
+// =============================================================================
+
+// app/intelligence/article-composer/page.tsx
+'use client';
+
+import * as Sentry from '@sentry/nextjs';
+
+export default function ArticleComposerPage() {
+  const generateArticle = async (topic: string, keywords: string[]) => {
+    // ✅ Start transaction for performance monitoring
+    const transaction = Sentry.startTransaction({
+      op: 'task',
+      name: 'Generate Article',
+    });
+
+    Sentry.setContext('article', {
+      topic,
+      keywordCount: keywords.length,
+    });
+
+    try {
+      // Step 1: Generate outline
+      const outlineSpan = transaction.startChild({
+        op: 'ai.generate',
+        description: 'Generate article outline',
+      });
+
+      const outline = await fetch('/api/intelligence/generate-outline', {
+        method: 'POST',
+        body: JSON.stringify({ topic, keywords }),
+      });
+
+      outlineSpan.finish();
+
+      if (!outline.ok) {
+        throw new Error('Failed to generate outline');
+      }
+
+      // Step 2: Generate content
+      const contentSpan = transaction.startChild({
+        op: 'ai.generate',
+        description: 'Generate article content',
+      });
+
+      const content = await fetch('/api/intelligence/generate-content', {
+        method: 'POST',
+        body: JSON.stringify({ outline: await outline.json() }),
+      });
+
+      contentSpan.finish();
+
+      if (!content.ok) {
+        throw new Error('Failed to generate content');
+      }
+
+      transaction.setStatus('ok');
+      return await content.json();
+    } catch (error) {
+      transaction.setStatus('internal_error');
+
+      Sentry.captureException(error, {
+        tags: {
+          feature: 'article-composer',
+        },
+        extra: {
+          topic,
+          keywordCount: keywords.length,
+        },
+      });
+
+      throw error;
+    } finally {
+      transaction.finish();
+    }
+  };
+
+  return <div>{/* Article composer UI */ } </div>;
+}
+
+// =============================================================================
+// 5. API ROUTES - Server-Side Error Tracking
+// =============================================================================
+
+// app/api/portal/visa/route.ts
+import * as Sentry from '@sentry/nextjs';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get user from session
+    const userId = request.headers.get('x-user-id');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // ✅ Set user context for this request
+    Sentry.setUser({ id: userId });
+
+    // Fetch visa status from backend
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/portal/visa?user_id=${userId}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Backend API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return NextResponse.json(data);
+  } catch (error) {
+    // ✅ Capture API errors with request context
+    Sentry.captureException(error, {
+      tags: {
+        endpoint: '/api/portal/visa',
+      },
+      extra: {
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers),
+      },
+    });
+
+    return NextResponse.json(
+      { error: 'Failed to fetch visa status' },
+      { status: 500 }
+    );
+  }
+}
+
+// =============================================================================
+// 6. CUSTOM ERROR BOUNDARY - Component-Level Error Tracking
+// =============================================================================
+
+// components/ErrorBoundary.tsx
+'use client';
+
+import * as Sentry from '@sentry/nextjs';
+import { Component, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  feature?: string; // e.g., 'portal', 'chat', 'documents'
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // ✅ Capture React component errors
+    Sentry.captureException(error, {
+      tags: {
+        feature: this.props.feature || 'unknown',
+        errorBoundary: true,
+      },
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback || (
+          <div className= "p-8 text-center" >
+        <h2 className="text-xl font-semibold mb-4" > Something went wrong </h2>
+          < p className = "text-gray-600 mb-4" >
+            We've been notified and are working on fixing this.
+              </p>
+              < button
+      onClick = {() => this.setState({ hasError: false })
+    }
+    className = "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+      Try again
+        </button>
+        </div>
+        )
+      );
+  }
+
+    return this.props.children;
+  }
+}
+
+// Usage in page.tsx:
+// <ErrorBoundary feature="portal">
+//   <PortalDashboard />
+// </ErrorBoundary>
+
+// =============================================================================
+// 7. REACT QUERY - Integration with Error Tracking
+// =============================================================================
+
+// lib/react-query.ts
+import * as Sentry from '@sentry/nextjs';
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // ✅ Track React Query errors
+      onError: (error) => {
+        Sentry.captureException(error, {
+          tags: {
+            errorType: 'react-query',
+          },
+        });
+      },
+    },
+    mutations: {
+      // ✅ Track mutation errors with variables
+      onError: (error, variables, context) => {
+        Sentry.captureException(error, {
+          tags: {
+            errorType: 'react-query-mutation',
+          },
+          extra: {
+            variables,
+            context,
+          },
+        });
+      },
+    },
+  },
+});
+
+// =============================================================================
+// 8. PERFORMANCE MONITORING - Track Slow Operations
+// =============================================================================
+
+// lib/monitoring.ts
+import * as Sentry from '@sentry/nextjs';
+
+export async function monitorOperation<T>(
+  name: string,
+  operation: () => Promise<T>,
+  tags?: Record<string, string>
+): Promise<T> {
+  const transaction = Sentry.startTransaction({
+    op: 'task',
+    name,
+  });
+
+  try {
+    const result = await operation();
+    transaction.setStatus('ok');
+    return result;
+  } catch (error) {
+    transaction.setStatus('internal_error');
+    Sentry.captureException(error, { tags });
+    throw error;
+  } finally {
+    transaction.finish();
+  }
+}
+
+// Usage:
+// const result = await monitorOperation(
+//   'Import KBLI Data',
+//   () => importKBLIData(),
+//   { feature: 'admin', operation: 'import' }
+// );
+
+// =============================================================================
+// 9. WEBSOCKET - Real-time Error Tracking
+// =============================================================================
+
+// lib/websocket.ts
+import * as Sentry from '@sentry/nextjs';
+
+export class MonitoredWebSocket {
+  private ws: WebSocket | null = null;
+
+  connect(url: string) {
+    try {
+      this.ws = new WebSocket(url);
+
+      this.ws.onopen = () => {
+        Sentry.addBreadcrumb({
+          category: 'websocket',
+          message: 'WebSocket connected',
+          level: 'info',
+        });
+      };
+
+      this.ws.onerror = (event) => {
+        Sentry.captureException(new Error('WebSocket error'), {
+          tags: {
+            feature: 'websocket',
+          },
+          extra: {
+            url,
+            event,
+          },
+        });
+      };
+
+      this.ws.onclose = (event) => {
+        Sentry.addBreadcrumb({
+          category: 'websocket',
+          message: 'WebSocket closed',
+          level: event.wasClean ? 'info' : 'warning',
+          data: {
+            code: event.code,
+            reason: event.reason,
+          },
+        });
+      };
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          feature: 'websocket',
+        },
+        extra: {
+          url,
+        },
+      });
+      throw error;
+    }
+  }
+
+  disconnect() {
+    this.ws?.close();
+  }
+}
+
+// =============================================================================
+// 10. UTILITY - Rate-Limited Error Capture
+// =============================================================================
+
+// lib/sentry-utils.ts
+import * as Sentry from '@sentry/nextjs';
+
+const errorCache = new Map<string, { count: number; firstSeen: number }>();
+const RATE_LIMIT = 10; // Max 10 identical errors per minute
+const RATE_WINDOW = 60000; // 1 minute
+
+export function captureWithRateLimit(
+  error: Error,
+  context?: Parameters<typeof Sentry.captureException>[1]
+) {
+  const key = `${error.name}:${error.message}`;
+  const now = Date.now();
+  const cached = errorCache.get(key);
+
+  // Clean old entries
+  if (cached && now - cached.firstSeen > RATE_WINDOW) {
+    errorCache.delete(key);
+  }
+
+  const entry = errorCache.get(key) || { count: 0, firstSeen: now };
+
+  if (entry.count < RATE_LIMIT) {
+    Sentry.captureException(error, {
+      ...context,
+      extra: {
+        ...context?.extra,
+        rateLimitCount: entry.count + 1,
+      },
+    });
+
+    errorCache.set(key, {
+      count: entry.count + 1,
+      firstSeen: entry.firstSeen,
+    });
+  }
+}
+
+// Usage:
+// captureWithRateLimit(error, { tags: { feature: 'portal' } });
