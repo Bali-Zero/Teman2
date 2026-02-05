@@ -30,6 +30,7 @@ from backend.app.routers import (
     dashboard_summary,
     debug,
     documents_proxy,
+    dream,  # [NEW] Dream Room Router
     episodic_memory,
     feedback,
     google_drive,
@@ -37,6 +38,7 @@ from backend.app.routers import (
     health,
     ingest,
     intel,
+    kbli_notebook,  # [NEW] KBLI 2025 Notebook Router
     knowledge_activity,
     knowledge_visa,
     legal_ingest,
@@ -62,9 +64,7 @@ from backend.app.routers import (
     webhooks,
     websocket,
     whatsapp_chat,
-    whatsapp_chat,
     zoho_email,
-    dream, # [NEW] Dream Room Router
 )
 
 # NOTE: Removed routers (will be MCP):
@@ -132,6 +132,9 @@ def include_routers(api: FastAPI) -> None:
     # Intelligence & Oracle routers
     api.include_router(intel.router)
     api.include_router(oracle_universal.router)
+    api.include_router(
+        kbli_notebook.router, prefix=settings.API_V1_STR
+    )  # [NEW] KBLI 2025 Notebook Explorer
 
     # Preview router (for Telegram article previews)
     from backend.app.routers import preview
@@ -165,7 +168,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(performance.router)
 
     # Module routers (Prime Standard)
-    api.include_router(dream.router) # [NEW] Dream Room
+    api.include_router(dream.router)  # [NEW] Dream Room
     api.include_router(identity_router, prefix="/api/auth")
     api.include_router(knowledge_router)
 
