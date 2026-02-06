@@ -3,12 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppSidebar } from '@/components/workspace/AppSidebar';
-import { Header } from '@/components/workspace/Header';
-import { PortalBottomNav } from '@/components/portal/PortalBottomNav';
+import { PortalBottomNav, PortalHeader, PortalErrorBoundary } from '@/components/portal';
 import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { portalNavigation } from '@/types/navigation';
-import { ErrorBoundary } from '@/components/optimization';
 
 export default function PortalLayout({
   children,
@@ -159,19 +157,17 @@ export default function PortalLayout({
         {/* Main Content */}
         <div className="md:ml-60 min-h-screen flex flex-col">
           {/* Header */}
-          <Header
+          <PortalHeader
             userName={user.name}
             onMobileMenuToggle={handleMobileMenuToggle}
             isMobileMenuOpen={isMobileMenuOpen}
-            notificationCount={0}
-            showClock={false}
           />
 
           {/* Page Content */}
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+            <PortalErrorBoundary section="Portal">
               {children}
-            </ErrorBoundary>
+            </PortalErrorBoundary>
           </main>
         </div>
 

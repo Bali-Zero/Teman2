@@ -1,7 +1,7 @@
 /**
- * CRM Hooks Index
+ * CRM & Portal Hooks Index
  * 
- * Esporta tutti gli hooks CRM ottimizzati
+ * Esporta tutti gli hooks ottimizzati
  */
 
 // Client hooks
@@ -32,7 +32,7 @@ export {
   useGlobalSearch,
 } from './useCrmSearch';
 
-// Notification hooks
+// CRM Notification hooks
 export {
   useCrmNotifications,
   useExpiryAlerts,
@@ -45,6 +45,42 @@ export {
   NOTIFICATION_COLORS,
   type Notification,
 } from './useCrmNotifications';
+
+// Portal hooks
+export {
+  usePortalDashboard,
+  usePortalTimeline,
+  usePortalProfile,
+  useVisaStatus,
+  usePortalCompanies,
+  usePortalCompany,
+  useSetPrimaryCompany,
+  useTaxOverview,
+  usePortalDocuments,
+  usePortalMessages,
+  usePortalPreferences,
+  useValidateInviteToken,
+  useCompleteRegistration,
+  usePortalNotifications,
+} from './usePortal';
+
+// Drive optimized hooks
+export {
+  useDriveStatus,
+  useDriveFilesInfinite,
+  useDriveFiles,
+  useFileMetadata,
+  usePrefetchFolder,
+  useDriveUpload,
+  useDriveMutationsOptimized,
+  useDriveSearch,
+} from './useDriveOptimized';
+
+// File selection hook
+export {
+  useFileSelection,
+  useFileKeyboardNavigation,
+} from './useFileSelection';
 
 // Re-export from optimized hooks
 export {
