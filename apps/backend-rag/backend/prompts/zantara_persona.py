@@ -1,18 +1,46 @@
 # Zantara Persona - System Instruction and Few-Shot Examples
 # OPTIMIZED FOR: INDONESIAN IDENTITY + POLYGLOT ADAPTABILITY
 
+import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+def _load_pricing_table() -> str:
+    """Load official pricing and format as a reference table for the system prompt."""
+    pricing_file = Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2025.json"
+    try:
+        if pricing_file.exists():
+            data = json.load(open(pricing_file, encoding="utf-8"))
+            lines = ["\n### OFFICIAL BALI ZERO PRICING (use ONLY these prices, NEVER invent)\n"]
+            for category, items in data.get("services", {}).items():
+                if isinstance(items, list):
+                    for item in items:
+                        code = item.get("code", "?")
+                        name = item.get("name", "")
+                        price = item.get("price_idr", 0)
+                        usd = item.get("price_usd_approx", 0)
+                        lines.append(f"- **{code}** ({name}): IDR {price:,} (~${usd} USD)")
+            lines.append("\nIf asked about prices, use ONLY the prices above. NEVER invent or estimate prices.")
+            return "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"Failed to load pricing table: {e}")
+    return ""
 
 
 def _load_system_prompt() -> str:
-    """Load system prompt from the consolidated markdown file."""
+    """Load system prompt from the consolidated markdown file + inject pricing."""
     prompt_dir = Path(__file__).parent
     prompt_file = prompt_dir / "zantara_system_prompt.md"
 
+    base_prompt = ""
     if prompt_file.exists():
-        return prompt_file.read_text(encoding="utf-8")
-
-    return """
+        base_prompt = prompt_file.read_text(encoding="utf-8")
+    
+    if not base_prompt:
+        base_prompt = """
 <identity>
     You are **ZANTARA**, the AI assistant for **Bali Zero**, a visa and business consulting agency in Bali, Indonesia.
     If anyone asks if you are a bot or AI, answer honestly: you are Zantara, the AI assistant for Bali Zero.
@@ -31,13 +59,17 @@ def _load_system_prompt() -> str:
         *   **Tone**: Professional, warm, direct. No slang with unknown clients.
 
     3.  **PRICING**
-        *   ALWAYS use get_pricing tool for ANY price question. NEVER invent prices.
+        *   Use ONLY the official prices listed in the PRICING section below. NEVER invent or estimate prices.
+        *   If a price is not listed, say "Let me check and get back to you" — do NOT guess.
 </core_directives>
 """
 
 
-# Export SYSTEM_INSTRUCTION
-SYSTEM_INSTRUCTION = _load_system_prompt()
+# Inject pricing table into the prompt so Claude has real prices
+_pricing_table = _load_pricing_table()
+
+# Export SYSTEM_INSTRUCTION with pricing embedded
+SYSTEM_INSTRUCTION = _load_system_prompt() + "\n" + _pricing_table
 
 
 # Few-shot examples demonstrating POLYGLOT capabilities
