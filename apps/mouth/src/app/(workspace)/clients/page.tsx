@@ -1,6 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * Clients Page - CRM Workspace
+ * 
+ * Ottimizzata con:
+ * - React Query per caching e sincronizzazione
+ * - Virtualized list per grandi dataset
+ * - Debounced search
+ * - Error Boundary per resilienza
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Users,
@@ -12,6 +22,7 @@ import {
   X,
   SortAsc,
   SortDesc,
+  AlertCircle,
 } from 'lucide-react';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -21,6 +32,9 @@ import type { Client } from '@/lib/api/crm/crm.types';
 import { CLIENT_STATUSES, COMMON_NATIONALITIES } from '@/lib/api/crm/crm.types';
 import { ClientKanban } from '@/components/crm/ClientKanban';
 import { ClientCard } from '@/components/crm/ClientCard';
+import { CRMErrorBoundary, CRMSkeleton } from '@/components/crm';
+import { useCrmClients, useCrmStats } from '@/hooks';
+import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
 import { logger } from '@/lib/logger';
 
 // Status badge styling
@@ -41,6 +55,11 @@ interface Filters {
   nationality: string;
   assigned_to: string;
 }
+
+const PAGE_SIZE = 200;
+const ESTIMATED_CARD_HEIGHT = 200;
+const VIRTUALIZATION_THRESHOLD = 30;
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Virtualized client grid for better performance with large lists
@@ -63,25 +82,21 @@ function VirtualizedClientGrid({
   const parentRef = useRef<HTMLDivElement>(null);
   const shouldVirtualize = clients.length > VIRTUALIZATION_THRESHOLD;
 
-  // Calculate grid columns based on viewport
   const [columns, setColumns] = useState(3);
   useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth;
-      if (width >= 1024)
-        setColumns(3); // lg: 3 columns
-      else if (width >= 768)
-        setColumns(2); // md: 2 columns
-      else setColumns(1); // sm: 1 column
+      if (width >= 1024) setColumns(3);
+      else if (width >= 768) setColumns(2);
+      else setColumns(1);
     };
     updateColumns();
     window.addEventListener('resize', updateColumns);
     return () => window.removeEventListener('resize', updateColumns);
   }, []);
 
-  // Calculate rows needed
   const rows = Math.ceil(clients.length / columns);
-  const rowHeight = ESTIMATED_CARD_HEIGHT + 16; // card height + gap
+  const rowHeight = ESTIMATED_CARD_HEIGHT + 16;
 
   const virtualizer = useVirtualizer({
     count: rows,
@@ -90,8 +105,6 @@ function VirtualizedClientGrid({
     overscan: 2,
   });
 
-  // Force re-measure when parent becomes available
-  // IMPORTANT: This must be before the early return to maintain hooks order
   useEffect(() => {
     if (parentRef.current && shouldVirtualize) {
       virtualizer.measure();
@@ -99,7 +112,6 @@ function VirtualizedClientGrid({
   }, [virtualizer, shouldVirtualize]);
 
   if (!shouldVirtualize) {
-    // For small lists, render normally
     return (
       <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
@@ -124,7 +136,6 @@ function VirtualizedClientGrid({
     );
   }
 
-  // Virtualized grid rendering
   const virtualRows = virtualizer.getVirtualItems();
 
   return (
@@ -157,7 +168,6 @@ function VirtualizedClientGrid({
                 {rowClients.map((client) => (
                   <ClientCard key={client.id} client={client} />
                 ))}
-                {/* Fill empty slots in last row */}
                 {rowClients.length < columns &&
                   Array.from({ length: columns - rowClients.length }).map((_, i) => (
                     <div key={`empty-${i}`} />
@@ -167,7 +177,6 @@ function VirtualizedClientGrid({
           );
         })}
       </div>
-      {/* Infinite scroll trigger */}
       <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
         {isLoadingMore && (
           <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
@@ -185,17 +194,14 @@ function VirtualizedClientGrid({
   );
 }
 
-const PAGE_SIZE = 200; // Max allowed by backend
-const ESTIMATED_CARD_HEIGHT = 200; // Estimated height for ClientCard in grid
-const VIRTUALIZATION_THRESHOLD = 30; // Virtualize grid if more than 30 items
-
-export default function ClientiPage() {
+/**
+ * Clients list content component
+ */
+function ClientsListContent() {
   const router = useRouter();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [listParent] = useAutoAnimate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     status: '',
@@ -208,11 +214,9 @@ export default function ClientiPage() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const loadMoreRef = React.useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Load current user profile for access control
+  // Load current user profile
   useEffect(() => {
     const loadProfile = () => {
       const profile = api.getUserProfile();
@@ -230,52 +234,36 @@ export default function ClientiPage() {
     };
   }, []);
 
-  // Fix hydration mismatch by detecting client-side rendering
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Initial load
-  const loadClients = async (reset = true) => {
-    if (reset) {
-      setIsLoading(true);
-      setOffset(0);
-      setHasMore(true);
-    } else {
-      setIsLoadingMore(true);
-    }
+  // Use optimized CRM hook with caching
+  const {
+    clients,
+    total,
+    isLoading,
+    isError,
+    error,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+  } = useCrmClients({
+    status: filters.status || undefined,
+    assigned_to: filters.assigned_to || undefined,
+    search: debouncedSearch || undefined,
+    limit: PAGE_SIZE,
+  });
 
-    try {
-      const currentOffset = reset ? 0 : offset;
-      const data = await api.crm.getClients({
-        search: searchQuery || undefined,
-        limit: PAGE_SIZE,
-        offset: currentOffset,
-      });
+  // Stats hook
+  const { data: stats } = useCrmStats();
 
-      if (reset) {
-        setClients(data);
-      } else {
-        setClients((prev) => [...prev, ...data]);
-      }
-
-      // If we got fewer than PAGE_SIZE, there's no more data
-      setHasMore(data.length === PAGE_SIZE);
-      setOffset(currentOffset + data.length);
-    } catch (error) {
-      logger.error('Failed to load clients:', {}, error as Error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  };
-
-  // Infinite scroll: load more when user scrolls to bottom
+  // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          loadClients(false);
+          loadMore();
         }
       },
       { threshold: 0.1 }
@@ -286,34 +274,19 @@ export default function ClientiPage() {
     }
 
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, offset, searchQuery]);
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => loadClients(true), searchQuery ? 300 : 0);
-    return () => clearTimeout(debounceTimer);
-  }, [searchQuery]);
-
-  // Handle status change (e.g. from Kanban)
-  const handleStatusChange = async (clientId: number, newStatus: string) => {
-    // Optimistic update
-    setClients((prev) =>
-      prev.map((c) => (c.id === clientId ? { ...c, status: newStatus as Client['status'] } : c))
-    );
-
+  // Handle status change
+  const handleStatusChange = useCallback(async (clientId: number, newStatus: string) => {
     try {
-      // Assuming we have an updateClient method, otherwise we need to use PATCH endpoint
-      // NOTE: crm.api.ts needs updateClient or patch support
       const currentUser = api.getUserProfile();
       await api.crm.updateClient(clientId, { status: newStatus }, currentUser?.email || 'system');
     } catch (error) {
       logger.error('Failed to update status:', {}, error as Error);
-      // Revert on error
-      loadClients();
     }
-  };
+  }, []);
 
-  // Filtering (all clients visible to all users)
-  // Prevent hydration mismatch by only showing clients after client-side mount
+  // Filtering
   const visibleClients = profileLoaded && isMounted ? clients : [];
   const uniqueAssignees = Array.from(
     new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean))
@@ -366,6 +339,24 @@ export default function ClientiPage() {
     }
   };
 
+  // Error state
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 p-8 text-center">
+        <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+        <h2 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">
+          Error loading clients
+        </h2>
+        <p className="text-sm text-red-600 dark:text-red-300 mb-4">
+          {error instanceof Error ? error.message : 'An unexpected error occurred'}
+        </p>
+        <Button onClick={() => window.location.reload()} variant="outline">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 h-full flex flex-col">
       {/* Header */}
@@ -378,6 +369,11 @@ export default function ClientiPage() {
             {hasMore && ' (scroll for more)'}
             {activeFiltersCount > 0 &&
               ` • filtered from ${isMounted ? visibleClients.length.toLocaleString() : visibleClients.length}`}
+            {stats && (
+              <span className="ml-2 text-xs">
+                • {stats.totalClients} total
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -418,6 +414,14 @@ export default function ClientiPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <Button
             variant={showFilters ? 'default' : 'outline'}
@@ -541,12 +545,9 @@ export default function ClientiPage() {
       )}
 
       {/* CONTENT AREA */}
-      {isLoading ? (
+      {isLoading && !clients.length ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-12 text-center">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-[var(--background-elevated)] rounded w-1/3 mx-auto" />
-            <div className="h-4 bg-[var(--background-elevated)] rounded w-1/2 mx-auto" />
-          </div>
+          <CRMSkeleton count={6} />
         </div>
       ) : filteredClients.length > 0 ? (
         <div className="flex-1 overflow-auto">
@@ -568,16 +569,36 @@ export default function ClientiPage() {
           <Users className="w-16 h-16 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
           <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">No clients found</h2>
           <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto mb-6">
-            Try adjusting your search or filters.
+            {searchQuery 
+              ? 'No clients match your search. Try different keywords.'
+              : activeFiltersCount > 0
+              ? 'No clients match the selected filters.'
+              : 'Get started by adding your first client.'}
           </p>
-          {activeFiltersCount > 0 && (
+          {activeFiltersCount > 0 ? (
             <Button variant="outline" onClick={clearFilters} className="gap-2">
               <X className="w-4 h-4" />
               Clear Filters
+            </Button>
+          ) : (
+            <Button onClick={handleNewClient} className="gap-2">
+              <UserPlus className="w-4 h-4" />
+              Add First Client
             </Button>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Main page component with error boundary
+ */
+export default function ClientiPage() {
+  return (
+    <CRMErrorBoundary section="Clients">
+      <ClientsListContent />
+    </CRMErrorBoundary>
   );
 }
