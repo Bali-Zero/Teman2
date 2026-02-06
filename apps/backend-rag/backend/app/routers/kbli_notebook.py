@@ -67,6 +67,7 @@ class KBLINotebookChatRequest(BaseModel):
 class KBLINotebookChatResponse(BaseModel):
     answer: str
     detected_kbli: list[str]
+    results: list[KBLISearchResult]
     sources: list[dict]
 
 
@@ -216,22 +217,104 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
         raise HTTPException(status_code=500, detail=f"Internal processing error: {str(e)}") from e
 
 
+_llm_gateway_instance = None
+
+
+def _get_llm_gateway():
+    global _llm_gateway_instance
+    if _llm_gateway_instance is None:
+        from backend.services.rag.agentic.llm_gateway import LLMGateway
+
+        _llm_gateway_instance = LLMGateway()
+    return _llm_gateway_instance
+
+
+KBLI_SYSTEM_PROMPT = (
+    "Sei un consulente aziendale italiano specializzato in investimenti in Indonesia (Bali). "
+    "Il tuo interlocutore e' un imprenditore italiano NON esperto di burocrazia indonesiana. "
+    "Rispondi SEMPRE in italiano. Sii chiaro, concreto e amichevole. "
+    "Non usare gergo tecnico indonesiano senza spiegarlo. "
+    "Spiega cosa copre ogni codice KBLI e perche' e' rilevante. "
+    "Mantieni la risposta breve (3-5 frasi per risultato). "
+    "Se PMA e' rilevante: TERBUKA=aperto stranieri, TERBATAS=con limitazioni, TERTUTUP=chiuso. "
+    "NON inventare informazioni. Usa SOLO i dati forniti nel contesto."
+)
+
+
+async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
+    """Generate an Italian explanation of KBLI search results using LLM."""
+    if not results:
+        return "Non ho trovato codici KBLI corrispondenti alla tua ricerca. Prova con parole diverse o descrivi la tua attivita' in modo piu' dettagliato."
+
+    context_parts = []
+    for r in results:
+        context_parts.append(f"- KBLI {r.code}: {r.title}\n  Descrizione: {r.description}\n  Rilevanza: {r.score:.0%}")
+    context = "\n".join(context_parts)
+
+    message = f"Domanda dell'utente: {query}\n\nRisultati KBLI trovati:\n{context}\n\nSpiega questi codici KBLI in italiano, in modo semplice e utile per un imprenditore."
+
+    try:
+        from backend.services.rag.agentic.llm_gateway import TIER_FLASH
+
+        gateway = _get_llm_gateway()
+        chat = gateway.create_chat_with_history(
+            history_to_use=[],
+            model_tier=TIER_FLASH,
+            system_instruction=KBLI_SYSTEM_PROMPT,
+        )
+        response_text, _model, _resp, _usage = await gateway.send_message(
+            chat=chat,
+            message=message,
+            system_prompt=KBLI_SYSTEM_PROMPT,
+            tier=TIER_FLASH,
+            enable_function_calling=False,
+            conversation_messages=[{"role": "user", "content": message}],
+        )
+        return response_text
+    except Exception as e:
+        logger.warning(f"LLM explanation failed, using fallback: {e}")
+        # Deterministic fallback: markdown list of results
+        lines = [f"Ho trovato {len(results)} codici KBLI rilevanti per la tua ricerca:\n"]
+        for r in results:
+            lines.append(f"**KBLI {r.code}** - {r.title}\n{r.description}\n")
+        return "\n".join(lines)
+
+
 @router.post("/chat", response_model=KBLINotebookChatResponse)
 async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get_search_service)):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{request.query[:50]}...'")
 
     try:
-        # Search semantic context
+        # Search semantic context (5 results for richer answers)
         embedding = await search_service.embedder.generate_query_embedding(request.query)
-        search_results = await _search_kbli_qdrant(embedding, 3)
+        raw_results = await _search_kbli_qdrant(embedding, 5)
 
-        # Detect KBLI codes mentioned in query
-        codes_found = re.findall(r"\d{5}", request.query)
+        # Build structured results (same pattern as /search endpoint)
+        results = []
+        for r in raw_results:
+            p = r.get("payload", {})
+            results.append(
+                KBLISearchResult(
+                    code=p.get("kode_kbli", "N/A"),
+                    title=p.get("judul", "N/A"),
+                    description=(p.get("content", "") or "")[:200] + "...",
+                    score=round(r.get("score", 0.0), 4),
+                )
+            )
+
+        # Detect KBLI codes from results + regex on query
+        codes_from_query = re.findall(r"\d{5}", request.query)
+        codes_from_results = [r.code for r in results if r.code != "N/A"]
+        detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
+
+        # Generate Italian explanation via LLM (with fallback)
+        answer = await _generate_kbli_explanation(request.query, results)
 
         return KBLINotebookChatResponse(
-            answer=f"Analisi della richiesta completata. Ho trovato {len(search_results)} contesti normativi rilevanti basati su BPS 2025 e PP 28/2025.",
-            detected_kbli=list(set(codes_found)),
+            answer=answer,
+            detected_kbli=detected_kbli,
+            results=results,
             sources=[{"title": "PP 28/2025", "relevance": "High"}],
         )
     except Exception as e:

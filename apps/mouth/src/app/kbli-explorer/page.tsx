@@ -277,11 +277,14 @@ export default function KBLIExplorerPage() {
           role: 'ai',
           content: response.answer,
           detected_kbli: response.detected_kbli,
+          results: response.results,
         },
       ]);
 
-      // If a code was detected, auto-inspect the first one
-      if (response.detected_kbli.length > 0) {
+      // Auto-inspect the first result for immediate inspector panel content
+      if (response.results && response.results.length > 0) {
+        handleInspect(response.results[0].code);
+      } else if (response.detected_kbli.length > 0) {
         handleInspect(response.detected_kbli[0]);
       }
     } catch (err) {
@@ -448,24 +451,55 @@ export default function KBLIExplorerPage() {
                           dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br/>') }}
                         />
 
-                        {msg.detected_kbli && msg.detected_kbli.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-4">
-                            {msg.detected_kbli.map((code: string) => (
+                        {msg.results && msg.results.length > 0 ? (
+                          <div className="space-y-3 mt-4">
+                            {msg.results.map((result: any) => (
                               <button
-                                key={code}
-                                onClick={() => handleInspect(code)}
-                                className="group flex items-center gap-2 px-3 py-2 rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
+                                key={result.code}
+                                onClick={() => handleInspect(result.code)}
+                                className="group w-full text-left p-4 rounded-lg bg-[#0F1115]/60 border border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921] transition-all duration-200"
                               >
-                                <span className="font-mono text-[#D4B483] text-xs">
-                                  KBLI {code}
-                                </span>
-                                <ChevronRight
-                                  size={12}
-                                  className="text-[#555] group-hover:text-[#D4B483]"
-                                />
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
+                                    {result.code}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-widest text-[#555]">
+                                    {Math.round(result.score * 100)}% match
+                                  </span>
+                                </div>
+                                <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
+                                  {result.title}
+                                </h4>
+                                <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
+                                  {result.description}
+                                </p>
+                                <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
+                                  <span>Dettagli</span>
+                                  <ChevronRight size={10} />
+                                </div>
                               </button>
                             ))}
                           </div>
+                        ) : (
+                          msg.detected_kbli && msg.detected_kbli.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-4">
+                              {msg.detected_kbli.map((code: string) => (
+                                <button
+                                  key={code}
+                                  onClick={() => handleInspect(code)}
+                                  className="group flex items-center gap-2 px-3 py-2 rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
+                                >
+                                  <span className="font-mono text-[#D4B483] text-xs">
+                                    KBLI {code}
+                                  </span>
+                                  <ChevronRight
+                                    size={12}
+                                    className="text-[#555] group-hover:text-[#D4B483]"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          )
                         )}
                       </div>
                     )
