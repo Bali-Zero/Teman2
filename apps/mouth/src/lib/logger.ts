@@ -5,7 +5,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { debug, warn, error } from '@/lib/utils/console';
+import { debug, warn, error as logError } from '@/lib/utils/console';
 import type { Metadata } from './types/common';
 
 export enum LogLevel {
@@ -96,12 +96,12 @@ class Logger {
         warn(logMessage);
         break;
       case LogLevel.ERROR:
-        error(logMessage);
+        logError(logMessage);
         if (error) {
-          error('Error details:', error);
+          logError('Error details:', error);
         }
         if (stack) {
-          error('Stack trace:', stack);
+          logError('Stack trace:', stack);
         }
         break;
     }
