@@ -184,21 +184,42 @@ async def process_whatsapp_message(
             logger.info(f"Welcome message sent to {phone}")
             return
 
-        # 4. AI CAN HANDLE — Direct Claude (Zero persona)
-        from backend.llm.providers.anthropic_direct import anthropic_provider
-        from backend.prompts.zantara_persona import SYSTEM_INSTRUCTION
+        # 4. AI CAN HANDLE — Use Agentic RAG (full pipeline with tools, KG, pricing)
+        from backend.app.dependencies import get_orchestrator as _get_orch
 
-        logger.info(f"🚀 Processing query from {phone} with Claude Direct")
+        logger.info(f"🚀 Processing query from {phone} with Agentic RAG")
 
         start_time = time.time()
 
         try:
-            response_text = await anthropic_provider.generate(
-                system_prompt=SYSTEM_INSTRUCTION,
-                messages=[{"role": "user", "content": message_text}],
-                temperature=0.7,
-                max_tokens=512,
+            # Get the singleton orchestrator (same one used by web chat)
+            orchestrator = _get_orch(request)
+
+            # Process through full RAG pipeline (vector search, pricing tool, KG)
+            result = await orchestrator.process_query(
+                query=message_text,
+                user_id=phone,
+                language=None,  # Auto-detect
             )
+
+            # Extract the response text from the RAG result
+            response_text = ""
+            if isinstance(result, dict):
+                response_text = result.get("response", "") or result.get("answer", "") or ""
+            elif isinstance(result, str):
+                response_text = result
+            
+            # Fallback if RAG returns empty
+            if not response_text:
+                # Fallback to Claude Direct for edge cases
+                from backend.llm.providers.anthropic_direct import anthropic_provider
+                from backend.prompts.zantara_persona import SYSTEM_INSTRUCTION
+                response_text = await anthropic_provider.generate(
+                    system_prompt=SYSTEM_INSTRUCTION,
+                    messages=[{"role": "user", "content": message_text}],
+                    temperature=0.7,
+                    max_tokens=512,
+                )
 
             if not response_text:
                 response_text = "Scusa, qualcosa è andato storto 😅 Riprova!"
