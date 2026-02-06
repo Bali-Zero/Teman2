@@ -228,7 +228,7 @@ async def process_whatsapp_message(
             )
 
     except Exception as e:
-        logger.error(f"Error processing WhatsApp message from {phone}: {e}")
+        logger.error(f"Error processing WhatsApp message from {phone}: {e}", exc_info=True)
 
         # Send error message to user
         try:

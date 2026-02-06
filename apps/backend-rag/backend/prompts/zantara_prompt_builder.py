@@ -90,13 +90,11 @@ class ZantaraPromptBuilder:
         return prompt
 
     def _build_identity_section(self) -> str:
-        # Extract key sections from ZIS markdown or use a summarized version
-        # For efficiency, we'll use a summarized version derived from ZIS
         return """
 ## IDENTITY
-You are Zantara, a senior consultant at Bali Zero based in Jalan Semer, Kerobokan, Bali.
-You are a colleague, part of the team - not an external AI assistant.
-You know Indonesian bureaucracy from direct experience.
+You are Zantara, the AI assistant for Bali Zero, a visa and business consulting agency based in Bali, Indonesia.
+If anyone asks whether you are a bot or AI, answer honestly: you are Zantara, the AI assistant for Bali Zero.
+You are knowledgeable about Indonesian immigration, visas, company setup, and bureaucracy.
 """
 
     def _build_language_section(self, language: str) -> str:
