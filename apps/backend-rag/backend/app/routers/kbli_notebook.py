@@ -10,11 +10,14 @@ Date: 2026-02-05
 
 import json
 import logging
+import re
 import time
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import (
     get_optional_database_pool,
     get_search_service,
@@ -72,6 +75,22 @@ class KBLINotebookChatResponse(BaseModel):
 # =============================================================================
 
 
+KBLI_COLLECTION = "kbli_2025_final"
+
+
+async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[dict]:
+    """Direct Qdrant search for KBLI collection (flat payload structure)."""
+    headers = {"Content-Type": "application/json"}
+    if settings.qdrant_api_key:
+        headers["api-key"] = settings.qdrant_api_key
+    url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/search"
+    payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json().get("result", [])
+
+
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)):
     """Search for KBLI codes using semantic search (Qdrant)."""
@@ -79,20 +98,18 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
     logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
 
     try:
-        raw = await search_service.search_collection(
-            query=query, collection_name="kbli_2025_final", limit=limit
-        )
+        embedding = await search_service.embedder.generate_query_embedding(query)
+        results = await _search_kbli_qdrant(embedding, limit)
 
         search_results = []
-        for doc in raw.get("results", []):
-            metadata = doc.get("metadata", {})
-            text = doc.get("text", "") or doc.get("content", "") or ""
+        for r in results:
+            p = r.get("payload", {})
             search_results.append(
                 KBLISearchResult(
-                    code=metadata.get("kode_kbli", metadata.get("kode", "N/A")),
-                    title=metadata.get("judul", "N/A"),
-                    description=text[:200] + "..." if text else "...",
-                    score=doc.get("score", 0.0),
+                    code=p.get("kode_kbli", "N/A"),
+                    title=p.get("judul", "N/A"),
+                    description=(p.get("content", "") or "")[:200] + "...",
+                    score=round(r.get("score", 0.0), 4),
                 )
             )
 
@@ -206,14 +223,10 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
 
     try:
         # Search semantic context
-        raw = await search_service.search_collection(
-            query=request.query, collection_name="kbli_2025_final", limit=3
-        )
-        search_results = raw.get("results", [])
+        embedding = await search_service.embedder.generate_query_embedding(request.query)
+        search_results = await _search_kbli_qdrant(embedding, 3)
 
         # Detect KBLI codes mentioned in query
-        import re
-
         codes_found = re.findall(r"\d{5}", request.query)
 
         return KBLINotebookChatResponse(
