@@ -114,8 +114,8 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
                     title=p.get("judul", "N/A"),
                     description=(p.get("content", "") or "")[:200] + "...",
                     score=round(r.get("score", 0.0), 4),
-                    pma_status=p.get("pma_status", "UNKNOWN"),
-                    risk_category=p.get("kategori_risiko", "Unknown"),
+                    pma_status=p.get("pma_status") or "UNKNOWN",
+                    risk_category=p.get("kategori_risiko") or "Unknown",
                 )
             )
 
@@ -401,8 +401,8 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
                     title=p.get("judul", "N/A"),
                     description=(p.get("content", "") or "")[:200] + "...",
                     score=round(r.get("score", 0.0), 4),
-                    pma_status=p.get("pma_status", "UNKNOWN"),
-                    risk_category=p.get("kategori_risiko", "Unknown"),
+                    pma_status=p.get("pma_status") or "UNKNOWN",
+                    risk_category=p.get("kategori_risiko") or "Unknown",
                 )
             )
             if len(results) >= 5:
