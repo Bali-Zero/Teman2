@@ -3,7 +3,7 @@
 import { Component, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
-import { error } from '@/lib/utils/console';
+import { error as logError } from '@/lib/utils/console';
 import { Button } from './button';
 
 interface ErrorBoundaryProps {
@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      error('ErrorBoundary caught an error:', error, errorInfo);
+      logError('ErrorBoundary caught an error:', error, errorInfo);
     }
   }
 
