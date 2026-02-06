@@ -16,9 +16,13 @@ This service now handles ONLY core search logic with proper delegation.
 import asyncio
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    # Avoid circular imports at runtime
+    from backend.services.routing.query_router_integration import QueryRouterIntegration
 from qdrant_client.http import exceptions as qdrant_exceptions
 
 logger = logging.getLogger(__name__)

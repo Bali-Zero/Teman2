@@ -1,8 +1,14 @@
+import os
 import time
 
 import requests
 
 URL = "http://localhost:8000/api/agentic-rag/stream"
+
+# SECURITY: Load API key from environment
+API_KEY = os.getenv("ZANTARA_API_KEY")
+if not API_KEY:
+    raise ValueError("ZANTARA_API_KEY environment variable not set")
 
 payload = {
     "query": "Hello, are you there?",
@@ -15,7 +21,7 @@ print(f"Connecting to {URL}...")
 start_time = time.time()
 
 try:
-    headers = {"X-API-Key": "REDACTED-ROTATED-KEY"}
+    headers = {"X-API-Key": API_KEY}
     with requests.post(URL, json=payload, headers=headers, stream=True, timeout=60) as response:
         print(f"Status Code: {response.status_code}")
         if response.status_code != 200:

@@ -90,22 +90,40 @@ class GeminiKGExtractor:
     def _build_extraction_prompt(self, text: str) -> str:
         """Build prompt for combined entity and relation extraction"""
         return f"""You are an expert in Indonesian law and legal document analysis.
-Extract all entities AND relationships from the following Indonesian legal text.
+Extract entities AND relationships from the following Indonesian legal text.
 
 {self.schema_prompt}
 
-## INSTRUCTIONS
+## CRITICAL INSTRUCTIONS
 
 ### Entity Extraction:
-1. Extract ALL entities matching the types above
+1. Extract SPECIFIC, NAMED entities only (not generic terms)
 2. For each entity provide: id, type, name, mention, attributes, confidence
 3. Normalize names (e.g., "UU No 6/2023" -> "UU No. 6 Tahun 2023")
 4. For regulations, extract number and year as attributes
+5. SKIP generic terms like "peraturan", "undang-undang", "hukum" without specific identifiers
+6. Entity names MUST be at least 4 characters
 
-### Relation Extraction:
-1. Identify relationships between extracted entities
+### Relation Extraction - VERY IMPORTANT:
+1. **EVERY entity should have at least ONE relationship**
 2. For each relation provide: source_id, target_id, type, evidence, confidence
-3. Only include relations with clear textual evidence
+3. Common patterns to look for:
+   - Pasal/Ayat -> PART_OF -> Undang-undang/PP/Permen
+   - Izin usaha -> REQUIRES -> Dokumen
+   - Izin usaha -> CLASSIFIED_AS -> KBLI code
+   - Process -> HAS_FEE -> Biaya
+   - Izin -> HAS_DURATION -> Jangka waktu
+   - New law -> AMENDS -> Old law
+   - Regulation -> REFERENCES -> Other regulation
+4. Look for trigger words: "wajib", "harus", "memerlukan", "berdasarkan", "sebagaimana diatur", "mengacu pada"
+5. If an entity has no obvious relationship, link it to the main regulation/topic of the text
+
+### Quality Guidelines:
+- Minimum entity name length: 4 characters
+- Skip OCR artifacts (names with !, @, #, etc.)
+- Skip pure numbers or single letters
+- Budget terms (DAK, DAU, APBN) are NOT laws - classify as "biaya"
+- KBLI codes should be formatted as "KBLI XXXXX"
 
 ## TEXT TO ANALYZE
 {text}
@@ -121,20 +139,27 @@ Return a JSON object with this exact structure:
       "mention": "UU No 6/2023",
       "attributes": {{"number": 6, "year": 2023}},
       "confidence": 0.95
+    }},
+    {{
+      "id": "e2",
+      "type": "pasal",
+      "name": "Pasal 10",
+      "attributes": {{"number": 10}},
+      "confidence": 0.9
     }}
   ],
   "relations": [
     {{
-      "source_id": "e1",
-      "target_id": "e2",
-      "type": "REQUIRES",
-      "evidence": "wajib memiliki",
-      "confidence": 0.9
+      "source_id": "e2",
+      "target_id": "e1",
+      "type": "PART_OF",
+      "evidence": "Pasal 10 UU No. 6 Tahun 2023",
+      "confidence": 0.95
     }}
   ]
 }}
 
-Extract entities and relations now:"""
+Extract entities and relations now (ensure every entity has at least one relationship):"""
 
     async def extract(
         self, text: str, chunk_id: str = "", two_stage: bool = False

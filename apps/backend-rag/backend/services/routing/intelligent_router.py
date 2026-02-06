@@ -47,7 +47,7 @@ class IntelligentRouter:
         self.orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
-            web_search_client=None,  # TODO: Inject Web Search if available
+            web_search_client=None,  # FUTURE: Inject WebSearchTool when Tavily/Brave keys are configured
             clarification_service=self.clarification_service,
         )
 

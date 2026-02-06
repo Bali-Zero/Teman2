@@ -331,31 +331,65 @@ class LegalIngestionService:
                 trace_id=trace_id,
             )
 
-            # HYBRID EXTRACTION: Fallback to Vertex AI if Pattern Extraction fails
+            # HYBRID EXTRACTION: Fallback to Google AI Studio if Pattern Extraction fails
+            # NOTE: Changed from Vertex AI to Google AI Studio (2026-02-06)
+            # Reason: Vertex AI costs were Rp 5.5M/month vs Google AI Studio ~Rp 800/month
             if not metadata or metadata.get("type") == "UNKNOWN":
                 logger.info(
-                    "[STAGE 3] Pattern extraction failed/incomplete. Attempting Vertex AI fallback...",
+                    "[STAGE 3] Pattern extraction failed/incomplete. Attempting Google AI Studio fallback...",
                     extra={
                         "document_id": document_id,
                         "stage": "metadata_extraction",
-                        "fallback_method": "vertex_ai",
+                        "fallback_method": "google_ai_studio",
                     },
                 )
                 try:
-                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
+                    import json as json_module
+                    import os
 
-                    vertex_service = VertexAIService()
-                    ai_metadata = await vertex_service.extract_metadata(cleaned_text)
+                    from google import genai
+
+                    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_IMAGEN_API_KEY")
+                    if not api_key:
+                        raise ValueError("GOOGLE_API_KEY not configured")
+
+                    client = genai.Client(api_key=api_key)
+                    prompt = f"""You are an expert Indonesian Legal Analyst.
+Extract metadata from this legal document. Return ONLY a JSON object with these fields:
+- type: Full document type (e.g., "Undang-Undang", "Peraturan Pemerintah")
+- type_abbrev: Abbreviation (e.g., "UU", "PP", "PERMEN")
+- number: Document number (e.g., "6", "28")
+- year: Year (e.g., "2023", "2025")
+- title: Document title
+- issuer: Issuing body
+
+Document text (first 3000 chars):
+{cleaned_text[:3000]}
+
+Return ONLY valid JSON, no markdown."""
+
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=prompt,
+                    )
+                    response_text = response.text.strip()
+                    # Clean markdown if present
+                    if response_text.startswith("```"):
+                        response_text = response_text.split("```")[1]
+                        if response_text.startswith("json"):
+                            response_text = response_text[4:]
+                    ai_metadata = json_module.loads(response_text)
 
                     if ai_metadata:
                         logger.info(
-                            f"[STAGE 3] Vertex AI extraction successful: {ai_metadata.get('type_abbrev')} {ai_metadata.get('number')}",
+                            f"[STAGE 3] Google AI Studio extraction successful: {ai_metadata.get('type_abbrev')} {ai_metadata.get('number')}",
                             extra={
                                 "document_id": document_id,
                                 "stage": "metadata_extraction",
                                 "metadata_type": ai_metadata.get("type_abbrev"),
                                 "metadata_number": ai_metadata.get("number"),
                                 "fallback_success": True,
+                                "cost_effective": True,
                             },
                         )
                         # Merge AI metadata, preferring AI results for missing fields
@@ -365,7 +399,7 @@ class LegalIngestionService:
                             metadata.update({k: v for k, v in ai_metadata.items() if v})
                 except Exception as e:
                     logger.warning(
-                        f"[STAGE 3] Vertex AI fallback failed: {e}",
+                        f"[STAGE 3] Google AI Studio fallback failed: {e}",
                         extra={
                             "document_id": document_id,
                             "stage": "metadata_extraction",

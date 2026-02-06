@@ -19,6 +19,7 @@ import asyncpg
 
 from .coreference import CoreferenceResolver
 from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult, KGExtractor
+from .quality_filter import KGQualityFilter
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,12 @@ class PipelineConfig:
     two_stage_extraction: bool = False  # Faster single-stage by default
     use_coreference: bool = True
     min_confidence: float = 0.6
+
+    # Quality filtering (NEW)
+    use_quality_filter: bool = True  # Enable quality filtering
+    min_entity_name_length: int = 4  # Minimum entity name length
+    fuzzy_match_threshold: float = 0.85  # For duplicate detection
+    infer_relationships: bool = True  # Infer relations for orphans
 
     # Batch settings
     batch_size: int = 10
@@ -133,6 +140,16 @@ class KGPipeline:
         self.entity_registry: dict[str, ExtractedEntity] = {}
         self.relation_registry: set[str] = set()
 
+        # Quality filter (NEW)
+        self.quality_filter: KGQualityFilter | None = None
+        if self.config.use_quality_filter:
+            self.quality_filter = KGQualityFilter(
+                min_name_length=self.config.min_entity_name_length,
+                fuzzy_threshold=self.config.fuzzy_match_threshold,
+                infer_relationships=self.config.infer_relationships,
+            )
+            logger.info("Quality filter enabled")
+
         logger.info(f"KGPipeline initialized with config: {self.config}")
 
     async def _get_db(self) -> asyncpg.Pool:
@@ -204,7 +221,11 @@ class KGPipeline:
                 clusters = self.coreference.cluster_entities(result.entities)
                 self.coreference.update_cache(clusters)
 
-            # Stage 3: Filter by confidence
+            # Stage 3: Apply quality filter (NEW)
+            if self.quality_filter:
+                result = self.quality_filter.filter_result(result)
+
+            # Stage 4: Filter by confidence
             result.entities = [
                 e for e in result.entities if e.confidence >= self.config.min_confidence
             ]

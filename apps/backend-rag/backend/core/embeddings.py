@@ -1,12 +1,17 @@
 """
 ZANTARA RAG - Embeddings Generation
 Supports both OpenAI and Sentence Transformers
+
+OPTIMIZED: Added LRU caching for embeddings to reduce API calls and latency
 """
 
 import asyncio
+import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+from hashlib import md5
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +37,69 @@ try:
     from backend.app.core.config import settings as _default_settings
 except ImportError:
     _default_settings = None
+
+
+class EmbeddingCache:
+    """
+    LRU Cache for embeddings to avoid repeated API calls.
+    
+    Caches embeddings based on text content hash.
+    Thread-safe for async usage.
+    """
+    
+    def __init__(self, max_size: int = 1000):
+        self._cache = {}
+        self._max_size = max_size
+        self._hits = 0
+        self._misses = 0
+        self._lock = asyncio.Lock()
+    
+    def _get_key(self, texts: list[str]) -> str:
+        """Generate cache key from texts using MD5 hash."""
+        content = json.dumps(texts, sort_keys=True)
+        return md5(content.encode()).hexdigest()
+    
+    async def get(self, texts: list[str]) -> list[list[float]] | None:
+        """Get cached embeddings if available."""
+        key = self._get_key(texts)
+        async with self._lock:
+            if key in self._cache:
+                self._hits += 1
+                return self._cache[key]
+            self._misses += 1
+            return None
+    
+    async def set(self, texts: list[str], embeddings: list[list[float]]):
+        """Store embeddings in cache."""
+        async with self._lock:
+            if len(self._cache) >= self._max_size:
+                # Simple LRU: remove oldest item
+                oldest = next(iter(self._cache))
+                del self._cache[oldest]
+            key = self._get_key(texts)
+            self._cache[key] = embeddings
+    
+    def get_stats(self) -> dict:
+        """Get cache statistics."""
+        total = self._hits + self._misses
+        return {
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": self._hits / total if total > 0 else 0.0,
+            "size": len(self._cache),
+            "max_size": self._max_size,
+        }
+    
+    async def clear(self):
+        """Clear all cached embeddings."""
+        async with self._lock:
+            self._cache.clear()
+            self._hits = 0
+            self._misses = 0
+
+
+# Global cache instance (shared across all generators)
+_global_embedding_cache = EmbeddingCache(max_size=1000)
 
 
 class EmbeddingsGenerator:
@@ -155,6 +223,8 @@ class EmbeddingsGenerator:
     async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for a list of texts (ASYNC).
+        
+        Uses LRU caching to avoid redundant API calls for repeated queries.
 
         Args:
             texts: List of text strings to embed
@@ -181,6 +251,15 @@ class EmbeddingsGenerator:
                 set_span_status("ok")
                 return []
 
+            # Check cache first
+            cached = await _global_embedding_cache.get(texts)
+            if cached:
+                logger.debug(f"🔥 Embedding cache HIT for {len(texts)} texts")
+                set_span_attribute("cache_hit", True)
+                set_span_attribute("cached_embeddings", len(cached))
+                set_span_status("ok")
+                return cached
+
             try:
                 start_time = time.perf_counter()
                 if self.provider == "openai":
@@ -188,9 +267,13 @@ class EmbeddingsGenerator:
                 else:
                     result = await self._generate_embeddings_sentence_transformers(texts)
 
+                # Store in cache for future use
+                await _global_embedding_cache.set(texts, result)
+                
                 latency_ms = (time.perf_counter() - start_time) * 1000
                 set_span_attribute("latency_ms", round(latency_ms, 2))
                 set_span_attribute("embeddings_generated", len(result))
+                set_span_attribute("cache_hit", False)
                 set_span_status("ok")
                 return result
 
@@ -198,6 +281,14 @@ class EmbeddingsGenerator:
                 logger.error(f"Error generating embeddings: {e}")
                 set_span_status("error", str(e))
                 raise
+    
+    def get_cache_stats(self) -> dict:
+        """Get embedding cache statistics."""
+        return _global_embedding_cache.get_stats()
+    
+    async def clear_cache(self):
+        """Clear the embedding cache."""
+        await _global_embedding_cache.clear()
 
     async def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
         """
