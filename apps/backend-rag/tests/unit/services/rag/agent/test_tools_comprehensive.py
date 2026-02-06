@@ -8,7 +8,6 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.services.rag.agent.tools import SafeMathEvaluator
 

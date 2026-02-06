@@ -18,6 +18,7 @@ try:
         has_emotional_content,
         is_procedural_question,
     )
+
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -31,7 +32,7 @@ except ImportError:
 
 pytestmark = pytest.mark.skipif(
     not IMPORTS_AVAILABLE,
-    reason="Communication utils not available (module may be mocked by other tests)"
+    reason="Communication utils not available (module may be mocked by other tests)",
 )
 
 

@@ -8,9 +8,11 @@
 ## 📦 Deliverables
 
 ### 1. OpenAPI Spec (Principale)
+
 ```
 apps/mouth/src/lib/api/openapi.yaml
 ```
+
 - ✅ OpenAPI 3.0.3 compliant
 - ✅ 30.74 KB, 1186 linee
 - ✅ 16 endpoints documentati
@@ -18,30 +20,38 @@ apps/mouth/src/lib/api/openapi.yaml
 - ✅ Schemas completi con esempi
 
 ### 2. Next.js Route Handler
+
 ```
 apps/mouth/src/app/api/docs/openapi.yaml/route.ts
 ```
+
 Serve la spec via HTTP:
+
 - Endpoint: `GET /api/docs/openapi.yaml`
 - Content-Type: `application/yaml`
 - Cache: 1 ora
 
 ### 3. Validation Script
+
 ```
 scripts/validate-openapi.cjs
 ```
+
 Valida la spec OpenAPI:
+
 ```bash
 npm run validate:openapi
 ```
 
 ### 4. Documentazione Completa
+
 ```
 apps/mouth/docs/API_DOCUMENTATION.md
 apps/mouth/docs/OPENAPI_IMPLEMENTATION_COMPLETE.md
 ```
 
 ### 5. Files Opzionali (Template)
+
 ```
 apps/mouth/src/app/api/docs/page.tsx.example
 apps/mouth/src/app/api/docs/openapi.yaml/route.test.ts
@@ -52,12 +62,14 @@ apps/mouth/src/app/api/docs/openapi.yaml/route.test.ts
 ## 🚀 Quick Start
 
 ### 1. Validare la Spec
+
 ```bash
 cd apps/mouth
 npm run validate:openapi
 ```
 
 **Output atteso**:
+
 ```
 ✅ OpenAPI spec is valid!
 📊 Size: 30.74 KB
@@ -67,6 +79,7 @@ npm run validate:openapi
 ```
 
 ### 2. Accedere alla Spec
+
 ```bash
 # Start dev server
 npm run dev
@@ -76,9 +89,11 @@ curl http://localhost:3000/api/docs/openapi.yaml
 ```
 
 ### 3. Testare con Swagger Editor
+
 Vai su: https://editor.swagger.io/
 
 **Opzione A** - Import URL:
+
 ```
 http://localhost:3000/api/docs/openapi.yaml
 ```
@@ -87,6 +102,7 @@ http://localhost:3000/api/docs/openapi.yaml
 Copia il contenuto di `src/lib/api/openapi.yaml`
 
 ### 4. Importare in Postman
+
 ```
 Postman → Import → Link
 URL: http://localhost:3000/api/docs/openapi.yaml
@@ -99,6 +115,7 @@ Auto-genera una collection con tutti gli endpoints.
 ## 📦 [OPZIONALE] Swagger UI Interactive
 
 ### Step 1: Installare Dipendenze
+
 ```bash
 cd apps/mouth
 pnpm add swagger-ui-react
@@ -106,16 +123,19 @@ pnpm add -D @types/swagger-ui-react
 ```
 
 ### Step 2: Attivare UI Page
+
 ```bash
 mv src/app/api/docs/page.tsx.example src/app/api/docs/page.tsx
 ```
 
 ### Step 3: Accedere alla UI
+
 ```
 http://localhost:3000/api/docs
 ```
 
 **Features**:
+
 - ✅ Interactive API testing
 - ✅ Try It Out functionality
 - ✅ Request/response examples
@@ -126,11 +146,13 @@ http://localhost:3000/api/docs
 ## 📊 Copertura API
 
 ### Auth (3 endpoints)
+
 - `POST /api/auth/login` - Login con email/PIN
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/profile` - Get user profile
 
 ### Portal (5 endpoints)
+
 - `GET /api/portal/dashboard` - Dashboard overview
 - `GET /api/portal/timeline` - Activity timeline
 - `GET /api/portal/visa` - Visa status
@@ -138,16 +160,19 @@ http://localhost:3000/api/docs
 - `POST /api/portal/messages` - Send message
 
 ### Chat (2 endpoints)
+
 - `POST /api/agentic-rag/stream` - **SSE streaming** (ReAct reasoning, tool calls, vision)
 - `POST /api/agentic-rag/query` - Non-streaming version
 
 **SSE Event Types** (13):
+
 - `token`, `thinking`, `tool_call`, `observation`
 - `sources`, `metadata`, `image`, `error`
 - `reasoning_step`, `phase`, `keepalive`
 - `tool_start`, `tool_end`
 
 ### CRM (6 endpoints)
+
 - `GET /api/crm/clients` - List clients
 - `POST /api/crm/clients` - Create client
 - `GET /api/crm/clients/{id}` - Get client
@@ -156,6 +181,7 @@ http://localhost:3000/api/docs
 - `GET /api/crm/interactions` - List interactions
 
 ### Drive (2 endpoints)
+
 - `POST /api/clients/{id}/create-drive-folder` - Create folder structure
 - `POST /api/clients/{id}/drive-folder/{folderName}/upload` - Upload file
 
@@ -166,11 +192,13 @@ http://localhost:3000/api/docs
 Tre metodi documentati:
 
 1. **httpOnly Cookie** (principale)
+
    ```
    Cookie: nz_access_token=<JWT>
    ```
 
 2. **Bearer Token** (fallback)
+
    ```
    Authorization: Bearer <JWT>
    ```
@@ -211,24 +239,29 @@ curl -X POST http://localhost:8000/api/agentic-rag/stream \
 Questa implementazione segue il **Production-Ready Standard** (AI_ONBOARDING.md):
 
 ### ✅ 1. Test Coverage
+
 - Script di validazione automatico
 - Checklist testing manuale
 - File di test template
 
 ### ✅ 2. Structured Logging
+
 - Output chiaro con statistiche
 - Validazione errori dettagliata
 
 ### ✅ 3. Metrics & KPIs
+
 - Spec size, lines, endpoint count
 - Tag distribution, schema count
 
 ### ✅ 4. Complete Documentation
+
 - Guide completa (`API_DOCUMENTATION.md`)
 - Summary implementazione
 - Usage examples
 
 ### ✅ 5. Error Handling
+
 - Route handler 404 handling
 - Validation error reporting
 - Messaggi di errore chiari

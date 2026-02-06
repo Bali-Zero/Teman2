@@ -55,22 +55,24 @@ def mock_db_pool():
 def mock_retriever():
     """Create mock search service retriever."""
     retriever = AsyncMock()
-    retriever.search_with_reranking = AsyncMock(return_value={
-        "results": [
-            {
-                "doc_id": "doc_001",
-                "title": "PT PMA Requirements",
-                "snippet": "To establish PT PMA, minimum capital is 10 billion IDR...",
-                "score": 0.92,
-            },
-            {
-                "doc_id": "doc_002",
-                "title": "KITAS Work Permit Process",
-                "snippet": "KITAS requires RPTKA approval first...",
-                "score": 0.88,
-            },
-        ]
-    })
+    retriever.search_with_reranking = AsyncMock(
+        return_value={
+            "results": [
+                {
+                    "doc_id": "doc_001",
+                    "title": "PT PMA Requirements",
+                    "snippet": "To establish PT PMA, minimum capital is 10 billion IDR...",
+                    "score": 0.92,
+                },
+                {
+                    "doc_id": "doc_002",
+                    "title": "KITAS Work Permit Process",
+                    "snippet": "KITAS requires RPTKA approval first...",
+                    "score": 0.88,
+                },
+            ]
+        }
+    )
     return retriever
 
 
@@ -88,17 +90,19 @@ def mock_llm_gateway():
     response_obj.usage_metadata = MagicMock()
     response_obj.usage_metadata.total_token_count = 500
 
-    gateway.send_message = AsyncMock(return_value=(
-        "Per aprire un ristorante a Bali come straniero, devi seguire questi passaggi:\n\n"
-        "1. Scegliere il codice KBLI 56101 (Restaurant)\n"
-        "2. Costituire una PT PMA (max 67% foreign ownership)\n"
-        "3. Ottenere NIB via OSS\n"
-        "4. Applicare per RPTKA e IMTA\n"
-        "5. Ottenere KITAS\n\n"
-        "Timeline stimato: 2-3 mesi. Costo: $8,000-15,000 USD.",
-        "gemini-1.5-pro",
-        response_obj
-    ))
+    gateway.send_message = AsyncMock(
+        return_value=(
+            "Per aprire un ristorante a Bali come straniero, devi seguire questi passaggi:\n\n"
+            "1. Scegliere il codice KBLI 56101 (Restaurant)\n"
+            "2. Costituire una PT PMA (max 67% foreign ownership)\n"
+            "3. Ottenere NIB via OSS\n"
+            "4. Applicare per RPTKA e IMTA\n"
+            "5. Ottenere KITAS\n\n"
+            "Timeline stimato: 2-3 mesi. Costo: $8,000-15,000 USD.",
+            "gemini-1.5-pro",
+            response_obj,
+        )
+    )
 
     return gateway
 
@@ -107,11 +111,13 @@ def mock_llm_gateway():
 def mock_intent_classifier():
     """Create mock intent classifier."""
     classifier = MagicMock()
-    classifier.classify_intent = AsyncMock(return_value={
-        "category": "business_setup",
-        "confidence": 0.85,
-        "suggested_ai": "pro",
-    })
+    classifier.classify_intent = AsyncMock(
+        return_value={
+            "category": "business_setup",
+            "confidence": 0.85,
+            "suggested_ai": "pro",
+        }
+    )
     return classifier
 
 
@@ -139,7 +145,9 @@ class TestGoldenRouteMatching:
         for query in queries:
             route = kg_retrieval.match_golden_route(query)
             assert route is not None, f"Should match restaurant route for: {query}"
-            assert "restaurant" in route.route_id.lower(), f"Should be restaurant route for: {query}"
+            assert "restaurant" in route.route_id.lower(), (
+                f"Should be restaurant route for: {query}"
+            )
 
     @pytest.mark.asyncio
     async def test_it_company_route(self, mock_db_pool):
@@ -327,11 +335,13 @@ class TestCollectionRouting:
         from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
         # Override intent classifier
-        mock_intent_classifier.classify_intent = AsyncMock(return_value={
-            "category": "visa_immigration",
-            "confidence": 0.9,
-            "suggested_ai": "pro",
-        })
+        mock_intent_classifier.classify_intent = AsyncMock(
+            return_value={
+                "category": "visa_immigration",
+                "confidence": 0.9,
+                "suggested_ai": "pro",
+            }
+        )
 
         orchestrator = KGAgenticOrchestrator(
             db_pool=mock_db_pool,
@@ -341,8 +351,9 @@ class TestCollectionRouting:
         )
 
         # Mock KG context
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[{"name": "KITAS", "entity_type": "kitas"}],
                 relationships=[],
@@ -366,11 +377,13 @@ class TestCollectionRouting:
         """Test that tax queries route to tax_genius_hybrid collection."""
         from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
-        mock_intent_classifier.classify_intent = AsyncMock(return_value={
-            "category": "tax_finance",
-            "confidence": 0.9,
-            "suggested_ai": "pro",
-        })
+        mock_intent_classifier.classify_intent = AsyncMock(
+            return_value={
+                "category": "tax_finance",
+                "confidence": 0.9,
+                "suggested_ai": "pro",
+            }
+        )
 
         orchestrator = KGAgenticOrchestrator(
             db_pool=mock_db_pool,
@@ -379,8 +392,9 @@ class TestCollectionRouting:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[{"name": "PPh 21", "entity_type": "pph"}],
                 relationships=[],
@@ -404,11 +418,13 @@ class TestCollectionRouting:
         """Test that business setup queries route to multiple collections."""
         from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
-        mock_intent_classifier.classify_intent = AsyncMock(return_value={
-            "category": "business_company",
-            "confidence": 0.9,
-            "suggested_ai": "pro",
-        })
+        mock_intent_classifier.classify_intent = AsyncMock(
+            return_value={
+                "category": "business_company",
+                "confidence": 0.9,
+                "suggested_ai": "pro",
+            }
+        )
 
         orchestrator = KGAgenticOrchestrator(
             db_pool=mock_db_pool,
@@ -417,8 +433,9 @@ class TestCollectionRouting:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[
                     {"name": "PT PMA", "entity_type": "pt_pma"},
@@ -463,7 +480,7 @@ class TestKGAgenticOrchestrator:
         )
 
         # Mock KG context with golden route
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import GoldenRoute, KGContext
 
             mock_kg.return_value = KGContext(
@@ -518,8 +535,9 @@ class TestKGAgenticOrchestrator:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[],
                 relationships=[],
@@ -536,18 +554,18 @@ class TestKGAgenticOrchestrator:
 
         # Check all required fields
         assert isinstance(result, AgenticResponse)
-        assert hasattr(result, 'answer')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'reasoning_trace')
-        assert hasattr(result, 'sources')
-        assert hasattr(result, 'estimated_timeline')
-        assert hasattr(result, 'estimated_cost')
-        assert hasattr(result, 'intent_category')
-        assert hasattr(result, 'golden_route_matched')
-        assert hasattr(result, 'kg_entities_found')
-        assert hasattr(result, 'collections_searched')
-        assert hasattr(result, 'total_time_ms')
-        assert hasattr(result, 'model_used')
+        assert hasattr(result, "answer")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "reasoning_trace")
+        assert hasattr(result, "sources")
+        assert hasattr(result, "estimated_timeline")
+        assert hasattr(result, "estimated_cost")
+        assert hasattr(result, "intent_category")
+        assert hasattr(result, "golden_route_matched")
+        assert hasattr(result, "kg_entities_found")
+        assert hasattr(result, "collections_searched")
+        assert hasattr(result, "total_time_ms")
+        assert hasattr(result, "model_used")
 
     @pytest.mark.asyncio
     async def test_reasoning_trace_completeness(
@@ -563,8 +581,9 @@ class TestKGAgenticOrchestrator:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[{"name": "KITAS", "entity_type": "permit"}],
                 relationships=[],
@@ -604,7 +623,7 @@ class TestKGAgenticOrchestrator:
         )
 
         # Test with golden route (should boost confidence)
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import GoldenRoute, KGContext
 
             mock_kg.return_value = KGContext(
@@ -628,7 +647,7 @@ class TestKGAgenticOrchestrator:
             )
 
         # Test without golden route (lower confidence)
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
 
             mock_kg.return_value = KGContext(
@@ -676,8 +695,9 @@ class TestErrorHandling:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[],
                 relationships=[],
@@ -712,8 +732,9 @@ class TestErrorHandling:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[],
                 relationships=[],
@@ -753,8 +774,9 @@ class TestPerformance:
             intent_classifier=mock_intent_classifier,
         )
 
-        with patch.object(orchestrator.kg_retrieval, 'get_context_for_query') as mock_kg:
+        with patch.object(orchestrator.kg_retrieval, "get_context_for_query") as mock_kg:
             from backend.services.rag.kg_enhanced_retrieval import KGContext
+
             mock_kg.return_value = KGContext(
                 entities_found=[],
                 relationships=[],
@@ -778,8 +800,7 @@ class TestPerformance:
 
 
 @pytest.mark.skipif(
-    not os.environ.get("DATABASE_URL"),
-    reason="DATABASE_URL not set, skipping real DB tests"
+    not os.environ.get("DATABASE_URL"), reason="DATABASE_URL not set, skipping real DB tests"
 )
 class TestRealDatabaseIntegration:
     """Tests that require actual database connection."""
@@ -802,7 +823,7 @@ class TestRealDatabaseIntegration:
 
         # Need to await the fixture properly
         pool = real_db_pool
-        if hasattr(pool, '__anext__'):
+        if hasattr(pool, "__anext__"):
             pool = await pool.__anext__()
 
         kg_retrieval = KGEnhancedRetrieval(db_pool=pool)

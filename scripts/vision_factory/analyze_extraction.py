@@ -17,21 +17,24 @@ Usage:
 
 import sys
 import pandas as pd
-import re
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def analyze_excel(path):
-    print(f"🔍 Analyzing: {path}")
+    logger.info(f"🔍 Analyzing: {path}")
     if not Path(path).exists():
-        print("❌ File not found!")
+        logger.error("❌ File not found!")
         return
 
     try:
         # Load raw first to detect headers
         df_raw = pd.read_excel(path, header=None)
-        print(f"📊 Raw Dimensions: {df_raw.shape[0]} rows x {df_raw.shape[1]} cols")
+        logger.info(f"📊 Raw Dimensions: {df_raw.shape[0]} rows x {df_raw.shape[1]} cols")
     except Exception as e:
-        print(f"❌ Read Failed: {e}")
+        logger.error(f"❌ Read Failed: {e}")
         return
 
     # Find Header
@@ -40,17 +43,17 @@ def analyze_excel(path):
         row_txt = " ".join([str(x) for x in row.values]).lower()
         if "kode" in row_txt and "judul" in row_txt:
             header_idx = idx
-            print(f"✅ Header found at Row {idx+1}")
+            logger.info(f"✅ Header found at Row {idx + 1}")
             break
-            
+
     if header_idx is None:
-        print("❌ CRITICAL: Could not detect KBLI Header row (Kode/Judul).")
-        print("   -> Tip: Check if the PDF table has standard headers.")
+        logger.critical("❌ CRITICAL: Could not detect KBLI Header row (Kode/Judul).")
+        logger.info("   -> Tip: Check if the PDF table has standard headers.")
         return
 
     # Load with header
     df = pd.read_excel(path, header=header_idx)
-    
+
     # 1. Structure Analysis
     cols = [str(c).lower() for c in df.columns]
     found_cols = {
@@ -59,36 +62,41 @@ def analyze_excel(path):
         "ruang": any("ruang" in c for c in cols) or any("lingkup" in c for c in cols),
         "skala": any("skala" in c for c in cols),
         "risiko": any("risiko" in c for c in cols),
-        "perizinan": any("perizinan" in c for c in cols)
+        "perizinan": any("perizinan" in c for c in cols),
     }
-    
-    missing = [k for k,v in found_cols.items() if not v]
+
+    missing = [k for k, v in found_cols.items() if not v]
     if missing:
-        print(f"⚠️  Missing Columns: {', '.join(missing)}")
+        logger.warning(f"⚠️  Missing Columns: {', '.join(missing)}")
     else:
-        print("✅ Column Schema: COMPLETE")
+        logger.info("✅ Column Schema: COMPLETE")
 
     # 2. Data Health
     # Check for merging issues (empty codes)
     possible_code_col = [c for c in df.columns if "kode" in str(c).lower()][0]
-    
+
     total_rows = len(df)
     empty_codes = df[possible_code_col].isna().sum()
-    print(f"📉 Rows with Empty Codes: {empty_codes}/{total_rows} ({(empty_codes/total_rows)*100:.1f}%)")
-    
+    logger.info(
+        f"📉 Rows with Empty Codes: {empty_codes}/{total_rows} ({(empty_codes / total_rows) * 100:.1f}%)"
+    )
+
     if empty_codes > 0:
-        print("   -> Info: This usually indicates merged cells. The Parser will fixes this via ffill().")
+        logger.info(
+            "   -> Info: This usually indicates merged cells. The Parser will fixes this via ffill()."
+        )
 
     # 3. Content Sampling
-    print("\n🧐 Content Sample (First valid record):")
+    logger.info("\n🧐 Content Sample (First valid record):")
     valid_rows = df[df[possible_code_col].notna()].head(1)
     if not valid_rows.empty:
-        print(valid_rows.iloc[0].to_dict())
+        logger.info(valid_rows.iloc[0].to_dict())
     else:
-        print("   (No valid records found)")
+        logger.info("   (No valid records found)")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 analyze_extraction.py <file.xlsx>")
+        logger.error("Usage: python3 analyze_extraction.py <file.xlsx>")
     else:
         analyze_excel(sys.argv[1])

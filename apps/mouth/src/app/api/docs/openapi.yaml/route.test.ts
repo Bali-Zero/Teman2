@@ -1,6 +1,6 @@
 /**
  * OpenAPI Route Handler Test
- * 
+ *
  * Tests that the OpenAPI spec is served correctly.
  */
 
@@ -48,25 +48,25 @@ describe('OpenAPI Spec Content', () => {
 
 /**
  * Manual Testing Checklist
- * 
+ *
  * Run these tests manually:
- * 
+ *
  * 1. Start dev server:
  *    cd apps/mouth && npm run dev
- * 
+ *
  * 2. Access spec:
  *    curl http://localhost:3000/api/docs/openapi.yaml
- * 
+ *
  * 3. Check headers:
  *    curl -I http://localhost:3000/api/docs/openapi.yaml
- * 
+ *
  * 4. Validate spec:
  *    node scripts/validate-openapi.cjs
- * 
+ *
  * 5. Import to Swagger Editor:
  *    https://editor.swagger.io/
  *    Paste content or use Import URL
- * 
+ *
  * 6. Test with Postman:
  *    Import → Link → http://localhost:3000/api/docs/openapi.yaml
  */

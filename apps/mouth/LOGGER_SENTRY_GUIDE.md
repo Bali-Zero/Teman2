@@ -212,6 +212,7 @@ All errors and warnings are automatically sent to Sentry in production:
 **Dashboard:** https://sentry.io/organizations/bali-zero-7p/issues/
 
 What you'll see:
+
 - ✅ Error message and stack trace
 - ✅ User context (if set)
 - ✅ Component and action tags
@@ -458,6 +459,7 @@ const downloadLogs = () => {
 ## Support
 
 For issues or questions:
+
 - Check Sentry dashboard: https://sentry.io/organizations/bali-zero-7p/issues/
 - Review stored logs: `logger.getStoredLogs()`
 - Check log history: `logger.getHistory()`

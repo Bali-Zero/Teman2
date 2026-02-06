@@ -9,8 +9,8 @@ Endpoints:
 - GET /api/analytics/revenue
 - GET /api/analytics/monthly-report/{year}/{month}
 """
-from datetime import date, datetime
-from typing import Optional
+
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -28,9 +28,9 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 @router.get("/completion-rates")
 async def get_completion_rates(
-    practice_type: Optional[str] = Query(None),
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    practice_type: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(get_current_user),
 ):
@@ -44,14 +44,16 @@ async def get_completion_rates(
     try:
         return await calculate_completion_rate(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate completion rates: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate completion rates: {str(e)}"
+        )
 
 
 @router.get("/response-times")
 async def get_response_times(
-    practice_type: Optional[str] = Query(None),
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    practice_type: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(get_current_user),
 ):
@@ -70,9 +72,9 @@ async def get_response_times(
 
 @router.get("/sla-compliance")
 async def get_sla_compliance(
-    practice_type: Optional[str] = Query(None),
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    practice_type: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(get_current_user),
 ):
@@ -91,9 +93,9 @@ async def get_sla_compliance(
 
 @router.get("/revenue")
 async def get_revenue_metrics(
-    practice_type: Optional[str] = Query(None),
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    practice_type: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(get_current_user),
 ):
@@ -107,7 +109,9 @@ async def get_revenue_metrics(
     try:
         return await calculate_revenue_metrics(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}"
+        )
 
 
 @router.get("/monthly-report/{year}/{month}")

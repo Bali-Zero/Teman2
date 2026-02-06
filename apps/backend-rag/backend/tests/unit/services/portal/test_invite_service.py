@@ -240,7 +240,9 @@ class TestInviteService:
         # 2. create_invitation: check client exists
         # 3. create_invitation: check existing invitation
         # 4. create_invitation: insert new invitation
-        mock_conn.fetchrow = AsyncMock(side_effect=[mock_client, mock_client, None, mock_invitation])
+        mock_conn.fetchrow = AsyncMock(
+            side_effect=[mock_client, mock_client, None, mock_invitation]
+        )
         mock_conn.execute = AsyncMock()
         mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_conn.__aexit__ = AsyncMock(return_value=None)

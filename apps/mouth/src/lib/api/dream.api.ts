@@ -11,89 +11,86 @@ const apiClient = new ApiClientBase(API_BASE_URL);
 // --- Types ---
 
 export interface DreamState {
-    articles: any[]; // TODO: Type properly
-    inspirations: any[];
-    activeZone: string;
-    // Add other state properties
+  articles: any[]; // TODO: Type properly
+  inspirations: any[];
+  activeZone: string;
+  // Add other state properties
 }
 
 export interface GenerateRequest {
-    prompt: string;
-    context?: string;
-    mode: 'expand' | 'rewrite' | 'shorten' | 'tone-shift';
+  prompt: string;
+  context?: string;
+  mode: 'expand' | 'rewrite' | 'shorten' | 'tone-shift';
 }
 
 export interface GenerateResponse {
-    text: string;
-    success: boolean;
+  text: string;
+  success: boolean;
 }
 
 export interface ScrapeRequest {
-    url: string;
+  url: string;
 }
 
 export interface ScrapeResponse {
-    title: string;
-    keyPoints: string[];
-    quotes: { text: string; author: string }[];
-    success: boolean;
+  title: string;
+  keyPoints: string[];
+  quotes: { text: string; author: string }[];
+  success: boolean;
 }
 
 // --- API Functions ---
 
 export const dreamApi = {
-    /**
-     * Persist Dream Room state
-     */
-    async saveState(userId: string, state: any): Promise<{ success: boolean; timestamp: string }> {
-        return apiClient.request(
-            '/api/dream/state',
-            {
-                method: 'POST',
-                // Mock user_id logic if auth not fully integrated in this view yet
-                body: JSON.stringify({ state }),
-                // Query param for user_id to match backend expectation for now, 
-                // or backend should take it from token. 
-                // For this implementation, I'll pass it in URL or body. 
-                // Let's assume body wrapper.
-            }
-        );
-    },
+  /**
+   * Persist Dream Room state
+   */
+  async saveState(userId: string, state: any): Promise<{ success: boolean; timestamp: string }> {
+    return apiClient.request('/api/dream/state', {
+      method: 'POST',
+      // Mock user_id logic if auth not fully integrated in this view yet
+      body: JSON.stringify({ state }),
+      // Query param for user_id to match backend expectation for now,
+      // or backend should take it from token.
+      // For this implementation, I'll pass it in URL or body.
+      // Let's assume body wrapper.
+    });
+  },
 
-    /**
-     * Load Dream Room state
-     */
-    async loadState(userId: string): Promise<{ success: boolean; state: any }> {
-        return apiClient.request(`/api/dream/state/${userId}`, {
-            method: 'GET',
-        });
-    },
+  /**
+   * Load Dream Room state
+   */
+  async loadState(userId: string): Promise<{ success: boolean; state: any }> {
+    return apiClient.request(`/api/dream/state/${userId}`, {
+      method: 'GET',
+    });
+  },
 
-    /**
-     * Generate content with AI
-     */
-    async generate(request: GenerateRequest): Promise<GenerateResponse> {
-        return apiClient.request<GenerateResponse>(
-            '/api/dream/ai/generate',
-            {
-                method: 'POST',
-                body: JSON.stringify(request),
-            },
-            60000 // 60s timeout
-        );
-    },
+  /**
+   * Generate content with AI
+   */
+  async generate(request: GenerateRequest): Promise<GenerateResponse> {
+    return apiClient.request<GenerateResponse>(
+      '/api/dream/ai/generate',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      60000 // 60s timeout
+    );
+  },
 
-    /**
-     * Scrape URL
-     */
-    async scrape(url: string): Promise<ScrapeResponse> {
-        return apiClient.request<ScrapeResponse>(
-            '/api/dream/scrape',
-            {
-                method: 'POST',
-                body: JSON.stringify({ url }),
-            },
-            30000 // 30s timeout
-        );
-    }
+  /**
+   * Scrape URL
+   */
+  async scrape(url: string): Promise<ScrapeResponse> {
+    return apiClient.request<ScrapeResponse>(
+      '/api/dream/scrape',
+      {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      },
+      30000 // 30s timeout
+    );
+  },
 };

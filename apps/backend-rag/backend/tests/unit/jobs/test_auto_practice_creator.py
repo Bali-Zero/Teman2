@@ -8,7 +8,7 @@ Tests:
 - Full job execution
 - Error handling
 """
-import asyncio
+
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -28,7 +28,9 @@ async def test_get_practice_type_id_found():
     """Test get_practice_type_id returns ID when found"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"id": 42}
 
     result = await get_practice_type_id(mock_pool, "kitas_work")
@@ -44,7 +46,9 @@ async def test_get_practice_type_id_not_found():
     """Test get_practice_type_id returns None when not found"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = None
 
     result = await get_practice_type_id(mock_pool, "unknown_visa")
@@ -57,7 +61,9 @@ async def test_get_practice_type_id_mapping():
     """Test visa type to practice type mapping"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"id": 123}
 
     # Test all mappings
@@ -85,7 +91,9 @@ async def test_check_existing_renewal_practice_exists():
     """Test check_existing_renewal_practice returns True when practice exists"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"count": 1}
 
     result = await check_existing_renewal_practice(mock_pool, client_id=123, visa_record_id=456)
@@ -99,7 +107,9 @@ async def test_check_existing_renewal_practice_not_exists():
     """Test check_existing_renewal_practice returns False when no practice"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"count": 0}
 
     result = await check_existing_renewal_practice(mock_pool, client_id=123, visa_record_id=456)
@@ -112,7 +122,9 @@ async def test_create_renewal_practice_success():
     """Test create_renewal_practice creates practice and timeline event"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
 
     # Mock practice created
     mock_conn.fetchrow.return_value = {"id": 999, "uuid": "test-uuid-123"}
@@ -158,7 +170,9 @@ async def test_create_renewal_practice_priority_high():
     """Test create_renewal_practice sets high priority when <30 days"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"id": 999, "uuid": "test-uuid"}
 
     with patch("backend.jobs.auto_practice_creator.get_practice_type_id", return_value=42):
@@ -183,7 +197,9 @@ async def test_create_renewal_practice_priority_normal():
     """Test create_renewal_practice sets normal priority when >=30 days"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetchrow.return_value = {"id": 999, "uuid": "test-uuid"}
 
     with patch("backend.jobs.auto_practice_creator.get_practice_type_id", return_value=42):
@@ -208,7 +224,9 @@ async def test_run_auto_practice_creator_no_visas():
     """Test run_auto_practice_creator with no expiring visas"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
     mock_conn.fetch.return_value = []  # No visas expiring
 
     stats = await run_auto_practice_creator(mock_pool)
@@ -224,7 +242,9 @@ async def test_run_auto_practice_creator_creates_practices():
     """Test run_auto_practice_creator creates practices for expiring visas"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
 
     target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
@@ -256,14 +276,16 @@ async def test_run_auto_practice_creator_creates_practices():
         },
     ]
 
-    with patch(
-        "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False
-    ):
-        with patch(
+    with (
+        patch(
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False
+        ),
+        patch(
             "backend.jobs.auto_practice_creator.create_renewal_practice",
             side_effect=[999, 1000],  # Practice IDs
-        ):
-            stats = await run_auto_practice_creator(mock_pool)
+        ),
+    ):
+        stats = await run_auto_practice_creator(mock_pool)
 
     assert stats["visas_checked"] == 2
     assert stats["practices_created"] == 2
@@ -276,7 +298,9 @@ async def test_run_auto_practice_creator_skips_existing():
     """Test run_auto_practice_creator skips visas with existing practices"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
 
     target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
@@ -296,13 +320,13 @@ async def test_run_auto_practice_creator_skips_existing():
     ]
 
     # Mock existing practice found
-    with patch(
-        "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=True
+    with (
+        patch(
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=True
+        ),
+        patch("backend.jobs.auto_practice_creator.create_renewal_practice") as mock_create,
     ):
-        with patch(
-            "backend.jobs.auto_practice_creator.create_renewal_practice"
-        ) as mock_create:
-            stats = await run_auto_practice_creator(mock_pool)
+        stats = await run_auto_practice_creator(mock_pool)
 
     assert stats["visas_checked"] == 1
     assert stats["practices_created"] == 0
@@ -316,7 +340,9 @@ async def test_run_auto_practice_creator_handles_errors():
     """Test run_auto_practice_creator handles creation errors gracefully"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
-    mock_pool.acquire = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
+    mock_pool.acquire = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
+    )
 
     target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
@@ -335,14 +361,16 @@ async def test_run_auto_practice_creator_handles_errors():
         }
     ]
 
-    with patch(
-        "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False
-    ):
-        with patch(
+    with (
+        patch(
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False
+        ),
+        patch(
             "backend.jobs.auto_practice_creator.create_renewal_practice",
             return_value=None,  # Creation failed
-        ):
-            stats = await run_auto_practice_creator(mock_pool)
+        ),
+    ):
+        stats = await run_auto_practice_creator(mock_pool)
 
     assert stats["visas_checked"] == 1
     assert stats["practices_created"] == 0

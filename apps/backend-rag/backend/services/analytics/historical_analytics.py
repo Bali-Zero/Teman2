@@ -20,10 +20,9 @@ Metrics Tracked:
 - Revenue per practice type
 - Client retention rate
 """
+
 import asyncio
 from datetime import date, datetime, timedelta
-from decimal import Decimal
-from typing import Optional
 
 import structlog
 from prometheus_client import Gauge, Histogram
@@ -65,7 +64,10 @@ response_days_histogram = Histogram(
 
 
 async def calculate_completion_rate(
-    db_pool, practice_type: Optional[str] = None, start_date: Optional[date] = None, end_date: Optional[date] = None
+    db_pool,
+    practice_type: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     """
     Calculate practice completion rate.
@@ -129,15 +131,18 @@ async def calculate_completion_rate(
 
             # Update Prometheus metric
             period = f"{start_date}_{end_date}" if start_date and end_date else "all_time"
-            completion_rate.labels(
-                practice_type=row["practice_type"], period=period
-            ).set(float(row["completion_rate_pct"] or 0))
+            completion_rate.labels(practice_type=row["practice_type"], period=period).set(
+                float(row["completion_rate_pct"] or 0)
+            )
 
         return {"results": results, "period": {"start": start_date, "end": end_date}}
 
 
 async def calculate_response_times(
-    db_pool, practice_type: Optional[str] = None, start_date: Optional[date] = None, end_date: Optional[date] = None
+    db_pool,
+    practice_type: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     """
     Calculate average response times (inquiry to start, start to completion).
@@ -208,12 +213,8 @@ async def calculate_response_times(
                     "practice_name": row["practice_name"],
                     "total_practices": row["total_practices"],
                     "avg_days_inquiry_to_start": float(row["avg_days_inquiry_to_start"] or 0),
-                    "median_days_inquiry_to_start": float(
-                        row["median_days_inquiry_to_start"] or 0
-                    ),
-                    "avg_days_start_to_completion": float(
-                        row["avg_days_start_to_completion"] or 0
-                    ),
+                    "median_days_inquiry_to_start": float(row["median_days_inquiry_to_start"] or 0),
+                    "avg_days_start_to_completion": float(row["avg_days_start_to_completion"] or 0),
                     "median_days_start_to_completion": float(
                         row["median_days_start_to_completion"] or 0
                     ),
@@ -235,7 +236,10 @@ async def calculate_response_times(
 
 
 async def calculate_sla_compliance(
-    db_pool, practice_type: Optional[str] = None, start_date: Optional[date] = None, end_date: Optional[date] = None
+    db_pool,
+    practice_type: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     """
     Calculate SLA compliance rate (practices completed within expected duration).
@@ -312,7 +316,10 @@ async def calculate_sla_compliance(
 
 
 async def calculate_revenue_metrics(
-    db_pool, practice_type: Optional[str] = None, start_date: Optional[date] = None, end_date: Optional[date] = None
+    db_pool,
+    practice_type: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> dict:
     """
     Calculate revenue metrics by practice type.
@@ -382,17 +389,13 @@ async def calculate_revenue_metrics(
                     "total_paid": float(row["total_paid"] or 0),
                     "total_outstanding": float(row["total_outstanding"] or 0),
                     "fully_paid_count": row["fully_paid_count"],
-                    "payment_completion_rate_pct": float(
-                        row["payment_completion_rate_pct"] or 0
-                    ),
+                    "payment_completion_rate_pct": float(row["payment_completion_rate_pct"] or 0),
                 }
             )
 
             # Update Prometheus metric
             period = f"{start_date}_{end_date}" if start_date and end_date else "all_time"
-            revenue_total.labels(practice_type=row["practice_type"], period=period).set(
-                total_rev
-            )
+            revenue_total.labels(practice_type=row["practice_type"], period=period).set(total_rev)
 
         return {
             "results": results,
@@ -475,15 +478,11 @@ async def main():
 
         logger.info("\n✅ SLA COMPLIANCE:")
         for item in report["sla_compliance"]["results"][:5]:
-            logger.info(
-                f"  {item['practice_name']}: {item['sla_compliance_pct']}% within SLA"
-            )
+            logger.info(f"  {item['practice_name']}: {item['sla_compliance_pct']}% within SLA")
 
         logger.info("\n💰 REVENUE:")
         for item in report["revenue"]["results"][:5]:
-            logger.info(
-                f"  {item['practice_name']}: Rp {item['total_revenue']:,.0f} total revenue"
-            )
+            logger.info(f"  {item['practice_name']}: Rp {item['total_revenue']:,.0f} total revenue")
 
         logger.info(f"\n💵 TOTAL REVENUE: Rp {report['revenue']['total_revenue_all_types']:,.0f}")
 

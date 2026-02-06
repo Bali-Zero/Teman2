@@ -15,18 +15,18 @@ project_root = os.path.dirname(backend_dir)  # apps/backend-rag
 sys.path.insert(0, backend_dir)
 sys.path.insert(0, project_root)
 
-print(f"DEBUG: sys.path[0] = {sys.path[0]}")
-print(f"DEBUG: sys.path[1] = {sys.path[1]}")
+logger = logging.getLogger("stress_test") # Defined earlier
+
+logger.debug(f"sys.path[0] = {sys.path[0]}")
+logger.debug(f"sys.path[1] = {sys.path[1]}")
 
 try:
-    from backend.app.core.database import db
-
     from backend.app.core.config import settings
+    from backend.app.core.database import db
     from backend.services.rag.agentic import create_agentic_rag
 except ImportError:
     # Fallback for alternative structure
     from backend.app.core.database import db
-
     from backend.services.rag.agentic import create_agentic_rag
 
 # Configure Logging
@@ -39,8 +39,6 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("qdrant_client").setLevel(logging.WARNING)
-
-logger = logging.getLogger("stress_test")
 
 
 async def run_stress_test():
@@ -91,15 +89,15 @@ async def run_stress_test():
 
     results = []
 
-    print("\n" + "=" * 60)
-    print(f"🏁 STARTING GAUNTLET | USER: {user_id}")
-    print("=" * 60 + "\n")
+    logger.info("\n" + "=" * 60)
+    logger.info(f"🏁 STARTING GAUNTLET | USER: {user_id}")
+    logger.info("=" * 60 + "\n")
 
     for idx, turn in enumerate(scenarios):
         step_id = turn["id"]
         query = turn["content"]
 
-        print(f"\n[{step_id}/{len(scenarios)}] USER: {query}")
+        logger.info(f"\n[{idx+1}/{len(scenarios)}] USER: {query}")
 
         start_turn = time.time()
 
@@ -131,9 +129,9 @@ async def run_stress_test():
             # Log Success
             # Clean newlines for display
             clean_answer = answer.replace("\n", " ")[:100]
-            print(f"🤖 ZANTARA ({duration:.2f}s | {route}): {clean_answer}...")
+            logger.info(f"🤖 ZANTARA ({duration:.2f}s | {route}): {clean_answer}...")
             if tools_used > 0:
-                print(f"   🛠️  Tools Used: {tools_used}")
+                logger.info(f"   🛠️  Tools Used: {tools_used}")
 
             results.append(
                 {
@@ -149,7 +147,7 @@ async def run_stress_test():
             consecutive_errors += 1
             duration = time.time() - start_turn
             logger.error(f"❌ ERROR on step {step_id}: {e}")
-            print(f"❌ ERROR: {e}")
+            logger.error(f"ERROR: {e}") # Replaced print with logger.error
 
             results.append(
                 {"id": step_id, "status": "error", "error": str(e), "duration": duration}
@@ -157,9 +155,9 @@ async def run_stress_test():
 
             if consecutive_errors >= 4:
                 logger.critical("🚨 CIRCUIT BREAKER TRIPPED: 4 Consecutive Errors. Stopping Test.")
-                print("\n" + "!" * 60)
-                print("🚨 STOPPING TEST: TOO MANY ERRORS")
-                print("!" * 60 + "\n")
+                logger.critical("\n" + "!" * 60) # Replaced print with logger.critical
+                logger.critical("🚨 STOPPING TEST: TOO MANY ERRORS") # Replaced print with logger.critical
+                logger.critical("!" * 60 + "\n") # Replaced print with logger.critical
                 break
 
         # Small sleep
@@ -170,16 +168,16 @@ async def run_stress_test():
     success_count = len([r for r in results if r["status"] == "success"])
     avg_latency = sum([r["duration"] for r in results]) / len(results) if results else 0
 
-    print("\n" + "=" * 60)
-    print("📊 TEST SUMMARY")
-    print("=" * 60)
-    print(f"Total Steps: {len(results)}/{len(scenarios)}")
-    print(
+    logger.info("\n" + "=" * 60) # Replaced print with logger.info
+    logger.info("📊 TEST SUMMARY") # Replaced print with logger.info
+    logger.info("=" * 60) # Replaced print with logger.info
+    logger.info(f"Total Steps: {len(results)}/{len(scenarios)}") # Replaced print with logger.info
+    logger.info(
         f"Success Rate: {success_count}/{len(results)} ({success_count / len(results) * 100:.1f}%)"
-    )
-    print(f"Total Time: {total_duration:.1f}s")
-    print(f"Avg Latency: {avg_latency:.2f}s")
-    print("=" * 60)
+    ) # Replaced print with logger.info
+    logger.info(f"Total Time: {total_duration:.1f}s") # Replaced print with logger.info
+    logger.info(f"Avg Latency: {avg_latency:.2f}s") # Replaced print with logger.info
+    logger.info("=" * 60) # Replaced print with logger.info
 
     # Cleanup
     await db.disconnect()

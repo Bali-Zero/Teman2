@@ -9,9 +9,9 @@ Features:
 - Email notifications for T-7 day reminders
 - No duplicate reminders (EXISTS check)
 """
+
 import asyncio
 from datetime import date, timedelta
-from typing import Optional
 
 import structlog
 from prometheus_client import Counter, Gauge
@@ -303,14 +303,14 @@ async def check_tax_deadlines(db_pool) -> int:
 
                     if client_row:
                         email_body = f"""
-<p>This is a reminder that your <strong>{ob['name']}</strong> tax obligation is due in <strong>7 days</strong>.</p>
+<p>This is a reminder that your <strong>{ob["name"]}</strong> tax obligation is due in <strong>7 days</strong>.</p>
 
 <p><strong>Details:</strong></p>
 <ul>
     <li>Due Date: {target_date}</li>
-    <li>Tax Type: {ob['tax_type']}</li>
-    <li>Period: {ob['period_start']} to {ob['period_end']}</li>
-    {"<li>Amount Due: Rp " + f"{ob['amount_due']:,.0f}</li>" if ob['amount_due'] else ""}
+    <li>Tax Type: {ob["tax_type"]}</li>
+    <li>Period: {ob["period_start"]} to {ob["period_end"]}</li>
+    {"<li>Amount Due: Rp " + f"{ob['amount_due']:,.0f}</li>" if ob["amount_due"] else ""}
 </ul>
 
 <p>Please ensure this obligation is filed on time to avoid penalties.</p>
@@ -449,14 +449,14 @@ async def check_visa_expiry(db_pool) -> int:
 
                     if client_row:
                         email_body = f"""
-<p>This is an early notification that your <strong>{visa['visa_type']}</strong> visa will expire in <strong>90 days</strong>.</p>
+<p>This is an early notification that your <strong>{visa["visa_type"]}</strong> visa will expire in <strong>90 days</strong>.</p>
 
 <p><strong>Visa Details:</strong></p>
 <ul>
-    <li>Visa Type: {visa['visa_type']}</li>
+    <li>Visa Type: {visa["visa_type"]}</li>
     <li>Expiry Date: {target_date}</li>
-    <li>Visa Number: {visa.get('visa_number', 'N/A')}</li>
-    {"<li>Sponsor: " + visa.get('sponsor_name', 'N/A') + "</li>" if visa.get('sponsor_name') else ""}
+    <li>Visa Number: {visa.get("visa_number", "N/A")}</li>
+    {"<li>Sponsor: " + visa.get("sponsor_name", "N/A") + "</li>" if visa.get("sponsor_name") else ""}
 </ul>
 
 <p><strong>Next Steps:</strong></p>

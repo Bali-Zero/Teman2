@@ -7,13 +7,10 @@ Tests cover:
 - OUT_OF_DOMAIN_RESPONSES
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-
 from backend.services.rag.agent.persona import (
-    is_out_of_domain,
-    build_system_prompt,
     OUT_OF_DOMAIN_RESPONSES,
+    build_system_prompt,
+    is_out_of_domain,
 )
 
 
@@ -78,9 +75,9 @@ class TestBuildSystemPrompt:
         """Test basic prompt generation with minimal context."""
         user_id = "test_user_123"
         context = {}
-        
+
         prompt = build_system_prompt(user_id, context)
-        
+
         assert isinstance(prompt, str)
         assert len(prompt) > 0
         assert "Zantara" in prompt
@@ -94,9 +91,9 @@ class TestBuildSystemPrompt:
                 "company": "Test Corp",
             }
         }
-        
+
         prompt = build_system_prompt(user_id, context)
-        
+
         assert isinstance(prompt, str)
         assert "Zantara" in prompt
 
@@ -109,9 +106,9 @@ class TestBuildSystemPrompt:
                 "User has a budget of $5000",
             ]
         }
-        
+
         prompt = build_system_prompt(user_id, context)
-        
+
         assert isinstance(prompt, str)
 
     def test_prompt_with_entities(self) -> None:
@@ -123,9 +120,9 @@ class TestBuildSystemPrompt:
                 "location": "Bali",
             }
         }
-        
+
         prompt = build_system_prompt(user_id, context)
-        
+
         assert isinstance(prompt, str)
 
     def test_prompt_with_query(self) -> None:
@@ -133,9 +130,9 @@ class TestBuildSystemPrompt:
         user_id = "test_user"
         context = {}
         query = "How do I register a company?"
-        
+
         prompt = build_system_prompt(user_id, context, query)
-        
+
         assert isinstance(prompt, str)
 
     def test_prompt_contains_system_identity(self) -> None:
@@ -171,11 +168,11 @@ class TestBuildSystemPrompt:
                 "business_type": "Technology",
                 "employees": 50,
                 "target_location": "Jakarta",
-            }
+            },
         }
         query = "What are the steps to set up a PT PMA?"
-        
+
         prompt = build_system_prompt(user_id, context, query)
-        
+
         assert isinstance(prompt, str)
         assert len(prompt) > 100  # Should have substantial content

@@ -376,6 +376,7 @@ Sentry is fully configured for production error tracking:
 - ✅ Source map support for readable stack traces
 
 **Quick Setup:**
+
 ```bash
 # 1. Create Sentry project at https://sentry.io
 # 2. Add credentials to .env.local
@@ -387,12 +388,14 @@ cat SENTRY_SETUP.md
 ```
 
 **Documentation:**
+
 - [Quick Setup Guide](./SENTRY_SETUP.md) - 5 min setup
 - [Full Configuration](../../docs/SENTRY_CONFIGURATION.md) - Complete reference
 - [Usage Examples](../../docs/SENTRY_USAGE_EXAMPLES.md) - Best practices
 - [Integration Examples](./SENTRY_INTEGRATION_EXAMPLES.ts) - Code patterns
 
 **Verification:**
+
 ```bash
 ./verify-sentry.sh
 ```

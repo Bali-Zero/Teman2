@@ -9,6 +9,7 @@
 ## Bugs Fixed
 
 ### 1. Missing `get_db` Alias
+
 - **File:** `backend/app/dependencies.py`
 - **Error:** `ImportError: cannot import name 'get_db' from 'backend.app.dependencies'`
 - **Cause:** `webhooks.py` imported `get_db` but only `get_database` existed as alias
@@ -16,6 +17,7 @@
 - **Commit:** `36f93c910`
 
 ### 2. Python Module/Package Conflict
+
 - **Files:** `backend/app/models.py` → `backend/app/models/__init__.py`
 - **Error:** `ModuleNotFoundError: 'backend.app.models' is not a package`
 - **Cause:** Python found `models.py` file before `models/` directory, breaking submodule imports
@@ -25,6 +27,7 @@
 ## Verification
 
 ### Backend Health
+
 ```
 ✅ Health checks: 2/2 machines passing
 ✅ Version: 1773
@@ -32,15 +35,17 @@
 ```
 
 ### Endpoints Tested
-| Endpoint | Status | Response Time |
-|----------|--------|---------------|
-| `nuzantara-rag.fly.dev/health` | 200 OK | 0.8s |
-| `zantara.balizero.com/api/auth/login` | 401 (expected) | 1.4s |
+
+| Endpoint                              | Status         | Response Time |
+| ------------------------------------- | -------------- | ------------- |
+| `nuzantara-rag.fly.dev/health`        | 200 OK         | 0.8s          |
+| `zantara.balizero.com/api/auth/login` | 401 (expected) | 1.4s          |
 
 ### SSL Certificates
-| Domain | Status | Expiry |
-|--------|--------|--------|
-| admin.balizero.com | ✅ Ready | 2 months |
+
+| Domain               | Status    | Expiry     |
+| -------------------- | --------- | ---------- |
+| admin.balizero.com   | ✅ Ready  | 2 months   |
 | zantara.balizero.com | ✅ Active | Auto-renew |
 
 ## Deployment Timeline
@@ -48,7 +53,7 @@
 1. **02:41 UTC** - Identified `get_db` import error in logs
 2. **02:47 UTC** - First fix deployed (get_db alias)
 3. **02:50 UTC** - Identified second error (models package conflict)
-4. **02:57 UTC** - Second fix deployed (models/__init__.py)
+4. **02:57 UTC** - Second fix deployed (models/**init**.py)
 5. **03:02 UTC** - Both machines healthy, all checks passing
 
 ## Files Changed

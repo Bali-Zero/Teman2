@@ -25,7 +25,9 @@ describe('Sentry Configuration', () => {
       await import('../../sentry.client.config');
 
       expect(Sentry.init).toHaveBeenCalled();
-      const initCall = (Sentry.init as any).mock.calls[(Sentry.init as any).mock.calls.length - 1][0];
+      const initCall = (Sentry.init as any).mock.calls[
+        (Sentry.init as any).mock.calls.length - 1
+      ][0];
 
       expect(initCall).toMatchObject({
         dsn: 'https://test@sentry.io/123',

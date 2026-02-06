@@ -219,7 +219,12 @@ describe('ApiClientBase', () => {
     });
 
     it('should identify founder role as admin', () => {
-      client.setUserProfile({ id: '1', email: 'founder@example.com', name: 'Founder', role: 'founder' });
+      client.setUserProfile({
+        id: '1',
+        email: 'founder@example.com',
+        name: 'Founder',
+        role: 'founder',
+      });
 
       expect(client.isAdmin()).toBe(true);
     });

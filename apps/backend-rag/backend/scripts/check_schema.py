@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Check team_members table schema."""
+
 import asyncio
 import os
+import logging
+
 import asyncpg
+
+logger = logging.getLogger(__name__)
 
 
 async def check_schema():
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        print("ERROR: DATABASE_URL not set")
+        logger.error("DATABASE_URL not set")
         return
 
     conn = await asyncpg.connect(database_url)
@@ -22,15 +27,15 @@ async def check_schema():
             ORDER BY ordinal_position
             """
         )
-        print("=== team_members table schema ===")
+        logger.info("=== team_members table schema ===")
         for row in rows:
-            print(f"{row['column_name']:20} {row['is_nullable']:5} {row['data_type']}")
+            logger.info(f"{row['column_name']:20} {row['is_nullable']:5} {row['data_type']}")
 
         # Check existing team members
         members = await conn.fetch("SELECT full_name, name, email FROM team_members")
-        print("\n=== existing team members ===")
+        logger.info("\n=== existing team members ===")
         for m in members:
-            print(f"full_name={m['full_name']}, name={m['name']}, email={m['email']}")
+            logger.info(f"full_name={m['full_name']}, name={m['name']}, email={m['email']}")
 
     finally:
         await conn.close()

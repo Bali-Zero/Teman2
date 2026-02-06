@@ -254,6 +254,26 @@ UPDATE_KEYWORDS = [
     "latest news",
 ]
 
+# Kemnaker/Immigration Circulars - specific keywords for direct routing
+CIRCULAR_KEYWORDS = [
+    "alih status",
+    "kesamaan sponsor",
+    "one sponsor",
+    "offshore scheme",
+    "surat edaran kemnaker",
+    "se kemnaker",
+    "se imigrasi",
+    "circular",
+    "circolare",  # Italian
+    "rptka berbeda",
+    "sponsor berbeda",
+    "pindah sponsor",
+    "ganti sponsor",
+    "bpjs matching",
+    "wlkp verification",
+    "siapkerja",
+]
+
 BOOKS_KEYWORDS = [
     "plato",
     "aristotle",
@@ -325,6 +345,7 @@ class KeywordMatcherService:
             "property": PROPERTY_KEYWORDS,
             "team": TEAM_KEYWORDS + TEAM_ENUMERATION_KEYWORDS,
             "books": BOOKS_KEYWORDS,
+            "circular": CIRCULAR_KEYWORDS,  # Kemnaker/Imigrasi circulars
         }
         self.modifier_keywords = {
             "updates": UPDATE_KEYWORDS,

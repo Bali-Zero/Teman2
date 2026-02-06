@@ -257,13 +257,15 @@ class TestDeadlineChecker:
     @pytest.mark.asyncio
     async def test_run_deadline_checker_handles_errors(self):
         """Test job handles errors gracefully."""
-        with patch(
-            "backend.app.core.database.get_db_pool",
-            new_callable=AsyncMock,
-            side_effect=Exception("Database connection failed"),
+        with (
+            patch(
+                "backend.app.core.database.get_db_pool",
+                new_callable=AsyncMock,
+                side_effect=Exception("Database connection failed"),
+            ),
+            pytest.raises(Exception, match="Database connection failed"),
         ):
-            with pytest.raises(Exception, match="Database connection failed"):
-                await run_deadline_checker()
+            await run_deadline_checker()
 
     @pytest.mark.asyncio
     async def test_check_visa_expiry_no_visas(self, mock_db_pool, mock_conn):

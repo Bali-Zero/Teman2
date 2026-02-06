@@ -142,14 +142,18 @@ class TestPrepareSearchContext:
     @pytest.mark.asyncio
     async def test_prepare_search_context_success(self, search_service):
         """Test successful preparation of search context"""
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=1,
-                tier_filter=None,
-                collection_override=None,
-                apply_filters=None,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override=None,
+            apply_filters=None,
         )
         assert embedding == [0.1] * 384
         assert collection == "visa_oracle"
@@ -182,14 +186,18 @@ class TestPrepareSearchContext:
     @pytest.mark.asyncio
     async def test_prepare_search_context_with_tier_filter(self, search_service):
         """Test _prepare_search_context with tier filter"""
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=2,
-                tier_filter=[TierLevel.S, TierLevel.A],
-                collection_override=None,
-                apply_filters=None,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=2,
+            tier_filter=[TierLevel.S, TierLevel.A],
+            collection_override=None,
+            apply_filters=None,
         )
         assert len(tier_values) >= 0  # May be empty if not zantara_books
 
@@ -199,28 +207,36 @@ class TestPrepareSearchContext:
         search_service.query_router.route_query = MagicMock(
             return_value={"collection_name": "custom_collection", "confidence": 0.9}
         )
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=1,
-                tier_filter=None,
-                collection_override="custom_collection",
-                apply_filters=None,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override="custom_collection",
+            apply_filters=None,
         )
         assert collection == "custom_collection"
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_apply_filters_false(self, search_service):
         """Test _prepare_search_context with apply_filters=False"""
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=1,
-                tier_filter=None,
-                collection_override=None,
-                apply_filters=False,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override=None,
+            apply_filters=False,
         )
         assert chroma_filter is None
 

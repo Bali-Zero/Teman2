@@ -419,15 +419,17 @@ class TestKGEnhancedRetrieval:
         # So find_kg_entities makes 4 fetch calls, then:
         # - get_related_entities: 1 fetch for edges
         # - get_source_chunks: 2 fetches (nodes, edges)
-        mock_conn.fetch = AsyncMock(side_effect=[
-            [mock_entity],   # find_kg_entities - UU mention
-            [],              # find_kg_entities - 12
-            [],              # find_kg_entities - 2024
-            [],              # find_kg_entities - 12 TAHUN
-            [],              # get_related_entities - edges
-            [mock_chunk_row],  # get_source_chunks - nodes
-            [],              # get_source_chunks - edges
-        ])
+        mock_conn.fetch = AsyncMock(
+            side_effect=[
+                [mock_entity],  # find_kg_entities - UU mention
+                [],  # find_kg_entities - 12
+                [],  # find_kg_entities - 2024
+                [],  # find_kg_entities - 12 TAHUN
+                [],  # get_related_entities - edges
+                [mock_chunk_row],  # get_source_chunks - nodes
+                [],  # get_source_chunks - edges
+            ]
+        )
 
         retrieval = KGEnhancedRetrieval(mock_pool)
 
@@ -492,12 +494,12 @@ class TestKGEnhancedRetrieval:
         # Flow: find_kg_entities (2 fetches) + get_related_entities (2 fetches with edges) + get_source_chunks (2 fetches)
         mock_conn.fetch = AsyncMock(
             side_effect=[
-                [mock_entity],   # find_kg_entities - UU mention
-                [],              # find_kg_entities - 12 mention
-                [mock_edge],     # get_related_entities - edges
+                [mock_entity],  # find_kg_entities - UU mention
+                [],  # find_kg_entities - 12 mention
+                [mock_edge],  # get_related_entities - edges
                 [mock_related],  # get_related_entities - related entities
                 [mock_chunk_row],  # get_source_chunks - nodes
-                [],              # get_source_chunks - edges
+                [],  # get_source_chunks - edges
             ]
         )
 

@@ -47,10 +47,7 @@ export function getDynamicToolMessage(toolName: string, args: Record<string, unk
 /**
  * Build activity list from steps with dynamic messages
  */
-export function buildActivities(
-  toolCalls: GenericStep[],
-  toolEnds: GenericStep[]
-): Activity[] {
+export function buildActivities(toolCalls: GenericStep[], toolEnds: GenericStep[]): Activity[] {
   return toolCalls
     .map((step, idx) => {
       const stepData = step.data as Record<string, unknown> | undefined;

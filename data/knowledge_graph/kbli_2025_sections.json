@@ -28,15 +28,8 @@
       "section": "A",
       "name": "Pertanian, Kehutanan, dan Perikanan",
       "name_en": "Agriculture, Forestry and Fishing",
-      "code_prefixes": [
-        "01",
-        "02",
-        "03"
-      ],
-      "highlights": [
-        "Penyerapan/penyimpanan karbon",
-        "Penangkaran satwa/tumbuhan liar dipisahkan"
-      ],
+      "code_prefixes": ["01", "02", "03"],
+      "highlights": ["Penyerapan/penyimpanan karbon", "Penangkaran satwa/tumbuhan liar dipisahkan"],
       "code_count": 121,
       "pma_stats": {
         "TERBUKA": 116,
@@ -49,17 +42,8 @@
       "section": "B",
       "name": "Pertambangan dan Penggalian",
       "name_en": "Mining and Quarrying",
-      "code_prefixes": [
-        "05",
-        "06",
-        "07",
-        "08",
-        "09"
-      ],
-      "highlights": [
-        "Benefisiasi batu bara",
-        "Logam tanah jarang"
-      ],
+      "code_prefixes": ["05", "06", "07", "08", "09"],
+      "highlights": ["Benefisiasi batu bara", "Logam tanah jarang"],
       "code_count": 44,
       "pma_stats": {
         "TERBUKA": 44,
@@ -116,14 +100,8 @@
       "section": "D",
       "name": "Pengadaan Listrik, Gas, Uap/Air Panas, dan Udara Dingin",
       "name_en": "Electricity, Gas, Steam and Air Conditioning",
-      "code_prefixes": [
-        "35"
-      ],
-      "highlights": [
-        "Energi terbarukan vs tidak terbarukan",
-        "Produksi hidrogen",
-        "Unit karbon"
-      ],
+      "code_prefixes": ["35"],
+      "highlights": ["Energi terbarukan vs tidak terbarukan", "Produksi hidrogen", "Unit karbon"],
       "code_count": 16,
       "pma_stats": {
         "TERBUKA": 16,
@@ -136,17 +114,8 @@
       "section": "E",
       "name": "Penyediaan Air, Pengelolaan Air Limbah, Penanganan Limbah, dan Remediasi",
       "name_en": "Water Supply, Sewerage, Waste Management",
-      "code_prefixes": [
-        "36",
-        "37",
-        "38",
-        "39"
-      ],
-      "highlights": [
-        "Penangkapan CO2",
-        "Limbah radioaktif",
-        "Sampah jadi energi"
-      ],
+      "code_prefixes": ["36", "37", "38", "39"],
+      "highlights": ["Penangkapan CO2", "Limbah radioaktif", "Sampah jadi energi"],
       "code_count": 19,
       "pma_stats": {
         "TERBUKA": 19,
@@ -159,15 +128,8 @@
       "section": "F",
       "name": "Konstruksi",
       "name_en": "Construction",
-      "code_prefixes": [
-        "41",
-        "42",
-        "43"
-      ],
-      "highlights": [
-        "Konstruksi prapabrikasi",
-        "Jasa intermediasi konstruksi"
-      ],
+      "code_prefixes": ["41", "42", "43"],
+      "highlights": ["Konstruksi prapabrikasi", "Jasa intermediasi konstruksi"],
       "code_count": 62,
       "pma_stats": {
         "TERBUKA": 62,
@@ -180,15 +142,8 @@
       "section": "G",
       "name": "Perdagangan Besar dan Eceran",
       "name_en": "Wholesale and Retail Trade",
-      "code_prefixes": [
-        "45",
-        "46",
-        "47"
-      ],
-      "highlights": [
-        "Reparasi kendaraan pindah ke T",
-        "Platform digital = intermediasi"
-      ],
+      "code_prefixes": ["45", "46", "47"],
+      "highlights": ["Reparasi kendaraan pindah ke T", "Platform digital = intermediasi"],
       "code_count": 199,
       "pma_stats": {
         "TERBUKA": 196,
@@ -201,17 +156,8 @@
       "section": "H",
       "name": "Transportasi dan Penyimpanan",
       "name_en": "Transportation and Storage",
-      "code_prefixes": [
-        "49",
-        "50",
-        "51",
-        "52",
-        "53"
-      ],
-      "highlights": [
-        "Transportasi antariksa dipisahkan",
-        "Jasa intermediasi transportasi"
-      ],
+      "code_prefixes": ["49", "50", "51", "52", "53"],
+      "highlights": ["Transportasi antariksa dipisahkan", "Jasa intermediasi transportasi"],
       "code_count": 103,
       "pma_stats": {
         "TERBUKA": 100,
@@ -224,14 +170,8 @@
       "section": "I",
       "name": "Penyediaan Akomodasi dan Makan Minum",
       "name_en": "Accommodation and Food Service",
-      "code_prefixes": [
-        "55",
-        "56"
-      ],
-      "highlights": [
-        "Jasa intermediasi (OTA)",
-        "Klasifikasi berbasis bangunan"
-      ],
+      "code_prefixes": ["55", "56"],
+      "highlights": ["Jasa intermediasi (OTA)", "Klasifikasi berbasis bangunan"],
       "code_count": 26,
       "pma_stats": {
         "TERBUKA": 26,
@@ -244,11 +184,7 @@
       "section": "J",
       "name": "Penerbitan, Penyiaran, Produksi dan Distribusi Konten",
       "name_en": "Publishing, Broadcasting, Content Production",
-      "code_prefixes": [
-        "58",
-        "59",
-        "60"
-      ],
+      "code_prefixes": ["58", "59", "60"],
       "highlights": [
         "BARU: Dipisah dari old J",
         "Podcast",
@@ -267,11 +203,7 @@
       "section": "K",
       "name": "Telekomunikasi, Pemrograman, Konsultansi, Infrastruktur Komputasi",
       "name_en": "Telecommunications, IT, Computing Infrastructure",
-      "code_prefixes": [
-        "61",
-        "62",
-        "63"
-      ],
+      "code_prefixes": ["61", "62", "63"],
       "highlights": [
         "BARU: Dipisah dari old J",
         "Telko kabel/nirkabel/satelit digabung",
@@ -289,16 +221,8 @@
       "section": "L",
       "name": "Aktivitas Keuangan dan Asuransi",
       "name_en": "Financial and Insurance Activities",
-      "code_prefixes": [
-        "64",
-        "65",
-        "66"
-      ],
-      "highlights": [
-        "Berbasis aktivitas bukan entitas",
-        "Unit karbon",
-        "Aset kripto"
-      ],
+      "code_prefixes": ["64", "65", "66"],
+      "highlights": ["Berbasis aktivitas bukan entitas", "Unit karbon", "Aset kripto"],
       "code_count": 102,
       "pma_stats": {
         "TERBUKA": 102,
@@ -311,14 +235,8 @@
       "section": "M",
       "name": "Real Estat",
       "name_en": "Real Estate Activities",
-      "code_prefixes": [
-        "68"
-      ],
-      "highlights": [
-        "Hunian vs nonhunian",
-        "Kawasan ekonomi khusus",
-        "Gudang/penyimpanan mandiri"
-      ],
+      "code_prefixes": ["68"],
+      "highlights": ["Hunian vs nonhunian", "Kawasan ekonomi khusus", "Gudang/penyimpanan mandiri"],
       "code_count": 14,
       "pma_stats": {
         "TERBUKA": 14,
@@ -331,15 +249,7 @@
       "section": "N",
       "name": "Aktivitas Profesional, Ilmiah, dan Teknis",
       "name_en": "Professional, Scientific and Technical",
-      "code_prefixes": [
-        "69",
-        "70",
-        "71",
-        "72",
-        "73",
-        "74",
-        "75"
-      ],
+      "code_prefixes": ["69", "70", "71", "72", "73", "74", "75"],
       "highlights": [
         "Desain khusus digabung",
         "Kehumasan dipisahkan",
@@ -357,14 +267,7 @@
       "section": "O",
       "name": "Aktivitas Administratif dan Penunjang Usaha",
       "name_en": "Administrative and Support Service",
-      "code_prefixes": [
-        "77",
-        "78",
-        "79",
-        "80",
-        "81",
-        "82"
-      ],
+      "code_prefixes": ["77", "78", "79", "80", "81", "82"],
       "highlights": [
         "Jasa intermediasi penyewaan",
         "Penempatan TK domestik/rumah tangga/awak kapal"
@@ -381,12 +284,8 @@
       "section": "P",
       "name": "Administrasi Pemerintahan, Pertahanan, Jaminan Sosial Wajib",
       "name_en": "Public Administration and Defence",
-      "code_prefixes": [
-        "84"
-      ],
-      "highlights": [
-        "Pelayanan lingkungan hidup"
-      ],
+      "code_prefixes": ["84"],
+      "highlights": ["Pelayanan lingkungan hidup"],
       "code_count": 33,
       "pma_stats": {
         "TERBUKA": 0,
@@ -399,14 +298,8 @@
       "section": "Q",
       "name": "Pendidikan",
       "name_en": "Education",
-      "code_prefixes": [
-        "85"
-      ],
-      "highlights": [
-        "Prasekolah dipisahkan",
-        "Pelatihan kerja",
-        "Sertifikasi profesi"
-      ],
+      "code_prefixes": ["85"],
+      "highlights": ["Prasekolah dipisahkan", "Pelatihan kerja", "Sertifikasi profesi"],
       "code_count": 65,
       "pma_stats": {
         "TERBUKA": 65,
@@ -419,15 +312,8 @@
       "section": "R",
       "name": "Aktivitas Kesehatan Manusia dan Aktivitas Sosial",
       "name_en": "Human Health and Social Work",
-      "code_prefixes": [
-        "86",
-        "87",
-        "88"
-      ],
-      "highlights": [
-        "Istilah humanis",
-        "Jasa intermediasi layanan kesehatan"
-      ],
+      "code_prefixes": ["86", "87", "88"],
+      "highlights": ["Istilah humanis", "Jasa intermediasi layanan kesehatan"],
       "code_count": 35,
       "pma_stats": {
         "TERBUKA": 35,
@@ -440,12 +326,7 @@
       "section": "S",
       "name": "Kesenian, Olahraga, dan Rekreasi",
       "name_en": "Arts, Sports and Recreation",
-      "code_prefixes": [
-        "90",
-        "91",
-        "92",
-        "93"
-      ],
+      "code_prefixes": ["90", "91", "92", "93"],
       "highlights": [
         "Seni pertunjukan dipisahkan",
         "Atlet independen",
@@ -463,15 +344,8 @@
       "section": "T",
       "name": "Aktivitas Jasa Lainnya",
       "name_en": "Other Service Activities",
-      "code_prefixes": [
-        "94",
-        "95",
-        "96"
-      ],
-      "highlights": [
-        "Reparasi kendaraan pindah dari G",
-        "Jasa perorangan"
-      ],
+      "code_prefixes": ["94", "95", "96"],
+      "highlights": ["Reparasi kendaraan pindah dari G", "Jasa perorangan"],
       "code_count": 26,
       "pma_stats": {
         "TERBUKA": 26,
@@ -484,13 +358,8 @@
       "section": "U",
       "name": "Aktivitas Rumah Tangga sebagai Pemberi Kerja",
       "name_en": "Activities of Households as Employers",
-      "code_prefixes": [
-        "97",
-        "98"
-      ],
-      "highlights": [
-        "Pekerja rumah tangga (bukan personil domestik)"
-      ],
+      "code_prefixes": ["97", "98"],
+      "highlights": ["Pekerja rumah tangga (bukan personil domestik)"],
       "code_count": 3,
       "pma_stats": {
         "TERBUKA": 3,
@@ -503,12 +372,8 @@
       "section": "V",
       "name": "Aktivitas Badan Internasional dan Ekstra Internasional",
       "name_en": "Activities of Extraterritorial Organizations",
-      "code_prefixes": [
-        "99"
-      ],
-      "highlights": [
-        "Recoding dari U KBLI 2020"
-      ],
+      "code_prefixes": ["99"],
+      "highlights": ["Recoding dari U KBLI 2020"],
       "code_count": 1,
       "pma_stats": {
         "TERBUKA": 0,

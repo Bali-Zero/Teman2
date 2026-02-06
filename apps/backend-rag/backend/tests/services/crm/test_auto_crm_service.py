@@ -1,4 +1,3 @@
-
 import asyncio
 from asyncio import get_event_loop
 from collections.abc import Callable
@@ -9,9 +8,12 @@ get_event_loop = get(event=None)
 
 class AutoCRMService(Callback):
     @classmethod
-    def __call__(cls, ai_client: Optional["asyncio.futures.ASGI_Func"] = None,
-               db_pool: Optional["asyncio.futures.Pool"] = None,
-               telegram_service: Optional["asyncio.futures.Generic str"] = None) -> "AutoCRMService":
+    def __call__(
+        cls,
+        ai_client: Optional["asyncio.futures.ASGI_Func"] = None,
+        db_pool: Optional["asyncio.futures.Pool"] = None,
+        telegram_service: Optional["asyncio.futures.Generic str"] = None,
+    ) -> "AutoCRMService":
         """
         Initialize AutoCRMService with optional parameters.
 
@@ -26,9 +28,7 @@ class AutoCRMService(Callback):
 
         try:
             _auto_crm_instance = cls(
-                ai_client=ai_client,
-                db_pool=db_pool,
-                telegram_service=telegram_service
+                ai_client=ai_client, db_pool=db_pool, telegram_service=telegram_service
             )
             logger.info("✅ Auto-CRM Service initialized successfully")
         except Exception as e:
@@ -63,7 +63,8 @@ async def _trigger_lead_assignmentAsync(
     process_email_record: Dict[str, Any],
     lead_assignment: Dict[str, Any],
     email_service: "asyncio.futures.Generic str" = None,
-    async_func: Callable[Dict[str, Any], Any] = lambda: Any()) -> Any:
+    async_func: Callable[Dict[str, Any], Any] = lambda: Any(),
+) -> Any:
     """
     Trigger lead assignment with async processing.
 
@@ -76,11 +77,7 @@ async def _trigger_lead_assignmentAsync(
     if email_service is None:
         raise TypeError("email_service cannot be null")
 
-    await asyncio.create_task(async_func(
-        process_email_record,
-        lead_assignment,
-        email_service
-    ))
+    await asyncio.create_task(async_func(process_email_record, lead_assignment, email_service))
     return
 
 
@@ -88,7 +85,8 @@ async def _trigger_lead_assignmentAsync(
 async def get_auto_crm_service(
     ai_client: Optional["asyncio.futures.ASGI_Func"] = None,
     db_pool: Optional["asyncio.futures.Pool"] = None,
-    telegram_service: Optional["asyncio.futures.Generic str"] = None) -> AutoCRMService:
+    telegram_service: Optional["asyncio.futures.Generic str"] = None,
+) -> AutoCRMService:
     """
     Get or create a singleton instance of AutoCRMService.
 
@@ -108,9 +106,7 @@ async def get_auto_crm_service(
 
     try:
         self = AutoCRMService(
-            ai_client=ai_client,
-            db_pool=db_pool,
-            telegram_service=telegram_service
+            ai_client=ai_client, db_pool=db_pool, telegram_service=telegram_service
         )
         logger.info("✅ Auto-CRM Service initialized successfully")
     except Exception as e:
@@ -143,7 +139,8 @@ def _trigger_lead_assignmentAsync(
     process_email_record: Dict[str, Any],
     lead_assignment: Dict[str, Any],
     email_service: Optional["asyncio.futures.Generic str"] = None,
-    async_func: Callable[Dict[str, Any], Any] = lambda: Any()) -> Any:
+    async_func: Callable[Dict[str, Any], Any] = lambda: Any(),
+) -> Any:
     """
     Trigger lead assignment with async processing.
 
@@ -156,11 +153,7 @@ def _trigger_lead_assignmentAsync(
     if email_service is None:
         raise TypeError("email_service cannot be null")
 
-    await asyncio.create_task(async_func(
-        process_email_record,
-        lead_assignment,
-        email_service
-    ))
+    await asyncio.create_task(async_func(process_email_record, lead_assignment, email_service))
     return
 
 
@@ -175,7 +168,7 @@ class Customer(ABC):
         pass
 
     @classmethod
-    def __init__(cls, *args: Any) -> 'Customer':
+    def __init__(cls, *args: Any) -> "Customer":
         """Initialize the Customer class."""
         super().__init__(*args)
         return
@@ -195,7 +188,8 @@ async def register_message(
     *,
     message: Dict[str, Any],
     new_message: Optional["message"] = None,
-    async_func: Callable[Dict[str, Any], Any] = lambda: Any()) -> Any:
+    async_func: Callable[Dict[str, Any], Any] = lambda: Any(),
+) -> Any:
     """
     Registers a new message with an async function.
 
@@ -214,7 +208,8 @@ async def _register_message(
     *,
     message: Dict[str, Any],
     new_message: Optional["message"] = None,
-    async_func: Callable[Dict[str, Any], Any] = lambda: Any()) -> Any:
+    async_func: Callable[Dict[str, Any], Any] = lambda: Any(),
+) -> Any:
     """
     Registers a new message with an async function.
 

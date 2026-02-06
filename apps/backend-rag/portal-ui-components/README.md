@@ -5,16 +5,19 @@ React/TypeScript components for displaying Tax & Visa data in client-facing port
 ## 📦 Components
 
 ### Tax Dashboard Components
+
 - `TaxObligationsList` - Display list of tax obligations
 - `TaxSummaryCard` - Summary card with metrics (upcoming, critical, overdue)
 - `TaxObligationCard` - Individual tax obligation detail card
 
 ### Visa Dashboard Components
+
 - `VisaStatusCard` - Active visa status card
 - `VisaHistoryList` - Visa history timeline
 - `VisaSummaryCard` - Summary card with expiry warnings
 
 ### Shared Components
+
 - `TimelineEvent` - Timeline event display
 - `StatusBadge` - Status indicator badge
 - `UrgencyIndicator` - Visual urgency indicator
@@ -22,9 +25,11 @@ React/TypeScript components for displaying Tax & Visa data in client-facing port
 ## 🚀 Installation
 
 ### Option 1: Copy Components Directly
+
 Copy the components from `/Users/antonellosiano/Projects/nuzantara/apps/backend-rag/portal-ui-components/` into your Next.js/React project.
 
 ### Option 2: Use in Existing Project
+
 If using in `apps/zantara-media/dashboard`:
 
 ```bash
@@ -88,7 +93,7 @@ export default function PortalHome() {
           <VisaStatusCard clientId={clientId} />
           <TaxObligationsList clientId={clientId} limit={5} />
         </div>
-        
+
         <TimelineEventsList clientId={clientId} />
       </div>
     </DashboardLayout>
@@ -108,6 +113,7 @@ interface TaxSummaryCardProps {
 ```
 
 **Features:**
+
 - Shows total obligations, total amount, upcoming/critical/overdue counts
 - Auto-refreshes every 5 minutes
 - Loading skeleton
@@ -127,6 +133,7 @@ interface TaxObligationsListProps {
 ```
 
 **Features:**
+
 - Paginated list of obligations
 - Color-coded urgency (red for critical, yellow for warning, green for safe)
 - Status badges (pending, paid, filed, overdue)
@@ -145,6 +152,7 @@ interface VisaStatusCardProps {
 ```
 
 **Features:**
+
 - Shows active visa details
 - Expiry countdown
 - Status indicator (active, expiring_soon, expired)
@@ -164,6 +172,7 @@ interface VisaHistoryListProps {
 ```
 
 **Features:**
+
 - Timeline of all visas
 - Status progression
 - Date ranges
@@ -183,6 +192,7 @@ interface TimelineEventsListProps {
 ```
 
 **Features:**
+
 - Chronological timeline
 - Event type icons (practice_created, reminder, status_change, etc.)
 - Color-coded by importance
@@ -198,7 +208,7 @@ const token = localStorage.getItem('portal_jwt');
 
 fetch(`${API_URL}/api/portal/taxes`, {
   headers: {
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   },
 });
 ```
@@ -222,6 +232,7 @@ Components use CSS variables for theming (compatible with `zantara-media/dashboa
 ## 📱 Responsive Design
 
 All components are mobile-first and responsive:
+
 - Mobile: Single column layout
 - Tablet: 2-column grid
 - Desktop: Multi-column with sidebar
@@ -266,7 +277,7 @@ Components support i18n via `next-intl`:
 import { useTranslations } from 'next-intl';
 
 const t = useTranslations('Portal');
-<h2>{t('tax.title')}</h2>
+<h2>{t('tax.title')}</h2>;
 ```
 
 ## 📊 Analytics
@@ -365,18 +376,21 @@ NEXT_PUBLIC_SUPPORT_EMAIL="support@balizero.com"
 ## 🐛 Troubleshooting
 
 ### CORS Issues
+
 ```bash
 # Backend must allow portal origin
 ALLOWED_ORIGINS=https://portal.balizero.com
 ```
 
 ### Authentication Errors
+
 ```bash
 # Check JWT token validity
 # Token must have 'client_id' claim
 ```
 
 ### Data Not Loading
+
 ```bash
 # Verify API endpoints are accessible
 curl -H "Authorization: Bearer $TOKEN" $API_URL/api/portal/taxes

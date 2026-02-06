@@ -20,9 +20,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'OpenAPI spec not found' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'OpenAPI spec not found' }, { status: 404 });
   }
 }
