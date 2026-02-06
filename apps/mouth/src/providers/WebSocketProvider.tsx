@@ -6,6 +6,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { debug, warn, error } from '@/lib/utils/console';
 import type { WebSocketMessage, WebSocketChannel } from '@/lib/api/zantara-sdk/types';
 
 export interface WebSocketContextValue {
@@ -55,7 +56,7 @@ export function WebSocketProvider({
       const ws = new WebSocket(wsUrl, token ? [`bearer.${token}`] : undefined);
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        // Connection established - use debug mode for verbose logging
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
 
@@ -92,16 +93,16 @@ export function WebSocketProvider({
             subscribers.forEach((callback) => callback(message));
           }
         } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
+          error('Failed to parse WebSocket message:', err);
         }
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      ws.onerror = (wsError) => {
+        error('WebSocket error:', wsError);
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected');
+        // Disconnected - reconnect logic will handle
         setIsConnected(false);
         wsRef.current = null;
 
@@ -109,17 +110,17 @@ export function WebSocketProvider({
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`Reconnecting... (attempt ${reconnectAttemptsRef.current})`);
+            // Reconnection attempt in progress
             connect();
           }, reconnectDelay);
         } else {
-          console.error('Max reconnection attempts reached');
+          error('Max reconnection attempts reached');
         }
       };
 
       wsRef.current = ws;
     } catch (err) {
-      console.error('Failed to create WebSocket connection:', err);
+      error('Failed to create WebSocket connection:', err);
       setIsConnected(false);
     }
   }, [url, token]);
@@ -140,7 +141,7 @@ export function WebSocketProvider({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
-      console.warn('WebSocket is not connected');
+      warn('WebSocket is not connected');
     }
   }, []);
 

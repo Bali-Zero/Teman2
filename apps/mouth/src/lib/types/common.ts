@@ -67,3 +67,106 @@ export type AnalyticsProperties = Record<string, string | number | boolean | nul
  * Configuration object (replaces Record<string, any>)
  */
 export type ConfigObject = Record<string, JsonValue>;
+
+/**
+ * API Response wrapper type
+ */
+export interface ApiResponse<T = unknown> {
+  data?: T;
+  error?: string;
+  message?: string;
+  status: number;
+}
+
+/**
+ * Pagination metadata
+ */
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+/**
+ * Paginated response
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+/**
+ * Search result item
+ */
+export interface SearchResult {
+  id: string;
+  title: string;
+  description?: string;
+  url?: string;
+  score?: number;
+  metadata?: Metadata;
+}
+
+/**
+ * Select option for dropdowns
+ */
+export interface SelectOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+/**
+ * File with metadata
+ */
+export interface FileWithMeta {
+  id: string;
+  name: string;
+  size?: number;
+  type?: string;
+  url?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  metadata?: Metadata;
+}
+
+/**
+ * User info
+ */
+export interface UserInfo {
+  id: string;
+  email: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
+  permissions?: string[];
+}
+
+/**
+ * Navigation item
+ */
+export interface NavItem {
+  label: string;
+  href: string;
+  icon?: string;
+  active?: boolean;
+  children?: NavItem[];
+}
+
+/**
+ * Form field error
+ */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
+/**
+ * Validation result
+ */
+export interface ValidationResult {
+  valid: boolean;
+  errors: FieldError[];
+}

@@ -59,6 +59,7 @@ class EntityType(str, Enum):
     # Immigration
     KITAS = "kitas"  # Limited Stay Permit
     KITAP = "kitap"  # Permanent Stay Permit
+    VISA = "visa"  # General Visa Type
     IMTA = "imta"  # Foreign Worker Permit
     RPTKA = "rptka"  # Foreign Worker Plan
     VITAS = "vitas"  # Limited Stay Visa
@@ -331,6 +332,16 @@ ENTITY_SCHEMAS: dict[EntityType, EntitySchema] = {
         examples=["KITAS", "Kartu Izin Tinggal Terbatas"],
         attributes=["type", "duration", "sponsor"],
         description="Limited Stay Permit Card",
+    ),
+    EntityType.VISA: EntitySchema(
+        type=EntityType.VISA,
+        patterns=[
+            r"\b[Vv]isa\b",
+            r"[Vv]isa\s+(?:[A-Z0-9]+)",
+        ],
+        examples=["Visa B211A", "Visa On Arrival", "Visa 211"],
+        attributes=["type", "number"],
+        description="General Visa Type",
     ),
     EntityType.IMTA: EntitySchema(
         type=EntityType.IMTA,

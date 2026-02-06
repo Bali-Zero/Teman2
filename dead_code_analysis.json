@@ -1,0 +1,5122 @@
+{
+  "dead_functions": [
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "GateResult",
+      "type": "class",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/context_manager.py",
+      "name": "_timed_profile_fetch",
+      "type": "async_function",
+      "line": 290
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/context_manager.py",
+      "name": "_timed_memory_fetch",
+      "type": "async_function",
+      "line": 296
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_get_data_file_path",
+      "type": "function",
+      "line": 356
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_get_keys",
+      "type": "function",
+      "line": 611
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_search_tavily",
+      "type": "async_function",
+      "line": 652
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_search_brave",
+      "type": "async_function",
+      "line": 673
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_get_user_id_by_email",
+      "type": "function",
+      "line": 874
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/__init__.py",
+      "name": "create_kg_agentic_rag",
+      "type": "function",
+      "line": 159
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/chat_session.py",
+      "name": "_initialize_session",
+      "type": "function",
+      "line": 48
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/chat_session.py",
+      "name": "MockResponse",
+      "type": "class",
+      "line": 172
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_get_model_for_tier",
+      "type": "function",
+      "line": 243
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_get_circuit_breaker",
+      "type": "function",
+      "line": 329
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_is_circuit_open",
+      "type": "function",
+      "line": 340
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_get_fallback_chain",
+      "type": "function",
+      "line": 374
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_build_config",
+      "type": "function",
+      "line": 769
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_build_multimodal_content",
+      "type": "function",
+      "line": 727
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_call_model",
+      "type": "async_function",
+      "line": 712
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_call_openrouter",
+      "type": "async_function",
+      "line": 968
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "_prepare_react_loop",
+      "type": "async_function",
+      "line": 569
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "_extract_entities_task",
+      "type": "async_function",
+      "line": 170
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "_fetch_kg_context_task",
+      "type": "async_function",
+      "line": 180
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "_load_context",
+      "type": "async_function",
+      "line": 491
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "_extract_entities_kg",
+      "type": "async_function",
+      "line": 499
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_classify_intent",
+      "type": "async_function",
+      "line": 279
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_get_kg_context",
+      "type": "async_function",
+      "line": 301
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_execute_vector_search",
+      "type": "async_function",
+      "line": 338
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_route_collections",
+      "type": "function",
+      "line": 428
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_synthesize_answer",
+      "type": "async_function",
+      "line": 474
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/kg_orchestrator.py",
+      "name": "_build_response",
+      "type": "function",
+      "line": 630
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+      "name": "_exec_tool_wrapper",
+      "type": "async_function",
+      "line": 627
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_context.py",
+      "name": "_load_basic_user_profile",
+      "type": "async_function",
+      "line": 205
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming_core.py",
+      "name": "_stream_core_result",
+      "type": "async_function",
+      "line": 257
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming_core.py",
+      "name": "_single_event_generator",
+      "type": "async_function",
+      "line": 303
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming_core.py",
+      "name": "_enrich_memory",
+      "type": "async_function",
+      "line": 112
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming_core.py",
+      "name": "_extract_entities",
+      "type": "async_function",
+      "line": 117
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_log_activity",
+      "type": "async_function",
+      "line": 122
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/whatsapp_triage_service.py",
+      "name": "WhatsAppTriageService",
+      "type": "class",
+      "line": 30
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/whatsapp_service.py",
+      "name": "WhatsAppService",
+      "type": "class",
+      "line": 22
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/github_publisher.py",
+      "name": "GitHubPublisher",
+      "type": "class",
+      "line": 46
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/messaging_identity_service.py",
+      "name": "MessagingIdentityService",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_get_credentials_path",
+      "type": "function",
+      "line": 272
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_get_service_async",
+      "type": "async_function",
+      "line": 449
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_get_service",
+      "type": "function",
+      "line": 507
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_transfer_ownership_if_configured",
+      "type": "async_function",
+      "line": 846
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/client_value_predictor.py",
+      "name": "generate_nurturing_message",
+      "type": "async_function",
+      "line": 128
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/client_value_predictor.py",
+      "name": "send_whatsapp_message",
+      "type": "async_function",
+      "line": 143
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/client_value_predictor.py",
+      "name": "_run",
+      "type": "async_function",
+      "line": 172
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "TestMapper",
+      "type": "class",
+      "line": 35
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "ChangeImpactAnalyzer",
+      "type": "class",
+      "line": 147
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "find_tests_for_source",
+      "type": "function",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_search_test_content",
+      "type": "function",
+      "line": 75
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_module_based_mapping",
+      "type": "function",
+      "line": 104
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "get_all_mappings",
+      "type": "function",
+      "line": 122
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_is_source_file",
+      "type": "function",
+      "line": 460
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "analyze_changes",
+      "type": "function",
+      "line": 153
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_compare_ast",
+      "type": "function",
+      "line": 193
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_extract_definitions",
+      "type": "function",
+      "line": 224
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "maintain_file_tests",
+      "type": "async_function",
+      "line": 352
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_get_changed_files",
+      "type": "function",
+      "line": 434
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_analyze_file_changes",
+      "type": "async_function",
+      "line": 469
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_update_test_file",
+      "type": "async_function",
+      "line": 512
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_generate_test_update",
+      "type": "async_function",
+      "line": 562
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "MultiAIOrchestrator",
+      "type": "class",
+      "line": 22
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "analyze_code",
+      "type": "async_function",
+      "line": 63
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "design_architecture",
+      "type": "async_function",
+      "line": 88
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "refactor_code",
+      "type": "async_function",
+      "line": 114
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "generate_documentation",
+      "type": "async_function",
+      "line": 137
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "review_code",
+      "type": "async_function",
+      "line": 159
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "TestAnalyzer",
+      "type": "class",
+      "line": 37
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "DuplicateDetector",
+      "type": "class",
+      "line": 227
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "OrphanDetector",
+      "type": "class",
+      "line": 366
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "analyze_test_file",
+      "type": "function",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_extract_imports",
+      "type": "function",
+      "line": 416
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_extract_test_functions",
+      "type": "function",
+      "line": 85
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_extract_test_classes",
+      "type": "function",
+      "line": 105
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_extract_fixtures",
+      "type": "function",
+      "line": 124
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_analyze_mock_usage",
+      "type": "function",
+      "line": 136
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_count_assertions",
+      "type": "function",
+      "line": 145
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_calculate_complexity",
+      "type": "function",
+      "line": 169
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_detect_quality_issues",
+      "type": "function",
+      "line": 191
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "find_duplicates",
+      "type": "function",
+      "line": 233
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_group_by_similarity",
+      "type": "function",
+      "line": 258
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_create_similarity_signature",
+      "type": "function",
+      "line": 276
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_find_semantic_duplicates",
+      "type": "async_function",
+      "line": 299
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_compare_files_semantically",
+      "type": "async_function",
+      "line": 326
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "find_orphans",
+      "type": "function",
+      "line": 372
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_check_if_orphaned",
+      "type": "function",
+      "line": 388
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_extract_referenced_modules",
+      "type": "function",
+      "line": 428
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_module_exists",
+      "type": "function",
+      "line": 450
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_identify_useless_tests",
+      "type": "function",
+      "line": 613
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_cleanup_item",
+      "type": "async_function",
+      "line": 722
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "UnifiedTestForceOrchestrator",
+      "type": "class",
+      "line": 47
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_generate_tests_for_gaps",
+      "type": "async_function",
+      "line": 191
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_generate_test_with_qwen",
+      "type": "async_function",
+      "line": 255
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_save_test_file",
+      "type": "function",
+      "line": 318
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_run_test",
+      "type": "async_function",
+      "line": 363
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_recalculate_coverage_after_tests",
+      "type": "async_function",
+      "line": 409
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "TestForceOrchestrator",
+      "type": "class",
+      "line": 41
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "_initialize_agents",
+      "type": "function",
+      "line": 76
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_full_scan",
+      "type": "async_function",
+      "line": 105
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_coverage_scan",
+      "type": "async_function",
+      "line": 277
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_test_creation",
+      "type": "async_function",
+      "line": 293
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_test_maintenance",
+      "type": "async_function",
+      "line": 300
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_test_cleanup",
+      "type": "async_function",
+      "line": 307
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "watch_mode",
+      "type": "async_function",
+      "line": 318
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "_extract_key_metrics",
+      "type": "function",
+      "line": 397
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "signal_handler",
+      "type": "function",
+      "line": 329
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "run_with_semaphore",
+      "type": "async_function",
+      "line": 152
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "visit_Import",
+      "type": "function",
+      "line": 89
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "visit_ImportFrom",
+      "type": "function",
+      "line": 94
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "visit_ClassDef",
+      "type": "function",
+      "line": 100
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "visit_FunctionDef",
+      "type": "function",
+      "line": 104
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "_generate_text",
+      "type": "async_function",
+      "line": 164
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "_legacy_generate_text",
+      "type": "async_function",
+      "line": 228
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "_call_local_ollama",
+      "type": "async_function",
+      "line": 242
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "get_file_context",
+      "type": "function",
+      "line": 392
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "verify_and_heal",
+      "type": "async_function",
+      "line": 457
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "run_mission",
+      "type": "async_function",
+      "line": 507
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "CodeChangeDetector",
+      "type": "class",
+      "line": 45
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "get_new_files",
+      "type": "function",
+      "line": 51
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_fallback_get_files",
+      "type": "function",
+      "line": 72
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "get_file_changes",
+      "type": "function",
+      "line": 92
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "process_file",
+      "type": "async_function",
+      "line": 255
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_analyze_file_context",
+      "type": "function",
+      "line": 333
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_generate_tests",
+      "type": "async_function",
+      "line": 377
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_generate_import_section",
+      "type": "function",
+      "line": 473
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_generate_test_skeleton",
+      "type": "function",
+      "line": 497
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_generate_mock_test",
+      "type": "function",
+      "line": 521
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_get_test_file_path",
+      "type": "function",
+      "line": 536
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/kg_repository.py",
+      "name": "get_user_related_entities",
+      "type": "async_function",
+      "line": 315
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/multi_ai_adapter.py",
+      "name": "AITool",
+      "type": "class",
+      "line": 27
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/multi_ai_adapter.py",
+      "name": "AIResponse",
+      "type": "class",
+      "line": 65
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/multi_ai_adapter.py",
+      "name": "ClaudeAdapter",
+      "type": "class",
+      "line": 127
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/multi_ai_adapter.py",
+      "name": "MultiAIAdapter",
+      "type": "class",
+      "line": 231
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/multi_ai_adapter.py",
+      "name": "_select_ai",
+      "type": "function",
+      "line": 311
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/google_colab_adapter.py",
+      "name": "GoogleColabAdapter",
+      "type": "class",
+      "line": 18
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "TestGenerationMetrics",
+      "type": "class",
+      "line": 22
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "CoverageMetrics",
+      "type": "class",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "AgentMetrics",
+      "type": "class",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "TestMetricsCollector",
+      "type": "class",
+      "line": 116
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "coverage_gap_count",
+      "type": "function",
+      "line": 53
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "coverage_percentage",
+      "type": "function",
+      "line": 57
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "_generate_html_report",
+      "type": "function",
+      "line": 336
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/windsurf_adapter.py",
+      "name": "WindsurfAdapter",
+      "type": "class",
+      "line": 16
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/windsurf_adapter.py",
+      "name": "_find_windsurf",
+      "type": "function",
+      "line": 33
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "ComponentCoverage",
+      "type": "class",
+      "line": 25
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "collect_backend_coverage",
+      "type": "function",
+      "line": 82
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "collect_frontend_coverage",
+      "type": "function",
+      "line": 186
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "_parse_lcov",
+      "type": "function",
+      "line": 243
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "_parse_vitest_json",
+      "type": "function",
+      "line": 311
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/whatsapp_notification.py",
+      "name": "_send_with_retry",
+      "type": "async_function",
+      "line": 57
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/client_scoring.py",
+      "name": "_calculate_scores_from_row",
+      "type": "function",
+      "line": 143
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "ErrorType",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "CircuitBreakerState",
+      "type": "class",
+      "line": 56
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "LLMMetrics",
+      "type": "class",
+      "line": 75
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_check_circuit_breaker",
+      "type": "function",
+      "line": 232
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_record_circuit_breaker_success",
+      "type": "function",
+      "line": 261
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_record_circuit_breaker_failure",
+      "type": "function",
+      "line": 273
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_ensure_ollama_available",
+      "type": "async_function",
+      "line": 433
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_call_ollama",
+      "type": "async_function",
+      "line": 488
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_call_mock",
+      "type": "async_function",
+      "line": 536
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "_cache_response",
+      "type": "function",
+      "line": 562
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/google_cloud_shell_adapter.py",
+      "name": "GoogleCloudShellAdapter",
+      "type": "class",
+      "line": 14
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/cursor_adapter.py",
+      "name": "diff_files",
+      "type": "function",
+      "line": 59
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/cursor_adapter.py",
+      "name": "update_cursor_rules",
+      "type": "function",
+      "line": 75
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/cursor_adapter.py",
+      "name": "read_cursor_rules",
+      "type": "function",
+      "line": 86
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py",
+      "name": "load_baseline",
+      "type": "function",
+      "line": 98
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py",
+      "name": "get_baseline_from_git",
+      "type": "function",
+      "line": 210
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "ClockInRequest",
+      "type": "class",
+      "line": 26
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "ClockOutRequest",
+      "type": "class",
+      "line": 34
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "ClockResponse",
+      "type": "class",
+      "line": 42
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "UserStatusResponse",
+      "type": "class",
+      "line": 54
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "TeamMemberStatus",
+      "type": "class",
+      "line": 66
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "DailyHours",
+      "type": "class",
+      "line": 76
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "WeeklySummary",
+      "type": "class",
+      "line": 87
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "MonthlySummary",
+      "type": "class",
+      "line": 98
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "get_team_status",
+      "type": "async_function",
+      "line": 212
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_activity.py",
+      "name": "export_timesheet",
+      "type": "async_function",
+      "line": 323
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "VisaTypeBase",
+      "type": "class",
+      "line": 27
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "VisaTypeResponse",
+      "type": "class",
+      "line": 53
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "VisaTypeListResponse",
+      "type": "class",
+      "line": 64
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "VisaTypeCreate",
+      "type": "class",
+      "line": 72
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "list_visa_types",
+      "type": "async_function",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "get_visa_type",
+      "type": "async_function",
+      "line": 163
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "get_visa_by_code",
+      "type": "async_function",
+      "line": 202
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "VisaTypeUpdate",
+      "type": "class",
+      "line": 240
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "update_visa_type",
+      "type": "async_function",
+      "line": 266
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_visa.py",
+      "name": "create_visa_type",
+      "type": "async_function",
+      "line": 347
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/image_generation.py",
+      "name": "ImageGenerationRequest",
+      "type": "class",
+      "line": 14
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/image_generation.py",
+      "name": "ImageGenerationResponse",
+      "type": "class",
+      "line": 22
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/auth.py",
+      "name": "check_auth",
+      "type": "async_function",
+      "line": 316
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/preview.py",
+      "name": "PreviewUpload",
+      "type": "class",
+      "line": 23
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/preview.py",
+      "name": "upload_preview",
+      "type": "async_function",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/preview.py",
+      "name": "get_preview",
+      "type": "async_function",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/preview.py",
+      "name": "preview_index",
+      "type": "async_function",
+      "line": 119
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "resolve_query_param",
+      "type": "function",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "PracticeCreate",
+      "type": "class",
+      "line": 76
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "PracticeUpdate",
+      "type": "class",
+      "line": 119
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "PracticeResponse",
+      "type": "class",
+      "line": 162
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "create_practice",
+      "type": "async_function",
+      "line": 185
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "get_active_practices",
+      "type": "async_function",
+      "line": 427
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "get_practice",
+      "type": "async_function",
+      "line": 483
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "update_practice",
+      "type": "async_function",
+      "line": 528
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "delete_practice",
+      "type": "async_function",
+      "line": 768
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "add_document_to_practice",
+      "type": "async_function",
+      "line": 827
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "validate_priority",
+      "type": "function",
+      "line": 147
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "validate_client_id",
+      "type": "function",
+      "line": 104
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "validate_quoted_price",
+      "type": "function",
+      "line": 112
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_practices.py",
+      "name": "validate_price_fields",
+      "type": "function",
+      "line": 155
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "MessageItem",
+      "type": "class",
+      "line": 40
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "TeamMemberStats",
+      "type": "class",
+      "line": 51
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "get_timesheet",
+      "type": "async_function",
+      "line": 401
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "get_crm_actions",
+      "type": "async_function",
+      "line": 464
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "export_messages",
+      "type": "async_function",
+      "line": 528
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "ClientCreate",
+      "type": "class",
+      "line": 42
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "ClientUpdate",
+      "type": "class",
+      "line": 100
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "ClientResponse",
+      "type": "class",
+      "line": 159
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "create_client",
+      "type": "async_function",
+      "line": 224
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "list_clients",
+      "type": "async_function",
+      "line": 345
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_client",
+      "type": "async_function",
+      "line": 448
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_client_by_email",
+      "type": "async_function",
+      "line": 484
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "update_client",
+      "type": "async_function",
+      "line": 516
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "delete_client",
+      "type": "async_function",
+      "line": 638
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_client_summary",
+      "type": "async_function",
+      "line": 701
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_clients_stats",
+      "type": "async_function",
+      "line": 795
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_client_audit_trail",
+      "type": "async_function",
+      "line": 857
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "get_crm_metrics_summary",
+      "type": "async_function",
+      "line": 900
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "refresh_crm_metrics",
+      "type": "async_function",
+      "line": 922
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "PassportExtractRequest",
+      "type": "class",
+      "line": 953
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "PassportExtractResponse",
+      "type": "class",
+      "line": 960
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "extract_passport_data",
+      "type": "async_function",
+      "line": 970
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "PassportEnhancedRequest",
+      "type": "class",
+      "line": 1113
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "PassportEnhancedResponse",
+      "type": "class",
+      "line": 1120
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "extract_passport_enhanced",
+      "type": "async_function",
+      "line": 1139
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "delete_client_document",
+      "type": "async_function",
+      "line": 1377
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "validate_client_type",
+      "type": "function",
+      "line": 131
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "validate_optional_fields",
+      "type": "function",
+      "line": 140
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "validate_full_name",
+      "type": "function",
+      "line": 148
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "convert_uuid_to_string",
+      "type": "function",
+      "line": 191
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "ensure_tags_list",
+      "type": "function",
+      "line": 199
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_clients.py",
+      "name": "convert_date_to_string",
+      "type": "function",
+      "line": 207
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_drive_folders.py",
+      "name": "create_client_drive_folder",
+      "type": "async_function",
+      "line": 33
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_drive_folders.py",
+      "name": "get_client_drive_folder",
+      "type": "async_function",
+      "line": 188
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_drive_folders.py",
+      "name": "unlink_client_drive_folder",
+      "type": "async_function",
+      "line": 257
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_drive_folders.py",
+      "name": "get_client_drive_folder_structure",
+      "type": "async_function",
+      "line": 308
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_drive_folders.py",
+      "name": "get_client_drive_folder_stats",
+      "type": "async_function",
+      "line": 563
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "ScraperSubmission",
+      "type": "class",
+      "line": 67
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "ApprovalRequest",
+      "type": "class",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "IntelSearchRequest",
+      "type": "class",
+      "line": 94
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "IntelStoreRequest",
+      "type": "class",
+      "line": 103
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "EditStagingItemRequest",
+      "type": "class",
+      "line": 112
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "CoverImageUploadRequest",
+      "type": "class",
+      "line": 120
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "convert_staging_to_enriched_article",
+      "type": "function",
+      "line": 130
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "submit_from_scraper",
+      "type": "async_function",
+      "line": 329
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "preview_staging_item",
+      "type": "async_function",
+      "line": 467
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "bulk_approve_items",
+      "type": "async_function",
+      "line": 492
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "bulk_reject_items",
+      "type": "async_function",
+      "line": 528
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "approve_staging_item",
+      "type": "async_function",
+      "line": 564
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "edit_staging_item",
+      "type": "async_function",
+      "line": 642
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "upload_cover_image",
+      "type": "async_function",
+      "line": 697
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "reject_staging_item",
+      "type": "async_function",
+      "line": 764
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "publish_staging_item",
+      "type": "async_function",
+      "line": 804
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "search_intel",
+      "type": "async_function",
+      "line": 1194
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "store_intel",
+      "type": "async_function",
+      "line": 1285
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "get_critical_items",
+      "type": "async_function",
+      "line": 1309
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/intel.py",
+      "name": "get_trends",
+      "type": "async_function",
+      "line": 1408
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "WhatsAppMessage",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "WhatsAppChange",
+      "type": "class",
+      "line": 52
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "WhatsAppEntry",
+      "type": "class",
+      "line": 59
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "WhatsAppWebhook",
+      "type": "class",
+      "line": 66
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "notify_human_telegram",
+      "type": "async_function",
+      "line": 73
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "process_whatsapp_message",
+      "type": "async_function",
+      "line": 124
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "verify_webhook",
+      "type": "async_function",
+      "line": 385
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "whatsapp_webhook",
+      "type": "async_function",
+      "line": 413
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+      "name": "whatsapp_status",
+      "type": "async_function",
+      "line": 494
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "EmbedRequest",
+      "type": "class",
+      "line": 57
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "EmbedResponse",
+      "type": "class",
+      "line": 62
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "StoreMemoryRequest",
+      "type": "class",
+      "line": 68
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "SearchMemoryRequest",
+      "type": "class",
+      "line": 75
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "SimilarMemoryRequest",
+      "type": "class",
+      "line": 81
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "MemorySearchResponse",
+      "type": "class",
+      "line": 86
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "InitRequest",
+      "type": "class",
+      "line": 94
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "InitResponse",
+      "type": "class",
+      "line": 98
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "init_memory_collection",
+      "type": "async_function",
+      "line": 109
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "generate_embedding",
+      "type": "async_function",
+      "line": 126
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "store_memory_vector",
+      "type": "async_function",
+      "line": 141
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "search_memories_semantic",
+      "type": "async_function",
+      "line": 169
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "find_similar_memories",
+      "type": "async_function",
+      "line": 229
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "delete_memory_vector",
+      "type": "async_function",
+      "line": 311
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "get_memory_stats",
+      "type": "async_function",
+      "line": 326
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "memory_vector_health",
+      "type": "async_function",
+      "line": 346
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/media.py",
+      "name": "ImagePrompt",
+      "type": "class",
+      "line": 15
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/root_endpoints.py",
+      "name": "get_dashboard_stats",
+      "type": "async_function",
+      "line": 47
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_shared_memory.py",
+      "name": "_get_practice_codes",
+      "type": "async_function",
+      "line": 35
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_shared_memory.py",
+      "name": "search_shared_memory",
+      "type": "async_function",
+      "line": 59
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_shared_memory.py",
+      "name": "get_client_full_context",
+      "type": "async_function",
+      "line": 383
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "InteractionCreate",
+      "type": "class",
+      "line": 42
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "InteractionResponse",
+      "type": "class",
+      "line": 110
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "create_interaction",
+      "type": "async_function",
+      "line": 131
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "get_interaction",
+      "type": "async_function",
+      "line": 322
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "get_client_timeline",
+      "type": "async_function",
+      "line": 366
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "get_practice_history",
+      "type": "async_function",
+      "line": 413
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "create_interaction_from_conversation",
+      "type": "async_function",
+      "line": 590
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "delete_interaction",
+      "type": "async_function",
+      "line": 723
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_interaction_type",
+      "type": "function",
+      "line": 60
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_channel",
+      "type": "function",
+      "line": 68
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_sentiment",
+      "type": "function",
+      "line": 78
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_direction",
+      "type": "function",
+      "line": 86
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_team_member",
+      "type": "function",
+      "line": 95
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_interactions.py",
+      "name": "validate_duration",
+      "type": "function",
+      "line": 103
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_taxes.py",
+      "name": "get_taxes",
+      "type": "async_function",
+      "line": 20
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal.py",
+      "name": "SendMessageRequest",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal.py",
+      "name": "UpdatePreferencesRequest",
+      "type": "class",
+      "line": 47
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal.py",
+      "name": "PortalResponse",
+      "type": "class",
+      "line": 56
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal.py",
+      "name": "get_current_client",
+      "type": "async_function",
+      "line": 69
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/health.py",
+      "name": "detailed_health",
+      "type": "async_function",
+      "line": 140
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/health.py",
+      "name": "readiness_check",
+      "type": "async_function",
+      "line": 287
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/health.py",
+      "name": "liveness_check",
+      "type": "async_function",
+      "line": 324
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/health.py",
+      "name": "qdrant_metrics",
+      "type": "async_function",
+      "line": 341
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/feedback.py",
+      "name": "get_conversation_rating",
+      "type": "async_function",
+      "line": 156
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/article_composer.py",
+      "name": "PublishResponse",
+      "type": "class",
+      "line": 536
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/article_composer.py",
+      "name": "publish_status",
+      "type": "async_function",
+      "line": 785
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "TelegramUpdate",
+      "type": "class",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "get_article_status",
+      "type": "function",
+      "line": 60
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "save_article_status",
+      "type": "function",
+      "line": 74
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "add_vote",
+      "type": "function",
+      "line": 82
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "format_vote_tally",
+      "type": "function",
+      "line": 137
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "get_intel_status",
+      "type": "function",
+      "line": 177
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "save_intel_status",
+      "type": "function",
+      "line": 191
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "add_intel_vote",
+      "type": "function",
+      "line": 199
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "send_telegram_message_with_fallback",
+      "type": "async_function",
+      "line": 289
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "format_intel_vote_tally",
+      "type": "function",
+      "line": 378
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "WebhookSetupRequest",
+      "type": "class",
+      "line": 525
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "process_telegram_message",
+      "type": "async_function",
+      "line": 531
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "_escape_markdown_v2",
+      "type": "function",
+      "line": 784
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "_format_telegram_message",
+      "type": "function",
+      "line": 829
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "telegram_webhook",
+      "type": "async_function",
+      "line": 893
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "setup_webhook",
+      "type": "async_function",
+      "line": 1306
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "name": "get_bot_info",
+      "type": "async_function",
+      "line": 1363
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "BreadcrumbItem",
+      "type": "class",
+      "line": 69
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "CreateFolderRequest",
+      "type": "class",
+      "line": 76
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "CreateDocRequest",
+      "type": "class",
+      "line": 83
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "RenameRequest",
+      "type": "class",
+      "line": 91
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "MoveRequest",
+      "type": "class",
+      "line": 97
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "CopyRequest",
+      "type": "class",
+      "line": 104
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "OperationResponse",
+      "type": "class",
+      "line": 111
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "get_drive",
+      "type": "async_function",
+      "line": 120
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "folder_matches_allowed",
+      "type": "function",
+      "line": 242
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "drive_status",
+      "type": "async_function",
+      "line": 282
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "check_write_permission",
+      "type": "async_function",
+      "line": 488
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "PermissionItem",
+      "type": "class",
+      "line": 767
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "AddPermissionRequest",
+      "type": "class",
+      "line": 777
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "UpdatePermissionRequest",
+      "type": "class",
+      "line": 785
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_drive.py",
+      "name": "check_is_board",
+      "type": "async_function",
+      "line": 791
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_ingest.py",
+      "name": "DocumentChunk",
+      "type": "class",
+      "line": 30
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_ingest.py",
+      "name": "IngestRequest",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_ingest.py",
+      "name": "IngestResponse",
+      "type": "class",
+      "line": 52
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_ingest.py",
+      "name": "ingest_documents",
+      "type": "async_function",
+      "line": 69
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "ValidateTokenResponse",
+      "type": "class",
+      "line": 41
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "CompleteRegistrationRequest",
+      "type": "class",
+      "line": 53
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "RegistrationResponse",
+      "type": "class",
+      "line": 70
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "get_email_service",
+      "type": "function",
+      "line": 89
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "build_invite_email_html",
+      "type": "function",
+      "line": 94
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "send_invitation",
+      "type": "async_function",
+      "line": 147
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/portal_invite.py",
+      "name": "validate_pin",
+      "type": "function",
+      "line": 61
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_activity.py",
+      "name": "KnowledgeActivityLog",
+      "type": "class",
+      "line": 20
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/knowledge_activity.py",
+      "name": "log_knowledge_activity",
+      "type": "async_function",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "SessionHistoryRequest",
+      "type": "class",
+      "line": 33
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "SessionUpdateRequest",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "SessionTTLRequest",
+      "type": "class",
+      "line": 46
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "get_session",
+      "type": "async_function",
+      "line": 64
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "update_session",
+      "type": "async_function",
+      "line": 79
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "update_session_with_ttl",
+      "type": "async_function",
+      "line": 98
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "extend_session_ttl",
+      "type": "async_function",
+      "line": 130
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "extend_session_ttl_custom",
+      "type": "async_function",
+      "line": 144
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "cleanup_sessions",
+      "type": "async_function",
+      "line": 204
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/handlers.py",
+      "name": "list_all_handlers",
+      "type": "async_function",
+      "line": 37
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/handlers.py",
+      "name": "search_handlers",
+      "type": "async_function",
+      "line": 89
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/handlers.py",
+      "name": "get_handlers_by_category",
+      "type": "async_function",
+      "line": 109
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "Inspiration",
+      "type": "class",
+      "line": 24
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "ScrapingRequest",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "ScrapingResponse",
+      "type": "class",
+      "line": 36
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "GenerateRequest",
+      "type": "class",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "GenerateResponse",
+      "type": "class",
+      "line": 49
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "save_state",
+      "type": "async_function",
+      "line": 62
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "name": "scrape_url",
+      "type": "async_function",
+      "line": 78
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_work_patterns",
+      "type": "async_function",
+      "line": 30
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_productivity_scores",
+      "type": "async_function",
+      "line": 45
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_performance_trends",
+      "type": "async_function",
+      "line": 73
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_workload_balance",
+      "type": "async_function",
+      "line": 88
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_optimal_hours",
+      "type": "async_function",
+      "line": 102
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+      "name": "proxy_drive_file",
+      "type": "async_function",
+      "line": 24
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+      "name": "get_drive_thumbnail",
+      "type": "async_function",
+      "line": 99
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/documents_proxy.py",
+      "name": "extract_file_id_from_url",
+      "type": "function",
+      "line": 183
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "PortalStatusResponse",
+      "type": "class",
+      "line": 37
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "TeamMessageRequest",
+      "type": "class",
+      "line": 54
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "UnreadCountResponse",
+      "type": "class",
+      "line": 62
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "require_team_auth",
+      "type": "function",
+      "line": 74
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "get_portal_status",
+      "type": "async_function",
+      "line": 100
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "send_portal_invite",
+      "type": "async_function",
+      "line": 200
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "get_portal_preview",
+      "type": "async_function",
+      "line": 275
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "get_unread_messages_count",
+      "type": "async_function",
+      "line": 329
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "get_client_messages",
+      "type": "async_function",
+      "line": 383
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "send_message_to_client",
+      "type": "async_function",
+      "line": 425
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "mark_client_message_read",
+      "type": "async_function",
+      "line": 472
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_portal_integration.py",
+      "name": "get_recent_portal_activity",
+      "type": "async_function",
+      "line": 514
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "CreateMappingRequest",
+      "type": "class",
+      "line": 33
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "MappingResponse",
+      "type": "class",
+      "line": 46
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "DeactivateMappingRequest",
+      "type": "class",
+      "line": 59
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "require_admin",
+      "type": "async_function",
+      "line": 67
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "list_all_mappings",
+      "type": "async_function",
+      "line": 185
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "lookup_by_phone",
+      "type": "async_function",
+      "line": 239
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/messaging_identity.py",
+      "name": "lookup_by_telegram",
+      "type": "async_function",
+      "line": 261
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "LegalIngestRequest",
+      "type": "class",
+      "line": 45
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "LegalIngestResponse",
+      "type": "class",
+      "line": 56
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "upload_legal_document",
+      "type": "async_function",
+      "line": 123
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "ingest_legal_documents_batch",
+      "type": "async_function",
+      "line": 217
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "RegisterParentDocRequest",
+      "type": "class",
+      "line": 289
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "register_parent_document",
+      "type": "async_function",
+      "line": 303
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "get_parent_documents",
+      "type": "async_function",
+      "line": 368
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team.py",
+      "name": "TeamMember",
+      "type": "class",
+      "line": 15
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team.py",
+      "name": "get_team_members",
+      "type": "async_function",
+      "line": 28
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "CreateJourneyRequest",
+      "type": "class",
+      "line": 119
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "create_client_journey",
+      "type": "async_function",
+      "line": 128
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "complete_journey_step",
+      "type": "async_function",
+      "line": 173
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "AddComplianceItemRequest",
+      "type": "class",
+      "line": 207
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "add_compliance_tracking",
+      "type": "async_function",
+      "line": 218
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "get_compliance_alerts",
+      "type": "async_function",
+      "line": 258
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "get_client_compliance",
+      "type": "async_function",
+      "line": 341
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "extract_knowledge_graph",
+      "type": "async_function",
+      "line": 358
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "export_knowledge_graph",
+      "type": "async_function",
+      "line": 427
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "get_ingestion_status",
+      "type": "async_function",
+      "line": 497
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "calculate_dynamic_pricing",
+      "type": "async_function",
+      "line": 589
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "run_autonomous_research",
+      "type": "async_function",
+      "line": 611
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agents.py",
+      "name": "get_analytics_summary",
+      "type": "async_function",
+      "line": 706
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/nusantara_health.py",
+      "name": "IslandHealth",
+      "type": "class",
+      "line": 19
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/nusantara_health.py",
+      "name": "NusantaraHealth",
+      "type": "class",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/nusantara_health.py",
+      "name": "get_nusantara_health",
+      "type": "async_function",
+      "line": 53
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "verify_api_key",
+      "type": "async_function",
+      "line": 21
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "VoiceQueryRequest",
+      "type": "class",
+      "line": 41
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "VoiceQueryResponse",
+      "type": "class",
+      "line": 50
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "generate_fast_response",
+      "type": "async_function",
+      "line": 88
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "voice_query",
+      "type": "async_function",
+      "line": 137
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "ElevenLabsRequest",
+      "type": "class",
+      "line": 204
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "elevenlabs_options",
+      "type": "async_function",
+      "line": 221
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "elevenlabs_webhook",
+      "type": "async_function",
+      "line": 234
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/voice.py",
+      "name": "get_query",
+      "type": "function",
+      "line": 212
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "_auto_ocr_passport",
+      "type": "async_function",
+      "line": 35
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "FamilyMemberCreate",
+      "type": "class",
+      "line": 248
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "FamilyMemberUpdate",
+      "type": "class",
+      "line": 262
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "DocumentCreate",
+      "type": "class",
+      "line": 276
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "DocumentUpdate",
+      "type": "class",
+      "line": 289
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "ClientProfileUpdate",
+      "type": "class",
+      "line": 302
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_client_profile",
+      "type": "async_function",
+      "line": 316
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "update_client_profile",
+      "type": "async_function",
+      "line": 455
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_family_members",
+      "type": "async_function",
+      "line": 518
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "create_family_member",
+      "type": "async_function",
+      "line": 561
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "update_family_member",
+      "type": "async_function",
+      "line": 626
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "delete_family_member",
+      "type": "async_function",
+      "line": 682
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_client_documents",
+      "type": "async_function",
+      "line": 710
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "create_document",
+      "type": "async_function",
+      "line": 760
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "create_documents_bulk",
+      "type": "async_function",
+      "line": 818
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "update_document",
+      "type": "async_function",
+      "line": 946
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "archive_document",
+      "type": "async_function",
+      "line": 1002
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_document_categories",
+      "type": "async_function",
+      "line": 1039
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_all_expiry_alerts",
+      "type": "async_function",
+      "line": 1059
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "get_expiry_alerts_summary",
+      "type": "async_function",
+      "line": 1105
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "upload_document_base64",
+      "type": "async_function",
+      "line": 1149
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
+      "name": "delete_document",
+      "type": "async_function",
+      "line": 1304
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "DeleteEmailsRequest",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "AttachmentObject",
+      "type": "class",
+      "line": 38
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "SendEmailRequest",
+      "type": "class",
+      "line": 52
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "ReplyEmailRequest",
+      "type": "class",
+      "line": 71
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "ForwardEmailRequest",
+      "type": "class",
+      "line": 80
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "MarkReadRequest",
+      "type": "class",
+      "line": 87
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "ConnectionStatusResponse",
+      "type": "class",
+      "line": 94
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "FolderResponse",
+      "type": "class",
+      "line": 103
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "EmailSummaryResponse",
+      "type": "class",
+      "line": 114
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "AttachmentResponse",
+      "type": "class",
+      "line": 129
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "_get_oauth_service",
+      "type": "function",
+      "line": 143
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "_get_email_service",
+      "type": "function",
+      "line": 148
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "disconnect_account",
+      "type": "async_function",
+      "line": 289
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "mark_emails_read",
+      "type": "async_function",
+      "line": 517
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "delete_emails_post",
+      "type": "async_function",
+      "line": 599
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "SaveDraftRequest",
+      "type": "class",
+      "line": 630
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "download_attachment",
+      "type": "async_function",
+      "line": 708
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/zoho_email.py",
+      "name": "options_emails",
+      "type": "async_function",
+      "line": 770
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "ImageInput",
+      "type": "class",
+      "line": 136
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "ProactiveTriggerRequest",
+      "type": "class",
+      "line": 682
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "trigger_proactivity",
+      "type": "async_function",
+      "line": 691
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_migration.py",
+      "name": "get_migration_status",
+      "type": "async_function",
+      "line": 21
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_migration.py",
+      "name": "get_clients_migration_summary",
+      "type": "async_function",
+      "line": 150
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_migration.py",
+      "name": "get_client_documents_summary",
+      "type": "async_function",
+      "line": 245
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_auto.py",
+      "name": "AutoCRMStats",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/crm_auto.py",
+      "name": "get_auto_crm_stats",
+      "type": "async_function",
+      "line": 55
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_request_trace",
+      "type": "async_function",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_logs",
+      "type": "async_function",
+      "line": 110
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_services_status",
+      "type": "async_function",
+      "line": 192
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_recent_traces_endpoint",
+      "type": "async_function",
+      "line": 257
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "store_rag_trace",
+      "type": "function",
+      "line": 306
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_rag_trace",
+      "type": "function",
+      "line": 320
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_rag_pipeline_trace",
+      "type": "async_function",
+      "line": 326
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_qdrant_collections_health",
+      "type": "async_function",
+      "line": 435
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_parent_documents_public",
+      "type": "async_function",
+      "line": 494
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "run_performance_profiling",
+      "type": "async_function",
+      "line": 619
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "QueryRequest",
+      "type": "class",
+      "line": 688
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_connection",
+      "type": "async_function",
+      "line": 696
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_table_details",
+      "type": "async_function",
+      "line": 779
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_indexes",
+      "type": "async_function",
+      "line": 818
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_table_stats",
+      "type": "async_function",
+      "line": 849
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_database_stats",
+      "type": "async_function",
+      "line": 880
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "execute_postgres_query",
+      "type": "async_function",
+      "line": 906
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_slow_queries",
+      "type": "async_function",
+      "line": 953
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_locks",
+      "type": "async_function",
+      "line": 986
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "get_postgres_connection_stats",
+      "type": "async_function",
+      "line": 1013
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "name": "sentry_test_error",
+      "type": "async_function",
+      "line": 1040
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_featured_articles.py",
+      "name": "get_featured_articles",
+      "type": "async_function",
+      "line": 14
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "ConversationMessage",
+      "type": "class",
+      "line": 41
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "OracleQueryRequest",
+      "type": "class",
+      "line": 48
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "FeedbackRequest",
+      "type": "class",
+      "line": 126
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "hybrid_oracle_query",
+      "type": "async_function",
+      "line": 143
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "submit_user_feedback",
+      "type": "async_function",
+      "line": 185
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "oracle_health_check",
+      "type": "async_function",
+      "line": 198
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "test_gemini_integration",
+      "type": "async_function",
+      "line": 215
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/oracle_universal.py",
+      "name": "get_user_profile_endpoint",
+      "type": "async_function",
+      "line": 221
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "SubscribeRequest",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "SubscribeResponse",
+      "type": "class",
+      "line": 50
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "ConfirmRequest",
+      "type": "class",
+      "line": 58
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "UnsubscribeRequest",
+      "type": "class",
+      "line": 65
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "PreferencesRequest",
+      "type": "class",
+      "line": 73
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "SubscriberResponse",
+      "type": "class",
+      "line": 83
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "confirm_subscription",
+      "type": "async_function",
+      "line": 215
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "list_subscribers",
+      "type": "async_function",
+      "line": 338
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "log_newsletter_send",
+      "type": "async_function",
+      "line": 410
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "name": "validate_frequency",
+      "type": "function",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/collective_memory.py",
+      "name": "ContributeRequest",
+      "type": "class",
+      "line": 20
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/collective_memory.py",
+      "name": "RefuteRequest",
+      "type": "class",
+      "line": 27
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/collective_memory.py",
+      "name": "contribute_fact",
+      "type": "async_function",
+      "line": 34
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/collective_memory.py",
+      "name": "get_collective_facts",
+      "type": "async_function",
+      "line": 84
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/collective_memory.py",
+      "name": "get_collective_stats",
+      "type": "async_function",
+      "line": 104
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/blog_ask.py",
+      "name": "get_blog_orchestrator",
+      "type": "async_function",
+      "line": 21
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/blog_ask.py",
+      "name": "BlogAskRequest",
+      "type": "class",
+      "line": 31
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/blog_ask.py",
+      "name": "BlogAskResponse",
+      "type": "class",
+      "line": 40
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/blog_ask.py",
+      "name": "ask_zantara",
+      "type": "async_function",
+      "line": 49
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "ActivityLogItem",
+      "type": "class",
+      "line": 29
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "InteractionLogItem",
+      "type": "class",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "APIAuditItem",
+      "type": "class",
+      "line": 58
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "TeamActivitySummary",
+      "type": "class",
+      "line": 71
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "get_activity_logs",
+      "type": "async_function",
+      "line": 87
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "get_team_interactions",
+      "type": "async_function",
+      "line": 175
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "get_api_audit_trail",
+      "type": "async_function",
+      "line": 269
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "get_today_summary",
+      "type": "async_function",
+      "line": 360
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_logs.py",
+      "name": "get_interactions_summary",
+      "type": "async_function",
+      "line": 391
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/audio.py",
+      "name": "SpeechRequest",
+      "type": "class",
+      "line": 15
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/analytics.py",
+      "name": "get_completion_rates",
+      "type": "async_function",
+      "line": 30
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/analytics.py",
+      "name": "get_response_times",
+      "type": "async_function",
+      "line": 53
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/analytics.py",
+      "name": "get_sla_compliance",
+      "type": "async_function",
+      "line": 74
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/analytics.py",
+      "name": "get_revenue_metrics",
+      "type": "async_function",
+      "line": 95
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/analytics.py",
+      "name": "get_monthly_report",
+      "type": "async_function",
+      "line": 118
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/webhooks.py",
+      "name": "OpenClawMetadata",
+      "type": "class",
+      "line": 20
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/webhooks.py",
+      "name": "OpenClawWebhookPayload",
+      "type": "class",
+      "line": 27
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/webhooks.py",
+      "name": "openclaw_crm_logging",
+      "type": "async_function",
+      "line": 51
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "KGQueryRequest",
+      "type": "class",
+      "line": 50
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "KGQueryResponse",
+      "type": "class",
+      "line": 59
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "GoldenRouteInfo",
+      "type": "class",
+      "line": 78
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "KGStatsResponse",
+      "type": "class",
+      "line": 90
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "get_kg_orchestrator",
+      "type": "async_function",
+      "line": 105
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "list_golden_routes",
+      "type": "async_function",
+      "line": 227
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "kg_stats",
+      "type": "async_function",
+      "line": 263
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kg_agentic.py",
+      "name": "find_kg_path",
+      "type": "async_function",
+      "line": 321
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "KBLILicense",
+      "type": "class",
+      "line": 35
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "KBLIDetail",
+      "type": "class",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "KBLISearchResult",
+      "type": "class",
+      "line": 55
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "KBLINotebookChatRequest",
+      "type": "class",
+      "line": 64
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "KBLINotebookChatResponse",
+      "type": "class",
+      "line": 69
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "_search_kbli_qdrant",
+      "type": "async_function",
+      "line": 85
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "search_kbli",
+      "type": "async_function",
+      "line": 99
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "inspect_kbli",
+      "type": "async_function",
+      "line": 133
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "_get_llm_gateway",
+      "type": "function",
+      "line": 228
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "_translate_query_for_kbli",
+      "type": "async_function",
+      "line": 272
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "_detect_language",
+      "type": "function",
+      "line": 299
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "_generate_kbli_explanation",
+      "type": "async_function",
+      "line": 317
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+      "name": "chat_kbli",
+      "type": "async_function",
+      "line": 377
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "ConnectionStatus",
+      "type": "class",
+      "line": 28
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "SystemConnectionStatus",
+      "type": "class",
+      "line": 36
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "get_system_status",
+      "type": "async_function",
+      "line": 189
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "get_system_auth_url",
+      "type": "async_function",
+      "line": 230
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "disconnect_system",
+      "type": "async_function",
+      "line": 266
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/google_drive.py",
+      "name": "get_my_folder",
+      "type": "async_function",
+      "line": 426
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/performance.py",
+      "name": "clear_embedding_cache",
+      "type": "async_function",
+      "line": 45
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/performance.py",
+      "name": "clear_search_cache",
+      "type": "async_function",
+      "line": 56
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/episodic_memory.py",
+      "name": "AddEventRequest",
+      "type": "class",
+      "line": 25
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/episodic_memory.py",
+      "name": "ExtractEventRequest",
+      "type": "class",
+      "line": 39
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "get_auto_crm",
+      "type": "function",
+      "line": 43
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "_generate_and_update_title",
+      "type": "async_function",
+      "line": 71
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "SaveConversationRequest",
+      "type": "class",
+      "line": 127
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "ConversationHistoryResponse",
+      "type": "class",
+      "line": 137
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "ConversationListItem",
+      "type": "class",
+      "line": 145
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "ConversationListResponse",
+      "type": "class",
+      "line": 157
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "SingleConversationResponse",
+      "type": "class",
+      "line": 166
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "UserMemoryContextResponse",
+      "type": "class",
+      "line": 179
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "clear_conversation_history",
+      "type": "async_function",
+      "line": 504
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "get_conversation_stats",
+      "type": "async_function",
+      "line": 559
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "list_conversations",
+      "type": "async_function",
+      "line": 611
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "delete_conversation",
+      "type": "async_function",
+      "line": 775
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "get_user_memory_context",
+      "type": "async_function",
+      "line": 825
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "NewsItemCreate",
+      "type": "class",
+      "line": 25
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "NewsItemResponse",
+      "type": "class",
+      "line": 41
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "NewsListResponse",
+      "type": "class",
+      "line": 62
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "SubscriptionCreate",
+      "type": "class",
+      "line": 73
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "list_news",
+      "type": "async_function",
+      "line": 87
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "get_categories",
+      "type": "async_function",
+      "line": 183
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "get_news_by_slug",
+      "type": "async_function",
+      "line": 208
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "create_news",
+      "type": "async_function",
+      "line": 261
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "create_news_bulk",
+      "type": "async_function",
+      "line": 308
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "update_news_status",
+      "type": "async_function",
+      "line": 359
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "subscribe_to_news",
+      "type": "async_function",
+      "line": 396
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "unsubscribe_from_news",
+      "type": "async_function",
+      "line": 427
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/news.py",
+      "name": "get_rss_feed",
+      "type": "async_function",
+      "line": 457
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/system_observability.py",
+      "name": "get_system_health",
+      "type": "async_function",
+      "line": 23
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/system_observability.py",
+      "name": "get_table_data",
+      "type": "async_function",
+      "line": 83
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/system_observability.py",
+      "name": "get_qdrant_collections",
+      "type": "async_function",
+      "line": 146
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/system_observability.py",
+      "name": "get_qdrant_points",
+      "type": "async_function",
+      "line": 180
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "AgentExecutionResponse",
+      "type": "class",
+      "line": 32
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "_run_conversation_trainer_task",
+      "type": "async_function",
+      "line": 48
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "_run_client_value_predictor_task",
+      "type": "async_function",
+      "line": 144
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "_run_knowledge_graph_builder_task",
+      "type": "async_function",
+      "line": 220
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "extract_kg_sample",
+      "type": "async_function",
+      "line": 316
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "persist_kg_sample",
+      "type": "async_function",
+      "line": 452
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "get_autonomous_agents_status",
+      "type": "async_function",
+      "line": 560
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "get_execution_status",
+      "type": "async_function",
+      "line": 681
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "list_executions",
+      "type": "async_function",
+      "line": 700
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "get_scheduler_status",
+      "type": "async_function",
+      "line": 727
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "enable_scheduler_task",
+      "type": "async_function",
+      "line": 758
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "disable_scheduler_task",
+      "type": "async_function",
+      "line": 787
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "get_next_run_from_scheduler",
+      "type": "function",
+      "line": 570
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "websocket_endpoint",
+      "type": "async_function",
+      "line": 92
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "send_heartbeat",
+      "type": "async_function",
+      "line": 177
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "_is_admin",
+      "type": "function",
+      "line": 66
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "_get_email_stats",
+      "type": "async_function",
+      "line": 72
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "_get_critical_deadlines",
+      "type": "async_function",
+      "line": 95
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "_get_revenue_stats",
+      "type": "async_function",
+      "line": 134
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "_calculate_revenue_growth",
+      "type": "async_function",
+      "line": 173
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dashboard_summary.py",
+      "name": "get_neural_pulse",
+      "type": "async_function",
+      "line": 389
+    }
+  ],
+  "test_only_functions": [
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_response.py",
+      "name": "build_gate_response",
+      "type": "function",
+      "line": 93,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_response.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_response.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_response.py",
+      "name": "build_clarification_response",
+      "type": "function",
+      "line": 135,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_response.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_response.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_response.py",
+      "name": "build_out_of_domain_response",
+      "type": "function",
+      "line": 170,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_response.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_response.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_security_gate",
+      "type": "function",
+      "line": 63,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_greeting_gate",
+      "type": "function",
+      "line": 86,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_casual_gate",
+      "type": "function",
+      "line": 107,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_identity_gate",
+      "type": "function",
+      "line": 130,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_out_of_domain_gate",
+      "type": "function",
+      "line": 155,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
+      "name": "check_clarification_gate",
+      "type": "function",
+      "line": 177,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/prompt_builder.py",
+      "name": "has_already_greeted",
+      "type": "function",
+      "line": 396,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_prompt_builder_exponential_coverage.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_prompt_builder.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/prompt_builder.py",
+      "name": "check_casual_conversation",
+      "type": "function",
+      "line": 902,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_prompt_builder_exponential_coverage.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_prompt_builder.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_helpers.py",
+      "name": "format_conversation_history_for_recall",
+      "type": "function",
+      "line": 235,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/query_helpers.py",
+      "name": "build_recall_prompt",
+      "type": "function",
+      "line": 255,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
+      "name": "_load_team_data",
+      "type": "function",
+      "line": 398,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_agentic_tools_comprehensive.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/chat_session.py",
+      "name": "add_to_history",
+      "type": "function",
+      "line": 203,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_chat_session.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+      "name": "_send_with_fallback",
+      "type": "async_function",
+      "line": 535,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_llm_gateway_comprehensive.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "check_semantic_cache",
+      "type": "async_function",
+      "line": 101,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_core.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_core.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_core.py",
+      "name": "extract_entities_and_kg_context",
+      "type": "async_function",
+      "line": 150,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_core.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_core.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/session_fact_extractor.py",
+      "name": "SessionFacts",
+      "type": "class",
+      "line": 21,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_session_fact_extractor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/session_fact_extractor.py",
+      "name": "SessionFactExtractor",
+      "type": "class",
+      "line": 38,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_session_fact_extractor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/session_fact_extractor.py",
+      "name": "to_prompt_block",
+      "type": "function",
+      "line": 26,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_session_fact_extractor.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_session_fact_extractor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/session_fact_extractor.py",
+      "name": "extract_from_history",
+      "type": "function",
+      "line": 64,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_session_fact_extractor.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_session_fact_extractor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/pipeline.py",
+      "name": "PipelineStage",
+      "type": "class",
+      "line": 34,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_pipeline_coverage_complete.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_pipeline_comprehensive.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/pipeline.py",
+      "name": "_normalize_citations",
+      "type": "function",
+      "line": 233,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_pipeline_coverage_complete.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator.py",
+      "name": "_create_error_event",
+      "type": "function",
+      "line": 311,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_coverage_complete.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
+      "name": "get_tool_display_name",
+      "type": "function",
+      "line": 272,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
+      "name": "get_message",
+      "type": "function",
+      "line": 72,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
+      "name": "get_phase_duration",
+      "type": "function",
+      "line": 121,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
+      "name": "should_show_thinking",
+      "type": "function",
+      "line": 132,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/response_processor.py",
+      "name": "_has_numbered_list",
+      "type": "function",
+      "line": 65,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor_coverage.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/response_processor.py",
+      "name": "_format_as_numbered_list",
+      "type": "function",
+      "line": 72,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor_coverage.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/response_processor.py",
+      "name": "_has_emotional_acknowledgment",
+      "type": "function",
+      "line": 106,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor_coverage.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/response_processor.py",
+      "name": "_add_emotional_acknowledgment",
+      "type": "function",
+      "line": 129,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor_coverage.py",
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_response_processor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+      "name": "_get_critical_domain_type",
+      "type": "function",
+      "line": 56,
+      "tests": [
+        "apps/backend-rag/backend/tests/integration/zantara/test_tier1_fallback.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
+      "name": "_validate_context_quality",
+      "type": "function",
+      "line": 486,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_reasoning.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_context.py",
+      "name": "load_user_context",
+      "type": "async_function",
+      "line": 57,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_context.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_context.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_context.py",
+      "name": "apply_context_window_management",
+      "type": "async_function",
+      "line": 127,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_context.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_context.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming.py",
+      "name": "validate_event",
+      "type": "function",
+      "line": 90,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_streaming.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_streaming.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming.py",
+      "name": "create_metadata_event",
+      "type": "function",
+      "line": 244,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_streaming.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_streaming.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_streaming.py",
+      "name": "stream_text_response",
+      "type": "async_function",
+      "line": 260,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_streaming.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_streaming.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tool_executor.py",
+      "name": "parse_native_function_call",
+      "type": "function",
+      "line": 30,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_tool_executor.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_tool_executor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/tool_executor.py",
+      "name": "parse_tool_call_regex",
+      "type": "function",
+      "line": 72,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_tool_executor.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_tool_executor.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/memory_handler.py",
+      "name": "save_conversation_memory",
+      "type": "async_function",
+      "line": 76,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_memory_handler.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_routing.py",
+      "name": "select_model_tier",
+      "type": "function",
+      "line": 67,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_routing.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_routing.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_routing.py",
+      "name": "create_agent_state",
+      "type": "function",
+      "line": 90,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_orchestrator_routing.py",
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_orchestrator_routing.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_get_account_id",
+      "type": "async_function",
+      "line": 193,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_normalize_folder_type",
+      "type": "function",
+      "line": 286,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_parse_recipients",
+      "type": "function",
+      "line": 380,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_parse_recipients_to_objects",
+      "type": "function",
+      "line": 386,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "_parse_attachments",
+      "type": "function",
+      "line": 472,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_email_service.py",
+      "name": "move_to_folder",
+      "type": "async_function",
+      "line": 800,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_email_service.py",
+        "apps/backend-rag/backend/tests/services/integrations/test_zoho_email_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/whatsapp_service.py",
+      "name": "send_typing_action",
+      "type": "async_function",
+      "line": 122,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/whatsapp_service.py",
+      "name": "format_message",
+      "type": "function",
+      "line": 182,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/github_publisher.py",
+      "name": "check_file_exists",
+      "type": "async_function",
+      "line": 89,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/github_publisher.py",
+      "name": "get_file_sha",
+      "type": "async_function",
+      "line": 120,
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/zoho_oauth_service.py",
+      "name": "_get_account_info",
+      "type": "async_function",
+      "line": 156,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_zoho_oauth_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "DriveAuditLogger",
+      "type": "class",
+      "line": 54,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_team_drive_service.py",
+        "apps/backend-rag/backend/tests/integration/test_team_drive_api.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "drive_operation",
+      "type": "function",
+      "line": 147,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_team_drive_service.py",
+        "apps/backend-rag/backend/tests/integration/test_team_drive_api.py",
+        "apps/backend-rag/backend/tests/services/integrations/test_team_drive_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_get_oauth_token",
+      "type": "async_function",
+      "line": 324,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_team_drive_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/services/integrations/team_drive_service.py",
+      "name": "_refresh_oauth_token",
+      "type": "async_function",
+      "line": 381,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/integrations/test_team_drive_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "TestMaintainerAgent",
+      "type": "class",
+      "line": 240,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "scan_and_maintain",
+      "type": "async_function",
+      "line": 288,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_validate_and_save_test",
+      "type": "async_function",
+      "line": 641,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_creator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "name": "_run_tests",
+      "type": "async_function",
+      "line": 667,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_creator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/multi_ai_orchestrator.py",
+      "name": "generate_test",
+      "type": "async_function",
+      "line": 41,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_guardian.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/schemas.py",
+      "name": "ConversationTrainerRequest",
+      "type": "class",
+      "line": 8,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/schemas.py",
+      "name": "KnowledgeGraphBuilderRequest",
+      "type": "class",
+      "line": 16,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/schemas.py",
+      "name": "EntitySearchRequest",
+      "type": "class",
+      "line": 25,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "TestCleanerAgent",
+      "type": "class",
+      "line": 470,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "scan_and_clean",
+      "type": "async_function",
+      "line": 525,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "generate_report",
+      "type": "function",
+      "line": 757,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+        "apps/backend-rag/backend/agents/services/test_metrics.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+      "name": "_generate_simple_report",
+      "type": "function",
+      "line": 764,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_generate_summary",
+      "type": "function",
+      "line": 433,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
+      "name": "_log_summary",
+      "type": "function",
+      "line": 448,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "_generate_summary",
+      "type": "function",
+      "line": 369,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "_log_summary",
+      "type": "function",
+      "line": 418,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "generate_report",
+      "type": "function",
+      "line": 432,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/services/test_metrics.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
+      "name": "_generate_simple_report",
+      "type": "function",
+      "line": 439,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "CodeContextAnalyzer",
+      "type": "class",
+      "line": 81,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_creator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "TestGuardian",
+      "type": "class",
+      "line": 109,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
+      "name": "analyze_coverage",
+      "type": "function",
+      "line": 261,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "TestCreatorAgent",
+      "type": "class",
+      "line": 140,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "scan_and_generate",
+      "type": "async_function",
+      "line": 196,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_validate_and_save_test",
+      "type": "async_function",
+      "line": 544,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "name": "_run_tests",
+      "type": "async_function",
+      "line": 565,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/nurturing_message.py",
+      "name": "_build_prompt",
+      "type": "function",
+      "line": 70,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/nurturing_message.py",
+      "name": "_generate_fallback_message",
+      "type": "function",
+      "line": 101,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/kg_repository.py",
+      "name": "_generate_entity_id",
+      "type": "function",
+      "line": 35,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository_additional.py",
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/kg_repository.py",
+      "name": "get_entity_by_id",
+      "type": "async_function",
+      "line": 494,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository_additional.py",
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/kg_repository.py",
+      "name": "get_entity_relationships",
+      "type": "async_function",
+      "line": 538,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository_additional.py",
+        "apps/backend-rag/backend/tests/unit/agents/services/test_kg_repository.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/client_segmentation.py",
+      "name": "get_segment",
+      "type": "function",
+      "line": 45,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_client_segmentation.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "get_metrics_collector",
+      "type": "function",
+      "line": 481,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "record_operation",
+      "type": "function",
+      "line": 100,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "register_agent",
+      "type": "function",
+      "line": 155,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "record_test_generation",
+      "type": "function",
+      "line": 162,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_guardian.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "record_coverage_update",
+      "type": "function",
+      "line": 183,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_guardian.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "get_summary",
+      "type": "function",
+      "line": 202,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "check_alerts",
+      "type": "function",
+      "line": 232,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_guardian.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "save_snapshot",
+      "type": "function",
+      "line": 309,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
+      "name": "generate_report",
+      "type": "function",
+      "line": 324,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_cleaner.py",
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/unified_coverage_collector.py",
+      "name": "collect_all_coverage",
+      "type": "function",
+      "line": 367,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "LLMAdapter",
+      "type": "class",
+      "line": 127,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_guardian.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "close_llm_adapter",
+      "type": "async_function",
+      "line": 671,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
+      "name": "reset_metrics",
+      "type": "function",
+      "line": 611,
+      "tests": [
+        "apps/backend-rag/backend/agents/services/test_metrics.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py",
+      "name": "save_baseline",
+      "type": "function",
+      "line": 67,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py",
+      "name": "calculate_delta",
+      "type": "function",
+      "line": 109,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
+      "name": "get_overview",
+      "type": "async_function",
+      "line": 81,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_analytics.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "initialize_memory_vector_db",
+      "type": "async_function",
+      "line": 26,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
+      "name": "get_memory_vector_db",
+      "type": "async_function",
+      "line": 47,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/article_composer.py",
+      "name": "generate_slug",
+      "type": "function",
+      "line": 548,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/article_composer.py",
+      "name": "generate_mdx_content",
+      "type": "function",
+      "line": 565,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/session.py",
+      "name": "get_session_service",
+      "type": "function",
+      "line": 24,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_session.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/handlers.py",
+      "name": "extract_handlers_from_router",
+      "type": "function",
+      "line": 14,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_handlers.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
+      "name": "get_team_analytics_service",
+      "type": "function",
+      "line": 21,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_team_analytics.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
+      "name": "get_legal_service",
+      "type": "function",
+      "line": 37,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_legal_ingest.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/nusantara_health.py",
+      "name": "get_status_from_score",
+      "type": "function",
+      "line": 41,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_nusantara_health.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "clean_image_generation_response",
+      "type": "function",
+      "line": 28,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "ConversationMessageInput",
+      "type": "class",
+      "line": 129,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/oracle/test_oracle_service.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "AgenticQueryRequest",
+      "type": "class",
+      "line": 143,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "AgenticQueryResponse",
+      "type": "class",
+      "line": 155,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "query_agentic_rag",
+      "type": "async_function",
+      "line": 167,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "get_conversation_history_for_agentic",
+      "type": "async_function",
+      "line": 247,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+      "name": "stream_agentic_rag",
+      "type": "async_function",
+      "line": 348,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/conversations.py",
+      "name": "get_conversation_history",
+      "type": "async_function",
+      "line": 411,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
+      "name": "get_agent_stats",
+      "type": "function",
+      "line": 597,
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "ConnectionManager",
+      "type": "class",
+      "line": 22,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "get_current_user_ws",
+      "type": "async_function",
+      "line": 75,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "send_personal_message",
+      "type": "async_function",
+      "line": 51,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/websocket.py",
+      "name": "broadcast",
+      "type": "async_function",
+      "line": 64,
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
+    }
+  ],
+  "deprecated": [],
+  "todos": [
+    {
+      "file": "apps/backend-rag/backend/services/integrations/google_drive_service.py",
+      "line": 585,
+      "text": "# TODO: Implement proper page token handling if needed"
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
+      "line": 220,
+      "text": "# TODO: Detect signature changes (more complex AST comparison)"
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "line": 506,
+      "text": "# TODO: Implement test for {func}"
+    },
+    {
+      "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
+      "line": 515,
+      "text": "# TODO: Implement test for {cls}"
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/telegram.py",
+      "line": 1128,
+      "text": "# TODO: Trigger publish to BaliZero API"
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/dream.py",
+      "line": 64,
+      "text": "# TODO: Replace with real DB call (e.g. Postgres JSONB or Redis)"
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/debug.py",
+      "line": 132,
+      "text": "# TODO: Integrate with actual logging service"
+    },
+    {
+      "file": "apps/backend-rag/backend/app/routers/newsletter.py",
+      "line": 204,
+      "text": "# TODO: Send confirmation email via Zoho"
+    }
+  ]
+}

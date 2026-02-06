@@ -96,6 +96,14 @@ def log_success(
     logger.info(message, extra=extra if extra else None)
 
 
+def log_success_simple(message: str, **kwargs: Any) -> None:
+    """
+    Simplified success logger that uses the module-level logger.
+    Useful for services that import this module.
+    """
+    logger.info(f"✅ {message}", extra={"context": kwargs} if kwargs else None)
+
+
 def log_error(
     logger: logging.Logger,
     message: str,

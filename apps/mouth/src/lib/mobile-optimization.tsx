@@ -172,7 +172,7 @@ class MobileOptimizationService {
         this.currentBreakpoint = newBreakpoint;
         this.notifyListeners();
         if (process.env.NODE_ENV === 'development') {
-          console.log(`📱 Breakpoint changed to: ${newBreakpoint}`);
+          // Breakpoint change detected
         }
       }
     };

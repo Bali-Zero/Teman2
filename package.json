@@ -6,6 +6,8 @@
   "workspaces": [
     "apps/backend-rag",
     "apps/mouth",
+    "apps/admin-dashboard",
+    "apps/webapp",
     "apps/zantara-media/dashboard"
   ],
   "scripts": {
@@ -48,7 +50,10 @@
     "coverage:report": "bash scripts/coverage/report.sh",
     "coverage:diff:backend": "python3 scripts/coverage/diff_coverage_py.py",
     "coverage:diff:frontend": "node scripts/coverage/diff_coverage_lcov.mjs",
-    "optimize:images": "node scripts/optimize-images.cjs"
+    "optimize:images": "node scripts/optimize-images.cjs",
+    "workspace:install": "npm install",
+    "workspace:clean": "rm -rf node_modules apps/*/node_modules package-lock.json",
+    "workspace:reset": "npm run workspace:clean && npm install"
   },
   "lint-staged": {
     "*.{ts,js,json,md,yml,yaml}": [
@@ -104,7 +109,7 @@
     "botid": "^1.5.10",
     "cheerio": "^1.1.2",
     "chrome-devtools-mcp": "^0.9.0",
-    "clsx": "^2.1.1",
+
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
@@ -114,14 +119,10 @@
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.1",
-    "lucide-react": "^0.555.0",
     "multer": "1.4.5-lts.2",
     "node-cache": "^5.1.2",
     "openai": "^5.20.2",
     "redis": "^5.8.2",
-    "swr": "^2.3.8",
-    "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7",
     "winston": "^3.18.3",
     "ws": "^8.18.3",
     "zod": "^3.25.76"

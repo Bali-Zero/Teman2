@@ -3,6 +3,7 @@
  * Extends existing analytics with dashboard-specific tracking
  */
 
+import { debug, error } from '@/lib/utils/console';
 import { trackEvent, AnalyticsEvent } from './analytics';
 
 interface DashboardAnalyticsEvent extends AnalyticsEvent {
@@ -92,7 +93,7 @@ class EnhancedAnalyticsService {
 
     // Console for development
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Analytics Event:', event);
+      debug('📊 Analytics Event:', event);
     }
   }
 
@@ -108,7 +109,7 @@ class EnhancedAnalyticsService {
     trackEvent('page_view', { page, title });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Page View:', { page, title });
+      debug('📊 Page View:', { page, title });
     }
   }
 
@@ -116,7 +117,7 @@ class EnhancedAnalyticsService {
     this.performanceMetrics = { ...this.performanceMetrics, ...metrics };
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Performance Metrics:', this.performanceMetrics);
+      debug('📊 Performance Metrics:', this.performanceMetrics);
     }
 
     // Track performance events
@@ -141,13 +142,13 @@ class EnhancedAnalyticsService {
     this.trackEvent(`${action}_${feature}`, 'dashboard_feature', feature);
   }
 
-  trackError(error: Error, context?: string) {
+  trackError(err: Error, context?: string) {
     this.performanceMetrics.errorCount += 1;
 
-    this.trackEvent('javascript_error', 'error', `${error.name}: ${error.message}`);
+    this.trackEvent('javascript_error', 'error', `${err.name}: ${err.message}`);
 
     if (process.env.NODE_ENV === 'development') {
-      console.error('📊 Tracked Error:', error, context);
+      error('📊 Tracked Error:', err, context);
     }
   }
 

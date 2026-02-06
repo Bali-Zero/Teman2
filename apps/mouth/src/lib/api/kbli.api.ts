@@ -47,14 +47,23 @@ export class KBLIApi extends ApiClientBase {
   async chat(
     query: string,
     sessionId?: string
-  ): Promise<{ answer: string; detected_kbli: string[]; results: KBLISearchResult[]; sources: any[]; suggested_queries: string[] }> {
-    return this.post<{ answer: string; detected_kbli: string[]; results: KBLISearchResult[]; sources: any[]; suggested_queries: string[] }>(
-      '/api/v1/kbli-notebook/chat',
-      {
-        query,
-        session_id: sessionId,
-      }
-    );
+  ): Promise<{
+    answer: string;
+    detected_kbli: string[];
+    results: KBLISearchResult[];
+    sources: any[];
+    suggested_queries: string[];
+  }> {
+    return this.post<{
+      answer: string;
+      detected_kbli: string[];
+      results: KBLISearchResult[];
+      sources: any[];
+      suggested_queries: string[];
+    }>('/api/v1/kbli-notebook/chat', {
+      query,
+      session_id: sessionId,
+    });
   }
 }
 

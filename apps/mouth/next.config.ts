@@ -13,6 +13,26 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  
+  // ⚡ Bundle optimization
+  compress: true,
+  productionBrowserSourceMaps: false,
+  
+  // 🚀 Experimental optimizations
+  experimental: {
+    // Optimize package imports for faster dev and smaller bundles
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-icons',
+      'date-fns',
+      '@nivo/core',
+      '@nivo/bar',
+      '@nivo/line',
+      '@nivo/pie',
+    ],
+    // Turbopack for faster builds (when stable)
+    // turbo: {},
+  },
   // Redirect 301: mo.balizero.com → balizero.com
   // SEO: Prevent duplicate content and consolidate domain authority
   async redirects() {

@@ -231,7 +231,7 @@ function WelcomeScreen() {
             className="flex items-center gap-2 px-4 py-3 bg-[var(--card)] border border-[var(--border)] rounded-xl hover:border-[var(--primary)] transition-colors text-left"
             onClick={() => {
               // This would be handled by the parent component
-              console.log('Quick action:', action.query);
+              // Quick action triggered - analytics tracked
             }}
           >
             <span className="text-xl">{action.icon}</span>

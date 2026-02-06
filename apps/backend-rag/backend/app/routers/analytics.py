@@ -26,13 +26,25 @@ from backend.services.analytics.historical_analytics import (
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
+def verify_founder_access(current_user=Depends(get_current_user)):
+    """
+    Verify that the user has founder or admin level access.
+    """
+    if current_user.get("role") not in ["Founder", "admin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This dashboard is for founders only."
+        )
+    return current_user
+
+
 @router.get("/completion-rates")
 async def get_completion_rates(
     practice_type: str | None = Query(None),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
-    current_user=Depends(get_current_user),
+    current_user=Depends(verify_founder_access),
 ):
     """
     Get practice completion rates.
@@ -55,7 +67,7 @@ async def get_response_times(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
-    current_user=Depends(get_current_user),
+    current_user=Depends(verify_founder_access),
 ):
     """
     Get average response times (inquiry to start, start to completion).
@@ -76,7 +88,7 @@ async def get_sla_compliance(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
-    current_user=Depends(get_current_user),
+    current_user=Depends(verify_founder_access),
 ):
     """
     Get SLA compliance rates (practices completed within expected duration).
@@ -97,7 +109,7 @@ async def get_revenue_metrics(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
-    current_user=Depends(get_current_user),
+    current_user=Depends(verify_founder_access),
 ):
     """
     Get revenue metrics by practice type.
@@ -119,7 +131,7 @@ async def get_monthly_report(
     year: int,
     month: int,
     db_pool=Depends(get_database_pool),
-    current_user=Depends(get_current_user),
+    current_user=Depends(verify_founder_access),
 ):
     """
     Generate comprehensive monthly analytics report.

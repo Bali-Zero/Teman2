@@ -3,6 +3,7 @@
 import React from 'react';
 import { MessageCircle, Search, Filter, Check, Phone, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/lib/hooks/optimized';
 import type { WhatsAppConversation } from '@/lib/api/whatsapp/whatsapp.types';
 
 interface WhatsAppListProps {
@@ -29,6 +30,11 @@ export function WhatsAppList({
   isLoading,
 }: WhatsAppListProps) {
   const [localSearch, setLocalSearch] = React.useState(searchQuery);
+  const debouncedSearch = useDebounce(localSearch, 300);
+
+  React.useEffect(() => {
+    onSearch(debouncedSearch);
+  }, [debouncedSearch, onSearch]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

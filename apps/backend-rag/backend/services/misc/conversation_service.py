@@ -3,7 +3,7 @@ from typing import Any
 
 import asyncpg
 
-from backend.app.utils.logging_utils import get_logger, log_success
+from backend.app.utils.logging_utils import get_logger, log_success_simple as log_success
 
 from ..memory.memory_fallback import get_memory_cache
 
