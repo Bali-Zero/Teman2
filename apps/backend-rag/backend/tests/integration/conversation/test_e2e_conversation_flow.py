@@ -31,13 +31,9 @@ def mock_db_pool():
     """Mock PostgreSQL connection pool"""
     pool = AsyncMock()
     conn = AsyncMock()
-
-    # Mock connection context manager
-    @pytest.fixture
-    async def acquire():
-        return conn
-
-    pool.acquire = acquire
+    
+    # Mock acquire context manager correctly
+    pool.acquire.return_value.__aenter__.return_value = conn
     return pool
 
 

@@ -19,13 +19,15 @@ app = FastAPI()
 # Import router
 from backend.app.routers import article_composer
 
-app.include_router(article_composer.router, prefix="/api/articles")
+app.include_router(article_composer.router)
 
 
 @pytest.fixture
 def client():
     """Create test client"""
-    return TestClient(app)
+    c = TestClient(app)
+    c.headers.update({"X-API-Key": "dev_api_key_for_testing_only"})
+    return c
 
 
 @pytest.fixture
@@ -45,21 +47,24 @@ class TestArticleComposerIntegration:
     """Integration tests for Article Composer"""
 
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-    @patch("backend.services.article_composer.claude_client.call_claude_with_retry")
+    @patch("backend.services.article_composer.claude_client.get_anthropic_client")
     @patch("backend.services.article_composer.cache_service.get_compose_cache")
     @patch("backend.services.article_composer.cache_service.set_compose_cache")
     def test_compose_article_success(
         self,
         mock_set_cache,
         mock_get_cache,
-        mock_claude_call,
+        mock_get_client,
         mock_anthropic_response,
         client,
     ):
         """Test successful article composition"""
         # Setup mocks
         mock_get_cache.return_value = None  # Cache miss
-        mock_claude_call.return_value = mock_anthropic_response
+        
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_anthropic_response
+        mock_get_client.return_value = mock_client
 
         # Make request
         response = client.post(
@@ -200,9 +205,8 @@ class TestArticleComposerIntegration:
         # Simulate rate limit error
         mock_claude_call.side_effect = anthropic.RateLimitError(
             message="Rate limit exceeded",
-            response=None,
-            body=None,
-            request=None,
+            response=MagicMock(),
+            body={}
         )
 
         response = client.post(
