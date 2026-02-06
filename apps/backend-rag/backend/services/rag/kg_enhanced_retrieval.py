@@ -183,7 +183,8 @@ class KGEnhancedRetrieval:
         async with self.db_pool.acquire() as conn:
             for mention, entity_type in mentions:
                 # Normalize mention for search
-                search_term = mention.replace(".", "").replace(" ", "%").lower()
+                # SECURITY: Sanitize SQL wildcards to prevent injection/unexpected behavior
+                search_term = self._sanitize_search_term(mention)
 
                 # Search by name similarity and optionally by type
                 rows = await conn.fetch(
@@ -276,6 +277,25 @@ class KGEnhancedRetrieval:
                 related_entities = [dict(r) for r in rows]
 
         return related_entities, relationships
+
+    def _sanitize_search_term(self, mention: str) -> str:
+        """
+        Sanitize mention for SQL LIKE query.
+        
+        Removes SQL wildcard characters (%, _, \) that could cause:
+        - SQL injection risks
+        - Unexpected wildcard matching behavior
+        
+        Args:
+            mention: Raw entity mention from query
+            
+        Returns:
+            Sanitized search term safe for SQL LIKE
+        """
+        import re
+        # Remove SQL wildcard chars and normalize
+        cleaned = re.sub(r'[%_\\]', '', mention)
+        return cleaned.replace(".", "").replace(" ", "%").lower()
 
     async def get_source_chunks(self, entity_ids: list[str]) -> list[str]:
         """

@@ -308,10 +308,20 @@ class OrchestratorCore:
                 set_span_status("ok")
 
                 return state, model_used_name, token_usage, loop_duration
-            except Exception as react_error:
+            except (RuntimeError, ValueError, TimeoutError) as react_error:
+                # Specific error types from ReAct loop execution
                 logger.error(f"❌ ReAct loop failed: {react_error}", exc_info=True)
                 set_span_status("error", str(react_error))
                 raise
+            except Exception as unexpected_error:
+                # Catch-all for unexpected errors with detailed logging
+                logger.critical(
+                    f"🚨 Unexpected error in ReAct loop: {unexpected_error}", 
+                    exc_info=True,
+                    extra={"error_type": type(unexpected_error).__name__}
+                )
+                set_span_status("error", f"unexpected:{type(unexpected_error).__name__}")
+                raise RuntimeError(f"ReAct loop failed: {unexpected_error}") from unexpected_error
 
     async def process_query_core(
         self,

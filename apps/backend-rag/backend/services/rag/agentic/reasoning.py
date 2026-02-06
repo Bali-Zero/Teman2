@@ -42,12 +42,21 @@ from backend.app.utils.tracing import (
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.tools.definitions import AgentState, AgentStep
 
+from .reasoning_utils import (
+    calculate_evidence_score,
+    detect_team_query,
+    get_critical_domain_type,
+    is_critical_domain,
+    is_valid_tool_call,
+)
 from .response_processor import post_process_response
 from .tool_executor import execute_tool, parse_tool_call
 
 logger = logging.getLogger(__name__)
 
 
+# DEPRECATED: Use reasoning_utils.get_critical_domain_type instead
+# Keeping for backward compatibility during migration
 def _get_critical_domain_type(query: str) -> str:
     """
     Determine the type of critical domain for metrics.
@@ -120,6 +129,8 @@ def _get_critical_domain_type(query: str) -> str:
         return "business_complex"
 
 
+# DEPRECATED: Use reasoning_utils.is_critical_domain instead
+# Keeping for backward compatibility during migration
 def _is_critical_domain(query: str, intent_type: str) -> bool:
     """
     Determine if a query is in a critical domain that requires strict ABSTAIN.
@@ -204,6 +215,8 @@ def _is_critical_domain(query: str, intent_type: str) -> bool:
     return any(keyword in query_lower for keyword in critical_keywords)
 
 
+# DEPRECATED: Use reasoning_utils.is_valid_tool_call instead
+# Keeping for backward compatibility during migration
 def is_valid_tool_call(tool_call: Any) -> bool:
     """
     Validate that a tool call has all required fields.
@@ -229,6 +242,8 @@ def is_valid_tool_call(tool_call: Any) -> bool:
     return tool_call.arguments is not None
 
 
+# DEPRECATED: Use reasoning_utils.calculate_evidence_score instead
+# Keeping for backward compatibility during migration
 def calculate_evidence_score(
     sources: list[dict] | None,
     context_gathered: list[str],
@@ -1982,8 +1997,12 @@ Provide a helpful answer using your general knowledge, but clearly state that th
             yield {"type": "sources", "data": state.sources}
 
 
+# DEPRECATED: Use reasoning_utils.detect_team_query instead
+# Moved to reasoning_utils.py to reduce file complexity
 def detect_team_query(query: str) -> tuple[bool, str, str]:
     """
+    MOVED TO reasoning_utils.py - This is a backward compatibility wrapper.
+    
     Heuristically detect if a user query is asking about the company team.
 
     This helper is used by the AgenticRAGOrchestrator to optionally pre-route to the

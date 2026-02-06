@@ -913,8 +913,12 @@ class PortalService:
                 f"size: {file_size_kb}KB, type: {document_type}"
             )
 
-            # TODO: Store file content to Google Drive or S3
-            # For now, just record the metadata
+            # FUTURE: Implement async file storage to Google Drive or S3
+            # Current implementation stores only metadata in PostgreSQL
+            # See: https://github.com/balizero/nuzantara/issues/FILE_STORAGE
+            logger.warning(
+                f"File storage not implemented: {file_name} uploaded but content not persisted to cloud storage"
+            )
 
             return {
                 "id": doc["id"],
