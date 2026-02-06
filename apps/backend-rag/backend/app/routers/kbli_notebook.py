@@ -57,6 +57,8 @@ class KBLISearchResult(BaseModel):
     title: str
     description: str
     score: float
+    pma_status: str = "UNKNOWN"
+    risk_category: str = "Unknown"
 
 
 class KBLINotebookChatRequest(BaseModel):
@@ -69,6 +71,7 @@ class KBLINotebookChatResponse(BaseModel):
     detected_kbli: list[str]
     results: list[KBLISearchResult]
     sources: list[dict]
+    suggested_queries: list[str] = []
 
 
 # =============================================================================
@@ -111,6 +114,8 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
                     title=p.get("judul", "N/A"),
                     description=(p.get("content", "") or "")[:200] + "...",
                     score=round(r.get("score", 0.0), 4),
+                    pma_status=p.get("pma_status", "UNKNOWN"),
+                    risk_category=p.get("kategori_risiko", "Unknown"),
                 )
             )
 
@@ -396,6 +401,8 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
                     title=p.get("judul", "N/A"),
                     description=(p.get("content", "") or "")[:200] + "...",
                     score=round(r.get("score", 0.0), 4),
+                    pma_status=p.get("pma_status", "UNKNOWN"),
+                    risk_category=p.get("kategori_risiko", "Unknown"),
                 )
             )
             if len(results) >= 5:
@@ -409,11 +416,26 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
         # Generate Italian explanation via LLM (with fallback)
         answer = await _generate_kbli_explanation(request.query, results)
 
+        # Generate template-based follow-up suggestions
+        suggested_queries = []
+        if results:
+            top = results[0]
+            suggested_queries.append(f"What licenses do I need for KBLI {top.code}?")
+            if top.pma_status in ("TERBUKA", "TERBATAS", "TERTUTUP"):
+                suggested_queries.append(f"Is {top.title} open to foreign investors?")
+            else:
+                suggested_queries.append(f"Can a foreigner own a {top.title} business?")
+            if len(results) > 1:
+                suggested_queries.append(f"What's the difference between KBLI {top.code} and {results[1].code}?")
+            else:
+                suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
+
         return KBLINotebookChatResponse(
             answer=answer,
             detected_kbli=detected_kbli,
             results=results,
             sources=[{"title": "PP 28/2025", "relevance": "High"}],
+            suggested_queries=suggested_queries,
         )
     except Exception as e:
         logger.error(f"❌ KBLI Chat Error: {str(e)}", exc_info=True)
