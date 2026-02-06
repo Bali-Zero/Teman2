@@ -80,7 +80,7 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 
     try:
         raw = await search_service.search_collection(
-            query=query, collection_name="kbli_unified", limit=limit
+            query=query, collection_name="kbli_2025_final", limit=limit
         )
 
         search_results = []
@@ -206,7 +206,7 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
     try:
         # Search semantic context
         raw = await search_service.search_collection(
-            query=request.query, collection_name="kbli_unified", limit=3
+            query=request.query, collection_name="kbli_2025_final", limit=3
         )
         search_results = raw.get("results", [])
 

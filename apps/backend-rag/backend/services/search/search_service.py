@@ -1116,7 +1116,7 @@ class SearchService:
         """
         try:
             # Generate embedding
-            query_embedding = self.embedder.generate_query_embedding(query)
+            query_embedding = await self.embedder.generate_query_embedding(query)
 
             # Get client (lazy loading)
             client = self.collection_manager.get_collection(collection_name)
