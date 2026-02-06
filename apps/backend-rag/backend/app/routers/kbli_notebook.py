@@ -79,12 +79,12 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
     logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
 
     try:
-        results = await search_service.search(
+        raw = await search_service.search_collection(
             query=query, collection_name="kbli_unified", limit=limit
         )
 
         search_results = []
-        for doc in results:
+        for doc in raw.get("results", []):
             metadata = doc.get("metadata", {})
             search_results.append(
                 KBLISearchResult(
@@ -121,24 +121,8 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
             )
 
             if not node:
-                logger.warning(
-                    f"⚠️ KBLI {code} not found in Knowledge Graph, checking legacy tables"
-                )
-                node = await conn.fetchrow("SELECT * FROM kbli_codes WHERE code = $1", code)
-                if not node:
-                    logger.error(f"❌ KBLI {code} NOT FOUND in any table")
-                    raise HTTPException(status_code=404, detail=f"KBLI code {code} not found")
-
-                return KBLIDetail(
-                    code=node["code"],
-                    title=node["title"],
-                    description=node.get("description", ""),
-                    pma_status=node.get("pma_status", "UNKNOWN"),
-                    licensing_status="REGULATED",
-                    sector="N/A",
-                    risk_profile="N/A",
-                    licenses=[],
-                )
+                logger.warning(f"⚠️ KBLI {code} not found in Knowledge Graph")
+                raise HTTPException(status_code=404, detail=f"KBLI code {code} not found")
 
             # 2. Extract Properties
             props = (
@@ -221,22 +205,19 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
 
     try:
         # Search semantic context
-        search_results = await search_service.search(
+        raw = await search_service.search_collection(
             query=request.query, collection_name="kbli_unified", limit=3
         )
+        search_results = raw.get("results", [])
 
-        # In a real implementation, this would orchestrate with the LLM.
-        # For this prototype pass, we return the synthesis frame.
-        detected = []
-        # Basic regex-like check for demonstration
+        # Detect KBLI codes mentioned in query
         import re
 
         codes_found = re.findall(r"\d{5}", request.query)
-        detected.extend(codes_found)
 
         return KBLINotebookChatResponse(
             answer=f"Analisi della richiesta completata. Ho trovato {len(search_results)} contesti normativi rilevanti basati su BPS 2025 e PP 28/2025.",
-            detected_kbli=list(set(detected)),
+            detected_kbli=list(set(codes_found)),
             sources=[{"title": "PP 28/2025", "relevance": "High"}],
         )
     except Exception as e:
