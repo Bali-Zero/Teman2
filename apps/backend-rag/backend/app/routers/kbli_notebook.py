@@ -241,6 +241,53 @@ KBLI_SYSTEM_PROMPT = (
 )
 
 
+_TRANSLATE_SYSTEM = (
+    "You convert business activity queries into Indonesian KBLI search phrases. "
+    "KBLI = Klasifikasi Baku Lapangan Usaha Indonesia. "
+    "Output ONLY the Indonesian search phrase. No explanation, no quotes, no punctuation.\n"
+    "Use the specific activity descriptions used in KBLI titles, not generic translations.\n\n"
+    "ristorante → aktivitas penyediaan makanan restoran\n"
+    "restaurant → aktivitas penyediaan makanan restoran\n"
+    "hotel → aktivitas hotel bintang\n"
+    "bar → aktivitas rumah minum kafe\n"
+    "real estate → agen properti real estat\n"
+    "construction → konstruksi bangunan gedung\n"
+    "beauty salon → salon kecantikan perawatan\n"
+    "travel agency → agen perjalanan wisata\n"
+    "import export → perdagangan besar impor ekspor\n"
+    "villa rental → penyediaan akomodasi villa penginapan\n"
+    "consulting → aktivitas konsultasi manajemen\n"
+    "spa → aktivitas spa panti pijat"
+)
+
+
+async def _translate_query_for_kbli(query: str) -> str:
+    """Translate any-language query to Indonesian KBLI search terms."""
+    try:
+        from backend.services.rag.agentic.llm_gateway import TIER_FLASH
+
+        gateway = _get_llm_gateway()
+        chat = gateway.create_chat_with_history(
+            history_to_use=[],
+            model_tier=TIER_FLASH,
+            system_instruction=_TRANSLATE_SYSTEM,
+        )
+        translated, _model, _resp, _usage = await gateway.send_message(
+            chat=chat,
+            message=query,
+            system_prompt=_TRANSLATE_SYSTEM,
+            tier=TIER_FLASH,
+            enable_function_calling=False,
+            conversation_messages=[{"role": "user", "content": query}],
+        )
+        translated = translated.strip().strip('"').strip("'")
+        logger.info(f"🌐 Query translation: '{query}' → '{translated}'")
+        return translated
+    except Exception as e:
+        logger.warning(f"Query translation failed, using original: {e}")
+        return query
+
+
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate an Italian explanation of KBLI search results using LLM."""
     if not results:
@@ -286,22 +333,32 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
     logger.info(f"💬 KBLI Chat Request: '{request.query[:50]}...'")
 
     try:
-        # Search semantic context (5 results for richer answers)
-        embedding = await search_service.embedder.generate_query_embedding(request.query)
-        raw_results = await _search_kbli_qdrant(embedding, 5)
+        # Translate query to Indonesian KBLI terms for better matching
+        search_query = await _translate_query_for_kbli(request.query)
 
-        # Build structured results (same pattern as /search endpoint)
+        # Search semantic context with translated query
+        embedding = await search_service.embedder.generate_query_embedding(search_query)
+        raw_results = await _search_kbli_qdrant(embedding, 7)
+
+        # Deduplicate by code (same code can appear multiple times), take top 5
+        seen_codes = set()
         results = []
         for r in raw_results:
             p = r.get("payload", {})
+            code = p.get("kode_kbli", "N/A")
+            if code in seen_codes:
+                continue
+            seen_codes.add(code)
             results.append(
                 KBLISearchResult(
-                    code=p.get("kode_kbli", "N/A"),
+                    code=code,
                     title=p.get("judul", "N/A"),
                     description=(p.get("content", "") or "")[:200] + "...",
                     score=round(r.get("score", 0.0), 4),
                 )
             )
+            if len(results) >= 5:
+                break
 
         # Detect KBLI codes from results + regex on query
         codes_from_query = re.findall(r"\d{5}", request.query)
