@@ -230,14 +230,17 @@ def _get_llm_gateway():
 
 
 KBLI_SYSTEM_PROMPT = (
-    "Sei un consulente aziendale italiano specializzato in investimenti in Indonesia (Bali). "
-    "Il tuo interlocutore e' un imprenditore italiano NON esperto di burocrazia indonesiana. "
-    "Rispondi SEMPRE in italiano. Sii chiaro, concreto e amichevole. "
-    "Non usare gergo tecnico indonesiano senza spiegarlo. "
-    "Spiega cosa copre ogni codice KBLI e perche' e' rilevante. "
-    "Mantieni la risposta breve (3-5 frasi per risultato). "
-    "Se PMA e' rilevante: TERBUKA=aperto stranieri, TERBATAS=con limitazioni, TERTUTUP=chiuso. "
-    "NON inventare informazioni. Usa SOLO i dati forniti nel contesto."
+    "You are a KBLI notebook — a grounded data tool, NOT a generic chatbot. "
+    "Your ONLY knowledge source is the KBLI data provided in each message context. "
+    "STRICT RULES:\n"
+    "1. ONLY cite facts from the KBLI data in context. NEVER add information from general knowledge.\n"
+    "2. For each KBLI code, state: what it covers, PMA status if present, risk category if present.\n"
+    "3. If the user asks whether they need 1 or multiple codes, answer ONLY based on context data.\n"
+    "4. NEVER suggest consulting a notary, lawyer, or other professional. You ARE the expert.\n"
+    "5. NEVER respond in Indonesian. The KBLI data is in Indonesian but your response language is set per-message.\n"
+    "6. Keep it concise: 2-3 sentences per code.\n"
+    "7. Translate Indonesian terms inline: TERBUKA=open to foreigners, TERBATAS=restricted, TERTUTUP=closed.\n"
+    "8. If context data is insufficient, say 'Based on the available KBLI data, I cannot determine...' — do NOT guess."
 )
 
 
@@ -288,17 +291,55 @@ async def _translate_query_for_kbli(query: str) -> str:
         return query
 
 
+def _detect_language(query: str) -> str:
+    """Detect query language using keyword heuristics."""
+    words = set(query.lower().split())
+    # Italian markers
+    it_words = {"voglio", "aprire", "quale", "codice", "serve", "come", "sono", "che", "per", "una", "della", "questo", "quanto", "costa", "cosa", "posso", "devo", "fare", "mio", "bisogno", "attivita", "licenza", "negozio"}
+    if len(words & it_words) >= 2:
+        return "Italian"
+    # French markers
+    fr_words = {"je", "veux", "ouvrir", "quel", "pour", "une", "est", "les", "des", "mon", "faire", "comment"}
+    if len(words & fr_words) >= 2:
+        return "French"
+    # Spanish markers
+    es_words = {"quiero", "abrir", "cual", "para", "como", "necesito", "puedo", "hacer", "negocio"}
+    if len(words & es_words) >= 2:
+        return "Spanish"
+    return "English"
+
+
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
-    """Generate an Italian explanation of KBLI search results using LLM."""
+    """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
-        return "Non ho trovato codici KBLI corrispondenti alla tua ricerca. Prova con parole diverse o descrivi la tua attivita' in modo piu' dettagliato."
+        return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
+
+    lang = _detect_language(query)
+    logger.info(f"🌐 Detected language: {lang} for query: '{query[:40]}'")
 
     context_parts = []
     for r in results:
-        context_parts.append(f"- KBLI {r.code}: {r.title}\n  Descrizione: {r.description}\n  Rilevanza: {r.score:.0%}")
+        context_parts.append(f"- KBLI {r.code}: {r.title}\n  Data: {r.description}\n  Score: {r.score:.0%}")
     context = "\n".join(context_parts)
 
-    message = f"Domanda dell'utente: {query}\n\nRisultati KBLI trovati:\n{context}\n\nSpiega questi codici KBLI in italiano, in modo semplice e utile per un imprenditore."
+    # Build language-specific system instruction
+    if lang.lower() == "italian":
+        lang_system = (
+            "Sei un notebook KBLI — uno strumento dati, NON un chatbot generico. "
+            "Rispondi SOLO in italiano. Ogni frase deve essere in italiano. "
+            "Usa SOLO i dati KBLI forniti nel contesto. NON inventare informazioni. "
+            "Per ogni codice KBLI spiega: cosa copre, status PMA se presente, categoria rischio. "
+            "NON suggerire mai di consultare un notaio o professionista. Tu sei l'esperto. "
+            "Traduci i termini indonesiani: TERBUKA=aperto a stranieri, TERBATAS=con restrizioni, TERTUTUP=chiuso. "
+            "Sii conciso: 2-3 frasi per codice."
+        )
+    else:
+        lang_system = KBLI_SYSTEM_PROMPT
+
+    message = (
+        f"Question: {query}\n\n"
+        f"Source data:\n{context}"
+    )
 
     try:
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
@@ -307,12 +348,12 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
         chat = gateway.create_chat_with_history(
             history_to_use=[],
             model_tier=TIER_FLASH,
-            system_instruction=KBLI_SYSTEM_PROMPT,
+            system_instruction=lang_system,
         )
         response_text, _model, _resp, _usage = await gateway.send_message(
             chat=chat,
             message=message,
-            system_prompt=KBLI_SYSTEM_PROMPT,
+            system_prompt=lang_system,
             tier=TIER_FLASH,
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": message}],
