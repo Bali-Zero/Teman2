@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm build --filter=mouth",
+  "buildCommand": "cd apps/mouth && npx next build",
   "outputDirectory": "apps/mouth/.next",
-  "installCommand": "pnpm install",
   "framework": "nextjs"
 }
