@@ -137,6 +137,17 @@ class WhatsAppTriageService:
             "rptka",
             "work permit",
             "izin kerja",
+            "d12",
+            "e33g",
+            "investor",
+            "retirement",
+            "second home",
+            "freelance",
+            "remote worker",
+            "digital nomad",
+            "extension",
+            "perpanjangan",
+            "sponsor",
             # Company/Business
             "pt pma",
             "company",
@@ -191,12 +202,7 @@ class WhatsAppTriageService:
             logger.info(f"Offering choice to {phone}: greeting message")
             return TriageDecision.OFFER_CHOICE, "greeting_only"
 
-        # 6. DEFAULT: Short/ambiguous messages → offer choice
-        if len(message_text.split()) <= 5:
-            logger.info(f"Offering choice to {phone}: short/ambiguous message")
-            return TriageDecision.OFFER_CHOICE, "ambiguous_short"
-
-        # 7. FALLBACK: Long message without clear context → AI tries to help
+        # 6. DEFAULT: Let AI handle everything else (Zero style — always respond)
         logger.info(f"AI handling general query from {phone}")
         return TriageDecision.BOT_CAN_HANDLE, "general_query"
 

@@ -8,7 +8,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Client, CreateClientParams } from '@/lib/api/crm/crm.types';
-import { debug, error } from '@/lib/utils';
 
 interface UseCrmClientsOptions {
   status?: string;
@@ -24,42 +23,46 @@ interface ClientsResponse {
   hasMore: boolean;
 }
 
+// Debug helper
+const debug = (...args: any[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[CRM]', ...args);
+  }
+};
+
+const logError = (...args: any[]) => {
+  console.error('[CRM]', ...args);
+};
+
 /**
- * Hook per gestione lista clienti con infinite scroll
+ * Hook per gestione lista clienti
  */
 export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const { status, assigned_to, search, limit = 50, enabled = true } = options;
   const queryClient = useQueryClient();
+  const [offset, setOffset] = useState(0);
 
-  const queryKey = ['crm', 'clients', { status, assigned_to, search }];
+  const queryKey = ['crm', 'clients', { status, assigned_to, search, offset }];
 
   const {
     data,
     isLoading,
     isError,
     error: queryError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    refetch,
   } = useQuery({
     queryKey,
-    queryFn: async ({ pageParam = 0 }): Promise<ClientsResponse> => {
-      const params = new URLSearchParams();
-      if (status) params.append('status', status);
-      if (assigned_to) params.append('assigned_to', assigned_to);
-      if (search) params.append('search', search);
-      params.append('limit', limit.toString());
-      params.append('offset', (pageParam * limit).toString());
-
-      const response = await api.client.request<{
-        clients: Client[];
-        total: number;
-      }>(`/api/crm/clients?${params.toString()}`);
+    queryFn: async (): Promise<ClientsResponse> => {
+      const clients = await api.crm.getClients({
+        search: search || undefined,
+        limit,
+        offset,
+      });
 
       return {
-        clients: response.clients,
-        total: response.total,
-        hasMore: response.clients.length === limit,
+        clients,
+        total: clients.length, // Backend doesn't return total, estimate
+        hasMore: clients.length === limit,
       };
     },
     enabled,
@@ -67,31 +70,16 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Prefetch next page
-  useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      const nextOffset = ((data?.clients.length || 0) / limit) + 1;
-      queryClient.prefetchQuery({
-        queryKey: [...queryKey, nextOffset],
-        queryFn: async () => {
-          const params = new URLSearchParams();
-          if (status) params.append('status', status);
-          if (assigned_to) params.append('assigned_to', assigned_to);
-          if (search) params.append('search', search);
-          params.append('limit', limit.toString());
-          params.append('offset', (nextOffset * limit).toString());
-
-          return api.client.request(`/api/crm/clients?${params.toString()}`);
-        },
-      });
-    }
-  }, [hasNextPage, isFetchingNextPage, data?.clients.length, limit, queryClient, queryKey, status, assigned_to, search]);
-
   const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
+    if (data?.hasMore && !isLoading) {
+      setOffset((prev) => prev + limit);
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [data?.hasMore, isLoading, limit]);
+
+  const reset = useCallback(() => {
+    setOffset(0);
+    refetch();
+  }, [refetch]);
 
   return {
     clients: data?.clients || [],
@@ -100,8 +88,10 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     isError,
     error: queryError,
     loadMore,
-    hasMore: !!hasNextPage,
-    isLoadingMore: isFetchingNextPage,
+    hasMore: data?.hasMore || false,
+    isLoadingMore: isLoading && offset > 0,
+    reset,
+    refetch,
   };
 }
 
@@ -115,7 +105,7 @@ export function useCrmClient(clientId: number | null) {
     queryKey: ['crm', 'clients', clientId],
     queryFn: async (): Promise<Client> => {
       if (!clientId) throw new Error('Client ID required');
-      return api.client.request<Client>(`/api/crm/clients/${clientId}`);
+      return api.crm.getClient(clientId);
     },
     enabled: !!clientId,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -138,11 +128,8 @@ export function useCreateClient() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: CreateClientParams) => {
-      return api.client.request<Client>('/api/crm/clients', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+    mutationFn: async ({ data, createdBy }: { data: CreateClientParams; createdBy: string }) => {
+      return api.crm.createClient(data, createdBy);
     },
     onSuccess: (newClient) => {
       // Invalidate clients list
@@ -152,7 +139,7 @@ export function useCreateClient() {
       debug('Client created:', newClient.id);
     },
     onError: (err) => {
-      error('Failed to create client:', err);
+      logError('Failed to create client:', err);
     },
   });
 
@@ -166,11 +153,8 @@ export function useUpdateClient(clientId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (updates: Partial<CreateClientParams>) => {
-      return api.client.request<Client>(`/api/crm/clients/${clientId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      });
+    mutationFn: async ({ updates, updatedBy }: { updates: Partial<CreateClientParams>; updatedBy: string }) => {
+      return api.crm.updateClient(clientId, updates, updatedBy);
     },
     onSuccess: (updatedClient) => {
       // Update cache
@@ -180,7 +164,7 @@ export function useUpdateClient(clientId: number) {
       debug('Client updated:', clientId);
     },
     onError: (err) => {
-      error('Failed to update client:', err);
+      logError('Failed to update client:', err);
     },
   });
 
@@ -194,12 +178,22 @@ export function useCrmStats() {
   return useQuery({
     queryKey: ['crm', 'stats'],
     queryFn: async () => {
-      return api.client.request<{
-        totalClients: number;
-        activePractices: number;
-        revenue: { total: number; paid: number; outstanding: number };
-        byStatus: Record<string, number>;
-      }>('/api/crm/stats');
+      const [practiceStats, interactionStats] = await Promise.all([
+        api.crm.getPracticeStats(),
+        api.crm.getInteractionStats(),
+      ]);
+      
+      return {
+        totalClients: practiceStats.total_practices,
+        activePractices: practiceStats.active_practices,
+        revenue: {
+          total: practiceStats.revenue.total_revenue,
+          paid: practiceStats.revenue.paid_revenue,
+          outstanding: practiceStats.revenue.outstanding_revenue,
+        },
+        byStatus: practiceStats.by_status,
+        interactions: interactionStats,
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Client, ExpiryAlert, Practice } from '@/lib/api/crm/crm.types';
+import type { ExpiryAlert, Practice } from '@/lib/api/crm/crm.types';
 
 interface Notification {
   id: string;
@@ -46,7 +46,7 @@ const NOTIFICATION_COLORS = {
 } as const;
 
 /**
- * Hook per notifiche CRM
+ * Hook per expiry alerts come notifiche
  */
 export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
   const {
@@ -58,12 +58,33 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
   const queryClient = useQueryClient();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Use expiry alerts as notifications
   const query = useQuery({
-    queryKey: ['crm', 'notifications', { unreadOnly }],
+    queryKey: ['crm', 'notifications', 'expiry', { unreadOnly }],
     queryFn: async (): Promise<Notification[]> => {
-      return api.client.request<Notification[]>(
-        `/api/crm/notifications${unreadOnly ? '?unread_only=true' : ''}`
-      );
+      const alerts = await api.crm.getExpiryAlerts({ limit: 50 });
+      
+      // Map alerts to notifications
+      return alerts.map((alert: ExpiryAlert): Notification => ({
+        id: `expiry-${alert.entity_id}-${alert.document_type}`,
+        type: 'expiry',
+        title: `${alert.entity_name} - ${alert.document_type}`,
+        message: alert.days_until_expiry <= 0
+          ? `Expired on ${alert.expiry_date}`
+          : `Expires in ${alert.days_until_expiry} days`,
+        severity: alert.alert_color === 'expired' ? 'critical' 
+          : alert.alert_color === 'red' ? 'high'
+          : alert.alert_color === 'yellow' ? 'medium'
+          : 'low',
+        createdAt: new Date().toISOString(),
+        read: false,
+        actionUrl: `/clients/${alert.client_id}`,
+        metadata: {
+          clientId: alert.client_id,
+          entityId: alert.entity_id,
+          daysUntilExpiry: alert.days_until_expiry,
+        },
+      }));
     },
     refetchInterval: autoRefresh ? refreshInterval : false,
     staleTime: 60 * 1000, // 1 minute
@@ -76,42 +97,15 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
     }
   }, [query.data]);
 
-  // Mark as read
-  const markAsRead = useMutation({
-    mutationFn: async (notificationId: string) => {
-      return api.client.request(`/api/crm/notifications/${notificationId}/read`, {
-        method: 'POST',
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['crm', 'notifications'] });
-    },
-  });
+  // Mark as read (mock - just removes from count)
+  const markAsRead = useCallback((notificationId: string) => {
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+  }, []);
 
   // Mark all as read
-  const markAllAsRead = useMutation({
-    mutationFn: async () => {
-      return api.client.request('/api/crm/notifications/read-all', {
-        method: 'POST',
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['crm', 'notifications'] });
-      setUnreadCount(0);
-    },
-  });
-
-  // Dismiss notification
-  const dismiss = useMutation({
-    mutationFn: async (notificationId: string) => {
-      return api.client.request(`/api/crm/notifications/${notificationId}`, {
-        method: 'DELETE',
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['crm', 'notifications'] });
-    },
-  });
+  const markAllAsRead = useCallback(() => {
+    setUnreadCount(0);
+  }, []);
 
   return {
     notifications: query.data || [],
@@ -119,35 +113,61 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
-    markAsRead: markAsRead.mutate,
-    markAllAsRead: markAllAsRead.mutate,
-    dismiss: dismiss.mutate,
-    isMarkingAsRead: markAsRead.isPending,
-    isMarkingAllAsRead: markAllAsRead.isPending,
+    markAsRead,
+    markAllAsRead,
   };
 }
 
 /**
  * Hook per alert scadenze
  */
-export function useExpiryAlerts(days: number = 30) {
+export function useExpiryAlerts(params?: {
+  alertColor?: 'expired' | 'red' | 'yellow';
+  assignedTo?: string;
+  limit?: number;
+}) {
   return useQuery({
-    queryKey: ['crm', 'alerts', 'expiry', days],
+    queryKey: ['crm', 'alerts', 'expiry', params],
     queryFn: async (): Promise<ExpiryAlert[]> => {
-      return api.client.request<ExpiryAlert[]>(`/api/crm/alerts/expiry?days=${days}`);
+      return api.crm.getExpiryAlerts(params);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 /**
+ * Hook per expiry alerts summary
+ */
+export function useExpiryAlertsSummary() {
+  return useQuery({
+    queryKey: ['crm', 'alerts', 'expiry-summary'],
+    queryFn: async () => {
+      return api.crm.getExpiryAlertsSummary();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
  * Hook per pratiche in scadenza
  */
-export function useOverduePractices(days: number = 7) {
+export function useUpcomingRenewals(days: number = 90) {
   return useQuery({
-    queryKey: ['crm', 'alerts', 'overdue', days],
+    queryKey: ['crm', 'alerts', 'renewals', days],
     queryFn: async (): Promise<Practice[]> => {
-      return api.client.request<Practice[]>(`/api/crm/practices/overdue?days=${days}`);
+      const renewals = await api.crm.getUpcomingRenewals(days);
+      // Map renewals to practices (they share many fields)
+      return renewals.map((r: any) => ({
+        id: r.id,
+        client_id: r.client_id,
+        status: r.status,
+        expiry_date: r.target_date,
+        practice_type_code: r.alert_type,
+        created_at: r.alert_date,
+        updated_at: r.alert_date,
+        priority: 'high',
+        payment_status: 'pending',
+      } as Practice));
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -160,45 +180,53 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['crm', 'dashboard'],
     queryFn: async () => {
-      return api.client.request<{
-        totalClients: number;
-        newThisMonth: number;
-        activePractices: number;
-        overduePractices: number;
-        expiryAlerts: number;
+      const [practiceStats, revenueGrowth, expirySummary] = await Promise.all([
+        api.crm.getPracticeStats(),
+        api.crm.getRevenueGrowth(),
+        api.crm.getExpiryAlertsSummary(),
+      ]);
+
+      return {
+        totalClients: practiceStats.total_practices,
+        newThisMonth: 0, // Not available in current API
+        activePractices: practiceStats.active_practices,
+        overduePractices: 0, // Not available in current API
+        expiryAlerts: expirySummary.counts.red + expirySummary.counts.yellow + expirySummary.counts.expired,
         revenue: {
-          total: number;
-          paid: number;
-          outstanding: number;
-        };
-        byStatus: Record<string, number>;
-        recentActivity: Array<{
-          type: string;
-          description: string;
-          timestamp: string;
-        }>;
-      }>('/api/crm/dashboard');
+          total: practiceStats.revenue.total_revenue,
+          paid: practiceStats.revenue.paid_revenue,
+          outstanding: practiceStats.revenue.outstanding_revenue,
+        },
+        byStatus: practiceStats.by_status,
+        recentActivity: [], // Not available in current API
+        revenueGrowth,
+        expirySummary,
+      };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
 
 /**
- * Hook per attività recenti
+ * Hook per attività recenti (usando interactions)
  */
 export function useRecentActivity(limit: number = 10) {
   return useQuery({
     queryKey: ['crm', 'activity', limit],
     queryFn: async () => {
-      return api.client.request<Array<{
-        id: string;
-        type: 'client_created' | 'practice_created' | 'status_changed' | 'document_uploaded' | 'note_added';
-        description: string;
-        user: string;
-        timestamp: string;
-        clientId?: number;
-        practiceId?: number;
-      }>>(`/api/crm/activity?limit=${limit}`);
+      const interactions = await api.crm.getInteractions({ limit });
+      
+      return interactions.map((interaction: any) => ({
+        id: `interaction-${interaction.id}`,
+        type: interaction.interaction_type === 'chat' ? 'note_added' 
+          : interaction.interaction_type === 'email' ? 'document_uploaded'
+          : 'status_changed',
+        description: interaction.summary || interaction.subject || `${interaction.interaction_type} interaction`,
+        user: interaction.team_member,
+        timestamp: interaction.created_at,
+        clientId: interaction.client_id,
+        practiceId: interaction.practice_id,
+      }));
     },
     staleTime: 60 * 1000,
   });
@@ -212,7 +240,7 @@ export function useBrowserNotifications() {
   const [supported, setSupported] = useState(false);
 
   useEffect(() => {
-    if ('Notification' in window) {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       setSupported(true);
       setPermission(Notification.permission);
     }
