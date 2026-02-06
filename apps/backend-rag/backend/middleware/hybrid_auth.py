@@ -134,6 +134,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
+            "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
             # ========================================================================
             # BLOG & MARKETING ENDPOINTS (Public for website visitors)
             # ========================================================================
