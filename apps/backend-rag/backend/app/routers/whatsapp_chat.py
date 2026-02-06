@@ -326,7 +326,7 @@ async def process_whatsapp_message(
             )
             await whatsapp_service.send_message(
                 phone=phone,
-                text="⏱️ Mi dispiace, la richiesta sta richiedendo troppo tempo. Riprova o scrivi /human per parlare con Zero.",
+                text="Un attimo, ci sto mettendo troppo 😅 Riprova tra poco!",
                 reply_to_message_id=message_id,
             )
             return
@@ -334,8 +334,7 @@ async def process_whatsapp_message(
         # Send final accumulated response
         if not accumulated_text:
             accumulated_text = (
-                "Mi dispiace, non sono riuscita a elaborare una risposta. "
-                "Riprova o scrivi /human per parlare con Zero."
+                "Scusa, qualcosa è andato storto 😅 Riprova!"
             )
 
         # Split into chunks if too long (WhatsApp limit: 4096 chars)
@@ -374,7 +373,7 @@ async def process_whatsapp_message(
         try:
             await whatsapp_service.send_message(
                 phone=phone,
-                text="Mi dispiace, si è verificato un errore. Riprova tra poco o scrivi /human per assistenza diretta.",
+                text="Ops, errore tecnico 😬 Riprova tra un attimo!",
                 reply_to_message_id=message_id,
             )
         except Exception as send_error:
