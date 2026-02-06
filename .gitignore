@@ -268,6 +268,40 @@ OVERLORD_LOG.md
 data/exports/legal_unified_hybrid_*.json
 
 # ========================================
+# OPENCLAW / AI WORKSPACE FILES
+# ========================================
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+.clawhub/
+.geminiignore
+GEMINI.md
+WORKSPACE.md
+
+# Generated markdown docs (one-off reports, not project docs)
+BRIEF_KB_ARCHITECTURE_REASONING.md
+CHANGELOG.md
+LOGGER_REMOTE_COMPLETE.txt
+SENTRY_AND_LOGGER_COMPLETE.md
+SENTRY_DEPLOYMENT_SUCCESS.txt
+SUPER_KNOWLEDGE_GRAPH_STRATEGY.md
+VERCEL_*.md
+WINDSURF_PHASE2_PATCH.md
+WORKSPACE_CLEANUP_COMPLETE.md
+
+# Frontend generated docs
+apps/mouth/OPTIMIZATION_GUIDE.md
+apps/mouth/docs/DOCUMENTS_OPTIMIZATION.md
+apps/mouth/docs/PORTAL_HOOKS.md
+
+# KBLI backup JSONs (large, only track the canonical file)
+source_documents/KBLI_2025_FINAL_CLEAN.backup_*.json
+
+# ========================================
 # UTILITY SCRIPTS (one-off, not tracked)
 # ========================================
 apps/backend-rag/backend/scripts/add_*.py
