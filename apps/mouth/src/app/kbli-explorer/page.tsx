@@ -218,17 +218,7 @@ export default function KBLIExplorerPage() {
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-search on typing (debounce)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (query.length > 2) {
-        handleSearch();
-      } else {
-        setSearchResults([]);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [query]);
+  // Auto-search disabled: chat handles search via /chat endpoint
 
   // Scroll to bottom of chat
   useEffect(() => {
