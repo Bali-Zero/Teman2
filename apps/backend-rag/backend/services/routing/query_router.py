@@ -30,9 +30,10 @@ from .routing_stats import RoutingStatsService
 
 logger = logging.getLogger(__name__)
 
-# Phase 2/3: Extended collection support (5 → 15 collections with Oracle + expanded KBLI/Legal/Tax + Team)
+# Phase 2/3: Extended collection support (5 → 16 collections with Oracle + expanded KBLI/Legal/Tax + Team + Circulars)
 CollectionName = Literal[
     "visa_oracle",
+    "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
     "kbli_eye",
     "kbli_comprehensive",
     "tax_genius",
@@ -458,7 +459,8 @@ class QueryRouter:
     # Define fallback priority for each primary collection
     # Format: primary_collection -> [fallback1, fallback2, fallback3]
     FALLBACK_CHAINS = {
-        "visa_oracle": ["legal_architect", "tax_genius", "property_knowledge"],
+        "visa_oracle": ["immigration_circulars", "legal_architect", "tax_genius"],  # Circulars first for TKA/policy queries
+        "immigration_circulars": ["visa_oracle", "legal_architect"],  # Circulars fallback to main visa
         "kbli_eye": ["legal_architect", "tax_genius", "visa_oracle"],
         "kbli_comprehensive": ["kbli_eye", "legal_architect", "tax_genius"],
         "tax_genius": [

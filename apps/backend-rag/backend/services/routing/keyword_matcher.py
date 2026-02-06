@@ -25,6 +25,20 @@ VISA_KEYWORDS = [
     "residence",
     "immigration office",
     "dirjen imigrasi",
+    # Kemnaker/TKA circulars keywords (SE 3/836/2026)
+    "alih status",
+    "kesamaan sponsor",
+    "one sponsor",
+    "offshore scheme",
+    "tka",
+    "tenaga kerja asing",
+    "rptka",
+    "itk",
+    "izin tinggal keimigrasian",
+    "siapkerja",
+    "wlkp",
+    "kemnaker",
+    "surat edaran",
 ]
 
 KBLI_KEYWORDS = [
