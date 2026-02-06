@@ -37,7 +37,7 @@ class WhatsAppService:
 
     @property
     def api_url(self) -> str:
-        return f"https://graph.facebook.com/v18.0/{self.phone_number_id}"
+        return f"https://graph.facebook.com/v22.0/{self.phone_number_id}"
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:

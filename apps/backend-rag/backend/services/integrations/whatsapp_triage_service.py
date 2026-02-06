@@ -219,16 +219,16 @@ class WhatsAppTriageService:
         greeting = f"Ciao {sender_name}!" if sender_name else "Ciao!"
 
         if decision == TriageDecision.ESCALATE_PERSONAL:
-            return f"{greeting} Ti passo subito Zero 👋"
+            return f"{greeting} Un attimo, ti richiamo 👋"
 
         elif decision == TriageDecision.ESCALATE_REQUEST:
-            return "Perfetto! Chiamo Zero per te 📞"
+            return "Un momento, ti rispondo a breve 📞"
 
         elif decision == TriageDecision.ESCALATE_CONTEXT:
-            return f"{greeting} Lascio rispondere Zero personalmente!"
+            return f"{greeting} Dammi un secondo!"
 
         else:
-            return "Un momento, lascio rispondere Zero..."
+            return "Un attimo..."
 
     def get_welcome_message(self, sender_name: str | None = None) -> str:
         """
@@ -243,18 +243,9 @@ class WhatsAppTriageService:
 
         greeting = f"Ciao {sender_name}!" if sender_name else "Ciao!"
 
-        return f"""{greeting} Sono Zantara, l'assistente AI di Zero.
+        return f"""{greeting} 😎
 
-Posso aiutarti immediatamente con:
-• Visti Indonesia (KITAS, KITAP, VOA, B211)
-• PT PMA e creazione società
-• Tasse e compliance fiscale
-• Permessi di lavoro (IMTA)
-• Prezzi e procedure Bali Zero
-
-Oppure se preferisci, ti passo Zero personalmente!
-
-Qual è la tua domanda? 🙂"""
+Dimmi, come posso aiutarti? Visa, KITAS, company setup — whatever you need!"""
 
 
 # Singleton instance
