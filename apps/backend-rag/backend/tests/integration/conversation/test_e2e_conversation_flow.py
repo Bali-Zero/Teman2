@@ -29,11 +29,21 @@ from backend.services.misc.conversation_service import ConversationService
 @pytest.fixture
 def mock_db_pool():
     """Mock PostgreSQL connection pool"""
-    pool = AsyncMock()
+    pool = MagicMock()
     conn = AsyncMock()
     
-    # Mock acquire context manager correctly
-    pool.acquire.return_value.__aenter__.return_value = conn
+    # Mock acquire() to be a standard function returning an async context manager
+    @contextmanager
+    def mock_acquire_sync():
+        yield conn
+        
+    async def mock_acquire_async():
+        class AsyncCM:
+            async def __aenter__(self): return conn
+            async def __aexit__(self, *args): pass
+        return AsyncCM()
+        
+    pool.acquire = mock_acquire_async
     return pool
 
 
