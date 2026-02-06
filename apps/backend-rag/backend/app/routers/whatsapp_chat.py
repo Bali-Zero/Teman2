@@ -19,17 +19,12 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.app.dependencies import get_database, get_orchestrator
-from backend.services.integrations.messaging_identity_service import (
-    get_messaging_identity_service,
-)
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.integrations.whatsapp_service import whatsapp_service
 from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
     whatsapp_triage_service,
 )
-from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -189,177 +184,48 @@ async def process_whatsapp_message(
             logger.info(f"Welcome message sent to {phone}")
             return
 
-        # 4. AI CAN HANDLE - Process with RAG
-        orchestrator: AgenticRAGOrchestrator = get_orchestrator(request)
+        # 4. AI CAN HANDLE — Direct Claude (Zero persona)
+        from backend.llm.providers.anthropic_direct import anthropic_provider
+        from backend.prompts.zantara_persona import SYSTEM_INSTRUCTION
 
-        # Get database pool for identity lookup
-        db_pool = get_database(request)
-        identity_service = get_messaging_identity_service(db_pool)
+        logger.info(f"🚀 Processing query from {phone} with Claude Direct")
 
-        # Check if phone is mapped to a user (team member or portal client)
-        mapping = await identity_service.get_user_by_phone(phone)
-
-        if mapping:
-            # Use user ID for unified cross-channel conversation
-            whatsapp_user_id = str(mapping["user_id"])
-            session_id = f"unified_session_{whatsapp_user_id}"
-
-            # Update last message timestamp
-            await identity_service.update_last_message(phone=phone)
-
-            logger.info(
-                f"🔗 Phone {phone} mapped to user {whatsapp_user_id} "
-                f"(verified: {mapping['verified']})"
-            )
-        else:
-            # Fallback: channel-specific user_id (original behavior)
-            whatsapp_user_id = f"whatsapp_{phone}"
-            session_id = f"whatsapp_session_{phone}"
-            logger.info(f"📱 Phone {phone} NOT mapped, using channel-specific ID")
-
-        logger.info(
-            f"🚀 [FASE 2.1] Processing business query from {phone} with RAG and status updates",
-            extra={
-                "phone": phone,
-                "session_id": session_id,
-                "user_id": whatsapp_user_id,
-                "message_length": len(message_text),
-                "feature": "whatsapp_status_updates",
-            },
-        )
-
-        # Stream query with status updates and timeout (WhatsApp doesn't support message editing)
-        accumulated_text = ""
         start_time = time.time()
-        last_status_time = time.time()
-        status_update_interval = 10.0  # Send status update every 10 seconds
-        current_phase = None
-        phases_seen = set()
-        status_updates_sent = 0
-
-        # Phase emoji mapping
-        phase_emoji = {
-            "processing": "🔍",
-            "searching": "📚",
-            "analyzing": "🧠",
-            "thinking": "💭",
-            "reasoning": "🤔",
-            "generating": "✍️",
-        }
 
         try:
-            # Wrap streaming in 45-second timeout
-            async with asyncio.timeout(45):
-                async for event in orchestrator.stream_query(
-                    query=message_text,
-                    user_id=whatsapp_user_id,
-                    session_id=session_id,
-                ):
-                    event_type = event.get("type")
+            response_text = await anthropic_provider.generate(
+                system_prompt=SYSTEM_INSTRUCTION,
+                messages=[{"role": "user", "content": message_text}],
+                temperature=0.7,
+                max_tokens=512,
+            )
 
-                    # Track status/phase changes
-                    if event_type == "status":
-                        status_data = event.get("data", {})
-                        if isinstance(status_data, dict):
-                            new_phase = status_data.get("status")
-                            if new_phase and new_phase != current_phase:
-                                current_phase = new_phase
-                                phases_seen.add(new_phase)
+            if not response_text:
+                response_text = "Scusa, qualcosa è andato storto 😅 Riprova!"
 
-                    # Accumulate text tokens
-                    if event_type == "token":
-                        accumulated_text += event.get("data", "")
+            # Split into chunks if too long
+            chunks = whatsapp_service.chunk_message(response_text, max_length=4000)
 
-                    # Send periodic status updates (every 10 seconds)
-                    current_time = time.time()
-                    if (
-                        current_phase
-                        and (current_time - last_status_time) >= status_update_interval
-                    ):
-                        # Only send if we haven't sent this phase before
-                        emoji = phase_emoji.get(current_phase, "⏳")
-                        status_msg = f"{emoji} {current_phase.replace('_', ' ').title()}..."
+            for i, chunk in enumerate(chunks):
+                await whatsapp_service.send_message(
+                    phone=phone,
+                    text=chunk,
+                    reply_to_message_id=message_id if i == 0 else None,
+                )
+                if i < len(chunks) - 1:
+                    await asyncio.sleep(0.5)
 
-                        try:
-                            await whatsapp_service.send_message(
-                                phone=phone,
-                                text=status_msg,
-                                reply_to_message_id=message_id,
-                            )
-                            status_updates_sent += 1
-                            elapsed = current_time - start_time
-                            logger.info(
-                                f"✅ [FASE 2.1] WhatsApp status update #{status_updates_sent} sent: {status_msg}",
-                                extra={
-                                    "phone": phone,
-                                    "phase": current_phase,
-                                    "elapsed_seconds": round(elapsed, 1),
-                                    "update_number": status_updates_sent,
-                                },
-                            )
-                        except Exception as status_error:
-                            logger.warning(
-                                f"❌ [FASE 2.1] Failed status update to {phone}: {status_error}",
-                                extra={"phone": phone, "phase": current_phase},
-                            )
-
-                        last_status_time = current_time
+            total_duration = time.time() - start_time
+            logger.info(
+                f"✅ Zero responded to {phone} in {total_duration:.1f}s ({len(response_text)} chars)"
+            )
 
         except asyncio.TimeoutError:
-            # Send timeout message to user
-            timeout_duration = time.time() - start_time
-            logger.warning(
-                f"⏱️ [FASE 2.2] WhatsApp query TIMEOUT after {timeout_duration:.1f}s from {phone}",
-                extra={
-                    "phone": phone,
-                    "timeout_seconds": 45,
-                    "actual_elapsed": round(timeout_duration, 1),
-                    "status_updates_sent": status_updates_sent,
-                    "phases_seen": list(phases_seen),
-                    "feature": "whatsapp_timeout_handling",
-                },
-            )
             await whatsapp_service.send_message(
                 phone=phone,
                 text="Un attimo, ci sto mettendo troppo 😅 Riprova tra poco!",
                 reply_to_message_id=message_id,
             )
-            return
-
-        # Send final accumulated response
-        if not accumulated_text:
-            accumulated_text = (
-                "Scusa, qualcosa è andato storto 😅 Riprova!"
-            )
-
-        # Split into chunks if too long (WhatsApp limit: 4096 chars)
-        chunks = whatsapp_service.chunk_message(accumulated_text, max_length=4000)
-
-        for i, chunk in enumerate(chunks):
-            await whatsapp_service.send_message(
-                phone=phone,
-                text=chunk,
-                reply_to_message_id=message_id if i == 0 else None,
-            )
-
-            # Small delay between chunks to avoid rate limiting
-            if i < len(chunks) - 1:
-                await asyncio.sleep(0.5)
-
-        total_duration = time.time() - start_time
-        logger.info(
-            f"✅ [FASE 2] WhatsApp RAG response completed for {phone}",
-            extra={
-                "phone": phone,
-                "total_duration_seconds": round(total_duration, 2),
-                "chunks_sent": len(chunks),
-                "response_chars": len(accumulated_text),
-                "status_updates_sent": status_updates_sent,
-                "phases_count": len(phases_seen),
-                "timed_out": False,
-                "feature": "whatsapp_complete",
-            },
-        )
 
     except Exception as e:
         logger.error(f"Error processing WhatsApp message from {phone}: {e}")
