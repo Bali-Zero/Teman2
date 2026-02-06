@@ -358,8 +358,8 @@ class KGEnhancedRetrieval:
                 "Paid-up capital: minimum 25%",
                 "Foreign ownership limits apply per sector",
             ],
-            estimated_timeline_months=2.0,
-            estimated_cost_range_usd=(3000, 8000),
+            estimated_timeline_months=0.5,  # Starting from 2 weeks
+            estimated_cost_range_usd=None,  # Usare PricingTool per prezzi reali
         ),
         "kitas_work": GoldenRoute(
             route_id="kitas_work",
@@ -377,8 +377,8 @@ class KGEnhancedRetrieval:
                 "Position must be on approved list",
                 "Valid passport with 18+ months validity",
             ],
-            estimated_timeline_months=1.5,
-            estimated_cost_range_usd=(1500, 3500),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "nib_oss": GoldenRoute(
             route_id="nib_oss",
@@ -397,8 +397,8 @@ class KGEnhancedRetrieval:
                 "Valid NPWP required",
                 "Correct KBLI codes selection",
             ],
-            estimated_timeline_months=0.25,
-            estimated_cost_range_usd=(0, 500),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         # === Business scenario routes ===
         "restaurant_foreigner": GoldenRoute(
@@ -424,8 +424,8 @@ class KGEnhancedRetrieval:
                 "Must hire Indonesian staff (minimum ratio applies)",
                 "Halal certification recommended but not mandatory for non-halal restaurants",
             ],
-            estimated_timeline_months=3.0,
-            estimated_cost_range_usd=(5000, 15000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "import_export_business": GoldenRoute(
             route_id="import_export_business",
@@ -450,8 +450,8 @@ class KGEnhancedRetrieval:
                 "Export of natural resources may require downstream processing",
                 "Minimum capital IDR 10 billion for PT PMA",
             ],
-            estimated_timeline_months=3.5,
-            estimated_cost_range_usd=(5000, 20000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "tech_company_digital": GoldenRoute(
             route_id="tech_company_digital",
@@ -476,8 +476,8 @@ class KGEnhancedRetrieval:
                 "Digital tax (PPN PMSE) applies to digital services",
                 "KBLI 62011-62019 are low-to-medium risk (faster licensing)",
             ],
-            estimated_timeline_months=2.5,
-            estimated_cost_range_usd=(3000, 10000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "investor_kitas_retirement": GoldenRoute(
             route_id="investor_kitas_retirement",
@@ -502,8 +502,8 @@ class KGEnhancedRetrieval:
                 "Must report to immigration every 90 days (STM)",
                 "Cannot work on Retirement KITAS - investment only",
             ],
-            estimated_timeline_months=1.5,
-            estimated_cost_range_usd=(1500, 5000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "hire_foreign_worker": GoldenRoute(
             route_id="hire_foreign_worker",
@@ -529,8 +529,8 @@ class KGEnhancedRetrieval:
                 "RPTKA valid for max 5 years, renewable",
                 "Foreign worker must have relevant qualifications/experience",
             ],
-            estimated_timeline_months=2.0,
-            estimated_cost_range_usd=(2000, 5000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         # === Real Estate / Property routes ===
         "villa_rental_business": GoldenRoute(
@@ -560,8 +560,8 @@ class KGEnhancedRetrieval:
                 "Building must comply with local zoning (tata ruang) - check green/yellow zone",
                 "Bali specific: Perda Desa Adat may apply (village customary rules)",
             ],
-            estimated_timeline_months=3.5,
-            estimated_cost_range_usd=(5000, 20000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "hotel_business": GoldenRoute(
             route_id="hotel_business",
@@ -592,8 +592,8 @@ class KGEnhancedRetrieval:
                 "Pajak Hotel 10% + PPh final on rental income",
                 "Fire safety certificate (Sertifikat Keselamatan Kebakaran) required",
             ],
-            estimated_timeline_months=6.0,
-            estimated_cost_range_usd=(15000, 50000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "real_estate_developer": GoldenRoute(
             route_id="real_estate_developer",
@@ -622,8 +622,8 @@ class KGEnhancedRetrieval:
                 "PPh Final 2.5% on property sale, BPHTB 5% on acquisition",
                 "Negative Investment List may restrict certain residential development for PMA",
             ],
-            estimated_timeline_months=6.0,
-            estimated_cost_range_usd=(20000, 100000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "property_management": GoldenRoute(
             route_id="property_management",
@@ -651,8 +651,8 @@ class KGEnhancedRetrieval:
                 "Lower capital requirement than real estate development",
                 "Consider partnership with local notaris for property agreements",
             ],
-            estimated_timeline_months=2.5,
-            estimated_cost_range_usd=(3000, 10000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
         "buy_property_foreigner": GoldenRoute(
             route_id="buy_property_foreigner",
@@ -681,8 +681,8 @@ class KGEnhancedRetrieval:
                 "Only one residential property per foreigner (Hak Pakai personal)",
                 "Must not be in abandoned state for > 3 years (risk of revocation)",
             ],
-            estimated_timeline_months=2.0,
-            estimated_cost_range_usd=(3000, 15000),
+            estimated_timeline_months=None,
+            estimated_cost_range_usd=None,
         ),
     }
 
@@ -867,7 +867,11 @@ class KGEnhancedRetrieval:
                 lines.append(f"  ⚠️ {cond}")
 
         if route.estimated_timeline_months:
-            lines.append(f"\nEstimated Timeline: ~{route.estimated_timeline_months} months")
+            weeks = route.estimated_timeline_months * 4
+            if weeks <= 4:
+                lines.append(f"\nEstimated Timeline: from {weeks:.0f} week(s)")
+            else:
+                lines.append(f"\nEstimated Timeline: from {route.estimated_timeline_months:.1f} months")
 
         if route.estimated_cost_range_usd:
             low, high = route.estimated_cost_range_usd

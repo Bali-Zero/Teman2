@@ -188,6 +188,7 @@ class HttpTimeoutConstants:
     ZOHO_EMAIL_LONG_TIMEOUT = 120.0  # Zoho email bulk operations
     TELEGRAM_TIMEOUT = 30.0  # Telegram bot API
     AUDIO_TTS_TIMEOUT = 10.0  # Text-to-speech service
+    EXTERNAL_API_TIMEOUT = 30.0  # External API calls (WhatsApp, etc.)
     AUDIO_TTS_FALLBACK_TIMEOUT = 5.0  # TTS fallback timeout
     IMAGE_GENERATION_TIMEOUT = 60.0  # Image generation services
     WEB_SEARCH_TIMEOUT = 15.0  # Web search operations
