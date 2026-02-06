@@ -21,9 +21,20 @@ import {
   ShoppingCart,
   Briefcase,
   ArrowRight,
+  Copy,
+  Columns,
+  Trash2,
+  Check,
 } from 'lucide-react';
 import { kbliApi, KBLIDetail, KBLISearchResult } from '@/lib/api/kbli.api';
 import { toast } from 'sonner';
+import { useSessionStorage } from '@/lib/hooks/optimized/useLocalStorage';
+import KBLIInspector, { getPmaBadge, getRiskBadge, getRiskLevel } from './components/KBLIInspector';
+import ThinkingIndicator from './components/ThinkingIndicator';
+import MatchScoreRing from './components/MatchScoreRing';
+import RiskGauge from './components/RiskGauge';
+import ComparisonModal from './components/ComparisonModal';
+import { useTypewriter } from './hooks/useTypewriter';
 
 // =============================================================================
 // CONSTANTS & HELPERS
@@ -59,32 +70,6 @@ const GLOSSARY: Record<string, string> = {
   TERTUTUP: 'Closed — not available for foreign investment',
 };
 
-function getPmaBadge(status: string): { label: string; className: string } {
-  const s = (status || '').toUpperCase();
-  if (s === 'TERBUKA')
-    return { label: 'Open to Foreign Investment', className: 'badge badge-success' };
-  if (s === 'TERBATAS')
-    return { label: 'Restricted - Conditions Apply', className: 'badge badge-warning' };
-  if (s === 'TERTUTUP')
-    return { label: 'Closed to Foreign Investment', className: 'badge badge-error' };
-  return { label: 'Status Unknown', className: 'badge badge-neutral' };
-}
-
-function getRiskBadge(risk: string): { label: string; className: string } {
-  const r = (risk || '').toLowerCase();
-  if (r.includes('tinggi') && r.includes('menengah'))
-    return { label: 'Medium-High Risk', className: 'badge badge-warning' };
-  if (r.includes('tinggi') || r === 'high')
-    return { label: 'High Risk', className: 'badge badge-error' };
-  if (r.includes('menengah') && r.includes('rendah'))
-    return { label: 'Medium-Low Risk', className: 'badge badge-cyan' };
-  if (r.includes('menengah') || r === 'medium')
-    return { label: 'Medium Risk', className: 'badge badge-warning' };
-  if (r.includes('rendah') || r === 'low')
-    return { label: 'Low Risk', className: 'badge badge-info' };
-  return { label: risk || 'Unknown', className: 'badge badge-neutral' };
-}
-
 function getPmaBadgeInline(status: string): { label: string; color: string; bg: string; border: string } {
   const s = (status || '').toUpperCase();
   if (s === 'TERBUKA')
@@ -97,40 +82,79 @@ function getPmaBadgeInline(status: string): { label: string; color: string; bg: 
 }
 
 // =============================================================================
-// TOOLTIP COMPONENT (Fase 5)
+// TOOLTIP COMPONENT (Accessible — 3B)
 // =============================================================================
 
-const InfoTooltip = ({ term, explanation }: { term: string; explanation: string }) => (
-  <span className="relative group cursor-help border-b border-dashed border-[#D4B483]/40">
-    {term}
-    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#1A1D24] border border-white/10 rounded text-xs text-[#CCC] w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-xl">
-      {explanation}
+const InfoTooltip = ({ term, explanation }: { term: string; explanation: string }) => {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [above, setAbove] = useState(true);
+
+  const show = () => {
+    // Smart positioning: check if there's room above
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setAbove(rect.top > 120);
+    }
+    setVisible(true);
+  };
+  const hide = () => setVisible(false);
+  const toggle = () => (visible ? hide() : show());
+
+  return (
+    <span
+      ref={ref}
+      className="relative group cursor-help border-b border-dashed border-[#D4B483]/40"
+      tabIndex={0}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+      onClick={toggle}
+      role="button"
+      aria-expanded={visible}
+    >
+      {term}
+      <AnimatePresence>
+        {visible && (
+          <motion.span
+            initial={{ opacity: 0, y: above ? 4 : -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-[#1A1D24] border border-white/10 rounded text-xs text-[#CCC] w-52 z-50 text-center shadow-xl pointer-events-none ${
+              above ? 'bottom-full mb-2' : 'top-full mt-2'
+            }`}
+          >
+            {explanation}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </span>
-  </span>
-);
+  );
+};
 
 function renderWithTooltips(text: string): React.ReactNode {
-  const usedTerms = new Set<string>();
   const parts: (string | React.ReactElement)[] = [text];
 
+  // All occurrences — no "first only" limit (3B)
   for (const [term, explanation] of Object.entries(GLOSSARY)) {
-    if (usedTerms.has(term)) continue;
-    const regex = new RegExp(`\\b${term}\\b`, 'i');
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       if (typeof part !== 'string') continue;
       const match = regex.exec(part);
       if (match) {
-        usedTerms.add(term);
         const before = part.slice(0, match.index);
         const matched = match[0];
         const after = part.slice(match.index + matched.length);
         const replacement: (string | React.ReactElement)[] = [];
         if (before) replacement.push(before);
-        replacement.push(<InfoTooltip key={`tt-${term}`} term={matched} explanation={explanation} />);
+        replacement.push(<InfoTooltip key={`tt-${term}-${i}-${match.index}`} term={matched} explanation={explanation} />);
         if (after) replacement.push(after);
         parts.splice(i, 1, ...replacement);
-        break;
+        // Continue scanning rest of string (don't break)
+        regex.lastIndex = 0;
       }
     }
   }
@@ -182,173 +206,7 @@ const ChatMessage = ({ role, content }: { role: 'user' | 'ai'; content: React.Re
 );
 
 // =============================================================================
-// INSPECTOR (Fase 2 labels)
-// =============================================================================
-
-const KBLIInspector = ({
-  data,
-  isLoading,
-  onClose,
-}: {
-  data: KBLIDetail | null;
-  isLoading: boolean;
-  onClose?: () => void;
-}) => {
-  if (isLoading) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
-        <Loader2 size={32} className="animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-widest opacity-50">Loading details...</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
-        <Search size={48} className="mb-6 opacity-20 stroke-1" />
-        <p className="text-sm font-medium text-[#666] mb-2">Click on any result to see full details</p>
-        <p className="text-xs text-[#444]">
-          Licenses, restrictions, risk level and related business codes will appear here
-        </p>
-      </div>
-    );
-  }
-
-  const pmaBadge = getPmaBadge(data.pma_status);
-  const riskBadge = getRiskBadge(data.risk_profile);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="h-full flex flex-col"
-    >
-      {/* Mobile close button */}
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-[#1A1D24] text-[#888]"
-        >
-          <X size={18} />
-        </button>
-      )}
-      {/* Drag handle for mobile */}
-      {onClose && (
-        <div className="md:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
-      )}
-
-      <div className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-b from-[#0F1115] to-[#050507]">
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-[#D4B483]/10 text-[#D4B483] border border-[#D4B483]/20">
-            KBLI {data.code}
-          </span>
-          <span className={pmaBadge.className}>{pmaBadge.label}</span>
-        </div>
-        <h2 className="text-2xl md:text-3xl font-serif text-[#F0F0F0] leading-tight mb-6">{data.title}</h2>
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center text-[11px] md:text-[10px] uppercase tracking-widest text-[#666]">
-            <span className={riskBadge.className}>{riskBadge.label}</span>
-            <span className="text-[#D4B483]">{data.licensing_status}</span>
-          </div>
-          <div className="h-[2px] w-full bg-[#1A1D24] relative">
-            <div
-              className="absolute top-0 left-0 h-full bg-[#D4B483] shadow-[0_0_10px_rgba(212,180,131,0.3)] transition-all duration-1000"
-              style={{
-                width: data.risk_profile.toLowerCase().includes('tinggi')
-                  ? '90%'
-                  : data.risk_profile.toLowerCase().includes('menengah')
-                    ? '50%'
-                    : '20%',
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar">
-        <section>
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
-            <FileText size={12} /> Official Description
-          </h3>
-          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-[#D4B483]/30 pl-5 italic">
-            &ldquo;{data.description}&rdquo;
-          </p>
-        </section>
-
-        {data.licenses.length > 0 && (
-          <section>
-            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
-              <Scale size={12} /> Required Licenses
-            </h3>
-            <div className="space-y-4">
-              {data.licenses.map((lic, idx) => (
-                <div
-                  key={idx}
-                  className="group p-4 bg-[#0A0C10] rounded border border-white/5 hover:border-[#D4B483]/20 transition-all"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm font-medium text-[#E1E1E3] group-hover:text-white transition-colors">
-                      {lic.type}
-                    </span>
-                    <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
-                      {lic.sla}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 text-xs text-[#666]">
-                    <span>
-                      Business Size: <span className="text-[#999]">{lic.scale.join(', ')}</span>
-                    </span>
-                    <span>
-                      Risk Level: <span className="text-[#999]">{lic.risk_level}</span>
-                    </span>
-                  </div>
-                  {lic.requirements.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/5">
-                      <p className="text-[10px] text-[#444] uppercase mb-2">What you need to do:</p>
-                      <ul className="space-y-1">
-                        {lic.requirements.slice(0, 3).map((req, ridx) => (
-                          <li key={ridx} className="text-[11px] text-[#888] leading-tight">
-                            &bull; {req}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
-            <Activity size={12} /> Related Business Codes
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            <div className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#D4B483] border border-[#D4B483]/20">
-              Sector: {data.sector}
-            </div>
-            {data.related_codes.map((rel, idx) => (
-              <div
-                key={idx}
-                className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#888] border border-white/5 hover:border-[#D4B483]/30 hover:text-[#D4B483] cursor-pointer transition-all"
-              >
-                {rel}
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-    </motion.div>
-  );
-};
-
-// =============================================================================
-// WELCOME COMPONENT (Fase 1)
+// WELCOME COMPONENT
 // =============================================================================
 
 const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => void }) => (
@@ -365,7 +223,6 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
       Describe your idea in any language and we&apos;ll find the right codes, licenses and requirements.
     </p>
 
-    {/* Starter Chips */}
     <div className="grid grid-cols-2 gap-3 mb-10 md:mb-12">
       {STARTER_CHIPS.map((chip) => {
         const Icon = chip.icon;
@@ -386,7 +243,6 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
       })}
     </div>
 
-    {/* How it works */}
     <div className="border-t border-white/5 pt-8 md:pt-10">
       <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-6">
         How it works
@@ -410,6 +266,473 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
 );
 
 // =============================================================================
+// AI MESSAGE WITH TYPEWRITER (2A + 3C + 1B integrated)
+// =============================================================================
+
+type MessageData = {
+  role: 'user' | 'ai';
+  content: string;
+  detected_kbli?: string[];
+  results?: KBLISearchResult[];
+  suggested_queries?: string[];
+};
+
+const AIMessageContent = ({
+  msg,
+  isLatest,
+  handleInspect,
+  handleSendMessage,
+  compareMode,
+  compareSelection,
+  onToggleCompare,
+}: {
+  msg: MessageData;
+  isLatest: boolean;
+  handleInspect: (code: string) => void;
+  handleSendMessage: (text: string) => void;
+  compareMode: boolean;
+  compareSelection: string[];
+  onToggleCompare: (code: string) => void;
+}) => {
+  const { displayText, isTyping, skip } = useTypewriter(
+    msg.content,
+    isLatest ? 15 : 0, // Only typewrite the latest message
+  );
+
+  // Show full content if not latest (already typed)
+  const textToRender = isLatest ? displayText : msg.content;
+  const showExtras = !isTyping || !isLatest;
+
+  // Risk sorting helper for licenses in results
+  const sortByRisk = (results: KBLISearchResult[]) => results;
+
+  return (
+    <div className="space-y-6 text-[#BBB]">
+      {/* Text with typewriter + cursor */}
+      <div className="whitespace-pre-line" onClick={isTyping ? skip : undefined}>
+        {isTyping ? (
+          <>
+            {textToRender}
+            <span className="inline-block w-[2px] h-[1em] bg-[#D4B483] ml-0.5 animate-pulse" />
+          </>
+        ) : (
+          renderWithTooltips(msg.content)
+        )}
+      </div>
+
+      {/* Skip button */}
+      {isTyping && isLatest && (
+        <button
+          onClick={skip}
+          className="text-[10px] uppercase tracking-widest text-[#555] hover:text-[#D4B483] transition-colors"
+        >
+          Skip &rarr;
+        </button>
+      )}
+
+      {/* Result cards — stagger in after typing */}
+      <AnimatePresence>
+        {showExtras && msg.results && msg.results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-3 mt-4"
+          >
+            {sortByRisk(msg.results).map((result: KBLISearchResult, rIdx: number) => {
+              const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
+              const isSelected = compareSelection.includes(result.code);
+              return (
+                <motion.div
+                  key={result.code}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: rIdx * 0.08 }}
+                >
+                  <button
+                    onClick={() => {
+                      if (compareMode) {
+                        onToggleCompare(result.code);
+                      } else {
+                        handleInspect(result.code);
+                      }
+                    }}
+                    className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border transition-all duration-200 ${
+                      isSelected
+                        ? 'border-[#D4B483] bg-[#D4B483]/5'
+                        : 'border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        {compareMode && (
+                          <div
+                            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                              isSelected
+                                ? 'bg-[#D4B483] border-[#D4B483]'
+                                : 'border-white/20'
+                            }`}
+                          >
+                            {isSelected && <Check size={10} className="text-[#050507]" />}
+                          </div>
+                        )}
+                        <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
+                          {result.code}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {pmaBadgeInline.label && (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full border"
+                            style={{
+                              color: pmaBadgeInline.color,
+                              backgroundColor: pmaBadgeInline.bg,
+                              borderColor: pmaBadgeInline.border,
+                            }}
+                          >
+                            {pmaBadgeInline.label}
+                          </span>
+                        )}
+                        <MatchScoreRing score={Math.round(result.score * 100)} />
+                      </div>
+                    </div>
+                    <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
+                      {result.title}
+                    </h4>
+                    <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
+                      {result.description}
+                    </p>
+                    {!compareMode && (
+                      <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
+                        <span>View details</span>
+                        <ChevronRight size={10} />
+                      </div>
+                    )}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Detected KBLI codes (when no full results) */}
+      <AnimatePresence>
+        {showExtras &&
+          (!msg.results || msg.results.length === 0) &&
+          msg.detected_kbli &&
+          msg.detected_kbli.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-wrap gap-2 mt-4"
+            >
+              {msg.detected_kbli.map((code: string) => (
+                <button
+                  key={code}
+                  onClick={() => handleInspect(code)}
+                  className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
+                >
+                  <span className="font-mono text-[#D4B483] text-xs">KBLI {code}</span>
+                  <ChevronRight size={12} className="text-[#555] group-hover:text-[#D4B483]" />
+                </button>
+              ))}
+            </motion.div>
+          )}
+      </AnimatePresence>
+
+      {/* Suggested follow-up queries */}
+      <AnimatePresence>
+        {showExtras && msg.suggested_queries && msg.suggested_queries.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5"
+          >
+            {msg.suggested_queries.map((sq: string, sqIdx: number) => (
+              <button
+                key={sqIdx}
+                onClick={() => handleSendMessage(sq)}
+                className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-[#D4B483] bg-[#D4B483]/5 border border-[#D4B483]/20 hover:bg-[#D4B483]/10 hover:border-[#D4B483]/40 transition-all"
+              >
+                <ArrowRight size={10} className="opacity-60 group-hover:opacity-100" />
+                <span>{sq}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// =============================================================================
+// INSPECTOR WITH CHOREOGRAPHY (1C + 2B + 2C + 3C)
+// =============================================================================
+
+const InspectorChoreographed = ({
+  data,
+  isLoading,
+  onClose,
+  onInspect,
+}: {
+  data: KBLIDetail | null;
+  isLoading: boolean;
+  onClose?: () => void;
+  onInspect?: (code: string) => void;
+}) => {
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
+        <Loader2 size={32} className="animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-widest opacity-50">Loading details...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
+        <Search size={48} className="mb-6 opacity-20 stroke-1" />
+        <p className="text-sm font-medium text-[#666] mb-2">Click on any result to see full details</p>
+        <p className="text-xs text-[#444]">
+          Licenses, restrictions, risk level and related business codes will appear here
+        </p>
+      </div>
+    );
+  }
+
+  const pmaBadge = getPmaBadge(data.pma_status);
+  const riskLevel = getRiskLevel(data.risk_profile);
+
+  // Copy/Export (2C)
+  const handleCopy = () => {
+    const licList = data.licenses.map((l) => l.type).join(', ') || 'None';
+    const text = `KBLI ${data.code} — ${data.title} | PMA: ${pmaBadge.label} | Risk: ${getRiskBadge(data.risk_profile).label} | Licenses: ${licList} | Sector: ${data.sector}`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('Copied to clipboard');
+    });
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}${window.location.pathname}?inspect=${data.code}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success('Link copied');
+    });
+  };
+
+  // Sort licenses by risk (3C) — highest risk first
+  const riskOrder: Record<string, number> = { tinggi: 3, menengah: 2, rendah: 1 };
+  const sortedLicenses = [...data.licenses].sort((a, b) => {
+    const aRisk = Object.entries(riskOrder).find(([k]) => a.risk_level.toLowerCase().includes(k))?.[1] || 0;
+    const bRisk = Object.entries(riskOrder).find(([k]) => b.risk_level.toLowerCase().includes(k))?.[1] || 0;
+    return bRisk - aRisk;
+  });
+
+  // Stagger variants
+  const container = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  };
+  const item = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 },
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="h-full flex flex-col"
+    >
+      {/* Mobile close button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-[#1A1D24] text-[#888]"
+        >
+          <X size={18} />
+        </button>
+      )}
+      {onClose && (
+        <div className="md:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+      )}
+
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-b from-[#0F1115] to-[#050507]"
+      >
+        {/* Header with copy/share buttons (2C) */}
+        <div className="flex items-center justify-between mb-4">
+          <motion.div variants={item} className="flex items-center gap-2 flex-wrap">
+            <motion.span
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-[#D4B483]/10 text-[#D4B483] border border-[#D4B483]/20"
+            >
+              KBLI {data.code}
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className={pmaBadge.className}
+            >
+              {pmaBadge.label}
+            </motion.span>
+          </motion.div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-[#D4B483] transition-colors"
+              title="Copy details"
+            >
+              <Copy size={14} />
+            </button>
+          </div>
+        </div>
+        <motion.h2
+          variants={item}
+          className="text-2xl md:text-3xl font-serif text-[#F0F0F0] leading-tight mb-6"
+        >
+          {data.title}
+        </motion.h2>
+
+        {/* Risk Gauge (2B) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex items-center justify-between"
+        >
+          <RiskGauge level={riskLevel} />
+          <span className="text-[10px] uppercase tracking-widest text-[#D4B483]">
+            {data.licensing_status}
+          </span>
+        </motion.div>
+      </motion.div>
+
+      <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar">
+        {/* Description (1C stagger) */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <FileText size={12} /> Official Description
+          </h3>
+          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-[#D4B483]/30 pl-5 italic">
+            &ldquo;{data.description}&rdquo;
+          </p>
+        </motion.section>
+
+        {/* Licenses with visual hierarchy (3C) */}
+        {sortedLicenses.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+              <Scale size={12} /> Required Licenses
+            </h3>
+            <div className="relative">
+              {/* Vertical connecting line */}
+              {sortedLicenses.length > 1 && (
+                <div className="absolute left-[11px] top-6 bottom-6 w-px bg-white/5" />
+              )}
+              <div className="space-y-4">
+                {sortedLicenses.map((lic, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + idx * 0.08 }}
+                    className="flex gap-3"
+                  >
+                    {/* Step number */}
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#0F1115] border border-white/10 text-[10px] text-[#666] flex items-center justify-center font-mono z-10">
+                      {idx + 1}
+                    </div>
+                    <div
+                      className={`group flex-1 p-4 bg-[#0A0C10] rounded hover:border-[#D4B483]/20 transition-all ${
+                        idx === 0
+                          ? 'border-l-[3px] border border-[#D4B483]/30 border-l-[#D4B483]'
+                          : 'border-l-2 border border-white/5 border-l-white/10'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? 'text-sm' : 'text-xs'}`}>
+                          {lic.type}
+                        </span>
+                        <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
+                          {lic.sla}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1 text-xs text-[#666]">
+                        <span>
+                          Business Size: <span className="text-[#999]">{lic.scale.join(', ')}</span>
+                        </span>
+                        <span>
+                          Risk Level: <span className="text-[#999]">{lic.risk_level}</span>
+                        </span>
+                      </div>
+                      {lic.requirements.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/5">
+                          <p className="text-[10px] text-[#444] uppercase mb-2">What you need to do:</p>
+                          <ul className="space-y-1">
+                            {lic.requirements.slice(0, 3).map((req, ridx) => (
+                              <li key={ridx} className="text-[11px] text-[#888] leading-tight">
+                                &bull; {req}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+        {/* Related codes */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+            <Activity size={12} /> Related Business Codes
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            <div className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#D4B483] border border-[#D4B483]/20">
+              Sector: {data.sector}
+            </div>
+            {data.related_codes.map((rel, idx) => (
+              <button
+                key={idx}
+                onClick={() => onInspect?.(rel)}
+                className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#888] border border-white/5 hover:border-[#D4B483]/30 hover:text-[#D4B483] cursor-pointer transition-all"
+              >
+                {rel}
+              </button>
+            ))}
+          </div>
+        </motion.section>
+      </div>
+    </motion.div>
+  );
+};
+
+// =============================================================================
 // MAIN PAGE
 // =============================================================================
 
@@ -419,21 +742,31 @@ export default function KBLIExplorerPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [activeKBLI, setActiveKBLI] = useState<KBLIDetail | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
-  const [messages, setMessages] = useState<{
-    role: 'user' | 'ai';
-    content: string;
-    detected_kbli?: string[];
-    results?: KBLISearchResult[];
-    suggested_queries?: string[];
-  }[]>([]);
+  // Session persistence (3A) — messages survive refresh
+  const [messages, setMessages, clearMessages] = useSessionStorage<MessageData[]>('kbli-messages', []);
   const [isChatting, setIsChatting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [placeholderVisible, setPlaceholderVisible] = useState(true);
+  // Comparison mode (Phase 4)
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelection, setCompareSelection] = useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const isWelcome = messages.length === 0;
+
+  // Deep-link: ?inspect={code} (2C)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const inspectCode = params.get('inspect');
+    if (inspectCode) {
+      handleInspect(inspectCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Rotating placeholder
   useEffect(() => {
@@ -500,7 +833,7 @@ export default function KBLIExplorerPage() {
         setIsChatting(false);
       }
     },
-    [query, isChatting, handleInspect],
+    [query, isChatting, handleInspect, setMessages],
   );
 
   const handleChipClick = useCallback(
@@ -509,6 +842,19 @@ export default function KBLIExplorerPage() {
     },
     [handleSendMessage],
   );
+
+  const handleClearConversation = useCallback(() => {
+    clearMessages();
+    setActiveKBLI(null);
+    setCompareMode(false);
+    setCompareSelection([]);
+  }, [clearMessages]);
+
+  const toggleCompareCode = useCallback((code: string) => {
+    setCompareSelection((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  }, []);
 
   const currentPlaceholder = ROTATING_PLACEHOLDERS[placeholderIdx];
 
@@ -635,7 +981,7 @@ export default function KBLIExplorerPage() {
               <input
                 type="text"
                 placeholder=""
-                className="w-full bg-[#0F1115]/80 backdrop-blur-md text-[#E1E1E3] placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-14 border border-white/5 focus:border-[#D4B483]/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
+                className="w-full bg-[#0F1115]/80 backdrop-blur-md text-[#E1E1E3] placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-white/5 focus:border-[#D4B483]/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -653,13 +999,45 @@ export default function KBLIExplorerPage() {
                 size={18}
                 strokeWidth={1.5}
               />
-              <button
-                type="submit"
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-md hover:bg-[#1A1D24] text-[#D4B483] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                disabled={isChatting}
-              >
-                {isChatting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-              </button>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {/* Compare toggle (Phase 4) */}
+                {!isWelcome && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompareMode((prev) => !prev);
+                      if (compareMode) setCompareSelection([]);
+                    }}
+                    className={`p-2 rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
+                      compareMode
+                        ? 'bg-[#D4B483]/15 text-[#D4B483]'
+                        : 'hover:bg-[#1A1D24] text-[#555] hover:text-[#888]'
+                    }`}
+                    title={compareMode ? 'Exit compare mode' : 'Compare codes'}
+                  >
+                    <Columns size={16} />
+                  </button>
+                )}
+                {/* Clear conversation (3A) */}
+                {!isWelcome && (
+                  <button
+                    type="button"
+                    onClick={handleClearConversation}
+                    className="p-2 rounded-md hover:bg-[#1A1D24] text-[#555] hover:text-[#888] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                    title="Clear conversation"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+                {/* Send */}
+                <button
+                  type="submit"
+                  className="p-2 rounded-md hover:bg-[#1A1D24] text-[#D4B483] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  disabled={isChatting}
+                >
+                  {isChatting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                </button>
+              </div>
             </form>
 
             {/* Floating Search Results */}
@@ -699,7 +1077,6 @@ export default function KBLIExplorerPage() {
         {/* Conversation Area */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 custom-scrollbar">
           <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 py-4">
-            {/* Welcome onboarding OR chat messages */}
             <AnimatePresence mode="wait">
               {isWelcome ? (
                 <WelcomeOnboarding key="welcome" onChipClick={handleChipClick} />
@@ -720,96 +1097,15 @@ export default function KBLIExplorerPage() {
                               {msg.content}
                             </p>
                           ) : (
-                            <div className="space-y-6 text-[#BBB]">
-                              <div className="whitespace-pre-line">
-                                {renderWithTooltips(msg.content)}
-                              </div>
-
-                              {msg.results && msg.results.length > 0 ? (
-                                <div className="space-y-3 mt-4">
-                                  {msg.results.map((result: KBLISearchResult) => {
-                                    const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
-                                    return (
-                                      <button
-                                        key={result.code}
-                                        onClick={() => handleInspect(result.code)}
-                                        className="group w-full text-left p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921] transition-all duration-200"
-                                      >
-                                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                                          <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
-                                            {result.code}
-                                          </span>
-                                          <div className="flex items-center gap-2">
-                                            {pmaBadgeInline.label && (
-                                              <span
-                                                className="text-[10px] px-2 py-0.5 rounded-full border"
-                                                style={{
-                                                  color: pmaBadgeInline.color,
-                                                  backgroundColor: pmaBadgeInline.bg,
-                                                  borderColor: pmaBadgeInline.border,
-                                                }}
-                                              >
-                                                {pmaBadgeInline.label}
-                                              </span>
-                                            )}
-                                            <span className="text-[10px] uppercase tracking-widest text-[#555]">
-                                              {Math.round(result.score * 100)}% match
-                                            </span>
-                                          </div>
-                                        </div>
-                                        <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
-                                          {result.title}
-                                        </h4>
-                                        <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
-                                          {result.description}
-                                        </p>
-                                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
-                                          <span>View details</span>
-                                          <ChevronRight size={10} />
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                msg.detected_kbli &&
-                                msg.detected_kbli.length > 0 && (
-                                  <div className="flex flex-wrap gap-2 mt-4">
-                                    {msg.detected_kbli.map((code: string) => (
-                                      <button
-                                        key={code}
-                                        onClick={() => handleInspect(code)}
-                                        className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
-                                      >
-                                        <span className="font-mono text-[#D4B483] text-xs">
-                                          KBLI {code}
-                                        </span>
-                                        <ChevronRight
-                                          size={12}
-                                          className="text-[#555] group-hover:text-[#D4B483]"
-                                        />
-                                      </button>
-                                    ))}
-                                  </div>
-                                )
-                              )}
-
-                              {/* Suggested follow-up queries (Fase 4) */}
-                              {msg.suggested_queries && msg.suggested_queries.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5">
-                                  {msg.suggested_queries.map((sq: string, sqIdx: number) => (
-                                    <button
-                                      key={sqIdx}
-                                      onClick={() => handleSendMessage(sq)}
-                                      className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-[#D4B483] bg-[#D4B483]/5 border border-[#D4B483]/20 hover:bg-[#D4B483]/10 hover:border-[#D4B483]/40 transition-all"
-                                    >
-                                      <ArrowRight size={10} className="opacity-60 group-hover:opacity-100" />
-                                      <span>{sq}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            <AIMessageContent
+                              msg={msg}
+                              isLatest={idx === messages.length - 1}
+                              handleInspect={handleInspect}
+                              handleSendMessage={(text) => handleSendMessage(text)}
+                              compareMode={compareMode}
+                              compareSelection={compareSelection}
+                              onToggleCompare={toggleCompareCode}
+                            />
                           )
                         }
                       />
@@ -819,23 +1115,40 @@ export default function KBLIExplorerPage() {
               )}
             </AnimatePresence>
 
-            {isChatting && (
-              <div className="flex gap-4 md:gap-6 items-start animate-pulse">
-                <div className="w-8 h-8 rounded-full border bg-[#0F1115] border-[#D4B483]/20 text-[#D4B483] flex items-center justify-center">
-                  <Sparkles size={14} />
-                </div>
-                <div className="h-4 bg-[#1A1D24] rounded w-2/3 mt-2" />
-              </div>
-            )}
+            {/* Thinking Indicator (1A) — replaces animate-pulse skeleton */}
+            {isChatting && <ThinkingIndicator />}
             <div ref={chatEndRef} />
           </div>
         </div>
+
+        {/* Compare sticky bottom bar (Phase 4) */}
+        <AnimatePresence>
+          {compareMode && compareSelection.length >= 2 && (
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              className="sticky bottom-0 left-0 right-0 p-4 bg-[#0A0C10]/95 backdrop-blur-lg border-t border-[#D4B483]/20 z-30"
+            >
+              <div className="max-w-3xl mx-auto flex items-center justify-between">
+                <span className="text-sm text-[#CCC]">
+                  <span className="text-[#D4B483] font-mono">{compareSelection.length}</span> codes selected
+                </span>
+                <button
+                  onClick={() => setCompareOpen(true)}
+                  className="px-4 py-2 rounded-lg bg-[#D4B483] text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
+                >
+                  Compare {compareSelection.length} codes &rarr;
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* RIGHT PANEL: The Inspector — desktop fixed, mobile bottom sheet */}
-      {/* Desktop inspector */}
       <aside className="hidden xl:block w-[420px] bg-[#0A0C10]/90 backdrop-blur-2xl border-l border-white/5 relative z-20 shadow-[-5px_0_30px_rgba(0,0,0,0.2)]">
-        <KBLIInspector data={activeKBLI} isLoading={isInspecting} />
+        <InspectorChoreographed data={activeKBLI} isLoading={isInspecting} onInspect={handleInspect} />
       </aside>
 
       {/* Mobile/Tablet bottom sheet inspector */}
@@ -856,15 +1169,23 @@ export default function KBLIExplorerPage() {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="xl:hidden fixed bottom-0 left-0 right-0 h-[70vh] bg-[#0A0C10] border-t border-white/10 rounded-t-2xl z-50 overflow-hidden"
             >
-              <KBLIInspector
+              <InspectorChoreographed
                 data={activeKBLI}
                 isLoading={isInspecting}
                 onClose={() => setInspectorOpen(false)}
+                onInspect={handleInspect}
               />
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Comparison Modal (Phase 4) */}
+      <ComparisonModal
+        codes={compareSelection}
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+      />
     </div>
   );
 }

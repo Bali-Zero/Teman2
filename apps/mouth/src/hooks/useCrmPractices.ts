@@ -8,7 +8,6 @@ import { useCallback, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Practice, CreatePracticeParams } from '@/lib/api/crm/crm.types';
-import { debug, error } from '@/lib/utils';
 
 interface UseCrmPracticesOptions {
   clientId?: number;
@@ -41,6 +40,17 @@ const PRACTICE_PRIORITIES = [
   { value: 'urgent', label: 'Urgent', color: 'red' },
 ] as const;
 
+// Debug helper
+const debug = (...args: any[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[CRM]', ...args);
+  }
+};
+
+const logError = (...args: any[]) => {
+  console.error('[CRM]', ...args);
+};
+
 /**
  * Hook per lista pratiche
  */
@@ -59,22 +69,23 @@ export function useCrmPractices(options: UseCrmPracticesOptions = {}) {
   } = useQuery({
     queryKey,
     queryFn: async (): Promise<PracticesResponse> => {
-      const params = new URLSearchParams();
-      if (clientId) params.append('client_id', clientId.toString());
-      if (status) params.append('status', status);
-      if (assigned_to) params.append('assigned_to', assigned_to);
-      params.append('limit', limit.toString());
-      params.append('offset', offset.toString());
-
-      const response = await api.client.request<{
-        practices: Practice[];
-        total: number;
-      }>(`/api/crm/practices?${params.toString()}`);
+      let practices: Practice[];
+      
+      if (clientId) {
+        practices = await api.crm.getClientPractices(clientId);
+      } else {
+        practices = await api.crm.getPractices({
+          status: status || undefined,
+          assigned_to: assigned_to || undefined,
+          limit,
+          offset,
+        });
+      }
 
       return {
-        practices: response.practices,
-        total: response.total,
-        hasMore: response.practices.length === limit,
+        practices,
+        total: practices.length,
+        hasMore: !clientId && practices.length === limit,
       };
     },
     enabled,
@@ -115,7 +126,7 @@ export function useCrmPractice(practiceId: number | null) {
     queryKey: ['crm', 'practices', practiceId],
     queryFn: async (): Promise<Practice> => {
       if (!practiceId) throw new Error('Practice ID required');
-      return api.client.request<Practice>(`/api/crm/practices/${practiceId}`);
+      return api.crm.getPractice(practiceId);
     },
     enabled: !!practiceId,
     staleTime: 2 * 60 * 1000,
@@ -138,25 +149,53 @@ export function useCreatePractice() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: CreatePracticeParams) => {
-      return api.client.request<Practice>('/api/crm/practices', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+    mutationFn: async ({ data, createdBy }: { data: CreatePracticeParams; createdBy: string }) => {
+      return api.crm.createPractice(data, createdBy);
     },
     onSuccess: (newPractice, variables) => {
       // Invalidate practices list
       queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
       // Invalidate client practices if client_id provided
-      if (variables.client_id) {
+      if (variables.data.client_id) {
         queryClient.invalidateQueries({
-          queryKey: ['crm', 'practices', { clientId: variables.client_id }],
+          queryKey: ['crm', 'practices', { clientId: variables.data.client_id }],
         });
       }
       debug('Practice created:', newPractice.id);
     },
     onError: (err) => {
-      error('Failed to create practice:', err);
+      logError('Failed to create practice:', err);
+    },
+  });
+
+  return mutation;
+}
+
+/**
+ * Hook per aggiornamento pratica
+ */
+export function useUpdatePractice(practiceId: number) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({ 
+      updates, 
+      updatedBy 
+    }: { 
+      updates: Parameters<typeof api.crm.updatePractice>[1]; 
+      updatedBy: string;
+    }) => {
+      return api.crm.updatePractice(practiceId, updates, updatedBy);
+    },
+    onSuccess: (updatedPractice) => {
+      // Update cache
+      queryClient.setQueryData(['crm', 'practices', practiceId], updatedPractice);
+      // Invalidate lists
+      queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
+      debug('Practice updated:', practiceId);
+    },
+    onError: (err) => {
+      logError('Failed to update practice:', err);
     },
   });
 
@@ -170,11 +209,14 @@ export function useUpdatePracticeStatus(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ status, notes }: { status: string; notes?: string }) => {
-      return api.client.request<Practice>(`/api/crm/practices/${practiceId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status, notes }),
-      });
+    mutationFn: async ({ 
+      status, 
+      updatedBy 
+    }: { 
+      status: string; 
+      updatedBy: string;
+    }) => {
+      return api.crm.updatePractice(practiceId, { status }, updatedBy);
     },
     onSuccess: (updatedPractice) => {
       // Update cache
@@ -184,7 +226,7 @@ export function useUpdatePracticeStatus(practiceId: number) {
       debug('Practice status updated:', practiceId);
     },
     onError: (err) => {
-      error('Failed to update practice status:', err);
+      logError('Failed to update practice status:', err);
     },
   });
 
@@ -194,36 +236,32 @@ export function useUpdatePracticeStatus(practiceId: number) {
 /**
  * Hook per pratiche in scadenza
  */
-export function useOverduePractices(days: number = 30) {
+export function useUpcomingRenewals(days: number = 90) {
   return useQuery({
-    queryKey: ['crm', 'practices', 'overdue', days],
+    queryKey: ['crm', 'practices', 'renewals', days],
     queryFn: async () => {
-      return api.client.request<Practice[]>(`/api/crm/practices/overdue?days=${days}`);
+      return api.crm.getUpcomingRenewals(days);
     },
     staleTime: 5 * 60 * 1000,
   });
 }
 
 /**
- * Hook per assegnazione pratica
+ * Hook per cancellazione pratica
  */
-export function useAssignPractice(practiceId: number) {
+export function useDeletePractice(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (assignedTo: string) => {
-      return api.client.request<Practice>(`/api/crm/practices/${practiceId}/assign`, {
-        method: 'POST',
-        body: JSON.stringify({ assigned_to: assignedTo }),
-      });
+    mutationFn: async (deletedBy: string) => {
+      return api.crm.deletePractice(practiceId, deletedBy);
     },
-    onSuccess: (updatedPractice) => {
-      queryClient.setQueryData(['crm', 'practices', practiceId], updatedPractice);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
-      debug('Practice assigned:', practiceId);
+      debug('Practice deleted:', practiceId);
     },
     onError: (err) => {
-      error('Failed to assign practice:', err);
+      logError('Failed to delete practice:', err);
     },
   });
 

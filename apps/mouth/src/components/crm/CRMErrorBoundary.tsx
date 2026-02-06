@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle, RefreshCw, Home, Phone } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { error as logError } from '@/lib/utils';
 
 interface Props {
   children: React.ReactNode;
@@ -43,7 +42,7 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logError(`CRM Error in ${this.props.section || 'unknown'}:`, error, errorInfo);
+    console.error(`CRM Error in ${this.props.section || 'unknown'}:`, error, errorInfo);
     this.setState({ errorInfo });
 
     // Send to error tracking service
@@ -94,20 +93,20 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
             
             <CardContent className="space-y-4">
               {this.state.error && (
-                <div className="bg-gray-50 p-3 rounded-md text-sm">
-                  <p className="font-medium text-gray-900">Error details:</p>
-                  <p className="text-gray-600 font-mono text-xs mt-1">
+                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Error details:</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-xs mt-1">
                     {this.state.error.message}
                   </p>
                   {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
-                    <pre className="mt-2 text-xs text-gray-500 overflow-auto max-h-32">
+                    <pre className="mt-2 text-xs text-gray-500 dark:text-gray-500 overflow-auto max-h-32">
                       {this.state.errorInfo.componentStack}
                     </pre>
                   )}
                 </div>
               )}
 
-              <div className="text-sm text-gray-600 space-y-2">
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                 <p>You can try:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>Refreshing the page</li>
@@ -179,7 +178,7 @@ export function CRMErrorFallback({
     <Card className="w-full">
       <CardContent className="pt-6 text-center">
         <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-        <p className="text-gray-600">{message}</p>
+        <p className="text-gray-600 dark:text-gray-400">{message}</p>
         {onRetry && (
           <Button onClick={onRetry} variant="outline" className="mt-4">
             <RefreshCw className="w-4 h-4 mr-2" />
@@ -200,7 +199,7 @@ export function CRMSkeleton({ count = 3 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="h-20 bg-gray-100 rounded-lg animate-pulse"
+          className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"
         />
       ))}
     </div>

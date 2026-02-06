@@ -18,9 +18,9 @@ export {
   useCrmPractices,
   useCrmPractice,
   useCreatePractice,
+  useUpdatePractice,
   useUpdatePracticeStatus,
-  useOverduePractices,
-  useAssignPractice,
+  useDeletePractice,
   PRACTICE_STATUSES,
   PRACTICE_PRIORITIES,
 } from './useCrmPractices';
@@ -36,7 +36,8 @@ export {
 export {
   useCrmNotifications,
   useExpiryAlerts,
-  useOverduePractices as useExpiryPractices,
+  useUpcomingRenewals,
+  useExpiryAlertsSummary,
   useDashboardStats,
   useRecentActivity,
   useBrowserNotifications,

@@ -404,3 +404,26 @@ export interface CreatePracticeParams {
   quoted_price?: number;
   start_date?: string;
 }
+
+// ============================================
+// SEARCH
+// ============================================
+
+export interface SearchResult {
+  id: number;
+  type: 'client' | 'practice' | 'document';
+  title: string;
+  subtitle?: string;
+  status?: string;
+  url: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SearchFilters {
+  status?: string[];
+  client_type?: string[];
+  assigned_to?: string[];
+  nationality?: string[];
+  date_from?: string;
+  date_to?: string;
+}

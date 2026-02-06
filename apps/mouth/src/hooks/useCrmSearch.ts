@@ -52,18 +52,23 @@ export function useCrmSearch(options: UseCrmSearchOptions = {}) {
         return { clients: [], total: 0, suggestions: [] };
       }
 
-      const params = new URLSearchParams();
-      if (debouncedQuery) params.append('q', debouncedQuery);
-      params.append('limit', limit.toString());
-
-      // Add filters
-      Object.entries(filters).forEach(([key, values]) => {
-        if (values?.length) {
-          values.forEach((v) => params.append(key, v));
-        }
+      // Use getClients with search parameter
+      const clients = await api.crm.getClients({
+        search: debouncedQuery,
+        limit,
       });
 
-      return api.client.request<SearchResponse>(`/api/crm/search?${params.toString()}`);
+      // Generate suggestions from client names
+      const suggestions = clients
+        .map((c: Client) => c.full_name)
+        .filter((name: string) => name.toLowerCase().includes(debouncedQuery.toLowerCase()))
+        .slice(0, 5);
+
+      return {
+        clients,
+        total: clients.length,
+        suggestions,
+      };
     },
     enabled: enabled && (debouncedQuery.length >= minChars || Object.keys(filters).length > 0),
     staleTime: 30 * 1000, // 30 seconds
@@ -153,38 +158,9 @@ export function useQuickSearch(options: { limit?: number } = {}) {
     setSelectedIndex(0);
   }, [results.length]);
 
-  // Keyboard shortcut (Cmd+K / Ctrl+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        toggle();
-      }
-      if (e.key === 'Escape' && isOpen) {
-        close();
-      }
-      if (isOpen) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          selectNext();
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          selectPrev();
-        }
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          return selectCurrent();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggle, close, isOpen, selectNext, selectPrev, selectCurrent]);
-
   return {
     isOpen,
+    setIsOpen,
     open,
     close,
     toggle,
@@ -211,9 +187,26 @@ export function useGlobalSearch(options: { limit?: number } = {}) {
     queryKey: ['crm', 'global-search', debouncedQuery],
     queryFn: async (): Promise<SearchResult[]> => {
       if (debouncedQuery.length < 2) return [];
-      return api.client.request<SearchResult[]>(
-        `/api/crm/global-search?q=${encodeURIComponent(debouncedQuery)}&limit=${limit}`
-      );
+      
+      // Search clients
+      const clients = await api.crm.getClients({
+        search: debouncedQuery,
+        limit,
+      });
+
+      // Map to SearchResult format
+      return clients.map((client: Client): SearchResult => ({
+        id: client.id,
+        type: 'client',
+        title: client.full_name,
+        subtitle: client.email || client.phone || undefined,
+        status: client.status,
+        url: `/clients/${client.id}`,
+        metadata: {
+          nationality: client.nationality,
+          assignedTo: client.assigned_to,
+        },
+      }));
     },
     enabled: debouncedQuery.length >= 2,
     staleTime: 30 * 1000,
