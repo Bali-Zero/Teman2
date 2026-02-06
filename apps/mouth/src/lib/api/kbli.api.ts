@@ -45,8 +45,8 @@ export class KBLIApi extends ApiClientBase {
   async chat(
     query: string,
     sessionId?: string
-  ): Promise<{ answer: string; detected_kbli: string[]; sources: any[] }> {
-    return this.post<{ answer: string; detected_kbli: string[]; sources: any[] }>(
+  ): Promise<{ answer: string; detected_kbli: string[]; results: KBLISearchResult[]; sources: any[] }> {
+    return this.post<{ answer: string; detected_kbli: string[]; results: KBLISearchResult[]; sources: any[] }>(
       '/api/v1/kbli-notebook/chat',
       {
         query,
