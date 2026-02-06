@@ -538,6 +538,7 @@ Before asking for review:
 ### Basic Requirements
 
 - [ ] **Virtualenv activated** (`source .venv/bin/activate`)
+- [ ] **Sync Types** (run `./scripts/sync-types.sh` if Backend models changed)
 - [ ] Ran `./sentinel` and it passed
 - [ ] All new functions have type hints
 - [ ] No hardcoded secrets or URLs
