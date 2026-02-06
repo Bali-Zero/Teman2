@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { headers } from 'next/headers';
 import { OrganizationJsonLd, LocalBusinessJsonLd, WebsiteJsonLd } from '@/components/seo';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { ErrorBoundary } from '@/components/optimization';
 import { WebVitalsMonitor } from '@/components/providers/WebVitalsMonitor';
 import { SERVICES_DATA } from '@/data/services_data';
 import { getArticleBySlug } from '@/lib/blog/articles';
@@ -430,7 +431,9 @@ export default async function RootLayout({
       >
         <QueryProvider>
           <WebVitalsMonitor />
-          {children}
+          <ErrorBoundary fallback={<div className="p-8 text-center">Something went wrong. Please refresh the page.</div>}>
+            {children}
+          </ErrorBoundary>
           <Toaster
             position="bottom-right"
             theme="dark"

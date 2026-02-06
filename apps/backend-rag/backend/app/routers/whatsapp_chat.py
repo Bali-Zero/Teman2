@@ -504,3 +504,25 @@ async def whatsapp_status():
         "triage_enabled": True,
         "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
     }
+
+
+# ============================================================
+# ALIAS ROUTER: /api/whatsapp/webhook (Meta Dashboard legacy URL)
+# ============================================================
+alias_router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
+
+
+@alias_router.get("/webhook")
+async def verify_webhook_alias(request: Request):
+    """Alias for /webhook/whatsapp (GET) — Meta webhook verification."""
+    return await verify_webhook(request)
+
+
+@alias_router.post("/webhook")
+async def whatsapp_webhook_alias(
+    webhook: WhatsAppWebhook,
+    background_tasks: BackgroundTasks,
+    request: Request,
+):
+    """Alias for /webhook/whatsapp (POST) — Meta webhook messages."""
+    return await whatsapp_webhook(webhook, background_tasks, request)

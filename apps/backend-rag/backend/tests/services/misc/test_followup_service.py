@@ -1,11 +1,13 @@
 
-    async def get_followups(
-        self,
-        query: str,
-        response: str,
-        use_ai: bool = True,
-        conversation_context: str | None = None,
-    ) -> dict[str, Any]:
+from typing import Any
+
+async def get_followups(
+    self,
+    query: str,
+    response: str,
+    use_ai: bool = True,
+    conversation_context: str | None = None,
+) -> dict[str, Any]:
         """
         Health check for follow-up service
 

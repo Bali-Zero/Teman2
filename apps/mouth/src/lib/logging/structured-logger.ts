@@ -2,6 +2,8 @@
  * Structured Logger for client-side logging
  */
 
+import { debug, warn, error } from '@/lib/utils/console';
+
 export enum LogCategory {
   MEMORY = 'memory',
   CHAT = 'chat',
@@ -33,20 +35,20 @@ function formatLog(
 
 export function logDebug(category: LogCategory, message: string, context?: LogContext): void {
   if (isDev) {
-    console.debug(formatLog('debug', category, message, context));
+    debug(formatLog('debug', category, message, context));
   }
 }
 
 export function logInfo(category: LogCategory, message: string, context?: LogContext): void {
   if (isDev) {
-    console.info(formatLog('info', category, message, context));
+    debug(formatLog('info', category, message, context));
   }
 }
 
 export function logWarn(category: LogCategory, message: string, context?: LogContext): void {
-  console.warn(formatLog('warn', category, message, context));
+  warn(formatLog('warn', category, message, context));
 }
 
 export function logError(category: LogCategory, message: string, context?: LogContext): void {
-  console.error(formatLog('error', category, message, context));
+  error(formatLog('error', category, message, context));
 }

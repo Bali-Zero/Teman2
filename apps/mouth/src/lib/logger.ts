@@ -5,6 +5,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { debug, warn, error } from '@/lib/utils/console';
 import type { Metadata } from './types/common';
 
 export enum LogLevel {
@@ -86,21 +87,21 @@ class Logger {
 
     switch (level) {
       case LogLevel.DEBUG:
-        console.debug(logMessage);
+        debug(logMessage);
         break;
       case LogLevel.INFO:
-        console.info(logMessage);
+        debug(logMessage);
         break;
       case LogLevel.WARN:
-        console.warn(logMessage);
+        warn(logMessage);
         break;
       case LogLevel.ERROR:
-        console.error(logMessage);
+        error(logMessage);
         if (error) {
-          console.error('Error details:', error);
+          error('Error details:', error);
         }
         if (stack) {
-          console.error('Stack trace:', stack);
+          error('Stack trace:', stack);
         }
         break;
     }
@@ -202,7 +203,7 @@ class Logger {
       }
     } catch (sentryError) {
       // Don't let Sentry errors break the application
-      console.error('Failed to send to Sentry:', sentryError);
+      error('Failed to send to Sentry:', sentryError);
     }
   }
 
@@ -231,7 +232,7 @@ class Logger {
 
       localStorage.setItem('error_logs', JSON.stringify(errorLogs));
     } catch (e) {
-      console.error('Failed to store error log:', e);
+      error('Failed to store error log:', e);
     }
   }
 

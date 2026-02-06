@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "skills": {
+    "gog": {
+      "version": "1.0.0",
+      "installedAt": 1770009944547
+    },
+    "google-workspace-mcp": {
+      "version": "1.0.0",
+      "installedAt": 1770010000984
+    },
+    "gogcli": {
+      "version": "1.0.0",
+      "installedAt": 1770011942518
+    },
+    "google-calendar": {
+      "version": "0.1.0",
+      "installedAt": 1770012091638
+    }
+  }
+}

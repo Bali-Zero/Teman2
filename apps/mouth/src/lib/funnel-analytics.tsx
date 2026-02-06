@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { debug } from '@/lib/utils/console';
 import type { FunnelAnalyticsReturn } from './types/funnel-analytics.types';
 
 interface FunnelStep {
@@ -453,7 +454,7 @@ class FunnelAnalyticsService {
       });
     }
 
-    console.log(`📊 Funnel Event: ${event}`, { userId, funnelId, properties });
+    debug(`📊 Funnel Event: ${event}`, { userId, funnelId, properties });
   }
 
   // Initialize analytics for funnel

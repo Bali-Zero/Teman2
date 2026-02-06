@@ -35,6 +35,7 @@ interface LogContext {
   level: LogLevel;
 }
 
+import { debug, error } from '@/lib/utils/console';
 import type { ApiRequestParams, ErrorInfo } from '@/lib/api/types/logger.types';
 
 interface LogMetadata {
@@ -115,12 +116,12 @@ class CasesLogger {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(logData),
-      }).catch((err) => console.error('Failed to send log:', err));
+      }).catch((err) => error('Failed to send log:', err));
     }
 
     if (this.isDevelopment) {
       // Pretty print in development
-      console.log(
+      debug(
         `[${logData.level}] [${logData.category}]`,
         logData.message,
         logData.metadata || ''
@@ -431,7 +432,7 @@ class CasesLogger {
   debug(message: string, metadata?: LogMetadata) {
     if (this.isDevelopment) {
       const logData = this.formatLog(LogLevel.DEBUG, LogCategory.USER_ACTION, message, metadata);
-      console.log(`[DEBUG]`, message, metadata || '');
+      debug(`[DEBUG]`, message, metadata || '');
     }
   }
 }

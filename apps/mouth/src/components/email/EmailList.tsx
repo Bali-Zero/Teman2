@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/lib/hooks/optimized';
 import type { EmailSummary } from '@/lib/api/email/email.types';
 
 interface EmailListProps {

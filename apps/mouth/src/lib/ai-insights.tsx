@@ -142,7 +142,7 @@ class AIInsightsService {
     // For now, we'll simulate the initialization
     this.isInitialized = true;
     if (process.env.NODE_ENV === 'development') {
-      console.log('🤖 AI Insights Service initialized');
+      // AI Insights Service ready
     }
   }
 

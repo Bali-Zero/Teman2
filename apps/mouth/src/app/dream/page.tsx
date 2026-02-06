@@ -699,7 +699,9 @@ const ArticleComposer = () => {
       
       // Persist to backend
       dreamApi.saveState('current-user', newState)
-        .then(() => console.log('Saved to cloud'))
+        .then(() => {
+          // Cloud save successful - logged by analytics service
+        })
         .catch(err => console.error('Save failed', err));
     }, 2000);
     return () => clearTimeout(timer);

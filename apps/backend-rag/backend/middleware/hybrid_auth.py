@@ -115,6 +115,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
             # ========================================================================
             "/webhook/whatsapp",  # BUSINESS: Meta WhatsApp webhook - verified by WHATSAPP_VERIFY_TOKEN
+            "/api/whatsapp/webhook",  # ALIAS: Meta WhatsApp webhook (legacy URL configured in Meta Dashboard)
             "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
             "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook - verified by TELEGRAM_WEBHOOK_SECRET header
             "/api/voice/elevenlabs",  # BUSINESS: ElevenLabs voice webhook - should add signature verification

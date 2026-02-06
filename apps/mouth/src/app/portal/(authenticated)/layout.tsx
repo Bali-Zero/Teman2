@@ -8,6 +8,7 @@ import { PortalBottomNav } from '@/components/portal/PortalBottomNav';
 import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { portalNavigation } from '@/types/navigation';
+import { ErrorBoundary } from '@/components/optimization';
 
 export default function PortalLayout({
   children,
@@ -167,7 +168,11 @@ export default function PortalLayout({
           />
 
           {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
 
         {/* Mobile Bottom Nav */}

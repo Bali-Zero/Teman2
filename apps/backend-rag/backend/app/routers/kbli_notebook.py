@@ -82,6 +82,29 @@ class KBLINotebookChatResponse(BaseModel):
 KBLI_COLLECTION = "kbli_2025_final"
 
 
+async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
+    """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli)."""
+    headers = {"Content-Type": "application/json"}
+    if settings.qdrant_api_key:
+        headers["api-key"] = settings.qdrant_api_key
+    url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/scroll"
+    payload = {
+        "filter": {"must": [{"key": "kode_kbli", "match": {"value": code}}]},
+        "limit": 1,
+        "with_payload": True,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            points = resp.json().get("result", {}).get("points", [])
+            if points:
+                return points[0].get("payload", {})
+    except Exception as e:
+        logger.warning(f"Qdrant lookup for KBLI {code} failed (non-critical): {e}")
+    return None
+
+
 async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[dict]:
     """Direct Qdrant search for KBLI collection (flat payload structure)."""
     headers = {"Content-Type": "application/json"}
@@ -203,15 +226,33 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                     if r["source_entity_id"] != f"kbli:{code}"
                 ]
 
-            logger.info(f"✅ KBLI {code} details retrieved successfully")
+            # 5. Enrich with Qdrant payload (pma_status, risk category)
+            qdrant_payload = await _get_kbli_payload_from_qdrant(code)
+            qdrant_risk = qdrant_payload.get("kategori_risiko") if qdrant_payload else None
+
+            pma_status = (
+                qdrant_payload.get("pma_status")
+                if qdrant_payload
+                else None
+            ) or props.get("pma_status") or "UNKNOWN"
+
+            risk_profile = qdrant_risk or (licenses[0].risk_level if licenses else None) or "Low"
+
+            # Patch licenses with "Unknown" risk using Qdrant value
+            if qdrant_risk:
+                for lic in licenses:
+                    if lic.risk_level == "Unknown":
+                        lic.risk_level = qdrant_risk
+
+            logger.info(f"✅ KBLI {code} details retrieved (pma={pma_status}, risk={risk_profile})")
             return KBLIDetail(
                 code=code,
                 title=node["name"].replace(f"KBLI {code}", "").strip() or node["name"],
                 description=props.get("uraian", node["description"]),
-                pma_status=props.get("pma_status", "UNKNOWN"),
+                pma_status=pma_status,
                 licensing_status=props.get("licensing_status", "REGULATED"),
                 sector=sector_id.replace("sektor:", "") if sector_id else "N/A",
-                risk_profile=licenses[0].risk_level if licenses else "Low",
+                risk_profile=risk_profile,
                 licenses=licenses,
                 related_codes=related_codes,
             )

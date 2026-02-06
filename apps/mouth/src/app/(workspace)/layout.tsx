@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { useTeamStatus } from '@/hooks/useTeamStatus';
 import { logger } from '@/lib/logger';
+import { ErrorBoundary } from '@/components/optimization';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -205,7 +206,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           />
 
           {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
       </div>
     </ToastProvider>

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "references": [
+    { "path": "./apps/mouth" },
+    { "path": "./apps/webapp" },
+    { "path": "./apps/admin-dashboard" },
+    { "path": "./apps/zantara-media/dashboard" }
+  ],
+  "files": [],
+  "exclude": ["node_modules", "dist", ".next", "build"]
+}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Search, Menu, ChevronDown, X, Globe } from 'lucide-react';
 import { SearchModal } from '@/components/blog/SearchBar';
+import { ErrorBoundary } from '@/components/optimization';
 
 // Language options
 const LANGUAGES = [
@@ -380,7 +381,11 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       </header>
 
       {/* Main content */}
-      <main>{children}</main>
+      <main>
+        <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+          {children}
+        </ErrorBoundary>
+      </main>
 
       {/* Search Modal */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
