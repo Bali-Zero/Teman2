@@ -13,7 +13,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-haiku-4-5-20250520"
+DEFAULT_MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 1024  # Short responses for WhatsApp
 
 

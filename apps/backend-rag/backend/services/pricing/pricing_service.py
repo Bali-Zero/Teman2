@@ -110,56 +110,73 @@ class PricingService:
         return self.prices
 
     def search_service(self, query: str) -> dict[str, Any]:
-        """Search for a specific service by name or keyword (IMPROVED SEARCH with legacy alias support)"""
+        """Search for a specific service by name or keyword (supports both list and dict formats)"""
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
                 "contact": self.prices.get("contact_info", {}),
             }
 
-        query_lower = query.lower()
+        query_lower = query.lower().strip()
         results = {}
 
         # Extract keywords from query (remove common words)
-        noise_words = [
-            "berapa",
-            "harga",
-            "biaya",
-            "price",
-            "cost",
-            "how",
-            "much",
-            "is",
-            "the",
-            "quanto",
-            "costa",
-            "what",
-            "untuk",
-            "for",
-            "?",
-            "di",
-            "in",
-            "bali",
-        ]
+        noise_words = {
+            "berapa", "harga", "biaya", "price", "cost", "how", "much",
+            "is", "the", "quanto", "costa", "what", "untuk", "for",
+            "di", "in", "bali", "un", "una", "il", "la", "anno", "anni",
+            "year", "years", "prezzo", "a", "of", "per", "del", "della",
+            "dei", "delle", "con", "and", "e", "or", "o",
+        }
 
-        # Split query and remove noise words
+        # Split query and remove noise words; also remove short numeric tokens
         query_keywords = query_lower.split()
-        clean_keywords = [
-            w.strip("?.,!") for w in query_keywords if w.strip("?.,!") not in noise_words
-        ]
+        clean_keywords = []
+        for w in query_keywords:
+            w_clean = w.strip("?.,!\"'")
+            if w_clean and w_clean not in noise_words and len(w_clean) > 1:
+                clean_keywords.append(w_clean)
 
-        # Also search full query for partial matches
-        search_terms = clean_keywords + [query_lower]
+        if not clean_keywords:
+            # If all words were noise, use the raw query
+            clean_keywords = [query_lower]
 
         # Search across all service categories
         services = self.prices.get("services", {})
         for category_name, category_services in services.items():
-            if isinstance(category_services, dict):
-                for service_name, service_data in category_services.items():
-                    # Match by any keyword in service name or service data
-                    service_text = service_name.lower() + " " + str(service_data).lower()
+            # Handle LIST format (array of service objects)
+            if isinstance(category_services, list):
+                for service_item in category_services:
+                    if not isinstance(service_item, dict):
+                        continue
+                    # Build searchable text ONLY from code and name fields (not prices!)
+                    code = str(service_item.get("code", "")).lower()
+                    name = str(service_item.get("name", "")).lower()
+                    notes = str(service_item.get("notes", "")).lower()
+                    service_text = f"{code} {name} {notes}"
 
-                    # Also check legacy_names if present (e.g., old codes -> new codes)
+                    # Also check legacy_names if present
+                    legacy_names = service_item.get("legacy_names", [])
+                    if isinstance(legacy_names, list):
+                        service_text += " " + " ".join(
+                            n.lower() for n in legacy_names
+                        )
+
+                    # Score: count how many keywords match
+                    match_count = sum(1 for term in clean_keywords if term in service_text)
+
+                    if match_count > 0:
+                        if category_name not in results:
+                            results[category_name] = []
+                        results[category_name].append((match_count, service_item))
+
+            # Handle DICT format (for backward compatibility)
+            elif isinstance(category_services, dict):
+                for service_name, service_data in category_services.items():
+                    service_text = service_name.lower()
+                    if isinstance(service_data, dict):
+                        service_text += " " + str(service_data.get("name", "")).lower()
+                        service_text += " " + str(service_data.get("notes", "")).lower()
                     legacy_names = (
                         service_data.get("legacy_names", [])
                         if isinstance(service_data, dict)
@@ -168,16 +185,34 @@ class PricingService:
                     legacy_text = " ".join([n.lower() for n in legacy_names])
                     full_search_text = service_text + " " + legacy_text
 
-                    if any(term in full_search_text for term in search_terms):
+                    match_count = sum(1 for term in clean_keywords if term in full_search_text)
+                    if match_count > 0:
                         if category_name not in results:
                             results[category_name] = {}
                         results[category_name][service_name] = service_data
 
-        if results:
+        # For list results, sort by match_count descending, keep top results
+        filtered_results = {}
+        for category_name, items in results.items():
+            if isinstance(items, list):
+                # Sort by match score descending
+                items.sort(key=lambda x: x[0], reverse=True)
+                max_score = items[0][0] if items else 0
+                # Keep only items with score >= max_score (best matches)
+                # Or if max_score == 1, keep top 5 to avoid returning everything
+                if max_score <= 1:
+                    best_items = [item for _score, item in items[:5]]
+                else:
+                    best_items = [item for score, item in items if score >= max_score]
+                filtered_results[category_name] = best_items
+            else:
+                filtered_results[category_name] = items
+
+        if filtered_results:
             return {
                 "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
                 "search_query": query,
-                "results": results,
+                "results": filtered_results,
                 "contact_info": self.prices.get("contact_info", {}),
                 "disclaimer": self.prices.get("disclaimer", {}),
             }
@@ -271,6 +306,28 @@ class PricingService:
             "contact_urgency_levels": self.prices.get("contact_urgency_levels", {}),
         }
 
+    def _format_service_list(self, category_data: list | dict) -> list[str]:
+        """Helper to format service data regardless of list/dict format"""
+        lines = []
+        if isinstance(category_data, list):
+            for item in category_data:
+                if isinstance(item, dict):
+                    name = item.get("name", item.get("code", "Unknown"))
+                    price_idr = item.get("price_idr", item.get("price", "Contact"))
+                    price_usd = item.get("price_usd_approx", "")
+                    duration = item.get("duration", "")
+                    suffix = f" ({duration})" if duration else ""
+                    usd_str = f" (~${price_usd})" if price_usd else ""
+                    lines.append(f"- {name}: IDR {price_idr:,}{usd_str}{suffix}" if isinstance(price_idr, (int, float)) else f"- {name}: {price_idr}{usd_str}{suffix}")
+        elif isinstance(category_data, dict):
+            for name, data in category_data.items():
+                if isinstance(data, dict):
+                    price = data.get("price", data.get("price_idr", "Contact"))
+                    lines.append(f"- {name}: {price}")
+                else:
+                    lines.append(f"- {name}: {data}")
+        return lines
+
     def format_for_llm_context(self, service_type: str | None = None) -> str:
         """
         Format pricing data as context for LLM
@@ -288,46 +345,31 @@ class PricingService:
 
         if service_type == "visa" or service_type is None:
             context_parts.append("## VISA PRICES")
-            # Single entry
-            for name, data in services.get("single_entry_visas", {}).items():
-                price = data.get("price", "Contact")
-                context_parts.append(f"- {name}: {price}")
-            # Multiple entry
-            for name, data in services.get("multiple_entry_visas", {}).items():
-                price = data.get("price", "Contact")
-                validity = data.get("validity", "")
-                context_parts.append(f"- {name}: {price} ({validity})")
+            context_parts.extend(self._format_service_list(services.get("single_entry_visas", [])))
+            context_parts.extend(self._format_service_list(services.get("multiple_entry_visas", [])))
             context_parts.append("")
 
         if service_type == "kitas" or service_type is None:
             context_parts.append("## KITAS/KITAP PERMITS")
-            for name, data in services.get("kitas_permits", {}).items():
-                price = data.get("price", "Contact")
-                context_parts.append(f"- {name}: {price}")
-            for name, data in services.get("kitap_permits", {}).items():
-                price = data.get("price", "Contact")
-                context_parts.append(f"- {name}: {price}")
+            context_parts.extend(self._format_service_list(services.get("kitas_permits", [])))
+            context_parts.extend(self._format_service_list(services.get("kitap_permits", [])))
             context_parts.append("")
 
         if service_type == "business" or service_type is None:
             context_parts.append("## COMPANY SERVICES")
-            for name, data in services.get("company_services", {}).items():
-                price = data.get("price", "Contact")
-                context_parts.append(f"- {name}: {price}")
+            context_parts.extend(self._format_service_list(services.get("company_services", [])))
             context_parts.append("")
 
         if service_type == "other" or service_type is None:
             context_parts.append("## OTHER SERVICES")
-            for name, data in services.get("other_process", {}).items():
-                price = data.get("price", "Contact")
-                context_parts.append(f"- {name}: {price}")
+            context_parts.extend(self._format_service_list(services.get("other_process", [])))
             context_parts.append("")
 
         # Always include warnings
         warnings = self.prices.get("important_warnings", {})
-        if warnings:
+        if warnings and isinstance(warnings, dict):
             context_parts.append("## IMPORTANT WARNINGS")
-            for _key, warning in list(warnings.items())[:3]:  # Top 3 warnings
+            for _key, warning in list(warnings.items())[:3]:
                 context_parts.append(f"⚠️ {warning}")
             context_parts.append("")
 
