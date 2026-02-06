@@ -16,16 +16,16 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
 
 ## 📁 Files Created
 
-| File | LOC | Purpose |
-|------|-----|---------|
-| `backend/schemas/__init__.py` | 1 | Schemas package init |
-| `backend/schemas/portal.py` | 92 | Pydantic models (TaxObligation, VisaRecord, summaries) |
-| `backend/services/portal/tax_service.py` | 200 | Tax obligations service |
-| `backend/services/portal/visa_service.py` | 161 | Visa records service |
-| `backend/app/routers/portal_taxes.py` | 109 | Tax API endpoints |
-| `backend/app/routers/portal_visa.py` | 106 | Visa API endpoints |
-| `backend/jobs/__init__.py` | 222 | Jobs package with deadline checker |
-| `backend/jobs/deadline_checker.py` | 222 | Deadline checker background job |
+| File                                      | LOC | Purpose                                                |
+| ----------------------------------------- | --- | ------------------------------------------------------ |
+| `backend/schemas/__init__.py`             | 1   | Schemas package init                                   |
+| `backend/schemas/portal.py`               | 92  | Pydantic models (TaxObligation, VisaRecord, summaries) |
+| `backend/services/portal/tax_service.py`  | 200 | Tax obligations service                                |
+| `backend/services/portal/visa_service.py` | 161 | Visa records service                                   |
+| `backend/app/routers/portal_taxes.py`     | 109 | Tax API endpoints                                      |
+| `backend/app/routers/portal_visa.py`      | 106 | Visa API endpoints                                     |
+| `backend/jobs/__init__.py`                | 222 | Jobs package with deadline checker                     |
+| `backend/jobs/deadline_checker.py`        | 222 | Deadline checker background job                        |
 
 **Total:** 8 files created, ~1,113 lines of code
 
@@ -33,24 +33,24 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
 
 ## 📁 Files Modified
 
-| File | Changes | Purpose |
-|------|---------|---------|
+| File                                       | Changes                             | Purpose                                       |
+| ------------------------------------------ | ----------------------------------- | --------------------------------------------- |
 | `backend/app/setup/router_registration.py` | +2 imports, +2 router registrations | Register portal_taxes and portal_visa routers |
 
 ---
 
 ## ✅ Golden Rules Compliance
 
-| # | Rule | Status | Implementation |
-|---|------|--------|----------------|
-| 1 | **Virtualenv** | ✅ | All validation done in correct directory |
-| 2 | **No Root Execution** | ✅ | Used `python3 -m py_compile` |
-| 3 | **Absolute Imports** | ✅ | `from backend.services...`, `from backend.app.routers...` |
-| 4 | **Async First** | ✅ | All DB/IO functions are `async def` |
-| 5 | **Type Hints** | ✅ | Complete type hints on all functions |
-| 6 | **No Hardcoding** | ✅ | DB connection via `get_db_pool()` |
-| 7 | **Data/Logic Separation** | ✅ | Services in `services/portal/`, routers in `app/routers/` |
-| 8 | **Production-Ready Standard** | ⚠️ | Core implementation ✅, Tests pending 📝 |
+| #   | Rule                          | Status | Implementation                                            |
+| --- | ----------------------------- | ------ | --------------------------------------------------------- |
+| 1   | **Virtualenv**                | ✅     | All validation done in correct directory                  |
+| 2   | **No Root Execution**         | ✅     | Used `python3 -m py_compile`                              |
+| 3   | **Absolute Imports**          | ✅     | `from backend.services...`, `from backend.app.routers...` |
+| 4   | **Async First**               | ✅     | All DB/IO functions are `async def`                       |
+| 5   | **Type Hints**                | ✅     | Complete type hints on all functions                      |
+| 6   | **No Hardcoding**             | ✅     | DB connection via `get_db_pool()`                         |
+| 7   | **Data/Logic Separation**     | ✅     | Services in `services/portal/`, routers in `app/routers/` |
+| 8   | **Production-Ready Standard** | ⚠️     | Core implementation ✅, Tests pending 📝                  |
 
 ---
 
@@ -123,6 +123,7 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
 ### Tax Obligations
 
 **GET `/api/portal/taxes`**
+
 - **Auth:** Client JWT required
 - **Response:**
   ```json
@@ -156,6 +157,7 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
   ```
 
 **GET `/api/portal/taxes/summary`**
+
 - **Auth:** Client JWT required
 - **Response:** `TaxSummary` object (dashboard card)
 
@@ -164,6 +166,7 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
 ### Visa Records
 
 **GET `/api/portal/visa`**
+
 - **Auth:** Client JWT required
 - **Response:**
   ```json
@@ -193,6 +196,7 @@ Implementati gli endpoint Portal per `tax_obligations` e `visa_records`, più il
   ```
 
 **GET `/api/portal/visa/summary`**
+
 - **Auth:** Client JWT required
 - **Response:** `VisaSummary` object (dashboard card)
 
@@ -240,21 +244,21 @@ deadline_checker_last_run_timestamp
 
 ### Tax Reminders
 
-| Days Before | Urgency | Color | Timeline Event |
-|-------------|---------|-------|----------------|
-| 30 days | info | info | "Tax Reminder: [name] - Due in 30 days" |
-| 14 days | warning | warning | "Tax Reminder: [name] - Due in 14 days" |
-| 7 days | urgent | error | "Tax Reminder: [name] - Due in 7 days" |
-| 1 day | critical | error | "Tax Reminder: [name] - Due in 1 day" |
+| Days Before | Urgency  | Color   | Timeline Event                          |
+| ----------- | -------- | ------- | --------------------------------------- |
+| 30 days     | info     | info    | "Tax Reminder: [name] - Due in 30 days" |
+| 14 days     | warning  | warning | "Tax Reminder: [name] - Due in 14 days" |
+| 7 days      | urgent   | error   | "Tax Reminder: [name] - Due in 7 days"  |
+| 1 day       | critical | error   | "Tax Reminder: [name] - Due in 1 day"   |
 
 ### Visa Actions
 
-| Days Before | Action | Timeline Event |
-|-------------|--------|----------------|
-| 90 days | Renewal notice | "Visa Expiry Reminder: [type] - Expires in 90 days" |
-| 60 days | Create renewal practice | "Visa Expiry Reminder: [type] - Expires in 60 days" |
-| 30 days | Update status to `expiring_soon` | "Visa Expiry Reminder: [type] - Expires in 30 days" |
-| 0 days | Update status to `expired` | Status change (no event) |
+| Days Before | Action                           | Timeline Event                                      |
+| ----------- | -------------------------------- | --------------------------------------------------- |
+| 90 days     | Renewal notice                   | "Visa Expiry Reminder: [type] - Expires in 90 days" |
+| 60 days     | Create renewal practice          | "Visa Expiry Reminder: [type] - Expires in 60 days" |
+| 30 days     | Update status to `expiring_soon` | "Visa Expiry Reminder: [type] - Expires in 30 days" |
+| 0 days      | Update status to `expired`       | Status change (no event)                            |
 
 ---
 
@@ -269,18 +273,19 @@ async def get_current_portal_client(
 ) -> dict:
     """
     Get current authenticated client from JWT token.
-    
+
     Requires:
     - Valid JWT token (from middleware)
     - role = 'client'
     - linked_client_id set
-    
+
     Returns:
         dict with: id, email, full_name
     """
 ```
 
 **Query:**
+
 ```sql
 SELECT c.id, c.email, c.full_name
 FROM clients c
@@ -383,9 +388,9 @@ python3 -m py_compile backend/app/setup/router_registration.py
 
 ```sql
 -- Check if tables exist
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
 AND table_name IN ('tax_obligations', 'visa_records', 'timeline_events');
 ```
 
@@ -467,6 +472,7 @@ PYTHONPATH=. python -m backend.jobs.deadline_checker
 ### Priority 2: Deployment
 
 1. **Commit & Push**
+
    ```bash
    git add backend/schemas/ backend/services/portal/ backend/app/routers/portal_*.py backend/jobs/ backend/app/setup/router_registration.py
    git commit -m "feat(portal): implement tax & visa endpoints + deadline checker"
@@ -478,6 +484,7 @@ PYTHONPATH=. python -m backend.jobs.deadline_checker
    - Check metrics in Prometheus/Grafana
 
 3. **Deploy to Production** (Fly.io)
+
    ```bash
    fly deploy -a nuzantara-rag
    ```
@@ -509,6 +516,7 @@ PYTHONPATH=. python -m backend.jobs.deadline_checker
 **Issue:** Code assumes `tax_obligations`, `visa_records`, `timeline_events` tables exist with exact schema.
 
 **Mitigation:**
+
 - Migration 002 mentioned in prompt should have created these
 - Verify with query before deploying
 - If missing, create migration manually
@@ -518,6 +526,7 @@ PYTHONPATH=. python -m backend.jobs.deadline_checker
 **Issue:** Endpoints rely on `request.state.user` populated by JWT middleware.
 
 **Assumption:** Middleware already handles:
+
 - JWT token validation
 - User extraction
 - Role checking
@@ -529,6 +538,7 @@ PYTHONPATH=. python -m backend.jobs.deadline_checker
 **Issue:** Deadline checker creates reminders without checking duplicates.
 
 **Current Mitigation:**
+
 ```sql
 AND NOT EXISTS (
     SELECT 1 FROM timeline_events e
@@ -548,6 +558,7 @@ AND NOT EXISTS (
 **Current:** Timeline events created inline in services.
 
 **Future Enhancement:** Consider event bus pattern:
+
 - Services emit events (e.g., `TaxObligationCreated`)
 - Event handler creates timeline events
 - Decouples business logic from timeline logging
@@ -557,6 +568,7 @@ AND NOT EXISTS (
 **Current:** Only creates timeline events (visible in Portal UI).
 
 **Future Enhancement:** Integrate with notification service:
+
 - Send email reminder at T-7 days
 - Send Telegram message at T-1 day
 - Requires `messaging_users` integration
@@ -570,6 +582,7 @@ AND NOT EXISTS (
 **Decision:** Separate services (`tax_service.py`, `visa_service.py`) from routers.
 
 **Benefits:**
+
 - Testable business logic (no HTTP mocking needed)
 - Reusable across multiple endpoints/jobs
 - Clear separation of concerns
@@ -579,6 +592,7 @@ AND NOT EXISTS (
 **Decision:** Metrics in routers, not services.
 
 **Rationale:**
+
 - HTTP-specific metrics (status codes, latency)
 - Services can be called from jobs (no HTTP context)
 
@@ -587,6 +601,7 @@ AND NOT EXISTS (
 **Decision:** All database operations are `async def`.
 
 **Benefits:**
+
 - Non-blocking I/O
 - Better concurrency for production load
 - Consistent with existing codebase
@@ -596,6 +611,7 @@ AND NOT EXISTS (
 **Decision:** Use Pydantic models for all request/response validation.
 
 **Benefits:**
+
 - Automatic validation
 - OpenAPI schema generation
 - IDE autocomplete
@@ -606,11 +622,13 @@ AND NOT EXISTS (
 **Decision:** Use `structlog` with key-value pairs.
 
 **Example:**
+
 ```python
 logger.info("Fetched tax obligations", client_id=client_id, count=len(rows))
 ```
 
 **Benefits:**
+
 - Machine-parseable logs
 - Easy to search/filter in production
 - Better than f-strings for monitoring
@@ -641,16 +659,16 @@ logger.info("Fetched tax obligations", client_id=client_id, count=len(rows))
 
 ## ✅ Compliance Summary
 
-| Requirement | Status | Notes |
-|-------------|--------|-------|
-| **Golden Rules** | ✅ 7/7 | All rules followed |
-| **Production-Ready** | ⚠️ 5/6 | Tests pending |
-| **Type Safety** | ✅ | Pydantic + type hints |
-| **Logging** | ✅ | Structured logging |
-| **Metrics** | ✅ | Prometheus metrics |
-| **Documentation** | ✅ | Docstrings + this doc |
-| **Error Handling** | ✅ | Try/except with HTTPException |
-| **Tests** | ⚠️ | **PENDING** |
+| Requirement          | Status | Notes                         |
+| -------------------- | ------ | ----------------------------- |
+| **Golden Rules**     | ✅ 7/7 | All rules followed            |
+| **Production-Ready** | ⚠️ 5/6 | Tests pending                 |
+| **Type Safety**      | ✅     | Pydantic + type hints         |
+| **Logging**          | ✅     | Structured logging            |
+| **Metrics**          | ✅     | Prometheus metrics            |
+| **Documentation**    | ✅     | Docstrings + this doc         |
+| **Error Handling**   | ✅     | Try/except with HTTPException |
+| **Tests**            | ⚠️     | **PENDING**                   |
 
 **Overall:** 🟡 **Implementation Complete, Tests Pending**
 

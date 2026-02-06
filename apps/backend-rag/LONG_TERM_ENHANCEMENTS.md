@@ -13,10 +13,13 @@ This document covers the long-term enhancements implemented for NUZANTARA:
 ## 1. Auto-Practice Creation ✅
 
 ### Summary
+
 Automatically creates visa renewal practices 60 days before expiry.
 
 ### Implementation
+
 **Files Created:**
+
 - `backend/jobs/auto_practice_creator.py` (370 LOC)
 - `backend/tests/unit/jobs/test_auto_practice_creator.py` (370 LOC)
 - `.github/workflows/auto-practice-creator-daily.yml` (60 LOC)
@@ -24,6 +27,7 @@ Automatically creates visa renewal practices 60 days before expiry.
 **Total:** 800 LOC
 
 ### Features
+
 - **Trigger**: Visas expiring in exactly 60 days
 - **Duplicate Prevention**: Checks last 120 days + `custom_fields` match
 - **Priority Assignment**: High if <30 days, Normal otherwise
@@ -31,6 +35,7 @@ Automatically creates visa renewal practices 60 days before expiry.
 - **Timeline Event**: Creates client-visible event
 
 ### Visa Type Mapping
+
 ```python
 kitas_work → KITAS_RENEWAL
 kitas_spouse → KITAS_SPOUSE_RENEWAL
@@ -42,11 +47,13 @@ other/unknown → VISA_RENEWAL_GENERAL (fallback)
 ```
 
 ### Schedule
+
 - **Cron**: Daily at 7:00 AM Singapore Time (11:00 PM UTC)
 - **Manual**: Via GitHub Actions `workflow_dispatch`
 - **Timeout**: 10 minutes
 
 ### Metrics
+
 ```promql
 # Prometheus metrics
 auto_practice_creator_visas_checked
@@ -56,13 +63,16 @@ auto_practice_creator_last_run_timestamp
 ```
 
 ### Testing
+
 **13 tests, 100% passing:**
+
 - Practice type lookup (found, not found, mapping)
 - Duplicate detection (exists, not exists)
 - Practice creation (success, no type, priority logic)
 - Full job execution (no visas, creates, skips, errors)
 
 ### Deployment
+
 ```bash
 # Apply to production
 git push origin main
@@ -82,10 +92,13 @@ fly logs -a nuzantara-rag | grep "auto-practice"
 ## 2. Client Portal UI ✅
 
 ### Summary
+
 Reusable React/TypeScript components for displaying tax & visa data in client portals.
 
 ### Implementation
+
 **Files Created:**
+
 - `portal-ui-components/README.md` (Documentation, 400 LOC)
 - `portal-ui-components/tax/TaxSummaryCard.tsx` (Component, 120 LOC)
 - `portal-ui-components/visa/VisaStatusCard.tsx` (Component, 180 LOC)
@@ -96,21 +109,25 @@ Reusable React/TypeScript components for displaying tax & visa data in client po
 ### Components
 
 #### Tax Components
+
 - **TaxSummaryCard**: Aggregated metrics (total, upcoming, critical, overdue)
 - **TaxObligationsList**: Paginated list with status badges
 - **TaxObligationCard**: Individual obligation detail
 
 #### Visa Components
+
 - **VisaStatusCard**: Active visa with expiry countdown
 - **VisaHistoryList**: Timeline of all visas
 - **VisaSummaryCard**: Summary with warnings
 
 #### Shared Components
+
 - **StatusBadge**: Color-coded status indicator
 - **UrgencyIndicator**: Visual urgency (red/yellow/green)
 - **LoadingSkeleton**: Loading states
 
 ### Tech Stack
+
 - **React 19** / **Next.js 16**
 - **TypeScript 5**
 - **SWR** (data fetching + caching)
@@ -119,6 +136,7 @@ Reusable React/TypeScript components for displaying tax & visa data in client po
 - **lucide-react** (icons)
 
 ### Features
+
 - ✅ JWT authentication via Authorization header
 - ✅ Auto-refresh every 5 minutes (configurable)
 - ✅ Loading skeletons
@@ -128,6 +146,7 @@ Reusable React/TypeScript components for displaying tax & visa data in client po
 - ✅ CSS variables for theming
 
 ### Usage Example
+
 ```tsx
 import { TaxSummaryCard, TaxObligationsList } from '@/components/portal/tax';
 import { VisaStatusCard } from '@/components/portal/visa';
@@ -146,7 +165,9 @@ export default function PortalHome() {
 ```
 
 ### Integration
+
 **Option 1: Standalone Portal App**
+
 ```bash
 npx create-next-app@latest portal-client
 cp -r portal-ui-components/* portal-client/src/components/portal/
@@ -156,6 +177,7 @@ npm run dev
 ```
 
 **Option 2: Existing Dashboard**
+
 ```bash
 # In apps/zantara-media/dashboard
 mkdir -p src/components/portal
@@ -164,6 +186,7 @@ cp -r portal-ui-components/* src/components/portal/
 ```
 
 ### Configuration
+
 ```bash
 NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
 NEXT_PUBLIC_PORTAL_TITLE="Bali Zero Client Portal"
@@ -175,10 +198,13 @@ NEXT_PUBLIC_SUPPORT_EMAIL="support@balizero.com"
 ## 3. Historical Analytics ✅
 
 ### Summary
+
 Backend service for tracking completion rates, response times, and practice performance metrics.
 
 ### Implementation
+
 **Files Created:**
+
 - `backend/services/analytics/historical_analytics.py` (Service, 560 LOC)
 - `backend/app/routers/analytics.py` (API endpoints, 120 LOC)
 
@@ -187,20 +213,26 @@ Backend service for tracking completion rates, response times, and practice perf
 ### Features
 
 #### 1. Completion Rates
+
 ```python
 calculate_completion_rate(practice_type, start_date, end_date)
 ```
+
 **Metrics:**
+
 - Total practices
 - Completed practices
 - Cancelled practices
 - Completion rate percentage
 
 #### 2. Response Times
+
 ```python
 calculate_response_times(practice_type, start_date, end_date)
 ```
+
 **Metrics:**
+
 - Avg days inquiry → start
 - Median days inquiry → start
 - Avg days start → completion
@@ -209,20 +241,26 @@ calculate_response_times(practice_type, start_date, end_date)
 - Median total cycle time
 
 #### 3. SLA Compliance
+
 ```python
 calculate_sla_compliance(practice_type, start_date, end_date)
 ```
+
 **Metrics:**
+
 - Expected duration (from `practice_types.duration_days`)
 - Total completed practices
 - Within SLA count
 - SLA compliance percentage
 
 #### 4. Revenue Metrics
+
 ```python
 calculate_revenue_metrics(practice_type, start_date, end_date)
 ```
+
 **Metrics:**
+
 - Total revenue
 - Avg revenue per practice
 - Total paid
@@ -231,10 +269,13 @@ calculate_revenue_metrics(practice_type, start_date, end_date)
 - Payment completion rate
 
 #### 5. Monthly Report
+
 ```python
 generate_monthly_report(year, month)
 ```
+
 **Comprehensive report including:**
+
 - All completion rates
 - All response times
 - All SLA compliance
@@ -265,6 +306,7 @@ GET /api/analytics/monthly-report/2026/1
 ```
 
 ### Prometheus Metrics
+
 ```promql
 # Gauges (updated per calculation)
 analytics_completion_rate{practice_type, period}
@@ -279,6 +321,7 @@ analytics_response_days_histogram{practice_type}
 ```
 
 ### CLI Usage
+
 ```bash
 # Generate current month report
 cd apps/backend-rag
@@ -315,6 +358,7 @@ PYTHONPATH=. python -m backend.services.analytics.historical_analytics
 ### Dashboard Integration
 
 **Grafana Panels:**
+
 ```json
 {
   "title": "Completion Rate Trend",
@@ -333,15 +377,16 @@ PYTHONPATH=. python -m backend.services.analytics.historical_analytics
 ```
 
 **React Component:**
+
 ```tsx
 import useSWR from 'swr';
 
 function AnalyticsDashboard() {
   const { data } = useSWR('/api/analytics/completion-rates');
-  
+
   return (
     <div>
-      {data.results.map(item => (
+      {data.results.map((item) => (
         <Card key={item.practice_type}>
           <h3>{item.practice_name}</h3>
           <p>{item.completion_rate_pct}%</p>
@@ -353,6 +398,7 @@ function AnalyticsDashboard() {
 ```
 
 ### Automation
+
 ```yaml
 # .github/workflows/monthly-analytics-report.yml
 name: Monthly Analytics Report
@@ -378,12 +424,14 @@ jobs:
 ## 📊 Complete Statistics
 
 ### Development Summary
+
 **Total Files Created:** 9 files  
 **Total Lines of Code:** ~2,260 LOC  
 **Total Tests:** 13 tests (100% passing)  
 **Total Features:** 3 major features
 
 ### File Breakdown
+
 ```
 Auto-Practice Creation:
 - backend/jobs/auto_practice_creator.py (370 LOC)
@@ -411,6 +459,7 @@ Grand Total: 2,260 LOC
 ## 🚀 Deployment Checklist
 
 ### Auto-Practice Creation
+
 - [x] Code committed and pushed
 - [ ] Add DATABASE_URL secret to GitHub
 - [ ] Ensure practice_types table has renewal codes
@@ -418,6 +467,7 @@ Grand Total: 2,260 LOC
 - [ ] Monitor first run in production
 
 ### Client Portal UI
+
 - [ ] Choose integration approach (standalone vs existing)
 - [ ] Copy components to target project
 - [ ] Install dependencies (swr, date-fns, lucide-react)
@@ -426,6 +476,7 @@ Grand Total: 2,260 LOC
 - [ ] Deploy frontend
 
 ### Historical Analytics
+
 - [x] Code committed and pushed
 - [ ] Test endpoints with valid JWT
 - [ ] Add Grafana panels
@@ -437,16 +488,19 @@ Grand Total: 2,260 LOC
 ## 📈 Performance Expectations
 
 ### Auto-Practice Creation
+
 - **Execution Time**: <1s per 100 visas
 - **Memory Usage**: <50MB
 - **Database Load**: Minimal (3 queries per visa)
 
 ### Client Portal UI
+
 - **Initial Load**: <2s (with caching)
 - **Data Refresh**: Every 5 minutes (configurable)
 - **API Calls**: Batched and cached
 
 ### Historical Analytics
+
 - **Query Time**: <5s for monthly report (1,000 practices)
 - **API Response**: <2s (95th percentile)
 - **Prometheus Update**: Real-time on calculation
@@ -456,16 +510,19 @@ Grand Total: 2,260 LOC
 ## 🎯 Business Impact
 
 ### Auto-Practice Creation
+
 - **Time Saved**: ~10 min/visa renewal (manual tracking)
 - **Error Reduction**: 100% (no missed renewals)
 - **Client Satisfaction**: +15% (proactive service)
 
 ### Client Portal UI
+
 - **Support Tickets**: -30% (self-service)
 - **Client Engagement**: +45% (portal usage)
 - **Transparency**: 100% (real-time updates)
 
 ### Historical Analytics
+
 - **Decision Speed**: +60% (data-driven)
 - **Process Optimization**: Identify bottlenecks
 - **Revenue Tracking**: Real-time visibility
@@ -475,16 +532,19 @@ Grand Total: 2,260 LOC
 ## 🔧 Maintenance
 
 ### Auto-Practice Creation
+
 - **Monitoring**: GitHub Actions + Prometheus
 - **Failures**: Automatic issue creation
 - **Updates**: Add new visa types to mapping
 
 ### Client Portal UI
+
 - **Updates**: Component versioning
 - **Theming**: CSS variable system
 - **Bugs**: User feedback + analytics
 
 ### Historical Analytics
+
 - **Data Quality**: Monthly audits
 - **Performance**: Query optimization
 - **Reports**: Quarterly review
@@ -494,15 +554,18 @@ Grand Total: 2,260 LOC
 ## 📚 Documentation
 
 ### For Developers
+
 - `AUTO_PRACTICE_CREATOR.md` - Job documentation
 - `PORTAL_UI_COMPONENTS.md` - Component API
 - `HISTORICAL_ANALYTICS_API.md` - Endpoint specs
 
 ### For Users
+
 - `PORTAL_USER_GUIDE.md` - Client portal guide
 - `ANALYTICS_DASHBOARD_GUIDE.md` - Admin analytics guide
 
 ### For DevOps
+
 - `DEPLOYMENT_GUIDE.md` - Deployment steps
 - `MONITORING_GUIDE.md` - Observability setup
 
@@ -511,6 +574,7 @@ Grand Total: 2,260 LOC
 ## 🎉 Success Metrics
 
 ### Completion Criteria (All ✅)
+
 - [x] Auto-practice creation running daily
 - [x] Client portal components deployed
 - [x] Historical analytics endpoints live
@@ -519,6 +583,7 @@ Grand Total: 2,260 LOC
 - [x] Code committed and pushed
 
 ### KPIs to Track
+
 - Practice creation success rate: Target >95%
 - Portal adoption rate: Target >60% clients
 - Analytics query performance: Target <2s p95

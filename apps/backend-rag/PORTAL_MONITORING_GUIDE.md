@@ -20,6 +20,7 @@
 **Setup:**
 
 1. Add `DATABASE_URL` secret to GitHub repository:
+
    ```
    Settings → Secrets and variables → Actions → New repository secret
    Name: DATABASE_URL
@@ -27,6 +28,7 @@
    ```
 
 2. Enable workflow:
+
    ```bash
    # Workflow is automatically enabled when pushed to main
    # Verify at: https://github.com/YOUR_ORG/YOUR_REPO/actions
@@ -40,6 +42,7 @@
    ```
 
 **Monitoring:**
+
 - Workflow runs: `https://github.com/YOUR_ORG/YOUR_REPO/actions`
 - Failures create automatic GitHub issues with label `cron-job`
 
@@ -70,6 +73,7 @@ fly machines list -a nuzantara-rag --scheduled
 **File:** `apps/backend-rag/scripts/test_portal_endpoints.py`
 
 **Prerequisites:**
+
 ```bash
 pip install requests
 ```
@@ -77,6 +81,7 @@ pip install requests
 **Get JWT Token:**
 
 1. **Option A: Browser DevTools**
+
    ```
    1. Login to Portal: https://portal.balizero.com
    2. Open DevTools (F12) → Application → Storage → Cookies
@@ -161,11 +166,13 @@ Total: 4/4 passed
 **Steps:**
 
 1. **Open Grafana**
+
    ```
    https://grafana.your-domain.com
    ```
 
 2. **Import Dashboard**
+
    ```
    Dashboards → Import → Upload JSON file
    → Select grafana-dashboard-portal.json
@@ -221,6 +228,7 @@ After import: `https://grafana.your-domain.com/d/portal-monitoring`
 **Problem:** Deadline checker not running
 
 **Solution:**
+
 ```bash
 # Check GitHub Actions logs
 gh run list --workflow=deadline-checker-daily.yml --limit 5
@@ -235,6 +243,7 @@ gh workflow run deadline-checker-daily.yml
 **Problem:** Database connection failed
 
 **Solution:**
+
 ```bash
 # Verify DATABASE_URL secret is set
 gh secret list
@@ -253,6 +262,7 @@ python -c "import asyncio; import asyncpg; asyncio.run(asyncpg.connect('postgres
 **Cause:** JWT token expired or invalid
 
 **Solution:**
+
 ```bash
 # Get fresh token from Portal login
 # Tokens typically expire after 24 hours
@@ -263,6 +273,7 @@ python -c "import asyncio; import asyncpg; asyncio.run(asyncpg.connect('postgres
 **Cause:** Token doesn't have `client` role
 
 **Solution:**
+
 ```bash
 # Verify token payload
 echo "eyJhbGciOi..." | cut -d. -f2 | base64 -d | jq
@@ -275,6 +286,7 @@ echo "eyJhbGciOi..." | cut -d. -f2 | base64 -d | jq
 **Cause:** Endpoints not registered
 
 **Solution:**
+
 ```bash
 # Verify deployment
 fly status -a nuzantara-rag
@@ -296,6 +308,7 @@ python -c "from backend.app.main import app; print([r.path for r in app.routes])
 **Cause:** Prometheus not scraping metrics or no requests yet
 
 **Solution:**
+
 ```bash
 # Verify metrics endpoint
 curl https://nuzantara-rag.fly.dev/metrics | grep portal_
@@ -313,6 +326,7 @@ python scripts/test_portal_endpoints.py <JWT_TOKEN>
 **Cause:** PromQL syntax errors or missing metrics
 
 **Solution:**
+
 ```bash
 # Test queries directly in Prometheus
 # Prometheus UI → Graph → Execute query
@@ -344,7 +358,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Portal tax endpoint error rate > 5%"
+          summary: 'Portal tax endpoint error rate > 5%'
 
       # High latency
       - alert: PortalHighLatency
@@ -356,7 +370,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Portal tax endpoint p95 latency > 2s"
+          summary: 'Portal tax endpoint p95 latency > 2s'
 
       # Deadline checker not running
       - alert: DeadlineCheckerStale
@@ -427,16 +441,16 @@ async def get_tax_summary(client_id: int) -> TaxSummary:
     # Try cache first
     cache_key = f"tax_summary:{client_id}"
     cached = redis_client.get(cache_key)
-    
+
     if cached:
         return TaxSummary.parse_raw(cached)
-    
+
     # Query database
     summary = await _compute_tax_summary(client_id)
-    
+
     # Cache for 5 minutes
     redis_client.setex(cache_key, 300, summary.json())
-    
+
     return summary
 ```
 
@@ -445,11 +459,13 @@ async def get_tax_summary(client_id: int) -> TaxSummary:
 ## 7. Next Steps
 
 ### Short-term (This Month)
+
 - [ ] **Email Notifications** - Send T-7 day reminders
 - [ ] **Telegram Alerts** - Send urgent reminders
 - [ ] **Database Indexes** - Add performance indexes
 
 ### Long-term (Future)
+
 - [ ] **Auto-Practice Creation** - T-60 visa renewal practices
 - [ ] **Client Portal UI** - React dashboard components
 - [ ] **Historical Analytics** - Completion rate tracking

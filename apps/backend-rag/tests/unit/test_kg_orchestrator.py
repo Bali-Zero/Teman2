@@ -164,18 +164,20 @@ async def test_process_with_golden_route_match(
             orchestrator.vector_tool,
             "execute",
             AsyncMock(
-                return_value=json.dumps({
-                    "sources": [
-                        {
-                            "id": 1,
-                            "title": "PT PMA Requirements",
-                            "score": 0.95,
-                            "collection": "legal_unified_hybrid",
-                            "doc_id": "doc_123",
-                        }
-                    ],
-                    "content": "PT PMA requirements...",
-                })
+                return_value=json.dumps(
+                    {
+                        "sources": [
+                            {
+                                "id": 1,
+                                "title": "PT PMA Requirements",
+                                "score": 0.95,
+                                "collection": "legal_unified_hybrid",
+                                "doc_id": "doc_123",
+                            }
+                        ],
+                        "content": "PT PMA requirements...",
+                    }
+                )
             ),
         ):
             # Execute orchestration
@@ -237,18 +239,20 @@ async def test_process_without_golden_route(
             orchestrator.vector_tool,
             "execute",
             AsyncMock(
-                return_value=json.dumps({
-                    "sources": [
-                        {
-                            "id": 1,
-                            "title": "NPWP Guide",
-                            "score": 0.88,
-                            "collection": "tax_genius_hybrid",
-                            "doc_id": "doc_456",
-                        }
-                    ],
-                    "content": "NPWP information...",
-                })
+                return_value=json.dumps(
+                    {
+                        "sources": [
+                            {
+                                "id": 1,
+                                "title": "NPWP Guide",
+                                "score": 0.88,
+                                "collection": "tax_genius_hybrid",
+                                "doc_id": "doc_456",
+                            }
+                        ],
+                        "content": "NPWP information...",
+                    }
+                )
             ),
         ):
             response = await orchestrator.process(
@@ -293,10 +297,12 @@ async def test_process_with_empty_kg_context(
             orchestrator.vector_tool,
             "execute",
             AsyncMock(
-                return_value=json.dumps({
-                    "sources": [],
-                    "content": "",
-                })
+                return_value=json.dumps(
+                    {
+                        "sources": [],
+                        "content": "",
+                    }
+                )
             ),
         ):
             response = await orchestrator.process(
@@ -443,10 +449,12 @@ async def test_error_handling_kg_retrieval_failure(
             orchestrator.vector_tool,
             "execute",
             AsyncMock(
-                return_value=json.dumps({
-                    "sources": [],
-                    "content": "",
-                })
+                return_value=json.dumps(
+                    {
+                        "sources": [],
+                        "content": "",
+                    }
+                )
             ),
         ):
             response = await orchestrator.process(
@@ -519,10 +527,12 @@ async def test_reasoning_trace_structure(
             orchestrator.vector_tool,
             "execute",
             AsyncMock(
-                return_value=json.dumps({
-                    "sources": [{"id": 1, "title": "Test"}],
-                    "content": "Test content",
-                })
+                return_value=json.dumps(
+                    {
+                        "sources": [{"id": 1, "title": "Test"}],
+                        "content": "Test content",
+                    }
+                )
             ),
         ):
             response = await orchestrator.process(
@@ -539,7 +549,10 @@ async def test_reasoning_trace_structure(
         assert len(step) > 0
 
     # First step should be about intent
-    assert "intent" in response.reasoning_trace[0].lower() or "detected" in response.reasoning_trace[0].lower()
+    assert (
+        "intent" in response.reasoning_trace[0].lower()
+        or "detected" in response.reasoning_trace[0].lower()
+    )
 
 
 @pytest.mark.asyncio

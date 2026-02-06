@@ -9,7 +9,6 @@ import time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from backend.app.core.database import db
-
 from backend.services.rag.agentic import create_agentic_rag
 
 # Configure Logging
@@ -69,15 +68,15 @@ async def run_stress_test():
     total_start_time = time.time()
     results = []
 
-    print("\n" + "=" * 60)
-    print(f"🏁 STARTING GAUNTLET | USER: {user_id}")
-    print("=" * 60 + "\n")
+    logger.info("\n" + "=" * 60)
+    logger.info(f"🏁 STARTING GAUNTLET | USER: {user_id}")
+    logger.info("=" * 60 + "\n")
 
     for idx, turn in enumerate(scenarios):
         step_id = turn.get("id", idx)
         query = turn["content"]
 
-        print(f"\n[{step_id}/{len(scenarios)}] USER: {query}")
+        logger.info(f"\n[{step_id}/{len(scenarios)}] USER: {query}")
         start_turn = time.time()
 
         try:
@@ -100,7 +99,7 @@ async def run_stress_test():
             consecutive_errors = 0
 
             clean_answer = answer.replace("\n", " ")[:100]
-            print(f"🤖 ZANTARA ({duration:.2f}s | {route}): {clean_answer}...")
+            logger.info(f"🤖 ZANTARA ({duration:.2f}s | {route}): {clean_answer}...")
 
             results.append({"id": step_id, "status": "success", "duration": duration})
 
@@ -108,7 +107,7 @@ async def run_stress_test():
             consecutive_errors += 1
             duration = time.time() - start_turn
             logger.error(f"❌ ERROR on step {step_id}: {e}")
-            print(f"❌ ERROR: {e}")
+            logger.error(f"❌ ERROR: {e}")
             results.append(
                 {"id": step_id, "status": "error", "error": str(e), "duration": duration}
             )

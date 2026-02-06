@@ -199,9 +199,7 @@ class KGAgenticOrchestrator:
                 golden_route = kg_context.golden_route
                 if golden_route:
                     logger.info(f"🌟 [Step 3] Golden route matched: {golden_route.route_id}")
-                    reasoning_trace.append(
-                        f"Golden route matched: {golden_route.name}"
-                    )
+                    reasoning_trace.append(f"Golden route matched: {golden_route.name}")
                     reasoning_trace.append(
                         f"Recommended path: {' → '.join(golden_route.path[:3])}..."
                     )
@@ -399,10 +397,13 @@ class KGAgenticOrchestrator:
 
                 unique_sources.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-                return {
-                    "sources": unique_sources[:10],  # Top 10 overall
-                    "content": "\n\n".join([s.get("title", "") for s in unique_sources[:10]]),
-                }, target_collections
+                return (
+                    {
+                        "sources": unique_sources[:10],  # Top 10 overall
+                        "content": "\n\n".join([s.get("title", "") for s in unique_sources[:10]]),
+                    },
+                    target_collections,
+                )
 
             else:
                 # Federated search across all collections
@@ -506,10 +507,12 @@ class KGAgenticOrchestrator:
 
             # Add search results
             if search_results.get("sources"):
-                sources_text = "\n\n".join([
-                    f"[{i+1}] {s.get('title', 'Document')}\n{s.get('snippet', '')}"
-                    for i, s in enumerate(search_results["sources"][:5])
-                ])
+                sources_text = "\n\n".join(
+                    [
+                        f"[{i + 1}] {s.get('title', 'Document')}\n{s.get('snippet', '')}"
+                        for i, s in enumerate(search_results["sources"][:5])
+                    ]
+                )
                 context_parts.append("**Retrieved Documents:**\n" + sources_text)
 
             context = "\n\n---\n\n".join(context_parts)
@@ -662,7 +665,9 @@ Answer:"""
         if golden_route:
             if golden_route.estimated_timeline_months:
                 months = golden_route.estimated_timeline_months
-                estimated_timeline = f"~{months} months" if months > 1 else f"~{int(months * 30)} days"
+                estimated_timeline = (
+                    f"~{months} months" if months > 1 else f"~{int(months * 30)} days"
+                )
 
             if golden_route.estimated_cost_range_usd:
                 low, high = golden_route.estimated_cost_range_usd

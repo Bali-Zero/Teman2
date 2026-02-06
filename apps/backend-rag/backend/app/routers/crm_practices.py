@@ -671,7 +671,9 @@ async def update_practice(
 
                     if updates.status in status_event_map:
                         event_type, title, color = status_event_map[updates.status]
-                        description = updated_practice.get("client_summary") or f"Status: {updates.status}"
+                        description = (
+                            updated_practice.get("client_summary") or f"Status: {updates.status}"
+                        )
                         try:
                             await conn.execute(
                                 """

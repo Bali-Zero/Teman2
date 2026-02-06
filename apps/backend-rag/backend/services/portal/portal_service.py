@@ -714,27 +714,33 @@ class PortalService:
             # Build obligations from deadlines (upcoming tax filings)
             obligations = []
             for i, d in enumerate(deadlines):
-                obligations.append({
-                    "id": f"deadline-{i}",
-                    "name": d["type"],
-                    "type": "Monthly Filing",
-                    "period": d["period"],
-                    "dueDate": d["due_date"],
-                    "status": "overdue" if d["days_until"] < 0 else "pending",
-                    "amount": None,
-                })
+                obligations.append(
+                    {
+                        "id": f"deadline-{i}",
+                        "name": d["type"],
+                        "type": "Monthly Filing",
+                        "period": d["period"],
+                        "dueDate": d["due_date"],
+                        "status": "overdue" if d["days_until"] < 0 else "pending",
+                        "amount": None,
+                    }
+                )
 
             # Build history from completed tax practices
             history = []
             for p in tax_practices:
                 if p["status"] in ("completed", "filed"):
-                    history.append({
-                        "id": str(p["id"]),
-                        "name": p["name"],
-                        "period": p["created_at"].strftime("%b %Y") if p["created_at"] else "N/A",
-                        "filedDate": p["created_at"].isoformat() if p["created_at"] else None,
-                        "amount": 0,  # No amount stored in practices
-                    })
+                    history.append(
+                        {
+                            "id": str(p["id"]),
+                            "name": p["name"],
+                            "period": p["created_at"].strftime("%b %Y")
+                            if p["created_at"]
+                            else "N/A",
+                            "filedDate": p["created_at"].isoformat() if p["created_at"] else None,
+                            "amount": 0,  # No amount stored in practices
+                        }
+                    )
 
             # Calculate summary
             next_deadline = None
@@ -1163,13 +1169,17 @@ class PortalService:
                         {
                             "id": f"event-{ev['id']}",
                             "type": entry_type,
-                            "occurredAt": occurred_at.isoformat() if occurred_at else now.isoformat(),
+                            "occurredAt": occurred_at.isoformat()
+                            if occurred_at
+                            else now.isoformat(),
                             "title": ev["title"],
                             "description": ev["description"],
                             "status": event_type,
                             "unread": False,
                             "isFuture": is_future,
-                            "entity": {"practiceId": ev["practice_id"]} if ev["practice_id"] else {},
+                            "entity": {"practiceId": ev["practice_id"]}
+                            if ev["practice_id"]
+                            else {},
                         }
                     )
             except Exception as e:
@@ -1198,7 +1208,9 @@ class PortalService:
                             "title": msg["subject"] or "New Message",
                             "description": msg["content"][:100]
                             + ("..." if len(msg["content"]) > 100 else ""),
-                            "status": "sent" if msg["direction"] == "client_to_team" else "received",
+                            "status": "sent"
+                            if msg["direction"] == "client_to_team"
+                            else "received",
                             "unread": msg["direction"] == "team_to_client"
                             and msg["read_at"] is None,
                             "isFuture": False,

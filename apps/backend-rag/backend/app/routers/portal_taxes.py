@@ -1,4 +1,5 @@
 """Portal Tax API endpoints."""
+
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,9 +12,7 @@ from backend.services.portal.tax_service import TaxService
 router = APIRouter(prefix="/api/portal/taxes", tags=["Portal - Taxes"])
 
 # Metrics
-tax_requests = Counter(
-    "portal_tax_requests_total", "Tax endpoint requests", ["endpoint", "status"]
-)
+tax_requests = Counter("portal_tax_requests_total", "Tax endpoint requests", ["endpoint", "status"])
 tax_latency = Histogram("portal_tax_latency_seconds", "Tax endpoint latency")
 
 

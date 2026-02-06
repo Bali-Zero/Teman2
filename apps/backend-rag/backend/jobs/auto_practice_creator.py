@@ -19,9 +19,9 @@ Features:
 - Prometheus metrics for monitoring
 - Structured logging
 """
+
 import asyncio
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 import structlog
 from prometheus_client import Counter, Gauge
@@ -48,7 +48,7 @@ URGENT_THRESHOLD_DAYS = 30  # Set high priority if <30 days
 DEFAULT_ASSIGNEE = "admin@balizero.com"  # Fallback if no agent assigned
 
 
-async def get_practice_type_id(db_pool, visa_type: str) -> Optional[int]:
+async def get_practice_type_id(db_pool, visa_type: str) -> int | None:
     """
     Get practice_type_id for visa renewal based on visa type.
 
@@ -97,9 +97,7 @@ async def get_practice_type_id(db_pool, visa_type: str) -> Optional[int]:
         return row["id"]
 
 
-async def check_existing_renewal_practice(
-    db_pool, client_id: int, visa_record_id: int
-) -> bool:
+async def check_existing_renewal_practice(db_pool, client_id: int, visa_record_id: int) -> bool:
     """
     Check if renewal practice already exists for this visa.
 
@@ -143,8 +141,8 @@ async def create_renewal_practice(
     visa_type: str,
     visa_number: str,
     expiry_date: date,
-    assigned_to: Optional[str],
-) -> Optional[int]:
+    assigned_to: str | None,
+) -> int | None:
     """
     Create a renewal practice for a visa.
 

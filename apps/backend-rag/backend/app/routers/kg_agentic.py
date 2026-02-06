@@ -384,10 +384,12 @@ async def find_kg_path(
                     step["relation"] = p["rels"][i]
                 steps.append(step)
 
-            formatted_paths.append({
-                "depth": p["depth"],
-                "steps": steps,
-            })
+            formatted_paths.append(
+                {
+                    "depth": p["depth"],
+                    "steps": steps,
+                }
+            )
 
         return {
             "source": source,

@@ -145,9 +145,7 @@ describe('CrmApi', () => {
 
         await crmApi.getClients({ search: 'John', limit: 10 });
 
-        expect(mockClient.request).toHaveBeenCalledWith(
-          '/api/crm/clients?search=John&limit=10'
-        );
+        expect(mockClient.request).toHaveBeenCalledWith('/api/crm/clients?search=John&limit=10');
       });
     });
 
@@ -533,10 +531,9 @@ describe('CrmApi', () => {
 
         const result = await crmApi.deleteDocument(1, 10);
 
-        expect(mockClient.request).toHaveBeenCalledWith(
-          '/api/crm/clients/1/documents/10',
-          { method: 'DELETE' }
-        );
+        expect(mockClient.request).toHaveBeenCalledWith('/api/crm/clients/1/documents/10', {
+          method: 'DELETE',
+        });
         expect(result.action).toBe('archived');
       });
 
@@ -1035,12 +1032,8 @@ describe('CrmApi', () => {
             full_name: 'John Doe',
             email: 'john@example.com',
           },
-          family_members: [
-            { id: 1, full_name: 'Jane Doe', relationship: 'spouse' },
-          ],
-          documents: [
-            { id: 1, document_type: 'Passport', status: 'verified' },
-          ],
+          family_members: [{ id: 1, full_name: 'Jane Doe', relationship: 'spouse' }],
+          documents: [{ id: 1, document_type: 'Passport', status: 'verified' }],
           expiry_alerts: [
             {
               entity_type: 'client',

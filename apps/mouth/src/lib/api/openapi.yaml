@@ -7,17 +7,17 @@ info:
     - Business Setup (PT PMA, OSS-RBA, KBLI)
     - Tax Consulting (PPh, PPN, NPWP)
     - CRM & Portal Management
-    
+
     ## Autenticazione
     Tutte le API richiedono autenticazione tramite:
     - Cookie httpOnly `nz_access_token` (metodo principale)
     - Header `Authorization: Bearer <token>` (fallback)
     - Header `X-API-Key` (per integrazioni)
-    
+
     ## Rate Limiting
     - 100 requests/minuto per utente autenticato
     - 10 requests/minuto per IP anonimo
-    
+
     ## Ambiente
     - **Production**: https://nuzantara-rag.fly.dev
     - **Frontend**: https://nuzantara-mouth.vercel.app
@@ -78,7 +78,7 @@ paths:
                   type: string
                   minLength: 6
                   maxLength: 6
-                  example: "123456"
+                  example: '123456'
                   description: PIN a 6 cifre
       responses:
         '200':
@@ -283,7 +283,7 @@ paths:
       summary: Send chat message (streaming)
       description: |
         Endpoint SSE per chat streaming con AI.
-        
+
         **Features:**
         - Server-Sent Events (SSE)
         - ReAct reasoning steps
@@ -291,7 +291,7 @@ paths:
         - Vision support (images)
         - Conversation history
         - Citations & sources
-        
+
         **Event Types:**
         - `token` - Token di risposta
         - `thinking` - AI reasoning
@@ -356,13 +356,13 @@ paths:
                 type: string
                 example: |
                   data: {"type":"thinking","data":"Analyzing query..."}
-                  
+
                   data: {"type":"token","content":"Il KITAS"}
-                  
+
                   data: {"type":"token","content":" investor"}
-                  
+
                   data: {"type":"sources","data":[{"title":"Visa Oracle","content":"..."}]}
-                  
+
                   data: [DONE]
         '401':
           $ref: '#/components/responses/Unauthorized'

@@ -3,14 +3,16 @@
 ## 🐛 Current Errors
 
 ### Error 1: Failed to get auth URL
+
 ```
 Failed to get auth URL: Error: Request failed
 at k.request (36b6329e32e940aa.js:1:7233)
 ```
 
 ### Error 2: React DOM removeChild
+
 ```
-NotFoundError: Failed to execute 'removeChild' on 'Node': 
+NotFoundError: Failed to execute 'removeChild' on 'Node':
 The node to be removed is not a child of this node.
 ```
 
@@ -110,9 +112,9 @@ useEffect(() => {
 
   const connect = () => {
     if (!isMounted) return;
-    
+
     ws = new WebSocket(wsUrl);
-    
+
     ws.onclose = () => {
       if (isMounted) {
         // Only reconnect if still mounted
@@ -144,7 +146,7 @@ useEffect(() => {
 
 useEffect(() => {
   const currentRef = containerRef.current;
-  
+
   return () => {
     // Guard: Only cleanup if ref still exists
     if (currentRef && currentRef.parentNode) {
@@ -175,11 +177,7 @@ export function FileGridSkeleton() {
   // Only render if mounted
   if (!isMountedRef.current) return null;
 
-  return (
-    <div className="grid grid-cols-4 gap-4">
-      {/* Skeleton items */}
-    </div>
-  );
+  return <div className="grid grid-cols-4 gap-4">{/* Skeleton items */}</div>;
 }
 ```
 
@@ -256,7 +254,7 @@ protected async request<T>(options: ApiRequestOptions): Promise<T> {
     console.log('[API] BaseURL:', this.baseUrl);
     console.log('[API] Token:', this.token ? 'Present' : 'Missing');
   }
-  
+
   // ... rest of implementation
 }
 ```
@@ -381,6 +379,7 @@ vercel --prod
 After applying fixes, verify:
 
 1. **Backend Reachable:**
+
    ```bash
    curl https://nuzantara-rag.fly.dev/health
    # Should return: {"status":"healthy"}
@@ -428,6 +427,7 @@ curl -I https://nuzantara-rag.fly.dev/api/health
 Title: [Frontend] Auth URL error + React DOM removeChild
 
 **Environment:**
+
 - Frontend: [Vercel/Local/Other]
 - Backend: Fly.io (nuzantara-rag.fly.dev)
 - Browser: [Chrome/Safari/Firefox] [Version]
@@ -443,6 +443,7 @@ NEXT_PUBLIC_API_URL=[value]
 NEXT_PUBLIC_WS_URL=[value]
 
 **Steps to Reproduce:**
+
 1. Navigate to...
 2. Click on...
 3. Error appears

@@ -787,6 +787,7 @@ def calculate_final_score(
 @dataclass
 class ScoringConfig:
     """Configuration for Ollama scoring."""
+
     model: str = "deepseek-r1"
     temperature: float = 0.1
 

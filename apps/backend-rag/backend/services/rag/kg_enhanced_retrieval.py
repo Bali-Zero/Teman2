@@ -384,8 +384,24 @@ class KGEnhancedRetrieval:
 
     # Keywords to match golden routes
     ROUTE_KEYWORDS = {
-        "pt_pma_setup": ["pt pma", "perusahaan asing", "foreign company", "setup company", "establish company", "buat pt", "dirikan perusahaan"],
-        "kitas_work": ["kitas", "work permit", "izin kerja", "working visa", "imta", "rptka", "stay permit"],
+        "pt_pma_setup": [
+            "pt pma",
+            "perusahaan asing",
+            "foreign company",
+            "setup company",
+            "establish company",
+            "buat pt",
+            "dirikan perusahaan",
+        ],
+        "kitas_work": [
+            "kitas",
+            "work permit",
+            "izin kerja",
+            "working visa",
+            "imta",
+            "rptka",
+            "stay permit",
+        ],
         "nib_oss": ["nib", "oss", "nomor induk berusaha", "business number", "izin usaha"],
     }
 

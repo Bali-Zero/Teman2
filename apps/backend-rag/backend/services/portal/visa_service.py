@@ -1,6 +1,6 @@
 """Visa records service for Portal."""
+
 from datetime import date
-from typing import Optional
 
 import structlog
 from asyncpg import Pool
@@ -16,7 +16,7 @@ class VisaService:
     def __init__(self, db_pool: Pool):
         self.db_pool = db_pool
 
-    async def get_active_visa(self, client_id: int) -> Optional[VisaRecord]:
+    async def get_active_visa(self, client_id: int) -> VisaRecord | None:
         """Get the currently active visa for a client."""
         query = """
             SELECT * FROM visa_records
@@ -77,51 +77,50 @@ class VisaService:
         client_id: int,
         visa_type: str,
         status: str = "active",
-        issue_date: Optional[date] = None,
-        expiry_date: Optional[date] = None,
-        visa_number: Optional[str] = None,
-        sponsor_name: Optional[str] = None,
-        sponsor_type: Optional[str] = None,
-        practice_id: Optional[int] = None,
+        issue_date: date | None = None,
+        expiry_date: date | None = None,
+        visa_number: str | None = None,
+        sponsor_name: str | None = None,
+        sponsor_type: str | None = None,
+        practice_id: int | None = None,
     ) -> VisaRecord:
         """Create new visa record with timeline event."""
-        async with self.db_pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                """
                     INSERT INTO visa_records
                     (client_id, visa_type, status, issue_date, expiry_date, 
                      visa_number, sponsor_name, sponsor_type, practice_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     RETURNING *
                 """,
-                    client_id,
-                    visa_type,
-                    status,
-                    issue_date,
-                    expiry_date,
-                    visa_number,
-                    sponsor_name,
-                    sponsor_type,
-                    practice_id,
-                )
+                client_id,
+                visa_type,
+                status,
+                issue_date,
+                expiry_date,
+                visa_number,
+                sponsor_name,
+                sponsor_type,
+                practice_id,
+            )
 
-                # Create timeline event
-                await conn.execute(
-                    """
+            # Create timeline event
+            await conn.execute(
+                """
                     INSERT INTO timeline_events
                     (client_id, event_type, title, description, event_date, color, client_visible)
                     VALUES ($1, 'milestone', $2, $3, NOW(), 'success', true)
                 """,
-                    client_id,
-                    f"Visa Issued: {visa_type}",
-                    f"Valid until: {expiry_date}" if expiry_date else None,
-                )
+                client_id,
+                f"Visa Issued: {visa_type}",
+                f"Valid until: {expiry_date}" if expiry_date else None,
+            )
 
-                logger.info("Created visa record", client_id=client_id, visa_type=visa_type)
-                return VisaRecord(**dict(row))
+            logger.info("Created visa record", client_id=client_id, visa_type=visa_type)
+            return VisaRecord(**dict(row))
 
-    async def update_visa_status(self, visa_id: int, new_status: str) -> Optional[VisaRecord]:
+    async def update_visa_status(self, visa_id: int, new_status: str) -> VisaRecord | None:
         """Update visa status (e.g., expiring_soon, expired)."""
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(

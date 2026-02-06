@@ -1,6 +1,7 @@
-
 from pdfminer.high_level import extract_text
-import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 pdf_path = "/Users/antonellosiano/Desktop/nuzantara/peraturan-bps-no-7-tahun-2025.pdf"
 
@@ -11,9 +12,9 @@ pdf_path = "/Users/antonellosiano/Desktop/nuzantara/peraturan-bps-no-7-tahun-202
 
 text = extract_text(pdf_path, maxpages=10)
 
-print("--- START PDF TEXT PREVIEW ---")
-print(text[:5000]) # Print first 5000 chars
-print("--- END PDF TEXT PREVIEW ---")
+logger.info("--- START PDF TEXT PREVIEW ---")
+logger.info(text[:5000])  # Print first 5000 chars
+logger.info("--- END PDF TEXT PREVIEW ---")
 
 with open("pdf_preview_extract.txt", "w") as f:
     f.write(text)

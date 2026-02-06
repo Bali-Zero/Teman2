@@ -1,6 +1,6 @@
 """Tax obligations service for Portal."""
+
 from datetime import date
-from typing import Optional
 
 import structlog
 from asyncpg import Pool
@@ -97,80 +97,78 @@ class TaxService:
         period_start: date,
         period_end: date,
         due_date: date,
-        amount_due: Optional[float] = None,
+        amount_due: float | None = None,
     ) -> TaxObligation:
         """Create a new tax obligation with timeline event."""
-        async with self.db_pool.acquire() as conn:
-            async with conn.transaction():
-                # Insert obligation
-                row = await conn.fetchrow(
-                    """
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            # Insert obligation
+            row = await conn.fetchrow(
+                """
                     INSERT INTO tax_obligations
                     (client_id, tax_type, name, frequency, period_start, 
                      period_end, due_date, amount_due, status)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'upcoming')
                     RETURNING *
                 """,
-                    client_id,
-                    tax_type,
-                    name,
-                    frequency,
-                    period_start,
-                    period_end,
-                    due_date,
-                    amount_due,
-                )
+                client_id,
+                tax_type,
+                name,
+                frequency,
+                period_start,
+                period_end,
+                due_date,
+                amount_due,
+            )
 
-                # Create timeline event
-                await conn.execute(
-                    """
+            # Create timeline event
+            await conn.execute(
+                """
                     INSERT INTO timeline_events
                     (client_id, event_type, title, description, event_date, color, client_visible)
                     VALUES ($1, 'deadline', $2, $3, $4, 'warning', true)
                 """,
-                    client_id,
-                    f"Tax Deadline: {name}",
-                    f"Due: {due_date}",
-                    due_date,
-                )
+                client_id,
+                f"Tax Deadline: {name}",
+                f"Due: {due_date}",
+                due_date,
+            )
 
-                logger.info(
-                    "Created tax obligation",
-                    client_id=client_id,
-                    tax_type=tax_type,
-                    due_date=str(due_date),
-                )
-                return TaxObligation(**dict(row))
+            logger.info(
+                "Created tax obligation",
+                client_id=client_id,
+                tax_type=tax_type,
+                due_date=str(due_date),
+            )
+            return TaxObligation(**dict(row))
 
     async def update_status(
-        self, obligation_id: int, new_status: str, amount_paid: Optional[float] = None
-    ) -> Optional[TaxObligation]:
+        self, obligation_id: int, new_status: str, amount_paid: float | None = None
+    ) -> TaxObligation | None:
         """Update obligation status and create timeline event."""
-        async with self.db_pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                """
                     UPDATE tax_obligations
                     SET status = $2, amount_paid = COALESCE($3, amount_paid), 
                         updated_at = NOW()
                     WHERE id = $1
                     RETURNING *
                 """,
-                    obligation_id,
-                    new_status,
-                    amount_paid,
-                )
+                obligation_id,
+                new_status,
+                amount_paid,
+            )
 
-                if row and new_status == "paid":
-                    await conn.execute(
-                        """
+            if row and new_status == "paid":
+                await conn.execute(
+                    """
                         INSERT INTO timeline_events
                         (client_id, event_type, title, event_date, color, client_visible)
                         VALUES ($1, 'completion', $2, NOW(), 'success', true)
                     """,
-                        row["client_id"],
-                        f"Tax Paid: {row['name']}",
-                    )
+                    row["client_id"],
+                    f"Tax Paid: {row['name']}",
+                )
 
-                logger.info("Updated tax obligation", id=obligation_id, new_status=new_status)
-                return TaxObligation(**dict(row)) if row else None
+            logger.info("Updated tax obligation", id=obligation_id, new_status=new_status)
+            return TaxObligation(**dict(row)) if row else None

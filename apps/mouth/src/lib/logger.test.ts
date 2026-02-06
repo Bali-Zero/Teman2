@@ -133,12 +133,19 @@ describe('Logger with Sentry Integration', () => {
       const prodLogger = new (logger.constructor as any)();
       (prodLogger as any).isDevelopment = false;
 
-      prodLogger.error('Error occurred', { component: 'TestComponent', action: 'test_action' }, error);
+      prodLogger.error(
+        'Error occurred',
+        { component: 'TestComponent', action: 'test_action' },
+        error
+      );
 
-      expect(Sentry.setContext).toHaveBeenCalledWith('log_context', expect.objectContaining({
-        component: 'TestComponent',
-        action: 'test_action',
-      }));
+      expect(Sentry.setContext).toHaveBeenCalledWith(
+        'log_context',
+        expect.objectContaining({
+          component: 'TestComponent',
+          action: 'test_action',
+        })
+      );
 
       expect(Sentry.captureException).toHaveBeenCalledWith(
         error,

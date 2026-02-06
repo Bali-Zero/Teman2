@@ -32,7 +32,7 @@ log "Checking Vercel deployment status..."
 echo -e "${BLUE}📊 VERCEL DEPLOYMENT STATUS${NC}"
 echo "--------------------------------"
 
-LATEST_DEPLOYMENT=$(cd apps/mouth && vercel ls 2>&1 | grep "Ready" | head -1 | awk '{print $NF}')
+LATEST_DEPLOYMENT=$(cd apps/mouth && npx vercel ls --json 2>&1 | jq -r '.[0].url' 2>/dev/null)
 if [ -n "$LATEST_DEPLOYMENT" ]; then
     echo -e "${GREEN}✅ Latest Deployment: $LATEST_DEPLOYMENT${NC}"
     log "Latest deployment: $LATEST_DEPLOYMENT"

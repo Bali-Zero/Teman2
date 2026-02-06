@@ -48,8 +48,8 @@ from backend.services.ingestion.collection_manager import CollectionManager
 from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
 from backend.services.misc.cultural_insights_service import CulturalInsightsService
 from backend.services.misc.result_formatter import format_search_results
-from backend.services.search.query_expander import QueryExpander
 from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.search.query_expander import QueryExpander
 from backend.services.search.search_filters import build_search_filter
 
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
@@ -412,7 +412,7 @@ class SearchService:
             original_query = query
             expanded_query = await self.query_expander.expand(query)
             search_query = expanded_query  # Use expanded query for embedding
-            
+
             # Prepare search context (DRY: shared logic with search_with_reranking)
             embedding_start = time.time() if METRICS_AVAILABLE else None
             (

@@ -510,6 +510,7 @@ class QueryRouter:
         self.PROPERTY_KEYWORDS = self.keyword_matcher.domain_keywords["property"]
         self.TEAM_KEYWORDS = self.keyword_matcher.domain_keywords["team"]
         self.BOOKS_KEYWORDS = self.keyword_matcher.domain_keywords["books"]
+        self.CIRCULAR_KEYWORDS = self.keyword_matcher.domain_keywords["circular"]
         self.UPDATE_KEYWORDS = self.keyword_matcher.modifier_keywords["updates"]
         self.TAX_GENIUS_KEYWORDS = self.keyword_matcher.modifier_keywords["tax_genius"]
         self.BACKEND_SERVICES_KEYWORDS = self.priority_override.backend_services_keywords
@@ -588,6 +589,15 @@ class QueryRouter:
             collection = "property_unified"
             logger.info(
                 f"🧭 Route: {collection} (property unified: property={domain_scores['property']})"
+            )
+        elif primary_domain == "circular" or (
+            primary_domain == "visa" and domain_scores.get("circular", 0) > 0
+        ):
+            # Kemnaker/Imigrasi circulars - PRIORITY ROUTE when circular keywords present
+            # Even if visa score is higher, circular keywords indicate specific circular query
+            collection = "immigration_circulars"
+            logger.info(
+                f"🧭 Route: {collection} (circular priority: circular={domain_scores.get('circular', 0)}, visa={domain_scores.get('visa', 0)})"
             )
         elif primary_domain == "visa":
             collection = "visa_oracle"

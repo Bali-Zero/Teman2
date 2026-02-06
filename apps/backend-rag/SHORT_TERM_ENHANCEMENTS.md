@@ -13,21 +13,23 @@ This document covers the short-term enhancements implemented for the Portal tax 
 ## 1. Database Indexes
 
 ### Migration File
+
 **Location:** `backend/db/migrations_v2/003_portal_performance_indexes.sql`
 
 ### Indexes Created
 
 #### Tax Obligations (4 indexes)
+
 ```sql
 -- Client + status filtering
 CREATE INDEX idx_tax_client_status ON tax_obligations(client_id, status);
 
 -- Due date range queries (partial index for active only)
-CREATE INDEX idx_tax_due_date_status ON tax_obligations(due_date, status) 
+CREATE INDEX idx_tax_due_date_status ON tax_obligations(due_date, status)
 WHERE status IN ('upcoming', 'pending');
 
 -- Active obligations only (smaller, faster)
-CREATE INDEX idx_tax_active_obligations ON tax_obligations(client_id, due_date) 
+CREATE INDEX idx_tax_active_obligations ON tax_obligations(client_id, due_date)
 WHERE status NOT IN ('paid', 'filed');
 
 -- Summary aggregations
@@ -35,16 +37,17 @@ CREATE INDEX idx_tax_summary ON tax_obligations(client_id, status, amount_due, d
 ```
 
 #### Visa Records (4 indexes)
+
 ```sql
 -- Client + status filtering
 CREATE INDEX idx_visa_client_status ON visa_records(client_id, status);
 
 -- Expiry date range queries (partial index)
-CREATE INDEX idx_visa_expiry_date_status ON visa_records(expiry_date, status) 
+CREATE INDEX idx_visa_expiry_date_status ON visa_records(expiry_date, status)
 WHERE status IN ('active', 'expiring_soon');
 
 -- Active visas only
-CREATE INDEX idx_visa_active ON visa_records(client_id, expiry_date DESC) 
+CREATE INDEX idx_visa_active ON visa_records(client_id, expiry_date DESC)
 WHERE status IN ('active', 'expiring_soon');
 
 -- History queries
@@ -52,25 +55,28 @@ CREATE INDEX idx_visa_history ON visa_records(client_id, created_at DESC);
 ```
 
 #### Timeline Events (2 indexes)
+
 ```sql
 -- Client-visible events (Portal dashboard)
-CREATE INDEX idx_timeline_client_visible 
+CREATE INDEX idx_timeline_client_visible
 ON timeline_events(client_id, client_visible, event_date DESC);
 
 -- Reminder duplicate checks
-CREATE INDEX idx_timeline_reminder_check 
-ON timeline_events(client_id, event_type, event_date) 
+CREATE INDEX idx_timeline_reminder_check
+ON timeline_events(client_id, event_type, event_date)
 WHERE event_type = 'reminder';
 ```
 
 ### Performance Impact
 
 **Before indexes:**
+
 - `get_client_taxes()`: ~150ms (full table scan)
 - `get_active_visa()`: ~120ms (full table scan)
 - `deadline_checker`: ~500ms (multiple full scans)
 
 **After indexes (estimated):**
+
 - `get_client_taxes()`: ~15ms (10x faster)
 - `get_active_visa()`: ~12ms (10x faster)
 - `deadline_checker`: ~50ms (10x faster)
@@ -88,9 +94,9 @@ psql $DATABASE_URL -c "\d+ visa_records"
 psql $DATABASE_URL -c "\d+ timeline_events"
 
 # Check query plans (should use indexes)
-psql $DATABASE_URL -c "EXPLAIN ANALYZE 
-  SELECT * FROM tax_obligations 
-  WHERE client_id = 123 AND status NOT IN ('paid', 'filed') 
+psql $DATABASE_URL -c "EXPLAIN ANALYZE
+  SELECT * FROM tax_obligations
+  WHERE client_id = 123 AND status NOT IN ('paid', 'filed')
   ORDER BY due_date ASC;"
 ```
 
@@ -99,15 +105,18 @@ psql $DATABASE_URL -c "EXPLAIN ANALYZE
 ## 2. Telegram Alerts
 
 ### Implementation
+
 **Location:** `backend/jobs/deadline_checker.py` → `send_telegram_alert()`
 
 ### Features
 
 **Alert Thresholds:**
+
 - **Tax deadlines:** ≤7 days (critical/warning urgency)
 - **Visa expiry:** ≤30 days (critical/warning urgency)
 
 **Message Format:**
+
 ```
 🚨 **Tax Deadline: PPh 21 - January 2026**
 
@@ -122,6 +131,7 @@ Visit your portal to view details: https://portal.balizero.com
 ```
 
 **Urgency Emojis:**
+
 - `critical` (≤7 days): 🚨
 - `warning` (8-30 days): ⚠️
 - `info` (>30 days): ℹ️
@@ -129,6 +139,7 @@ Visit your portal to view details: https://portal.balizero.com
 ### Requirements
 
 **Database Setup:**
+
 ```sql
 -- Client must have Telegram chat_id linked
 -- Via messaging_users table
@@ -142,6 +153,7 @@ VALUES (
 ```
 
 **Telegram Bot Setup:**
+
 1. Create bot via @BotFather
 2. Get bot token
 3. Set `TELEGRAM_BOT_TOKEN` environment variable
@@ -161,6 +173,7 @@ rate(deadline_telegram_alerts_sent[1h])
 ### Fallback Behavior
 
 If Telegram alert fails:
+
 - ✅ Timeline event still created
 - ⚠️ Warning logged (not error)
 - ✅ Job continues (graceful degradation)
@@ -170,48 +183,65 @@ If Telegram alert fails:
 ## 3. Email Notifications
 
 ### Implementation
+
 **Location:** `backend/jobs/deadline_checker.py` → `send_email_notification()`
 
 ### Features
 
 **Email Timing:**
+
 - **Tax deadlines:** Exactly 7 days before due date
 - **Visa expiry:** Exactly 90 days before expiry (renewal notice)
 
 **Email Template:**
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <style>
-        .header { background-color: #0066cc; color: white; padding: 20px; }
-        .content { padding: 20px; }
-        .footer { background-color: #f5f5f5; padding: 15px; }
-        .button { background-color: #0066cc; color: white; padding: 12px 24px; }
+      .header {
+        background-color: #0066cc;
+        color: white;
+        padding: 20px;
+      }
+      .content {
+        padding: 20px;
+      }
+      .footer {
+        background-color: #f5f5f5;
+        padding: 15px;
+      }
+      .button {
+        background-color: #0066cc;
+        color: white;
+        padding: 12px 24px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="header">
-        <h1>Bali Zero - Deadline Reminder</h1>
+      <h1>Bali Zero - Deadline Reminder</h1>
     </div>
     <div class="content">
-        <p>Dear {client_name},</p>
-        {body}
-        <a href="https://portal.balizero.com" class="button">View Portal Dashboard</a>
+      <p>Dear {client_name},</p>
+      {body}
+      <a href="https://portal.balizero.com" class="button">View Portal Dashboard</a>
     </div>
     <div class="footer">
-        <p>This is an automated notification from Bali Zero.</p>
+      <p>This is an automated notification from Bali Zero.</p>
     </div>
-</body>
+  </body>
 </html>
 ```
 
 **Tax Reminder Example:**
+
 ```
 Subject: Tax Reminder: PPh 21 - January 2026 - Due in 7 Days
 
 Body:
-This is a reminder that your PPh 21 - January 2026 tax obligation 
+This is a reminder that your PPh 21 - January 2026 tax obligation
 is due in 7 days.
 
 Details:
@@ -224,11 +254,12 @@ Please ensure this obligation is filed on time to avoid penalties.
 ```
 
 **Visa Renewal Example:**
+
 ```
 Subject: Visa Renewal Notice: Kitas Work - 90 Days to Expiry
 
 Body:
-This is an early notification that your Kitas Work visa will expire 
+This is an early notification that your Kitas Work visa will expire
 in 90 days.
 
 Visa Details:
@@ -238,14 +269,15 @@ Visa Details:
 • Sponsor: PT Example Indonesia
 
 Next Steps:
-We recommend starting the renewal process soon to ensure continuous 
-stay in Indonesia. Our team will contact you shortly to discuss 
+We recommend starting the renewal process soon to ensure continuous
+stay in Indonesia. Our team will contact you shortly to discuss
 renewal options.
 ```
 
 ### Requirements
 
 **Zoho Email Service:**
+
 - `ZOHO_CLIENT_ID` - OAuth client ID
 - `ZOHO_CLIENT_SECRET` - OAuth client secret
 - `ZOHO_REFRESH_TOKEN` - OAuth refresh token
@@ -265,6 +297,7 @@ rate(deadline_email_notifications_sent[1h])
 ### Fallback Behavior
 
 If email fails:
+
 - ✅ Timeline event still created
 - ⚠️ Error logged (not critical)
 - ✅ Job continues (graceful degradation)
@@ -281,14 +314,14 @@ python -m backend.db.migrate apply
 
 # Test query performance
 psql $DATABASE_URL <<EOF
-EXPLAIN ANALYZE 
-SELECT * FROM tax_obligations 
-WHERE client_id = 123 AND status NOT IN ('paid', 'filed') 
+EXPLAIN ANALYZE
+SELECT * FROM tax_obligations
+WHERE client_id = 123 AND status NOT IN ('paid', 'filed')
 ORDER BY due_date ASC;
 
-EXPLAIN ANALYZE 
-SELECT * FROM visa_records 
-WHERE client_id = 123 AND status IN ('active', 'expiring_soon') 
+EXPLAIN ANALYZE
+SELECT * FROM visa_records
+WHERE client_id = 123 AND status IN ('active', 'expiring_soon')
 ORDER BY expiry_date DESC LIMIT 1;
 EOF
 ```
@@ -302,10 +335,10 @@ export TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
 # Create test data
 psql $DATABASE_URL <<EOF
 -- Insert test tax obligation (due in 5 days)
-INSERT INTO tax_obligations 
+INSERT INTO tax_obligations
 (client_id, tax_type, name, frequency, period_start, period_end, due_date, status, amount_due)
-VALUES (123, 'pph_21', 'Test Tax', 'monthly', 
-        CURRENT_DATE - 30, CURRENT_DATE, CURRENT_DATE + 5, 
+VALUES (123, 'pph_21', 'Test Tax', 'monthly',
+        CURRENT_DATE - 30, CURRENT_DATE, CURRENT_DATE + 5,
         'pending', 5000000);
 
 -- Link Telegram for client
@@ -334,10 +367,10 @@ export ZOHO_REFRESH_TOKEN="..."
 
 # Create test data (due in exactly 7 days)
 psql $DATABASE_URL <<EOF
-INSERT INTO tax_obligations 
+INSERT INTO tax_obligations
 (client_id, tax_type, name, frequency, period_start, period_end, due_date, status, amount_due)
-VALUES (123, 'pph_21', 'Test Tax Email', 'monthly', 
-        CURRENT_DATE - 30, CURRENT_DATE, CURRENT_DATE + 7, 
+VALUES (123, 'pph_21', 'Test Tax Email', 'monthly',
+        CURRENT_DATE - 30, CURRENT_DATE, CURRENT_DATE + 7,
         'pending', 5000000);
 EOF
 
@@ -401,7 +434,7 @@ Add to Prometheus `alert.rules.yml`:
   labels:
     severity: warning
   annotations:
-    summary: "Telegram alert failure rate > 50%"
+    summary: 'Telegram alert failure rate > 50%'
 
 - alert: EmailNotificationFailure
   expr: |
@@ -410,7 +443,7 @@ Add to Prometheus `alert.rules.yml`:
   labels:
     severity: warning
   annotations:
-    summary: "No email notifications sent in 2 days"
+    summary: 'No email notifications sent in 2 days'
 ```
 
 ---
@@ -424,11 +457,13 @@ Add to Prometheus `alert.rules.yml`:
 **Solutions:**
 
 1. **Check Telegram bot token:**
+
    ```bash
    fly secrets list -a nuzantara-rag | grep TELEGRAM
    ```
 
 2. **Verify client has chat_id:**
+
    ```sql
    SELECT mu.telegram_chat_id, up.email
    FROM messaging_users mu
@@ -437,6 +472,7 @@ Add to Prometheus `alert.rules.yml`:
    ```
 
 3. **Test bot manually:**
+
    ```bash
    curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
      -d "chat_id=YOUR_CHAT_ID" \
@@ -457,14 +493,16 @@ Add to Prometheus `alert.rules.yml`:
 **Solutions:**
 
 1. **Check Zoho credentials:**
+
    ```bash
    fly secrets list -a nuzantara-rag | grep ZOHO
    ```
 
 2. **Test Zoho connection:**
+
    ```python
    from backend.services.integrations.zoho_email_service import ZohoEmailService
-   
+
    service = ZohoEmailService()
    await service.send_email(
        to_email="test@example.com",
@@ -491,12 +529,14 @@ Add to Prometheus `alert.rules.yml`:
 **Solutions:**
 
 1. **Verify indexes created:**
+
    ```sql
-   SELECT * FROM pg_indexes 
+   SELECT * FROM pg_indexes
    WHERE tablename IN ('tax_obligations', 'visa_records', 'timeline_events');
    ```
 
 2. **Analyze tables:**
+
    ```sql
    ANALYZE tax_obligations;
    ANALYZE visa_records;
@@ -504,9 +544,10 @@ Add to Prometheus `alert.rules.yml`:
    ```
 
 3. **Check query plan:**
+
    ```sql
-   EXPLAIN (ANALYZE, BUFFERS) 
-   SELECT * FROM tax_obligations 
+   EXPLAIN (ANALYZE, BUFFERS)
+   SELECT * FROM tax_obligations
    WHERE client_id = 123 AND status NOT IN ('paid', 'filed');
    ```
 
@@ -523,12 +564,12 @@ Add to Prometheus `alert.rules.yml`:
 
 ### Expected Improvements
 
-| Operation | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| `get_client_taxes()` | 150ms | 15ms | 10x faster |
-| `get_active_visa()` | 120ms | 12ms | 10x faster |
-| `deadline_checker` (100 clients) | 5s | 500ms | 10x faster |
-| Timeline event queries | 200ms | 20ms | 10x faster |
+| Operation                        | Before | After | Improvement |
+| -------------------------------- | ------ | ----- | ----------- |
+| `get_client_taxes()`             | 150ms  | 15ms  | 10x faster  |
+| `get_active_visa()`              | 120ms  | 12ms  | 10x faster  |
+| `deadline_checker` (100 clients) | 5s     | 500ms | 10x faster  |
+| Timeline event queries           | 200ms  | 20ms  | 10x faster  |
 
 ### Load Testing
 
@@ -550,7 +591,7 @@ export default function() {
   let response = http.get('https://nuzantara-rag.fly.dev/api/portal/taxes', {
     headers: { 'Authorization': `Bearer ${__ENV.JWT_TOKEN}` }
   });
-  
+
   check(response, {
     'status is 200': (r) => r.status === 200,
     'response time < 200ms': (r) => r.timings.duration < 200,
@@ -567,11 +608,13 @@ k6 run --env JWT_TOKEN="YOUR_TOKEN" load_test.js
 ## Next Steps
 
 ### Completed ✅
+
 - [x] Database indexes (10x performance improvement)
 - [x] Telegram alerts (urgent deadlines ≤7 days)
 - [x] Email notifications (T-7 tax, T-90 visa)
 
 ### Long-term (Future)
+
 - [ ] Auto-practice creation (T-60 visa renewal)
 - [ ] Client Portal UI (React dashboard)
 - [ ] Historical analytics (completion rates)

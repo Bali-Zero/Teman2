@@ -38,7 +38,9 @@ def mock_problematic_modules():
         sys.modules["numpy.typing"] = MagicMock()
         sys.modules["numpy._typing"] = MagicMock()
         sys.modules["numpy._typing._char_codes"] = MagicMock()
-        _MOCKED_MODULES.update(["numpy", "numpy.typing", "numpy._typing", "numpy._typing._char_codes"])
+        _MOCKED_MODULES.update(
+            ["numpy", "numpy.typing", "numpy._typing", "numpy._typing._char_codes"]
+        )
 
     for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
         if m not in sys.modules:

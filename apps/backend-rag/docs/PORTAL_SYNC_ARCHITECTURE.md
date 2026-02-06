@@ -89,6 +89,7 @@ CREATE TABLE timeline_events (
 ```
 
 **Event Types:**
+
 - `deadline` - Tax payment or filing deadline
 - `milestone` - Practice milestone achieved
 - `document_request` - Document requested from client
@@ -209,18 +210,20 @@ class TaxService:
 ```
 
 **TaxSummary Response:**
+
 ```json
 {
-    "total_due": 15000000.0,
-    "next_deadline": "2026-02-15",
-    "days_until_deadline": 13,
-    "pending_count": 3,
-    "overdue_count": 0,
-    "status": "attention"  // ok | attention | critical
+  "total_due": 15000000.0,
+  "next_deadline": "2026-02-15",
+  "days_until_deadline": 13,
+  "pending_count": 3,
+  "overdue_count": 0,
+  "status": "attention" // ok | attention | critical
 }
 ```
 
 **Status Logic:**
+
 - `ok`: Next deadline > 14 days, no overdue
 - `attention`: Next deadline ≤ 14 days
 - `critical`: Next deadline ≤ 7 days OR overdue_count > 0
@@ -250,17 +253,19 @@ class VisaService:
 ```
 
 **VisaSummary Response:**
+
 ```json
 {
-    "has_active_visa": true,
-    "visa_type": "kitas_work",
-    "expiry_date": "2026-12-31",
-    "days_until_expiry": 333,
-    "status": "active"  // none | active | expiring_soon | expired
+  "has_active_visa": true,
+  "visa_type": "kitas_work",
+  "expiry_date": "2026-12-31",
+  "days_until_expiry": 333,
+  "status": "active" // none | active | expiring_soon | expired
 }
 ```
 
 **Status Logic:**
+
 - `none`: No active visa
 - `active`: Visa valid, expiry > 30 days
 - `expiring_soon`: Visa expiry ≤ 30 days
@@ -274,34 +279,35 @@ class VisaService:
 
 **Base URL:** `/api/portal/taxes`
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Get all tax obligations for authenticated client |
-| GET | `/summary` | Get tax summary for dashboard card |
+| Method | Endpoint   | Description                                      |
+| ------ | ---------- | ------------------------------------------------ |
+| GET    | `/`        | Get all tax obligations for authenticated client |
+| GET    | `/summary` | Get tax summary for dashboard card               |
 
 **Authentication:** JWT token with `role = 'client'`
 
 **Example Response:**
+
 ```json
 {
-    "summary": {
-        "total_due": 15000000.0,
-        "next_deadline": "2026-02-15",
-        "days_until_deadline": 13,
-        "pending_count": 3,
-        "overdue_count": 0,
-        "status": "attention"
-    },
-    "obligations": [
-        {
-            "id": 1,
-            "tax_type": "pph_21",
-            "name": "PPh 21 - January 2026",
-            "due_date": "2026-02-15",
-            "status": "pending",
-            "amount_due": 5000000.0
-        }
-    ]
+  "summary": {
+    "total_due": 15000000.0,
+    "next_deadline": "2026-02-15",
+    "days_until_deadline": 13,
+    "pending_count": 3,
+    "overdue_count": 0,
+    "status": "attention"
+  },
+  "obligations": [
+    {
+      "id": 1,
+      "tax_type": "pph_21",
+      "name": "PPh 21 - January 2026",
+      "due_date": "2026-02-15",
+      "status": "pending",
+      "amount_due": 5000000.0
+    }
+  ]
 }
 ```
 
@@ -309,29 +315,30 @@ class VisaService:
 
 **Base URL:** `/api/portal/visa`
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Get visa status for authenticated client |
-| GET | `/summary` | Get visa summary for dashboard card |
+| Method | Endpoint   | Description                              |
+| ------ | ---------- | ---------------------------------------- |
+| GET    | `/`        | Get visa status for authenticated client |
+| GET    | `/summary` | Get visa summary for dashboard card      |
 
 **Example Response:**
+
 ```json
 {
-    "summary": {
-        "has_active_visa": true,
-        "visa_type": "kitas_work",
-        "expiry_date": "2026-12-31",
-        "days_until_expiry": 333,
-        "status": "active"
-    },
-    "current_visa": {
-        "id": 1,
-        "visa_type": "kitas_work",
-        "status": "active",
-        "expiry_date": "2026-12-31",
-        "sponsor_name": "PT Example Indonesia"
-    },
-    "history": []
+  "summary": {
+    "has_active_visa": true,
+    "visa_type": "kitas_work",
+    "expiry_date": "2026-12-31",
+    "days_until_expiry": 333,
+    "status": "active"
+  },
+  "current_visa": {
+    "id": 1,
+    "visa_type": "kitas_work",
+    "status": "active",
+    "expiry_date": "2026-12-31",
+    "sponsor_name": "PT Example Indonesia"
+  },
+  "history": []
 }
 ```
 
@@ -361,6 +368,7 @@ Runs daily to create reminder timeline events.
 | 30 days | critical | Status → `expiring_soon` |
 
 **Running the Job:**
+
 ```bash
 # CLI
 python -m backend.jobs.deadline_checker
@@ -370,6 +378,7 @@ python -m backend.jobs.deadline_checker
 ```
 
 **Prometheus Metrics:**
+
 - `deadline_checker_total` - Total job runs
 - `deadline_reminders_created{type,urgency}` - Reminders created
 - `deadline_checker_last_run_timestamp` - Last successful run
@@ -403,6 +412,7 @@ async def get_current_portal_client(
 ```
 
 **Usage:**
+
 ```python
 from backend.app.dependencies import get_current_portal_client
 
@@ -482,11 +492,11 @@ class TimelineEvent(BaseModel):
 
 ### Test Files
 
-| File | Tests | Coverage |
-|------|-------|----------|
-| `test_tax_service.py` | 15 | TaxService methods |
-| `test_visa_service.py` | 17 | VisaService methods |
-| `test_deadline_checker.py` | 11 | Background job |
+| File                       | Tests | Coverage            |
+| -------------------------- | ----- | ------------------- |
+| `test_tax_service.py`      | 15    | TaxService methods  |
+| `test_visa_service.py`     | 17    | VisaService methods |
+| `test_deadline_checker.py` | 11    | Background job      |
 
 **Total:** 43 tests, all passing
 
@@ -574,18 +584,18 @@ job_last_run = Gauge(
 
 ## Files Reference
 
-| File | Purpose |
-|------|---------|
-| `db/migrations_v2/002_portal_sync_tables.sql` | Database schema |
-| `services/portal/tax_service.py` | Tax business logic |
-| `services/portal/visa_service.py` | Visa business logic |
-| `app/routers/portal_taxes.py` | Tax API endpoints |
-| `app/routers/portal_visa.py` | Visa API endpoints |
-| `app/dependencies.py` | `get_current_portal_client` |
-| `schemas/portal.py` | Pydantic models |
-| `jobs/deadline_checker.py` | Background job |
-| `tests/unit/services/portal/` | Unit tests |
-| `tests/unit/jobs/` | Job tests |
+| File                                          | Purpose                     |
+| --------------------------------------------- | --------------------------- |
+| `db/migrations_v2/002_portal_sync_tables.sql` | Database schema             |
+| `services/portal/tax_service.py`              | Tax business logic          |
+| `services/portal/visa_service.py`             | Visa business logic         |
+| `app/routers/portal_taxes.py`                 | Tax API endpoints           |
+| `app/routers/portal_visa.py`                  | Visa API endpoints          |
+| `app/dependencies.py`                         | `get_current_portal_client` |
+| `schemas/portal.py`                           | Pydantic models             |
+| `jobs/deadline_checker.py`                    | Background job              |
+| `tests/unit/services/portal/`                 | Unit tests                  |
+| `tests/unit/jobs/`                            | Job tests                   |
 
 ---
 
@@ -610,6 +620,7 @@ curl https://nuzantara-rag.fly.dev/metrics | grep portal_
 ### Schedule Deadline Checker
 
 Add to crontab or APScheduler:
+
 ```bash
 # Run daily at 8 AM UTC
 0 8 * * * cd /app && python -m backend.jobs.deadline_checker

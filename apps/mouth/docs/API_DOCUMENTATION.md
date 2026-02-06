@@ -11,6 +11,7 @@ Documentazione completa delle API di Bali Zero con specifica OpenAPI 3.0.
 ## 🎯 API Documentate
 
 ### Tags (5 categorie)
+
 - **Auth** - Autenticazione e gestione profilo
 - **Portal** - Client portal operations
 - **Chat** - AI conversational interface (SSE streaming)
@@ -20,11 +21,13 @@ Documentazione completa delle API di Bali Zero con specifica OpenAPI 3.0.
 ### Endpoints (16 principali)
 
 #### Auth
+
 - `POST /api/auth/login` - Login con email/PIN
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/profile` - Get user profile
 
 #### Portal (Client-facing)
+
 - `GET /api/portal/dashboard` - Dashboard overview
 - `GET /api/portal/timeline` - Activity timeline
 - `GET /api/portal/visa` - Visa status
@@ -32,10 +35,12 @@ Documentazione completa delle API di Bali Zero con specifica OpenAPI 3.0.
 - `POST /api/portal/messages` - Send message
 
 #### Chat (AI)
+
 - `POST /api/agentic-rag/stream` - **SSE streaming** (ReAct reasoning, tool calls, vision)
 - `POST /api/agentic-rag/query` - Non-streaming version
 
 #### CRM (Team-facing)
+
 - `GET /api/crm/clients` - List clients
 - `POST /api/crm/clients` - Create client
 - `GET /api/crm/clients/{id}` - Get client details
@@ -44,6 +49,7 @@ Documentazione completa delle API di Bali Zero con specifica OpenAPI 3.0.
 - `GET /api/crm/interactions` - List interactions
 
 #### Drive
+
 - `POST /api/clients/{id}/create-drive-folder` - Create folder structure
 - `POST /api/clients/{id}/drive-folder/{folderName}/upload` - Upload file
 
@@ -56,6 +62,7 @@ Tre metodi supportati:
    - Secure, HttpOnly, SameSite=Lax
 
 2. **Bearer Token** (fallback)
+
    ```
    Authorization: Bearer <JWT_TOKEN>
    ```
@@ -75,6 +82,7 @@ node scripts/validate-openapi.cjs
 ```
 
 Output:
+
 ```
 ✅ OpenAPI spec is valid!
 📊 Size: 30.74 KB
@@ -139,6 +147,7 @@ http://localhost:3000/api/docs
 ## 📚 Schema Highlights
 
 ### LoginResponse
+
 ```yaml
 LoginResponse:
   type: object
@@ -152,6 +161,7 @@ LoginResponse:
 ```
 
 ### Chat Streaming (SSE)
+
 ```yaml
 POST /api/agentic-rag/stream
 Content-Type: application/json
@@ -171,6 +181,7 @@ data: [DONE]
 ```
 
 ### Event Types (13)
+
 - `token` - Response token
 - `thinking` - AI reasoning
 - `tool_call` - Tool invocation
@@ -188,12 +199,15 @@ data: [DONE]
 ## 🎨 Tools per Testing
 
 ### Swagger Editor Online
+
 ```
 https://editor.swagger.io/
 ```
+
 Incolla il contenuto di `openapi.yaml` per testing interattivo.
 
 ### Postman
+
 1. Import → Link → `http://localhost:3000/api/docs/openapi.yaml`
 2. Auto-genera collection con tutti gli endpoints
 
@@ -232,6 +246,7 @@ curl -X POST http://localhost:8000/api/agentic-rag/stream \
 ### Aggiungere Nuovo Endpoint
 
 1. Aggiungi il path in `openapi.yaml`:
+
    ```yaml
    /api/new-endpoint:
      get:
@@ -244,6 +259,7 @@ curl -X POST http://localhost:8000/api/agentic-rag/stream \
    ```
 
 2. Valida la spec:
+
    ```bash
    node scripts/validate-openapi.cjs
    ```
