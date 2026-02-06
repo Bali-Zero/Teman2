@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+/**
+ * Portal Dashboard Page
+ * 
+ * Usa React Query per caching e ottimizzazione
+ */
+
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  Loader2, 
   CheckCircle2, 
   AlertTriangle, 
   Clock, 
@@ -12,64 +17,75 @@ import {
   MessageCircle,
   Briefcase
 } from 'lucide-react';
-import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import type { PortalDashboard } from '@/lib/api/portal/portal.types';
+import { usePortalDashboard, usePortalTimeline } from '@/hooks';
+import { PortalCardSkeleton, PortalPageLoader } from '@/components/portal';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import type { TimelineEntry } from '@/lib/api/types/timeline.types';
 
 export default function PortalHomePage() {
   const router = useRouter();
-  const [dashboard, setDashboard] = useState<PortalDashboard | null>(null);
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const { data: dashboard, isLoading: isLoadingDashboard, isError, error } = usePortalDashboard();
+  const { data: timelineData, isLoading: isLoadingTimeline } = usePortalTimeline(20);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [dashData, timelineData] = await Promise.all([
-          api.portal.getDashboard(),
-          api.portal.getTimeline(20)
-        ]);
-        setDashboard(dashData);
-        setTimeline(timelineData.entries);
-      } catch (error) {
-        console.error('Failed to load portal data', error);
-        setHasError(true);
-        // If 401/403, middleware/interceptor should handle redirect, 
-        // but as a fallback:
-        // router.push('/login'); 
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const timeline = timelineData?.entries || [];
 
-    loadData();
-  }, [router]);
-
-  if (isLoading) {
+  if (isLoadingDashboard || isLoadingTimeline) {
     return (
       <div className="space-y-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <section>
+          <div className="h-8 bg-gray-700 rounded w-48 mb-2 animate-pulse" />
+          <div className="h-4 bg-gray-700 rounded w-64 animate-pulse" />
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-24 bg-[var(--muted)] rounded-lg"></div>
-            </div>
+            <PortalCardSkeleton key={i} className="h-32" />
           ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
-          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
-        </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="h-6 bg-gray-700 rounded w-32 animate-pulse" />
+          <PortalListSkeleton count={5} />
+        </section>
       </div>
     );
   }
 
-  // Show content even if dashboard is null (API errors)
-  const defaultDashboard: PortalDashboard = dashboard || {
-    visa: { status: 'none', type: null, expiryDate: null, daysRemaining: null },
-    company: { status: 'none', primaryCompanyName: null, totalCompanies: 0 },
-    taxes: { status: 'compliant', nextDeadline: null, daysToDeadline: null },
+  // Show error state
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <section>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
+            Welcome Back
+          </h1>
+          <p className="text-[var(--foreground-muted)]">
+            Here is your Bali life overview.
+          </p>
+        </section>
+
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Unable to load dashboard</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'}
+          </AlertDescription>
+        </Alert>
+
+        <Button onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Default empty state
+  const defaultDashboard = dashboard || {
+    visa: { status: 'none' as const, type: null, expiryDate: null, daysRemaining: null },
+    company: { status: 'none' as const, primaryCompanyName: null, totalCompanies: 0 },
+    taxes: { status: 'compliant' as const, nextDeadline: null, daysToDeadline: null },
     documents: { total: 0, pending: 0 },
     messages: { unread: 0 },
     actions: [],
@@ -87,16 +103,6 @@ export default function PortalHomePage() {
         </p>
       </section>
 
-      {/* Error Message if API failed */}
-      {hasError && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
-          <h3 className="font-semibold text-amber-500">Unable to Load Dashboard Data</h3>
-          <p className="text-sm text-amber-500/80 mt-1">
-            Some features may be limited. Please try refreshing the page.
-          </p>
-        </div>
-      )}
-
       {/* Status Cards (Traffic Lights) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatusCard 
@@ -104,6 +110,7 @@ export default function PortalHomePage() {
           status={defaultDashboard.visa.status}
           label={defaultDashboard.visa.type || 'No Visa'}
           expiry={defaultDashboard.visa.expiryDate}
+          daysRemaining={defaultDashboard.visa.daysRemaining}
           onClick={() => router.push('/portal/visa')}
         />
         <StatusCard 
@@ -116,11 +123,46 @@ export default function PortalHomePage() {
         <StatusCard 
           title="Tax"
           status={defaultDashboard.taxes.status}
-          label={defaultDashboard.taxes.nextDeadline ? new Date(defaultDashboard.taxes.nextDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'All Good'}
-          subLabel={defaultDashboard.taxes.daysToDeadline ? `${defaultDashboard.taxes.daysToDeadline} days` : 'Up to date'}
+          label={defaultDashboard.taxes.nextDeadline 
+            ? new Date(defaultDashboard.taxes.nextDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
+            : 'All Good'}
+          subLabel={defaultDashboard.taxes.daysToDeadline 
+            ? `${defaultDashboard.taxes.daysToDeadline} days` 
+            : 'Up to date'}
           onClick={() => router.push('/portal/taxes')}
         />
       </section>
+
+      {/* Action Items */}
+      {defaultDashboard.actions.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            Action Required
+          </h2>
+          <div className="space-y-2">
+            {defaultDashboard.actions.map((action) => (
+              <div
+                key={action.id}
+                onClick={() => router.push(action.href)}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]",
+                  action.priority === 'high' 
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                    : action.priority === 'medium'
+                    ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                    : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                )}
+              >
+                <div>
+                  <h3 className="font-medium">{action.title}</h3>
+                  <p className="text-sm opacity-80">{action.description}</p>
+                </div>
+                <ChevronRight className="w-5 h-5" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* The Timeline */}
       <section className="space-y-4">
@@ -130,8 +172,12 @@ export default function PortalHomePage() {
         </h2>
         
         <div className="relative border-l-2 border-[var(--border)] ml-3 space-y-8 pb-10">
-          {timeline.map((entry, index) => (
-            <TimelineItem key={entry.id} entry={entry} isLast={index === timeline.length - 1} />
+          {timeline.map((entry: TimelineEntry, index: number) => (
+            <TimelineItem 
+              key={entry.id} 
+              entry={entry} 
+              isLast={index === timeline.length - 1} 
+            />
           ))}
           
           {timeline.length === 0 && (
@@ -145,7 +191,9 @@ export default function PortalHomePage() {
   );
 }
 
+// ============================================================================
 // Sub-components
+// ============================================================================
 
 function StatusCard({ 
   title, 
@@ -153,6 +201,7 @@ function StatusCard({
   label, 
   subLabel, 
   expiry,
+  daysRemaining,
   onClick 
 }: { 
   title: string, 
@@ -160,6 +209,7 @@ function StatusCard({
   label: string,
   subLabel?: string,
   expiry?: string | null,
+  daysRemaining?: number | null,
   onClick?: () => void
 }) {
   const getStatusColor = (s: string) => {
@@ -193,6 +243,18 @@ function StatusCard({
     }
   };
 
+  const formatExpiry = () => {
+    if (!expiry) return subLabel;
+    const date = new Date(expiry);
+    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (daysRemaining !== null && daysRemaining !== undefined) {
+      if (daysRemaining < 0) return `Expired ${Math.abs(daysRemaining)} days ago`;
+      if (daysRemaining === 0) return 'Expires today';
+      if (daysRemaining <= 30) return `${daysRemaining} days remaining`;
+    }
+    return `Expires: ${formatted}`;
+  };
+
   return (
     <div 
       onClick={onClick}
@@ -205,19 +267,16 @@ function StatusCard({
         <span className="text-xs font-semibold uppercase tracking-wider opacity-70">{title}</span>
         {getIcon(status)}
       </div>
-      <div className="font-bold text-lg leading-tight">{label}</div>
-      {(subLabel || expiry) && (
-        <div className="text-xs mt-1 opacity-80">
-          {subLabel}
-          {expiry && `Expires: ${new Date(expiry).toLocaleDateString()}`}
-        </div>
-      )}
+      <div className="font-bold text-lg leading-tight truncate">{label}</div>
+      <div className="text-xs mt-1 opacity-80">
+        {formatExpiry()}
+      </div>
     </div>
   );
 }
 
 function TimelineItem({ entry, isLast }: { entry: TimelineEntry, isLast: boolean }) {
-  const isFuture = (entry as any).isFuture; // Type assertion since we just added this field
+  const isFuture = (entry as any).isFuture;
   
   const getIcon = () => {
     switch(entry.type) {
@@ -277,3 +336,6 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry, isLast: boolean
     </div>
   );
 }
+
+// Import for the skeleton component
+import { PortalListSkeleton } from '@/components/portal';

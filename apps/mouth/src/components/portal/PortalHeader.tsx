@@ -1,0 +1,126 @@
+'use client';
+
+/**
+ * PortalHeader Component
+ * 
+ * Header dedicato per il client portal con notifiche integrate
+ */
+
+import React from 'react';
+import { usePathname } from 'next/navigation';
+import { Menu, X, ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { routeTitles } from '@/types/navigation';
+import { cn } from '@/lib/utils';
+import { PortalNotificationsPopover } from './PortalNotifications';
+
+interface PortalHeaderProps {
+  userName: string;
+  onMobileMenuToggle: () => void;
+  isMobileMenuOpen: boolean;
+  showBackButton?: boolean;
+  onBack?: () => void;
+  customTitle?: string;
+}
+
+export function PortalHeader({
+  userName,
+  onMobileMenuToggle,
+  isMobileMenuOpen,
+  showBackButton = false,
+  onBack,
+  customTitle,
+}: PortalHeaderProps) {
+  const pathname = usePathname();
+
+  // Get page title from pathname
+  const getPageTitle = () => {
+    if (customTitle) return customTitle;
+    
+    // Check exact match first
+    if (routeTitles[pathname]) {
+      return routeTitles[pathname];
+    }
+    // Check for dynamic routes
+    for (const [route, title] of Object.entries(routeTitles)) {
+      if (pathname.startsWith(route) && route !== '/') {
+        return title;
+      }
+    }
+    return 'Dashboard';
+  };
+
+  // Get greeting based on time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  // Format current date
+  const formatDate = () => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    };
+    return new Date().toLocaleDateString('en-US', options);
+  };
+
+  return (
+    <header className="sticky top-0 z-30 w-full bg-[#242424] border-b border-white/5">
+      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+        {/* Left Section */}
+        <div className="flex items-center gap-3">
+          {/* Back Button */}
+          {showBackButton && onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="hover:bg-[var(--background-elevated)]"
+            >
+              <ChevronLeft className="w-5 h-5 text-[var(--foreground)]" />
+            </Button>
+          )}
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={onMobileMenuToggle}
+            className={cn(
+              'p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors',
+              showBackButton && 'md:hidden'
+            )}
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5 text-[var(--foreground)]" />
+            ) : (
+              <Menu className="w-5 h-5 text-[var(--foreground)]" />
+            )}
+          </button>
+
+          {/* Page Title */}
+          <div className="hidden sm:block">
+            <h1 className="text-lg font-semibold text-[var(--foreground)]">{getPageTitle()}</h1>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              {formatDate()} • {getGreeting()}, {userName.split(' ')[0]}
+            </p>
+          </div>
+
+          {/* Mobile Page Title */}
+          <h1 className="sm:hidden text-lg font-semibold text-[var(--foreground)]">
+            {getPageTitle()}
+          </h1>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-2">
+          {/* Notifications */}
+          <PortalNotificationsPopover />
+        </div>
+      </div>
+    </header>
+  );
+}
