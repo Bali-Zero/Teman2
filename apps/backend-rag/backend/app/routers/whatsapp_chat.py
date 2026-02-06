@@ -254,11 +254,6 @@ async def process_whatsapp_message(
                     query=message_text,
                     user_id=whatsapp_user_id,
                     session_id=session_id,
-                    context={
-                        "channel": "whatsapp",
-                        "phone": phone,
-                        "sender_name": sender_name,
-                    },
                 ):
                     event_type = event.get("type")
 
