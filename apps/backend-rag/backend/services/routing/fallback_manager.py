@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 CollectionName = Literal[
     "visa_oracle",
+    "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
     "kbli_eye",
     "kbli_comprehensive",
     "tax_genius",
@@ -39,7 +40,8 @@ class FallbackManagerService:
     # Phase 3: Smart Fallback Chains
     # Define fallback priority for each primary collection
     FALLBACK_CHAINS = {
-        "visa_oracle": ["legal_architect", "tax_genius", "property_knowledge"],
+        "visa_oracle": ["immigration_circulars", "legal_architect", "tax_genius"],  # Circulars first for TKA/policy
+        "immigration_circulars": ["visa_oracle", "legal_architect"],  # Circulars fallback to main visa
         "kbli_eye": ["legal_architect", "tax_genius", "visa_oracle"],
         "kbli_comprehensive": ["kbli_eye", "legal_architect", "tax_genius"],
         "tax_genius": [

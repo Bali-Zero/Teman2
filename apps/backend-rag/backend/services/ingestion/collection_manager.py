@@ -97,6 +97,12 @@ class CollectionManager:
                 "doc_count": 5041,
                 "alias": "legal_unified",
             },
+            # Immigration circulars (Surat Edaran Kemnaker/Imigrasi)
+            "immigration_circulars": {
+                "priority": "high",
+                "doc_count": 4,
+                "description": "Kemnaker and Imigrasi circular letters on TKA procedures",
+            },
         }
 
         logger.info("✅ CollectionManager initialized (lazy loading enabled)")

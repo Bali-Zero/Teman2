@@ -99,6 +99,12 @@ class EntityType(str, Enum):
     PERUBAHAN = "perubahan"  # Amendment
     PENCABUTAN = "pencabutan"  # Revocation
     PELAPORAN = "pelaporan"  # Reporting
+    PROSES = "proses"  # Process/Procedure (generic)
+
+    # Circulars and Internal Documents
+    SURAT_EDARAN = "surat_edaran"  # Circular letter (SE)
+    SPONSOR = "sponsor"  # Company sponsor for TKA/visa
+    SISTEM = "sistem"  # Government system (e.g., WLKP, SIAPKerja)
 
     # Requirements
     SYARAT = "syarat"  # Requirement/Condition
@@ -183,6 +189,10 @@ class RelationType(str, Enum):
     # Location Relations
     LOCATED_IN = "LOCATED_IN"  # X located in Y
     JURISDICTION = "JURISDICTION"  # X has jurisdiction Y
+
+    # Conditional Relations (for circulars and procedures)
+    BLOCKED_BY = "BLOCKED_BY"  # Process blocked by condition
+    ALLOWED_IF = "ALLOWED_IF"  # Conditional allowance
 
 
 @dataclass
