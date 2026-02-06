@@ -86,11 +86,12 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
         search_results = []
         for doc in raw.get("results", []):
             metadata = doc.get("metadata", {})
+            text = doc.get("text", "") or doc.get("content", "") or ""
             search_results.append(
                 KBLISearchResult(
-                    code=metadata.get("kode", "N/A"),
+                    code=metadata.get("kode_kbli", metadata.get("kode", "N/A")),
                     title=metadata.get("judul", "N/A"),
-                    description=doc.get("text", "")[:200] + "...",
+                    description=text[:200] + "..." if text else "...",
                     score=doc.get("score", 0.0),
                 )
             )
