@@ -103,7 +103,7 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
-    "@vercel/toolbar": "^0.2.1",
+    "@vercel/toolbar": "^0.2.2",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "botid": "^1.5.10",
@@ -137,6 +137,11 @@
   "author": "",
   "license": "ISC",
   "resolutions": {
+    "path-to-regexp": "^8.0.0",
+    "hono": ">=4.11.7",
+    "@isaacs/brace-expansion": ">=5.0.1"
+  },
+  "overrides": {
     "path-to-regexp": "^8.0.0",
     "hono": ">=4.11.7",
     "@isaacs/brace-expansion": ">=5.0.1"
