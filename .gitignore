@@ -282,6 +282,18 @@ USER.md
 GEMINI.md
 WORKSPACE.md
 
+# ClawHub installed skills (managed by clawhub CLI, not source-controlled)
+skills/deepwiki/
+skills/gog/
+skills/gogcli/
+skills/google-calendar/
+skills/google-workspace-mcp/
+skills/perplexity-deep-search/
+skills/senior-devops/
+skills/skillvet/
+skills/tdd-guide/
+skills/test-runner/
+
 # Generated markdown docs (one-off reports, not project docs)
 BRIEF_KB_ARCHITECTURE_REASONING.md
 CHANGELOG.md

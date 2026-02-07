@@ -20,7 +20,7 @@ primary_region = 'sin'
   EMBEDDING_PROVIDER = 'openai'
   LOG_LEVEL = 'INFO'
   PORT = '8080'
-  QDRANT_URL = 'https://nuzantara-qdrant.fly.dev'
+  # QDRANT_URL set via fly secrets (Qdrant Cloud)
   PYTHONUNBUFFERED = '1'
   ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://zantara.balizero.com,https://www.zantara.balizero.com,https://nuzantara-mouth.vercel.app'
 

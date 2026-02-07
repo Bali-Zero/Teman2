@@ -1,6 +1,6 @@
 /**
  * Documents Components Index
- * 
+ *
  * Esporta tutti i componenti della sezione documenti
  */
 
@@ -24,14 +24,7 @@ export { FileGridSkeleton } from './FileGridSkeleton';
 export { FileListSkeleton } from './FileListSkeleton';
 
 // Error Handling
-export { 
-  DocumentsErrorBoundary, 
-  DocumentsInlineError 
-} from './DocumentsErrorBoundary';
+export { DocumentsErrorBoundary, DocumentsInlineError } from './DocumentsErrorBoundary';
 
 // Utilities
-export { 
-  getFileIcon, 
-  getDepartmentInfo, 
-  DEPARTMENT_COLORS 
-} from './file-icon';
+export { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from './file-icon';

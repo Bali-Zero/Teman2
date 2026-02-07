@@ -13,6 +13,7 @@ bash backend/migrations/scripts/run_migration_fly.sh
 ```
 
 Lo script:
+
 1. Trova automaticamente l'app PostgreSQL
 2. Chiede conferma
 3. Esegue la migration
@@ -56,20 +57,23 @@ Dopo la migration, verifica gli indici:
 
 ```sql
 -- Lista indici creati
-SELECT indexname, tablename 
-FROM pg_indexes 
-WHERE indexname LIKE 'idx_%' 
+SELECT indexname, tablename
+FROM pg_indexes
+WHERE indexname LIKE 'idx_%'
 ORDER BY tablename, indexname;
 ```
 
 ## Troubleshooting
 
 ### "connection refused"
+
 - Verifica che il proxy sia attivo (`flyctl proxy`)
 - Controlla la porta (5433 nel esempio)
 
 ### "permission denied"
+
 - Usa l'utente `postgres` o un utente con privilegi CREATE INDEX
 
 ### "index already exists"
+
 - La migration è idempotente, puoi rieseguirla senza problemi

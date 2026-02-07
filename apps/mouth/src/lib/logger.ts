@@ -203,7 +203,7 @@ class Logger {
       }
     } catch (sentryError) {
       // Don't let Sentry errors break the application
-      error('Failed to send to Sentry:', sentryError);
+      console.error('Failed to send to Sentry:', sentryError);
     }
   }
 
@@ -232,7 +232,7 @@ class Logger {
 
       localStorage.setItem('error_logs', JSON.stringify(errorLogs));
     } catch (e) {
-      error('Failed to store error log:', e);
+      console.error('Failed to store error log:', e);
     }
   }
 

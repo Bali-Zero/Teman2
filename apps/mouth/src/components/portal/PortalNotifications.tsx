@@ -2,7 +2,7 @@
 
 /**
  * PortalNotifications Component
- * 
+ *
  * Visualizza notifiche e alert del portale clienti
  */
 
@@ -22,11 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { usePortalNotifications } from '@/hooks/usePortal';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface PortalNotificationsProps {
   variant?: 'popover' | 'sidebar' | 'inline';
@@ -103,12 +99,8 @@ function NotificationItem({
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn('font-medium text-sm', styles.text)}>
-            {notification.title}
-          </p>
-          <p className="text-sm text-gray-400 mt-0.5 line-clamp-2">
-            {notification.message}
-          </p>
+          <p className={cn('font-medium text-sm', styles.text)}>{notification.title}</p>
+          <p className="text-sm text-gray-400 mt-0.5 line-clamp-2">{notification.message}</p>
         </div>
         {notification.href && (
           <ChevronRight className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -137,9 +129,7 @@ export function PortalNotificationsPopover() {
   const { notifications, unreadCount, criticalCount } = usePortalNotifications();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const visibleNotifications = notifications.filter(
-    (n) => !dismissed.has(n.id)
-  ).slice(0, 5);
+  const visibleNotifications = notifications.filter((n) => !dismissed.has(n.id)).slice(0, 5);
 
   const handleDismiss = (id: string) => {
     setDismissed((prev) => new Set(prev).add(id));
@@ -151,10 +141,12 @@ export function PortalNotificationsPopover() {
         <button className="relative p-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className={cn(
-              'absolute top-1 right-1 w-4 h-4 text-[10px] font-medium rounded-full flex items-center justify-center',
-              criticalCount > 0 ? 'bg-red-500 text-white' : 'bg-[var(--accent)] text-white'
-            )}>
+            <span
+              className={cn(
+                'absolute top-1 right-1 w-4 h-4 text-[10px] font-medium rounded-full flex items-center justify-center',
+                criticalCount > 0 ? 'bg-red-500 text-white' : 'bg-[var(--accent)] text-white'
+              )}
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -257,11 +249,7 @@ export function PortalNotificationsList({ maxItems = 5 }: { maxItems?: number })
 /**
  * Compact notification badge
  */
-export function PortalNotificationBadge({
-  onClick,
-}: {
-  onClick?: () => void;
-}) {
+export function PortalNotificationBadge({ onClick }: { onClick?: () => void }) {
   const { unreadCount, criticalCount } = usePortalNotifications();
 
   if (unreadCount === 0) return null;

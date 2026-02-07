@@ -2,7 +2,7 @@
 
 /**
  * Documents Page - Ultra Optimized
- * 
+ *
  * Versione perfezionata con React Query, virtualizzazione e performance ottimali
  */
 
@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 // Hooks ottimizzati
 import {
@@ -25,7 +26,11 @@ import {
 } from '@/hooks';
 
 // Componenti
-import { DocumentsErrorBoundary, DocumentsInlineError } from './components/DocumentsErrorBoundary';
+import {
+  DocumentsErrorBoundary,
+  DocumentsInlineError,
+  logDocumentsError,
+} from './components/DocumentsErrorBoundary';
 import { DriveToolbarOptimized } from './components/DriveToolbarOptimized';
 import { DriveBreadcrumb } from './components/DriveBreadcrumb';
 import { FileGridVirtualized } from './components/FileGridVirtualized';
@@ -50,14 +55,16 @@ import type { FileItem } from '@/lib/api/drive/drive.types';
 
 export default function DocumentsPageOptimized() {
   const router = useRouter();
-  
+
   // State
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sidebarView, setSidebarView] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>('my-drive');
+  const [sidebarView, setSidebarView] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>(
+    'my-drive'
+  );
   const [showInfoPanel, setShowInfoPanel] = useState(false);
-  
+
   // Modal states
   const [modalMode, setModalMode] = useState<'folder' | 'rename' | null>(null);
   const [renameTarget, setRenameTarget] = useState<FileItem | null>(null);
@@ -66,11 +73,13 @@ export default function DocumentsPageOptimized() {
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(
+    null
+  );
 
   // Data fetching
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
-  
+
   const {
     data: filesData,
     isLoading: filesLoading,
@@ -82,7 +91,7 @@ export default function DocumentsPageOptimized() {
   } = useDriveFilesInfinite(currentFolderId, searchQuery);
 
   const files = useMemo(() => {
-    return filesData?.pages.flatMap(page => page.files) || [];
+    return filesData?.pages.flatMap((page) => page.files) || [];
   }, [filesData]);
 
   const breadcrumb = useMemo(() => {
@@ -113,46 +122,64 @@ export default function DocumentsPageOptimized() {
   const { prefetchFolder } = usePrefetchFolder();
 
   // Handlers
-  const handleFileOpen = useCallback((file: FileItem) => {
-    if (file.is_folder) {
-      setCurrentFolderId(file.id);
+  const handleFileOpen = useCallback(
+    (file: FileItem) => {
+      if (file.is_folder) {
+        setCurrentFolderId(file.id);
+        setSearchQuery('');
+        handleDeselectAll();
+      } else {
+        setPreviewFile(file);
+      }
+    },
+    [handleDeselectAll]
+  );
+
+  const handleFileClick = useCallback(
+    (file: FileItem, index: number, e: React.MouseEvent) => {
+      handleSelect(file, index, e);
+    },
+    [handleSelect]
+  );
+
+  const handleFileDoubleClick = useCallback(
+    (file: FileItem) => {
+      handleFileOpen(file);
+    },
+    [handleFileOpen]
+  );
+
+  const handleContextMenu = useCallback(
+    (file: FileItem, e: React.MouseEvent) => {
+      e.preventDefault();
+      if (!selectedIds.has(file.id)) {
+        selectSingle(file);
+      }
+      setContextMenu({ x: e.clientX, y: e.clientY, file });
+    },
+    [selectedIds, selectSingle]
+  );
+
+  const handleNavigate = useCallback(
+    (index: number) => {
+      if (index === -1 || index === 0) {
+        setCurrentFolderId(null);
+      } else if (breadcrumb[index]) {
+        setCurrentFolderId(breadcrumb[index].id);
+      }
       setSearchQuery('');
       handleDeselectAll();
-    } else {
-      setPreviewFile(file);
-    }
-  }, [handleDeselectAll]);
+    },
+    [breadcrumb, handleDeselectAll]
+  );
 
-  const handleFileClick = useCallback((file: FileItem, index: number, e: React.MouseEvent) => {
-    handleSelect(file, index, e);
-  }, [handleSelect]);
-
-  const handleFileDoubleClick = useCallback((file: FileItem) => {
-    handleFileOpen(file);
-  }, [handleFileOpen]);
-
-  const handleContextMenu = useCallback((file: FileItem, e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!selectedIds.has(file.id)) {
-      selectSingle(file);
-    }
-    setContextMenu({ x: e.clientX, y: e.clientY, file });
-  }, [selectedIds, selectSingle]);
-
-  const handleNavigate = useCallback((index: number) => {
-    if (index === -1 || index === 0) {
-      setCurrentFolderId(null);
-    } else if (breadcrumb[index]) {
-      setCurrentFolderId(breadcrumb[index].id);
-    }
-    setSearchQuery('');
-    handleDeselectAll();
-  }, [breadcrumb, handleDeselectAll]);
-
-  const handleUpload = useCallback(async (filesToUpload: File[]) => {
-    setShowUploadDialog(false);
-    await uploadMultiple(filesToUpload, currentFolderId, { parallel: 3 });
-  }, [currentFolderId, uploadMultiple]);
+  const handleUpload = useCallback(
+    async (filesToUpload: File[]) => {
+      setShowUploadDialog(false);
+      await uploadMultiple(filesToUpload, currentFolderId, { parallel: 3 });
+    },
+    [currentFolderId, uploadMultiple]
+  );
 
   const handleConnect = async () => {
     const { auth_url } = await api.drive.getAuthUrl();
@@ -168,7 +195,7 @@ export default function DocumentsPageOptimized() {
     onOpen: handleFileOpen,
     onDelete: (toDelete) => {
       if (confirm(`Delete ${toDelete.length} item(s)?`)) {
-        toDelete.forEach(f => deleteFile.mutate(f.id));
+        toDelete.forEach((f) => deleteFile.mutate(f.id));
       }
     },
     onRename: (file) => {
@@ -197,7 +224,10 @@ export default function DocumentsPageOptimized() {
   if (statusLoading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        >
           <Loader2 className="h-10 w-10 text-blue-500" />
         </motion.div>
         <p className="text-slate-500">Loading documents...</p>
@@ -209,16 +239,26 @@ export default function DocumentsPageOptimized() {
   if (!isConnected) {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-8 bg-white dark:bg-[var(--background)] px-6">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="relative"
+        >
           <div className="absolute inset-0 animate-pulse rounded-full bg-[#1a73e8]/20 blur-2xl" />
           <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[#1a73e8] shadow-xl">
             <CloudOff className="h-12 w-12 text-white" />
           </div>
         </motion.div>
         <h2 className="text-3xl font-bold">Connect Google Drive</h2>
-        <p className="max-w-md text-slate-500">Access your documents by connecting your Google Drive account.</p>
+        <p className="max-w-md text-slate-500">
+          Access your documents by connecting your Google Drive account.
+        </p>
         {isConfigured && (
-          <Button onClick={handleConnect} size="lg" className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8">
+          <Button
+            onClick={handleConnect}
+            size="lg"
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8"
+          >
             <Cloud className="mr-3 h-5 w-5" />
             Connect Google Drive
           </Button>
@@ -228,7 +268,8 @@ export default function DocumentsPageOptimized() {
   }
 
   // Main interface
-  const selectedFile = selectedIds.size === 1 ? files.find(f => selectedIds.has(f.id)) || null : null;
+  const selectedFile =
+    selectedIds.size === 1 ? files.find((f) => selectedIds.has(f.id)) || null : null;
 
   return (
     <DocumentsErrorBoundary onReset={refetch}>
@@ -274,11 +315,21 @@ export default function DocumentsPageOptimized() {
 
           {/* File Grid/List */}
           <DropZone onFilesDropped={handleUpload} disabled={!isConnected || isAtRoot}>
-            <div className="flex-1 overflow-hidden bg-white dark:bg-[var(--background)]" onClick={handleDeselectAll}>
+            <div
+              className="flex-1 overflow-hidden bg-white dark:bg-[var(--background)]"
+              onClick={handleDeselectAll}
+            >
               {filesError ? (
-                <DocumentsInlineError message="Failed to load files. Please try again." onRetry={refetch} />
+                <DocumentsInlineError
+                  message="Failed to load files. Please try again."
+                  onRetry={refetch}
+                />
               ) : filesLoading && !files.length ? (
-                viewMode === 'grid' ? <FileGridSkeleton /> : <FileListSkeleton />
+                viewMode === 'grid' ? (
+                  <FileGridSkeleton />
+                ) : (
+                  <FileListSkeleton />
+                )
               ) : isAtRoot ? (
                 <DepartmentHome
                   files={files}
@@ -321,8 +372,11 @@ export default function DocumentsPageOptimized() {
             onClose={() => setShowInfoPanel(false)}
             onPreview={setPreviewFile}
             onDownload={async (file) => {
-              try { await api.drive.downloadFile(file.id, file.name); }
-              catch { window.open(api.drive.getDownloadUrl(file.id), '_blank'); }
+              try {
+                await api.drive.downloadFile(file.id, file.name);
+              } catch {
+                window.open(api.drive.getDownloadUrl(file.id), '_blank');
+              }
             }}
             onDelete={(file) => {
               if (confirm(`Delete ${file.name}?`)) {
@@ -344,7 +398,10 @@ export default function DocumentsPageOptimized() {
         <FileModal
           mode={modalMode as any}
           isOpen={!!modalMode}
-          onClose={() => { setModalMode(null); setRenameTarget(null); }}
+          onClose={() => {
+            setModalMode(null);
+            setRenameTarget(null);
+          }}
           initialName={renameTarget?.name || ''}
           loading={createFolder.isPending || renameFile.isPending}
           onSubmit={(name) => {
@@ -364,13 +421,22 @@ export default function DocumentsPageOptimized() {
             onClose={() => setContextMenu(null)}
             onPreview={setPreviewFile}
             onOpen={handleFileOpen}
-            onRename={(file) => { setRenameTarget(file); setModalMode('rename'); }}
+            onRename={(file) => {
+              setRenameTarget(file);
+              setModalMode('rename');
+            }}
             onDelete={(file) => deleteFile.mutate(file.id)}
-            onMove={(file) => { setFilesToMove([file]); setShowMoveDialog(true); }}
+            onMove={(file) => {
+              setFilesToMove([file]);
+              setShowMoveDialog(true);
+            }}
             onCopy={() => {}}
             onDownload={async (file) => {
-              try { await api.drive.downloadFile(file.id, file.name); }
-              catch { window.open(api.drive.getDownloadUrl(file.id), '_blank'); }
+              try {
+                await api.drive.downloadFile(file.id, file.name);
+              } catch {
+                window.open(api.drive.getDownloadUrl(file.id), '_blank');
+              }
             }}
           />
         )}
@@ -380,7 +446,7 @@ export default function DocumentsPageOptimized() {
             isOpen={true}
             onClose={() => setShowMoveDialog(false)}
             onMove={(targetId) => {
-              moveFiles.mutate({ fileIds: filesToMove.map(f => f.id), targetFolderId: targetId });
+              moveFiles.mutate({ fileIds: filesToMove.map((f) => f.id), targetFolderId: targetId });
               setShowMoveDialog(false);
             }}
             files={filesToMove}
@@ -396,7 +462,7 @@ export default function DocumentsPageOptimized() {
           isOpen={showUploadDialog}
           onClose={() => setShowUploadDialog(false)}
           onUpload={handleUpload}
-          uploading={uploads.some(u => u.status === 'uploading')}
+          uploading={uploads.some((u) => u.status === 'uploading')}
         />
 
         <FileViewer
@@ -404,8 +470,11 @@ export default function DocumentsPageOptimized() {
           isOpen={!!previewFile}
           onClose={() => setPreviewFile(null)}
           onDownload={async (file) => {
-            try { await api.drive.downloadFile(file.id, file.name); }
-            catch { window.open(api.drive.getDownloadUrl(file.id), '_blank'); }
+            try {
+              await api.drive.downloadFile(file.id, file.name);
+            } catch {
+              window.open(api.drive.getDownloadUrl(file.id), '_blank');
+            }
           }}
         />
       </div>

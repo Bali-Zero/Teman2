@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { EdgeAiDebug } from '@/components/debug/EdgeAiDebug';
 
 export default function EdgeTestPage() {
   return (
@@ -10,7 +9,7 @@ export default function EdgeTestPage() {
         <h1 className="text-2xl font-bold text-white mb-6 font-mono text-center">
           SYSTEM_DIAGNOSTICS // EDGE_AI
         </h1>
-        <EdgeAiDebug />
+        <p className="text-gray-400 text-center">Edge runtime diagnostics page</p>
       </div>
     </div>
   );

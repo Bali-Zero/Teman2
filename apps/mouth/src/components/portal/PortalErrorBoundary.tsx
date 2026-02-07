@@ -2,7 +2,7 @@
 
 /**
  * PortalErrorBoundary Component
- * 
+ *
  * Error boundary specifico per il client portal
  * Più user-friendly rispetto a quello del workspace
  */
@@ -93,7 +93,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
                 We apologize for the inconvenience. Our team has been notified.
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
@@ -116,18 +116,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
 
             <CardFooter className="flex flex-col gap-2">
               <div className="flex gap-2 w-full">
-                <Button
-                  variant="outline"
-                  onClick={this.handleGoHome}
-                  className="flex-1 gap-2"
-                >
+                <Button variant="outline" onClick={this.handleGoHome} className="flex-1 gap-2">
                   <Home className="w-4 h-4" />
                   Dashboard
                 </Button>
-                <Button
-                  onClick={this.handleReset}
-                  className="flex-1 gap-2"
-                >
+                <Button onClick={this.handleReset} className="flex-1 gap-2">
                   <RefreshCw className="w-4 h-4" />
                   Try Again
                 </Button>
@@ -188,10 +181,7 @@ export function PortalListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-16 bg-[#2a2a2a] rounded-lg animate-pulse"
-        />
+        <div key={i} className="h-16 bg-[#2a2a2a] rounded-lg animate-pulse" />
       ))}
     </div>
   );

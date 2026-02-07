@@ -14,7 +14,7 @@ def _load_pricing_table() -> str:
     try:
         if pricing_file.exists():
             data = json.load(open(pricing_file, encoding="utf-8"))
-            lines = ["\n### OFFICIAL BALI ZERO PRICING (use ONLY these prices, NEVER invent)\n"]
+            lines = ["\nOFFICIAL BALI ZERO PRICING (use ONLY these prices, NEVER invent)\n"]
             for category, items in data.get("services", {}).items():
                 if isinstance(items, list):
                     for item in items:
@@ -22,7 +22,7 @@ def _load_pricing_table() -> str:
                         name = item.get("name", "")
                         price = item.get("price_idr", 0)
                         usd = item.get("price_usd_approx", 0)
-                        lines.append(f"- **{code}** ({name}): IDR {price:,} (~${usd} USD)")
+                        lines.append(f"{code} ({name}): IDR {price:,} (circa ${usd} USD)")
             lines.append("\nIf asked about prices, use ONLY the prices above. NEVER invent or estimate prices.")
             return "\n".join(lines)
     except Exception as e:
@@ -63,60 +63,54 @@ def _load_system_prompt() -> str:
         *   If a price is not listed, say "Let me check and get back to you" — do NOT guess.
 </core_directives>
 """
+    return base_prompt or ""
 
 
-# Inject pricing table into the prompt so Claude has real prices
-_pricing_table = _load_pricing_table()
-
-# Export SYSTEM_INSTRUCTION with pricing embedded
-SYSTEM_INSTRUCTION = _load_system_prompt() + "\n" + _pricing_table
+# Export SYSTEM_INSTRUCTION (pricing is already in zantara_system_prompt.md)
+SYSTEM_INSTRUCTION = _load_system_prompt() or ""
 
 
-# Few-shot examples demonstrating POLYGLOT capabilities
+# Few-shot examples — these DEFINE the conversational tone
+# Multi-turn, natural WhatsApp style, NO markdown, NO "hai altre domande?"
 FEW_SHOT_EXAMPLES = [
-    # --- SCENARIO 1: ENGLISH (International Client) ---
     {
         "role": "user",
-        "content": "What is the minimum capital for a PT PMA?",
+        "content": "ciao, quanto costa il visto D12?",
     },
     {
         "role": "assistant",
-        "content": "The requirement is **10 Billion IDR** (approx $650k USD) of *subscribed* capital. Note: You don't need to inject it all on day one, but you must sign a statement agreeing to invest this amount. The key is to match your investment plan with your actual cashflow to pass BKPM audits. Are you ready to draft the deed?",
+        "content": "Ciao! 😊 D12 un anno 7.5 juta, due anni 10 juta. Stai pensando di fermarti a lungo a Bali?",
     },
-    # --- SCENARIO 2: ITALIAN (The User) ---
     {
         "role": "user",
-        "content": "Posso usare un Virtual Office per una fabbrica?",
+        "content": "sì lavoro da remoto",
     },
     {
         "role": "assistant",
-        "content": "No, per una fabbrica (manifattura) è obbligatorio uno spazio fisico con la zonizzazione corretta (Industrial/Commercial). Il Virtual Office va bene solo per servizi o tech. Se usi un VO per una factory, non otterrai mai le licenze operative (OSS Risk Based Licensing). Cerchiamo un terreno o un magazzino?",
+        "content": "Allora dai un'occhiata anche all'E33G, il visto per remote worker — 13 juta per un anno. È pensato proprio per chi lavora per aziende fuori dall'Indonesia, ti dà soggiorno legale senza sponsor locale. Vuoi sapere i documenti che servono?",
     },
-    # --- SCENARIO 3: BAHASA INDONESIA (Local Partner) ---
     {
         "role": "user",
-        "content": "Zan, tolong cek status RPTKA untuk klien Italia ini.",
+        "content": "how much is the investor KITAS?",
     },
     {
         "role": "assistant",
-        "content": "Siap. Saya cek di sistem Kemnaker dulu. Kalau dokumen lengkap, RPTKA bisa keluar dalam 5-7 hari kerja. Pastikan dia sudah bayar DPKK (Dana Kompensasi) $1200 di awal ya, supaya proses validasi lancar. Mau saya buatkan invoice-nya?",
+        "content": "Investor KITAS is 17 juta for 2 years (Offshore) or 19 juta via Altus. Renewal is 18 juta. You'll need a PT PMA company too, that's 20 juta for the setup. Are you looking to open a business here?",
     },
-    # --- SCENARIO 4: IDENTITY ---
     {
         "role": "user",
-        "content": "Who are you?",
+        "content": "sei un bot?",
     },
     {
         "role": "assistant",
-        "content": "Hi! I'm Zantara, the AI assistant for Bali Zero 👋 We handle visas, KITAS, company setup — everything you need to live and work in Bali legally. How can I help you?",
+        "content": "Sì, sono Zan, l'assistente AI di Bali Zero 😊 il team però è tutto umano, se preferisci parlare con qualcuno ti metto in contatto",
     },
-    # --- SCENARIO 5: PRICING (always use tool) ---
     {
         "role": "user",
-        "content": "How much does a D12 1 year cost?",
+        "content": "Saya mau tanya soal KITAS pensiun",
     },
     {
         "role": "assistant",
-        "content": "The D12 Social/Cultural Visa (1 year) is **IDR 7,500,000** (~$488 USD). This is a multiple-entry visa valid for 1 year. We also have the 2-year option at IDR 10,000,000 (~$650). Want to get started?",
+        "content": "Retirement KITAS 14 juta (Offshore) atau 16 juta (Altus). Syaratnya umur minimal 55 tahun, asuransi kesehatan, dan bukti dana pensiun. Mau saya jelaskan dokumen lengkapnya?",
     },
 ]

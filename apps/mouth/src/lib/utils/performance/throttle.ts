@@ -1,6 +1,6 @@
 /**
  * Throttle Utility
- * 
+ *
  * Limit function execution to once per wait period
  */
 
@@ -9,7 +9,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
   limit: number
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
-  
+
   return function (...args: Parameters<T>) {
     if (!inThrottle) {
       func(...args);
@@ -30,7 +30,7 @@ export function throttleWithTrailing<T extends (...args: unknown[]) => unknown>(
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
   let lastArgs: Parameters<T> | null = null;
-  
+
   return function (...args: Parameters<T>) {
     if (!inThrottle) {
       func(...args);

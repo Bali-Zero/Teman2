@@ -1,6 +1,6 @@
 /**
  * useCrmPractices Hook
- * 
+ *
  * Hook ottimizzato per gestione pratiche CRM
  */
 
@@ -70,7 +70,7 @@ export function useCrmPractices(options: UseCrmPracticesOptions = {}) {
     queryKey,
     queryFn: async (): Promise<PracticesResponse> => {
       let practices: Practice[];
-      
+
       if (clientId) {
         practices = await api.crm.getClientPractices(clientId);
       } else {
@@ -178,11 +178,11 @@ export function useUpdatePractice(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ 
-      updates, 
-      updatedBy 
-    }: { 
-      updates: Parameters<typeof api.crm.updatePractice>[1]; 
+    mutationFn: async ({
+      updates,
+      updatedBy,
+    }: {
+      updates: Parameters<typeof api.crm.updatePractice>[1];
       updatedBy: string;
     }) => {
       return api.crm.updatePractice(practiceId, updates, updatedBy);
@@ -209,13 +209,7 @@ export function useUpdatePracticeStatus(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ 
-      status, 
-      updatedBy 
-    }: { 
-      status: string; 
-      updatedBy: string;
-    }) => {
+    mutationFn: async ({ status, updatedBy }: { status: string; updatedBy: string }) => {
       return api.crm.updatePractice(practiceId, { status }, updatedBy);
     },
     onSuccess: (updatedPractice) => {

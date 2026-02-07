@@ -1,6 +1,6 @@
 /**
  * API Response Caching Layer
- * 
+ *
  * Implements in-memory caching for API responses with:
  * - TTL (Time To Live) support
  * - Cache invalidation
@@ -82,7 +82,7 @@ interface FetchWithCacheOptions<T> {
 
 /**
  * Fetch with caching support
- * 
+ *
  * Usage:
  * const data = await fetchWithCache({
  *   key: 'users-list',
@@ -102,7 +102,9 @@ export async function fetchWithCache<T>({
     // Return cached data immediately
     if (staleWhileRevalidate) {
       // Refresh in background
-      fetcher().then(data => apiCache.set(key, data, ttl)).catch(err => error(err));
+      fetcher()
+        .then((data) => apiCache.set(key, data, ttl))
+        .catch((err) => error(err));
     }
     return cached;
   }
@@ -115,7 +117,7 @@ export async function fetchWithCache<T>({
 
 /**
  * React hook for cached data fetching
- * 
+ *
  * Usage:
  * const { data, error, isLoading, refetch } = useCachedQuery({
  *   key: 'user-profile',

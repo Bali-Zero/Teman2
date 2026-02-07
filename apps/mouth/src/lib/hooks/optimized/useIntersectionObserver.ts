@@ -1,6 +1,6 @@
 /**
  * useIntersectionObserver Hook
- * 
+ *
  * Efficient intersection observer for lazy loading
  */
 
@@ -24,34 +24,37 @@ export function useIntersectionObserver(
   const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const hasTriggeredRef = useRef(false);
-  
-  const setRef = useCallback((node: Element | null) => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-    
-    if (node) {
-      observerRef.current = new IntersectionObserver(
-        ([entry]) => {
-          setEntry(entry);
-          
-          if (triggerOnce && hasTriggeredRef.current) {
-            return;
-          }
-          
-          setIsIntersecting(entry.isIntersecting);
-          
-          if (entry.isIntersecting && triggerOnce) {
-            hasTriggeredRef.current = true;
-          }
-        },
-        { threshold, root, rootMargin }
-      );
-      
-      observerRef.current.observe(node);
-    }
-  }, [threshold, root, rootMargin, triggerOnce]);
-  
+
+  const setRef = useCallback(
+    (node: Element | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+
+      if (node) {
+        observerRef.current = new IntersectionObserver(
+          ([entry]) => {
+            setEntry(entry);
+
+            if (triggerOnce && hasTriggeredRef.current) {
+              return;
+            }
+
+            setIsIntersecting(entry.isIntersecting);
+
+            if (entry.isIntersecting && triggerOnce) {
+              hasTriggeredRef.current = true;
+            }
+          },
+          { threshold, root, rootMargin }
+        );
+
+        observerRef.current.observe(node);
+      }
+    },
+    [threshold, root, rootMargin, triggerOnce]
+  );
+
   useEffect(() => {
     return () => {
       if (observerRef.current) {
@@ -59,7 +62,7 @@ export function useIntersectionObserver(
       }
     };
   }, []);
-  
+
   return [setRef, isIntersecting, entry];
 }
 

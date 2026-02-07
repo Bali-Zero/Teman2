@@ -71,7 +71,11 @@ export function EmailViewer({
         const client = await api.crm.getClientByEmail(email.from.address);
         setSenderClient(client);
       } catch (error) {
-        logger.error('Failed to lookup client', { component: 'EmailViewer', action: 'lookupClient' }, toError(error));
+        logger.error(
+          'Failed to lookup client',
+          { component: 'EmailViewer', action: 'lookupClient' },
+          toError(error)
+        );
         setSenderClient(null);
       } finally {
         setIsLoadingClient(false);
@@ -197,9 +201,7 @@ export function EmailViewer({
 
               <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] mt-0.5">
                 <span>to {formatEmailList(email.to)}</span>
-                {email.cc && email.cc.length > 0 && (
-                  <span>, cc: {formatEmailList(email.cc)}</span>
-                )}
+                {email.cc && email.cc.length > 0 && <span>, cc: {formatEmailList(email.cc)}</span>}
                 <button
                   onClick={() => setShowFullHeaders(!showFullHeaders)}
                   className="p-0.5 hover:bg-[var(--background-elevated)] rounded"
@@ -216,13 +218,11 @@ export function EmailViewer({
                     <strong>From:</strong> {formatEmailAddress(email.from)}
                   </div>
                   <div>
-                    <strong>To:</strong>{' '}
-                    {email.to.map((t) => formatEmailAddress(t)).join(', ')}
+                    <strong>To:</strong> {email.to.map((t) => formatEmailAddress(t)).join(', ')}
                   </div>
                   {email.cc && email.cc.length > 0 && (
                     <div>
-                      <strong>Cc:</strong>{' '}
-                      {email.cc.map((c) => formatEmailAddress(c)).join(', ')}
+                      <strong>Cc:</strong> {email.cc.map((c) => formatEmailAddress(c)).join(', ')}
                     </div>
                   )}
                   <div>
@@ -416,7 +416,7 @@ function formatEmailAddress(addr: { address: string; name?: string }): string {
  * Format a list of email addresses for display
  */
 function formatEmailList(addrs: Array<{ address: string; name?: string }>): string {
-  return addrs.map(a => decodeHtmlEntities(a.name) || a.address).join(', ');
+  return addrs.map((a) => decodeHtmlEntities(a.name) || a.address).join(', ');
 }
 
 function sanitizeHtml(html: string): string {

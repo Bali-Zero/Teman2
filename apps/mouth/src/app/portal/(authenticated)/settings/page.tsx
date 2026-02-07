@@ -34,7 +34,7 @@ export default function SettingsPage() {
 
   const handleToggle = (key: keyof PortalPreferences) => {
     if (!preferences) return;
-    
+
     setPreferences((prev) => {
       if (!prev) return prev;
       return {
@@ -117,14 +117,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-3">
-          <ReadOnlyField
-            label="Language"
-            value={preferences.language.toUpperCase()}
-          />
-          <ReadOnlyField
-            label="Timezone"
-            value={preferences.timezone}
-          />
+          <ReadOnlyField label="Language" value={preferences.language.toUpperCase()} />
+          <ReadOnlyField label="Timezone" value={preferences.timezone} />
         </div>
 
         <p className="text-xs text-muted-foreground pt-2 border-t">
@@ -183,7 +177,7 @@ function ToggleSetting({
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </div>
       </div>
-      
+
       <button
         type="button"
         role="switch"

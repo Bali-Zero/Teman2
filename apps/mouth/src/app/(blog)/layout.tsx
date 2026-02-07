@@ -382,7 +382,13 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main content */}
       <main>
-        <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+        <ErrorBoundary
+          fallback={
+            <div className="p-8 text-center text-white">
+              Something went wrong. Please refresh the page.
+            </div>
+          }
+        >
           {children}
         </ErrorBoundary>
       </main>

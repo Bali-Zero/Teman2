@@ -7,7 +7,9 @@ Il modulo CRM è stato ottimizzato per produzione con validazione robusta, cachi
 ## New Modules
 
 ### 1. validators.py
+
 Validazione Pydantic per dati CRM:
+
 - `ClientValidator` - Validazione clienti
 - `PracticeValidator` - Validazione pratiche
 - `InteractionValidator` - Validazione interazioni
@@ -15,14 +17,18 @@ Validazione Pydantic per dati CRM:
 - `extract_entities_from_text()` - Estrazione entità da testo
 
 ### 2. cache_manager.py
+
 Sistema di caching livello applicazione:
+
 - `crm_cache` - Cache generica con TTL
 - `query_cache` - Cache query specifiche (email, phone, practice_types)
 - `cache_crm_result()` - Decorator per caching automatico
 - `invalidate_client_cache()` - Invalidazione selettiva
 
 ### 3. query_optimizer.py
+
 Query ottimizzate e batch operations:
+
 - `CRMQueryOptimizer` - Query builder ottimizzato
 - `batch_insert_clients()` - Insert batch clienti
 - `get_clients_with_practices()` - Single query con join
@@ -30,14 +36,18 @@ Query ottimizzate e batch operations:
 - `health_check_crm_tables()` - Verifica integrità
 
 ### 4. audit_trail.py
+
 Audit logging completo:
+
 - `CRMAuditor` - Sistema audit
 - `AuditAction` - Enum azioni tracciabili
 - `init_audit_table()` - Setup tabella audit
 - Auto-flushing buffer (100 entries)
 
 ### 5. enhanced_crm_service.py
+
 Servizio unificato production-ready:
+
 - Validazione automatica
 - Caching integrato
 - Audit trail automatico
@@ -47,6 +57,7 @@ Servizio unificato production-ready:
 ## Usage Examples
 
 ### Basic Client Creation
+
 ```python
 from backend.services.crm import get_enhanced_crm_service
 
@@ -65,6 +76,7 @@ client = await service.create_client(
 ```
 
 ### Validazione Manuale
+
 ```python
 from backend.services.crm import ClientValidator, normalize_phone_e164
 
@@ -85,6 +97,7 @@ normalized = normalize_phone_e164("0812-3456-7890")
 ```
 
 ### Caching
+
 ```python
 from backend.services.crm import crm_cache, invalidate_client_cache
 
@@ -99,6 +112,7 @@ invalidate_client_cache(client_id=123)
 ```
 
 ### Audit Trail
+
 ```python
 from backend.services.crm import CRMAuditor, AuditAction
 
@@ -123,6 +137,7 @@ logs, total = await auditor.get_audit_trail(
 ```
 
 ### Batch Operations
+
 ```python
 # Batch insert
 client_ids = await service.batch_create_clients([
@@ -158,6 +173,7 @@ updated = await optimizer.batch_update_practices([
 ## Database Schema
 
 ### Audit Table
+
 ```sql
 CREATE TABLE crm_audit_log (
     id SERIAL PRIMARY KEY,
@@ -182,6 +198,7 @@ CREATE INDEX idx_audit_created ON crm_audit_log(created_at);
 ## Error Handling
 
 Tutte le operazioni usano custom exceptions:
+
 - `ValidationError` - Input non valido
 - `ResourceNotFoundError` - Risorsa non trovata
 - `DatabaseError` - Errore database

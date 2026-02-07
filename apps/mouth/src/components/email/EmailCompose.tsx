@@ -140,10 +140,9 @@ export function EmailCompose({
         console.error(`Failed to upload ${attachment.file.name}:`, errorMessage);
 
         // Show detailed error message to user
-        const displayMessage =
-          errorMessage.includes('Upload failed for')
-            ? errorMessage // Backend provides detailed error
-            : `Failed to upload ${attachment.file.name}: ${errorMessage}`;
+        const displayMessage = errorMessage.includes('Upload failed for')
+          ? errorMessage // Backend provides detailed error
+          : `Failed to upload ${attachment.file.name}: ${errorMessage}`;
 
         alert(displayMessage);
         setAttachments((prev) => prev.filter((item) => item.file !== attachment.file));

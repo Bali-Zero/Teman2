@@ -91,10 +91,9 @@ describe('useTypewriter', () => {
   });
 
   it('should reset when text changes', () => {
-    const { result, rerender } = renderHook(
-      ({ text }) => useTypewriter(text, 15),
-      { initialProps: { text: 'First' } },
-    );
+    const { result, rerender } = renderHook(({ text }) => useTypewriter(text, 15), {
+      initialProps: { text: 'First' },
+    });
 
     // Type first text fully
     act(() => {

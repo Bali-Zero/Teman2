@@ -13,11 +13,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  
+
   // ⚡ Bundle optimization
   compress: true,
   productionBrowserSourceMaps: false,
-  
+
   // 🚀 Experimental optimizations
   experimental: {
     // Optimize package imports for faster dev and smaller bundles

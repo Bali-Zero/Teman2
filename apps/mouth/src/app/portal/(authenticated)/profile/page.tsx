@@ -57,57 +57,35 @@ export default function ProfilePage() {
           <div className="text-center">
             <h2 className="text-xl font-bold">{profile.fullName}</h2>
             <p className="text-sm text-muted-foreground">
-              Member since {new Date(profile.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              Member since{' '}
+              {new Date(profile.memberSince).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
             </p>
           </div>
         </div>
 
         {/* Info Fields */}
         <div className="space-y-4 pt-4 border-t">
-          <ProfileField
-            icon={Mail}
-            label="Email"
-            value={profile.email}
-          />
-          
-          {profile.phone && (
-            <ProfileField
-              icon={Phone}
-              label="Phone"
-              value={profile.phone}
-            />
-          )}
+          <ProfileField icon={Mail} label="Email" value={profile.email} />
+
+          {profile.phone && <ProfileField icon={Phone} label="Phone" value={profile.phone} />}
 
           {profile.whatsapp && (
-            <ProfileField
-              icon={Phone}
-              label="WhatsApp"
-              value={profile.whatsapp}
-            />
+            <ProfileField icon={Phone} label="WhatsApp" value={profile.whatsapp} />
           )}
 
           {profile.nationality && (
-            <ProfileField
-              icon={Globe}
-              label="Nationality"
-              value={profile.nationality}
-            />
+            <ProfileField icon={Globe} label="Nationality" value={profile.nationality} />
           )}
 
           {profile.passportNumber && (
-            <ProfileField
-              icon={User}
-              label="Passport Number"
-              value={profile.passportNumber}
-            />
+            <ProfileField icon={User} label="Passport Number" value={profile.passportNumber} />
           )}
 
           {profile.address && (
-            <ProfileField
-              icon={MapPin}
-              label="Address"
-              value={profile.address}
-            />
+            <ProfileField icon={MapPin} label="Address" value={profile.address} />
           )}
         </div>
       </section>
@@ -115,7 +93,8 @@ export default function ProfilePage() {
       {/* Info Notice */}
       <section className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
         <p className="text-sm text-amber-800 dark:text-amber-400">
-          To update your profile information, please contact your account manager or send us a message through the Chat.
+          To update your profile information, please contact your account manager or send us a
+          message through the Chat.
         </p>
       </section>
     </div>

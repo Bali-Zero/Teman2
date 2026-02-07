@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Tests
+tests/
+*_test.py
+*_tests.py
+
+# Scripts (not needed in production image)
+scripts/*.sh
+scripts/test_*.py
+scripts/*_test.py
+
+# Data and logs
+data/
+logs/
+*.log
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Large files
+*.pdf
+*.zip
+*.tar.gz

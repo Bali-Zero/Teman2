@@ -1,6 +1,6 @@
 /**
  * usePrevious Hook
- * 
+ *
  * Track previous value
  */
 
@@ -12,12 +12,12 @@ import { useRef, useEffect } from 'react';
 export function usePrevious<T>(value: T): T | undefined {
   const ref = useRef<T | undefined>(undefined);
   const prevRef = useRef<T | undefined>(undefined);
-  
+
   useEffect(() => {
     prevRef.current = ref.current;
     ref.current = value;
   }, [value]);
-  
+
   return prevRef.current;
 }
 
@@ -30,14 +30,14 @@ export function usePreviousWithCompare<T>(
 ): T | undefined {
   const ref = useRef<T | undefined>(undefined);
   const prevRef = useRef<T | undefined>(undefined);
-  
+
   useEffect(() => {
     if (ref.current === undefined || !compare(ref.current, value)) {
       prevRef.current = ref.current;
       ref.current = value;
     }
   }, [value, compare]);
-  
+
   return prevRef.current;
 }
 
@@ -46,10 +46,10 @@ export function usePreviousWithCompare<T>(
  */
 export function useHistory<T>(value: T, maxSize = 5): T[] {
   const historyRef = useRef<T[]>([]);
-  
+
   useEffect(() => {
     historyRef.current = [value, ...historyRef.current].slice(0, maxSize);
   }, [value, maxSize]);
-  
+
   return historyRef.current;
 }

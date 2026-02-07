@@ -2,7 +2,7 @@
 
 /**
  * SafeHydrate Component
- * 
+ *
  * Prevents hydration mismatch errors
  */
 
@@ -18,15 +18,15 @@ interface SafeHydrateProps {
  */
 export function SafeHydrate({ children, fallback = null }: SafeHydrateProps) {
   const [isHydrated, setIsHydrated] = useState(false);
-  
+
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-  
+
   if (!isHydrated) {
     return fallback;
   }
-  
+
   return children;
 }
 
@@ -48,10 +48,10 @@ export function ServerClientSplit({
   clientContent: ReactNode;
 }) {
   const [isClient, setIsClient] = useState(false);
-  
+
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   return isClient ? clientContent : serverContent;
 }

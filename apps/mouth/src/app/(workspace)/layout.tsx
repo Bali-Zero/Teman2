@@ -207,7 +207,13 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
           {/* Page Content */}
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <ErrorBoundary fallback={<div className="p-8 text-center text-white">Something went wrong. Please refresh the page.</div>}>
+            <ErrorBoundary
+              fallback={
+                <div className="p-8 text-center text-white">
+                  Something went wrong. Please refresh the page.
+                </div>
+              }
+            >
               {children}
             </ErrorBoundary>
           </main>

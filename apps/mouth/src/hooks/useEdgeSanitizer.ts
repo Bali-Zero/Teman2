@@ -1,6 +1,4 @@
 import { useCallback } from 'react';
-import { useGeminiNano } from './useGeminiNano';
-import { EDGE_PROMPTS } from '../lib/edge/prompts';
 import { logger } from '@/lib/logger';
 
 interface UseEdgeSanitizerReturn {
@@ -9,46 +7,46 @@ interface UseEdgeSanitizerReturn {
   status: string;
 }
 
+/**
+ * Edge sanitizer hook for PII redaction.
+ * Uses deterministic regex-based redaction for fast client-side sanitization.
+ *
+ * Note: AI-based sanitization temporarily disabled (useGeminiNano removed).
+ * Regex-based approach provides reliable, fast PII detection.
+ */
 export const useEdgeSanitizer = (): UseEdgeSanitizerReturn => {
-  const { generate, isReady, status } = useGeminiNano();
+  const sanitize = useCallback(async (text: string): Promise<string> => {
+    if (!text) return '';
 
-  const sanitize = useCallback(
-    async (text: string): Promise<string> => {
-      if (!text) return '';
+    // Regex-based Redaction (Deterministic)
+    // Fast client-side PII detection without AI dependencies
 
-      // 1. Fast Pass: Regex Redaction (Deterministic)
-      // We do this first to catch obvious structured data immediately and reduce hallucination risk for these patterns.
-      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-      // Basic phone regex for finding numbers with 10-15 digits
-      const phoneRegex = /\b\d{10,15}\b/g;
+    // Email pattern
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
 
-      let preProcessed = text.replace(emailRegex, '[EMAIL]').replace(phoneRegex, '[PHONE]');
+    // Phone pattern (10-15 digits)
+    const phoneRegex = /\b\d{10,15}\b/g;
 
-      // 2. Intelligent Pass: Gemini Nano
-      // Catches context-dependent entities like Names or Addresses.
-      if (isReady) {
-        try {
-          const prompt = `${EDGE_PROMPTS.SANITIZATION_SYSTEM} "${preProcessed}"\nOutput:`;
-          const result = await generate(prompt);
-          return result.trim();
-        } catch (error) {
-          logger.warn(
-            'Edge Sanitization failed, returning regex-cleaned text',
-            { component: 'useEdgeSanitizer', action: 'sanitize' },
-            error instanceof Error ? error : new Error(String(error))
-          );
-          return preProcessed;
-        }
-      }
+    // Indonesian phone pattern (+62 or 08)
+    const idPhoneRegex = /\b(\+62|62|0)8[1-9][0-9]{7,11}\b/g;
 
-      return preProcessed;
-    },
-    [generate, isReady]
-  );
+    // Tax ID / NPWP pattern (Indonesian)
+    const npwpRegex = /\b\d{2}[\s.]?\d{3}[\s.]?\d{3}[\s.]?\d{1}[\s-]?\d{3}[\s.]?\d{3}\b/g;
+
+    const sanitized = text
+      .replace(emailRegex, '[EMAIL]')
+      .replace(idPhoneRegex, '[PHONE]')
+      .replace(phoneRegex, '[PHONE]')
+      .replace(npwpRegex, '[NPWP]');
+
+    logger.debug('Text sanitized');
+
+    return sanitized;
+  }, []);
 
   return {
     sanitize,
-    isReady,
-    status,
+    isReady: true, // Always ready - uses regex only
+    status: 'ready',
   };
 };

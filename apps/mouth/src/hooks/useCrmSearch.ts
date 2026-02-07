@@ -1,6 +1,6 @@
 /**
  * useCrmSearch Hook
- * 
+ *
  * Ricerca clienti con debounce e suggerimenti
  */
 
@@ -34,12 +34,7 @@ interface SearchResponse {
  * Hook per ricerca clienti con debounce
  */
 export function useCrmSearch(options: UseCrmSearchOptions = {}) {
-  const {
-    debounceMs = 300,
-    minChars = 2,
-    limit = 20,
-    enabled = true,
-  } = options;
+  const { debounceMs = 300, minChars = 2, limit = 20, enabled = true } = options;
 
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -116,13 +111,10 @@ export function useQuickSearch(options: { limit?: number } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const {
-    query,
-    updateQuery,
-    results,
-    isLoading,
-    clearSearch,
-  } = useCrmSearch({ debounceMs: 150, limit });
+  const { query, updateQuery, results, isLoading, clearSearch } = useCrmSearch({
+    debounceMs: 150,
+    limit,
+  });
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => {
@@ -140,9 +132,7 @@ export function useQuickSearch(options: { limit?: number } = {}) {
   }, [isOpen, clearSearch]);
 
   const selectNext = useCallback(() => {
-    setSelectedIndex((prev) => 
-      prev < results.length - 1 ? prev + 1 : prev
-    );
+    setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
   }, [results.length]);
 
   const selectPrev = useCallback(() => {
@@ -187,7 +177,7 @@ export function useGlobalSearch(options: { limit?: number } = {}) {
     queryKey: ['crm', 'global-search', debouncedQuery],
     queryFn: async (): Promise<SearchResult[]> => {
       if (debouncedQuery.length < 2) return [];
-      
+
       // Search clients
       const clients = await api.crm.getClients({
         search: debouncedQuery,
@@ -195,18 +185,20 @@ export function useGlobalSearch(options: { limit?: number } = {}) {
       });
 
       // Map to SearchResult format
-      return clients.map((client: Client): SearchResult => ({
-        id: client.id,
-        type: 'client',
-        title: client.full_name,
-        subtitle: client.email || client.phone || undefined,
-        status: client.status,
-        url: `/clients/${client.id}`,
-        metadata: {
-          nationality: client.nationality,
-          assignedTo: client.assigned_to,
-        },
-      }));
+      return clients.map(
+        (client: Client): SearchResult => ({
+          id: client.id,
+          type: 'client',
+          title: client.full_name,
+          subtitle: client.email || client.phone || undefined,
+          status: client.status,
+          url: `/clients/${client.id}`,
+          metadata: {
+            nationality: client.nationality,
+            assignedTo: client.assigned_to,
+          },
+        })
+      );
     },
     enabled: debouncedQuery.length >= 2,
     staleTime: 30 * 1000,

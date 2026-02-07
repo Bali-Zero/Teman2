@@ -217,7 +217,9 @@ export default async function RootLayout({
   }
 
   // 2. ARTICLE PAGES: /[category]/[slug]
-  const articleMatch = pathname.match(/^\/(immigration|business|tax-legal|property|lifestyle|tech)\/([^\/]+)$/);
+  const articleMatch = pathname.match(
+    /^\/(immigration|business|tax-legal|property|lifestyle|tech)\/([^\/]+)$/
+  );
   if (articleMatch) {
     const [, category, slug] = articleMatch;
     try {
@@ -314,7 +316,8 @@ export default async function RootLayout({
       '@context': 'https://schema.org',
       '@type': 'ItemList',
       name: 'Bali Zero Services',
-      description: 'Complete visa, immigration, company setup, and business consulting services in Bali, Indonesia',
+      description:
+        'Complete visa, immigration, company setup, and business consulting services in Bali, Indonesia',
       itemListElement: Object.values(SERVICES_DATA).map((svc, index) => ({
         '@type': 'ListItem',
         position: index + 1,
@@ -335,7 +338,8 @@ export default async function RootLayout({
       '@context': 'https://schema.org',
       '@type': 'ContactPage',
       name: 'Contact Bali Zero',
-      description: 'Get in touch with Bali Zero for visa, immigration, and business consulting services in Bali, Indonesia',
+      description:
+        'Get in touch with Bali Zero for visa, immigration, and business consulting services in Bali, Indonesia',
       url: `${baseUrl}/contact`,
       mainEntity: {
         '@type': 'Organization',
@@ -367,7 +371,8 @@ export default async function RootLayout({
       '@context': 'https://schema.org',
       '@type': 'AboutPage',
       name: 'Bali Zero Team',
-      description: 'Meet the expert team at Bali Zero - visa, immigration, and business consulting professionals in Bali, Indonesia',
+      description:
+        'Meet the expert team at Bali Zero - visa, immigration, and business consulting professionals in Bali, Indonesia',
       url: `${baseUrl}/team`,
       mainEntity: {
         '@type': 'Organization',
@@ -431,7 +436,11 @@ export default async function RootLayout({
       >
         <QueryProvider>
           <WebVitalsMonitor />
-          <ErrorBoundary fallback={<div className="p-8 text-center">Something went wrong. Please refresh the page.</div>}>
+          <ErrorBoundary
+            fallback={
+              <div className="p-8 text-center">Something went wrong. Please refresh the page.</div>
+            }
+          >
             {children}
           </ErrorBoundary>
           <Toaster

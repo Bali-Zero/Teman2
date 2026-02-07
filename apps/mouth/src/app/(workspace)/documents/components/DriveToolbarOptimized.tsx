@@ -2,7 +2,7 @@
 
 /**
  * DriveToolbarOptimized Component
- * 
+ *
  * Toolbar ottimizzata con:
  * - Ricerca debounced
  * - Filtri avanzati
@@ -128,7 +128,8 @@ export function DriveToolbarOptimized({
   }, [onSearchChange]);
 
   const getConnectionStatus = () => {
-    if (isSyncing) return { icon: Loader2, text: 'Syncing...', className: 'text-blue-500 animate-spin' };
+    if (isSyncing)
+      return { icon: Loader2, text: 'Syncing...', className: 'text-blue-500 animate-spin' };
     if (!isConnected) return { icon: CloudOff, text: 'Disconnected', className: 'text-red-500' };
     return { icon: CheckCircle2, text: 'Connected', className: 'text-green-500' };
   };
@@ -160,12 +161,18 @@ export function DriveToolbarOptimized({
             </button>
           )}
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-medium text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 rounded">
-            <span>Ctrl</span><span>K</span>
+            <span>Ctrl</span>
+            <span>K</span>
           </kbd>
         </div>
 
         {/* Connection Status */}
-        <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800", status.className)}>
+        <div
+          className={cn(
+            'flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800',
+            status.className
+          )}
+        >
           <StatusIcon className="h-4 w-4" />
           <span className="hidden sm:inline text-xs font-medium">{status.text}</span>
         </div>
@@ -180,10 +187,7 @@ export function DriveToolbarOptimized({
               variant={showFilters ? 'secondary' : 'ghost'}
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={cn(
-                "relative",
-                fileTypeFilter !== 'all' && "text-blue-600"
-              )}
+              className={cn('relative', fileTypeFilter !== 'all' && 'text-blue-600')}
             >
               <Filter className="h-4 w-4" />
               {fileTypeFilter !== 'all' && (
@@ -197,9 +201,9 @@ export function DriveToolbarOptimized({
             <button
               onClick={() => onViewModeChange('grid')}
               className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'grid' 
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' 
+                'p-1.5 rounded-md transition-all',
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600'
                   : 'text-slate-400 hover:text-slate-600'
               )}
               title="Grid view (Ctrl+Shift+V)"
@@ -209,9 +213,9 @@ export function DriveToolbarOptimized({
             <button
               onClick={() => onViewModeChange('list')}
               className={cn(
-                "p-1.5 rounded-md transition-all",
-                viewMode === 'list' 
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' 
+                'p-1.5 rounded-md transition-all',
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600'
                   : 'text-slate-400 hover:text-slate-600'
               )}
               title="List view (Ctrl+Shift+V)"
@@ -225,10 +229,7 @@ export function DriveToolbarOptimized({
             variant={showInfoPanel ? 'secondary' : 'ghost'}
             size="sm"
             onClick={onToggleInfoPanel}
-            className={cn(
-              "hidden md:flex",
-              hasSelection && !showInfoPanel && "text-blue-600"
-            )}
+            className={cn('hidden md:flex', hasSelection && !showInfoPanel && 'text-blue-600')}
           >
             Info
           </Button>
@@ -255,10 +256,10 @@ export function DriveToolbarOptimized({
                 key={type.value}
                 onClick={() => onFileTypeFilterChange(type.value)}
                 className={cn(
-                  "px-3 py-1 text-xs font-medium rounded-full transition-all",
+                  'px-3 py-1 text-xs font-medium rounded-full transition-all',
                   fileTypeFilter === type.value
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
                 )}
               >
                 {type.label}
@@ -277,9 +278,7 @@ export function DriveToolbarOptimized({
             </span>
           )}
           {selectedCount !== undefined && selectedCount > 0 && (
-            <span className="text-blue-600 font-medium">
-              {selectedCount} selected
-            </span>
+            <span className="text-blue-600 font-medium">{selectedCount} selected</span>
           )}
           {lastSyncTime && (
             <span className="hidden sm:inline">

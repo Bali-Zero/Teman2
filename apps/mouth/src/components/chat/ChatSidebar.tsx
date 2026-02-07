@@ -108,7 +108,9 @@ export function ChatSidebar({
                     key={conv.id}
                     onClick={() => onConversationClick(conv.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
-                      currentConversationId === conv.id ? 'sidebar-item-active text-white' : 'text-gray-400'
+                      currentConversationId === conv.id
+                        ? 'sidebar-item-active text-white'
+                        : 'text-gray-400'
                     }`}
                     role="button"
                     tabIndex={0}

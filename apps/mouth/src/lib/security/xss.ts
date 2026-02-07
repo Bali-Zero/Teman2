@@ -1,6 +1,6 @@
 /**
  * XSS Prevention Utilities
- * 
+ *
  * Provides safe HTML sanitization and content handling
  */
 
@@ -15,7 +15,7 @@ export function sanitizeHtml(dirty: string): string {
     // Server-side: return escaped text
     return escapeHtml(dirty);
   }
-  
+
   // Client-side: use DOMPurify
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre'],
@@ -34,7 +34,7 @@ export function escapeHtml(text: string): string {
     div.textContent = text;
     return div.innerHTML;
   }
-  
+
   // Server-side fallback
   return text
     .replace(/&/g, '&amp;')
@@ -49,16 +49,18 @@ export function escapeHtml(text: string): string {
  */
 export function sanitizeUrl(url: string): string {
   if (!url) return '';
-  
+
   const sanitized = url.trim().toLowerCase();
-  
+
   // Block javascript: and data: protocols
-  if (sanitized.startsWith('javascript:') || 
-      sanitized.startsWith('data:') ||
-      sanitized.startsWith('vbscript:')) {
+  if (
+    sanitized.startsWith('javascript:') ||
+    sanitized.startsWith('data:') ||
+    sanitized.startsWith('vbscript:')
+  ) {
     return '';
   }
-  
+
   return url;
 }
 
@@ -67,11 +69,8 @@ export function sanitizeUrl(url: string): string {
  * Adds security attributes to external links
  */
 export function getSafeLinkProps(href: string, isExternal?: boolean) {
-  const isExternalUrl = isExternal ?? (
-    href.startsWith('http') && 
-    !href.includes('balizero.com')
-  );
-  
+  const isExternalUrl = isExternal ?? (href.startsWith('http') && !href.includes('balizero.com'));
+
   return {
     href: sanitizeUrl(href),
     target: isExternalUrl ? '_blank' : undefined,

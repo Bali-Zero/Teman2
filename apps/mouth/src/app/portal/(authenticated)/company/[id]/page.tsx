@@ -37,7 +37,7 @@ export default function CompanyDetailPage() {
 
   const loadCompany = async () => {
     if (!companyId) return;
-    
+
     try {
       setIsLoading(true);
       const data = await api.portal.getCompanyDetail(companyId);
@@ -63,11 +63,7 @@ export default function CompanyDetailPage() {
       <div className="text-center py-12">
         <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
         <h2 className="text-lg font-semibold text-muted-foreground">Company not found</h2>
-        <Button
-          variant="ghost"
-          className="mt-4"
-          onClick={() => router.push('/portal/vault')}
-        >
+        <Button variant="ghost" className="mt-4" onClick={() => router.push('/portal/vault')}>
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Vault
         </Button>
@@ -78,12 +74,7 @@ export default function CompanyDetailPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.back()}
-        className="-ml-2"
-      >
+      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
         <ChevronLeft className="w-4 h-4 mr-1" />
         Back
       </Button>
@@ -103,9 +94,7 @@ export default function CompanyDetailPage() {
           <StatusBadge status={company.status} />
         </div>
 
-        {company.address && (
-          <p className="mt-4 text-sm text-muted-foreground">{company.address}</p>
-        )}
+        {company.address && <p className="mt-4 text-sm text-muted-foreground">{company.address}</p>}
 
         {company.isPrimary && (
           <div className="mt-4 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-full inline-flex items-center gap-1.5">
@@ -212,7 +201,12 @@ function StatusBadge({ status }: { status: 'active' | 'pending' }) {
   const { icon: Icon, label, className } = config[status];
 
   return (
-    <div className={cn('px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium', className)}>
+    <div
+      className={cn(
+        'px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium',
+        className
+      )}
+    >
       <Icon className="w-3.5 h-3.5" />
       {label}
     </div>
@@ -258,26 +252,34 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{license.name}</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Expires: {new Date(license.expiryDate).toLocaleDateString('en-US', {
+            Expires:{' '}
+            {new Date(license.expiryDate).toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
               year: 'numeric',
             })}
           </p>
           {license.daysRemaining !== undefined && (
-            <p className={cn(
-              'text-xs font-medium mt-1',
-              license.daysRemaining <= 30
-                ? 'text-red-600 dark:text-red-400'
-                : license.daysRemaining <= 60
-                ? 'text-amber-600 dark:text-amber-400'
-                : 'text-emerald-600 dark:text-emerald-400'
-            )}>
+            <p
+              className={cn(
+                'text-xs font-medium mt-1',
+                license.daysRemaining <= 30
+                  ? 'text-red-600 dark:text-red-400'
+                  : license.daysRemaining <= 60
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
+              )}
+            >
               {license.daysRemaining} days remaining
             </p>
           )}
         </div>
-        <div className={cn('px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium', config.className)}>
+        <div
+          className={cn(
+            'px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium',
+            config.className
+          )}
+        >
           <Icon className="w-3 h-3" />
           {license.status.charAt(0).toUpperCase() + license.status.slice(1)}
         </div>
@@ -321,10 +323,12 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-semibold text-sm">{item.name}</h3>
-          <p className={cn(
-            'text-xs mt-1',
-            isPast ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'
-          )}>
+          <p
+            className={cn(
+              'text-xs mt-1',
+              isPast ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'
+            )}
+          >
             {isPast ? 'Was due: ' : 'Due: '}
             {dueDate.toLocaleDateString('en-US', {
               weekday: 'short',
@@ -334,7 +338,12 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
             })}
           </p>
         </div>
-        <div className={cn('px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium', config.className)}>
+        <div
+          className={cn(
+            'px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium',
+            config.className
+          )}
+        >
           <Icon className="w-3 h-3" />
           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
         </div>

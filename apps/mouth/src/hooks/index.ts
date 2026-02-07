@@ -1,6 +1,6 @@
 /**
  * CRM & Portal Hooks Index
- * 
+ *
  * Esporta tutti gli hooks ottimizzati
  */
 
@@ -26,11 +26,7 @@ export {
 } from './useCrmPractices';
 
 // Search hooks
-export {
-  useCrmSearch,
-  useQuickSearch,
-  useGlobalSearch,
-} from './useCrmSearch';
+export { useCrmSearch, useQuickSearch, useGlobalSearch } from './useCrmSearch';
 
 // CRM Notification hooks
 export {
@@ -77,13 +73,31 @@ export {
 } from './useDriveOptimized';
 
 // File selection hook
-export {
-  useFileSelection,
-  useFileKeyboardNavigation,
-} from './useFileSelection';
+export { useFileSelection, useFileKeyboardNavigation } from './useFileSelection';
 
 // Re-export from optimized hooks
+export { useDebounce, useDebouncedCallback } from '@/lib/hooks/optimized/useDebounce';
+
+// Optimized list hooks
+export { useOptimizedList, useInfiniteScroll } from './useOptimizedList';
+
+// React Query hooks
 export {
-  useDebounce,
-  useDebouncedCallback,
-} from '@/lib/hooks/optimized/useDebounce';
+  useClientsQuery,
+  useClientQuery,
+  useCreateClientMutation,
+  useUpdateClientMutation,
+  useDeleteClientMutation,
+  usePrefetchClients,
+  clientKeys,
+} from './useClientsQuery';
+
+export {
+  useArticlesQuery,
+  useArticleQuery,
+  useNewsFeedQuery,
+  useArticleMutation,
+  usePublishArticleMutation,
+  usePrefetchArticles,
+  articleKeys,
+} from './useArticlesQuery';

@@ -20,7 +20,10 @@ export default function MatchScoreRing({ score }: { score: number }) {
   const color = getColor(pct);
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: SIZE, height: SIZE }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: SIZE, height: SIZE }}
+    >
       <svg width={SIZE} height={SIZE} className="-rotate-90">
         {/* Track */}
         <circle
@@ -46,10 +49,7 @@ export default function MatchScoreRing({ score }: { score: number }) {
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
         />
       </svg>
-      <span
-        className="absolute font-mono text-[10px] font-medium"
-        style={{ color }}
-      >
+      <span className="absolute font-mono text-[10px] font-medium" style={{ color }}>
         {pct}
       </span>
     </div>

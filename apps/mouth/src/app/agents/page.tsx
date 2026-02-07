@@ -62,7 +62,11 @@ export default function AgentsPage() {
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      logger.error('Failed to load agents status', { component: 'AgentsPage', action: 'loadAgentsStatus' }, err as Error);
+      logger.error(
+        'Failed to load agents status',
+        { component: 'AgentsPage', action: 'loadAgentsStatus' },
+        err as Error
+      );
       setError('Failed to load agents status. Please try again.');
     } finally {
       setIsLoading(false);
@@ -77,7 +81,11 @@ export default function AgentsPage() {
       );
       setSchedulerStatus(response);
     } catch (err) {
-      logger.error('Failed to load scheduler status', { component: 'AgentsPage', action: 'loadSchedulerStatus' }, err as Error);
+      logger.error(
+        'Failed to load scheduler status',
+        { component: 'AgentsPage', action: 'loadSchedulerStatus' },
+        err as Error
+      );
       // Scheduler errors are non-critical, just log them
     }
   }, []);
@@ -129,7 +137,11 @@ export default function AgentsPage() {
           setTimeout(() => loadAgentsStatus(), TIMEOUTS.AGENT_RELOAD_DELAY);
         }
       } catch (err) {
-        logger.error(`Failed to run ${agentName}`, { component: 'AgentsPage', action: 'handleRunAgent', metadata: { agentName } }, err as Error);
+        logger.error(
+          `Failed to run ${agentName}`,
+          { component: 'AgentsPage', action: 'handleRunAgent', metadata: { agentName } },
+          err as Error
+        );
         setError(`Failed to run ${agentName}. Please try again.`);
       }
     },

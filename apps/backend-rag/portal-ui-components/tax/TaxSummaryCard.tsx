@@ -1,7 +1,7 @@
 /**
  * Tax Summary Card Component
  * Displays aggregated tax obligation metrics for a client
- * 
+ *
  * Features:
  * - Total obligations count
  * - Total amount due
@@ -35,14 +35,17 @@ interface TaxSummaryCardProps {
 const fetcher = (url: string) =>
   fetch(url, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('portal_jwt')}`,
+      Authorization: `Bearer ${localStorage.getItem('portal_jwt')}`,
     },
   }).then((res) => {
     if (!res.ok) throw new Error('Failed to fetch tax summary');
     return res.json();
   });
 
-export function TaxSummaryCard({ clientId, apiUrl = process.env.NEXT_PUBLIC_API_URL }: TaxSummaryCardProps) {
+export function TaxSummaryCard({
+  clientId,
+  apiUrl = process.env.NEXT_PUBLIC_API_URL,
+}: TaxSummaryCardProps) {
   const { data, error, isLoading } = useSWR<TaxSummary>(
     `${apiUrl}/api/portal/taxes/summary`,
     fetcher,
@@ -125,7 +128,8 @@ export function TaxSummaryCard({ clientId, apiUrl = process.env.NEXT_PUBLIC_API_
         {data.overdue_count > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-sm text-red-800 font-medium">
-              Action Required: {data.overdue_count} overdue obligation{data.overdue_count !== 1 ? 's' : ''}
+              Action Required: {data.overdue_count} overdue obligation
+              {data.overdue_count !== 1 ? 's' : ''}
             </p>
           </div>
         )}

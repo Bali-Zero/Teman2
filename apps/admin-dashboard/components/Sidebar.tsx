@@ -1,7 +1,17 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, FolderTree, Home, Sparkles, Network, Activity, UserCog, Scale, Calendar } from 'lucide-react';
+import {
+  Database,
+  FolderTree,
+  Home,
+  Sparkles,
+  Network,
+  Activity,
+  UserCog,
+  Scale,
+  Calendar,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {

@@ -52,9 +52,7 @@ export default function CompaniesPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Your Companies</h1>
-        <p className="text-muted-foreground">
-          Manage your business entities in Indonesia
-        </p>
+        <p className="text-muted-foreground">Manage your business entities in Indonesia</p>
       </section>
 
       {/* Companies List */}
@@ -81,19 +79,13 @@ export default function CompaniesPage() {
   );
 }
 
-function CompanyCard({
-  company,
-  onClick,
-}: {
-  company: PortalCompany;
-  onClick: () => void;
-}) {
+function CompanyCard({ company, onClick }: { company: PortalCompany; onClick: () => void }) {
   const getComplianceStatus = () => {
     if (!company.compliance || company.compliance.length === 0) return null;
-    
+
     const hasOverdue = company.compliance.some((c) => c.status === 'overdue');
     const hasUpcoming = company.compliance.some((c) => c.status === 'upcoming');
-    
+
     if (hasOverdue) {
       return { label: 'Overdue', className: 'text-red-600 dark:text-red-400' };
     }
@@ -105,10 +97,10 @@ function CompanyCard({
 
   const getLicenseStatus = () => {
     if (!company.licenses || company.licenses.length === 0) return null;
-    
+
     const hasExpired = company.licenses.some((l) => l.status === 'expired');
     const hasExpiring = company.licenses.some((l) => l.status === 'expiring');
-    
+
     if (hasExpired) {
       return { icon: AlertTriangle, className: 'text-red-500' };
     }
@@ -139,9 +131,7 @@ function CompanyCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-base truncate">{company.name}</h3>
-                {company.isPrimary && (
-                  <Shield className="w-4 h-4 text-primary flex-shrink-0" />
-                )}
+                {company.isPrimary && <Shield className="w-4 h-4 text-primary flex-shrink-0" />}
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">{company.type}</p>
             </div>
@@ -172,9 +162,7 @@ function CompanyCard({
             )}
 
             {compliance && (
-              <div className={cn('font-medium', compliance.className)}>
-                {compliance.label}
-              </div>
+              <div className={cn('font-medium', compliance.className)}>{compliance.label}</div>
             )}
           </div>
         </div>
@@ -200,7 +188,12 @@ function StatusBadge({ status }: { status: 'active' | 'pending' }) {
   const { icon: Icon, label, className } = config[status];
 
   return (
-    <div className={cn('px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium', className)}>
+    <div
+      className={cn(
+        'px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium',
+        className
+      )}
+    >
       <Icon className="w-3 h-3" />
       {label}
     </div>

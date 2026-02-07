@@ -9,7 +9,11 @@ interface ThinkingPhasesProps {
   latestReasoningData?: Record<string, unknown>;
 }
 
-export function ThinkingPhases({ currentPhaseName, currentMessage, latestReasoningData }: ThinkingPhasesProps) {
+export function ThinkingPhases({
+  currentPhaseName,
+  currentMessage,
+  latestReasoningData,
+}: ThinkingPhasesProps) {
   if (!currentPhaseName) return null;
 
   const phases = [
@@ -88,7 +92,11 @@ export function ThinkingPhases({ currentPhaseName, currentMessage, latestReasoni
   );
 }
 
-function ReasoningDetails({ latestReasoningData }: { latestReasoningData?: Record<string, unknown> }) {
+function ReasoningDetails({
+  latestReasoningData,
+}: {
+  latestReasoningData?: Record<string, unknown>;
+}) {
   if (!latestReasoningData?.details) return null;
 
   const details = latestReasoningData.details as {

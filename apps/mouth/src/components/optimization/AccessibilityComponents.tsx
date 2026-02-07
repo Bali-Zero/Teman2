@@ -1,6 +1,6 @@
 /**
  * Accessibility Components & Utilities
- * 
+ *
  * A11y best practices:
  * - Semantic HTML
  * - ARIA labels
@@ -43,11 +43,7 @@ interface VisuallyHiddenProps {
  * Visible to screen readers, hidden from sighted users
  */
 export function VisuallyHidden({ children }: VisuallyHiddenProps) {
-  return (
-    <span className="sr-only">
-      {children}
-    </span>
-  );
+  return <span className="sr-only">{children}</span>;
 }
 
 interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -186,12 +182,7 @@ export function AccessibleForm({
   'aria-labelledby': ariaLabelledBy,
 }: AccessibleFormProps) {
   return (
-    <form
-      onSubmit={onSubmit}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
-      noValidate
-    >
+    <form onSubmit={onSubmit} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} noValidate>
       {children}
     </form>
   );
@@ -210,14 +201,7 @@ interface FormFieldProps {
  * Accessible Form Field
  * Proper label association and error messaging
  */
-export function FormField({
-  id,
-  label,
-  children,
-  error,
-  hint,
-  required,
-}: FormFieldProps) {
+export function FormField({ id, label, children, error, hint, required }: FormFieldProps) {
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
 
@@ -227,20 +211,20 @@ export function FormField({
         {label}
         {required && <span aria-label="required"> *</span>}
       </label>
-      
+
       {hint && (
         <div id={hintId} className="text-sm text-muted-foreground">
           {hint}
         </div>
       )}
-      
+
       {React.cloneElement(children as React.ReactElement<any>, {
         id,
         'aria-describedby': `${hint ? hintId : ''} ${error ? errorId : ''}`.trim() || undefined,
         'aria-invalid': error ? 'true' : undefined,
         'aria-required': required,
       })}
-      
+
       {error && (
         <div id={errorId} role="alert" className="text-sm text-destructive">
           {error}
@@ -262,7 +246,7 @@ export const a11yUtils = {
     announcement.setAttribute('aria-atomic', 'true');
     announcement.className = 'sr-only';
     announcement.textContent = message;
-    
+
     document.body.appendChild(announcement);
     setTimeout(() => document.body.removeChild(announcement), 1000);
   },

@@ -2,7 +2,7 @@
 
 /**
  * Clients Page - CRM Workspace
- * 
+ *
  * Ottimizzata con:
  * - React Query per caching e sincronizzazione
  * - Virtualized list per grandi dataset
@@ -239,21 +239,13 @@ function ClientsListContent() {
   }, []);
 
   // Use optimized CRM hook with caching
-  const {
-    clients,
-    total,
-    isLoading,
-    isError,
-    error,
-    loadMore,
-    hasMore,
-    isLoadingMore,
-  } = useCrmClients({
-    status: filters.status || undefined,
-    assigned_to: filters.assigned_to || undefined,
-    search: debouncedSearch || undefined,
-    limit: PAGE_SIZE,
-  });
+  const { clients, total, isLoading, isError, error, loadMore, hasMore, isLoadingMore } =
+    useCrmClients({
+      status: filters.status || undefined,
+      assigned_to: filters.assigned_to || undefined,
+      search: debouncedSearch || undefined,
+      limit: PAGE_SIZE,
+    });
 
   // Stats hook
   const { data: stats } = useCrmStats();
@@ -369,11 +361,7 @@ function ClientsListContent() {
             {hasMore && ' (scroll for more)'}
             {activeFiltersCount > 0 &&
               ` • filtered from ${isMounted ? visibleClients.length.toLocaleString() : visibleClients.length}`}
-            {stats && (
-              <span className="ml-2 text-xs">
-                • {stats.totalClients} total
-              </span>
-            )}
+            {stats && <span className="ml-2 text-xs">• {stats.totalClients} total</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -569,11 +557,11 @@ function ClientsListContent() {
           <Users className="w-16 h-16 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
           <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">No clients found</h2>
           <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto mb-6">
-            {searchQuery 
+            {searchQuery
               ? 'No clients match your search. Try different keywords.'
               : activeFiltersCount > 0
-              ? 'No clients match the selected filters.'
-              : 'Get started by adding your first client.'}
+                ? 'No clients match the selected filters.'
+                : 'Get started by adding your first client.'}
           </p>
           {activeFiltersCount > 0 ? (
             <Button variant="outline" onClick={clearFilters} className="gap-2">

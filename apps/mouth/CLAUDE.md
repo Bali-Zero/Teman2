@@ -36,33 +36,33 @@ Upgraded the KBLI Explorer from MVP to premium SaaS quality. All frontend-only c
 
 ### Files Created (6 components + 6 test files)
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `components/KBLIInspector.tsx` | Extracted inspector panel + helpers | ~180 |
-| `components/ThinkingIndicator.tsx` | Multi-stage loading indicator | ~80 |
-| `components/MatchScoreRing.tsx` | SVG ring gauge for match scores | ~50 |
-| `components/RiskGauge.tsx` | Semi-circle risk speedometer | ~95 |
-| `components/ComparisonModal.tsx` | Side-by-side comparison table | ~130 |
-| `hooks/useTypewriter.ts` | Typewriter effect hook | ~55 |
+| File                               | Purpose                             | Lines |
+| ---------------------------------- | ----------------------------------- | ----- |
+| `components/KBLIInspector.tsx`     | Extracted inspector panel + helpers | ~180  |
+| `components/ThinkingIndicator.tsx` | Multi-stage loading indicator       | ~80   |
+| `components/MatchScoreRing.tsx`    | SVG ring gauge for match scores     | ~50   |
+| `components/RiskGauge.tsx`         | Semi-circle risk speedometer        | ~95   |
+| `components/ComparisonModal.tsx`   | Side-by-side comparison table       | ~130  |
+| `hooks/useTypewriter.ts`           | Typewriter effect hook              | ~55   |
 
 ### Files Modified
 
-| File | Changes |
-|------|---------|
-| `page.tsx` | Rewrote to integrate all 11 features (~1191 lines) |
-| `src/components/ui/error-boundary.tsx` | Fixed `error` import shadowing |
-| `src/lib/logger.ts` | Fixed `error` import shadowing |
+| File                                   | Changes                                            |
+| -------------------------------------- | -------------------------------------------------- |
+| `page.tsx`                             | Rewrote to integrate all 11 features (~1191 lines) |
+| `src/components/ui/error-boundary.tsx` | Fixed `error` import shadowing                     |
+| `src/lib/logger.ts`                    | Fixed `error` import shadowing                     |
 
 ### Tests (73 tests, 6 files, all passing)
 
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| `hooks/__tests__/useTypewriter.test.ts` | 8 | Typing progression, skip, reset, speed=0 |
-| `components/__tests__/ThinkingIndicator.test.tsx` | 8 | Stage progression, progress bar, isComplete |
-| `components/__tests__/MatchScoreRing.test.tsx` | 11 | SVG render, colors, clamping, boundaries |
-| `components/__tests__/RiskGauge.test.tsx` | 12 | All 5 risk levels, labels, colors, SVG elements |
-| `components/__tests__/KBLIInspector.test.tsx` | 26 | Loading/empty/data states, helpers, related codes |
-| `components/__tests__/ComparisonModal.test.tsx` | 8 | API calls, loading, error handling, closed state |
+| Test File                                         | Tests | Coverage                                          |
+| ------------------------------------------------- | ----- | ------------------------------------------------- |
+| `hooks/__tests__/useTypewriter.test.ts`           | 8     | Typing progression, skip, reset, speed=0          |
+| `components/__tests__/ThinkingIndicator.test.tsx` | 8     | Stage progression, progress bar, isComplete       |
+| `components/__tests__/MatchScoreRing.test.tsx`    | 11    | SVG render, colors, clamping, boundaries          |
+| `components/__tests__/RiskGauge.test.tsx`         | 12    | All 5 risk levels, labels, colors, SVG elements   |
+| `components/__tests__/KBLIInspector.test.tsx`     | 26    | Loading/empty/data states, helpers, related codes |
+| `components/__tests__/ComparisonModal.test.tsx`   | 8     | API calls, loading, error handling, closed state  |
 
 ---
 

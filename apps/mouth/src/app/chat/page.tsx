@@ -58,7 +58,6 @@ export default function ChatPage() {
     sidebar,
     conversations,
     teamStatus,
-    audioRecorder,
 
     // Handlers
     handleSend,
@@ -200,33 +199,12 @@ export default function ChatPage() {
           onFileChange={async (e) => {
             chatInput.handleImageAttach(e);
           }}
-          isRecording={audioRecorder.isRecording}
-          recordingTime={audioRecorder.recordingTime}
-          onStartRecording={audioRecorder.startRecording}
-          onStopRecording={audioRecorder.stopRecording}
-          onToggleRecording={async () => {
-            if (audioRecorder.isRecording) {
-              audioRecorder.stopRecording();
-            } else {
-              try {
-                await audioRecorder.startRecording();
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                if (errorMessage.includes('Permission denied')) {
-                  showToast(
-                    'Microphone access denied. Please allow microphone access in your browser settings.',
-                    'error'
-                  );
-                } else if (errorMessage.includes('NotFoundError')) {
-                  showToast(
-                    'No microphone found. Please connect a microphone and try again.',
-                    'error'
-                  );
-                } else {
-                  showToast('Failed to access microphone. Please try again.', 'error');
-                }
-              }
-            }
+          isRecording={false}
+          recordingTime={0}
+          onStartRecording={() => {}}
+          onStopRecording={() => {}}
+          onToggleRecording={() => {
+            showToast('Voice recording temporarily disabled.', 'error');
           }}
         />
       </main>

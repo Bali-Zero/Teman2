@@ -247,11 +247,11 @@ class WhatsAppTriageService:
             Welcome message offering choice
         """
 
-        greeting = f"Ciao {sender_name}!" if sender_name else "Ciao!"
+        greeting = f"Hi {sender_name}!" if sender_name else "Hi!"
 
-        return f"""{greeting} 😎
+        return f"""{greeting} 👋
 
-Dimmi, come posso aiutarti? Visa, KITAS, company setup — whatever you need!"""
+I'm Zantara, the AI assistant for Bali Zero. How can I help you? Visas, KITAS, company setup — just ask!"""
 
 
 # Singleton instance

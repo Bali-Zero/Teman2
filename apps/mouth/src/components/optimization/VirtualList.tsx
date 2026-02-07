@@ -2,7 +2,7 @@
 
 /**
  * VirtualList Component
- * 
+ *
  * Efficiently render large lists using virtualization
  */
 
@@ -27,20 +27,16 @@ export function VirtualList<T>({
   estimateSize,
 }: VirtualListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
-  
+
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
     estimateSize: estimateSize || (() => itemHeight),
     overscan,
   });
-  
+
   return (
-    <div
-      ref={parentRef}
-      className={`overflow-auto ${className}`}
-      style={{ height: '100%' }}
-    >
+    <div ref={parentRef} className={`overflow-auto ${className}`} style={{ height: '100%' }}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -48,7 +44,7 @@ export function VirtualList<T>({
           position: 'relative',
         }}
       >
-        {virtualizer.getVirtualItems().map(virtualItem => (
+        {virtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.key}
             style={{
@@ -80,11 +76,7 @@ export function FixedVirtualList<T>({
 }: Omit<VirtualListProps<T>, 'estimateSize' | 'overscan'> & { height: number }) {
   return (
     <div style={{ height }} className={className}>
-      <VirtualList
-        items={items}
-        renderItem={renderItem}
-        itemHeight={itemHeight}
-      />
+      <VirtualList items={items} renderItem={renderItem} itemHeight={itemHeight} />
     </div>
   );
 }

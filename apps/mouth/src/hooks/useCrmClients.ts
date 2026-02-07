@@ -1,6 +1,6 @@
 /**
  * useCrmClients Hook
- * 
+ *
  * Hook ottimizzato per gestione clienti CRM con caching e sincronizzazione
  */
 
@@ -153,7 +153,13 @@ export function useUpdateClient(clientId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ updates, updatedBy }: { updates: Partial<CreateClientParams>; updatedBy: string }) => {
+    mutationFn: async ({
+      updates,
+      updatedBy,
+    }: {
+      updates: Partial<CreateClientParams>;
+      updatedBy: string;
+    }) => {
       return api.crm.updateClient(clientId, updates, updatedBy);
     },
     onSuccess: (updatedClient) => {
@@ -182,7 +188,7 @@ export function useCrmStats() {
         api.crm.getPracticeStats(),
         api.crm.getInteractionStats(),
       ]);
-      
+
       return {
         totalClients: practiceStats.total_practices,
         activePractices: practiceStats.active_practices,

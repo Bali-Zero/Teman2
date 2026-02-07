@@ -2,7 +2,7 @@
 
 /**
  * PortalHeader Component
- * 
+ *
  * Header dedicato per il client portal con notifiche integrate
  */
 
@@ -36,7 +36,7 @@ export function PortalHeader({
   // Get page title from pathname
   const getPageTitle = () => {
     if (customTitle) return customTitle;
-    
+
     // Check exact match first
     if (routeTitles[pathname]) {
       return routeTitles[pathname];

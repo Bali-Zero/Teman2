@@ -1,0 +1,72 @@
+{
+  "dashboard": {
+    "title": "Bali Intel Scraper",
+    "tags": ["scraper", "monitoring"],
+    "timezone": "UTC",
+    "panels": [
+      {
+        "title": "Scraper Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(bali_intel_scraper_success_total[5m]) / rate(bali_intel_scraper_total[5m]) * 100"
+          }
+        ],
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 }
+      },
+      {
+        "title": "Articles Scraped (24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(bali_intel_articles_scraped_total[24h])"
+          }
+        ],
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 }
+      },
+      {
+        "title": "Average Scrape Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(bali_intel_scrape_duration_seconds_sum[5m]) / rate(bali_intel_scrape_duration_seconds_count[5m])"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(bali_intel_errors_total[5m])"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+      },
+      {
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "bali_intel_db_connections_active"
+          },
+          {
+            "expr": "bali_intel_db_connections_idle"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 }
+      },
+      {
+        "title": "Queue Size",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "bali_intel_task_queue_pending"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 }
+      }
+    ]
+  }
+}

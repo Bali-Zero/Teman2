@@ -2,7 +2,7 @@
 
 /**
  * FileGridVirtualized Component
- * 
+ *
  * Griglia file con virtualizzazione per performance eccellenti
  * anche con migliaia di file
  */
@@ -45,31 +45,34 @@ export function FileGridVirtualized({
   const { prefetchFolder } = usePrefetchFolder();
 
   // Separate folders and files
-  const { folders, documents } = useMemo(() => ({
-    folders: files.filter(f => f.is_folder),
-    documents: files.filter(f => !f.is_folder),
-  }), [files]);
+  const { folders, documents } = useMemo(
+    () => ({
+      folders: files.filter((f) => f.is_folder),
+      documents: files.filter((f) => !f.is_folder),
+    }),
+    [files]
+  );
 
   // Combine with headers: [foldersHeader, ...folders, filesHeader, ...files]
   const virtualItems = useMemo(() => {
     const items: Array<{ type: 'header' | 'file'; file?: FileItem; title?: string }> = [];
-    
+
     if (folders.length > 0) {
       items.push({ type: 'header', title: 'Cartelle' });
-      folders.forEach(f => items.push({ type: 'file', file: f }));
+      folders.forEach((f) => items.push({ type: 'file', file: f }));
     }
-    
+
     if (documents.length > 0) {
       items.push({ type: 'header', title: 'File' });
-      documents.forEach(f => items.push({ type: 'file', file: f }));
+      documents.forEach((f) => items.push({ type: 'file', file: f }));
     }
-    
+
     return items;
   }, [folders, documents]);
 
   // Grid columns responsive
   const [columns, setColumns] = React.useState(4);
-  
+
   React.useEffect(() => {
     const updateColumns = () => {
       const width = window.innerWidth;
@@ -80,7 +83,7 @@ export function FileGridVirtualized({
       else if (width >= 640) setColumns(3);
       else setColumns(2);
     };
-    
+
     updateColumns();
     window.addEventListener('resize', updateColumns);
     return () => window.removeEventListener('resize', updateColumns);
@@ -99,7 +102,12 @@ export function FileGridVirtualized({
   // Load more on scroll
   const lastItemIndex = virtualizer.getVirtualItems().pop()?.index;
   React.useEffect(() => {
-    if (lastItemIndex !== undefined && lastItemIndex >= rowCount - 5 && hasNextPage && !isFetchingNextPage) {
+    if (
+      lastItemIndex !== undefined &&
+      lastItemIndex >= rowCount - 5 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
       onLoadMore?.();
     }
   }, [lastItemIndex, rowCount, hasNextPage, isFetchingNextPage, onLoadMore]);
@@ -123,11 +131,7 @@ export function FileGridVirtualized({
   }
 
   return (
-    <div 
-      ref={parentRef}
-      className="h-full overflow-auto"
-      style={{ contain: 'strict' }}
-    >
+    <div ref={parentRef} className="h-full overflow-auto" style={{ contain: 'strict' }}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -136,7 +140,7 @@ export function FileGridVirtualized({
         }}
       >
         <div className="p-5">
-          {virtualRows.map(virtualRow => {
+          {virtualRows.map((virtualRow) => {
             const startIndex = virtualRow.index * columns;
             const rowItems = virtualItems.slice(startIndex, startIndex + columns);
 
@@ -157,10 +161,7 @@ export function FileGridVirtualized({
                 {rowItems.map((item, idx) => {
                   if (item.type === 'header') {
                     return (
-                      <div 
-                        key={item.title}
-                        className="col-span-full mb-2 mt-4 first:mt-0"
-                      >
+                      <div key={item.title} className="col-span-full mb-2 mt-4 first:mt-0">
                         <h3 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                           {item.title}
                         </h3>
@@ -303,7 +304,13 @@ function VirtualFileCard({
           animate={{ scale: 1 }}
           className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white shadow-sm"
         >
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </motion.div>

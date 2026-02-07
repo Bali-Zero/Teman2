@@ -90,7 +90,7 @@ class TestArticleComposerIntegration:
         mock_get_cache.assert_called_once()
 
         # Verify Claude was called
-        mock_claude_call.assert_called_once()
+        mock_get_client.assert_called_once()
 
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
     @patch("backend.services.article_composer.cache_service.get_compose_cache")
