@@ -9,7 +9,7 @@ uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.0.0  # Error monitoring
 pydantic>=2.12.0  # Compatible with MCP 1.25+, google-genai 1.56+
 pydantic-settings>=2.5.2  # Compatible with pydantic 2.12+
-python-multipart>=0.0.9  # Upgraded for mcp 1.25+ compatibility
+python-multipart>=0.0.22  # Security fix: arbitrary file write (CVE-2024-47874)
 
 # Vector Database
 qdrant-client>=1.12.0  # Upgraded to support urllib3>=2.0.0
@@ -28,7 +28,7 @@ openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.75.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
-torch>=2.2.0,<2.3.0  # Compatible with sentence-transformers 2.7.0 and transformers
+torch>=2.6.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
 sentence-transformers==2.7.0
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
@@ -46,8 +46,8 @@ langchain-core>=0.1.0
 
 # HTTP/Network - UPGRADED TO RESOLVE CONFLICTS
 httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility (requires >=0.28.1)
-requests>=2.32.0  # Security updates in 2.32.x
-aiohttp>=3.10.0  # Required by litellm, runpod
+requests>=2.32.4  # Security: .netrc credential leak fix
+aiohttp>=3.13.3  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0  # Required by selenium, types-requests
 sse-starlette>=1.8.0  # For Server-Sent Events (Streaming)
 
