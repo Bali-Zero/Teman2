@@ -37,6 +37,7 @@ from backend.app.routers import (
     handlers,
     health,
     ingest,
+    instagram_chat,
     intel,
     kbli_notebook,  # [NEW] KBLI 2025 Notebook Router
     knowledge_activity,
@@ -70,7 +71,6 @@ from backend.app.routers import (
 # NOTE: Removed routers (will be MCP):
 # - productivity (Gmail/Calendar)
 # - notifications (Email/SMS/Slack/Discord)
-# - instagram (Meta Instagram)
 
 
 def include_routers(api: FastAPI) -> None:
@@ -141,11 +141,12 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(preview.router)
 
-    # Communication routers (notifications/instagram removed - will be MCP)
+    # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
     api.include_router(whatsapp_chat.alias_router)  # Legacy Meta webhook URL alias
+    api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router
