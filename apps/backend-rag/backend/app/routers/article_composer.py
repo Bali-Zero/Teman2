@@ -51,44 +51,61 @@ limiter = Limiter(key_func=get_remote_address)
 
 # --- PROMETHEUS METRICS ---
 
-article_compose_payloads = Counter(
+from prometheus_client import REGISTRY
+
+def get_or_create_metric(metric_class, name, documentation, labelnames=(), **kwargs):
+    """Helper to avoid duplicate registration in tests"""
+    # Check if metric already exists in the registry
+    for collector in REGISTRY._collector_to_names:
+        if hasattr(collector, '_name') and collector._name == name:
+            return collector
+    return metric_class(name, documentation, labelnames, **kwargs)
+
+article_compose_payloads = get_or_create_metric(
+    Counter,
     "article_compose_payloads_total",
     "Total article compose requests",
     ["status", "category"],
 )
 
-article_compose_duration = Histogram(
+article_compose_duration = get_or_create_metric(
+    Histogram,
     "article_compose_duration_seconds",
     "Article composition duration",
     buckets=[1.0, 2.0, 5.0, 10.0, 30.0],
 )
 
-article_enrichment_word_count = Histogram(
+article_enrichment_word_count = get_or_create_metric(
+    Histogram,
     "article_enrichment_word_count",
     "Word count in facts section",
     ["priority"],
     buckets=[300, 400, 500, 600, 700],
 )
 
-article_publish_requests = Counter(
+article_publish_requests = get_or_create_metric(
+    Counter,
     "article_publish_requests_total",
     "Total article publish requests",
     ["status", "has_cover_image"],
 )
 
-claude_api_cost_cents = Histogram(
+claude_api_cost_cents = get_or_create_metric(
+    Histogram,
     "claude_api_cost_cents",
     "Claude API cost per article (cents)",
     buckets=[1, 2, 5, 10, 20, 50],
 )
 
-article_cache_hits = Counter(
+article_cache_hits = get_or_create_metric(
+    Counter,
     "article_cache_hits_total",
     "Total cache hits",
     ["operation"],
 )
 
-article_cache_misses = Counter(
+article_cache_misses = get_or_create_metric(
+    Counter,
     "article_cache_misses_total",
     "Total cache misses",
     ["operation"],
@@ -273,9 +290,9 @@ async def shutdown_event():
 @router.post("/compose", response_model=ComposeResponse)
 @limiter.limit("10/minute")  # Rate limiting: 10 requests per minute per IP
 async def compose_article(
-    request: Request,
-    compose_payload: ComposeRequest,  # Body
-    background_tasks: BackgroundTasks,
+    payload: ComposeRequest,  # Body
+    request: Request = None, # type: ignore
+    background_tasks: BackgroundTasks = None, # type: ignore
     request_id: str = Depends(get_request_id),
 ):
     """
@@ -308,7 +325,7 @@ async def compose_article(
             message="ANTHROPIC_API_KEY not configured",
             request_id=request_id,
         )
-        article_compose_payloads.labels(status="error", category=compose_payload.category).inc()
+        article_compose_payloads.labels(status="error", category=payload.category).inc()
         raise HTTPException(status_code=500, detail=error.model_dump())
 
     # Log request start
@@ -316,21 +333,21 @@ async def compose_article(
         "Article composition started",
         extra={
             "request_id": request_id,
-            "article_title": compose_payload.title,
-            "category": compose_payload.category,
-            "content_length": len(compose_payload.content),
+            "article_title": payload.title,
+            "category": payload.category,
+            "content_length": len(payload.content),
         },
     )
 
     try:
         # Check cache first
         cached_result = await cache_service.get_compose_cache(
-            compose_payload.title, compose_payload.content, compose_payload.category
+            payload.title, payload.content, payload.category
         )
         if cached_result:
             logger.info(
                 "Cache hit",
-                extra={"request_id": request_id, "article_title": compose_payload.title},
+                extra={"request_id": request_id, "article_title": payload.title},
             )
             article_cache_hits.labels(operation="compose").inc()
             return ComposeResponse(
@@ -345,7 +362,7 @@ async def compose_article(
 
         # Build prompt
         prompt = build_enrichment_prompt(
-            title=compose_payload.title, content=compose_payload.content, category=compose_payload.category
+            title=payload.title, content=payload.content, category=payload.category
         )
 
         # Call Claude with retry logic
@@ -376,8 +393,8 @@ async def compose_article(
         try:
             data = json.loads(response_text)
         except json.JSONDecodeError as e:
-            error = handle_json_error(e, response_text, compose_payload.title, request_id)
-            article_compose_payloads.labels(status="json_error", category=compose_payload.category).inc()
+            error = handle_json_error(e, response_text, payload.title, request_id)
+            article_compose_payloads.labels(status="json_error", category=payload.category).inc()
             return ComposeResponse(success=False, error=error, request_id=request_id)
 
         # Calculate approximate cost (Claude Sonnet: $3/$15 per 1M tokens)
@@ -387,8 +404,8 @@ async def compose_article(
 
         # Build enriched article
         enriched = EnrichedArticle(
-            title=compose_payload.title,
-            headline=data.get("headline", compose_payload.title),
+            title=payload.title,
+            headline=data.get("headline", payload.title),
             tldr=TLDRSection(
                 **data.get(
                     "tldr",
@@ -401,22 +418,22 @@ async def compose_article(
                     },
                 )
             ),
-            facts=data.get("facts", compose_payload.content[:500]),
+            facts=data.get("facts", payload.content[:500]),
             bali_zero_take=BaliZeroTake(
                 **data.get(
                     "bali_zero_take", {"hidden_insight": "", "our_analysis": "", "our_advice": ""}
                 )
             ),
             next_steps=NextSteps(**data.get("next_steps", {"expat": [], "investor": []})),
-            category=data.get("category", compose_payload.category),
+            category=data.get("category", payload.category),
             priority=data.get("priority", "medium"),
             relevance_score=data.get("relevance_score", 50),
             ai_summary=data.get("ai_summary", ""),
             ai_tags=data.get("ai_tags", []),
             suggested_components=data.get("suggested_components", []),
             cover_image=None,  # Will be provided by frontend during publish
-            source=compose_payload.author,
-            source_url=compose_payload.source_url,
+            source=payload.author,
+            source_url=payload.source_url,
             enriched_at=datetime.utcnow().isoformat(),
         )
 
@@ -427,15 +444,15 @@ async def compose_article(
         }
         background_tasks.add_task(
             cache_service.set_compose_cache,
-            compose_payload.title,
-            compose_payload.content,
-            compose_payload.category,
+            payload.title,
+            payload.content,
+            payload.category,
             cache_data,
         )
 
         # Track metrics
         duration = time.time() - start_time
-        article_compose_payloads.labels(status="success", category=compose_payload.category).inc()
+        article_compose_payloads.labels(status="success", category=payload.category).inc()
         article_compose_duration.observe(duration)
         claude_api_cost_cents.observe(cost_cents)
 
@@ -464,14 +481,14 @@ async def compose_article(
         )
 
     except anthropic.APIError as e:
-        error = handle_anthropic_error(e, compose_payload.title, compose_payload.category, request_id)
-        article_compose_payloads.labels(status="api_error", category=compose_payload.category).inc()
+        error = handle_anthropic_error(e, payload.title, payload.category, request_id)
+        article_compose_payloads.labels(status="api_error", category=payload.category).inc()
         log_error_with_context(
             e,
             {
                 "request_id": request_id,
-                "article_title": compose_payload.title,
-                "category": compose_payload.category,
+                "article_title": payload.title,
+                "category": payload.category,
             },
         )
         raise error
@@ -482,18 +499,18 @@ async def compose_article(
             message=f"Enrichment failed: {str(e)}",
             details={
                 "request_id": request_id,
-                "article_title": compose_payload.title,
-                "category": compose_payload.category,
+                "article_title": payload.title,
+                "category": payload.category,
             },
             request_id=request_id,
         )
-        article_compose_payloads.labels(status="error", category=compose_payload.category).inc()
+        article_compose_payloads.labels(status="error", category=payload.category).inc()
         log_error_with_context(
             e,
             {
                 "request_id": request_id,
-                "article_title": compose_payload.title,
-                "category": compose_payload.category,
+                "article_title": payload.title,
+                "category": payload.category,
             },
         )
         return ComposeResponse(success=False, error=error, request_id=request_id)

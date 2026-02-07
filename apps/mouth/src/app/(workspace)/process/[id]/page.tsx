@@ -91,7 +91,11 @@ export default function CaseDetailPage() {
           casesMetrics.trackPageView('detail', caseId, user.email);
         }
       } catch (err) {
-        logger.error('Failed to init metrics', { component: 'CaseDetail', action: 'initMetrics' }, toError(err));
+        logger.error(
+          'Failed to init metrics',
+          { component: 'CaseDetail', action: 'initMetrics' },
+          toError(err)
+        );
       }
     };
 
@@ -144,7 +148,11 @@ export default function CaseDetailPage() {
           userEmail.current || undefined
         );
 
-        logger.error('Failed to load process', { component: 'CaseDetail', action: 'loadProcess' }, toError(err));
+        logger.error(
+          'Failed to load process',
+          { component: 'CaseDetail', action: 'loadProcess' },
+          toError(err)
+        );
         setError('Failed to load process details');
         toast.error('Error', 'Failed to load process details');
         casesMetrics.trackError(
@@ -298,26 +306,45 @@ export default function CaseDetailPage() {
         endpoint: `/api/crm/practices/${caseId}`,
       };
 
-      logger.error('Failed to update case details', { component: 'CaseDetail', action: 'updateCase' }, toError(err));
+      logger.error(
+        'Failed to update case details',
+        { component: 'CaseDetail', action: 'updateCase' },
+        toError(err)
+      );
 
       // Check for specific error types and provide user-friendly messages
       let errorMessage = 'Failed to update process details.';
       if (err instanceof Error) {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
           errorMessage = 'Authentication failed. Please login again.';
-          logger.error('Authentication error - user may need to re-authenticate', { component: 'CaseDetail', action: 'updateCase' });
+          logger.error('Authentication error - user may need to re-authenticate', {
+            component: 'CaseDetail',
+            action: 'updateCase',
+          });
         } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
           errorMessage = 'You do not have permission to update this process.';
-          logger.error('Authorization error - user may not have permission', { component: 'CaseDetail', action: 'updateCase' });
+          logger.error('Authorization error - user may not have permission', {
+            component: 'CaseDetail',
+            action: 'updateCase',
+          });
         } else if (err.message.includes('404') || err.message.includes('Not Found')) {
           errorMessage = 'Process not found. It may have been deleted.';
-          logger.error('Case not found - may have been deleted', { component: 'CaseDetail', action: 'updateCase' });
+          logger.error('Case not found - may have been deleted', {
+            component: 'CaseDetail',
+            action: 'updateCase',
+          });
         } else if (err.message.includes('Network') || err.message.includes('fetch')) {
           errorMessage = 'Network error. Please check your connection and try again.';
-          logger.error('Network error - backend may be unreachable', { component: 'CaseDetail', action: 'updateCase' });
+          logger.error('Network error - backend may be unreachable', {
+            component: 'CaseDetail',
+            action: 'updateCase',
+          });
         } else if (err.message.includes('CORS')) {
           errorMessage = 'CORS error. Please contact support.';
-          logger.error('CORS error - backend CORS configuration may be incorrect', { component: 'CaseDetail', action: 'updateCase' });
+          logger.error('CORS error - backend CORS configuration may be incorrect', {
+            component: 'CaseDetail',
+            action: 'updateCase',
+          });
         }
       }
 

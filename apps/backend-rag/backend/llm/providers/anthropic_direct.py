@@ -1,8 +1,8 @@
 """
-Anthropic Direct Provider — Claude Haiku 4.5 for WhatsApp (Zero persona)
+Anthropic Direct Provider — Claude Sonnet 4.5 for WhatsApp (Zan persona)
 
-Uses Anthropic API directly (not OpenRouter) for lowest latency.
-Designed for WhatsApp conversational responses.
+Uses Anthropic API directly (not OpenRouter) for natural, intelligent responses.
+Designed for WhatsApp conversational responses with human-like quality.
 """
 
 import logging
@@ -13,8 +13,8 @@ import httpx
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-haiku-4-5"
-MAX_TOKENS = 1024  # Short responses for WhatsApp
+DEFAULT_MODEL = "claude-sonnet-4-5"
+MAX_TOKENS = 1024  # WhatsApp responses — room for complete answers
 
 
 class AnthropicDirectProvider:
@@ -36,7 +36,7 @@ class AnthropicDirectProvider:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=30.0)
+            self._client = httpx.AsyncClient(timeout=60.0)
         return self._client
 
     async def close(self):

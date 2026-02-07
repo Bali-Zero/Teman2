@@ -2,18 +2,76 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Moon, Sun, Sparkles, PenTool, Search, Share2, Calendar,
-  Plus, X, Command, Eye, EyeOff, Volume2, VolumeX,
-  Twitter, Linkedin, Instagram, Clock, TrendingUp,
-  FileText, Quote, Link, Trash2, Copy, Wand2, Hash,
-  ChevronDown, ChevronRight, GripVertical, ExternalLink,
-  Bookmark, Image, Palette, Type, Shuffle, Zap, Target,
-  BarChart3, CheckCircle2, Send, Play, Pause, RefreshCw,
-  ListOrdered, Bold, Italic, Underline, AlignLeft, List,
-  Heading1, Heading2, Code, ImageIcon, LinkIcon, MoreHorizontal,
-  ArrowRight, Star, Heart, MessageCircle, Repeat2, BookOpen,
-  Video, Music, CloudRain, Coffee, Layers, Settings, Save,
-  LucideIcon, Maximize2
+  Moon,
+  Sun,
+  Sparkles,
+  PenTool,
+  Search,
+  Share2,
+  Calendar,
+  Plus,
+  X,
+  Command,
+  Eye,
+  EyeOff,
+  Volume2,
+  VolumeX,
+  Twitter,
+  Linkedin,
+  Instagram,
+  Clock,
+  TrendingUp,
+  FileText,
+  Quote,
+  Link,
+  Trash2,
+  Copy,
+  Wand2,
+  Hash,
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  ExternalLink,
+  Bookmark,
+  Image,
+  Palette,
+  Type,
+  Shuffle,
+  Zap,
+  Target,
+  BarChart3,
+  CheckCircle2,
+  Send,
+  Play,
+  Pause,
+  RefreshCw,
+  ListOrdered,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  List,
+  Heading1,
+  Heading2,
+  Code,
+  ImageIcon,
+  LinkIcon,
+  MoreHorizontal,
+  ArrowRight,
+  Star,
+  Heart,
+  MessageCircle,
+  Repeat2,
+  BookOpen,
+  Video,
+  Music,
+  CloudRain,
+  Coffee,
+  Layers,
+  Settings,
+  Save,
+  LucideIcon,
+  Maximize2,
 } from 'lucide-react';
 import { dreamApi } from '@/lib/api/dream.api';
 
@@ -79,19 +137,23 @@ const createStore = <T,>(initialState: T) => {
   return {
     getState: () => state,
     setState: (partial: Partial<T> | ((state: T) => Partial<T>)) => {
-      state = typeof partial === 'function' 
-        ? { ...state, ...partial(state) } 
-        : { ...state, ...partial };
-      listeners.forEach(l => l(state));
+      state =
+        typeof partial === 'function' ? { ...state, ...partial(state) } : { ...state, ...partial };
+      listeners.forEach((l) => l(state));
     },
     subscribe: (listener: Listener<T>) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    }
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
 };
 
-const useStore = <T, R>(store: ReturnType<typeof createStore<T>>, selector: (s: T) => R = (s: any) => s) => {
+const useStore = <T, R>(
+  store: ReturnType<typeof createStore<T>>,
+  selector: (s: T) => R = (s: any) => s
+) => {
   const [state, setState] = useState(() => selector(store.getState()));
   useEffect(() => {
     return store.subscribe((newState) => {
@@ -108,7 +170,9 @@ const loadFromStorage = (): StoreState | null => {
   try {
     const saved = localStorage.getItem('dreamThinkingRoom');
     return saved ? JSON.parse(saved) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 };
 
 const initialState: StoreState = loadFromStorage() || {
@@ -116,21 +180,29 @@ const initialState: StoreState = loadFromStorage() || {
   focusMode: false,
   ambientSound: 'silence',
   isPlaying: false,
-  articles: [{
-    id: 1,
-    title: 'Come l\'AI sta trasformando il Content Marketing',
-    content: '<p>L\'intelligenza artificiale sta rivoluzionando il modo in cui creiamo contenuti...</p><p>In questo articolo esploreremo le principali tendenze e come sfruttarle per la tua strategia.</p>',
-    outline: ['Introduzione', 'Trend AI nel marketing', 'Case studies', 'Conclusioni'],
-    wordCount: 342,
-    seoScore: 78,
-    createdAt: new Date().toISOString(),
-    versions: []
-  }],
+  articles: [
+    {
+      id: 1,
+      title: "Come l'AI sta trasformando il Content Marketing",
+      content:
+        "<p>L'intelligenza artificiale sta rivoluzionando il modo in cui creiamo contenuti...</p><p>In questo articolo esploreremo le principali tendenze e come sfruttarle per la tua strategia.</p>",
+      outline: ['Introduzione', 'Trend AI nel marketing', 'Case studies', 'Conclusioni'],
+      wordCount: 342,
+      seoScore: 78,
+      createdAt: new Date().toISOString(),
+      versions: [],
+    },
+  ],
   currentArticleId: 1,
   inspirations: [
     { id: 1, type: 'color', value: '#8b5cf6', name: 'Viola brand' },
     { id: 2, type: 'color', value: '#ec4899', name: 'Rosa accent' },
-    { id: 3, type: 'quote', value: 'Content is king, but distribution is queen.', source: 'Gary Vee' },
+    {
+      id: 3,
+      type: 'quote',
+      value: 'Content is king, but distribution is queen.',
+      source: 'Gary Vee',
+    },
   ],
   swipeFiles: [],
   socialPosts: {
@@ -138,14 +210,26 @@ const initialState: StoreState = loadFromStorage() || {
     linkedin: '',
     instagram: [],
     tiktok: '',
-    newsletter: ''
+    newsletter: '',
   },
   calendarEvents: [
     { id: 1, date: '2026-02-03', title: 'Blog: AI Marketing', platform: 'blog', status: 'draft' },
-    { id: 2, date: '2026-02-05', title: 'Thread Twitter', platform: 'twitter', status: 'scheduled' },
-    { id: 3, date: '2026-02-07', title: 'LinkedIn Post', platform: 'linkedin', status: 'scheduled' },
+    {
+      id: 2,
+      date: '2026-02-05',
+      title: 'Thread Twitter',
+      platform: 'twitter',
+      status: 'scheduled',
+    },
+    {
+      id: 3,
+      date: '2026-02-07',
+      title: 'LinkedIn Post',
+      platform: 'linkedin',
+      status: 'scheduled',
+    },
   ],
-  queue: []
+  queue: [],
 };
 
 const store = createStore<StoreState>(initialState);
@@ -158,8 +242,7 @@ const StoreSubscriber = () => {
     });
   }, []);
   return null;
-}
-
+};
 
 // ============ COMPONENTS STUB ============
 
@@ -201,14 +284,14 @@ const ParticleCanvas = ({ active }: { active: boolean }) => {
         vx: (Math.random() - 0.5) * 0.5,
         vy: (Math.random() - 0.5) * 0.5,
         size: Math.random() * 3 + 1,
-        alpha: Math.random() * 0.5 + 0.2
+        alpha: Math.random() * 0.5 + 0.2,
       });
     }
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particlesRef.current.forEach(p => {
+      particlesRef.current.forEach((p) => {
         // Move towards mouse slightly
         const dx = mouseRef.current.x - p.x;
         const dy = mouseRef.current.y - p.y;
@@ -291,7 +374,7 @@ const Confetti = ({ trigger }: { trigger: boolean }) => {
       vx: (Math.random() - 0.5) * 20,
       vy: -Math.random() * 15 - 5,
       color: ['#8b5cf6', '#ec4899', '#fbbf24', '#34d399', '#60a5fa'][Math.floor(Math.random() * 5)],
-      rotation: Math.random() * 360
+      rotation: Math.random() * 360,
     }));
 
     setParticles(newParticles);
@@ -302,19 +385,21 @@ const Confetti = ({ trigger }: { trigger: boolean }) => {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {particles.map(p => (
+      {particles.map((p) => (
         <div
           key={p.id}
           className="absolute w-3 h-3 animate-confetti"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            backgroundColor: p.color,
-            transform: `rotate(${p.rotation}deg)`,
-            animation: `confetti 3s ease-out forwards`,
-            '--vx': p.vx,
-            '--vy': p.vy
-          } as React.CSSProperties}
+          style={
+            {
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              backgroundColor: p.color,
+              transform: `rotate(${p.rotation}deg)`,
+              animation: `confetti 3s ease-out forwards`,
+              '--vx': p.vx,
+              '--vy': p.vy,
+            } as React.CSSProperties
+          }
         />
       ))}
     </div>
@@ -322,7 +407,15 @@ const Confetti = ({ trigger }: { trigger: boolean }) => {
 };
 
 // ============ TYPING EFFECT ============
-const TypingText = ({ text, speed = 30, onComplete }: { text: string; speed?: number; onComplete?: () => void }) => {
+const TypingText = ({
+  text,
+  speed = 30,
+  onComplete,
+}: {
+  text: string;
+  speed?: number;
+  onComplete?: () => void;
+}) => {
   const [displayed, setDisplayed] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
@@ -352,7 +445,17 @@ const TypingText = ({ text, speed = 30, onComplete }: { text: string; speed?: nu
 };
 
 // ============ GLASS CARD COMPONENT ============
-const GlassCard = ({ children, className = '', glow = false, onClick }: { children: React.ReactNode; className?: string; glow?: boolean; onClick?: () => void }) => (
+const GlassCard = ({
+  children,
+  className = '',
+  glow = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  glow?: boolean;
+  onClick?: () => void;
+}) => (
   <div
     onClick={onClick}
     className={`
@@ -377,14 +480,14 @@ const zones: { id: StoreState['activeZone']; icon: LucideIcon; label: string; co
 ];
 
 const ZoneNav = () => {
-  const activeZone = useStore(store, s => s.activeZone);
-  const focusMode = useStore(store, s => s.focusMode);
+  const activeZone = useStore(store, (s) => s.activeZone);
+  const focusMode = useStore(store, (s) => s.focusMode);
 
   if (focusMode) return null;
 
   return (
     <nav className="fixed left-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
-      {zones.map(zone => {
+      {zones.map((zone) => {
         const Icon = zone.icon;
         const isActive = activeZone === zone.id;
         return (
@@ -393,19 +496,22 @@ const ZoneNav = () => {
             onClick={() => store.setState({ activeZone: zone.id })}
             className={`
               group relative p-3 rounded-xl transition-all duration-300
-              ${isActive
-                ? `bg-gradient-to-r ${zone.color} shadow-lg`
-                : 'bg-white/5 hover:bg-white/10'
+              ${
+                isActive
+                  ? `bg-gradient-to-r ${zone.color} shadow-lg`
+                  : 'bg-white/5 hover:bg-white/10'
               }
             `}
           >
             <Icon size={20} className={isActive ? 'text-white' : 'text-zinc-400'} />
-            <span className={`
+            <span
+              className={`
               absolute left-full ml-3 px-3 py-1.5 rounded-lg text-sm font-medium
               bg-zinc-900 text-white whitespace-nowrap
               opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0
               transition-all duration-200 pointer-events-none
-            `}>
+            `}
+            >
               {zone.label}
             </span>
           </button>
@@ -417,9 +523,9 @@ const ZoneNav = () => {
 
 // ============ TOP BAR ============
 const TopBar = () => {
-  const focusMode = useStore(store, s => s.focusMode);
-  const ambientSound = useStore(store, s => s.ambientSound);
-  const isPlaying = useStore(store, s => s.isPlaying);
+  const focusMode = useStore(store, (s) => s.focusMode);
+  const ambientSound = useStore(store, (s) => s.ambientSound);
+  const isPlaying = useStore(store, (s) => s.isPlaying);
   const [showSounds, setShowSounds] = useState(false);
 
   const sounds = [
@@ -429,17 +535,19 @@ const TopBar = () => {
     { id: 'cafe', icon: Coffee, label: 'Caffetteria' },
   ];
 
-  const currentSound = sounds.find(s => s.id === ambientSound);
+  const currentSound = sounds.find((s) => s.id === ambientSound);
   const SoundIcon = currentSound?.icon || VolumeX;
 
   return (
-    <header className={`
+    <header
+      className={`
       fixed top-0 left-0 right-0 z-50 px-6 py-4
       flex items-center justify-between
       bg-gradient-to-b from-[#0a0a0f] to-transparent
       transition-opacity duration-500
       ${focusMode ? 'opacity-0 pointer-events-none' : 'opacity-100'}
-    `}>
+    `}
+    >
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
           <Sparkles size={20} className="text-white" />
@@ -466,7 +574,7 @@ const TopBar = () => {
 
           {showSounds && (
             <div className="absolute top-full right-0 mt-2 p-2 rounded-xl bg-zinc-900/95 backdrop-blur border border-white/10 min-w-[160px]">
-              {sounds.map(sound => {
+              {sounds.map((sound) => {
                 const Icon = sound.icon;
                 return (
                   <button
@@ -515,17 +623,40 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
 
   const commands = [
     { id: 'new-article', label: 'Nuovo articolo', icon: FileText, action: () => {} },
-    { id: 'focus', label: 'Toggle Focus Mode', icon: Eye, action: () => store.setState((s: any) => ({ ...s, focusMode: !s.focusMode })) },
-    { id: 'inspiration', label: 'Vai a Inspiration', icon: Moon, action: () => store.setState({ activeZone: 'inspiration' }) },
-    { id: 'composer', label: 'Vai a Composer', icon: PenTool, action: () => store.setState({ activeZone: 'composer' }) },
-    { id: 'social', label: 'Vai a Social', icon: Share2, action: () => store.setState({ activeZone: 'social' }) },
-    { id: 'publish', label: 'Vai a Publish', icon: Calendar, action: () => store.setState({ activeZone: 'publish' }) },
+    {
+      id: 'focus',
+      label: 'Toggle Focus Mode',
+      icon: Eye,
+      action: () => store.setState((s: any) => ({ ...s, focusMode: !s.focusMode })),
+    },
+    {
+      id: 'inspiration',
+      label: 'Vai a Inspiration',
+      icon: Moon,
+      action: () => store.setState({ activeZone: 'inspiration' }),
+    },
+    {
+      id: 'composer',
+      label: 'Vai a Composer',
+      icon: PenTool,
+      action: () => store.setState({ activeZone: 'composer' }),
+    },
+    {
+      id: 'social',
+      label: 'Vai a Social',
+      icon: Share2,
+      action: () => store.setState({ activeZone: 'social' }),
+    },
+    {
+      id: 'publish',
+      label: 'Vai a Publish',
+      icon: Calendar,
+      action: () => store.setState({ activeZone: 'publish' }),
+    },
     { id: 'spark', label: 'Random Spark', icon: Zap, action: () => {} },
   ];
 
-  const filtered = commands.filter(c =>
-    c.label.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = commands.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()));
 
   useEffect(() => {
     if (open) {
@@ -537,12 +668,12 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]"
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-lg mx-4"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="relative w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
         <GlassCard className="overflow-hidden" glow>
           <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
             <Search size={18} className="text-zinc-500" />
@@ -550,19 +681,22 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
               ref={inputRef}
               type="text"
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Cerca comandi..."
               className="flex-1 bg-transparent text-white placeholder-zinc-500 outline-none"
             />
             <kbd className="px-2 py-1 text-xs text-zinc-500 bg-white/5 rounded">ESC</kbd>
           </div>
           <div className="max-h-80 overflow-auto p-2">
-            {filtered.map(cmd => {
+            {filtered.map((cmd) => {
               const Icon = cmd.icon;
               return (
                 <button
                   key={cmd.id}
-                  onClick={() => { cmd.action(); onClose(); }}
+                  onClick={() => {
+                    cmd.action();
+                    onClose();
+                  }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-white/10 transition-colors group"
                 >
                   <Icon size={18} className="text-zinc-400 group-hover:text-violet-400" />
@@ -579,14 +713,19 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
 
 // ============ INSPIRATION CORNER ============
 const InspirationCorner = () => {
-  const inspirations = useStore(store, s => s.inspirations);
+  const inspirations = useStore(store, (s) => s.inspirations);
   const [randomSpark, setRandomSpark] = useState<Inspiration | null>(null);
 
   const generateSpark = () => {
     const sparks: Inspiration[] = [
       { id: 101, type: 'prompt', content: 'Come cambierebbe il tuo settore tra 50 anni?' },
       { id: 102, type: 'prompt', content: 'Scrivi una lettera al tuo cliente ideale di domani.' },
-      { id: 103, type: 'quote', content: 'Creativity is intelligence having fun.', author: 'Albert Einstein' }
+      {
+        id: 103,
+        type: 'quote',
+        content: 'Creativity is intelligence having fun.',
+        author: 'Albert Einstein',
+      },
     ];
     setRandomSpark(sparks[Math.floor(Math.random() * sparks.length)]);
   };
@@ -594,7 +733,7 @@ const InspirationCorner = () => {
   return (
     <div className="relative h-full p-6 overflow-auto">
       <ParticleCanvas active={true} />
-      
+
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mood Board */}
         <GlassCard className="p-5 overflow-hidden group">
@@ -604,17 +743,19 @@ const InspirationCorner = () => {
             Mood Board & Palette
           </h3>
           <div className="grid grid-cols-3 gap-3">
-            {inspirations.filter(i => i.type === 'color').map(color => (
-              <div key={color.id} className="space-y-2 group/color cursor-pointer">
-                <div 
-                  className="aspect-square rounded-xl shadow-lg transition-transform hover:scale-105 hover:rotate-3"
-                  style={{ backgroundColor: color.value }}
-                />
-                <p className="text-xs text-center text-zinc-400 opacity-0 group-hover/color:opacity-100 transition-opacity">
-                  {color.name}
-                </p>
-              </div>
-            ))}
+            {inspirations
+              .filter((i) => i.type === 'color')
+              .map((color) => (
+                <div key={color.id} className="space-y-2 group/color cursor-pointer">
+                  <div
+                    className="aspect-square rounded-xl shadow-lg transition-transform hover:scale-105 hover:rotate-3"
+                    style={{ backgroundColor: color.value }}
+                  />
+                  <p className="text-xs text-center text-zinc-400 opacity-0 group-hover/color:opacity-100 transition-opacity">
+                    {color.name}
+                  </p>
+                </div>
+              ))}
             <button className="aspect-square rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center hover:border-white/20 hover:bg-white/5 transition-all">
               <Plus size={24} className="text-zinc-500" />
             </button>
@@ -630,20 +771,20 @@ const InspirationCorner = () => {
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">Random Spark</h3>
           <div className="min-h-[80px] flex items-center justify-center">
-             {randomSpark ? (
-               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                 <p className="text-lg text-zinc-200 font-medium leading-relaxed">
-                   "{randomSpark.content}"
-                 </p>
-                 {randomSpark.author && (
-                   <p className="text-sm text-zinc-500 mt-2">— {randomSpark.author}</p>
-                 )}
-               </div>
-             ) : (
-               <p className="text-sm text-zinc-500">Clicca per generare una scintilla creativa</p>
-             )}
+            {randomSpark ? (
+              <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <p className="text-lg text-zinc-200 font-medium leading-relaxed">
+                  "{randomSpark.content}"
+                </p>
+                {randomSpark.author && (
+                  <p className="text-sm text-zinc-500 mt-2">— {randomSpark.author}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">Clicca per generare una scintilla creativa</p>
+            )}
           </div>
-          <button 
+          <button
             onClick={generateSpark}
             className="mt-6 mx-auto flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
           >
@@ -660,11 +801,13 @@ const InspirationCorner = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {['AI Generativa', 'Micro-Community', 'Video Short-form'].map((trend, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-colors cursor-pointer">
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-colors cursor-pointer"
+              >
                 <span className="text-zinc-300">{trend}</span>
                 <div className="flex items-center gap-1 text-xs text-emerald-400">
-                  <TrendingUp size={12} />
-                  +{15 + i * 5}%
+                  <TrendingUp size={12} />+{15 + i * 5}%
                 </div>
               </div>
             ))}
@@ -677,9 +820,9 @@ const InspirationCorner = () => {
 
 // ============ ARTICLE COMPOSER ============
 const ArticleComposer = () => {
-  const articles = useStore(store, s => s.articles);
-  const currentId = useStore(store, s => s.currentArticleId);
-  const article = articles.find(a => a.id === currentId) || articles[0];
+  const articles = useStore(store, (s) => s.articles);
+  const currentId = useStore(store, (s) => s.currentArticleId);
+  const article = articles.find((a) => a.id === currentId) || articles[0];
 
   const [title, setTitle] = useState(article.title);
   const [content, setContent] = useState(article.content);
@@ -687,22 +830,28 @@ const ArticleComposer = () => {
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(true);
   const [aiOutput, setAiOutput] = useState('');
-  
+
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Auto-save to Backend (Debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       // Save local first
-      const newState = { ...store.getState(), articles: store.getState().articles.map(a => a.id === currentId ? { ...a, title, content, outline } : a) };
+      const newState = {
+        ...store.getState(),
+        articles: store
+          .getState()
+          .articles.map((a) => (a.id === currentId ? { ...a, title, content, outline } : a)),
+      };
       store.setState(newState);
-      
+
       // Persist to backend
-      dreamApi.saveState('current-user', newState)
+      dreamApi
+        .saveState('current-user', newState)
         .then(() => {
           // Cloud save successful - logged by analytics service
         })
-        .catch(err => console.error('Save failed', err));
+        .catch((err) => console.error('Save failed', err));
     }, 2000);
     return () => clearTimeout(timer);
   }, [title, content, outline, currentId]); // Added dependencies to ensure latest state is captured
@@ -712,23 +861,23 @@ const ArticleComposer = () => {
   const runAIAction = async (action: string) => {
     setIsAIGenerating(true);
     setAiOutput('');
-    
+
     try {
       // Real API Call
       const res = await dreamApi.generate({
         prompt: content,
         mode: action as any,
-        context: title
+        context: title,
       });
-      
+
       if (res.success) {
         setAiOutput(res.text);
       } else {
-        setAiOutput("Errore nella generazione. Riprova.");
+        setAiOutput('Errore nella generazione. Riprova.');
       }
     } catch (e) {
       console.error(e);
-      setAiOutput("Errore di connessione.");
+      setAiOutput('Errore di connessione.');
     } finally {
       setIsAIGenerating(false);
     }
@@ -747,31 +896,46 @@ const ArticleComposer = () => {
         <input
           type="text"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           className="bg-transparent text-4xl font-bold text-white placeholder-zinc-600 outline-none mb-6"
           placeholder="Titolo dell'articolo..."
         />
-        
+
         {/* Toolbar */}
         <div className="flex items-center gap-1 mb-4 p-2 rounded-xl bg-white/5 w-fit border border-white/10 sticky top-0 z-20 backdrop-blur-md">
-           {[Bold, Italic, Underline, null, AlignLeft, List, ListOrdered, null, LinkIcon, ImageIcon, Code].map((Icon, i) => (
-             Icon ? (
-               <button key={i} className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
-                 <Icon size={18} />
-               </button>
-             ) : (
-               <div key={i} className="w-px h-6 bg-white/10 mx-1" />
-             )
-           ))}
+          {[
+            Bold,
+            Italic,
+            Underline,
+            null,
+            AlignLeft,
+            List,
+            ListOrdered,
+            null,
+            LinkIcon,
+            ImageIcon,
+            Code,
+          ].map((Icon, i) =>
+            Icon ? (
+              <button
+                key={i}
+                className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              >
+                <Icon size={18} />
+              </button>
+            ) : (
+              <div key={i} className="w-px h-6 bg-white/10 mx-1" />
+            )
+          )}
         </div>
 
-        <div 
+        <div
           ref={editorRef}
           contentEditable
           suppressContentEditableWarning
           className="flex-1 outline-none text-lg text-zinc-300 leading-relaxed max-w-3xl prose prose-invert"
           dangerouslySetInnerHTML={{ __html: content }}
-          onBlur={e => setContent(e.currentTarget.innerHTML)}
+          onBlur={(e) => setContent(e.currentTarget.innerHTML)}
         />
       </div>
 
@@ -786,7 +950,7 @@ const ArticleComposer = () => {
             </h3>
 
             <div className="space-y-2 mb-4">
-              {aiActions.map(action => (
+              {aiActions.map((action) => (
                 <button
                   key={action.id}
                   onClick={() => runAIAction(action.id)}
@@ -822,7 +986,7 @@ const ArticleComposer = () => {
               <Layers size={16} className="text-cyan-400" />
               Outline
             </h3>
-            <button 
+            <button
               onClick={() => setOutline([...outline, 'Nuova sezione'])}
               className="p-1 rounded hover:bg-white/10"
             >
@@ -832,10 +996,13 @@ const ArticleComposer = () => {
 
           <div className="space-y-1">
             {outline.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 group cursor-move">
+              <div
+                key={i}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 group cursor-move"
+              >
                 <GripVertical size={14} className="text-zinc-600" />
                 <span className="flex-1 text-sm text-zinc-300">{item}</span>
-                <button 
+                <button
                   onClick={() => setOutline(outline.filter((_, j) => j !== i))}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10"
                 >
@@ -856,10 +1023,21 @@ const ArticleComposer = () => {
           <div className="flex items-center gap-4 mb-4">
             <div className="relative w-16 h-16">
               <svg className="w-full h-full -rotate-90">
-                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
                 <circle
-                  cx="32" cy="32" r="28" fill="none"
-                  stroke="url(#seoGradient)" strokeWidth="6"
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.1)"
+                  strokeWidth="6"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="none"
+                  stroke="url(#seoGradient)"
+                  strokeWidth="6"
                   strokeDasharray={`${seoScore * 1.76} 176`}
                   strokeLinecap="round"
                 />
@@ -903,13 +1081,13 @@ const ResearchScraper = () => {
       const res = await dreamApi.scrape(url);
       if (res.success) {
         setScrapedData({
-           title: res.title,
-           keyPoints: res.keyPoints,
-           quotes: res.quotes
+          title: res.title,
+          keyPoints: res.keyPoints,
+          quotes: res.quotes,
         });
       }
     } catch (e) {
-      console.error("Scrape failed", e);
+      console.error('Scrape failed', e);
     } finally {
       setIsLoading(false);
     }
@@ -941,7 +1119,7 @@ const ResearchScraper = () => {
             <input
               type="url"
               value={url}
-              onChange={e => setUrl(e.target.value)}
+              onChange={(e) => setUrl(e.target.value)}
               placeholder="Incolla URL da analizzare..."
               className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-500 outline-none focus:border-violet-500/50"
             />
@@ -962,7 +1140,9 @@ const ResearchScraper = () => {
               </div>
 
               <div>
-                <h5 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Punti chiave</h5>
+                <h5 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
+                  Punti chiave
+                </h5>
                 <ul className="space-y-1">
                   {scrapedData.keyPoints.map((point, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
@@ -1001,7 +1181,9 @@ const ResearchScraper = () => {
           <div className="space-y-2">
             {competitors.map((comp, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-                <div className={`w-2 h-2 rounded-full ${comp.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                <div
+                  className={`w-2 h-2 rounded-full ${comp.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-600'}`}
+                />
                 <div className="flex-1">
                   <p className="text-sm text-white">{comp.name}</p>
                   <p className="text-xs text-zinc-500">{comp.url}</p>
@@ -1023,21 +1205,32 @@ const ResearchScraper = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {contentGaps.map((gap, i) => (
-              <div key={i} className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+              <div
+                key={i}
+                className="p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+              >
                 <h4 className="text-white font-medium mb-2">{gap.topic}</h4>
                 <div className="flex items-center gap-4 text-xs">
-                  <span className={`
+                  <span
+                    className={`
                     px-2 py-1 rounded-full
-                    ${gap.difficulty === 'easy' ? 'bg-emerald-500/20 text-emerald-400' :
-                      gap.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-red-500/20 text-red-400'}
-                  `}>
+                    ${
+                      gap.difficulty === 'easy'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : gap.difficulty === 'medium'
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-red-500/20 text-red-400'
+                    }
+                  `}
+                  >
                     {gap.difficulty}
                   </span>
-                  <span className={`
+                  <span
+                    className={`
                     px-2 py-1 rounded-full
                     ${gap.opportunity === 'high' ? 'bg-violet-500/20 text-violet-400' : 'bg-zinc-500/20 text-zinc-400'}
-                  `}>
+                  `}
+                  >
                     Opportunità: {gap.opportunity}
                   </span>
                 </div>
@@ -1055,12 +1248,19 @@ const ResearchScraper = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-white/5">
-              <p className="text-zinc-300 italic mb-2">"Content builds relationships. Relationships are built on trust. Trust drives revenue."</p>
+              <p className="text-zinc-300 italic mb-2">
+                "Content builds relationships. Relationships are built on trust. Trust drives
+                revenue."
+              </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-zinc-500">— Andrew Davis</span>
                 <div className="flex gap-1">
-                  <button className="p-1 rounded hover:bg-white/10"><Copy size={14} className="text-zinc-500" /></button>
-                  <button className="p-1 rounded hover:bg-white/10"><Trash2 size={14} className="text-zinc-500" /></button>
+                  <button className="p-1 rounded hover:bg-white/10">
+                    <Copy size={14} className="text-zinc-500" />
+                  </button>
+                  <button className="p-1 rounded hover:bg-white/10">
+                    <Trash2 size={14} className="text-zinc-500" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1094,21 +1294,44 @@ const SocialTransformer = () => {
     twitter: [
       "Thread: L'AI sta cambiando il content marketing. Ecco cosa devi sapere per non restare indietro",
       "1/ Prima di tutto, l'AI non sostituisce la creatività umana. La potenzia.",
-      "2/ Gli strumenti AI permettono di:\n- Analizzare trend in tempo reale\n- Generare varianti di copy\n- Personalizzare contenuti su scala",
+      '2/ Gli strumenti AI permettono di:\n- Analizzare trend in tempo reale\n- Generare varianti di copy\n- Personalizzare contenuti su scala',
       "3/ Ma attenzione: il tocco umano resta fondamentale. L'AI è un assistente, non un sostituto.",
       "4/ Il futuro appartiene a chi sa combinare:\n✨ Creatività umana\n🤖 Potenza dell'AI\n📊 Dati e analytics",
-      "Se questo thread ti è stato utile, seguimi per altri contenuti sul marketing! 🚀"
+      'Se questo thread ti è stato utile, seguimi per altri contenuti sul marketing! 🚀',
     ],
-    linkedin: "🚀 L'AI nel Content Marketing: Non è il Futuro, è il Presente\n\nHo passato gli ultimi 6 mesi a testare strumenti AI per la creazione di contenuti. Ecco cosa ho imparato:\n\n1️⃣ L'AI accelera, non sostituisce\nGli strumenti AI mi hanno permesso di ridurre del 40% il tempo di produzione, ma la strategia e la creatività restano umane.\n\n2️⃣ La personalizzazione è la chiave\nOggi possiamo creare contenuti personalizzati su scala, qualcosa impensabile solo 2 anni fa.\n\n3️⃣ Il dato guida tutto\nL'AI funziona meglio quando alimentata con dati di qualità. Investire in analytics è fondamentale.\n\n💡 Il mio consiglio: iniziate a sperimentare ora. Chi aspetta, resta indietro.\n\nQual è la vostra esperienza con l'AI nel marketing? Condividete nei commenti! 👇\n\n#ContentMarketing #AI #MarketingDigitale #Innovation",
+    linkedin:
+      "🚀 L'AI nel Content Marketing: Non è il Futuro, è il Presente\n\nHo passato gli ultimi 6 mesi a testare strumenti AI per la creazione di contenuti. Ecco cosa ho imparato:\n\n1️⃣ L'AI accelera, non sostituisce\nGli strumenti AI mi hanno permesso di ridurre del 40% il tempo di produzione, ma la strategia e la creatività restano umane.\n\n2️⃣ La personalizzazione è la chiave\nOggi possiamo creare contenuti personalizzati su scala, qualcosa impensabile solo 2 anni fa.\n\n3️⃣ Il dato guida tutto\nL'AI funziona meglio quando alimentata con dati di qualità. Investire in analytics è fondamentale.\n\n💡 Il mio consiglio: iniziate a sperimentare ora. Chi aspetta, resta indietro.\n\nQual è la vostra esperienza con l'AI nel marketing? Condividete nei commenti! 👇\n\n#ContentMarketing #AI #MarketingDigitale #Innovation",
     instagram: [
-      { slide: 1, content: "L'AI sta cambiando il Content Marketing 🚀", subtitle: "Swipe per scoprire come →" },
-      { slide: 2, content: "40% in meno di tempo per creare contenuti", subtitle: "Grazie agli strumenti AI" },
-      { slide: 3, content: "Personalizzazione su scala", subtitle: "Contenuti unici per ogni audience" },
-      { slide: 4, content: "Ma il tocco umano resta fondamentale", subtitle: "AI = Assistente, non sostituto" },
-      { slide: 5, content: "Inizia ora o resta indietro", subtitle: "Salva questo post e seguimi! 💾" }
+      {
+        slide: 1,
+        content: "L'AI sta cambiando il Content Marketing 🚀",
+        subtitle: 'Swipe per scoprire come →',
+      },
+      {
+        slide: 2,
+        content: '40% in meno di tempo per creare contenuti',
+        subtitle: 'Grazie agli strumenti AI',
+      },
+      {
+        slide: 3,
+        content: 'Personalizzazione su scala',
+        subtitle: 'Contenuti unici per ogni audience',
+      },
+      {
+        slide: 4,
+        content: 'Ma il tocco umano resta fondamentale',
+        subtitle: 'AI = Assistente, non sostituto',
+      },
+      {
+        slide: 5,
+        content: 'Inizia ora o resta indietro',
+        subtitle: 'Salva questo post e seguimi! 💾',
+      },
     ],
-    tiktok: "🎬 HOOK (0-3 sec):\n\"L'AI ha cambiato tutto nel marketing. Ecco il segreto che nessuno ti dice.\"\n\n📱 BODY (3-45 sec):\n\"Ok, ascolta. Ho testato tipo 20 tool AI negli ultimi mesi. E sai cosa? Il 90% sono inutili. Ma quel 10%... game changer totale.\n\nPrima ci mettevo 4 ore per un blog post. Ora? Un'ora. Ma - e questo è importante - l'AI non scrive per me. Mi aiuta a scrivere meglio.\n\nIl trucco? Usare l'AI per le parti noiose: ricerca, outline, editing. La creatività? Quella resta tua.\"\n\n🎯 CTA (45-60 sec):\n\"Vuoi sapere quali tool uso? Commenta 'AI' e ti mando la lista. Segui per altri tips sul content marketing!\"",
-    newsletter: "📬 **Questa settimana in pillole**\n\nCiao!\n\nL'argomento caldo di questa settimana? L'AI nel content marketing.\n\nSo cosa stai pensando: \"Ancora?\" Ma aspetta, perché questa volta è diverso.\n\nHo passato l'ultimo mese a testare sul campo i nuovi strumenti. Il risultato? Un framework pratico che puoi applicare da subito.\n\n**I 3 insight chiave:**\n\n1. **L'AI accelera, non sostituisce** - Il tempo di produzione può calare del 40%, ma la strategia resta umana.\n\n2. **Qualità dei dati = Qualità dell'output** - Garbage in, garbage out. Prima di usare AI, sistema i tuoi dati.\n\n3. **Inizia piccolo** - Non serve rivoluzionare tutto. Parti da un task specifico e scala da lì.\n\n**La risorsa della settimana:**\n[Link al blog post completo]\n\nA presto,\n[Nome]"
+    tiktok:
+      '🎬 HOOK (0-3 sec):\n"L\'AI ha cambiato tutto nel marketing. Ecco il segreto che nessuno ti dice."\n\n📱 BODY (3-45 sec):\n"Ok, ascolta. Ho testato tipo 20 tool AI negli ultimi mesi. E sai cosa? Il 90% sono inutili. Ma quel 10%... game changer totale.\n\nPrima ci mettevo 4 ore per un blog post. Ora? Un\'ora. Ma - e questo è importante - l\'AI non scrive per me. Mi aiuta a scrivere meglio.\n\nIl trucco? Usare l\'AI per le parti noiose: ricerca, outline, editing. La creatività? Quella resta tua."\n\n🎯 CTA (45-60 sec):\n"Vuoi sapere quali tool uso? Commenta \'AI\' e ti mando la lista. Segui per altri tips sul content marketing!"',
+    newsletter:
+      "📬 **Questa settimana in pillole**\n\nCiao!\n\nL'argomento caldo di questa settimana? L'AI nel content marketing.\n\nSo cosa stai pensando: \"Ancora?\" Ma aspetta, perché questa volta è diverso.\n\nHo passato l'ultimo mese a testare sul campo i nuovi strumenti. Il risultato? Un framework pratico che puoi applicare da subito.\n\n**I 3 insight chiave:**\n\n1. **L'AI accelera, non sostituisce** - Il tempo di produzione può calare del 40%, ma la strategia resta umana.\n\n2. **Qualità dei dati = Qualità dell'output** - Garbage in, garbage out. Prima di usare AI, sistema i tuoi dati.\n\n3. **Inizia piccolo** - Non serve rivoluzionare tutto. Parti da un task specifico e scala da lì.\n\n**La risorsa della settimana:**\n[Link al blog post completo]\n\nA presto,\n[Nome]",
   };
 
   const generateAll = async () => {
@@ -1117,30 +1340,33 @@ const SocialTransformer = () => {
     // For MVP, we'll just demonstrate one real call or keep the mock for "ALL" heavy lift if backend is slow
     // Let's implement real call for the ACTIVE format at least, or just Mock for speed until bulk endpoint exists.
     // To respect the "Deep Integration" goal, let's use the generate API.
-    
+
     try {
       // In a real scenario, we'd call a bulk endpoint.
       // Here we simulate it by calling generate for each
       const platforms = ['twitter', 'linkedin', 'instagram', 'tiktok', 'newsletter'];
       const results: any = {};
-      
-      await Promise.all(platforms.map(async (p) => {
-         // This is heavy, maybe just do active? No, let's wow the user.
-         // Actually, let's just do a specialized prompt for "social-pack"
-         const res = await dreamApi.generate({
-             prompt: "Generate social media content for: " + p,
-             mode: 'expand', // Reusing mode param for now
-             context: "Social Media Pack"
-         });
-         if (res.success) results[p] = res.text; // Simple text mapping
-         else results[p] = "Error generating content";
-      }));
-      
+
+      await Promise.all(
+        platforms.map(async (p) => {
+          // This is heavy, maybe just do active? No, let's wow the user.
+          // Actually, let's just do a specialized prompt for "social-pack"
+          const res = await dreamApi.generate({
+            prompt: 'Generate social media content for: ' + p,
+            mode: 'expand', // Reusing mode param for now
+            context: 'Social Media Pack',
+          });
+          if (res.success)
+            results[p] = res.text; // Simple text mapping
+          else results[p] = 'Error generating content';
+        })
+      );
+
       setGenerated(results);
     } catch (e) {
-       console.error(e);
+      console.error(e);
     } finally {
-       setIsGenerating(false);
+      setIsGenerating(false);
     }
   };
 
@@ -1165,7 +1391,7 @@ const SocialTransformer = () => {
           )}
         </button>
 
-        {formats.map(format => {
+        {formats.map((format) => {
           const Icon = format.icon;
           const hasContent = generated[format.id];
           return (
@@ -1174,9 +1400,10 @@ const SocialTransformer = () => {
               onClick={() => setActiveFormat(format.id)}
               className={`
                 w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left
-                ${activeFormat === format.id
-                  ? 'bg-white/10 border border-white/20'
-                  : 'hover:bg-white/5'
+                ${
+                  activeFormat === format.id
+                    ? 'bg-white/10 border border-white/20'
+                    : 'hover:bg-white/5'
                 }
               `}
             >
@@ -1195,7 +1422,8 @@ const SocialTransformer = () => {
             <Share2 size={48} className="text-zinc-700 mb-4" />
             <h3 className="text-xl font-semibold text-zinc-400 mb-2">Trasforma il tuo articolo</h3>
             <p className="text-zinc-500 max-w-md">
-              Clicca "Genera Tutti" per trasformare automaticamente il tuo articolo in contenuti ottimizzati per ogni piattaforma.
+              Clicca "Genera Tutti" per trasformare automaticamente il tuo articolo in contenuti
+              ottimizzati per ogni piattaforma.
             </p>
           </div>
         ) : activeFormat === 'twitter' ? (
@@ -1240,7 +1468,9 @@ const SocialTransformer = () => {
                   <p className="text-xs text-zinc-600">2h • 🌐</p>
                 </div>
               </div>
-              <p className="text-zinc-300 whitespace-pre-wrap text-sm leading-relaxed">{activeContent}</p>
+              <p className="text-zinc-300 whitespace-pre-wrap text-sm leading-relaxed">
+                {activeContent}
+              </p>
             </GlassCard>
           </div>
         ) : activeFormat === 'instagram' ? (
@@ -1251,7 +1481,10 @@ const SocialTransformer = () => {
             </h3>
             <div className="grid grid-cols-5 gap-4">
               {activeContent.map((slide: any, i: number) => (
-                <GlassCard key={i} className="aspect-square p-4 flex flex-col items-center justify-center text-center">
+                <GlassCard
+                  key={i}
+                  className="aspect-square p-4 flex flex-col items-center justify-center text-center"
+                >
                   <span className="text-xs text-zinc-500 mb-2">Slide {slide.slide}</span>
                   <p className="text-white font-semibold text-sm mb-2">{slide.content}</p>
                   <p className="text-xs text-zinc-400">{slide.subtitle}</p>
@@ -1266,7 +1499,9 @@ const SocialTransformer = () => {
               TikTok Script Preview
             </h3>
             <GlassCard className="p-6">
-              <pre className="text-zinc-300 whitespace-pre-wrap text-sm leading-relaxed font-sans">{activeContent}</pre>
+              <pre className="text-zinc-300 whitespace-pre-wrap text-sm leading-relaxed font-sans">
+                {activeContent}
+              </pre>
             </GlassCard>
           </div>
         ) : (
@@ -1277,7 +1512,9 @@ const SocialTransformer = () => {
             </h3>
             <GlassCard className="p-6">
               <div className="prose prose-invert prose-sm max-w-none">
-                <pre className="text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{activeContent}</pre>
+                <pre className="text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">
+                  {activeContent}
+                </pre>
               </div>
             </GlassCard>
           </div>
@@ -1289,7 +1526,7 @@ const SocialTransformer = () => {
 
 // ============ PUBLISH HUB ============
 const PublishHub = () => {
-  const calendarEvents = useStore(store, s => s.calendarEvents);
+  const calendarEvents = useStore(store, (s) => s.calendarEvents);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -1300,7 +1537,7 @@ const PublishHub = () => {
   const calendarDays = Array.from({ length: 28 }, (_, i) => {
     const day = i + 1;
     const dateStr = `2026-02-${String(day).padStart(2, '0')}`;
-    const events = calendarEvents.filter(e => e.date === dateStr);
+    const events = calendarEvents.filter((e) => e.date === dateStr);
     return { day, date: dateStr, events };
   });
 
@@ -1308,7 +1545,7 @@ const PublishHub = () => {
     blog: FileText,
     twitter: Twitter,
     linkedin: Linkedin,
-    instagram: Instagram
+    instagram: Instagram,
   };
 
   const queue = [
@@ -1348,8 +1585,10 @@ const PublishHub = () => {
 
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-2 mb-2">
-          {days.map(day => (
-            <div key={day} className="text-center text-xs text-zinc-500 py-2">{day}</div>
+          {days.map((day) => (
+            <div key={day} className="text-center text-xs text-zinc-500 py-2">
+              {day}
+            </div>
           ))}
         </div>
 
@@ -1369,7 +1608,9 @@ const PublishHub = () => {
                   ${selectedDate === date ? 'ring-2 ring-violet-500' : ''}
                 `}
               >
-                <span className={`text-sm ${isToday ? 'text-violet-300 font-semibold' : 'text-zinc-400'}`}>
+                <span
+                  className={`text-sm ${isToday ? 'text-violet-300 font-semibold' : 'text-zinc-400'}`}
+                >
                   {day}
                 </span>
                 {hasEvents && (
@@ -1377,10 +1618,13 @@ const PublishHub = () => {
                     {events.slice(0, 2).map((event, i) => {
                       const Icon = platformIcons[event.platform] || FileText;
                       return (
-                        <div key={i} className={`
+                        <div
+                          key={i}
+                          className={`
                           flex items-center gap-1 px-1.5 py-0.5 rounded text-xs
                           ${event.status === 'scheduled' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}
-                        `}>
+                        `}
+                        >
                           <Icon size={10} />
                           <span className="truncate">{event.title.slice(0, 8)}</span>
                         </div>
@@ -1404,7 +1648,7 @@ const PublishHub = () => {
           </h3>
 
           <div className="space-y-2">
-            {queue.map(item => {
+            {queue.map((item) => {
               const Icon = platformIcons[item.platform] || FileText;
               return (
                 <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
@@ -1435,7 +1679,9 @@ const PublishHub = () => {
           <div className="space-y-2">
             {platforms.map((platform, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
-                <div className={`w-2 h-2 rounded-full ${platform.connected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                <div
+                  className={`w-2 h-2 rounded-full ${platform.connected ? 'bg-emerald-400' : 'bg-zinc-600'}`}
+                />
                 <div className="flex-1">
                   <p className="text-sm text-white">{platform.name}</p>
                   <p className="text-xs text-zinc-500">
@@ -1496,8 +1742,8 @@ const PublishHub = () => {
 
 // ============ MAIN APP ============
 export default function DreamThinkingRoom() {
-  const activeZone = useStore(store, s => s.activeZone);
-  const focusMode = useStore(store, s => s.focusMode);
+  const activeZone = useStore(store, (s) => s.activeZone);
+  const focusMode = useStore(store, (s) => s.focusMode);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Keyboard shortcuts
@@ -1519,12 +1765,18 @@ export default function DreamThinkingRoom() {
 
   const renderZone = () => {
     switch (activeZone) {
-      case 'inspiration': return <InspirationCorner />;
-      case 'composer': return <ArticleComposer />;
-      case 'research': return <ResearchScraper />;
-      case 'social': return <SocialTransformer />;
-      case 'publish': return <PublishHub />;
-      default: return <ArticleComposer />;
+      case 'inspiration':
+        return <InspirationCorner />;
+      case 'composer':
+        return <ArticleComposer />;
+      case 'research':
+        return <ResearchScraper />;
+      case 'social':
+        return <SocialTransformer />;
+      case 'publish':
+        return <PublishHub />;
+      default:
+        return <ArticleComposer />;
     }
   };
 
@@ -1540,22 +1792,22 @@ export default function DreamThinkingRoom() {
       <TopBar />
       <ZoneNav />
 
-      <main className={`
+      <main
+        className={`
         h-screen pt-20 transition-all duration-500
         ${focusMode ? 'pl-0' : 'pl-20'}
-      `}>
+      `}
+      >
         {renderZone()}
       </main>
 
-      <CommandPalette
-        open={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-      />
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
 
       {/* Focus mode exit hint */}
       {focusMode && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-sm text-zinc-400 animate-pulse">
-          Premi <kbd className="px-1.5 py-0.5 bg-white/10 rounded mx-1">ESC</kbd> per uscire dal Focus Mode
+          Premi <kbd className="px-1.5 py-0.5 bg-white/10 rounded mx-1">ESC</kbd> per uscire dal
+          Focus Mode
         </div>
       )}
 

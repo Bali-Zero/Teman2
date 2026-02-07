@@ -2329,7 +2329,11 @@ function EditClientModal({
       const resizedImage = await cropToSquare(file, 400, 0.85);
       setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
     } catch (error) {
-      logger.error('Failed to process image', { component: 'ClientDetail', action: 'processImage' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to process image',
+        { component: 'ClientDetail', action: 'processImage' },
+        error instanceof Error ? error : new Error(String(error))
+      );
       alert('Failed to process image. Please try again.');
     }
   };

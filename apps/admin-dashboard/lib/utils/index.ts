@@ -3,7 +3,12 @@
  */
 
 export { cn } from './cn';
-export { escapeHtml, sanitizeSqlForDisplay, isValidTableName, isValidColumnName } from '@/lib/security/xss';
+export {
+  escapeHtml,
+  sanitizeSqlForDisplay,
+  isValidTableName,
+  isValidColumnName,
+} from '@/lib/security/xss';
 export {
   isValidUUID,
   isValidEmail,

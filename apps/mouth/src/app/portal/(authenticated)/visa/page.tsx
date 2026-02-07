@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Plane, Calendar, CheckCircle, AlertTriangle, FileText, Clock } from 'lucide-react';
+import {
+  Loader2,
+  Plane,
+  Calendar,
+  CheckCircle,
+  AlertTriangle,
+  FileText,
+  Clock,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
@@ -62,7 +70,7 @@ export default function VisaPage() {
             <InfoRow label="Visa Type" value={visaInfo.current.type} />
             <InfoRow label="Permit Number" value={visaInfo.current.permitNumber} />
             <InfoRow label="Sponsor" value={visaInfo.current.sponsor} />
-            
+
             <div className="pt-3 border-t">
               <InfoRow
                 label="Issue Date"
@@ -91,8 +99,8 @@ export default function VisaPage() {
                 visaInfo.current.daysRemaining <= 30
                   ? 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
                   : visaInfo.current.daysRemaining <= 60
-                  ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
-                  : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
+                    : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
               )}
             >
               <Clock
@@ -101,8 +109,8 @@ export default function VisaPage() {
                   visaInfo.current.daysRemaining <= 30
                     ? 'text-red-600 dark:text-red-400'
                     : visaInfo.current.daysRemaining <= 60
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-emerald-600 dark:text-emerald-400'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
                 )}
               />
               <div className="flex-1">
@@ -113,8 +121,8 @@ export default function VisaPage() {
                   {visaInfo.current.daysRemaining <= 30
                     ? 'Please contact us to renew your visa'
                     : visaInfo.current.daysRemaining <= 60
-                    ? 'Renewal recommended soon'
-                    : 'Your visa is valid'}
+                      ? 'Renewal recommended soon'
+                      : 'Your visa is valid'}
                 </p>
               </div>
             </div>
@@ -185,7 +193,12 @@ function StatusBadge({ status }: { status: 'active' | 'pending' | 'expired' }) {
   const { icon: Icon, label, className } = config[status];
 
   return (
-    <div className={cn('px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium', className)}>
+    <div
+      className={cn(
+        'px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium',
+        className
+      )}
+    >
       <Icon className="w-3.5 h-3.5" />
       {label}
     </div>
@@ -224,7 +237,12 @@ function DocumentCard({ document }: { document: PortalDocument }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{document.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', getStatusColor(document.status))}>
+            <span
+              className={cn(
+                'text-xs px-2 py-0.5 rounded-full font-medium',
+                getStatusColor(document.status)
+              )}
+            >
               {document.status}
             </span>
             <span className="text-xs text-muted-foreground">{document.size}</span>

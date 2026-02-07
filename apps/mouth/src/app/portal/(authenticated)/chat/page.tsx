@@ -22,25 +22,28 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load messages
-  const loadMessages = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setIsLoading(true);
-      const data: MessagesResponse = await api.portal.getMessages(100, 0);
-      // Sort messages: oldest first (top), newest last (bottom)
-      const sortedMessages = [...data.messages].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      setMessages(sortedMessages);
-      setUnreadCount(data.unreadCount);
-    } catch (err) {
-      if (!silent) {
-        error('Failed to load messages', 'Please try again later');
+  const loadMessages = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setIsLoading(true);
+        const data: MessagesResponse = await api.portal.getMessages(100, 0);
+        // Sort messages: oldest first (top), newest last (bottom)
+        const sortedMessages = [...data.messages].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        setMessages(sortedMessages);
+        setUnreadCount(data.unreadCount);
+      } catch (err) {
+        if (!silent) {
+          error('Failed to load messages', 'Please try again later');
+        }
+        console.error(err);
+      } finally {
+        setIsLoading(false);
       }
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [error]);
+    },
+    [error]
+  );
 
   // Mark visible messages as read
   const markVisibleMessagesAsRead = useCallback(async () => {
@@ -149,14 +152,17 @@ export default function ChatPage() {
   };
 
   // Group messages by date
-  const groupedMessages = messages.reduce((groups, message) => {
-    const date = new Date(message.createdAt).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(message);
-    return groups;
-  }, {} as Record<string, PortalMessage[]>);
+  const groupedMessages = messages.reduce(
+    (groups, message) => {
+      const date = new Date(message.createdAt).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+      return groups;
+    },
+    {} as Record<string, PortalMessage[]>
+  );
 
   if (isLoading) {
     return (
@@ -216,11 +222,7 @@ export default function ChatPage() {
               {/* Messages for this date */}
               <div className="space-y-3">
                 {dateMessages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    formatTime={formatTime}
-                  />
+                  <MessageBubble key={message.id} message={message} formatTime={formatTime} />
                 ))}
               </div>
             </div>
@@ -280,12 +282,7 @@ function MessageBubble({
   const isUnread = isFromTeam && !message.readAt;
 
   return (
-    <div
-      className={cn(
-        'flex gap-2',
-        isFromTeam ? 'justify-start' : 'justify-end'
-      )}
-    >
+    <div className={cn('flex gap-2', isFromTeam ? 'justify-start' : 'justify-end')}>
       {/* Team Avatar */}
       {isFromTeam && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -305,34 +302,38 @@ function MessageBubble({
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
-          <p className="text-xs font-medium text-primary mb-1">
-            {message.sentBy}
-          </p>
+          <p className="text-xs font-medium text-primary mb-1">{message.sentBy}</p>
         )}
 
         {/* Subject if present */}
         {message.subject && (
-          <p className={cn(
-            'text-sm font-semibold mb-1',
-            isFromTeam ? 'text-foreground' : 'text-primary-foreground'
-          )}>
+          <p
+            className={cn(
+              'text-sm font-semibold mb-1',
+              isFromTeam ? 'text-foreground' : 'text-primary-foreground'
+            )}
+          >
             {message.subject}
           </p>
         )}
 
         {/* Message content */}
-        <p className={cn(
-          'text-sm whitespace-pre-wrap break-words',
-          isFromTeam ? 'text-foreground' : 'text-primary-foreground'
-        )}>
+        <p
+          className={cn(
+            'text-sm whitespace-pre-wrap break-words',
+            isFromTeam ? 'text-foreground' : 'text-primary-foreground'
+          )}
+        >
           {message.content}
         </p>
 
         {/* Time */}
-        <p className={cn(
-          'text-[10px] mt-1',
-          isFromTeam ? 'text-muted-foreground' : 'text-primary-foreground/70'
-        )}>
+        <p
+          className={cn(
+            'text-[10px] mt-1',
+            isFromTeam ? 'text-muted-foreground' : 'text-primary-foreground/70'
+          )}
+        >
           {formatTime(message.createdAt)}
           {!isFromTeam && message.readAt && ' • Read'}
         </p>

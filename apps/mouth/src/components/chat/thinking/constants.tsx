@@ -50,8 +50,14 @@ export const TOOL_CONFIG: Record<string, { icon: React.ReactNode; label: string 
   calculator: { icon: <Calculator className="w-3.5 h-3.5" />, label: 'Calculating' },
   get_pricing: { icon: <DollarSign className="w-3.5 h-3.5" />, label: 'Fetching Pricing Info' },
   team_knowledge: { icon: <Users className="w-3.5 h-3.5" />, label: 'Looking Up Team Info' },
-  graph_traversal: { icon: <Network className="w-3.5 h-3.5" />, label: 'Exploring Knowledge Graph' },
-  knowledge_graph_search: { icon: <Network className="w-3.5 h-3.5" />, label: 'Exploring Knowledge Graph' },
+  graph_traversal: {
+    icon: <Network className="w-3.5 h-3.5" />,
+    label: 'Exploring Knowledge Graph',
+  },
+  knowledge_graph_search: {
+    icon: <Network className="w-3.5 h-3.5" />,
+    label: 'Exploring Knowledge Graph',
+  },
 };
 
 export const DEFAULT_TOOL = { icon: <Brain className="w-3.5 h-3.5" />, label: 'Processing' };

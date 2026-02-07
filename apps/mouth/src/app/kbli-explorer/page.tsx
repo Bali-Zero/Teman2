@@ -70,14 +70,34 @@ const GLOSSARY: Record<string, string> = {
   TERTUTUP: 'Closed — not available for foreign investment',
 };
 
-function getPmaBadgeInline(status: string): { label: string; color: string; bg: string; border: string } {
+function getPmaBadgeInline(status: string): {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+} {
   const s = (status || '').toUpperCase();
   if (s === 'TERBUKA')
-    return { label: 'Open to Foreigners', color: '#34d399', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.25)' };
+    return {
+      label: 'Open to Foreigners',
+      color: '#34d399',
+      bg: 'rgba(34,197,94,0.12)',
+      border: 'rgba(34,197,94,0.25)',
+    };
   if (s === 'TERBATAS')
-    return { label: 'Restricted', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.25)' };
+    return {
+      label: 'Restricted',
+      color: '#fbbf24',
+      bg: 'rgba(251,191,36,0.12)',
+      border: 'rgba(251,191,36,0.25)',
+    };
   if (s === 'TERTUTUP')
-    return { label: 'Closed to Foreigners', color: '#f87171', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.25)' };
+    return {
+      label: 'Closed to Foreigners',
+      color: '#f87171',
+      bg: 'rgba(239,68,68,0.12)',
+      border: 'rgba(239,68,68,0.25)',
+    };
   return { label: '', color: '', bg: '', border: '' };
 }
 
@@ -150,7 +170,13 @@ function renderWithTooltips(text: string): React.ReactNode {
         const after = part.slice(match.index + matched.length);
         const replacement: (string | React.ReactElement)[] = [];
         if (before) replacement.push(before);
-        replacement.push(<InfoTooltip key={`tt-${term}-${i}-${match.index}`} term={matched} explanation={explanation} />);
+        replacement.push(
+          <InfoTooltip
+            key={`tt-${term}-${i}-${match.index}`}
+            term={matched}
+            explanation={explanation}
+          />
+        );
         if (after) replacement.push(after);
         parts.splice(i, 1, ...replacement);
         // Continue scanning rest of string (don't break)
@@ -166,7 +192,11 @@ function renderWithTooltips(text: string): React.ReactNode {
 // SUBCOMPONENTS
 // =============================================================================
 
-const SourceCard = ({ source }: { source: { id: string; title: string; type: string; date: string } }) => (
+const SourceCard = ({
+  source,
+}: {
+  source: { id: string; title: string; type: string; date: string };
+}) => (
   <div className="group flex items-center gap-4 p-4 rounded-lg bg-[#0F1115]/40 border border-white/5 hover:bg-[#151921] hover:border-[#D4B483]/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
     <div className="p-2.5 rounded bg-[#1A1D24] text-[#888] group-hover:text-[#D4B483] transition-colors border border-white/5">
       <BookOpen size={14} strokeWidth={1.5} />
@@ -220,7 +250,8 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
       What business do you want to start in Indonesia?
     </h1>
     <p className="text-sm md:text-base text-[#888] mb-8 md:mb-10">
-      Describe your idea in any language and we&apos;ll find the right codes, licenses and requirements.
+      Describe your idea in any language and we&apos;ll find the right codes, licenses and
+      requirements.
     </p>
 
     <div className="grid grid-cols-2 gap-3 mb-10 md:mb-12">
@@ -296,7 +327,7 @@ const AIMessageContent = ({
 }) => {
   const { displayText, isTyping, skip } = useTypewriter(
     msg.content,
-    isLatest ? 15 : 0, // Only typewrite the latest message
+    isLatest ? 15 : 0 // Only typewrite the latest message
   );
 
   // Show full content if not latest (already typed)
@@ -333,11 +364,7 @@ const AIMessageContent = ({
       {/* Result cards — stagger in after typing */}
       <AnimatePresence>
         {showExtras && msg.results && msg.results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-3 mt-4"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 mt-4">
             {sortByRisk(msg.results).map((result: KBLISearchResult, rIdx: number) => {
               const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
               const isSelected = compareSelection.includes(result.code);
@@ -367,9 +394,7 @@ const AIMessageContent = ({
                         {compareMode && (
                           <div
                             className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                              isSelected
-                                ? 'bg-[#D4B483] border-[#D4B483]'
-                                : 'border-white/20'
+                              isSelected ? 'bg-[#D4B483] border-[#D4B483]' : 'border-white/20'
                             }`}
                           >
                             {isSelected && <Check size={10} className="text-[#050507]" />}
@@ -494,7 +519,9 @@ const InspectorChoreographed = ({
     return (
       <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
         <Search size={48} className="mb-6 opacity-20 stroke-1" />
-        <p className="text-sm font-medium text-[#666] mb-2">Click on any result to see full details</p>
+        <p className="text-sm font-medium text-[#666] mb-2">
+          Click on any result to see full details
+        </p>
         <p className="text-xs text-[#444]">
           Licenses, restrictions, risk level and related business codes will appear here
         </p>
@@ -524,8 +551,10 @@ const InspectorChoreographed = ({
   // Sort licenses by risk (3C) — highest risk first
   const riskOrder: Record<string, number> = { tinggi: 3, menengah: 2, rendah: 1 };
   const sortedLicenses = [...data.licenses].sort((a, b) => {
-    const aRisk = Object.entries(riskOrder).find(([k]) => a.risk_level.toLowerCase().includes(k))?.[1] || 0;
-    const bRisk = Object.entries(riskOrder).find(([k]) => b.risk_level.toLowerCase().includes(k))?.[1] || 0;
+    const aRisk =
+      Object.entries(riskOrder).find(([k]) => a.risk_level.toLowerCase().includes(k))?.[1] || 0;
+    const bRisk =
+      Object.entries(riskOrder).find(([k]) => b.risk_level.toLowerCase().includes(k))?.[1] || 0;
     return bRisk - aRisk;
   });
 
@@ -668,7 +697,9 @@ const InspectorChoreographed = ({
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <span className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? 'text-sm' : 'text-xs'}`}>
+                        <span
+                          className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? 'text-sm' : 'text-xs'}`}
+                        >
                           {lic.type}
                         </span>
                         <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
@@ -685,7 +716,9 @@ const InspectorChoreographed = ({
                       </div>
                       {lic.requirements.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-white/5">
-                          <p className="text-[10px] text-[#444] uppercase mb-2">What you need to do:</p>
+                          <p className="text-[10px] text-[#444] uppercase mb-2">
+                            What you need to do:
+                          </p>
                           <ul className="space-y-1">
                             {lic.requirements.slice(0, 3).map((req, ridx) => (
                               <li key={ridx} className="text-[11px] text-[#888] leading-tight">
@@ -743,7 +776,10 @@ export default function KBLIExplorerPage() {
   const [activeKBLI, setActiveKBLI] = useState<KBLIDetail | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   // Session persistence (3A) — messages survive refresh
-  const [messages, setMessages, clearMessages] = useSessionStorage<MessageData[]>('kbli-messages', []);
+  const [messages, setMessages, clearMessages] = useSessionStorage<MessageData[]>(
+    'kbli-messages',
+    []
+  );
   const [isChatting, setIsChatting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -833,14 +869,14 @@ export default function KBLIExplorerPage() {
         setIsChatting(false);
       }
     },
-    [query, isChatting, handleInspect, setMessages],
+    [query, isChatting, handleInspect, setMessages]
   );
 
   const handleChipClick = useCallback(
     (chipQuery: string) => {
       handleSendMessage(chipQuery);
     },
-    [handleSendMessage],
+    [handleSendMessage]
   );
 
   const handleClearConversation = useCallback(() => {
@@ -852,7 +888,7 @@ export default function KBLIExplorerPage() {
 
   const toggleCompareCode = useCallback((code: string) => {
     setCompareSelection((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
     );
   }, []);
 
@@ -896,9 +932,7 @@ export default function KBLIExplorerPage() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif text-lg tracking-wide text-[#E1E1E3]">
-                Zantara
-              </span>
+              <span className="font-serif text-lg tracking-wide text-[#E1E1E3]">Zantara</span>
               <span className="text-[9px] uppercase tracking-[0.3em] text-[#444] -mt-1">
                 Business Code Guide
               </span>
@@ -1132,7 +1166,8 @@ export default function KBLIExplorerPage() {
             >
               <div className="max-w-3xl mx-auto flex items-center justify-between">
                 <span className="text-sm text-[#CCC]">
-                  <span className="text-[#D4B483] font-mono">{compareSelection.length}</span> codes selected
+                  <span className="text-[#D4B483] font-mono">{compareSelection.length}</span> codes
+                  selected
                 </span>
                 <button
                   onClick={() => setCompareOpen(true)}
@@ -1148,7 +1183,11 @@ export default function KBLIExplorerPage() {
 
       {/* RIGHT PANEL: The Inspector — desktop fixed, mobile bottom sheet */}
       <aside className="hidden xl:block w-[420px] bg-[#0A0C10]/90 backdrop-blur-2xl border-l border-white/5 relative z-20 shadow-[-5px_0_30px_rgba(0,0,0,0.2)]">
-        <InspectorChoreographed data={activeKBLI} isLoading={isInspecting} onInspect={handleInspect} />
+        <InspectorChoreographed
+          data={activeKBLI}
+          isLoading={isInspecting}
+          onInspect={handleInspect}
+        />
       </aside>
 
       {/* Mobile/Tablet bottom sheet inspector */}
@@ -1181,11 +1220,7 @@ export default function KBLIExplorerPage() {
       </AnimatePresence>
 
       {/* Comparison Modal (Phase 4) */}
-      <ComparisonModal
-        codes={compareSelection}
-        open={compareOpen}
-        onOpenChange={setCompareOpen}
-      />
+      <ComparisonModal codes={compareSelection} open={compareOpen} onOpenChange={setCompareOpen} />
     </div>
   );
 }

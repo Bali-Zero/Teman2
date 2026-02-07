@@ -22,9 +22,7 @@ export default function RootLayout({
         <div className="flex min-h-screen">
           <Sidebar />
           <main className="flex-1 ml-64 bg-background">
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
+            <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>
       </body>

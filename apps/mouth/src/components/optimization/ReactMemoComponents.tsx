@@ -1,6 +1,6 @@
 /**
  * Optimized React Components with Memoization
- * 
+ *
  * These components use React.memo to prevent unnecessary re-renders
  * when props haven't changed. Use for frequently rendered components.
  */
@@ -17,10 +17,10 @@ interface MemoCardProps {
  * Memoized Card component
  * Prevents re-render when parent changes but props don't
  */
-export const MemoCard = React.memo<MemoCardProps>(function MemoCard({ 
-  title, 
-  children, 
-  className = '' 
+export const MemoCard = React.memo<MemoCardProps>(function MemoCard({
+  title,
+  children,
+  className = '',
 }) {
   return (
     <div className={`rounded-lg border bg-card p-4 ${className}`}>
@@ -49,7 +49,7 @@ export const MemoListItem = React.memo<MemoListItemProps>(function MemoListItem(
   onClick,
 }) {
   return (
-    <div 
+    <div
       className="flex items-center justify-between p-3 hover:bg-accent rounded-md cursor-pointer"
       onClick={() => onClick?.(id)}
     >
@@ -82,7 +82,9 @@ export const MemoBadge = React.memo<MemoBadgeProps>(function MemoBadge({
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${variantClasses[variant]}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${variantClasses[variant]}`}
+    >
       {children}
     </span>
   );
@@ -99,8 +101,8 @@ export const optimizationUtils = {
     nextProps: T,
     keysToCompare?: (keyof T)[]
   ): boolean => {
-    const keys = keysToCompare || Object.keys(prevProps) as (keyof T)[];
-    return keys.every(key => prevProps[key] === nextProps[key]);
+    const keys = keysToCompare || (Object.keys(prevProps) as (keyof T)[]);
+    return keys.every((key) => prevProps[key] === nextProps[key]);
   },
 
   /**

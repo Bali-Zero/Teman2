@@ -40,11 +40,13 @@ export function isValidCollectionName(name: string): boolean {
  * Sanitize file name
  */
 export function sanitizeFileName(fileName: string): string {
-  return fileName
-    .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-    .replace(/\.{2,}/g, '_')
-    .replace(/^\.+/, '')
-    .trim() || 'unnamed';
+  return (
+    fileName
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+      .replace(/\.{2,}/g, '_')
+      .replace(/^\.+/, '')
+      .trim() || 'unnamed'
+  );
 }
 
 /**

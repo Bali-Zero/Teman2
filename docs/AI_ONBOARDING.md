@@ -124,12 +124,14 @@ if not api_key:
 Write code that works, is testable, and handles errors. Scale effort to complexity:
 
 **For production features** (new services, agents, workflows):
+
 - Tests for core logic (unit + integration)
 - Structured logging at key steps
 - Error handling with graceful degradation
 - Type hints on all functions
 
 **Can skip for:**
+
 - One-off scripts, prototypes, trivial helpers (<10 lines)
 
 The goal is pragmatic quality, not ceremony. A well-tested 50-line service beats a 1,500-line over-documented one.
@@ -176,6 +178,7 @@ This is **NOT** nested under `metadata`/`text` like other collections. Consequen
 - If you need to add a new collection with flat payloads, follow the KBLI pattern
 
 **Key files:**
+
 - Ingestion: `scripts/ingestion/ingest_kbli_2025_final.py`
 - Router: `backend/app/routers/kbli_notebook.py` (public, no auth)
 - KG data: PostgreSQL `kg_nodes` with entity_id `kbli:{code}`, `kg_edges` for relationships
@@ -184,6 +187,7 @@ This is **NOT** nested under `metadata`/`text` like other collections. Consequen
 ### Pricing - ONLY from PricingTool
 
 Bali Zero client-facing prices come **exclusively** from:
+
 - File: `backend/data/bali_zero_official_prices_2025.json`
 - Tool: `PricingTool` (Tool #2 in orchestrator)
 
@@ -194,6 +198,7 @@ The Knowledge Graph contains `HAS_FEE` relationships with **government fees** (P
 **File:** `backend/middleware/hybrid_auth.py`
 
 Public endpoints use `path.startswith(endpoint)` matching. Currently public:
+
 - `/api/v1/kbli-notebook/` (KBLI search, inspect, chat)
 - `/health`, `/health/detailed`, `/health/ready`, `/health/live`
 
@@ -286,6 +291,7 @@ Exposes the Fly.io backend as MCP tools for AI agents (OpenClaw, Claude Code).
 | `get_qdrant_metrics` | `GET /health/metrics/qdrant` | Public |
 
 **Run locally:**
+
 ```bash
 pip install -e apps/nuzantara-mcp/
 nuzantara-mcp  # starts stdio server
@@ -311,11 +317,11 @@ The system uses `evidence_score` (0.0-1.0) to decide responses:
 
 These tools bypass evidence scoring because they provide their own evidence:
 
-| Tool | Location | Purpose |
-| --- | --- | --- |
-| `calculator` | `tools.py` | Mathematical calculations |
-| `get_pricing` | `zantara_tools.py` | Bali Zero service pricing |
-| `team_knowledge` | `zantara_tools.py` | Team member search/list |
+| Tool             | Location           | Purpose                   |
+| ---------------- | ------------------ | ------------------------- |
+| `calculator`     | `tools.py`         | Mathematical calculations |
+| `get_pricing`    | `zantara_tools.py` | Bali Zero service pricing |
+| `team_knowledge` | `zantara_tools.py` | Team member search/list   |
 
 **Implementation:** `reasoning.py:867-883`
 
@@ -325,10 +331,10 @@ These tools bypass evidence scoring because they provide their own evidence:
 
 **File:** `backend/app/routers/crm_practices.py`
 
-| Role | Access |
-| --- | --- |
-| Admin (`zero@balizero.com`, `admin@balizero.com`) | All clients and practices |
-| Team Member | Only clients with `assigned_to` = own email |
+| Role                                              | Access                                      |
+| ------------------------------------------------- | ------------------------------------------- |
+| Admin (`zero@balizero.com`, `admin@balizero.com`) | All clients and practices                   |
+| Team Member                                       | Only clients with `assigned_to` = own email |
 
 ### Date Conversion Fix
 
@@ -369,6 +375,7 @@ PYTHONPATH=. python -m backend.scripts.script_name
 ### Fly.io Crashes
 
 Common causes:
+
 1. Missing `PORT` env var -> Check `fly.toml`
 2. Missing `QDRANT_URL` -> Check secrets
 3. Database connection -> Check `DATABASE_URL`
@@ -399,15 +406,15 @@ git checkout HEAD -- apps/backend-rag/backend/
 
 **Critical variables (check before running):**
 
-| Variable | Purpose | Where Used |
-| --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection | Backend |
-| `QDRANT_URL` | Vector DB connection | Backend |
-| `OPENAI_API_KEY` | Embeddings (`text-embedding-3-small`) | Backend |
-| `EMBEDDING_MODEL` | Must be `text-embedding-3-small` | Backend |
-| `GOOGLE_API_KEY` | Gemini LLM | Backend |
-| `JWT_SECRET_KEY` | Auth tokens | Backend |
-| `PORT` | Server port | Fly.io |
+| Variable          | Purpose                               | Where Used |
+| ----------------- | ------------------------------------- | ---------- |
+| `DATABASE_URL`    | PostgreSQL connection                 | Backend    |
+| `QDRANT_URL`      | Vector DB connection                  | Backend    |
+| `OPENAI_API_KEY`  | Embeddings (`text-embedding-3-small`) | Backend    |
+| `EMBEDDING_MODEL` | Must be `text-embedding-3-small`      | Backend    |
+| `GOOGLE_API_KEY`  | Gemini LLM                            | Backend    |
+| `JWT_SECRET_KEY`  | Auth tokens                           | Backend    |
+| `PORT`            | Server port                           | Fly.io     |
 
 ```bash
 fly secrets list -a nuzantara-rag
@@ -430,6 +437,7 @@ fly secrets list -a nuzantara-rag
 Read `docs/operations/AGENTIC_RAG_FIXES.md` first (if it exists).
 
 **Key files:**
+
 - `backend/services/rag/agentic/reasoning.py` - Evidence scoring
 - `backend/services/rag/agentic/llm_gateway.py` - LLM routing
 - `backend/services/rag/agentic/orchestrator.py` - Main orchestrator
@@ -467,15 +475,15 @@ npm run dev
 
 ## ESSENTIAL DOCUMENTATION
 
-| Document | Path | When to Read |
-| --- | --- | --- |
-| **AI Handover Protocol** | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Always (project brain) |
-| **System Map 4D** | `docs/SYSTEM_MAP_4D.md` | Architecture overview |
-| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Debugging/monitoring |
-| **Deploy Checklist** | `docs/operations/DEPLOY_CHECKLIST.md` | Before deploying |
-| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md` | DB schema reference |
-| **KG Value Assessment** | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md` | Knowledge Graph details |
-| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper |
+| Document                  | Path                                                     | When to Read            |
+| ------------------------- | -------------------------------------------------------- | ----------------------- |
+| **AI Handover Protocol**  | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)  |
+| **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview   |
+| **Observability Guide**   | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring    |
+| **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying        |
+| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference     |
+| **KG Value Assessment**   | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph details |
+| **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper            |
 
 ---
 

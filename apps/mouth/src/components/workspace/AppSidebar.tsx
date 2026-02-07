@@ -91,9 +91,9 @@ interface AppSidebarProps {
   isPortal?: boolean; // Portal mode flag
 }
 
-export function AppSidebar({ 
-  user, 
-  unreadWhatsApp = 0, 
+export function AppSidebar({
+  user,
+  unreadWhatsApp = 0,
   onLogout,
   navigationConfig,
   isPortal = false,
@@ -177,9 +177,7 @@ export function AppSidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {nav.map(renderNavSection)}
-      </nav>
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">{nav.map(renderNavSection)}</nav>
 
       {/* User Profile Footer */}
       <div className="p-3 border-t border-[rgba(255,255,255,0.04)] bg-transparent">

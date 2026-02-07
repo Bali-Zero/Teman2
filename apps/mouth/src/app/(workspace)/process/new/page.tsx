@@ -44,7 +44,11 @@ export default function NewPracticePage() {
         userEmail.current = user.email;
         casesMetrics.trackPageView('new', undefined, user.email);
       } catch (err) {
-        logger.error('Failed to init metrics', { component: 'NewProcess', action: 'initMetrics' }, toError(err));
+        logger.error(
+          'Failed to init metrics',
+          { component: 'NewProcess', action: 'initMetrics' },
+          toError(err)
+        );
       }
     };
 
@@ -110,7 +114,11 @@ export default function NewPracticePage() {
           undefined,
           userEmail.current || undefined
         );
-        logger.error('Failed to search clients', { component: 'NewProcess', action: 'searchClients' }, toError(error));
+        logger.error(
+          'Failed to search clients',
+          { component: 'NewProcess', action: 'searchClients' },
+          toError(error)
+        );
       } finally {
         setIsSearchingClients(false);
       }
@@ -232,7 +240,11 @@ export default function NewPracticePage() {
         userEmail.current || undefined
       );
 
-      logger.error('Failed to create case', { component: 'NewProcess', action: 'createCase' }, toError(error));
+      logger.error(
+        'Failed to create case',
+        { component: 'NewProcess', action: 'createCase' },
+        toError(error)
+      );
       toast.error('Error', (error as Error).message);
     } finally {
       setIsLoading(false);

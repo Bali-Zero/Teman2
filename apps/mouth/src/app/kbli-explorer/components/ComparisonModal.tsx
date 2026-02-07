@@ -27,12 +27,10 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
       .finally(() => setLoading(false));
   }, [open, codes]);
 
-  function getCellValue(detail: KBLIDetail, col: typeof COLUMNS[number]): React.ReactNode {
+  function getCellValue(detail: KBLIDetail, col: (typeof COLUMNS)[number]): React.ReactNode {
     switch (col) {
       case 'Code':
-        return (
-          <span className="font-mono text-[#D4B483] text-xs">{detail.code}</span>
-        );
+        return <span className="font-mono text-[#D4B483] text-xs">{detail.code}</span>;
       case 'Title':
         return <span className="text-sm text-[#E1E1E3]">{detail.title}</span>;
       case 'PMA Status': {
@@ -50,7 +48,9 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
               <span className="text-xs text-[#555]">None</span>
             ) : (
               detail.licenses.map((l, i) => (
-                <div key={i} className="text-xs text-[#BBB]">{l.type}</div>
+                <div key={i} className="text-xs text-[#BBB]">
+                  {l.type}
+                </div>
               ))
             )}
           </div>
@@ -127,7 +127,11 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
                         </td>
                         {details.map((d, i) => (
                           <td key={i} className="py-3 px-3 align-top">
-                            {d ? getCellValue(d, col) : <span className="text-xs text-[#444]">Error</span>}
+                            {d ? (
+                              getCellValue(d, col)
+                            ) : (
+                              <span className="text-xs text-[#444]">Error</span>
+                            )}
                           </td>
                         ))}
                       </tr>

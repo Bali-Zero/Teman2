@@ -14,12 +14,10 @@ import { chatMetrics } from '@/lib/metrics';
 import { trackEvent } from '@/lib/analytics';
 import { saveConversation } from '@/app/chat/actions';
 import { useChatInput } from './useChatInput';
-import { useChatTTS } from './useChatTTS';
 import { useChatSidebar } from './useChatSidebar';
 import { useChatSend } from './useChatSend';
 import { useConversations } from './useConversations';
 import { useTeamStatus } from './useTeamStatus';
-import { useAudioRecorder } from './useAudioRecorder';
 import type { ChatMessage, Source } from '@/app/chat/actions';
 import type { AgentStep } from '@/types';
 
@@ -75,11 +73,9 @@ export interface UseChatPageReturn {
 
   // Hooks
   chatInput: ReturnType<typeof useChatInput>;
-  chatTTS: ReturnType<typeof useChatTTS>;
   sidebar: ReturnType<typeof useChatSidebar>;
   conversations: ReturnType<typeof useConversations>;
   teamStatus: ReturnType<typeof useTeamStatus>;
-  audioRecorder: ReturnType<typeof useAudioRecorder>;
 
   // Handlers
   handleSend: () => Promise<void>;
@@ -128,16 +124,14 @@ export function useChatPage(): UseChatPageReturn {
 
   // Custom Hooks
   const chatInput = useChatInput();
-  const chatTTS = useChatTTS();
   const sidebar = useChatSidebar();
   const conversations = useConversations();
   const teamStatus = useTeamStatus();
-  const audioRecorder = useAudioRecorder();
 
   // Setup toast callbacks
   useEffect(() => {
     chatInput.setShowToast(showToast);
-    chatTTS.setShowToast(showToast);
+    // setShowToast reference available for child hooks
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
 
@@ -590,67 +584,6 @@ export function useChatPage(): UseChatPageReturn {
     }, 100);
   }, [chatInput]);
 
-  // Handle audio transcription
-  useEffect(() => {
-    const processAudio = async () => {
-      if (!audioRecorder.audioBlob || !isMountedRef.current) return;
-
-      try {
-        if (audioRecorder.audioBlob.size < 1000) {
-          chatInput.setInput('');
-          showToast('Recording too short. Please hold the mic button longer.', 'error');
-          return;
-        }
-
-        if (
-          !audioRecorder.audioBlob.type.startsWith('audio/') &&
-          !audioRecorder.audioMimeType.startsWith('audio/')
-        ) {
-          chatInput.setInput('');
-          showToast('Invalid audio format. Please try recording again.', 'error');
-          return;
-        }
-
-        chatInput.setInput('Transcribing...');
-        const transcriptionStart = Date.now();
-        const text = await api.transcribeAudio(
-          audioRecorder.audioBlob,
-          audioRecorder.audioMimeType
-        );
-        const transcriptionDuration = (Date.now() - transcriptionStart) / 1000;
-
-        if (!isMountedRef.current) return;
-
-        if (text && text.trim()) {
-          // Track metrics
-          chatMetrics.audioTranscribed(
-            audioRecorder.audioBlob.size,
-            text.length,
-            transcriptionDuration
-          );
-
-          // trackEvent now imported at top
-          const userProfile = api.getUserProfile();
-          trackEvent(
-            'chat_audio_transcribed',
-            { blobSize: audioRecorder.audioBlob.size, textLength: text.length },
-            userProfile?.email
-          );
-          chatInput.setInput(text);
-        } else {
-          chatInput.setInput('');
-          showToast('No speech detected. Please speak clearly and try again.', 'error');
-        }
-      } catch (error) {
-        if (!isMountedRef.current) return;
-        chatInput.setInput('');
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        showToast(`Transcription failed: ${errorMessage}`, 'error');
-      }
-    };
-    processAudio();
-  }, [audioRecorder.audioBlob, audioRecorder.audioMimeType, chatInput, showToast]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -675,11 +608,9 @@ export function useChatPage(): UseChatPageReturn {
     fileInputRef,
     isMountedRef,
     chatInput,
-    chatTTS,
     sidebar,
     conversations,
     teamStatus,
-    audioRecorder,
     handleSend,
     handleNewChat,
     handleConversationClick,

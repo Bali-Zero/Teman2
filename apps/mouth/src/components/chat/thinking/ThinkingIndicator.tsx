@@ -57,7 +57,8 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   const reasoningSteps = steps.filter((s) => s.type === 'reasoning_step');
 
   const latestPhase = phases.length > 0 ? phases[phases.length - 1] : null;
-  const latestReasoning = reasoningSteps.length > 0 ? reasoningSteps[reasoningSteps.length - 1] : null;
+  const latestReasoning =
+    reasoningSteps.length > 0 ? reasoningSteps[reasoningSteps.length - 1] : null;
 
   // Type-safe data extraction
   const latestReasoningData = latestReasoning?.data as Record<string, unknown> | undefined;

@@ -77,7 +77,7 @@ export default function ThinkingIndicator({ isComplete }: { isComplete?: boolean
                     </motion.span>
                   )}
                 </motion.div>
-              ),
+              )
           )}
         </AnimatePresence>
 

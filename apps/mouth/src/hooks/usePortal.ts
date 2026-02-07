@@ -1,6 +1,6 @@
 /**
  * usePortal Hooks
- * 
+ *
  * Hooks ottimizzati per il client portal con React Query
  */
 
@@ -151,7 +151,15 @@ export function usePortalDocuments(documentType?: string) {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, documentType, practiceId }: { file: File; documentType: string; practiceId?: number }) => {
+    mutationFn: async ({
+      file,
+      documentType,
+      practiceId,
+    }: {
+      file: File;
+      documentType: string;
+      practiceId?: number;
+    }) => {
       return api.portal.uploadDocument(file, documentType, practiceId);
     },
     onSuccess: () => {
@@ -371,7 +379,12 @@ export function usePortalNotifications() {
         type: 'action',
         title: action.title,
         message: action.description,
-        severity: action.priority === 'high' ? 'critical' : action.priority === 'medium' ? 'warning' : 'info',
+        severity:
+          action.priority === 'high'
+            ? 'critical'
+            : action.priority === 'medium'
+              ? 'warning'
+              : 'info',
         href: action.href,
         createdAt: new Date().toISOString(),
       });

@@ -1,6 +1,6 @@
 /**
  * CRM Components Index
- * 
+ *
  * Esporta tutti i componenti CRM
  */
 
@@ -11,7 +11,4 @@ export {
   CRMSkeleton,
 } from './CRMErrorBoundary';
 
-export {
-  QuickSearch,
-  QuickSearchTrigger,
-} from './QuickSearch';
+export { QuickSearch, QuickSearchTrigger } from './QuickSearch';

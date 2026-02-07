@@ -113,10 +113,7 @@ export default function VaultPage() {
 
       {/* Upload Section */}
       <section className="rounded-lg border border-dashed border-primary/50 bg-primary/5 p-6 text-center">
-        <label
-          htmlFor="file-upload"
-          className="flex flex-col items-center gap-2 cursor-pointer"
-        >
+        <label htmlFor="file-upload" className="flex flex-col items-center gap-2 cursor-pointer">
           {isUploading ? (
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           ) : (
@@ -125,9 +122,7 @@ export default function VaultPage() {
           <div className="text-sm font-medium">
             {isUploading ? 'Uploading...' : 'Click to upload document'}
           </div>
-          <div className="text-xs text-muted-foreground">
-            PDF, JPG, PNG up to 10MB
-          </div>
+          <div className="text-xs text-muted-foreground">PDF, JPG, PNG up to 10MB</div>
           <input
             id="file-upload"
             type="file"
@@ -215,13 +210,9 @@ export default function VaultPage() {
                       >
                         {doc.status}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {doc.category}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{doc.category}</span>
                       <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">
-                        {doc.size}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{doc.size}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
@@ -233,17 +224,8 @@ export default function VaultPage() {
                     )}
                   </div>
                   {doc.downloadUrl && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      asChild
-                    >
-                      <a
-                        href={doc.downloadUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={doc.downloadUrl} download target="_blank" rel="noopener noreferrer">
                         <Download className="w-4 h-4" />
                       </a>
                     </Button>

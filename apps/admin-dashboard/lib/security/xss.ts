@@ -11,7 +11,7 @@ export function escapeHtml(text: string): string {
     div.textContent = text;
     return div.innerHTML;
   }
-  
+
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

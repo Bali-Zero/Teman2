@@ -1,6 +1,6 @@
 /**
  * Console Utilities
- * 
+ *
  * Safe logging that strips in production
  */
 
@@ -66,15 +66,15 @@ export function stripConsoleInProduction(): void {
   if (isProduction && typeof window !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     const noop = () => {};
-    
+
     // Preserve error but remove others
     const originalError = console.error;
-    
+
     console.log = noop;
     console.warn = noop;
     console.debug = noop;
     console.info = noop;
-    
+
     // Keep error but prefix it
     console.error = (...args: unknown[]) => {
       originalError('[App Error]', ...args);

@@ -6,17 +6,17 @@
 
 Questa migration aggiunge 8 indici di performance e 1 trigger per ottimizzare le query frequenti:
 
-| Indice | Tabella | Scopo |
-|--------|---------|-------|
-| `idx_clients_email_lower` | clients | Ricerche email case-insensitive |
-| `idx_clients_phone_normalized` | clients | Ricerche telefono normalizzate |
-| `idx_clients_birth_month` | clients | Filtri mese compleanno |
-| `idx_clients_birth_day` | clients | Filtri giorno compleanno |
-| `idx_clients_birth_month_day` | clients | Ricerche compleanno (mese+giorno) |
-| `idx_documents_client_visibility_type_created` | documents | Query documenti con filtri |
-| `idx_documents_client_id` | documents | Ricerche base per client_id |
-| `idx_collective_memories_promoted` | collective_memories | Memorie promosse ordinate |
-| `idx_collective_memories_category` | collective_memories | Filtri per categoria |
+| Indice                                         | Tabella             | Scopo                             |
+| ---------------------------------------------- | ------------------- | --------------------------------- |
+| `idx_clients_email_lower`                      | clients             | Ricerche email case-insensitive   |
+| `idx_clients_phone_normalized`                 | clients             | Ricerche telefono normalizzate    |
+| `idx_clients_birth_month`                      | clients             | Filtri mese compleanno            |
+| `idx_clients_birth_day`                        | clients             | Filtri giorno compleanno          |
+| `idx_clients_birth_month_day`                  | clients             | Ricerche compleanno (mese+giorno) |
+| `idx_documents_client_visibility_type_created` | documents           | Query documenti con filtri        |
+| `idx_documents_client_id`                      | documents           | Ricerche base per client_id       |
+| `idx_collective_memories_promoted`             | collective_memories | Memorie promosse ordinate         |
+| `idx_collective_memories_category`             | collective_memories | Filtri per categoria              |
 
 ### Trigger Creato
 
@@ -56,9 +56,9 @@ Dopo l'esecuzione, verifica che gli indici siano stati creati:
 
 ```sql
 -- Lista indici creati
-SELECT indexname, tablename, indexdef 
-FROM pg_indexes 
-WHERE indexname LIKE 'idx_%' 
+SELECT indexname, tablename, indexdef
+FROM pg_indexes
+WHERE indexname LIKE 'idx_%'
 AND schemaname = 'public'
 ORDER BY tablename, indexname;
 ```

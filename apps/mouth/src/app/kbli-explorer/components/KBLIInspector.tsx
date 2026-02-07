@@ -35,7 +35,9 @@ export function getRiskBadge(risk: string): { label: string; className: string }
   return { label: risk || 'Unknown', className: 'badge badge-neutral' };
 }
 
-export function getRiskLevel(risk: string): 'low' | 'medium-low' | 'medium' | 'medium-high' | 'high' {
+export function getRiskLevel(
+  risk: string
+): 'low' | 'medium-low' | 'medium' | 'medium-high' | 'high' {
   const r = (risk || '').toLowerCase();
   if (r.includes('tinggi') && r.includes('menengah')) return 'medium-high';
   if (r.includes('tinggi') || r === 'high') return 'high';
@@ -72,7 +74,9 @@ const KBLIInspector = ({
     return (
       <div className="h-full flex flex-col items-center justify-center text-[#444] px-8 text-center">
         <Search size={48} className="mb-6 opacity-20 stroke-1" />
-        <p className="text-sm font-medium text-[#666] mb-2">Click on any result to see full details</p>
+        <p className="text-sm font-medium text-[#666] mb-2">
+          Click on any result to see full details
+        </p>
         <p className="text-xs text-[#444]">
           Licenses, restrictions, risk level and related business codes will appear here
         </p>
@@ -112,7 +116,9 @@ const KBLIInspector = ({
           </span>
           <span className={pmaBadge.className}>{pmaBadge.label}</span>
         </div>
-        <h2 className="text-2xl md:text-3xl font-serif text-[#F0F0F0] leading-tight mb-6">{data.title}</h2>
+        <h2 className="text-2xl md:text-3xl font-serif text-[#F0F0F0] leading-tight mb-6">
+          {data.title}
+        </h2>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center text-[11px] md:text-[10px] uppercase tracking-widest text-[#666]">

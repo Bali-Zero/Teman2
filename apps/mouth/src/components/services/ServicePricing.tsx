@@ -7,10 +7,7 @@ import { Check, X, Info, Phone } from 'lucide-react';
 import type { ServicePackage } from '@/data/services_data';
 
 // ServiceData without icon (React component cannot be serialized)
-type ServiceDataWithoutIcon = Omit<
-  import('@/data/services_data').ServiceData,
-  'icon'
->;
+type ServiceDataWithoutIcon = Omit<import('@/data/services_data').ServiceData, 'icon'>;
 
 interface ServicePricingProps {
   service: ServiceDataWithoutIcon;

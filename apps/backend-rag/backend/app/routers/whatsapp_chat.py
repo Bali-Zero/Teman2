@@ -5,17 +5,22 @@ Handles incoming WhatsApp messages with intelligent triage (personal vs business
 Architecture:
 - Webhook receives messages from Meta WhatsApp Cloud API
 - Triage service decides: personal → human, business → AI RAG
-- RAG responses use same streaming orchestrator as Telegram
+- AI responses use Claude Sonnet 4.5 with dynamic persona + client memory
 - Notifications sent to admin via Telegram for personal messages
 
+v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
+    context builder, proactive suggestions, human escalation with full context.
 """
 
 import asyncio
+import json
 import logging
 import time
+from collections import defaultdict
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -27,6 +32,10 @@ from backend.services.integrations.whatsapp_triage_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# In-memory conversation history per phone number (fast fallback)
+_conversation_cache: dict[str, list[dict]] = defaultdict(list)
+MAX_HISTORY_MESSAGES = 20
 
 router = APIRouter(prefix="/webhook/whatsapp", tags=["whatsapp"])
 
@@ -70,15 +79,19 @@ async def notify_human_telegram(
     message_text: str,
     sender_name: str | None = None,
     reason: str = "personal_contact",
+    client_profile: dict | None = None,
+    conversation_history: list[dict] | None = None,
 ):
     """
-    Send Telegram notification to admin when message is escalated to human.
+    Send Telegram notification to admin with FULL context.
 
     Args:
         phone: Sender phone number
         message_text: Message content
         sender_name: Optional sender name
         reason: Escalation reason
+        client_profile: Client profile dict (interests, language, etc.)
+        conversation_history: Recent conversation messages
     """
     if not settings.admin_telegram_chat_id:
         logger.warning("Admin Telegram chat ID not configured, skipping notification")
@@ -88,18 +101,57 @@ async def notify_human_telegram(
         "personal_contact": "👤",
         "explicit_request": "🤚",
         "personal_context": "💬",
+        "ai_escalation": "🤖➡️👤",
     }
 
     emoji = reason_emoji.get(reason, "📩")
     display_name = sender_name or "Unknown"
 
-    notification_text = f"""{emoji} **Messaggio WhatsApp Personale**
+    # Build profile summary
+    profile_lines = []
+    if client_profile:
+        lang = client_profile.get("detected_language", "?")
+        interests = client_profile.get("interests", [])
+        visas = client_profile.get("visa_discussed", [])
+        client_type = client_profile.get("client_type", "?")
+        msg_count = client_profile.get("message_count", 0)
+        first_contact = client_profile.get("first_contact", "?")
 
-**Da:** {display_name} ({phone})
+        profile_lines.append(f"🗣 Lingua: {lang}")
+        if interests:
+            profile_lines.append(f"💡 Interessi: {', '.join(interests)}")
+        if visas:
+            profile_lines.append(f"🛂 Visa discussi: {', '.join(visas)}")
+        profile_lines.append(f"👤 Tipo: {client_type}")
+        profile_lines.append(f"💬 Messaggi: {msg_count}")
+        profile_lines.append(f"📅 Primo contatto: {first_contact}")
+
+    profile_section = "\n".join(profile_lines) if profile_lines else "Nessun profilo salvato"
+
+    # Build conversation summary (last 6 messages)
+    convo_lines = []
+    if conversation_history:
+        recent = conversation_history[-6:]
+        for msg in recent:
+            role = "👤" if msg.get("role") == "user" else "🤖"
+            content = msg.get("content", "")[:150]
+            convo_lines.append(f"{role} {content}")
+
+    convo_section = "\n".join(convo_lines) if convo_lines else "Nessuna storia"
+
+    notification_text = f"""{emoji} **WhatsApp Escalation**
+
+**Da:** {display_name} (+{phone})
 **Motivo:** {reason.replace("_", " ").title()}
 
 **Messaggio:**
 {message_text}
+
+**Profilo Cliente:**
+{profile_section}
+
+**Ultimi messaggi:**
+{convo_section}
 
 ---
 Rispondi direttamente su WhatsApp!
@@ -111,7 +163,7 @@ Rispondi direttamente su WhatsApp!
             text=notification_text,
             parse_mode="Markdown",
         )
-        logger.info(f"Telegram notification sent for WhatsApp message from {phone}")
+        logger.info(f"Telegram notification sent for WhatsApp escalation from {phone}")
     except Exception as e:
         logger.error(f"Failed to send Telegram notification: {e}")
 
@@ -126,14 +178,13 @@ async def process_whatsapp_message(
     """
     Background task to process WhatsApp message.
 
-    This is executed async so webhook can return 200 immediately to Meta.
-
-    Args:
-        phone: Sender phone number
-        message_text: Message content
-        sender_name: Optional sender name from WhatsApp profile
-        message_id: WhatsApp message ID (for reply context)
-        request: FastAPI request (for dependencies)
+    v2 Flow:
+    1. Triage (personal vs business)
+    2. Build rich context (history, profile, language)
+    3. Generate dynamic system prompt
+    4. Call Claude Sonnet 4.5
+    5. Handle [ESCALATE] markers
+    6. Save conversation + updated profile
     """
     try:
         # Mark message as read
@@ -154,7 +205,6 @@ async def process_whatsapp_message(
             TriageDecision.ESCALATE_REQUEST,
             TriageDecision.ESCALATE_CONTEXT,
         ]:
-            # Send escalation message to user
             escalation_msg = whatsapp_triage_service.get_escalation_message(decision, sender_name)
             await whatsapp_service.send_message(
                 phone=phone,
@@ -162,12 +212,23 @@ async def process_whatsapp_message(
                 reply_to_message_id=message_id,
             )
 
-            # Notify admin via Telegram
+            # Get context for richer Telegram notification
+            db_pool = _get_db_pool(request)
+            ctx = {}
+            if db_pool:
+                from backend.services.whatsapp_context_builder import build_context
+                try:
+                    ctx = await build_context(phone, sender_name, message_text, db_pool)
+                except Exception:
+                    pass
+
             await notify_human_telegram(
                 phone=phone,
                 message_text=message_text,
                 sender_name=sender_name,
                 reason=reason,
+                client_profile=ctx.get("client_profile"),
+                conversation_history=ctx.get("conversation_history"),
             )
 
             logger.info(f"Message from {phone} escalated to human (reason: {reason})")
@@ -184,47 +245,80 @@ async def process_whatsapp_message(
             logger.info(f"Welcome message sent to {phone}")
             return
 
-        # 4. AI CAN HANDLE — Use Agentic RAG (full pipeline with tools, KG, pricing)
-        from backend.app.dependencies import get_orchestrator as _get_orch
+        # 4. AI CAN HANDLE — Claude Sonnet with RAG context + dynamic persona + memory
+        from backend.llm.providers.anthropic_direct import anthropic_provider
+        from backend.prompts.whatsapp_persona import build_system_prompt
+        from backend.services.whatsapp_context_builder import build_context
 
-        logger.info(f"🚀 Processing query from {phone} with Agentic RAG")
+        db_pool = _get_db_pool(request)
+
+        logger.info(f"🚀 Processing query from {phone} with Claude Sonnet (RAG + Zan persona)")
 
         start_time = time.time()
 
         try:
-            # Get the singleton orchestrator (same one used by web chat)
-            orchestrator = _get_orch(request)
+            # Build rich context
+            ctx = await build_context(phone, sender_name, message_text, db_pool)
 
-            # Process through full RAG pipeline (vector search, pricing tool, KG)
-            result = await orchestrator.process_query(
-                query=message_text,
-                user_id=phone,
-                language=None,  # Auto-detect
-            )
+            # --- RAG CONTEXT: Query the knowledge base ---
+            rag_context = ""
+            try:
+                from backend.app.dependencies import get_orchestrator
+                orchestrator = get_orchestrator(request)
+                wa_user_id = f"whatsapp_{phone}"
+                session_id = f"wa_session_{phone}"
 
-            # Extract the response text from the RAG result
-            response_text = ""
-            if isinstance(result, dict):
-                response_text = result.get("response", "") or result.get("answer", "") or ""
-            elif isinstance(result, str):
-                response_text = result
-            
-            # Fallback if RAG returns empty
-            if not response_text:
-                # Fallback to Claude Direct for edge cases
-                from backend.llm.providers.anthropic_direct import anthropic_provider
-                from backend.prompts.zantara_persona import SYSTEM_INSTRUCTION
-                response_text = await anthropic_provider.generate(
-                    system_prompt=SYSTEM_INSTRUCTION,
-                    messages=[{"role": "user", "content": message_text}],
-                    temperature=0.7,
-                    max_tokens=512,
+                rag_result = await orchestrator.process_query(
+                    query=message_text,
+                    user_id=wa_user_id,
+                    session_id=session_id,
                 )
+
+                # Extract useful context from RAG (answer + sources)
+                if rag_result and hasattr(rag_result, 'answer') and rag_result.answer:
+                    rag_answer = rag_result.answer.strip()
+                    # Only use RAG context if it's substantive (not just closing phrases)
+                    if len(rag_answer) > 50 and not rag_answer.startswith(("Fammi sapere", "Let me know", "Non ho")):
+                        rag_context = f"\n\n[CONTESTO DAL DATABASE BALI ZERO - usa queste informazioni per rispondere]\n{rag_answer}\n[FINE CONTESTO]"
+                        logger.info(f"📚 RAG context added: {len(rag_answer)} chars")
+                    else:
+                        logger.info(f"📚 RAG returned short/closing response ({len(rag_answer)} chars), skipping")
+                else:
+                    logger.info("📚 No useful RAG context found")
+            except Exception as rag_err:
+                logger.warning(f"RAG query failed (non-blocking): {rag_err}")
+                # RAG failure is non-blocking — Claude can still answer from system prompt
+
+            # Build dynamic system prompt with client context + RAG context
+            system_prompt = build_system_prompt(
+                client_name=ctx["client_name"],
+                client_profile=ctx["client_profile"],
+                is_first_message=ctx["is_first_message"],
+                detected_language=ctx["detected_language"],
+                time_of_day=ctx["time_of_day"],
+            ) + rag_context
+
+            # Prepare messages: history + current
+            messages = ctx["conversation_history"] + [{"role": "user", "content": message_text}]
+
+            # Call Claude Sonnet 4.5
+            response_text = await anthropic_provider.generate(
+                system_prompt=system_prompt,
+                messages=messages,
+                temperature=0.75,
+                max_tokens=1024,
+            )
 
             if not response_text:
                 response_text = "Scusa, qualcosa è andato storto 😅 Riprova!"
 
-            # Split into chunks if too long
+            # Check for [ESCALATE] marker
+            needs_escalation = "[ESCALATE]" in response_text
+            if needs_escalation:
+                # Remove the marker before sending to client
+                response_text = response_text.replace("[ESCALATE]", "").strip()
+
+            # Split into chunks if too long for WhatsApp
             chunks = whatsapp_service.chunk_message(response_text, max_length=4000)
 
             for i, chunk in enumerate(chunks):
@@ -236,9 +330,42 @@ async def process_whatsapp_message(
                 if i < len(chunks) - 1:
                     await asyncio.sleep(0.5)
 
+            # If AI flagged escalation, notify team with full context
+            if needs_escalation:
+                await notify_human_telegram(
+                    phone=phone,
+                    message_text=message_text,
+                    sender_name=sender_name,
+                    reason="ai_escalation",
+                    client_profile=ctx["client_profile"],
+                    conversation_history=ctx["conversation_history"],
+                )
+                logger.info(f"🔔 AI escalation triggered for {phone}")
+
+            # Save conversation to PostgreSQL
+            await _save_conversation(
+                db_pool=db_pool,
+                wa_user_id=ctx["_wa_user_id"],
+                session_id=ctx["_session_id"],
+                existing_row_id=ctx["_existing_row_id"],
+                message_text=message_text,
+                response_text=response_text,
+                client_profile=ctx["client_profile"],
+                sender_name=sender_name,
+                phone=phone,
+            )
+
+            # Also keep in-memory cache as fast fallback
+            _conversation_cache[phone].append({"role": "user", "content": message_text})
+            _conversation_cache[phone].append({"role": "assistant", "content": response_text})
+            if len(_conversation_cache[phone]) > MAX_HISTORY_MESSAGES:
+                _conversation_cache[phone] = _conversation_cache[phone][-MAX_HISTORY_MESSAGES:]
+
             total_duration = time.time() - start_time
             logger.info(
-                f"✅ Zero responded to {phone} in {total_duration:.1f}s ({len(response_text)} chars)"
+                f"✅ Zan responded to {phone} in {total_duration:.1f}s "
+                f"({len(response_text)} chars, lang={ctx['detected_language']}, "
+                f"first={ctx['is_first_message']})"
             )
 
         except asyncio.TimeoutError:
@@ -251,7 +378,6 @@ async def process_whatsapp_message(
     except Exception as e:
         logger.error(f"Error processing WhatsApp message from {phone}: {e}", exc_info=True)
 
-        # Send error message to user
         try:
             await whatsapp_service.send_message(
                 phone=phone,
@@ -262,6 +388,68 @@ async def process_whatsapp_message(
             logger.error(f"Failed to send error message: {send_error}")
 
 
+def _get_db_pool(request: Request):
+    """Get database pool safely."""
+    try:
+        from backend.app.dependencies import get_database
+        return get_database(request)
+    except Exception:
+        return None
+
+
+async def _save_conversation(
+    db_pool,
+    wa_user_id: str,
+    session_id: str,
+    existing_row_id: int | None,
+    message_text: str,
+    response_text: str,
+    client_profile: dict,
+    sender_name: str | None,
+    phone: str,
+):
+    """Save conversation messages and updated profile to PostgreSQL."""
+    if not db_pool:
+        return
+
+    try:
+        conversation_msgs = [
+            {"role": "user", "content": message_text},
+            {"role": "assistant", "content": response_text},
+        ]
+
+        async with db_pool.acquire() as conn:
+            if existing_row_id:
+                # Append to existing session
+                existing = await conn.fetchrow(
+                    "SELECT messages FROM conversations WHERE id = $1",
+                    existing_row_id,
+                )
+                old_msgs = []
+                if existing and existing["messages"]:
+                    old_msgs = existing["messages"]
+                    if isinstance(old_msgs, str):
+                        old_msgs = json.loads(old_msgs)
+
+                all_msgs = (old_msgs or []) + conversation_msgs
+                all_msgs = all_msgs[-MAX_HISTORY_MESSAGES:]
+
+                await conn.execute(
+                    "UPDATE conversations SET messages = $1::jsonb, metadata = $2::jsonb WHERE id = $3",
+                    json.dumps(all_msgs), json.dumps(client_profile), existing_row_id,
+                )
+            else:
+                # Create new conversation row
+                await conn.execute(
+                    "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at) VALUES ($1, $2, $3::jsonb, $4::jsonb, NOW())",
+                    wa_user_id, session_id, json.dumps(conversation_msgs), json.dumps(client_profile),
+                )
+
+        logger.info(f"💾 Conversation saved for {phone} (session: {session_id})")
+    except Exception as e:
+        logger.warning(f"Failed to save conversation for {phone}: {e}")
+
+
 @router.get("")
 async def verify_webhook(request: Request):
     """
@@ -269,8 +457,6 @@ async def verify_webhook(request: Request):
 
     Meta sends GET request with hub.mode, hub.verify_token, hub.challenge.
     We must return hub.challenge if verify_token matches.
-
-    This is called during initial webhook setup in Meta Business Manager.
     """
     params = request.query_params
 
@@ -280,11 +466,9 @@ async def verify_webhook(request: Request):
 
     logger.info(f"Webhook verification request: mode={mode}, token={'***' if token else None}")
 
-    # Verify token matches our configured secret
     if mode == "subscribe" and token == settings.whatsapp_verify_token:
         logger.info("✅ Webhook verification successful")
-        # Return challenge as integer (Meta requirement)
-        return int(challenge)
+        return PlainTextResponse(content=challenge, status_code=200)
 
     logger.warning("❌ Webhook verification failed: invalid token or mode")
     raise HTTPException(status_code=403, detail="Invalid verify token")
@@ -301,40 +485,27 @@ async def whatsapp_webhook(
 
     Meta sends POST requests with message events.
     We process in background and return 200 immediately.
-
-    Flow:
-    1. Parse webhook payload
-    2. Extract message details
-    3. Process in background (triage + RAG)
-    4. Return 200 to Meta (within 5s)
     """
-
     logger.info(f"Webhook received: {webhook.object}, {len(webhook.entry)} entries")
 
-    # Iterate through entries (usually 1)
     for entry in webhook.entry:
-        # Iterate through changes (usually 1)
         for change in entry.changes:
-            # Only handle "messages" field
             if change.field != "messages":
                 logger.debug(f"Ignoring non-message change: {change.field}")
                 continue
 
             value = change.value
 
-            # Extract messages array
             messages = value.get("messages", [])
             if not messages:
                 logger.debug("No messages in webhook")
                 continue
 
-            # Extract contacts (sender profile info)
             contacts = value.get("contacts", [])
             sender_name = None
             if contacts:
                 sender_name = contacts[0].get("profile", {}).get("name")
 
-            # Process each message (usually 1)
             for msg in messages:
                 phone = msg.get("from")
                 message_id = msg.get("id")
@@ -342,10 +513,8 @@ async def whatsapp_webhook(
 
                 logger.info(f"Message from {phone}: type={message_type}, id={message_id}")
 
-                # Only handle text messages for now
                 if message_type != "text":
                     logger.info(f"Ignoring non-text message type: {message_type}")
-                    # Could add image/audio support later
                     continue
 
                 text_obj = msg.get("text", {})
@@ -355,7 +524,6 @@ async def whatsapp_webhook(
                     logger.warning(f"Empty text body from {phone}")
                     continue
 
-                # Schedule background processing
                 background_tasks.add_task(
                     process_whatsapp_message,
                     phone=phone,
@@ -367,17 +535,12 @@ async def whatsapp_webhook(
 
                 logger.info(f"Message from {phone} scheduled for processing")
 
-    # Return 200 immediately to Meta
     return {"status": "ok"}
 
 
 @router.get("/status")
 async def whatsapp_status():
-    """
-    Check WhatsApp integration status.
-
-    Public endpoint for health monitoring.
-    """
+    """Check WhatsApp integration status."""
     configured = bool(settings.whatsapp_api_token and settings.whatsapp_phone_number_id)
 
     return {
@@ -385,6 +548,8 @@ async def whatsapp_status():
         "phone_number_id": settings.whatsapp_phone_number_id if configured else None,
         "triage_enabled": True,
         "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
+        "ai_model": "claude-sonnet-4-5",
+        "persona": "zan_v2",
     }
 
 

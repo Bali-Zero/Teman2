@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, DollarSign, Calendar, AlertTriangle, CheckCircle, Clock, FileText } from 'lucide-react';
+import {
+  Loader2,
+  DollarSign,
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  FileText,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
@@ -94,8 +102,8 @@ export default function TaxesPage() {
               taxData.summary.daysToDeadline <= 7
                 ? 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
                 : taxData.summary.daysToDeadline <= 30
-                ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
-                : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
+                  ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
+                  : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
             )}
           >
             <Calendar
@@ -104,8 +112,8 @@ export default function TaxesPage() {
                 taxData.summary.daysToDeadline <= 7
                   ? 'text-red-600 dark:text-red-400'
                   : taxData.summary.daysToDeadline <= 30
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
               )}
             />
             <div className="flex-1">
@@ -116,8 +124,8 @@ export default function TaxesPage() {
                 {taxData.summary.daysToDeadline <= 7
                   ? 'Urgent: Please file immediately'
                   : taxData.summary.daysToDeadline <= 30
-                  ? 'Action required soon'
-                  : 'No immediate action required'}
+                    ? 'Action required soon'
+                    : 'No immediate action required'}
               </p>
             </div>
           </div>
@@ -134,7 +142,11 @@ export default function TaxesPage() {
 
           <div className="space-y-3">
             {taxData.obligations.map((obligation) => (
-              <ObligationCard key={obligation.id} obligation={obligation} formatCurrency={formatCurrency} />
+              <ObligationCard
+                key={obligation.id}
+                obligation={obligation}
+                formatCurrency={formatCurrency}
+              />
             ))}
           </div>
         </section>
@@ -159,7 +171,8 @@ export default function TaxesPage() {
       {/* Help Notice */}
       <section className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 p-4">
         <p className="text-sm text-emerald-800 dark:text-emerald-400">
-          Need help with your taxes? Contact your account manager or reach out via Chat for assistance.
+          Need help with your taxes? Contact your account manager or reach out via Chat for
+          assistance.
         </p>
       </section>
     </div>
@@ -189,7 +202,12 @@ function StatusBadge({ status }: { status: 'compliant' | 'attention' | 'overdue'
   const { icon: Icon, label, className } = config[status];
 
   return (
-    <div className={cn('px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium', className)}>
+    <div
+      className={cn(
+        'px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium',
+        className
+      )}
+    >
       <Icon className="w-3.5 h-3.5" />
       {label}
     </div>
@@ -225,7 +243,12 @@ function ObligationCard({
             {obligation.type} • {obligation.period}
           </p>
         </div>
-        <span className={cn('text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap', getStatusColor(obligation.status))}>
+        <span
+          className={cn(
+            'text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap',
+            getStatusColor(obligation.status)
+          )}
+        >
           {obligation.status}
         </span>
       </div>
@@ -233,7 +256,12 @@ function ObligationCard({
       <div className="flex items-center justify-between pt-2 border-t">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Calendar className="w-3.5 h-3.5" />
-          Due: {new Date(obligation.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          Due:{' '}
+          {new Date(obligation.dueDate).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
         </div>
         {obligation.amount && (
           <span className="text-sm font-bold">{formatCurrency(obligation.amount)}</span>
@@ -256,7 +284,12 @@ function HistoryCard({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{item.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {item.period} • Filed: {new Date(item.filedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            {item.period} • Filed:{' '}
+            {new Date(item.filedDate).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
           </p>
         </div>
         <div className="text-right">

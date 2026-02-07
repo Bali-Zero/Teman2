@@ -44,7 +44,11 @@ function App() {
         <h4 className="mb-0 ms-3">AI Team Chat</h4>
       </header>
 
-      <div id="chat-window" className="flex-grow-1 p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+      <div
+        id="chat-window"
+        className="flex-grow-1 p-3 overflow-auto"
+        style={{ maxHeight: 'calc(100vh - 120px)' }}
+      >
         {messages.length === 0 ? (
           <div className="text-center text-muted mt-5">
             Type a message to start the conversation.

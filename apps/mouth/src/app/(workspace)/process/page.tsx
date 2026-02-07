@@ -107,7 +107,11 @@ export default function PratichePage() {
         const data = await api.crm.getPractices({ limit: 100 });
         setPractices(data);
       } catch (error) {
-        logger.error('Failed to load practices', { component: 'Process', action: 'loadPractices' }, toError(error));
+        logger.error(
+          'Failed to load practices',
+          { component: 'Process', action: 'loadPractices' },
+          toError(error)
+        );
         toast.error('Error', 'Failed to load process');
       } finally {
         setIsLoading(false);
@@ -190,7 +194,11 @@ export default function PratichePage() {
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
-      logger.error('Failed to update status', { component: 'Process', action: 'updateStatus' }, toError(error));
+      logger.error(
+        'Failed to update status',
+        { component: 'Process', action: 'updateStatus' },
+        toError(error)
+      );
       toast.error('Error', 'Failed to update process status');
     } finally {
       setUpdatingId(null);

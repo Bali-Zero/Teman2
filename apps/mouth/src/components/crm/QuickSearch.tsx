@@ -2,29 +2,15 @@
 
 /**
  * QuickSearch Component
- * 
+ *
  * Command palette per ricerca veloce clienti
  * Accesso rapido con Cmd+K / Ctrl+K
  */
 
 import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Search,
-  X,
-  User,
-  FileText,
-  Briefcase,
-  Calendar,
-  ArrowRight,
-  Command,
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Search, X, User, FileText, Briefcase, Calendar, ArrowRight, Command } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuickSearch } from '@/hooks/useCrmSearch';
 import { cn } from '@/lib/utils';
 import type { Client } from '@/lib/api/crm/crm.types';
@@ -39,7 +25,7 @@ interface QuickSearchProps {
  */
 function HighlightMatch({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>;
-  
+
   const parts = text.split(new RegExp(`(${query})`, 'gi'));
   return (
     <>
@@ -123,10 +109,12 @@ function ClientResult({
         >
           {client.status}
         </span>
-        <ArrowRight className={cn(
-          'w-4 h-4 text-[var(--foreground-muted)] transition-opacity',
-          isSelected ? 'opacity-100' : 'opacity-0'
-        )} />
+        <ArrowRight
+          className={cn(
+            'w-4 h-4 text-[var(--foreground-muted)] transition-opacity',
+            isSelected ? 'opacity-100' : 'opacity-0'
+          )}
+        />
       </div>
     </button>
   );
@@ -139,13 +127,9 @@ function EmptyState({ query }: { query: string }) {
   return (
     <div className="py-12 text-center">
       <Search className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
-      <p className="text-[var(--foreground)] font-medium mb-1">
-        No results found
-      </p>
+      <p className="text-[var(--foreground)] font-medium mb-1">No results found</p>
       <p className="text-sm text-[var(--foreground-muted)]">
-        {query.length < 2
-          ? 'Type at least 2 characters to search'
-          : `No clients match "${query}"`}
+        {query.length < 2 ? 'Type at least 2 characters to search' : `No clients match "${query}"`}
       </p>
     </div>
   );
@@ -158,7 +142,7 @@ export function QuickSearch({ open: controlledOpen, onOpenChange }: QuickSearchP
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [internalOpen, setInternalOpen] = React.useState(false);
-  
+
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? onOpenChange! : setInternalOpen;
@@ -228,7 +212,7 @@ export function QuickSearch({ open: controlledOpen, onOpenChange }: QuickSearchP
         <DialogHeader className="sr-only">
           <DialogTitle>Quick Search</DialogTitle>
         </DialogHeader>
-        
+
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-[var(--border)]">
           <Search className="w-5 h-5 text-[var(--foreground-muted)]" />
@@ -283,7 +267,9 @@ export function QuickSearch({ open: controlledOpen, onOpenChange }: QuickSearchP
                   <span>Select</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="px-1.5 py-0.5 bg-[var(--background-secondary)] rounded">esc</span>
+                  <span className="px-1.5 py-0.5 bg-[var(--background-secondary)] rounded">
+                    esc
+                  </span>
                   <span>Close</span>
                 </div>
               </div>
@@ -312,11 +298,7 @@ export function QuickSearch({ open: controlledOpen, onOpenChange }: QuickSearchP
 /**
  * Trigger button for quick search
  */
-export function QuickSearchTrigger({ 
-  className 
-}: { 
-  className?: string 
-}) {
+export function QuickSearchTrigger({ className }: { className?: string }) {
   const [open, setOpen] = React.useState(false);
 
   return (

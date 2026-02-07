@@ -339,10 +339,7 @@ export default function DashboardPage() {
                 client: p.client || 'Unknown Client',
                 status: p.status,
                 daysRemaining: p.daysRemaining,
-                completedAt:
-                  p.status === 'completed'
-                    ? new Date().toLocaleDateString()
-                    : undefined,
+                completedAt: p.status === 'completed' ? new Date().toLocaleDateString() : undefined,
               })
             )}
             isLoading={isLoading}

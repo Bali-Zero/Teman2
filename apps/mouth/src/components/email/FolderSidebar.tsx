@@ -106,7 +106,12 @@ export function FolderSidebar({
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <Icon className={cn('w-4 h-4 flex-shrink-0', hasUnread && !isSelected && 'text-[var(--accent)]')} />
+                      <Icon
+                        className={cn(
+                          'w-4 h-4 flex-shrink-0',
+                          hasUnread && !isSelected && 'text-[var(--accent)]'
+                        )}
+                      />
                       <span className="truncate">{folder.folder_name}</span>
                     </div>
                     {hasUnread && (

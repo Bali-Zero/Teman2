@@ -37,12 +37,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="p-6 rounded-lg bg-red-50 border border-red-200">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">
-            Something went wrong
-          </h2>
-          <p className="text-red-600 text-sm">
-            Please refresh the page or try again later.
-          </p>
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
+          <p className="text-red-600 text-sm">Please refresh the page or try again later.</p>
           {process.env.NODE_ENV !== 'production' && this.state.error && (
             <pre className="mt-4 p-4 bg-red-100 rounded text-xs overflow-auto text-red-900">
               {this.state.error.message}

@@ -2,7 +2,7 @@
 
 /**
  * CRMErrorBoundary Component
- * 
+ *
  * Error boundary specifico per sezioni CRM
  */
 
@@ -84,13 +84,12 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
               </div>
               <CardTitle className="text-xl">Something went wrong</CardTitle>
               <CardDescription>
-                {this.props.section 
+                {this.props.section
                   ? `An error occurred in the ${this.props.section} section.`
-                  : 'An unexpected error occurred in the CRM.'
-                }
+                  : 'An unexpected error occurred in the CRM.'}
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               {this.state.error && (
                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
@@ -117,25 +116,15 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
             </CardContent>
 
             <CardFooter className="flex flex-wrap gap-2 justify-center">
-              <Button
-                variant="outline"
-                onClick={this.handleGoHome}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={this.handleGoHome} className="gap-2">
                 <Home className="w-4 h-4" />
                 Go to Clients
               </Button>
-              <Button
-                onClick={this.handleReset}
-                className="gap-2"
-              >
+              <Button onClick={this.handleReset} className="gap-2">
                 <RefreshCw className="w-4 h-4" />
                 Try Again
               </Button>
-              <Button
-                variant="secondary"
-                onClick={this.handleReload}
-              >
+              <Button variant="secondary" onClick={this.handleReload}>
                 Reload Page
               </Button>
             </CardFooter>
@@ -167,10 +156,10 @@ export function withCRMErrorBoundary<P extends object>(
 /**
  * Fallback component per stati di caricamento/errore
  */
-export function CRMErrorFallback({ 
+export function CRMErrorFallback({
   message = 'Unable to load data',
-  onRetry 
-}: { 
+  onRetry,
+}: {
   message?: string;
   onRetry?: () => void;
 }) {
@@ -197,10 +186,7 @@ export function CRMSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"
-        />
+        <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
       ))}
     </div>
   );

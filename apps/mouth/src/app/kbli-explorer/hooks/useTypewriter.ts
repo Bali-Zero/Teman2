@@ -35,7 +35,10 @@ export function useTypewriter(text: string, speed: number = 15): UseTypewriterRe
         return;
       }
       // Type 1-3 chars per tick for natural feel
-      const chunk = Math.min(text.length - idx, Math.random() > 0.7 ? 3 : text[idx] === ' ' ? 2 : 1);
+      const chunk = Math.min(
+        text.length - idx,
+        Math.random() > 0.7 ? 3 : text[idx] === ' ' ? 2 : 1
+      );
       idx += chunk;
       setDisplayText(text.slice(0, idx));
       timer = setTimeout(tick, speed + Math.random() * 10);

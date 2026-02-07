@@ -13,6 +13,7 @@ Target: Test complete integration of conversation management
 """
 
 import sys
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -32,18 +33,10 @@ def mock_db_pool():
     pool = MagicMock()
     conn = AsyncMock()
     
-    # Mock acquire() to be a standard function returning an async context manager
-    @contextmanager
-    def mock_acquire_sync():
-        yield conn
-        
-    async def mock_acquire_async():
-        class AsyncCM:
-            async def __aenter__(self): return conn
-            async def __aexit__(self, *args): pass
-        return AsyncCM()
-        
-    pool.acquire = mock_acquire_async
+    # Mock acquire() to be a standard MagicMock that returns an async context manager
+    cm = AsyncMock()
+    cm.__aenter__.return_value = conn
+    pool.acquire.return_value = cm
     return pool
 
 

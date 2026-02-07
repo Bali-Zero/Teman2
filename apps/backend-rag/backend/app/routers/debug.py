@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from middleware.request_tracing import (
+from backend.middleware.request_tracing import (
     RequestTracingMiddleware,
     get_correlation_id,
 )

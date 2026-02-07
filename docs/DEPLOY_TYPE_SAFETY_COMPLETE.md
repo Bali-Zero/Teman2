@@ -7,21 +7,22 @@
 ## 📦 What was Deployed
 
 1.  **Backend (Fly.io):**
-    *   Updated `apps/backend-rag`
-    *   Added OpenAPI Schema Generator (`backend/scripts/generate_openapi_json.py`)
-    *   Deployment ID: `deployment-01KGSRF11KB59AYZCQJ53W9VFB`
+    - Updated `apps/backend-rag`
+    - Added OpenAPI Schema Generator (`backend/scripts/generate_openapi_json.py`)
+    - Deployment ID: `deployment-01KGSRF11KB59AYZCQJ53W9VFB`
 
 2.  **Frontend (Vercel):**
-    *   Updated `apps/mouth`
-    *   Added `openapi-typescript` integration
-    *   Synchronized strict types
+    - Updated `apps/mouth`
+    - Added `openapi-typescript` integration
+    - Synchronized strict types
 
 3.  **Infrastructure:**
-    *   New script: `scripts/sync-types.sh`
+    - New script: `scripts/sync-types.sh`
 
 ## ✅ Verification Steps (Post-Deploy)
 
 ### 1. Backend Health
+
 - Endpoint: `https://nuzantara-rag.fly.dev/health`
 - Status: `200 OK`
 - Payload:
@@ -34,12 +35,15 @@
   ```
 
 ### 2. Stats Endpoints (Auth Verified)
+
 - `GET /api/crm/practices/stats/overview` -> `200 OK`
 - `GET /api/crm/interactions/stats/overview` -> `200 OK`
 
 ### 3. Developer Experience (DX)
+
 - Run `./scripts/sync-types.sh` locally to verify full pipeline -> **Success**
 
 ## 📝 Next Steps for Team
+
 - Run `npm install` in `apps/mouth` to pick up new dev dependencies.
 - Run `./scripts/sync-types.sh` whenever backend models change.

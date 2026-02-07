@@ -37,10 +37,19 @@ interface CalendarInfo {
   role: string;
 }
 
-const TEAM_CALENDAR_ID = 'ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com';
+const TEAM_CALENDAR_ID =
+  'ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com';
 
 const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-const WEEKDAYS_FULL = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+const WEEKDAYS_FULL = [
+  'Domenica',
+  'Lunedì',
+  'Martedì',
+  'Mercoledì',
+  'Giovedì',
+  'Venerdì',
+  'Sabato',
+];
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -68,7 +77,7 @@ export default function CalendarPage() {
     description: '',
     location: '',
     attendees: '',
-    withMeet: false
+    withMeet: false,
   });
 
   useEffect(() => {
@@ -92,7 +101,9 @@ export default function CalendarPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/calendar/events?calendarId=${encodeURIComponent(selectedCalendar)}&days=90`);
+      const res = await fetch(
+        `/api/calendar/events?calendarId=${encodeURIComponent(selectedCalendar)}&days=90`
+      );
       const data = await res.json();
       if (data.success) {
         setEvents(data.events || []);
@@ -112,12 +123,20 @@ export default function CalendarPage() {
       const res = await fetch('/api/calendar/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newEvent, calendarId: selectedCalendar })
+        body: JSON.stringify({ ...newEvent, calendarId: selectedCalendar }),
       });
       const data = await res.json();
       if (data.success) {
         setShowCreateForm(false);
-        setNewEvent({ summary: '', from: '', to: '', description: '', location: '', attendees: '', withMeet: false });
+        setNewEvent({
+          summary: '',
+          from: '',
+          to: '',
+          description: '',
+          location: '',
+          attendees: '',
+          withMeet: false,
+        });
         fetchEvents();
       } else {
         alert('Errore: ' + data.error);
@@ -130,9 +149,12 @@ export default function CalendarPage() {
   const deleteEvent = async (eventId: string) => {
     if (!confirm('Eliminare questo evento?')) return;
     try {
-      const res = await fetch(`/api/calendar/events?eventId=${eventId}&calendarId=${encodeURIComponent(selectedCalendar)}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(
+        `/api/calendar/events?eventId=${eventId}&calendarId=${encodeURIComponent(selectedCalendar)}`,
+        {
+          method: 'DELETE',
+        }
+      );
       const data = await res.json();
       if (data.success) {
         setSelectedEvent(null);
@@ -172,7 +194,7 @@ export default function CalendarPage() {
   }, [currentMonth]);
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => {
+    return events.filter((event) => {
       const eventDate = new Date(event.start);
       return eventDate.toDateString() === date.toDateString();
     });
@@ -181,13 +203,14 @@ export default function CalendarPage() {
   const upcomingEvents = useMemo(() => {
     const now = new Date();
     return events
-      .filter(e => new Date(e.start) >= now)
+      .filter((e) => new Date(e.start) >= now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
       .slice(0, 10);
   }, [events]);
 
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
-  const isCurrentMonth = (date: Date) => currentMonth ? date.getMonth() === currentMonth.getMonth() : false;
+  const isCurrentMonth = (date: Date) =>
+    currentMonth ? date.getMonth() === currentMonth.getMonth() : false;
   const isSelected = (date: Date) => selectedDate?.toDateString() === date.toDateString();
 
   const formatTime = (dateStr: string) => {
@@ -200,7 +223,10 @@ export default function CalendarPage() {
 
   const formatDateFull = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('it-IT', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     });
   };
 
@@ -233,7 +259,7 @@ export default function CalendarPage() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Calendario</h1>
               <p className="text-sm text-muted-foreground">
-                {calendars.find(c => c.id === selectedCalendar)?.name || 'Bali Zero Calendar'}
+                {calendars.find((c) => c.id === selectedCalendar)?.name || 'Bali Zero Calendar'}
               </p>
             </div>
           </div>
@@ -246,7 +272,9 @@ export default function CalendarPage() {
               className="bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
             >
               {calendars.map((cal) => (
-                <option key={cal.id} value={cal.id}>{cal.name}</option>
+                <option key={cal.id} value={cal.id}>
+                  {cal.name}
+                </option>
               ))}
             </select>
 
@@ -289,22 +317,38 @@ export default function CalendarPage() {
           {/* Month Navigation */}
           <div className="px-6 py-3 border-b bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentMonth(
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+                  )
+                }
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentMonth(
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+                  )
+                }
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={goToToday}>Oggi</Button>
+              <Button variant="ghost" size="sm" onClick={goToToday}>
+                Oggi
+              </Button>
             </div>
 
             <h2 className="text-lg font-semibold capitalize">
               {currentMonth.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
             </h2>
 
-            <div className="text-sm text-muted-foreground">
-              {events.length} eventi
-            </div>
+            <div className="text-sm text-muted-foreground">{events.length} eventi</div>
           </div>
 
           {/* Calendar Grid or List */}
@@ -313,11 +357,14 @@ export default function CalendarPage() {
               {/* Weekday headers */}
               <div className="grid grid-cols-7 mb-2">
                 {WEEKDAYS.map((day, i) => (
-                  <div key={day} className={cn(
-                    'text-center text-xs font-medium py-2',
-                    i === 0 && 'text-red-500',
-                    i !== 0 && 'text-muted-foreground'
-                  )}>
+                  <div
+                    key={day}
+                    className={cn(
+                      'text-center text-xs font-medium py-2',
+                      i === 0 && 'text-red-500',
+                      i !== 0 && 'text-muted-foreground'
+                    )}
+                  >
                     {day}
                   </div>
                 ))}
@@ -342,11 +389,13 @@ export default function CalendarPage() {
                         'hover:border-primary/50'
                       )}
                     >
-                      <div className={cn(
-                        'text-sm font-medium mb-1',
-                        isToday(date) && 'text-primary',
-                        date.getDay() === 0 && 'text-red-500'
-                      )}>
+                      <div
+                        className={cn(
+                          'text-sm font-medium mb-1',
+                          isToday(date) && 'text-primary',
+                          date.getDay() === 0 && 'text-red-500'
+                        )}
+                      >
                         {date.getDate()}
                       </div>
 
@@ -354,7 +403,10 @@ export default function CalendarPage() {
                         {dayEvents.slice(0, 3).map((event) => (
                           <div
                             key={event.id}
-                            onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedEvent(event);
+                            }}
                             className={cn(
                               'text-xs px-1.5 py-0.5 rounded truncate cursor-pointer',
                               'bg-primary/20 text-primary hover:bg-primary/30',
@@ -434,7 +486,10 @@ export default function CalendarPage() {
             <div className="flex-1 overflow-auto p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold">Nuovo Evento</h3>
-                <button onClick={() => setShowCreateForm(false)} className="text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -520,10 +575,17 @@ export default function CalendarPage() {
                 </label>
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCreateForm(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowCreateForm(false)}
+                  >
                     Annulla
                   </Button>
-                  <Button type="submit" className="flex-1">Salva</Button>
+                  <Button type="submit" className="flex-1">
+                    Salva
+                  </Button>
                 </div>
               </form>
             </div>
@@ -533,10 +595,18 @@ export default function CalendarPage() {
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-xl font-semibold pr-4">{selectedEvent.summary}</h3>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => deleteEvent(selectedEvent.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => deleteEvent(selectedEvent.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <button onClick={() => setSelectedEvent(null)} className="p-2 text-muted-foreground hover:text-foreground">
+                    <button
+                      onClick={() => setSelectedEvent(null)}
+                      className="p-2 text-muted-foreground hover:text-foreground"
+                    >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -604,7 +674,9 @@ export default function CalendarPage() {
               )}
 
               <div className="p-6">
-                <div className="text-xs text-muted-foreground font-mono">ID: {selectedEvent.id}</div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  ID: {selectedEvent.id}
+                </div>
               </div>
             </div>
           ) : (

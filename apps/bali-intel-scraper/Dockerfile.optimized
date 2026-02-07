@@ -1,0 +1,87 @@
+# Multi-stage build for Bali Intel Scraper - Optimized
+# Build: docker build -f Dockerfile.optimized -t bali-intel:optimized .
+
+# Stage 1: Dependencies Builder
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies (layer caching optimization)
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Download required NLTK data
+RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
+
+# Stage 2: Production Runtime
+FROM python:3.11-slim as production
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Copy virtual environment from builder (includes all dependencies)
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy NLTK data
+COPY --from=builder /root/nltk_data /usr/local/share/nltk_data
+ENV NLTK_DATA=/usr/local/share/nltk_data
+
+# Copy only necessary application code
+COPY backend/ ./backend/
+COPY config/ ./config/
+
+# Remove unnecessary files (if any were copied)
+RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find . -type f -name "*.pyc" -delete && \
+    find . -type f -name "*.pyo" -delete
+
+# Create non-root user for security
+RUN groupadd -r scraper -g 1000 && \
+    useradd -r -u 1000 -g scraper -d /app -s /bin/false scraper && \
+    chown -R scraper:scraper /app
+
+USER scraper
+
+# Python environment optimizations
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONFAULTHANDLER=1
+ENV PYTHONHASHSEED=random
+ENV PYTHONPATH=/app
+
+# Disable buffering for stdout/stderr
+ENV PYTHONUNBUFFERED=1
+
+# Health check with proper timing
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=5)" || exit 1
+
+# Expose application port
+EXPOSE 8000
+
+# Run with optimal worker configuration
+# Workers = 2 * CPU cores + 1 (adjusted for container environment)
+CMD ["uvicorn", "backend.app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--loop", "uvloop", \
+     "--http", "h11", \
+     "--lifespan", "on"]

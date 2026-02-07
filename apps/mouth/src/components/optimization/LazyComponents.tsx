@@ -1,6 +1,6 @@
 /**
  * Lazy Loaded Components
- * 
+ *
  * Use these for heavy components that don't need to be in the initial bundle.
  * Reduces initial load time by splitting code into separate chunks.
  */
@@ -9,7 +9,7 @@ import React, { Suspense } from 'react';
 
 // Loading fallback component
 const LoadingFallback = ({ height = '400px' }: { height?: string }) => (
-  <div 
+  <div
     className="flex items-center justify-center bg-muted/20 rounded-lg animate-pulse"
     style={{ height }}
   >
@@ -20,9 +20,9 @@ const LoadingFallback = ({ height = '400px' }: { height?: string }) => (
 // Dynamic imports for heavy components
 const DynamicChartComponents = {
   // Charts are heavy - lazy load them
-  BarChart: React.lazy(() => import('@nivo/bar').then(m => ({ default: m.ResponsiveBar }))),
-  LineChart: React.lazy(() => import('@nivo/line').then(m => ({ default: m.ResponsiveLine }))),
-  PieChart: React.lazy(() => import('@nivo/pie').then(m => ({ default: m.ResponsivePie }))),
+  BarChart: React.lazy(() => import('@nivo/bar').then((m) => ({ default: m.ResponsiveBar }))),
+  LineChart: React.lazy(() => import('@nivo/line').then((m) => ({ default: m.ResponsiveLine }))),
+  PieChart: React.lazy(() => import('@nivo/pie').then((m) => ({ default: m.ResponsivePie }))),
 };
 
 interface LazyChartProps {
@@ -36,9 +36,10 @@ interface LazyChartProps {
  * Loads chart library only when needed
  */
 export function LazyChart({ type, data, height = '400px' }: LazyChartProps) {
-  const ChartComponent = DynamicChartComponents[
-    type === 'bar' ? 'BarChart' : type === 'line' ? 'LineChart' : 'PieChart'
-  ];
+  const ChartComponent =
+    DynamicChartComponents[
+      type === 'bar' ? 'BarChart' : type === 'line' ? 'LineChart' : 'PieChart'
+    ];
 
   return (
     <Suspense fallback={<LoadingFallback height={height} />}>
@@ -66,22 +67,24 @@ interface LazyPageProps {
 /**
  * Lazy Page Wrapper
  * Wrap page components for automatic code splitting
- * 
+ *
  * Usage:
  * const LazySettingsPage = React.lazy(() => import('./settings/page'));
- * 
+ *
  * <LazyPage>
  *   <LazySettingsPage />
  * </LazyPage>
  */
 export function LazyPage({ children, fallback }: LazyPageProps) {
   return (
-    <Suspense 
-      fallback={fallback || (
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      )}
+    <Suspense
+      fallback={
+        fallback || (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        )
+      }
     >
       {children}
     </Suspense>
@@ -94,10 +97,10 @@ export const lazyImports = {
   IntelligenceCenter: React.lazy(() => import('@/app/(workspace)/intelligence/page')),
   NewsRoom: React.lazy(() => import('@/app/(workspace)/intelligence/news-room/page')),
   ArticleComposer: React.lazy(() => import('@/app/(workspace)/intelligence/article-composer/page')),
-  
+
   // Settings - less frequently accessed
   Settings: React.lazy(() => import('@/app/(workspace)/settings/page')),
-  
+
   // Client management
   ClientDetail: React.lazy(() => import('@/app/(workspace)/clients/[id]/page')),
   ClientNew: React.lazy(() => import('@/app/(workspace)/clients/new/page')),

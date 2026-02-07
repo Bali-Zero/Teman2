@@ -1,6 +1,6 @@
 /**
  * API Error Handler
- * 
+ *
  * Centralized error handling for API calls
  */
 
@@ -26,18 +26,18 @@ export function handleApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error;
   }
-  
+
   if (error instanceof Response) {
     const status = error.status;
     const message = getErrorMessageForStatus(status);
     return new ApiError(message, status);
   }
-  
+
   if (error instanceof Error) {
     logger.error('API Error:', error.message);
     return new ApiError(error.message, 0);
   }
-  
+
   logger.error('Unknown API Error:', error);
   return new ApiError('An unexpected error occurred', 0);
 }
@@ -70,17 +70,14 @@ function getErrorMessageForStatus(status: number): string {
 /**
  * Safe fetch wrapper with error handling
  */
-export async function safeFetch<T>(
-  url: string,
-  options?: RequestInit
-): Promise<T> {
+export async function safeFetch<T>(url: string, options?: RequestInit): Promise<T> {
   try {
     const response = await fetch(url, options);
-    
+
     if (!response.ok) {
       throw response;
     }
-    
+
     return await response.json();
   } catch (error) {
     throw handleApiError(error);
@@ -96,24 +93,24 @@ export async function retryFetch<T>(
   maxRetries = 3
 ): Promise<T> {
   let lastError: Error | undefined;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await safeFetch<T>(url, options);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       // Don't retry on 4xx errors (client errors)
       if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
         throw error;
       }
-      
+
       // Wait before retrying (exponential backoff)
       if (i < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000));
       }
     }
   }
-  
+
   throw lastError;
 }

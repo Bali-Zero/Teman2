@@ -1,6 +1,6 @@
 /**
  * Portal Components Index
- * 
+ *
  * Esporta tutti i componenti del client portal
  */
 

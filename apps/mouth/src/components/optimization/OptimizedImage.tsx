@@ -1,6 +1,6 @@
 /**
  * Optimized Image Component
- * 
+ *
  * Wrapper around Next.js Image with best practices for performance:
  * - Lazy loading
  * - Proper sizing
@@ -31,7 +31,7 @@ interface OptimizedImageProps {
 
 /**
  * Optimized Image Component
- * 
+ *
  * Best practices implemented:
  * 1. Lazy loading by default (unless priority)
  * 2. Proper aspect ratio to prevent CLS
@@ -59,12 +59,8 @@ export function OptimizedImage({
   const placeholder = blurDataURL ? 'blur' : 'empty';
 
   return (
-    <div 
-      className={cn(
-        'relative overflow-hidden',
-        fill ? 'absolute inset-0' : '',
-        containerClassName
-      )}
+    <div
+      className={cn('relative overflow-hidden', fill ? 'absolute inset-0' : '', containerClassName)}
       style={!fill && width && height ? { aspectRatio: `${width}/${height}` } : undefined}
     >
       <Image
@@ -112,10 +108,7 @@ export function ResponsiveImage({
   ...props
 }: ResponsiveImageProps) {
   return (
-    <div 
-      className={cn('w-full', containerClassName)}
-      style={{ maxWidth, aspectRatio }}
-    >
+    <div className={cn('w-full', containerClassName)} style={{ maxWidth, aspectRatio }}>
       <OptimizedImage
         {...props}
         fill
@@ -146,13 +139,7 @@ const sizeMap = {
  * Optimized Avatar Component
  * Perfect for user lists, team pages, etc.
  */
-export function OptimizedAvatar({
-  src,
-  alt,
-  size = 'md',
-  fallback,
-  className,
-}: AvatarProps) {
+export function OptimizedAvatar({ src, alt, size = 'md', fallback, className }: AvatarProps) {
   const sizePx = sizeMap[size];
   const initials = fallback || alt.slice(0, 2).toUpperCase();
 
@@ -194,12 +181,7 @@ interface IconSpriteProps {
  */
 export function IconSprite({ name, size = 24, className }: IconSpriteProps) {
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      className={cn('fill-current', className)}
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} className={cn('fill-current', className)} aria-hidden="true">
       <use href={`/icons/sprite.svg#${name}`} />
     </svg>
   );
@@ -209,7 +191,7 @@ export function IconSprite({ name, size = 24, className }: IconSpriteProps) {
 export const preloadCriticalImages = (imageUrls: string[]) => {
   if (typeof window === 'undefined') return;
 
-  imageUrls.forEach(url => {
+  imageUrls.forEach((url) => {
     const link = document.createElement('link');
     link.rel = 'preload';
     link.as = 'image';
@@ -238,7 +220,7 @@ export const imageUtils = {
    */
   getOptimalSize: (viewportWidth: number): number => {
     const sizes = [640, 750, 828, 1080, 1200, 1920, 2048];
-    return sizes.find(size => size >= viewportWidth) || sizes[sizes.length - 1];
+    return sizes.find((size) => size >= viewportWidth) || sizes[sizes.length - 1];
   },
 
   /**

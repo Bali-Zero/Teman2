@@ -57,8 +57,8 @@ export default function PortalLoginPage() {
             <form onSubmit={handleSubmitEmail} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[#E6E7EB]">Email Address</label>
-                <Input 
-                  type="email" 
+                <Input
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
@@ -67,25 +67,31 @@ export default function PortalLoginPage() {
                   autoFocus
                 />
               </div>
-              <Button type="submit" className="w-full bg-[#4FD1C5] hover:bg-[#4FD1C5]/80 text-[#0B0E13] font-medium">
+              <Button
+                type="submit"
+                className="w-full bg-[#4FD1C5] hover:bg-[#4FD1C5]/80 text-[#0B0E13] font-medium"
+              >
                 Continue <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleLogin} className="space-y-4 animate-in slide-in-from-right-4 fade-in">
+            <form
+              onSubmit={handleLogin}
+              className="space-y-4 animate-in slide-in-from-right-4 fade-in"
+            >
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-[#E6E7EB]">Access PIN</label>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setStep('email')}
                     className="text-xs text-[#4FD1C5] hover:underline"
                   >
                     Change Email
                   </button>
                 </div>
-                <Input 
-                  type="password" 
+                <Input
+                  type="password"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="••••••"
@@ -95,8 +101,8 @@ export default function PortalLoginPage() {
                   autoFocus
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-[#4FD1C5] hover:bg-[#4FD1C5]/80 text-[#0B0E13] font-medium"
                 disabled={isLoading}
               >

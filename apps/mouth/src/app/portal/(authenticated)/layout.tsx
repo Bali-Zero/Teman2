@@ -8,11 +8,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { portalNavigation } from '@/types/navigation';
 
-export default function PortalLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +114,7 @@ export default function PortalLayout({
       <div className="min-h-screen bg-[#2a2a2a]">
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
-          <AppSidebar 
+          <AppSidebar
             user={{
               ...user,
               role: 'client',
@@ -139,7 +135,7 @@ export default function PortalLayout({
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <div className="fixed inset-y-0 left-0 z-50 md:hidden">
-              <AppSidebar 
+              <AppSidebar
                 user={{
                   ...user,
                   role: 'client',
@@ -165,9 +161,7 @@ export default function PortalLayout({
 
           {/* Page Content */}
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <PortalErrorBoundary section="Portal">
-              {children}
-            </PortalErrorBoundary>
+            <PortalErrorBoundary section="Portal">{children}</PortalErrorBoundary>
           </main>
         </div>
 

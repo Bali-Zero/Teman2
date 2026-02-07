@@ -1,6 +1,6 @@
 /**
  * useCrmNotifications Hook
- * 
+ *
  * Hook per notifiche e alert del CRM:
  * - Documenti in scadenza
  * - Pratiche da completare
@@ -63,28 +63,35 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
     queryKey: ['crm', 'notifications', 'expiry', { unreadOnly }],
     queryFn: async (): Promise<Notification[]> => {
       const alerts = await api.crm.getExpiryAlerts({ limit: 50 });
-      
+
       // Map alerts to notifications
-      return alerts.map((alert: ExpiryAlert): Notification => ({
-        id: `expiry-${alert.entity_id}-${alert.document_type}`,
-        type: 'expiry',
-        title: `${alert.entity_name} - ${alert.document_type}`,
-        message: alert.days_until_expiry <= 0
-          ? `Expired on ${alert.expiry_date}`
-          : `Expires in ${alert.days_until_expiry} days`,
-        severity: alert.alert_color === 'expired' ? 'critical' 
-          : alert.alert_color === 'red' ? 'high'
-          : alert.alert_color === 'yellow' ? 'medium'
-          : 'low',
-        createdAt: new Date().toISOString(),
-        read: false,
-        actionUrl: `/clients/${alert.client_id}`,
-        metadata: {
-          clientId: alert.client_id,
-          entityId: alert.entity_id,
-          daysUntilExpiry: alert.days_until_expiry,
-        },
-      }));
+      return alerts.map(
+        (alert: ExpiryAlert): Notification => ({
+          id: `expiry-${alert.entity_id}-${alert.document_type}`,
+          type: 'expiry',
+          title: `${alert.entity_name} - ${alert.document_type}`,
+          message:
+            alert.days_until_expiry <= 0
+              ? `Expired on ${alert.expiry_date}`
+              : `Expires in ${alert.days_until_expiry} days`,
+          severity:
+            alert.alert_color === 'expired'
+              ? 'critical'
+              : alert.alert_color === 'red'
+                ? 'high'
+                : alert.alert_color === 'yellow'
+                  ? 'medium'
+                  : 'low',
+          createdAt: new Date().toISOString(),
+          read: false,
+          actionUrl: `/clients/${alert.client_id}`,
+          metadata: {
+            clientId: alert.client_id,
+            entityId: alert.entity_id,
+            daysUntilExpiry: alert.days_until_expiry,
+          },
+        })
+      );
     },
     refetchInterval: autoRefresh ? refreshInterval : false,
     staleTime: 60 * 1000, // 1 minute
@@ -157,17 +164,20 @@ export function useUpcomingRenewals(days: number = 90) {
     queryFn: async (): Promise<Practice[]> => {
       const renewals = await api.crm.getUpcomingRenewals(days);
       // Map renewals to practices (they share many fields)
-      return renewals.map((r: any) => ({
-        id: r.id,
-        client_id: r.client_id,
-        status: r.status,
-        expiry_date: r.target_date,
-        practice_type_code: r.alert_type,
-        created_at: r.alert_date,
-        updated_at: r.alert_date,
-        priority: 'high',
-        payment_status: 'pending',
-      } as Practice));
+      return renewals.map(
+        (r: any) =>
+          ({
+            id: r.id,
+            client_id: r.client_id,
+            status: r.status,
+            expiry_date: r.target_date,
+            practice_type_code: r.alert_type,
+            created_at: r.alert_date,
+            updated_at: r.alert_date,
+            priority: 'high',
+            payment_status: 'pending',
+          }) as Practice
+      );
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -191,7 +201,8 @@ export function useDashboardStats() {
         newThisMonth: 0, // Not available in current API
         activePractices: practiceStats.active_practices,
         overduePractices: 0, // Not available in current API
-        expiryAlerts: expirySummary.counts.red + expirySummary.counts.yellow + expirySummary.counts.expired,
+        expiryAlerts:
+          expirySummary.counts.red + expirySummary.counts.yellow + expirySummary.counts.expired,
         revenue: {
           total: practiceStats.revenue.total_revenue,
           paid: practiceStats.revenue.paid_revenue,
@@ -215,13 +226,19 @@ export function useRecentActivity(limit: number = 10) {
     queryKey: ['crm', 'activity', limit],
     queryFn: async () => {
       const interactions = await api.crm.getInteractions({ limit });
-      
+
       return interactions.map((interaction: any) => ({
         id: `interaction-${interaction.id}`,
-        type: interaction.interaction_type === 'chat' ? 'note_added' 
-          : interaction.interaction_type === 'email' ? 'document_uploaded'
-          : 'status_changed',
-        description: interaction.summary || interaction.subject || `${interaction.interaction_type} interaction`,
+        type:
+          interaction.interaction_type === 'chat'
+            ? 'note_added'
+            : interaction.interaction_type === 'email'
+              ? 'document_uploaded'
+              : 'status_changed',
+        description:
+          interaction.summary ||
+          interaction.subject ||
+          `${interaction.interaction_type} interaction`,
         user: interaction.team_member,
         timestamp: interaction.created_at,
         clientId: interaction.client_id,
@@ -248,22 +265,25 @@ export function useBrowserNotifications() {
 
   const requestPermission = useCallback(async () => {
     if (!supported) return false;
-    
+
     const result = await Notification.requestPermission();
     setPermission(result);
     return result === 'granted';
   }, [supported]);
 
-  const showNotification = useCallback((title: string, options?: NotificationOptions) => {
-    if (supported && permission === 'granted') {
-      return new Notification(title, {
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        ...options,
-      });
-    }
-    return null;
-  }, [supported, permission]);
+  const showNotification = useCallback(
+    (title: string, options?: NotificationOptions) => {
+      if (supported && permission === 'granted') {
+        return new Notification(title, {
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          ...options,
+        });
+      }
+      return null;
+    },
+    [supported, permission]
+  );
 
   return {
     supported,

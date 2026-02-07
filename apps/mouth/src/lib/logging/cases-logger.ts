@@ -9,6 +9,9 @@
  * - Error tracking with full context
  */
 
+import { debug as consoleDebug, error as consoleError } from '@/lib/utils/console';
+import type { ApiRequestParams, ErrorInfo } from '@/lib/api/types/logger.types';
+
 export enum LogLevel {
   DEBUG = 'DEBUG',
   INFO = 'INFO',
@@ -34,9 +37,6 @@ interface LogContext {
   category: LogCategory;
   level: LogLevel;
 }
-
-import { debug, error } from '@/lib/utils/console';
-import type { ApiRequestParams, ErrorInfo } from '@/lib/api/types/logger.types';
 
 interface LogMetadata {
   [key: string]: unknown;
@@ -116,12 +116,12 @@ class CasesLogger {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(logData),
-      }).catch((err) => error('Failed to send log:', err));
+      }).catch((err) => consoleError('Failed to send log:', err));
     }
 
     if (this.isDevelopment) {
       // Pretty print in development
-      debug(
+      consoleDebug(
         `[${logData.level}] [${logData.category}]`,
         logData.message,
         logData.metadata || ''
@@ -432,7 +432,7 @@ class CasesLogger {
   debug(message: string, metadata?: LogMetadata) {
     if (this.isDevelopment) {
       const logData = this.formatLog(LogLevel.DEBUG, LogCategory.USER_ACTION, message, metadata);
-      debug(`[DEBUG]`, message, metadata || '');
+      consoleDebug(`[DEBUG]`, message, metadata || '');
     }
   }
 }
