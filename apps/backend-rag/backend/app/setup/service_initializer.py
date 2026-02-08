@@ -742,7 +742,7 @@ async def _init_background_services(
             self_healing_enabled=True,  # Continuous health monitoring
             conversation_trainer_enabled=True,  # Learn from conversations
             client_value_predictor_enabled=True,  # Nurture high-value clients
-            knowledge_graph_enabled=False,  # DISABLED - quota exhausted
+            knowledge_graph_enabled=True,  # RE-ENABLED 2026-02-07 - uses Gemini free tier (15 RPM, 1500/day)
         )
         logger.info("DEBUG: Scheduler started")
 
@@ -754,6 +754,51 @@ async def _init_background_services(
             "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False
         )
         logger.error(f"❌ Failed to initialize Autonomous Scheduler: {e}")
+
+
+async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
+    """
+    Initialize The Generals Multi-Agent System.
+
+    Starts CodingGeneral and IntelligenceGeneral as background polling loops
+    and registers the TaskCoordinator for API access.
+
+    Args:
+        app: FastAPI application instance
+        db_pool: Database pool instance (may be None)
+    """
+    if not db_pool:
+        logger.warning("⚠️ Generals: Skipped - no database pool available")
+        service_registry.register("generals", ServiceStatus.UNAVAILABLE, critical=False)
+        return
+
+    try:
+        from backend.generals.coding_general import CodingGeneral
+        from backend.generals.intelligence_general import IntelligenceGeneral
+
+        coding_general = CodingGeneral(poll_interval=5)
+        intelligence_general = IntelligenceGeneral(poll_interval=5)
+
+        await coding_general.initialize()
+        await intelligence_general.initialize()
+
+        # Start polling loops as background tasks
+        coding_task = asyncio.create_task(coding_general.run_loop())
+        intelligence_task = asyncio.create_task(intelligence_general.run_loop())
+
+        # Store references for graceful shutdown
+        app.state.coding_general = coding_general
+        app.state.intelligence_general = intelligence_general
+        app.state.generals_tasks = [coding_task, intelligence_task]
+
+        service_registry.register("generals", ServiceStatus.HEALTHY, critical=False)
+        logger.info("✅ Generals: CodingGeneral + IntelligenceGeneral polling started")
+
+    except Exception as e:
+        service_registry.register(
+            "generals", ServiceStatus.DEGRADED, error=str(e), critical=False
+        )
+        logger.error(f"❌ Failed to initialize Generals: {e}")
 
 
 async def initialize_services(app: FastAPI) -> None:
@@ -830,6 +875,9 @@ async def initialize_services(app: FastAPI) -> None:
 
     # 9. Background services
     await _init_background_services(app, search_service, ai_client, db_pool)
+
+    # 10. The Generals Multi-Agent System (background polling loops)
+    await _init_generals(app, db_pool)
 
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True
