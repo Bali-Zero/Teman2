@@ -168,7 +168,7 @@ rag_documents_retrieved = safe_register_histogram(
 kg_extraction_total = safe_register_counter(
     "zantara_kg_extraction_total",
     "Total entities/relationships extracted",
-    ["type", "method"],  # type: entity/relationship, method: llm/regex
+    ["type", "method"],  # labels: entity/relationship, llm/regex
 )
 
 kg_relationship_density = safe_register_histogram(

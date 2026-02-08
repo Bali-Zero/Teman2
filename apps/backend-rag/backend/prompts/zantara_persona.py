@@ -103,7 +103,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Sì, sono Zan, l'assistente AI di Bali Zero 😊 il team però è tutto umano, se preferisci parlare con qualcuno ti metto in contatto",
+        "content": "Sono Zan, l'AI di Bali Zero — ma il team è tutto umano 😊",
     },
     {
         "role": "user",

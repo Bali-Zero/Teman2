@@ -46,9 +46,9 @@ class KGIncrementalBuilder:
             db_pool: Database connection pool
         """
         self.db_pool = db_pool
-        self._gemini_client = None
+        self._gemini_client: Any | None = None
 
-    def _get_gemini_client(self):
+    def _get_gemini_client(self) -> Any | None:
         """Get or create Gemini client using Google AI Studio"""
         if self._gemini_client is None:
             try:
@@ -88,15 +88,18 @@ class KGIncrementalBuilder:
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT DISTINCT unnest(source_chunk_ids) as chunk_id
-                    FROM kg_nodes
-                    WHERE source_chunk_ids IS NOT NULL
-                        AND array_length(source_chunk_ids, 1) > 0
-                    UNION
-                    SELECT DISTINCT unnest(source_chunk_ids) as chunk_id
-                    FROM kg_edges
-                    WHERE source_chunk_ids IS NOT NULL
-                        AND array_length(source_chunk_ids, 1) > 0
+                    SELECT DISTINCT chunk_id
+                    FROM (
+                        SELECT unnest(source_chunk_ids) as chunk_id
+                        FROM kg_nodes
+                        WHERE source_chunk_ids IS NOT NULL
+                            AND array_length(source_chunk_ids, 1) > 0
+                        UNION ALL
+                        SELECT unnest(source_chunk_ids) as chunk_id
+                        FROM kg_edges
+                        WHERE source_chunk_ids IS NOT NULL
+                            AND array_length(source_chunk_ids, 1) > 0
+                    ) combined
                     """
                 )
                 chunk_ids = {row["chunk_id"] for row in rows if row["chunk_id"]}
@@ -133,19 +136,39 @@ class KGIncrementalBuilder:
             import sys
             from pathlib import Path
 
-            # Add scripts directory to path
-            scripts_path = Path(__file__).parent.parent.parent.parent.parent / "scripts"
-            if scripts_path.exists():
-                sys.path.insert(0, str(scripts_path))
-            else:
-                # Try alternative path
-                scripts_path = Path(__file__).parent.parent.parent.parent / "scripts"
+            # Resolve scripts directory relative to this file
+            # This file: backend/services/knowledge_graph/incremental_builder.py
+            # Target:    scripts/kg_incremental_extraction.py
+            # Path:      ../../../../scripts (4 levels up from knowledge_graph/)
+            this_file = Path(__file__).resolve()
+            candidate_paths = [
+                this_file.parent.parent.parent.parent / "scripts",  # backend-rag/scripts
+                this_file.parent.parent.parent.parent.parent / "scripts",  # apps/scripts (fallback)
+                Path(os.environ.get("BACKEND_RAG_ROOT", "")) / "scripts",  # env override
+            ]
+
+            scripts_path = None
+            for candidate in candidate_paths:
+                if candidate.exists() and (candidate / "kg_incremental_extraction.py").exists():
+                    scripts_path = candidate
+                    break
+
+            if scripts_path is None:
+                logger.error(
+                    f"❌ kg_incremental_extraction.py not found. Tried: "
+                    f"{[str(p) for p in candidate_paths]}"
+                )
+                return {"status": "error", "error": "kg_incremental_extraction.py not found"}
+
+            if str(scripts_path) not in sys.path:
                 sys.path.insert(0, str(scripts_path))
 
             from kg_incremental_extraction import KGIncrementalExtractor
+
+            logger.info(f"✅ KGIncrementalExtractor loaded from {scripts_path}")
         except ImportError as e:
             logger.error(f"❌ Failed to import KGIncrementalExtractor: {e}")
-            logger.error(f"   Scripts path tried: {scripts_path}")
+            logger.error(f"   Scripts path resolved: {scripts_path}")
             return {"status": "error", "error": str(e)}
 
         # Get Gemini client

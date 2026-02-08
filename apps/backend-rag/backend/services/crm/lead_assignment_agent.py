@@ -142,16 +142,46 @@ async def check_duplicates(
     return state
 
 
+# Roles eligible for lead assignment (excludes admin, client, support roles)
+ASSIGNABLE_ROLES = {
+    "Supervisor",
+    "Team Leader",
+    "Executive Consultant",
+    "Junior Consultant",
+    "Specialist Advisor",
+    "Advisory",
+    "Tax Lead",
+    "Tax Care",
+    "Tax Manager",
+}
+
+# Map practice types to departments for specialty routing
+PRACTICE_DEPARTMENT_MAP: dict[str, str] = {
+    "kitas": "setup",
+    "kitap": "setup",
+    "pt_pma": "setup",
+    "investor_visa": "setup",
+    "work_permit": "setup",
+    "company_setup": "setup",
+    "visa": "setup",
+    "immigration": "setup",
+    "tax": "tax",
+    "tax_reporting": "tax",
+    "tax_registration": "tax",
+    "npwp": "tax",
+}
+
+
 async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> LeadAssignmentState:
     """
     Step 2: Auto-assign lead to team member
 
     Strategy:
     1. If duplicate → use existing assignment
-    2. Otherwise → specialty matching + load balancing
-       - Find team members with matching specialty (JSONB permissions)
-       - Among those, pick the one with least active practices
-       - Fallback: round-robin by workload
+    2. Otherwise → department-based matching + load balancing
+       - Map practice_type_code to department (setup/tax)
+       - Find team members in matching department with least active practices
+       - Fallback: any assignable team member with least workload
     """
 
     if state["is_duplicate"]:
@@ -164,72 +194,75 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
             return state
 
     practice_type_code = state["client_data"].get("practice_type_code", "general")
+    target_department = PRACTICE_DEPARTMENT_MAP.get(practice_type_code)
+
+    # Build role filter as SQL-safe tuple
+    role_placeholders = ", ".join(f"${i + 1}" for i in range(len(ASSIGNABLE_ROLES)))
+    role_list = list(ASSIGNABLE_ROLES)
 
     async with db_pool.acquire() as conn:
-        # Strategy: Specialty matching + load balancing
-        # Find active team members with matching specialty and least workload
-        lead = await conn.fetchrow(
-            """
-            WITH lead_workload AS (
-                SELECT
-                    tm.email,
-                    tm.full_name,
-                    tm.permissions,
-                    COUNT(p.id) as active_practices
+        lead = None
+
+        # Strategy 1: Department matching + load balancing
+        if target_department:
+            lead = await conn.fetchrow(
+                f"""
+                SELECT tm.email, tm.full_name, tm.department,
+                       COUNT(p.id) as active_practices
                 FROM team_members tm
                 LEFT JOIN practices p ON p.assigned_to = tm.email
                     AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
                 WHERE tm.active = true
-                  AND tm.role IN ('agent', 'manager')
-                GROUP BY tm.email, tm.full_name, tm.permissions
+                  AND tm.role IN ({role_placeholders})
+                  AND LOWER(tm.department) = LOWER(${len(role_list) + 1})
+                GROUP BY tm.email, tm.full_name, tm.department
+                ORDER BY COUNT(p.id) ASC, RANDOM()
+                LIMIT 1
+                """,
+                *role_list,
+                target_department,
             )
-            SELECT email, full_name, active_practices
-            FROM lead_workload
-            WHERE
-                -- Specialty match: check if permissions.specialties contains practice_type_code
-                (permissions::jsonb->'specialties' @> $1::jsonb)
-                OR (permissions::jsonb->'specialties' IS NULL)
-                OR (jsonb_array_length(COALESCE(permissions::jsonb->'specialties', '[]'::jsonb)) = 0)
-            ORDER BY active_practices ASC, RANDOM()
-            LIMIT 1
-            """,
-            f'["{practice_type_code}"]',  # JSON array for specialty match
-        )
 
         if lead:
             state["assigned_lead"] = lead["email"]
             state["assigned_lead_name"] = lead["full_name"]
             state["assignment_reason"] = (
-                f"Specialty: {practice_type_code}, Current workload: {lead['active_practices']} practices"
+                f"Department: {lead['department']} (practice: {practice_type_code}), "
+                f"Current workload: {lead['active_practices']} practices"
             )
 
-            # UPDATE client.assigned_to
             await conn.execute(
                 "UPDATE clients SET assigned_to = $1, updated_at = NOW() WHERE id = $2",
                 lead["email"],
                 state["client_id"],
             )
             logger.info(
-                f"✅ Assigned client #{state['client_id']} to {lead['email']} ({lead['active_practices']} active practices)"
+                f"✅ Assigned client #{state['client_id']} to {lead['email']} "
+                f"(dept={lead['department']}, workload={lead['active_practices']})"
             )
         else:
-            # Fallback: round-robin by workload (no specialty matching)
+            # Fallback: any assignable team member with least workload
             lead = await conn.fetchrow(
-                """
-                SELECT tm.email, tm.full_name, COUNT(p.id) as active_practices
+                f"""
+                SELECT tm.email, tm.full_name, tm.department,
+                       COUNT(p.id) as active_practices
                 FROM team_members tm
                 LEFT JOIN practices p ON p.assigned_to = tm.email
-                WHERE tm.active = true AND tm.role IN ('agent', 'manager')
-                GROUP BY tm.email, tm.full_name
+                    AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                WHERE tm.active = true
+                  AND tm.role IN ({role_placeholders})
+                GROUP BY tm.email, tm.full_name, tm.department
                 ORDER BY COUNT(p.id) ASC, RANDOM()
                 LIMIT 1
-                """
+                """,
+                *role_list,
             )
             if lead:
                 state["assigned_lead"] = lead["email"]
                 state["assigned_lead_name"] = lead["full_name"]
                 state["assignment_reason"] = (
-                    f"Round-robin fallback (no specialty match), Workload: {lead['active_practices']}"
+                    f"Round-robin (no dept match for {practice_type_code}), "
+                    f"Dept: {lead['department']}, Workload: {lead['active_practices']}"
                 )
                 await conn.execute(
                     "UPDATE clients SET assigned_to = $1, updated_at = NOW() WHERE id = $2",
@@ -237,7 +270,8 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                     state["client_id"],
                 )
                 logger.info(
-                    f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']}"
+                    f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']} "
+                    f"(dept={lead['department']})"
                 )
             else:
                 state["errors"].append("No active team members available for assignment")

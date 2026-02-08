@@ -74,6 +74,58 @@ class WhatsAppWebhook(BaseModel):
     entry: list[WhatsAppEntry]
 
 
+async def notify_zero_conversation_log(
+    phone: str,
+    sender_name: str | None,
+    client_message: str,
+    bot_response: str,
+    language: str | None = None,
+):
+    """
+    Log EVERY bot conversation to Zero via Telegram.
+    
+    Args:
+        phone: Client phone
+        sender_name: Client name
+        client_message: What the client asked
+        bot_response: What Zan replied
+        language: Detected language
+    """
+    if not settings.admin_telegram_chat_id:
+        return
+    
+    display_name = sender_name or "Unknown"
+    lang_flag = {"it": "🇮🇹", "en": "🇬🇧", "de": "🇩🇪", "id": "🇮🇩"}.get(language or "?", "🌐")
+    
+    # Keep it short for Zero
+    client_msg_preview = client_message[:200] + ("..." if len(client_message) > 200 else "")
+    bot_response_preview = bot_response[:300] + ("..." if len(bot_response) > 300 else "")
+    
+    log_text = f"""💬 **WhatsApp Bot Conversation Log**
+
+**Cliente:** {display_name} (+{phone}) {lang_flag}
+
+**Domanda:**
+_{client_msg_preview}_
+
+**Risposta Zan:**
+_{bot_response_preview}_
+
+---
+_Log automatico - ogni conversazione viene tracciata_
+"""
+    
+    try:
+        await telegram_bot.send_message(
+            chat_id=settings.admin_telegram_chat_id,
+            text=log_text,
+            parse_mode="Markdown",
+            disable_notification=True,  # Silent notification
+        )
+    except Exception as e:
+        logger.error(f"Failed to send conversation log to Zero: {e}")
+
+
 async def notify_human_telegram(
     phone: str,
     message_text: str,
@@ -329,6 +381,15 @@ async def process_whatsapp_message(
                 )
                 if i < len(chunks) - 1:
                     await asyncio.sleep(0.5)
+
+            # Log EVERY conversation to Zero (silent notification)
+            await notify_zero_conversation_log(
+                phone=phone,
+                sender_name=sender_name,
+                client_message=message_text,
+                bot_response=response_text,
+                language=ctx.get("detected_language"),
+            )
 
             # If AI flagged escalation, notify team with full context
             if needs_escalation:

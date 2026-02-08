@@ -139,8 +139,8 @@ async def test_check_duplicates_email_match(db_pool):
 
 
 @pytest.mark.asyncio
-async def test_assign_lead_specialty_match(db_pool):
-    """Test lead assignment with specialty matching"""
+async def test_assign_lead_department_match(db_pool):
+    """Test lead assignment with department matching (kitas → setup dept)"""
     state: LeadAssignmentState = {
         "client_id": 1,
         "client_data": {"practice_type_code": "kitas"},
@@ -155,12 +155,13 @@ async def test_assign_lead_specialty_match(db_pool):
         "errors": [],
     }
 
-    # Mock: team member with kitas specialty found
+    # Mock: team member in setup department found
     conn = await db_pool.acquire().__aenter__()
     conn.fetchrow = AsyncMock(
         return_value={
             "email": "specialist@balizero.com",
             "full_name": "KITAS Specialist",
+            "department": "setup",
             "active_practices": 3,
         }
     )
@@ -170,8 +171,8 @@ async def test_assign_lead_specialty_match(db_pool):
 
     assert result["assigned_lead"] == "specialist@balizero.com"
     assert result["assigned_lead_name"] == "KITAS Specialist"
-    assert "Specialty: kitas" in result["assignment_reason"]
-    logger.info("✅ Test passed: assign_lead_specialty_match")
+    assert "setup" in result["assignment_reason"].lower() or "Department" in result["assignment_reason"]
+    logger.info("✅ Test passed: assign_lead_department_match")
 
 
 @pytest.mark.asyncio
@@ -287,8 +288,9 @@ async def test_full_lead_assignment_workflow(db_pool, telegram_service, sample_c
             {
                 "email": "specialist@balizero.com",
                 "full_name": "KITAS Specialist",
+                "department": "setup",
                 "active_practices": 2,
-            },  # assign lead
+            },  # assign lead (department match)
             {
                 "telegram_chat_id": 987654321,
                 "full_name": "KITAS Specialist",
@@ -354,7 +356,7 @@ async def run_manual_tests():
     tests = [
         ("No Duplicates", test_check_duplicates_no_match(db_pool)),
         ("Email Duplicate Match", test_check_duplicates_email_match(db_pool)),
-        ("Specialty Matching", test_assign_lead_specialty_match(db_pool)),
+        ("Department Matching", test_assign_lead_department_match(db_pool)),
         ("Duplicate Assignment", test_assign_lead_duplicate_uses_existing(db_pool)),
         ("Telegram Success", test_send_telegram_notification_success(db_pool, telegram_service)),
         (
