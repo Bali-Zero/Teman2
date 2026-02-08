@@ -55,7 +55,6 @@ from .tool_executor import execute_tool, parse_tool_call
 logger = logging.getLogger(__name__)
 
 
-
 # NOTE: Deprecated local functions removed 2026-02-08 (System Audit).
 # get_critical_domain_type, is_critical_domain, is_valid_tool_call,
 # and calculate_evidence_score are now imported from reasoning_utils
@@ -1658,7 +1657,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
 def detect_team_query(query: str) -> tuple[bool, str, str]:
     """
     MOVED TO reasoning_utils.py - This is a backward compatibility wrapper.
-    
+
     Heuristically detect if a user query is asking about the company team.
 
     This helper is used by the AgenticRAGOrchestrator to optionally pre-route to the

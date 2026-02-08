@@ -2,15 +2,15 @@
 
 # Core services
 from .ai_crm_extractor import AICRMExtractor, get_extractor
+from .audit_trail import AuditAction, CRMAuditor
 from .auto_crm_service import AutoCRMService, get_auto_crm_service
+from .cache_manager import crm_cache, invalidate_client_cache, query_cache
 from .collaborator_service import CollaboratorProfile, CollaboratorService
+from .enhanced_crm_service import EnhancedCRMService, get_enhanced_crm_service
+from .query_optimizer import CRMQueryOptimizer
 
 # New optimized modules
 from .validators import ClientValidator, PracticeValidator, normalize_phone_e164
-from .cache_manager import crm_cache, query_cache, invalidate_client_cache
-from .query_optimizer import CRMQueryOptimizer
-from .audit_trail import CRMAuditor, AuditAction
-from .enhanced_crm_service import EnhancedCRMService, get_enhanced_crm_service
 
 __all__ = [
     # Legacy

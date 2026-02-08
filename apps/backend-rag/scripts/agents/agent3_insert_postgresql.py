@@ -20,8 +20,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "apps" / "backend-rag"))
 
 import asyncpg
-from backend.db.utils import db_retry
+
 from backend.app.core.config import settings as backend_settings
+from backend.db.utils import db_retry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,9 +52,7 @@ async def get_db_pool() -> asyncpg.Pool:
                     break
 
     if not database_url:
-        raise ValueError(
-            "DATABASE_URL not set. Set it as environment variable or in .env.local"
-        )
+        raise ValueError("DATABASE_URL not set. Set it as environment variable or in .env.local")
 
     logger.info(f"Connecting to database: {database_url[:40]}...")
     return await asyncpg.create_pool(database_url, min_size=2, max_size=10)
@@ -103,9 +102,7 @@ async def insert_nodes_batch(pool: asyncpg.Pool, nodes: list[dict]) -> int:
                     )
                     inserted += 1
                 except Exception as e:
-                    logger.warning(
-                        f"Error inserting node {node.get('entity_id', '?')}: {e}"
-                    )
+                    logger.warning(f"Error inserting node {node.get('entity_id', '?')}: {e}")
 
     return inserted
 
@@ -290,12 +287,11 @@ async def main():
     logger.info(f"Input file: {input_file}")
 
     # Load data
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         kg_entities = json.load(f)
 
     logger.info(
-        f"Loaded {len(kg_entities['nodes']):,} nodes and "
-        f"{len(kg_entities['edges']):,} edges"
+        f"Loaded {len(kg_entities['nodes']):,} nodes and {len(kg_entities['edges']):,} edges"
     )
 
     if args.dry_run:
@@ -311,8 +307,7 @@ async def main():
         # Before stats
         before = await verify_insertion(pool)
         logger.info(
-            f"Current state: {before['total_nodes']:,} nodes, "
-            f"{before['total_edges']:,} edges"
+            f"Current state: {before['total_nodes']:,} nodes, {before['total_edges']:,} edges"
         )
 
         # Insert
@@ -324,12 +319,8 @@ async def main():
         logger.info("\n" + "=" * 70)
         logger.info("FINAL VERIFICATION")
         logger.info("=" * 70)
-        logger.info(
-            f"Total nodes: {after['total_nodes']:,} (was {before['total_nodes']:,})"
-        )
-        logger.info(
-            f"Total edges: {after['total_edges']:,} (was {before['total_edges']:,})"
-        )
+        logger.info(f"Total nodes: {after['total_nodes']:,} (was {before['total_nodes']:,})")
+        logger.info(f"Total edges: {after['total_edges']:,} (was {before['total_edges']:,})")
         logger.info(f"KBLI nodes: {after['kbli_nodes']:,}")
         logger.info(f"Perizinan nodes: {after['perizinan_nodes']:,}")
         logger.info(f"Sektor nodes: {after['sektor_nodes']:,}")

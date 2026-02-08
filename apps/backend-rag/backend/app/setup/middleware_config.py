@@ -7,6 +7,7 @@ Handles registration of all middleware components for FastAPI application.
 import logging
 
 from fastapi import FastAPI
+
 from backend.middleware.activity_logging import ActivityLoggingMiddleware
 from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 from backend.middleware.hybrid_auth import HybridAuthMiddleware

@@ -68,19 +68,19 @@ class KnowledgeService:
         # Initialize collections pointing to Qdrant
         logger.info("🔄 Initializing Qdrant collection clients...")
         self.collections = {
-            "bali_zero_pricing": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="bali_zero_pricing"
+            "bali_zero_pricing_hybrid": QdrantClient(
+                qdrant_url=qdrant_url, collection_name="bali_zero_pricing_hybrid"
             ),
             "visa_oracle": QdrantClient(qdrant_url=qdrant_url, collection_name="visa_oracle"),
-            "kbli_eye": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_unified"),
+            "kbli_eye": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_2025_final"),
             "tax_genius": QdrantClient(qdrant_url=qdrant_url, collection_name="tax_genius"),
             "legal_architect": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
             "legal_unified": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
             "kb_indonesian": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
             "kbli_comprehensive": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="kbli_unified"
+                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
             ),
-            "kbli_unified": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_unified"),
+            "kbli_2025_final": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_2025_final"),
             "zantara_books": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
             "cultural_insights": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="knowledge_base"
@@ -168,7 +168,7 @@ class KnowledgeService:
                 collection_name = collection_override
                 logger.debug(f"Using override collection: {collection_name}")
             elif is_pricing_query:
-                collection_name = "bali_zero_pricing"
+                collection_name = "bali_zero_pricing_hybrid"
                 logger.debug("PRICING QUERY DETECTED → Using bali_zero_pricing collection")
             else:
                 collection_name = self.router.route(query)
@@ -217,13 +217,13 @@ class KnowledgeService:
                 )
                 score = 1 / (1 + distance)
 
-                if collection_name == "bali_zero_pricing":
+                if collection_name == "bali_zero_pricing_hybrid":
                     score = min(1.0, score + 0.15)  # Bias towards official pricing docs
 
                 metadata = (
                     raw_results["metadatas"][i] if i < len(raw_results.get("metadatas", [])) else {}
                 )
-                if collection_name == "bali_zero_pricing":
+                if collection_name == "bali_zero_pricing_hybrid":
                     metadata = {**metadata, "pricing_priority": "high"}
 
                 formatted_results.append(

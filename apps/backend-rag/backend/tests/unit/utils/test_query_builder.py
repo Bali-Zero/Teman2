@@ -7,10 +7,7 @@ Tests: eq, neq, ilike, gte, lte, gt, lt, is_null, is_not_null,
 Target: 95%+ coverage (utility code should be rock-solid)
 """
 
-import pytest
-
 from backend.utils.query_builder import QueryBuilder, QueryResult, paginate
-
 
 # ============================================================================
 # QueryBuilder TESTS
@@ -178,10 +175,7 @@ class TestQueryBuilder:
         """Methods return self for fluent chaining."""
         qb = QueryBuilder()
         result = (
-            qb.eq("status", "active")
-            .ilike("name", "john")
-            .gte("created_at", "2026-01-01")
-            .build()
+            qb.eq("status", "active").ilike("name", "john").gte("created_at", "2026-01-01").build()
         )
         assert "status = $1" in result.where_clause
         assert "name ILIKE $2" in result.where_clause

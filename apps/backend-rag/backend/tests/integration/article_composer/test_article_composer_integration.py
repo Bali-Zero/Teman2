@@ -61,7 +61,7 @@ class TestArticleComposerIntegration:
         """Test successful article composition"""
         # Setup mocks
         mock_get_cache.return_value = None  # Cache miss
-        
+
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_anthropic_response
         mock_get_client.return_value = mock_client
@@ -204,9 +204,7 @@ class TestArticleComposerIntegration:
 
         # Simulate rate limit error
         mock_claude_call.side_effect = anthropic.RateLimitError(
-            message="Rate limit exceeded",
-            response=MagicMock(),
-            body={}
+            message="Rate limit exceeded", response=MagicMock(), body={}
         )
 
         response = client.post(

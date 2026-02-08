@@ -28,7 +28,7 @@ class KGIncrementalBuilder:
     # High priority collections to process
     HIGH_PRIORITY_COLLECTIONS = [
         "legal_unified_hybrid",
-        "kbli_unified",
+        "kbli_2025_final",
         "tax_genius_hybrid",
         "visa_oracle",
         "balizero_news_history",  # news_history

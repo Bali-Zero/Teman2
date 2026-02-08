@@ -310,13 +310,9 @@ class TestVisionTool:
                 return_value={"answer": "test analysis"}
             )
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
-                result = await tool.execute(
-                    file_path="/tmp/test.pdf", query="test query"
-                )
+                result = await tool.execute(file_path="/tmp/test.pdf", query="test query")
                 assert "analysis result" in result.lower()
                 mock_vision_service.process_pdf.assert_called_once()
 
@@ -327,13 +323,9 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
-                result = await tool.execute(
-                    file_path="/etc/passwd", query="read this"
-                )
+                result = await tool.execute(file_path="/etc/passwd", query="read this")
                 assert "error" in result.lower()
                 assert "not allowed" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
@@ -345,13 +337,9 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
-                result = await tool.execute(
-                    file_path="/etc/shadow", query="extract content"
-                )
+                result = await tool.execute(file_path="/etc/shadow", query="extract content")
                 assert "error" in result.lower()
                 assert "not allowed" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
@@ -368,13 +356,9 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
-                result = await tool.execute(
-                    file_path="/tmp/../etc/passwd", query="read"
-                )
+                result = await tool.execute(file_path="/tmp/../etc/passwd", query="read")
                 assert "error" in result.lower()
                 assert "not allowed" in result.lower() or "traversal" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
@@ -386,13 +370,9 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/app/uploads"]
-                result = await tool.execute(
-                    file_path="/app/uploads/../../etc/passwd", query="read"
-                )
+                result = await tool.execute(file_path="/app/uploads/../../etc/passwd", query="read")
                 assert "error" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
 
@@ -403,13 +383,9 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp"]
-                result = await tool.execute(
-                    file_path="/home/user/.ssh/id_rsa", query="read"
-                )
+                result = await tool.execute(file_path="/home/user/.ssh/id_rsa", query="read")
                 assert "error" in result.lower()
                 assert "not allowed" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
@@ -420,17 +396,11 @@ class TestVisionTool:
         with patch.object(VisionTool, "__init__", lambda self: None):
             tool = VisionTool()
             tool.vision_service = mock_vision_service
-            mock_vision_service.process_pdf = AsyncMock(
-                side_effect=Exception("Vision error")
-            )
+            mock_vision_service.process_pdf = AsyncMock(side_effect=Exception("Vision error"))
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.get_vision_allowed_dirs = ["/tmp"]
-                result = await tool.execute(
-                    file_path="/tmp/test.pdf", query="test"
-                )
+                result = await tool.execute(file_path="/tmp/test.pdf", query="test")
                 assert "error" in result.lower()
 
     @pytest.mark.asyncio
@@ -440,14 +410,10 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
 
-            with patch(
-                "backend.app.core.config.settings"
-            ) as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 # Only /custom/dir is allowed
                 mock_settings.get_vision_allowed_dirs = ["/custom/dir"]
-                result = await tool.execute(
-                    file_path="/tmp/test.pdf", query="test"
-                )
+                result = await tool.execute(file_path="/tmp/test.pdf", query="test")
                 # /tmp should be blocked because only /custom/dir is allowed
                 assert "error" in result.lower()
                 assert "not allowed" in result.lower()

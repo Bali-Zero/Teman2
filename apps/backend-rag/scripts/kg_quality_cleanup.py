@@ -51,11 +51,37 @@ MIN_NAME_LENGTH = 4
 
 # Noise terms to remove
 NOISE_TERMS = {
-    "dan", "atau", "yang", "dari", "untuk", "dengan", "dalam", "pada",
-    "ini", "itu", "tersebut", "bahwa", "oleh", "ke", "di", "tidak",
-    "dak", "dau", "dbh", "apbn", "apbd",
-    "the", "and", "for", "with", "from",
-    "tahun", "bulan", "hari", "writ", "film",
+    "dan",
+    "atau",
+    "yang",
+    "dari",
+    "untuk",
+    "dengan",
+    "dalam",
+    "pada",
+    "ini",
+    "itu",
+    "tersebut",
+    "bahwa",
+    "oleh",
+    "ke",
+    "di",
+    "tidak",
+    "dak",
+    "dau",
+    "dbh",
+    "apbn",
+    "apbd",
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "tahun",
+    "bulan",
+    "hari",
+    "writ",
+    "film",
 }
 
 # Patterns for noise entities
@@ -78,14 +104,19 @@ TYPE_CORRECTIONS = {
 
 # Specific entity types that need number/year validation
 REGULATION_TYPES = {
-    "undang_undang", "peraturan_pemerintah", "perpres",
-    "permen", "perda", "surat_edaran"
+    "undang_undang",
+    "peraturan_pemerintah",
+    "perpres",
+    "permen",
+    "perda",
+    "surat_edaran",
 }
 
 
 @dataclass
 class CleanupStats:
     """Cleanup statistics"""
+
     total_nodes: int = 0
     nodes_deleted: int = 0
     nodes_corrected: int = 0
@@ -166,9 +197,7 @@ async def find_duplicates(
     # Group by type
     by_type: dict[str, list[tuple[str, str]]] = {}
     for row in rows:
-        by_type.setdefault(row["entity_type"], []).append(
-            (row["entity_id"], row["name"])
-        )
+        by_type.setdefault(row["entity_type"], []).append((row["entity_id"], row["name"]))
 
     duplicates = []
     for entity_type, entities in by_type.items():
@@ -183,7 +212,7 @@ async def find_duplicates(
             if id1 in used:
                 continue
 
-            for j, (id2, name2) in enumerate(entities[i+1:], start=i+1):
+            for j, (id2, name2) in enumerate(entities[i + 1 :], start=i + 1):
                 if id2 in used:
                     continue
 
@@ -252,7 +281,9 @@ async def run_cleanup(
             for row in rows:
                 corrected = get_corrected_type(row["name"], row["entity_type"])
                 if corrected:
-                    type_fixes.append((row["entity_id"], row["name"], row["entity_type"], corrected))
+                    type_fixes.append(
+                        (row["entity_id"], row["name"], row["entity_type"], corrected)
+                    )
 
             logger.info(f"Found {len(type_fixes)} entity type corrections")
 
@@ -260,7 +291,8 @@ async def run_cleanup(
                 for eid, name, old_type, new_type in type_fixes:
                     await conn.execute(
                         "UPDATE kg_nodes SET entity_type = $1 WHERE entity_id = $2",
-                        new_type, eid,
+                        new_type,
+                        eid,
                     )
                     stats.nodes_corrected += 1
                 logger.info(f"Corrected {stats.nodes_corrected} entity types")
@@ -278,11 +310,13 @@ async def run_cleanup(
                         # Update edges to point to canonical
                         await conn.execute(
                             "UPDATE kg_edges SET source_entity_id = $1 WHERE source_entity_id = $2",
-                            canonical_id, dup_id,
+                            canonical_id,
+                            dup_id,
                         )
                         await conn.execute(
                             "UPDATE kg_edges SET target_entity_id = $1 WHERE target_entity_id = $2",
-                            canonical_id, dup_id,
+                            canonical_id,
+                            dup_id,
                         )
                         # Delete duplicate node
                         await conn.execute(
@@ -297,7 +331,8 @@ async def run_cleanup(
 
             # Step 4: Remove orphan nodes (optional)
             if remove_orphans:
-                orphans = await conn.fetch("""
+                orphans = await conn.fetch(
+                    """
                     SELECT n.entity_id, n.name, n.entity_type
                     FROM kg_nodes n
                     WHERE NOT EXISTS (
@@ -305,7 +340,9 @@ async def run_cleanup(
                         WHERE e.source_entity_id = n.entity_id
                            OR e.target_entity_id = n.entity_id
                     )
-                """ + (f" AND n.source_collection = '{collection}'" if collection else ""))
+                """
+                    + (f" AND n.source_collection = '{collection}'" if collection else "")
+                )
 
                 logger.info(f"Found {len(orphans)} orphan nodes")
 
@@ -321,16 +358,22 @@ async def run_cleanup(
                     # Log sample orphans by type
                     orphan_types: dict[str, int] = {}
                     for orphan in orphans:
-                        orphan_types[orphan["entity_type"]] = orphan_types.get(orphan["entity_type"], 0) + 1
+                        orphan_types[orphan["entity_type"]] = (
+                            orphan_types.get(orphan["entity_type"], 0) + 1
+                        )
                     for etype, count in sorted(orphan_types.items(), key=lambda x: -x[1])[:10]:
                         logger.info(f"  [ORPHAN] {etype}: {count}")
 
             # Final stats
             if not dry_run:
-                final_nodes = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes" +
-                    (f" WHERE source_collection = '{collection}'" if collection else ""))
-                final_edges = await conn.fetchval("SELECT COUNT(*) FROM kg_edges" +
-                    (f" WHERE source_collection = '{collection}'" if collection else ""))
+                final_nodes = await conn.fetchval(
+                    "SELECT COUNT(*) FROM kg_nodes"
+                    + (f" WHERE source_collection = '{collection}'" if collection else "")
+                )
+                final_edges = await conn.fetchval(
+                    "SELECT COUNT(*) FROM kg_edges"
+                    + (f" WHERE source_collection = '{collection}'" if collection else "")
+                )
                 logger.info(f"\nFinal counts: {final_nodes} nodes, {final_edges} edges")
 
     finally:
@@ -387,8 +430,12 @@ async def main():
     logger.info("CLEANUP SUMMARY")
     logger.info("=" * 60)
     logger.info(f"Total nodes analyzed: {stats.total_nodes}")
-    logger.info(f"Noise entities {'to delete' if args.dry_run else 'deleted'}: {stats.nodes_deleted}")
-    logger.info(f"Entity types {'to correct' if args.dry_run else 'corrected'}: {stats.nodes_corrected}")
+    logger.info(
+        f"Noise entities {'to delete' if args.dry_run else 'deleted'}: {stats.nodes_deleted}"
+    )
+    logger.info(
+        f"Entity types {'to correct' if args.dry_run else 'corrected'}: {stats.nodes_corrected}"
+    )
     logger.info(f"Duplicates {'to merge' if args.dry_run else 'merged'}: {stats.duplicates_merged}")
     logger.info(f"Orphans {'to remove' if args.dry_run else 'removed'}: {stats.orphans_removed}")
 

@@ -10,7 +10,6 @@ import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 from hashlib import md5
 
 logger = logging.getLogger(__name__)
@@ -42,23 +41,23 @@ except ImportError:
 class EmbeddingCache:
     """
     LRU Cache for embeddings to avoid repeated API calls.
-    
+
     Caches embeddings based on text content hash.
     Thread-safe for async usage.
     """
-    
+
     def __init__(self, max_size: int = 1000):
         self._cache = {}
         self._max_size = max_size
         self._hits = 0
         self._misses = 0
         self._lock = asyncio.Lock()
-    
+
     def _get_key(self, texts: list[str]) -> str:
         """Generate cache key from texts using MD5 hash."""
         content = json.dumps(texts, sort_keys=True)
         return md5(content.encode()).hexdigest()
-    
+
     async def get(self, texts: list[str]) -> list[list[float]] | None:
         """Get cached embeddings if available."""
         key = self._get_key(texts)
@@ -68,7 +67,7 @@ class EmbeddingCache:
                 return self._cache[key]
             self._misses += 1
             return None
-    
+
     async def set(self, texts: list[str], embeddings: list[list[float]]):
         """Store embeddings in cache."""
         async with self._lock:
@@ -78,7 +77,7 @@ class EmbeddingCache:
                 del self._cache[oldest]
             key = self._get_key(texts)
             self._cache[key] = embeddings
-    
+
     def get_stats(self) -> dict:
         """Get cache statistics."""
         total = self._hits + self._misses
@@ -89,7 +88,7 @@ class EmbeddingCache:
             "size": len(self._cache),
             "max_size": self._max_size,
         }
-    
+
     async def clear(self):
         """Clear all cached embeddings."""
         async with self._lock:
@@ -223,7 +222,7 @@ class EmbeddingsGenerator:
     async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for a list of texts (ASYNC).
-        
+
         Uses LRU caching to avoid redundant API calls for repeated queries.
 
         Args:
@@ -269,7 +268,7 @@ class EmbeddingsGenerator:
 
                 # Store in cache for future use
                 await _global_embedding_cache.set(texts, result)
-                
+
                 latency_ms = (time.perf_counter() - start_time) * 1000
                 set_span_attribute("latency_ms", round(latency_ms, 2))
                 set_span_attribute("embeddings_generated", len(result))
@@ -281,11 +280,11 @@ class EmbeddingsGenerator:
                 logger.error(f"Error generating embeddings: {e}")
                 set_span_status("error", str(e))
                 raise
-    
+
     def get_cache_stats(self) -> dict:
         """Get embedding cache statistics."""
         return _global_embedding_cache.get_stats()
-    
+
     async def clear_cache(self):
         """Clear the embedding cache."""
         await _global_embedding_cache.clear()

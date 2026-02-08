@@ -343,7 +343,9 @@ KG_RELATIONSHIPS = [
 class KemnakerCircularIngestion:
     """Handles Kemnaker Circular ingestion with Knowledge Graph extraction."""
 
-    def __init__(self, dry_run: bool = False, skip_kg: bool = False, verbose: bool = False):
+    def __init__(
+        self, dry_run: bool = False, skip_kg: bool = False, verbose: bool = False
+    ):
         self.dry_run = dry_run
         self.skip_kg = skip_kg
         self.verbose = verbose
@@ -385,7 +387,9 @@ class KemnakerCircularIngestion:
             # Check if collection exists
             info = self._qdrant_request("GET", f"/collections/{COLLECTION_NAME}")
             points_count = info.get("result", {}).get("points_count", 0)
-            logger.info(f"Collection {COLLECTION_NAME} exists with {points_count} points")
+            logger.info(
+                f"Collection {COLLECTION_NAME} exists with {points_count} points"
+            )
             return True
         except httpx.HTTPStatusError as e:
             if e.response.status_code != 404:
@@ -417,7 +421,9 @@ class KemnakerCircularIngestion:
             "replication_factor": 1,
         }
 
-        self._qdrant_request("PUT", f"/collections/{COLLECTION_NAME}", collection_config)
+        self._qdrant_request(
+            "PUT", f"/collections/{COLLECTION_NAME}", collection_config
+        )
         logger.info(f"Collection {COLLECTION_NAME} created successfully")
         return True
 
@@ -440,8 +446,9 @@ class KemnakerCircularIngestion:
         }
 
         # Chunk 0: Main Rule (Kesamaan Sponsor / One Sponsor Policy)
-        chunks.append({
-            "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - One Sponsor Policy]
+        chunks.append(
+            {
+                "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - One Sponsor Policy]
 
 # {circular["number"]} - {circular["title"]}
 
@@ -449,61 +456,68 @@ class KemnakerCircularIngestion:
 
 {circular["sections"]["main_rule"]}
 """,
-            "metadata": {
-                **base_metadata,
-                "chunk_type": "main_rule",
-                "chunk_index": 0,
-                "topic": "Kesamaan Sponsor (One Sponsor Policy)",
-            },
-        })
+                "metadata": {
+                    **base_metadata,
+                    "chunk_type": "main_rule",
+                    "chunk_index": 0,
+                    "topic": "Kesamaan Sponsor (One Sponsor Policy)",
+                },
+            }
+        )
 
         # Chunk 1: Exception (Partnership/Subsidiary)
-        chunks.append({
-            "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Pengecualian]
+        chunks.append(
+            {
+                "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Pengecualian]
 
 # {circular["number"]} - Pengecualian Kesamaan Sponsor
 
 {circular["sections"]["exception"]}
 """,
-            "metadata": {
-                **base_metadata,
-                "chunk_type": "exception",
-                "chunk_index": 1,
-                "topic": "Pengecualian (Partnership/Subsidiary)",
-            },
-        })
+                "metadata": {
+                    **base_metadata,
+                    "chunk_type": "exception",
+                    "chunk_index": 1,
+                    "topic": "Pengecualian (Partnership/Subsidiary)",
+                },
+            }
+        )
 
         # Chunk 2: Alternative (Offshore Scheme)
-        chunks.append({
-            "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Solusi Alternatif]
+        chunks.append(
+            {
+                "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Solusi Alternatif]
 
 # {circular["number"]} - Solusi Offshore Scheme
 
 {circular["sections"]["alternative"]}
 """,
-            "metadata": {
-                **base_metadata,
-                "chunk_type": "alternative",
-                "chunk_index": 2,
-                "topic": "Solusi Offshore Scheme",
-            },
-        })
+                "metadata": {
+                    **base_metadata,
+                    "chunk_type": "alternative",
+                    "chunk_index": 2,
+                    "topic": "Solusi Offshore Scheme",
+                },
+            }
+        )
 
         # Chunk 3: Compliance (BPJS/WLKP/NIB Verification)
-        chunks.append({
-            "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Verifikasi Compliance]
+        chunks.append(
+            {
+                "content": f"""[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Verifikasi Compliance]
 
 # {circular["number"]} - Verifikasi BPJS, WLKP, NIB
 
 {circular["sections"]["compliance"]}
 """,
-            "metadata": {
-                **base_metadata,
-                "chunk_type": "compliance",
-                "chunk_index": 3,
-                "topic": "BPJS/WLKP/NIB Verification",
-            },
-        })
+                "metadata": {
+                    **base_metadata,
+                    "chunk_type": "compliance",
+                    "chunk_index": 3,
+                    "topic": "BPJS/WLKP/NIB Verification",
+                },
+            }
+        )
 
         self.stats["chunks_created"] = len(chunks)
         logger.info(f"Created {len(chunks)} chunks")
@@ -517,7 +531,6 @@ class KemnakerCircularIngestion:
 
         try:
             import openai
-            from qdrant_client.models import models as qdrant_models
 
             openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -548,16 +561,18 @@ class KemnakerCircularIngestion:
                 # But for hybrid search, we need to index it properly
                 text_for_bm25 = chunk["content"]
 
-                points.append({
-                    "id": point_id,
-                    "vector": {
-                        "dense": embedding,
-                    },
-                    "payload": {
-                        "text": chunk["content"],
-                        **chunk["metadata"],
-                    },
-                })
+                points.append(
+                    {
+                        "id": point_id,
+                        "vector": {
+                            "dense": embedding,
+                        },
+                        "payload": {
+                            "text": chunk["content"],
+                            **chunk["metadata"],
+                        },
+                    }
+                )
 
             # Upsert to Qdrant
             logger.info(f"Upserting {len(points)} points to Qdrant...")
@@ -649,13 +664,17 @@ class KemnakerCircularIngestion:
                     "peraturan_pemerintah",
                     "PP No. 28 Tahun 2025",
                     "Peraturan Pemerintah tentang Peraturan Pelaksana UU Cipta Kerja (Ketenagakerjaan)",
-                    json.dumps({"number": "28", "year": "2025", "topic": "Ketenagakerjaan"}),
+                    json.dumps(
+                        {"number": "28", "year": "2025", "topic": "Ketenagakerjaan"}
+                    ),
                     0.9,
                     "legal_unified_hybrid",
                 )
 
                 # Insert relationships
-                logger.info(f"Inserting {len(KG_RELATIONSHIPS)} relationships to kg_edges...")
+                logger.info(
+                    f"Inserting {len(KG_RELATIONSHIPS)} relationships to kg_edges..."
+                )
                 for rel in KG_RELATIONSHIPS:
                     await conn.execute(
                         """
@@ -702,7 +721,7 @@ class KemnakerCircularIngestion:
         """Run the full ingestion pipeline."""
         logger.info("=" * 60)
         logger.info("KEMNAKER CIRCULAR INGESTION")
-        logger.info(f"SE No. 3/836/PK.04/I/2026 - Alih Status TKA")
+        logger.info("SE No. 3/836/PK.04/I/2026 - Alih Status TKA")
         logger.info("=" * 60)
         logger.info(f"Dry run: {self.dry_run}")
         logger.info(f"Skip KG: {self.skip_kg}")

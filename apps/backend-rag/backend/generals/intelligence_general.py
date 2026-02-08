@@ -55,7 +55,7 @@ class IntelligenceGeneral:
 
         # Load onboarding context — this is our constitution
         log_onboarding_compliance(self.general_name)
-        
+
         # Initialize Gemini client
         self.genai_client: GenAIClient | None = None
         if GENAI_AVAILABLE and get_genai_client:
@@ -67,7 +67,9 @@ class IntelligenceGeneral:
                 else:
                     logger.info("✅ Intelligence General: Gemini client initialized")
             except Exception as e:
-                logger.error(f"❌ Intelligence General: Failed to initialize Gemini: {e}", exc_info=True)
+                logger.error(
+                    f"❌ Intelligence General: Failed to initialize Gemini: {e}", exc_info=True
+                )
                 self.genai_client = None
         else:
             logger.warning("⚠️ Intelligence General: Gemini SDK not available")
@@ -158,7 +160,9 @@ class IntelligenceGeneral:
                     )
                     return None
 
-                await self._log_activity("memory_read", f"Read memory key: {key}", metadata={"key": key})
+                await self._log_activity(
+                    "memory_read", f"Read memory key: {key}", metadata={"key": key}
+                )
                 return dict(row["value"])
 
         except Exception as e:
@@ -198,7 +202,9 @@ class IntelligenceGeneral:
                 )
 
                 await self._log_activity(
-                    "memory_written", f"Wrote memory key: {key}", metadata={"key": key, "expires_at": str(expires_at)}
+                    "memory_written",
+                    f"Wrote memory key: {key}",
+                    metadata={"key": key, "expires_at": str(expires_at)},
                 )
 
         except Exception as e:
@@ -323,7 +329,9 @@ class IntelligenceGeneral:
             query = payload.get("query") or description or title
             context = payload.get("context", "")
             memory_keys = payload.get("memory_keys", [])  # Keys to read from shared memory
-            save_to_memory = payload.get("save_to_memory", False)  # Whether to save result to memory
+            save_to_memory = payload.get(
+                "save_to_memory", False
+            )  # Whether to save result to memory
             memory_key = payload.get("memory_key")  # Key to save result under
             max_tokens = payload.get("max_tokens", 8192)
             temperature = payload.get("temperature", 0.7)
@@ -352,8 +360,10 @@ class IntelligenceGeneral:
 
             # Use Gemini 3 Pro (or closest equivalent)
             # Using PRO_MODEL which is gemini-2.0-flash-001 or gemini-2.0-pro-exp if available
-            model_name = payload.get("model") or "gemini-2.0-flash-001"  # Use Flash as Pro equivalent
-            
+            model_name = (
+                payload.get("model") or "gemini-2.0-flash-001"
+            )  # Use Flash as Pro equivalent
+
             logger.info(f"🧠 Intelligence General: Using model {model_name} for task {task_id}")
 
             # Generate analysis
@@ -375,7 +385,10 @@ class IntelligenceGeneral:
                 # Try to extract structured insights
                 lines = analysis_text.split("\n")
                 for line in lines:
-                    if any(keyword in line.lower() for keyword in ["insight", "finding", "conclusion", "key point"]):
+                    if any(
+                        keyword in line.lower()
+                        for keyword in ["insight", "finding", "conclusion", "key point"]
+                    ):
                         insights.append(line.strip())
 
             # Extract sources if mentioned
@@ -383,7 +396,10 @@ class IntelligenceGeneral:
             if "source" in analysis_text.lower() or "reference" in analysis_text.lower():
                 lines = analysis_text.split("\n")
                 for line in lines:
-                    if any(keyword in line.lower() for keyword in ["source:", "reference:", "http", "www."]):
+                    if any(
+                        keyword in line.lower()
+                        for keyword in ["source:", "reference:", "http", "www."]
+                    ):
                         sources.append(line.strip())
 
             result["status"] = "completed"
@@ -398,7 +414,10 @@ class IntelligenceGeneral:
                 expires_at = None
                 if payload.get("memory_ttl_seconds"):
                     from datetime import timedelta
-                    expires_at = datetime.now(timezone.utc) + timedelta(seconds=payload["memory_ttl_seconds"])
+
+                    expires_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=payload["memory_ttl_seconds"]
+                    )
 
                 await self._write_memory(
                     memory_key,
@@ -416,7 +435,9 @@ class IntelligenceGeneral:
         except Exception as e:
             error_msg = str(e)
             result["error"] = error_msg
-            logger.error(f"❌ Intelligence General: Task {task_id} failed: {error_msg}", exc_info=True)
+            logger.error(
+                f"❌ Intelligence General: Task {task_id} failed: {error_msg}", exc_info=True
+            )
 
         finally:
             execution_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -465,7 +486,9 @@ class IntelligenceGeneral:
             )
 
         except Exception as e:
-            logger.error(f"❌ Intelligence General: Failed to update task result: {e}", exc_info=True)
+            logger.error(
+                f"❌ Intelligence General: Failed to update task result: {e}", exc_info=True
+            )
 
     async def run_loop(self) -> None:
         """Main polling loop - runs indefinitely."""

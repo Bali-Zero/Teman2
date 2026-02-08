@@ -2,8 +2,8 @@
 """Check team_members table schema."""
 
 import asyncio
-import os
 import logging
+import os
 
 import asyncpg
 

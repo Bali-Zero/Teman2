@@ -9,12 +9,13 @@ import time
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
+from asyncpg import Pool
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, Depends
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.core.intel_approvers import get_required_votes, get_team_config
-from backend.app.dependencies import get_database, get_orchestrator
+from backend.app.dependencies import get_current_user, get_database, get_orchestrator
 from backend.app.metrics import (
     intel_items_approved,
     intel_items_rejected,
@@ -35,6 +36,222 @@ router = APIRouter(
     prefix="/api/telegram",
     tags=["telegram"],
 )
+
+
+@router.get("/conversations")
+async def get_telegram_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get Telegram conversations from Zan's sessions.
+    Format compatible with frontend TelegramConversation type.
+    """
+    try:
+        async with db.acquire() as conn:
+            # Query conversations table where session_id starts with 'telegram_session_'
+            # or user_id starts with 'telegram_' or 'unified_session_' (if mapped)
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    c.id,
+                    c.session_id,
+                    c.user_id,
+                    c.messages,
+                    c.metadata,
+                    c.created_at,
+                    c.created_at as updated_at,
+                    CASE 
+                        WHEN c.user_id LIKE 'telegram_%' THEN REGEXP_REPLACE(c.user_id, '^telegram_', '')
+                        ELSE (c.metadata->>'chat_id')
+                    END as chat_id,
+                    NULL as client_id,
+                    NULL as client_name
+                FROM conversations c
+                WHERE c.session_id LIKE 'telegram_session_%' OR c.user_id LIKE 'telegram_%'
+                ORDER BY c.created_at DESC
+                LIMIT $1 OFFSET $2
+                """,
+                limit,
+                offset,
+            )
+
+            conversations = []
+            for row in rows:
+                messages_raw = row["messages"]
+                messages = []
+                if isinstance(messages_raw, str):
+                    try:
+                        import json
+                        messages = json.loads(messages_raw)
+                    except:
+                        messages = []
+                else:
+                    messages = messages_raw or []
+
+                last_message = ""
+                unread_count = 0
+
+                if messages:
+                    last_msg = messages[-1] if messages else {}
+                    last_message = last_msg.get("content", "")[:200]
+
+                    # Simple unread logic: count user messages after last assistant message
+                    last_assistant_idx = -1
+                    for i in range(len(messages) - 1, -1, -1):
+                        if messages[i].get("role") == "assistant":
+                            last_assistant_idx = i
+                            break
+
+                    if last_assistant_idx >= 0:
+                        unread_count = sum(
+                            1
+                            for msg in messages[last_assistant_idx + 1 :]
+                            if msg.get("role") == "user"
+                        )
+                    else:
+                        unread_count = len(messages)
+
+                metadata = row["metadata"] or {}
+                client_name = (
+                    row["client_name"]
+                    or metadata.get("client_name")
+                    or metadata.get("sender_name")
+                    or f"Telegram User {row['chat_id']}"
+                )
+
+                conversations.append(
+                    {
+                        "id": row["id"],
+                        "chat_id": row["chat_id"],
+                        "username": metadata.get("username"),
+                        "client_id": row["client_id"],
+                        "client_name": client_name,
+                        "last_message": last_message,
+                        "last_message_date": row["updated_at"].isoformat()
+                        if row["updated_at"]
+                        else row["created_at"].isoformat(),
+                        "unread_count": unread_count,
+                        "interaction_count": len(messages),
+                    }
+                )
+
+            return conversations
+    except Exception as e:
+        logger.error(f"Failed to fetch Telegram conversations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch conversations")
+
+
+@router.get("/messages/{chat_id}")
+async def get_telegram_messages(
+    chat_id: str,
+    limit: int = 100,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get messages for a specific Telegram chat_id.
+    """
+    try:
+        user_id = f"telegram_{chat_id}"
+        session_id = f"telegram_session_{chat_id}"
+
+        async with db.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, messages, metadata, created_at, created_at as updated_at
+                FROM conversations
+                WHERE user_id = $1 OR session_id = $2
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                user_id,
+                session_id,
+            )
+
+            if not row:
+                return []
+
+            messages = row["messages"] or []
+            result = []
+            for i, msg in enumerate(messages[-limit:]):
+                role = msg.get("role", "user")
+                result.append(
+                    {
+                        "id": i,
+                        "interaction_id": row["id"],
+                        "chat_id": chat_id,
+                        "message_text": msg.get("content", ""),
+                        "direction": "inbound" if role == "user" else "outbound",
+                        "timestamp": row["updated_at"].isoformat()
+                        if row["updated_at"]
+                        else row["created_at"].isoformat(),
+                        "status": "read",
+                    }
+                )
+            return result
+    except Exception as e:
+        logger.error(f"Failed to fetch Telegram messages for {chat_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch messages")
+
+
+@router.post("/send")
+async def send_telegram_message(
+    request: Request,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Send Telegram message from omnichannel dashboard.
+    Body: { "chat_id": "12345", "text": "message", "reply_to": "optional_msg_id" }
+    """
+    try:
+        body = await request.json()
+        chat_id = body.get("chat_id")
+        text = body.get("text")
+        reply_to = body.get("reply_to")
+
+        if not chat_id or not text:
+            raise HTTPException(status_code=400, detail="Missing chat_id or text")
+
+        # Send via Telegram bot service
+        await telegram_bot.send_message(
+            chat_id=int(chat_id), text=text, reply_to_message_id=int(reply_to) if reply_to else None
+        )
+
+        # Save to conversation history
+        user_id = f"telegram_{chat_id}"
+        session_id = f"telegram_session_{chat_id}"
+
+        async with db.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT id, messages FROM conversations WHERE session_id = $1", session_id
+            )
+
+            new_msg = {"role": "assistant", "content": text}
+
+            if existing:
+                messages = existing["messages"] or []
+                messages.append(new_msg)
+                await conn.execute(
+                    "UPDATE conversations SET messages = $1::jsonb WHERE id = $2",
+                    json.dumps(messages),
+                    existing["id"],
+                )
+            else:
+                await conn.execute(
+                    "INSERT INTO conversations (user_id, session_id, messages, created_at) VALUES ($1, $2, $3::jsonb, NOW())",
+                    user_id,
+                    session_id,
+                    json.dumps([new_msg]),
+                )
+
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to send Telegram message: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send message")
 
 
 class TelegramUpdate(BaseModel):

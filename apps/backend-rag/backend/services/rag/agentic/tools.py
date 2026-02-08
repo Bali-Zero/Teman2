@@ -33,10 +33,11 @@ logger = logging.getLogger(__name__)
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
     "legal_unified_hybrid",
-    "kbli_unified",
+    "kbli_2025_final",
     "tax_genius_hybrid",  # Migrated to hybrid format Dec 2025
-    "bali_zero_pricing",  # Uses integer IDs, kept as-is
+    "bali_zero_pricing_hybrid",
     "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
+    "immigration_circulars",  # Kemnaker/Imigrasi circulars
 ]
 
 
@@ -65,12 +66,14 @@ class VectorSearchTool(BaseTool):
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
             "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations\n"
-            "- kbli_unified: Business classification codes (KBLI), OSS, NIB\n"
+            "- kbli_2025_final: Business classification codes (KBLI), OSS, NIB\n"
             "- tax_genius_hybrid: Taxes, PPh, PPN, NPWP, fiscal matters\n"
-            "- bali_zero_pricing: Official Service Pricing & Costs\n"
-            "- training_conversations_hybrid: Procedures, practical examples\n\n"
+            "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
+            "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
+            "- immigration_circulars: Immigration policy updates, circulars, Kemnaker regulations\n\n"
             "Example: 'PT PMA requirements' → federated (legal + visa + tax)\n"
-            "Example: 'PPh 21 rates' → collection='tax_genius_hybrid'"
+            "Example: 'PPh 21 rates' → collection='tax_genius_hybrid'\n"
+            "Example: 'Quanto costa D12?' → collection='bali_zero_pricing_hybrid'"
         )
 
     @property

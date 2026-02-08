@@ -18,16 +18,16 @@ logger = logging.getLogger(__name__)
 def get_critical_domain_type(query: str) -> str:
     """
     Determine the type of critical domain for metrics.
-    
+
     Analyzes the query text to identify which business domain it relates to.
     Used for routing decisions and metrics tracking.
-    
+
     Args:
         query: The user's query string
-        
+
     Returns:
         Domain type: "visa", "legal", "pricing", "procedure", or "business_complex"
-        
+
     Examples:
         >>> get_critical_domain_type("How do I get a KITAS?")
         "visa"
@@ -37,20 +37,54 @@ def get_critical_domain_type(query: str) -> str:
     query_lower = query.lower()
 
     visa_keywords = {
-        "visa", "kitas", "kitap", "immigration", "imigrasi",
-        "stay permit", "residence permit", "b211", "e33", "e28", "d1", "d2",
+        "visa",
+        "kitas",
+        "kitap",
+        "immigration",
+        "imigrasi",
+        "stay permit",
+        "residence permit",
+        "b211",
+        "e33",
+        "e28",
+        "d1",
+        "d2",
     }
     legal_keywords = {
-        "legge", "law", "contract", "contratto", "compliance",
-        "regolamento", "regulation", "pasal", "ayat", "legal", "legale",
+        "legge",
+        "law",
+        "contract",
+        "contratto",
+        "compliance",
+        "regolamento",
+        "regulation",
+        "pasal",
+        "ayat",
+        "legal",
+        "legale",
     }
     pricing_keywords = {
-        "prezzo", "price", "costo", "cost", "tariffa", "fee", "fees",
-        "quanto costa", "how much", "harga", "biaya",
+        "prezzo",
+        "price",
+        "costo",
+        "cost",
+        "tariffa",
+        "fee",
+        "fees",
+        "quanto costa",
+        "how much",
+        "harga",
+        "biaya",
     }
     procedure_keywords = {
-        "documento", "document", "procedura", "procedure",
-        "requisito", "requirement", "documentazione", "documentation",
+        "documento",
+        "document",
+        "procedura",
+        "procedure",
+        "requisito",
+        "requirement",
+        "documentazione",
+        "documentation",
     }
 
     if any(kw in query_lower for kw in visa_keywords):
@@ -78,17 +112,51 @@ def is_critical_domain(query: str, intent_type: str) -> bool:
 
     critical_keywords = {
         # Visa/Immigration
-        "visa", "kitas", "kitap", "immigration", "imigrasi", "stay permit",
-        "residence permit", "b211", "e33", "e28", "d1", "d2",
+        "visa",
+        "kitas",
+        "kitap",
+        "immigration",
+        "imigrasi",
+        "stay permit",
+        "residence permit",
+        "b211",
+        "e33",
+        "e28",
+        "d1",
+        "d2",
         # Legal
-        "legge", "law", "contract", "contratto", "compliance", "regolamento",
-        "regulation", "pasal", "ayat", "legal", "legale",
+        "legge",
+        "law",
+        "contract",
+        "contratto",
+        "compliance",
+        "regolamento",
+        "regulation",
+        "pasal",
+        "ayat",
+        "legal",
+        "legale",
         # Pricing
-        "prezzo", "price", "costo", "cost", "tariffa", "fee", "fees",
-        "quanto costa", "how much", "harga", "biaya",
+        "prezzo",
+        "price",
+        "costo",
+        "cost",
+        "tariffa",
+        "fee",
+        "fees",
+        "quanto costa",
+        "how much",
+        "harga",
+        "biaya",
         # Critical procedures
-        "documento", "document", "procedura", "procedure", "requisito",
-        "requirement", "documentazione", "documentation",
+        "documento",
+        "document",
+        "procedura",
+        "procedure",
+        "requisito",
+        "requirement",
+        "documentazione",
+        "documentation",
     }
 
     return any(keyword in query_lower for keyword in critical_keywords)
@@ -97,7 +165,7 @@ def is_critical_domain(query: str, intent_type: str) -> bool:
 def is_valid_tool_call(tool_call: Any) -> bool:
     """
     Validate that a tool call has all required fields.
-    
+
     Prevents using partially parsed tool calls that could cause downstream errors.
     """
     if tool_call is None:
@@ -118,25 +186,25 @@ def calculate_evidence_score(
 ) -> float:
     """
     Calculate evidence score based on source quality and context relevance.
-    
+
     This score helps determine confidence in RAG responses and whether to
     proceed with answering or abstain due to insufficient evidence.
-    
+
     Scoring Formula:
         - Base score: 0.0
         - High-quality source bonus (+0.5): At least 1 source with score > 0.3
         - Multiple sources bonus (+0.2): More than 3 total sources
         - Context relevance bonus (+0.3): Context contains query keywords
         - Maximum score: 1.0
-    
+
     Args:
         sources: List of source dictionaries with 'score' field
         context_gathered: List of context strings from tool results
         query: Original user query string
-        
+
     Returns:
         Evidence score between 0.0 and 1.0
-        
+
     Note:
         A score >= 0.5 is generally considered sufficient for answering.
         A score < 0.5 may trigger ABSTAIN response for critical domains.
@@ -145,7 +213,8 @@ def calculate_evidence_score(
 
     if sources:
         high_quality_sources = [
-            s for s in sources
+            s
+            for s in sources
             if isinstance(s, dict)
             and s.get("score", 0.0) > EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD
         ]
@@ -163,8 +232,25 @@ def calculate_evidence_score(
     if context_gathered:
         query_lower = query.lower()
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
         }
         query_words = [w for w in query_lower.split() if len(w) > 3 and w not in stop_words]
         context_text = " ".join(context_gathered).lower()
@@ -178,7 +264,7 @@ def calculate_evidence_score(
 def detect_team_query(query: str) -> tuple[bool, str, str]:
     """
     Detect if query is asking about team members.
-    
+
     Returns:
         Tuple of (is_team_query, query_type, search_term)
     """
@@ -193,10 +279,20 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
 
     # 1) List-all team requests
     list_all_markers = (
-        "list all team", "list team", "team members", "membri del team",
-        "lista team", "elenco team", "tutti i membri", "quanti dipendenti",
-        "vostri dipendenti", f"i dipendenti {settings.COMPANY_NAME.lower()}",
-        "dipendenti del team", "tutto lo staff", "vostro staff", "il vostro personale",
+        "list all team",
+        "list team",
+        "team members",
+        "membri del team",
+        "lista team",
+        "elenco team",
+        "tutti i membri",
+        "quanti dipendenti",
+        "vostri dipendenti",
+        f"i dipendenti {settings.COMPANY_NAME.lower()}",
+        "dipendenti del team",
+        "tutto lo staff",
+        "vostro staff",
+        "il vostro personale",
     )
     if any(marker in ql for marker in list_all_markers):
         return True, "list_all", ""
@@ -208,11 +304,29 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
 
     # 3) Role/title lookup - ONLY with team context
     team_context_markers = (
-        "chi si occupa", "chi gestisce", "chi segue", "chi è il", "chi è la",
-        "who handles", "who manages", "who is the", "who is your", "your team",
-        "nel team", "del team", "in the team", "team member", "staff member",
-        "il vostro", "la vostra", "avete qualcuno", "c'è qualcuno",
-        "esperto di", "specialist", "manager", "responsabile",
+        "chi si occupa",
+        "chi gestisce",
+        "chi segue",
+        "chi è il",
+        "chi è la",
+        "who handles",
+        "who manages",
+        "who is the",
+        "who is your",
+        "your team",
+        "nel team",
+        "del team",
+        "in the team",
+        "team member",
+        "staff member",
+        "il vostro",
+        "la vostra",
+        "avete qualcuno",
+        "c'è qualcuno",
+        "esperto di",
+        "specialist",
+        "manager",
+        "responsabile",
     )
     has_team_context = any(marker in ql for marker in team_context_markers)
 
@@ -249,7 +363,9 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
         raw_term = (m.group("term") or "").strip()
         raw_term = re.sub(
             r"^(il|lo|la|i|gli|le|the|a|an|un|uno|una)\s+",
-            "", raw_term, flags=re.IGNORECASE,
+            "",
+            raw_term,
+            flags=re.IGNORECASE,
         ).strip()
         raw_term = raw_term.strip(chr(34) + chr(39) + chr(8220) + chr(8221))
         raw_term = " ".join(raw_term.split()[:3])

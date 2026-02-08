@@ -73,16 +73,19 @@ async def run_enhancement(
         total_domain = 0
 
         for coll in collections:
-            logger.info(f"\n{'='*60}")
+            logger.info(f"\n{'=' * 60}")
             logger.info(f"Processing: {coll}")
-            logger.info(f"{'='*60}")
+            logger.info(f"{'=' * 60}")
 
             # Get entities
-            entities = await conn.fetch("""
+            entities = await conn.fetch(
+                """
                 SELECT entity_id, entity_type, name
                 FROM kg_nodes
                 WHERE source_collection = $1
-            """, coll)
+            """,
+                coll,
+            )
 
             entity_list = [
                 {"id": row["entity_id"], "type": row["entity_type"], "name": row["name"]}
@@ -100,7 +103,8 @@ async def run_enhancement(
                     if not dry_run:
                         await conn.execute(
                             "UPDATE kg_nodes SET name = $1 WHERE entity_id = $2",
-                            normalized, entity["id"]
+                            normalized,
+                            entity["id"],
                         )
                     else:
                         if normalized_count <= 5:
@@ -117,26 +121,36 @@ async def run_enhancement(
                 for rel in hierarchical:
                     rel_id = f"{rel['source_id']}_{rel['type']}_{rel['target_id']}"
                     try:
-                        await conn.execute("""
+                        await conn.execute(
+                            """
                             INSERT INTO kg_edges (
                                 relationship_id, source_entity_id, target_entity_id,
                                 relationship_type, properties, confidence,
                                 source_collection, created_at
                             ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
                             ON CONFLICT DO NOTHING
-                        """, rel_id, rel["source_id"], rel["target_id"],
-                            rel["type"], f'{{"evidence": "{rel["evidence"]}"}}',
-                            rel["confidence"], coll)
+                        """,
+                            rel_id,
+                            rel["source_id"],
+                            rel["target_id"],
+                            rel["type"],
+                            f'{{"evidence": "{rel["evidence"]}"}}',
+                            rel["confidence"],
+                            coll,
+                        )
                     except Exception as e:
                         logger.debug(f"Failed to insert relation: {e}")
             else:
                 for rel in hierarchical[:5]:
-                    logger.info(f"  [HIER] {rel['type']}: {rel['source_id'][:30]} → {rel['target_id'][:30]}")
+                    logger.info(
+                        f"  [HIER] {rel['type']}: {rel['source_id'][:30]} → {rel['target_id'][:30]}"
+                    )
 
             logger.info(f"Hierarchical: {len(hierarchical)} relationships")
 
             # Step 3: Domain rules for orphans
-            orphan_ids = await conn.fetch("""
+            orphan_ids = await conn.fetch(
+                """
                 SELECT entity_id FROM kg_nodes n
                 WHERE n.source_collection = $1
                 AND NOT EXISTS (
@@ -144,7 +158,9 @@ async def run_enhancement(
                     WHERE e.source_entity_id = n.entity_id
                        OR e.target_entity_id = n.entity_id
                 )
-            """, coll)
+            """,
+                coll,
+            )
 
             orphan_id_set = {row["entity_id"] for row in orphan_ids}
             orphan_entities = [e for e in entity_list if e["id"] in orphan_id_set]
@@ -160,28 +176,37 @@ async def run_enhancement(
                 for rel in domain_rels:
                     rel_id = f"{rel['source_id']}_{rel['type']}_{rel['target_id']}"
                     try:
-                        await conn.execute("""
+                        await conn.execute(
+                            """
                             INSERT INTO kg_edges (
                                 relationship_id, source_entity_id, target_entity_id,
                                 relationship_type, properties, confidence,
                                 source_collection, created_at
                             ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
                             ON CONFLICT DO NOTHING
-                        """, rel_id, rel["source_id"], rel["target_id"],
-                            rel["type"], f'{{"evidence": "{rel["evidence"]}"}}',
-                            rel["confidence"], coll)
+                        """,
+                            rel_id,
+                            rel["source_id"],
+                            rel["target_id"],
+                            rel["type"],
+                            f'{{"evidence": "{rel["evidence"]}"}}',
+                            rel["confidence"],
+                            coll,
+                        )
                     except Exception as e:
                         logger.debug(f"Failed to insert relation: {e}")
             else:
                 for rel in domain_rels[:5]:
-                    logger.info(f"  [DOMAIN] {rel['type']}: {rel['source_id'][:30]} → {rel['target_id'][:30]}")
+                    logger.info(
+                        f"  [DOMAIN] {rel['type']}: {rel['source_id'][:30]} → {rel['target_id'][:30]}"
+                    )
 
             logger.info(f"Domain rules: {len(domain_rels)} relationships")
 
         # Final summary
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info("ENHANCEMENT SUMMARY")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
         logger.info(f"Entities normalized: {total_normalized}")
         logger.info(f"Hierarchical relations: {total_hierarchical}")
         logger.info(f"Domain relations: {total_domain}")
@@ -202,7 +227,7 @@ async def run_enhancement(
             """)
 
             logger.info(f"\nFinal KG: {total_nodes} nodes, {total_edges} edges")
-            logger.info(f"Orphan rate: {orphans*100/total_nodes:.1f}%")
+            logger.info(f"Orphan rate: {orphans * 100 / total_nodes:.1f}%")
 
     finally:
         await conn.close()

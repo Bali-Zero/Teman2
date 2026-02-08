@@ -168,7 +168,7 @@ class CircuitBreaker:
             result = await func(*args, **kwargs)
             await self._on_success()
             return result
-        except Exception as e:
+        except Exception:
             await self._on_failure()
             raise
 
@@ -215,7 +215,9 @@ class Debouncer:
         self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
 
-    async def call(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> None:
+    async def call(
+        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
+    ) -> None:
         """Schedule function call with debouncing."""
         async with self._lock:
             if self._task:
@@ -223,7 +225,9 @@ class Debouncer:
 
             self._task = asyncio.create_task(self._delayed_call(func, *args, **kwargs))
 
-    async def _delayed_call(self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any) -> None:
+    async def _delayed_call(
+        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
+    ) -> None:
         await asyncio.sleep(self.delay)
         try:
             await func(*args, **kwargs)

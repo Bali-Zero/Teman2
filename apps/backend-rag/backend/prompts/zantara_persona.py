@@ -23,7 +23,9 @@ def _load_pricing_table() -> str:
                         price = item.get("price_idr", 0)
                         usd = item.get("price_usd_approx", 0)
                         lines.append(f"{code} ({name}): IDR {price:,} (circa ${usd} USD)")
-            lines.append("\nIf asked about prices, use ONLY the prices above. NEVER invent or estimate prices.")
+            lines.append(
+                "\nIf asked about prices, use ONLY the prices above. NEVER invent or estimate prices."
+            )
             return "\n".join(lines)
     except Exception as e:
         logger.warning(f"Failed to load pricing table: {e}")
@@ -38,7 +40,7 @@ def _load_system_prompt() -> str:
     base_prompt = ""
     if prompt_file.exists():
         base_prompt = prompt_file.read_text(encoding="utf-8")
-    
+
     if not base_prompt:
         base_prompt = """
 <identity>

@@ -18,7 +18,7 @@ Pattern replaced:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -217,7 +217,9 @@ class QueryBuilder:
         )
 
 
-def paginate(limit: int, offset: int, max_limit: int = 200, default_limit: int = 50) -> tuple[int, int]:
+def paginate(
+    limit: int, offset: int, max_limit: int = 200, default_limit: int = 50
+) -> tuple[int, int]:
     """
     Sanitize pagination parameters.
 

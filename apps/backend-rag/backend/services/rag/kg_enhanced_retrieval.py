@@ -279,22 +279,23 @@ class KGEnhancedRetrieval:
         return related_entities, relationships
 
     def _sanitize_search_term(self, mention: str) -> str:
-        """
+        r"""
         Sanitize mention for SQL LIKE query.
-        
+
         Removes SQL wildcard characters (%, _, \) that could cause:
         - SQL injection risks
         - Unexpected wildcard matching behavior
-        
+
         Args:
             mention: Raw entity mention from query
-            
+
         Returns:
             Sanitized search term safe for SQL LIKE
         """
         import re
+
         # Remove SQL wildcard chars and normalize
-        cleaned = re.sub(r'[%_\\]', '', mention)
+        cleaned = re.sub(r"[%_\\]", "", mention)
         return cleaned.replace(".", "").replace(" ", "%").lower()
 
     async def get_source_chunks(self, entity_ids: list[str]) -> list[str]:
@@ -1194,7 +1195,9 @@ class KGEnhancedRetrieval:
             if weeks <= 4:
                 lines.append(f"\nEstimated Timeline: from {weeks:.0f} week(s)")
             else:
-                lines.append(f"\nEstimated Timeline: from {route.estimated_timeline_months:.1f} months")
+                lines.append(
+                    f"\nEstimated Timeline: from {route.estimated_timeline_months:.1f} months"
+                )
 
         if route.estimated_cost_range_usd:
             low, high = route.estimated_cost_range_usd

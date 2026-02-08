@@ -57,10 +57,10 @@ from .chat_session import ChatSession, MockChatSession
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.0-flash-001
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
-TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash (was 2.0)
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-001
 
 
 class LLMGateway:
@@ -84,7 +84,7 @@ class LLMGateway:
         _genai_client (GenAIClient): Centralized GenAI client instance
         model_name_pro (str): Gemini 3 Flash Preview (same as flash tier)
         model_name_flash (str): Gemini 3 Flash Preview (primary model)
-        model_name_fallback (str): Gemini 2.5 Flash (stable fallback)
+        model_name_fallback (str): Gemini 2.0 Flash (stable fallback)
         thinking_level (str): Gemini 3 reasoning depth ("minimal", "low", "medium", "high")
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
 
@@ -115,15 +115,15 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 2.5 Flash (Primary), 2.0 Flash (Fallback)
-        # UPDATED 2026-02-09: Using Gemini 2.5 Flash as primary (stable, fast, Google AI Ultra tier)
-        # Benefits: Better performance, stable GA release, optimized for conversational AI
-        self.model_name_pro = "gemini-2.5-flash"  # Primary tier
-        self.model_name_flash = "gemini-2.5-flash"  # Primary: Gemini 2.5 Flash (latest stable)
+        # Model name constants - Gemini 3 Flash Preview (Primary), 2.0 Flash (Fallback)
+        # UPDATED 2026-02-09: Using Gemini 3 Flash Preview as primary (latest, best reasoning)
+        # Benefits: Latest model, enhanced multimodal understanding, better coding capabilities
+        self.model_name_pro = "gemini-3-flash-preview"  # Primary tier
+        self.model_name_flash = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview (latest)
         self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: previous version
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
             "gemini-2.0-flash-001 fallback)"
         )
 

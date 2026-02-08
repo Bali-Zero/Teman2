@@ -328,12 +328,16 @@ class CodingGeneral:
 
             elif script_path:
                 # Execute Python script
-                result["output"] = await self._execute_script(script_path, payload.get("args", []), working_dir, env)
+                result["output"] = await self._execute_script(
+                    script_path, payload.get("args", []), working_dir, env
+                )
                 result["status"] = "completed"
 
             elif code:
                 # Execute Python code string
-                result["output"] = await self._execute_code(code, payload.get("globals", {}), working_dir)
+                result["output"] = await self._execute_code(
+                    code, payload.get("globals", {}), working_dir
+                )
                 result["status"] = "completed"
 
         except Exception as e:
@@ -381,23 +385,17 @@ class CodingGeneral:
                 cwd=working_dir,
                 env=env,
             )
-            stdout, _ = await asyncio.wait_for(
-                process.communicate(), timeout=timeout
-            )
+            stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout)
             output = stdout.decode("utf-8", errors="replace")
 
             if process.returncode != 0:
-                raise subprocess.CalledProcessError(
-                    process.returncode, command, output
-                )
+                raise subprocess.CalledProcessError(process.returncode, command, output)
 
             return output
 
         except asyncio.TimeoutError:
             process.kill()
-            raise RuntimeError(
-                f"Command timed out after {timeout}s: {command}"
-            ) from None
+            raise RuntimeError(f"Command timed out after {timeout}s: {command}") from None
 
         except subprocess.CalledProcessError:
             raise

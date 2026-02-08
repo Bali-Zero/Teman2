@@ -795,9 +795,7 @@ async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
         logger.info("✅ Generals: CodingGeneral + IntelligenceGeneral polling started")
 
     except Exception as e:
-        service_registry.register(
-            "generals", ServiceStatus.DEGRADED, error=str(e), critical=False
-        )
+        service_registry.register("generals", ServiceStatus.DEGRADED, error=str(e), critical=False)
         logger.error(f"❌ Failed to initialize Generals: {e}")
 
 

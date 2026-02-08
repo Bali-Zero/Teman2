@@ -58,24 +58,20 @@ class TokenUsage:
 # Source: https://ai.google.dev/pricing, https://openai.com/pricing, https://openrouter.ai/models
 LLM_PRICING: dict[str, dict[str, float]] = {
     # Google Gemini Models (per 1M tokens)
-    # Gemini 3.x (Preview) - Requires project allowlist
-    "gemini-2.0-flash-001": {
-        "input": 0.50,  # $0.50 per 1M input tokens
-        "output": 3.00,  # $3.00 per 1M output tokens
+    # Gemini 3 Flash Preview (Primary - Latest)
+    "gemini-3-flash-preview": {
+        "input": 0.50,  # $0.50 per 1M input tokens (Standard tier)
+        "output": 3.00,  # $3.00 per 1M output tokens (Standard tier)
     },
-    # Gemini 2.5 (GA - Primary) - Most stable option
+    # Gemini 2.5 Flash (Fallback - Stable GA)
     "gemini-2.5-flash": {
-        "input": 0.30,  # $0.30 per 1M input tokens
-        "output": 2.50,  # $2.50 per 1M output tokens
+        "input": 0.075,  # $0.075 per 1M input tokens
+        "output": 0.30,  # $0.30 per 1M output tokens
     },
-    "gemini-2.5-flash-lite": {
-        "input": 0.15,  # $0.15 per 1M input tokens
-        "output": 1.25,  # $1.25 per 1M output tokens
-    },
-    # Gemini 2.0 (Fallback - Deprecated March 2026)
+    # Gemini 2.0 Flash (Fallback)
     "gemini-2.0-flash-001": {
-        "input": 0.0,  # Free during preview
-        "output": 0.0,
+        "input": 0.075,  # $0.075 per 1M input tokens
+        "output": 0.30,  # $0.30 per 1M output tokens
     },
     "gemini-2.0-flash": {
         "input": 0.075,  # $0.075 per 1M input tokens

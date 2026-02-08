@@ -5,12 +5,13 @@ Consolidates model configurations, constants, and settings to avoid duplication
 across multiple LLM clients and services.
 """
 
+
 # Model Names
 class ModelName:
     """Gemini model names."""
 
-    FLASH = "gemini-2.0-flash-001"
-    FLASH_FALLBACK = "gemini-2.5-flash"
+    FLASH = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview
+    FLASH_FALLBACK = "gemini-2.0-flash-001"  # Fallback: Gemini 2.0 Flash
     PRO = "gemini-2.0-pro"
     PRO_EXPERIMENTAL = "gemini-2.0-pro-exp-02-05"
 

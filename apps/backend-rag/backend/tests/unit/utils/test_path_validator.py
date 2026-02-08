@@ -3,7 +3,6 @@ Tests for path_validator utility module.
 """
 
 import pytest
-from pathlib import Path
 
 from backend.app.utils.path_validator import sanitize_filename, validate_path
 
@@ -30,7 +29,9 @@ class TestValidatePath:
         test_dir.mkdir()
 
         with pytest.raises(ValueError, match="outside allowed"):
-            validate_path(str(test_dir / ".." / ".." / "etc" / "passwd"), allowed_bases=[str(tmp_path)])
+            validate_path(
+                str(test_dir / ".." / ".." / "etc" / "passwd"), allowed_bases=[str(tmp_path)]
+            )
 
     def test_must_exist_raises_when_missing(self, tmp_path):
         """Test that must_exist=True raises for non-existent paths."""

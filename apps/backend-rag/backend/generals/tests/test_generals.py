@@ -8,15 +8,14 @@ Tests with mocked PostgreSQL (no real DB required):
 - Integration: cross-component workflows
 """
 
-import json
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from backend.generals.coding_general import CodingGeneral
 from backend.generals.intelligence_general import IntelligenceGeneral
 from backend.generals.task_coordinator import TaskCoordinator
-
 
 # =============================================================================
 # Mock Helpers
@@ -215,7 +214,7 @@ class TestCodingGeneral:
             "task_type": "code",
             "title": "Code Test",
             "description": "Print hello",
-            "payload": {"code": 'print("hello from code")'},
+            "payload": {"code": 'logger.info("hello from code")'},
             "priority": 5,
         }
 
@@ -277,9 +276,7 @@ class TestCodingGeneral:
         assert "hello world with spaces" in result["output"]
 
     @pytest.mark.asyncio
-    async def test_memory_write_on_completion(
-        self, coding_general: CodingGeneral, mock_db
-    ):
+    async def test_memory_write_on_completion(self, coding_general: CodingGeneral, mock_db):
         """Test that successful tasks write to generals_memory."""
         _pool, mock_conn = mock_db
 
@@ -297,9 +294,7 @@ class TestCodingGeneral:
 
         # Verify _write_memory was called (INSERT INTO generals_memory)
         execute_calls = mock_conn.execute.call_args_list
-        memory_insert_found = any(
-            "generals_memory" in str(c) for c in execute_calls
-        )
+        memory_insert_found = any("generals_memory" in str(c) for c in execute_calls)
         assert memory_insert_found, (
             "Expected INSERT INTO generals_memory after successful completion"
         )
@@ -352,9 +347,7 @@ class TestCodingGeneral:
         assert value["data"] == "found_value"
 
     @pytest.mark.asyncio
-    async def test_read_memory_not_found(
-        self, coding_general: CodingGeneral, mock_db
-    ):
+    async def test_read_memory_not_found(self, coding_general: CodingGeneral, mock_db):
         """Test _read_memory returns None when key doesn't exist."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = None
@@ -363,9 +356,7 @@ class TestCodingGeneral:
         assert value is None
 
     @pytest.mark.asyncio
-    async def test_read_memory_expired(
-        self, coding_general: CodingGeneral, mock_db
-    ):
+    async def test_read_memory_expired(self, coding_general: CodingGeneral, mock_db):
         """Test _read_memory returns None and deletes expired entries."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = {
@@ -377,9 +368,7 @@ class TestCodingGeneral:
 
         assert value is None
         # Verify DELETE was called
-        delete_found = any(
-            "DELETE" in str(c) for c in mock_conn.execute.call_args_list
-        )
+        delete_found = any("DELETE" in str(c) for c in mock_conn.execute.call_args_list)
         assert delete_found
 
     @pytest.mark.asyncio
@@ -413,9 +402,7 @@ class TestIntelligenceGeneral:
         assert intelligence_general.running is False
 
     @pytest.mark.asyncio
-    async def test_poll_task_empty(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_poll_task_empty(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test polling returns None when no research tasks."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = None
@@ -424,9 +411,7 @@ class TestIntelligenceGeneral:
         assert task is None
 
     @pytest.mark.asyncio
-    async def test_poll_task_found(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_poll_task_found(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test polling finds and assigns a research task."""
         _pool, mock_conn = mock_db
         task_record = make_task_record(
@@ -444,9 +429,7 @@ class TestIntelligenceGeneral:
         assert task["task_type"] == "research"
 
     @pytest.mark.asyncio
-    async def test_execute_research(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_execute_research(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test executing a research task calls Gemini and returns analysis."""
         _pool, mock_conn = mock_db
 
@@ -548,16 +531,11 @@ class TestIntelligenceGeneral:
 
         assert result["status"] == "completed"
         # Verify memory INSERT was called
-        memory_calls = [
-            c for c in mock_conn.execute.call_args_list
-            if "generals_memory" in str(c)
-        ]
+        memory_calls = [c for c in mock_conn.execute.call_args_list if "generals_memory" in str(c)]
         assert len(memory_calls) > 0
 
     @pytest.mark.asyncio
-    async def test_memory_write(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_memory_write(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test _write_memory upserts into generals_memory."""
         _pool, mock_conn = mock_db
 
@@ -571,9 +549,7 @@ class TestIntelligenceGeneral:
         assert "generals_memory" in first_call[0][0]
 
     @pytest.mark.asyncio
-    async def test_memory_read_found(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_memory_read_found(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test _read_memory returns value."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = {
@@ -586,9 +562,7 @@ class TestIntelligenceGeneral:
         assert value["data"] == "found"
 
     @pytest.mark.asyncio
-    async def test_memory_read_expired(
-        self, intelligence_general: IntelligenceGeneral, mock_db
-    ):
+    async def test_memory_read_expired(self, intelligence_general: IntelligenceGeneral, mock_db):
         """Test _read_memory deletes and returns None for expired keys."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = {
@@ -620,9 +594,7 @@ class TestTaskCoordinator:
         assert task_coordinator.pool is not None
 
     @pytest.mark.asyncio
-    async def test_submit_code_task(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_submit_code_task(self, task_coordinator: TaskCoordinator, mock_db):
         """Test submitting a code task."""
         _pool, mock_conn = mock_db
         mock_conn.fetchval.return_value = 42
@@ -641,9 +613,7 @@ class TestTaskCoordinator:
         assert "INSERT INTO generals_tasks" in call_query
 
     @pytest.mark.asyncio
-    async def test_submit_research_task(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_submit_research_task(self, task_coordinator: TaskCoordinator, mock_db):
         """Test submitting a research task."""
         _pool, mock_conn = mock_db
         mock_conn.fetchval.return_value = 43
@@ -667,9 +637,7 @@ class TestTaskCoordinator:
             )
 
     @pytest.mark.asyncio
-    async def test_submit_invalid_priority(
-        self, task_coordinator: TaskCoordinator
-    ):
+    async def test_submit_invalid_priority(self, task_coordinator: TaskCoordinator):
         """Test submitting task with out-of-range priority raises ValueError."""
         with pytest.raises(ValueError, match="Invalid priority"):
             await task_coordinator.submit_task(
@@ -679,9 +647,7 @@ class TestTaskCoordinator:
             )
 
     @pytest.mark.asyncio
-    async def test_get_task(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_task(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting task by ID."""
         _pool, mock_conn = mock_db
         task_record = make_task_record(task_id=1, title="Found Task")
@@ -694,9 +660,7 @@ class TestTaskCoordinator:
         assert task["title"] == "Found Task"
 
     @pytest.mark.asyncio
-    async def test_get_task_not_found(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_task_not_found(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting nonexistent task returns None."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = None
@@ -705,9 +669,7 @@ class TestTaskCoordinator:
         assert task is None
 
     @pytest.mark.asyncio
-    async def test_get_tasks_filtered(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_tasks_filtered(self, task_coordinator: TaskCoordinator, mock_db):
         """Test listing tasks with filters."""
         _pool, mock_conn = mock_db
         mock_conn.fetch.return_value = [
@@ -724,9 +686,7 @@ class TestTaskCoordinator:
         assert "task_type" in call_query
 
     @pytest.mark.asyncio
-    async def test_cancel_task(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_cancel_task(self, task_coordinator: TaskCoordinator, mock_db):
         """Test cancelling a pending task."""
         _pool, mock_conn = mock_db
         mock_conn.execute.return_value = "UPDATE 1"
@@ -735,9 +695,7 @@ class TestTaskCoordinator:
         assert cancelled is True
 
     @pytest.mark.asyncio
-    async def test_cancel_task_not_found(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_cancel_task_not_found(self, task_coordinator: TaskCoordinator, mock_db):
         """Test cancelling nonexistent task returns False."""
         _pool, mock_conn = mock_db
         mock_conn.execute.return_value = "UPDATE 0"
@@ -746,9 +704,7 @@ class TestTaskCoordinator:
         assert cancelled is False
 
     @pytest.mark.asyncio
-    async def test_get_task_result_completed(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_task_result_completed(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting result of a completed task."""
         _pool, mock_conn = mock_db
         task_record = make_task_record(task_id=1, status="completed")
@@ -763,9 +719,7 @@ class TestTaskCoordinator:
         assert result["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_get_task_result_pending(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_task_result_pending(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting result of pending task returns None."""
         _pool, mock_conn = mock_db
         task_record = make_task_record(task_id=1, status="pending")
@@ -775,9 +729,7 @@ class TestTaskCoordinator:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_memory_set(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_memory_set(self, task_coordinator: TaskCoordinator, mock_db):
         """Test writing to shared memory."""
         _pool, mock_conn = mock_db
 
@@ -791,9 +743,7 @@ class TestTaskCoordinator:
         assert "generals_memory" in call_query
 
     @pytest.mark.asyncio
-    async def test_memory_get(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_memory_get(self, task_coordinator: TaskCoordinator, mock_db):
         """Test reading from shared memory."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = {
@@ -811,9 +761,7 @@ class TestTaskCoordinator:
         assert memory["value"]["data"] == "found"
 
     @pytest.mark.asyncio
-    async def test_memory_get_not_found(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_memory_get_not_found(self, task_coordinator: TaskCoordinator, mock_db):
         """Test reading nonexistent memory key returns None."""
         _pool, mock_conn = mock_db
         mock_conn.fetchrow.return_value = None
@@ -822,9 +770,7 @@ class TestTaskCoordinator:
         assert memory is None
 
     @pytest.mark.asyncio
-    async def test_memory_delete(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_memory_delete(self, task_coordinator: TaskCoordinator, mock_db):
         """Test deleting a memory key."""
         _pool, mock_conn = mock_db
         mock_conn.execute.return_value = "DELETE 1"
@@ -833,9 +779,7 @@ class TestTaskCoordinator:
         assert deleted is True
 
     @pytest.mark.asyncio
-    async def test_memory_delete_not_found(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_memory_delete_not_found(self, task_coordinator: TaskCoordinator, mock_db):
         """Test deleting nonexistent memory key returns False."""
         _pool, mock_conn = mock_db
         mock_conn.execute.return_value = "DELETE 0"
@@ -844,9 +788,7 @@ class TestTaskCoordinator:
         assert deleted is False
 
     @pytest.mark.asyncio
-    async def test_get_activity(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_activity(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting activity log entries."""
         _pool, mock_conn = mock_db
         mock_conn.fetch.return_value = [
@@ -870,9 +812,7 @@ class TestTaskCoordinator:
         assert activities[0]["general_name"] == "coding_general"
 
     @pytest.mark.asyncio
-    async def test_get_stats(
-        self, task_coordinator: TaskCoordinator, mock_db
-    ):
+    async def test_get_stats(self, task_coordinator: TaskCoordinator, mock_db):
         """Test getting system statistics."""
         _pool, mock_conn = mock_db
 
@@ -1003,7 +943,8 @@ class TestIntegration:
 
         # Verify INSERT was called with correct key
         memory_calls = [
-            c for c in mock_conn.execute.call_args_list
+            c
+            for c in mock_conn.execute.call_args_list
             if "generals_memory" in str(c) and "shared_findings" in str(c)
         ]
         assert len(memory_calls) > 0
@@ -1035,6 +976,8 @@ class TestFastAPIRouter:
         """Test POST /api/generals/tasks endpoint."""
         from backend.generals.task_coordinator import (
             TaskSubmitRequest,
+        )
+        from backend.generals.task_coordinator import (
             submit_task as endpoint_submit_task,
         )
 

@@ -14,7 +14,6 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add backend to path
@@ -325,8 +324,12 @@ async def main():
         logger.info("\n" + "=" * 70)
         logger.info("FINAL VERIFICATION")
         logger.info("=" * 70)
-        logger.info(f"Total nodes: {after['total_nodes']:,} (was {before['total_nodes']:,})")
-        logger.info(f"Total edges: {after['total_edges']:,} (was {before['total_edges']:,})")
+        logger.info(
+            f"Total nodes: {after['total_nodes']:,} (was {before['total_nodes']:,})"
+        )
+        logger.info(
+            f"Total edges: {after['total_edges']:,} (was {before['total_edges']:,})"
+        )
         logger.info(f"KBLI nodes: {after['kbli_nodes']:,}")
         logger.info(f"Perizinan nodes: {after['perizinan_nodes']:,}")
         logger.info(f"Sektor nodes: {after['sektor_nodes']:,}")

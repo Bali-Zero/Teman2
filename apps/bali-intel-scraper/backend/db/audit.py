@@ -6,8 +6,8 @@ Tracks all changes to sensitive data.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
-from uuid import UUID, uuid4
+from typing import Dict, Optional
+from uuid import uuid4
 
 from backend.db.connection import db
 from backend.core.logger import get_logger, LogAction
@@ -25,7 +25,7 @@ class AuditAction(Enum):
 
 class AuditLogger:
     """Log data changes for audit purposes."""
-    
+
     async def log(
         self,
         action: AuditAction,
@@ -35,7 +35,7 @@ class AuditLogger:
         old_data: Optional[Dict] = None,
         new_data: Optional[Dict] = None,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
     ) -> None:
         """Log an audit event."""
         try:
@@ -55,25 +55,19 @@ class AuditLogger:
                 new_data,
                 ip_address,
                 user_agent,
-                datetime.now()
+                datetime.now(),
             )
-            
+
             logger.debug(
                 f"Audit log: {action.value} on {table_name}",
-                metadata={"table": table_name, "action": action.value}
+                metadata={"table": table_name, "action": action.value},
             )
-            
+
         except Exception as e:
-            logger.error(
-                f"Failed to write audit log: {e}",
-                action=LogAction.ERROR
-            )
-    
+            logger.error(f"Failed to write audit log: {e}", action=LogAction.ERROR)
+
     async def get_history(
-        self,
-        table_name: str,
-        record_id: str,
-        limit: int = 100
+        self, table_name: str, record_id: str, limit: int = 100
     ) -> list:
         """Get audit history for a record."""
         return await db.fetch(
@@ -83,9 +77,11 @@ class AuditLogger:
             ORDER BY created_at DESC
             LIMIT $3
             """,
-            table_name, record_id, limit
+            table_name,
+            record_id,
+            limit,
         )
-    
+
     async def search(
         self,
         user_id: Optional[str] = None,
@@ -93,34 +89,34 @@ class AuditLogger:
         table_name: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list:
         """Search audit logs."""
         conditions = ["1=1"]
         params = []
-        
+
         if user_id:
             conditions.append(f"user_id = ${len(params) + 1}")
             params.append(user_id)
-        
+
         if action:
             conditions.append(f"action = ${len(params) + 1}")
             params.append(action.value)
-        
+
         if table_name:
             conditions.append(f"table_name = ${len(params) + 1}")
             params.append(table_name)
-        
+
         if start_date:
             conditions.append(f"created_at >= ${len(params) + 1}")
             params.append(start_date)
-        
+
         if end_date:
             conditions.append(f"created_at <= ${len(params) + 1}")
             params.append(end_date)
-        
+
         where_clause = " AND ".join(conditions)
-        
+
         query = f"""
             SELECT * FROM audit_log
             WHERE {where_clause}
@@ -128,7 +124,7 @@ class AuditLogger:
             LIMIT ${len(params) + 1}
         """
         params.append(limit)
-        
+
         return await db.fetch(query, *params)
 
 
@@ -136,10 +132,7 @@ audit_logger = AuditLogger()
 
 
 async def log_audit(
-    action: AuditAction,
-    table_name: str,
-    record_id: str,
-    **kwargs
+    action: AuditAction, table_name: str, record_id: str, **kwargs
 ) -> None:
     """Quick audit logging function."""
     await audit_logger.log(action, table_name, record_id, **kwargs)

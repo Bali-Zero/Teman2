@@ -88,8 +88,10 @@ class TaskCoordinator:
         Raises:
             ValueError: If task_type is invalid
         """
-        if task_type not in ["code", "research"]:
-            raise ValueError(f"Invalid task_type: {task_type}. Must be 'code' or 'research'")
+        if task_type not in ["code", "research", "orchestration"]:
+            raise ValueError(
+                f"Invalid task_type: {task_type}. Must be 'code', 'research', or 'orchestration'"
+            )
 
         if not (1 <= priority <= 10):
             raise ValueError(f"Invalid priority: {priority}. Must be between 1 and 10")
@@ -264,7 +266,9 @@ class TaskCoordinator:
                 if cancelled:
                     logger.info(f"✅ Task Coordinator: Cancelled task {task_id}")
                 else:
-                    logger.warning(f"⚠️ Task Coordinator: Could not cancel task {task_id} (not found or already in progress)")
+                    logger.warning(
+                        f"⚠️ Task Coordinator: Could not cancel task {task_id} (not found or already in progress)"
+                    )
 
                 return cancelled
 
@@ -615,7 +619,9 @@ class TaskSubmitRequest(BaseModel):
     title: str = Field(..., description="Task title")
     description: str = Field(default="", description="Task description")
     payload: dict[str, Any] = Field(default_factory=dict, description="Task-specific payload")
-    priority: int = Field(default=5, ge=1, le=10, description="Priority (1-10, higher = more important)")
+    priority: int = Field(
+        default=5, ge=1, le=10, description="Priority (1-10, higher = more important)"
+    )
 
 
 class TaskResponse(BaseModel):

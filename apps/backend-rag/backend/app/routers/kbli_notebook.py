@@ -231,10 +231,10 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
             qdrant_risk = qdrant_payload.get("kategori_risiko") if qdrant_payload else None
 
             pma_status = (
-                qdrant_payload.get("pma_status")
-                if qdrant_payload
-                else None
-            ) or props.get("pma_status") or "UNKNOWN"
+                (qdrant_payload.get("pma_status") if qdrant_payload else None)
+                or props.get("pma_status")
+                or "UNKNOWN"
+            )
 
             risk_profile = qdrant_risk or (licenses[0].risk_level if licenses else None) or "Low"
 
@@ -341,11 +341,48 @@ def _detect_language(query: str) -> str:
     """Detect query language using keyword heuristics."""
     words = set(query.lower().split())
     # Italian markers
-    it_words = {"voglio", "aprire", "quale", "codice", "serve", "come", "sono", "che", "per", "una", "della", "questo", "quanto", "costa", "cosa", "posso", "devo", "fare", "mio", "bisogno", "attivita", "licenza", "negozio"}
+    it_words = {
+        "voglio",
+        "aprire",
+        "quale",
+        "codice",
+        "serve",
+        "come",
+        "sono",
+        "che",
+        "per",
+        "una",
+        "della",
+        "questo",
+        "quanto",
+        "costa",
+        "cosa",
+        "posso",
+        "devo",
+        "fare",
+        "mio",
+        "bisogno",
+        "attivita",
+        "licenza",
+        "negozio",
+    }
     if len(words & it_words) >= 2:
         return "Italian"
     # French markers
-    fr_words = {"je", "veux", "ouvrir", "quel", "pour", "une", "est", "les", "des", "mon", "faire", "comment"}
+    fr_words = {
+        "je",
+        "veux",
+        "ouvrir",
+        "quel",
+        "pour",
+        "une",
+        "est",
+        "les",
+        "des",
+        "mon",
+        "faire",
+        "comment",
+    }
     if len(words & fr_words) >= 2:
         return "French"
     # Spanish markers
@@ -365,7 +402,9 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
     context_parts = []
     for r in results:
-        context_parts.append(f"- KBLI {r.code}: {r.title}\n  Data: {r.description}\n  Score: {r.score:.0%}")
+        context_parts.append(
+            f"- KBLI {r.code}: {r.title}\n  Data: {r.description}\n  Score: {r.score:.0%}"
+        )
     context = "\n".join(context_parts)
 
     # Build language-specific system instruction
@@ -382,10 +421,7 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
     else:
         lang_system = KBLI_SYSTEM_PROMPT
 
-    message = (
-        f"Question: {query}\n\n"
-        f"Source data:\n{context}"
-    )
+    message = f"Question: {query}\n\nSource data:\n{context}"
 
     try:
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
@@ -467,7 +503,9 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
             else:
                 suggested_queries.append(f"Can a foreigner own a {top.title} business?")
             if len(results) > 1:
-                suggested_queries.append(f"What's the difference between KBLI {top.code} and {results[1].code}?")
+                suggested_queries.append(
+                    f"What's the difference between KBLI {top.code} and {results[1].code}?"
+                )
             else:
                 suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
 

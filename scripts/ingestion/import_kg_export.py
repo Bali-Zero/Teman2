@@ -49,8 +49,12 @@ logger = logging.getLogger(__name__)
 # Default export paths (relative to project root)
 # This file: scripts/ingestion/import_kg_export.py → 2 levels up = scripts/, 3 levels up = nuzantara/
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_NODES = PROJECT_ROOT / "data" / "kbli_2025_export" / "kg_nodes_20260205_001231.json"
-DEFAULT_EDGES = PROJECT_ROOT / "data" / "kbli_2025_export" / "kg_edges_20260205_001231.json"
+DEFAULT_NODES = (
+    PROJECT_ROOT / "data" / "kbli_2025_export" / "kg_nodes_20260205_001231.json"
+)
+DEFAULT_EDGES = (
+    PROJECT_ROOT / "data" / "kbli_2025_export" / "kg_edges_20260205_001231.json"
+)
 
 # Source collection tag for imported data
 SOURCE_COLLECTION = "kbli_2025_import"
@@ -411,7 +415,9 @@ async def verify_import(pool: asyncpg.Pool):
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Import KG JSON exports into PostgreSQL")
+    parser = argparse.ArgumentParser(
+        description="Import KG JSON exports into PostgreSQL"
+    )
     parser.add_argument(
         "--nodes",
         type=str,
@@ -455,8 +461,12 @@ async def main():
     logger.info("=" * 60)
     logger.info("NUZANTARA KNOWLEDGE GRAPH IMPORT")
     logger.info("=" * 60)
-    logger.info(f"Nodes file: {nodes_file} ({nodes_file.stat().st_size / 1024 / 1024:.1f} MB)")
-    logger.info(f"Edges file: {edges_file} ({edges_file.stat().st_size / 1024 / 1024:.1f} MB)")
+    logger.info(
+        f"Nodes file: {nodes_file} ({nodes_file.stat().st_size / 1024 / 1024:.1f} MB)"
+    )
+    logger.info(
+        f"Edges file: {edges_file} ({edges_file.stat().st_size / 1024 / 1024:.1f} MB)"
+    )
     logger.info(f"Mode: {'DRY RUN' if args.dry_run else 'LIVE IMPORT'}")
     logger.info("")
 
@@ -479,7 +489,9 @@ async def main():
 
         # Get current state
         before = await get_current_counts(pool)
-        logger.info(f"Current state: {before['nodes']:,} nodes, {before['edges']:,} edges")
+        logger.info(
+            f"Current state: {before['nodes']:,} nodes, {before['edges']:,} edges"
+        )
 
         # Clear if requested
         if args.clear_first:

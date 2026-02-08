@@ -169,7 +169,9 @@ class TestSendMessage:
         assert payload["message"]["text"] == "Hello!"
 
     @pytest.mark.asyncio
-    async def test_send_message_truncates_at_1000(self, instagram_service, mock_response_success) -> None:
+    async def test_send_message_truncates_at_1000(
+        self, instagram_service, mock_response_success
+    ) -> None:
         """Messages are truncated to 1000 chars."""
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -187,7 +189,9 @@ class TestSendMessage:
     async def test_send_message_no_token_raises(self, instagram_service) -> None:
         """ValueError raised when token not configured."""
         instagram_service._token = None
-        with patch.object(type(instagram_service), "token", new_callable=lambda: property(lambda self: None)):
+        with patch.object(
+            type(instagram_service), "token", new_callable=lambda: property(lambda self: None)
+        ):
             service = instagram_service
             service._token = None
             # Access the underlying property
@@ -217,7 +221,9 @@ class TestSendMessage:
             await instagram_service.send_message("user_123", "Hello")
 
     @pytest.mark.asyncio
-    async def test_send_message_correct_headers(self, instagram_service, mock_response_success) -> None:
+    async def test_send_message_correct_headers(
+        self, instagram_service, mock_response_success
+    ) -> None:
         """Correct authorization headers are sent."""
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -270,7 +276,9 @@ class TestMarkMessageSeen:
     async def test_mark_seen_no_token(self, instagram_service) -> None:
         """Returns False when token not configured."""
         instagram_service._token = None
-        with patch.object(type(instagram_service), "token", new_callable=lambda: property(lambda self: None)):
+        with patch.object(
+            type(instagram_service), "token", new_callable=lambda: property(lambda self: None)
+        ):
             result = await instagram_service.mark_message_seen("sender_123")
             assert result is False
 

@@ -3,6 +3,7 @@ Tests for async_utils module.
 """
 
 import asyncio
+
 import pytest
 
 from backend.app.utils.async_utils import (
@@ -31,7 +32,7 @@ class TestGatherWithConcurrency:
 
         results = await gather_with_concurrency(
             2,  # Max 2 concurrent
-            *[task(i) for i in range(5)]
+            *[task(i) for i in range(5)],
         )
 
         assert max_running <= 2
@@ -39,6 +40,7 @@ class TestGatherWithConcurrency:
 
     async def test_returns_results_in_order(self):
         """Test that results are returned in input order."""
+
         async def task(id):
             await asyncio.sleep(0.01 * (5 - id))  # Reverse order completion
             return id
@@ -97,6 +99,7 @@ class TestCircuitBreaker:
 
         # Force reset by waiting
         import time
+
         cb._last_failure_time = time.time() - 100
         cb._state = "half-open"
 

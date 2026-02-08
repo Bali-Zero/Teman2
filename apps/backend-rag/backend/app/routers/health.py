@@ -462,8 +462,7 @@ async def knowledge_graph_stats(request: Request) -> dict[str, Any]:
                     for row in by_coll
                 ],
                 "top_entity_types": [
-                    {"entity_type": row["entity_type"], "count": row["count"]}
-                    for row in by_type
+                    {"entity_type": row["entity_type"], "count": row["count"]} for row in by_type
                 ],
                 "top_relationship_types": [
                     {"relationship_type": row["relationship_type"], "count": row["count"]}

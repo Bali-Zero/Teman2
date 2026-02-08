@@ -22,19 +22,69 @@ logger = logging.getLogger(__name__)
 
 # Visa/service codes to detect in messages
 VISA_CODES = [
-    "c1", "c2", "c7a", "c7b", "c18", "c22a", "c22b",
-    "d12", "e33g", "voa", "b211",
-    "kitas", "kitap", "merp", "epo", "erp",
-    "pma", "virtual office", "npwp", "spt",
-    "freelance", "investor", "retirement", "spouse", "dependent", "working kitas",
-    "sktt", "skck", "domicilie",
+    "c1",
+    "c2",
+    "c7a",
+    "c7b",
+    "c18",
+    "c22a",
+    "c22b",
+    "d12",
+    "e33g",
+    "voa",
+    "b211",
+    "kitas",
+    "kitap",
+    "merp",
+    "epo",
+    "erp",
+    "pma",
+    "virtual office",
+    "npwp",
+    "spt",
+    "freelance",
+    "investor",
+    "retirement",
+    "spouse",
+    "dependent",
+    "working kitas",
+    "sktt",
+    "skck",
+    "domicilie",
 ]
 
 # Interest keywords
 INTEREST_KEYWORDS = {
-    "remote_work": ["remote work", "lavoro da remoto", "digital nomad", "nomade digitale", "kerja remote", "work from bali", "lavorare da bali"],
-    "company_setup": ["company", "azienda", "pt pma", "perusahaan", "business setup", "aprire azienda", "buka perusahaan"],
-    "family_relocation": ["family", "famiglia", "keluarga", "wife", "moglie", "children", "figli", "anak", "spouse", "dependent"],
+    "remote_work": [
+        "remote work",
+        "lavoro da remoto",
+        "digital nomad",
+        "nomade digitale",
+        "kerja remote",
+        "work from bali",
+        "lavorare da bali",
+    ],
+    "company_setup": [
+        "company",
+        "azienda",
+        "pt pma",
+        "perusahaan",
+        "business setup",
+        "aprire azienda",
+        "buka perusahaan",
+    ],
+    "family_relocation": [
+        "family",
+        "famiglia",
+        "keluarga",
+        "wife",
+        "moglie",
+        "children",
+        "figli",
+        "anak",
+        "spouse",
+        "dependent",
+    ],
     "retirement": ["retirement", "pensione", "pensiun", "retire", "pensionato"],
     "investment": ["invest", "investimento", "investasi", "property", "properti", "immobiliare"],
     "tax": ["tax", "tasse", "pajak", "npwp", "spt", "fiscal"],
@@ -190,7 +240,8 @@ async def build_context(
             async with db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     "SELECT id, messages, metadata FROM conversations WHERE user_id = $1 AND session_id = $2 ORDER BY created_at DESC LIMIT 1",
-                    wa_user_id, session_id,
+                    wa_user_id,
+                    session_id,
                 )
                 if row:
                     existing_row_id = row["id"]
@@ -222,7 +273,9 @@ async def build_context(
         client_profile["channel"] = "whatsapp"
     if not client_profile.get("phone"):
         client_profile["phone"] = f"+{phone}"
-    if sender_name and (not client_profile.get("sender_name") or client_profile["sender_name"] != sender_name):
+    if sender_name and (
+        not client_profile.get("sender_name") or client_profile["sender_name"] != sender_name
+    ):
         client_profile["sender_name"] = sender_name
     if not client_profile.get("first_contact"):
         client_profile["first_contact"] = datetime.now(timezone.utc).isoformat()
@@ -257,7 +310,8 @@ async def build_context(
                 if existing_row_id:
                     await conn.execute(
                         "UPDATE conversations SET metadata = $1::jsonb WHERE id = $2",
-                        json.dumps(client_profile), existing_row_id,
+                        json.dumps(client_profile),
+                        existing_row_id,
                     )
                 # If no existing row, it will be created when we save the conversation later
         except Exception as e:
