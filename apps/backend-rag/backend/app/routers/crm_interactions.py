@@ -17,7 +17,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
-from backend.core.cache import cached
+from backend.core.cache import cached, invalidate_cache
 
 logger = get_logger(__name__)
 
@@ -218,6 +218,7 @@ async def create_interaction(
                 logger, "CREATE", "interactions", record_id=new_interaction["id"]
             )
 
+            invalidate_cache("zantara:crm_interactions_stats:*")
             return InteractionResponse(**new_interaction)
 
     except HTTPException:

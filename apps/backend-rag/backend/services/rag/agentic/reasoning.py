@@ -55,353 +55,12 @@ from .tool_executor import execute_tool, parse_tool_call
 logger = logging.getLogger(__name__)
 
 
-# DEPRECATED: Use reasoning_utils.get_critical_domain_type instead
-# Keeping for backward compatibility during migration
-def _get_critical_domain_type(query: str) -> str:
-    """
-    Determine the type of critical domain for metrics.
 
-    Returns:
-        Domain type: "visa", "legal", "pricing", "procedure", or "business_complex"
-    """
-    query_lower = query.lower()
-
-    visa_keywords = {
-        "visa",
-        "kitas",
-        "kitap",
-        "immigration",
-        "imigrasi",
-        "stay permit",
-        "residence permit",
-        "b211",
-        "e33",
-        "e28",
-        "d1",
-        "d2",
-    }
-    legal_keywords = {
-        "legge",
-        "law",
-        "contract",
-        "contratto",
-        "compliance",
-        "regolamento",
-        "regulation",
-        "pasal",
-        "ayat",
-        "legal",
-        "legale",
-    }
-    pricing_keywords = {
-        "prezzo",
-        "price",
-        "costo",
-        "cost",
-        "tariffa",
-        "fee",
-        "fees",
-        "quanto costa",
-        "how much",
-        "harga",
-        "biaya",
-    }
-    procedure_keywords = {
-        "documento",
-        "document",
-        "procedura",
-        "procedure",
-        "requisito",
-        "requirement",
-        "documentazione",
-        "documentation",
-    }
-
-    if any(kw in query_lower for kw in visa_keywords):
-        return "visa"
-    elif any(kw in query_lower for kw in legal_keywords):
-        return "legal"
-    elif any(kw in query_lower for kw in pricing_keywords):
-        return "pricing"
-    elif any(kw in query_lower for kw in procedure_keywords):
-        return "procedure"
-    else:
-        return "business_complex"
-
-
-# DEPRECATED: Use reasoning_utils.is_critical_domain instead
-# Keeping for backward compatibility during migration
-def _is_critical_domain(query: str, intent_type: str) -> bool:
-    """
-    Determine if a query is in a critical domain that requires strict ABSTAIN.
-
-    Critical domains (must use ABSTAIN, not Tier 1 fallback):
-    - Visa/Immigration (KITAS, visa types, immigration procedures)
-    - Legal (laws, contracts, compliance, regulations)
-    - Pricing (service costs, fees)
-    - Business complex/strategic queries
-    - Document procedures (critical document requirements)
-
-    Non-critical domains (can use Tier 1: General Intelligence fallback):
-    - General knowledge questions
-    - Casual questions
-    - Out-of-domain queries
-    - Simple informational queries
-
-    Args:
-        query: User query string
-        intent_type: Intent category from classifier
-
-    Returns:
-        True if query is in critical domain (must ABSTAIN), False if can use Tier 1 fallback
-    """
-    query_lower = query.lower()
-
-    # Business complex/strategic queries always require strict verification
-    if intent_type in {"business_complex", "business_strategic"}:
-        return True
-
-    # Critical domain keywords
-    critical_keywords = {
-        # Visa/Immigration
-        "visa",
-        "kitas",
-        "kitap",
-        "immigration",
-        "imigrasi",
-        "stay permit",
-        "residence permit",
-        "b211",
-        "e33",
-        "e28",
-        "d1",
-        "d2",
-        # Legal
-        "legge",
-        "law",
-        "contract",
-        "contratto",
-        "compliance",
-        "regolamento",
-        "regulation",
-        "pasal",
-        "ayat",
-        "legal",
-        "legale",
-        # Pricing
-        "prezzo",
-        "price",
-        "costo",
-        "cost",
-        "tariffa",
-        "fee",
-        "fees",
-        "quanto costa",
-        "how much",
-        "harga",
-        "biaya",
-        # Critical procedures
-        "documento",
-        "document",
-        "procedura",
-        "procedure",
-        "requisito",
-        "requirement",
-        "documentazione",
-        "documentation",
-    }
-
-    # Check if query contains critical keywords
-    return any(keyword in query_lower for keyword in critical_keywords)
-
-
-# DEPRECATED: Use reasoning_utils.is_valid_tool_call instead
-# Keeping for backward compatibility during migration
-def is_valid_tool_call(tool_call: Any) -> bool:
-    """
-    Validate that a tool call has all required fields.
-
-    FIX Edge Case 2: Prevents using partially parsed tool calls that could
-    cause downstream errors when execute_tool is called with None arguments.
-
-    Args:
-        tool_call: ToolCall object or None
-
-    Returns:
-        True if tool_call is valid and complete, False otherwise
-    """
-    if tool_call is None:
-        return False
-    if not hasattr(tool_call, "tool_name") or not tool_call.tool_name:
-        return False
-    if not isinstance(tool_call.tool_name, str):
-        return False
-    if not hasattr(tool_call, "arguments"):
-        return False
-    # arguments can be empty dict {} but not None
-    return tool_call.arguments is not None
-
-
-# DEPRECATED: Use reasoning_utils.calculate_evidence_score instead
-# Keeping for backward compatibility during migration
-def calculate_evidence_score(
-    sources: list[dict] | None,
-    context_gathered: list[str],
-    query: str,
-) -> float:
-    """
-    Calculate evidence score based on source quality and context relevance.
-
-    Formula:
-    - base_score = 0.0
-    - If at least 1 source with score > 0.3 -> +0.5 (lowered: re-ranker gives low scores)
-    - If > 3 total sources -> +0.2
-    - If context contains query keywords -> +0.3
-    - MAX Score = 1.0
-
-    Args:
-        sources: List of source dictionaries with 'score' field
-        context_gathered: List of context strings from tool results
-        query: Original user query
-
-    Returns:
-        Evidence score between 0.0 and 1.0
-    """
-    base_score = 0.0
-
-    # Check for high-quality sources (lowered because re-ranker gives low scores)
-    if sources:
-        high_quality_sources = [
-            s
-            for s in sources
-            if isinstance(s, dict)
-            and s.get("score", 0.0) > EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD
-        ]
-        if len(high_quality_sources) >= 1:
-            base_score += EvidenceScoreConstants.HIGH_QUALITY_SOURCE_BONUS
-
-        # Check for multiple sources
-        if len(sources) > EvidenceScoreConstants.MIN_SOURCES_FOR_BONUS:
-            base_score += EvidenceScoreConstants.MULTIPLE_SOURCES_BONUS
-    elif context_gathered:
-        # Fallback: if no sources but we have context, check if context is substantial
-        total_context_length = sum(len(ctx) for ctx in context_gathered)
-        if total_context_length > EvidenceScoreConstants.SUBSTANTIAL_CONTEXT_LENGTH:
-            base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
-
-    # Check if context contains query keywords
-    if context_gathered:
-        query.lower()
-        # Extract meaningful keywords (words longer than 3 chars, excluding common words)
-        stop_words = {
-            "the",
-            "a",
-            "an",
-            "is",
-            "are",
-            "was",
-            "were",
-            "be",
-            "been",
-            "being",
-            "have",
-            "has",
-            "had",
-            "do",
-            "does",
-            "did",
-            "will",
-            "would",
-            "could",
-            "should",
-            "may",
-            "might",
-            "must",
-            "can",
-            "this",
-            "that",
-            "these",
-            "those",
-            "i",
-            "you",
-            "he",
-            "she",
-            "it",
-            "we",
-            "they",
-            "what",
-            "which",
-            "who",
-            "whom",
-            "whose",
-            "where",
-            "when",
-            "why",
-            "how",
-            "all",
-            "each",
-            "every",
-            "both",
-            "few",
-            "more",
-            "most",
-            "other",
-            "some",
-            "such",
-            "no",
-            "nor",
-            "not",
-            "only",
-            "own",
-            "same",
-            "so",
-            "than",
-            "too",
-            "very",
-            "il",
-            "la",
-            "lo",
-            "gli",
-            "le",
-            "un",
-            "una",
-            "uno",
-            "di",
-            "da",
-            "in",
-            "con",
-            "su",
-            "per",
-            "tra",
-            "fra",
-            "che",
-            "chi",
-            "cosa",
-            "come",
-            "dove",
-            "quando",
-            "perché",
-            "quale",
-            "quali",
-        }
-        query_keywords = [
-            word.lower()
-            for word in query.split()
-            if len(word) > 3 and word.lower() not in stop_words
-        ]
-
-        if query_keywords:
-            context_text = " ".join(context_gathered).lower()
-            matching_keywords = sum(1 for kw in query_keywords if kw in context_text)
-            # If at least threshold% of keywords match, add score
-            if (
-                matching_keywords / len(query_keywords)
-                >= EvidenceScoreConstants.KEYWORD_MATCH_THRESHOLD
-            ):
-                base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
-
-    # Cap at maximum score
-    return min(base_score, EvidenceScoreConstants.MAX_SCORE)
+# NOTE: Deprecated local functions removed 2026-02-08 (System Audit).
+# get_critical_domain_type, is_critical_domain, is_valid_tool_call,
+# and calculate_evidence_score are now imported from reasoning_utils
+# (see imports at top of file). This eliminates 350 lines of duplicated
+# code and ensures a single source of truth for evidence scoring.
 
 
 def _validate_context_quality(
@@ -871,8 +530,6 @@ class ReasoningEngine:
         trusted_tool_names = {
             "calculator",
             "get_pricing",
-            "search_team_member",
-            "get_team_members_list",
             "team_knowledge",
             "timesheet",
         }
@@ -899,10 +556,10 @@ class ReasoningEngine:
         ):
             # TIER 1 vs STRICT ABSTAIN logic
             intent_type = getattr(state, "intent_type", "simple")
-            is_critical = _is_critical_domain(query, intent_type)
+            is_critical = is_critical_domain(query, intent_type)
 
             if is_critical:
-                domain_type = _get_critical_domain_type(query)
+                domain_type = get_critical_domain_type(query)
                 logger.warning(
                     f"🛡️ [Uncertainty] Overriding existing answer due to low evidence for critical domain "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
@@ -1008,11 +665,11 @@ Provide a helpful answer using your general knowledge, but clearly state that th
             ):
                 # TIER 1: Fluid Fallback (General Intelligence) vs STRICT ABSTAIN
                 intent_type = getattr(state, "intent_type", "simple")
-                is_critical = _is_critical_domain(query, intent_type)
+                is_critical = is_critical_domain(query, intent_type)
 
                 if is_critical:
                     # CRITICAL DOMAIN: Strict ABSTAIN (no fallback to general knowledge)
-                    domain_type = _get_critical_domain_type(query)
+                    domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty] Triggered STRICT ABSTAIN for critical domain "
                         f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
@@ -1182,10 +839,10 @@ Make it feel natural and helpful, not forced.
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
                 intent_type = getattr(state, "intent_type", "simple")
-                is_critical = _is_critical_domain(query, intent_type)
+                is_critical = is_critical_domain(query, intent_type)
 
                 if is_critical:
-                    domain_type = _get_critical_domain_type(query)
+                    domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})"
                     )
@@ -1590,9 +1247,8 @@ Do not invent information. If the context is insufficient, admit it.
         trusted_tool_names = {
             "calculator",
             "get_pricing",
-            "search_team_member",
-            "get_team_members_list",
             "team_knowledge",
+            "timesheet",
         }
         logger.debug(f"Checking {len(state.steps)} steps for trusted tools")
         for step in state.steps:
@@ -1625,10 +1281,10 @@ Do not invent information. If the context is insufficient, admit it.
         ):
             # TIER 1 vs STRICT ABSTAIN logic
             intent_type = getattr(state, "intent_type", "simple")
-            is_critical = _is_critical_domain(query, intent_type)
+            is_critical = is_critical_domain(query, intent_type)
 
             if is_critical:
-                domain_type = _get_critical_domain_type(query)
+                domain_type = get_critical_domain_type(query)
                 logger.warning(
                     f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence for critical domain "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
@@ -1725,11 +1381,11 @@ Provide a helpful answer using your general knowledge, but clearly state that th
             ):
                 # TIER 1: Fluid Fallback (General Intelligence) vs STRICT ABSTAIN
                 intent_type = getattr(state, "intent_type", "simple")
-                is_critical = _is_critical_domain(query, intent_type)
+                is_critical = is_critical_domain(query, intent_type)
 
                 if is_critical:
                     # CRITICAL DOMAIN: Strict ABSTAIN (no fallback to general knowledge)
-                    domain_type = _get_critical_domain_type(query)
+                    domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty Stream] Triggered STRICT ABSTAIN for critical domain "
                         f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
@@ -1881,10 +1537,10 @@ Make it feel natural and helpful, not forced.
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
                 intent_type = getattr(state, "intent_type", "simple")
-                is_critical = _is_critical_domain(query, intent_type)
+                is_critical = is_critical_domain(query, intent_type)
 
                 if is_critical:
-                    domain_type = _get_critical_domain_type(query)
+                    domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})"
                     )

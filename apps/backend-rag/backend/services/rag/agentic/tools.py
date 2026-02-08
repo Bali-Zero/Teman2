@@ -287,7 +287,28 @@ class VisionTool(BaseTool):
 
     async def execute(self, file_path: str, query: str, **kwargs) -> str:
         try:
-            doc = await self.vision_service.process_pdf(file_path)
+            # Security: validate file path to prevent path traversal
+            from pathlib import Path
+
+            from backend.app.core.config import settings
+
+            resolved = Path(file_path).resolve()
+            allowed_dirs = [Path(d) for d in settings.get_vision_allowed_dirs]
+            if not any(
+                str(resolved).startswith(str(d.resolve())) for d in allowed_dirs
+            ):
+                logger.warning(
+                    f"🛡️ VisionTool path traversal blocked: {file_path}"
+                )
+                return "Error: file path not allowed. Only files in permitted directories are accessible."
+
+            if ".." in str(file_path):
+                logger.warning(
+                    f"🛡️ VisionTool directory traversal blocked: {file_path}"
+                )
+                return "Error: directory traversal not allowed."
+
+            doc = await self.vision_service.process_pdf(str(resolved))
             result = await self.vision_service.query_with_vision(query, [doc], include_images=True)
             return f"Analysis result: {result['answer']}"
         except Exception as e:

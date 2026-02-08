@@ -19,7 +19,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
-from backend.core.cache import cached
+from backend.core.cache import cached, invalidate_cache
 from backend.services.invoicing import InvoiceAutomationService
 
 logger = get_logger(__name__)
@@ -303,6 +303,7 @@ async def create_practice(
             )
             log_database_operation(logger, "CREATE", "practices", record_id=new_practice["id"])
 
+            invalidate_cache("zantara:crm_practices_stats:*")
             return PracticeResponse(**new_practice)
 
     except HTTPException:
@@ -756,6 +757,7 @@ async def update_practice(
                 practice_id=practice_id,
                 updated_by=user_email,
             )
+            invalidate_cache("zantara:crm_practices_stats:*")
             return updated_practice
 
     except HTTPException:
@@ -815,6 +817,7 @@ async def delete_practice(
                 practice_id=practice_id,
                 deleted_by=user_email,
             )
+            invalidate_cache("zantara:crm_practices_stats:*")
             return {"success": True, "message": "Practice marked as cancelled"}
 
     except HTTPException:
