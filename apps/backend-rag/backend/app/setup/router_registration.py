@@ -65,6 +65,7 @@ from backend.app.routers import (
     webhooks,
     websocket,
     whatsapp_chat,
+    whatsapp_conversations,
     zoho_email,
 )
 
@@ -98,6 +99,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(agentic_rag.router)
+    
+    # Generals Multi-Agent System router
+    from backend.generals.task_coordinator import router as generals_router
+    api.include_router(generals_router)
 
     # Conversation & Memory routers
     api.include_router(conversations.router)
@@ -146,6 +151,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(telegram.router)  # Telegram bot integration
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
     api.include_router(whatsapp_chat.alias_router)  # Legacy Meta webhook URL alias
+    api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
