@@ -119,6 +119,18 @@ class TaskCoordinator:
             logger.error(f"❌ Task Coordinator: Failed to submit task: {e}", exc_info=True)
             raise
 
+    @staticmethod
+    def _parse_jsonb_fields(record: dict[str, Any]) -> dict[str, Any]:
+        """Parse JSONB fields that asyncpg may return as strings."""
+        for field in ("payload", "result", "metadata"):
+            val = record.get(field)
+            if isinstance(val, str):
+                try:
+                    record[field] = json.loads(val)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return record
+
     async def get_task(self, task_id: int) -> dict[str, Any] | None:
         """
         Get task details by ID.
@@ -148,7 +160,7 @@ class TaskCoordinator:
                 if not task:
                     return None
 
-                return dict(task)
+                return self._parse_jsonb_fields(dict(task))
 
         except Exception as e:
             logger.error(f"❌ Task Coordinator: Failed to get task: {e}", exc_info=True)
@@ -216,7 +228,7 @@ class TaskCoordinator:
                     *params,
                 )
 
-                return [dict(task) for task in tasks]
+                return [self._parse_jsonb_fields(dict(task)) for task in tasks]
 
         except Exception as e:
             logger.error(f"❌ Task Coordinator: Failed to get tasks: {e}", exc_info=True)
@@ -513,7 +525,7 @@ class TaskCoordinator:
                     *params,
                 )
 
-                return [dict(activity) for activity in activities]
+                return [self._parse_jsonb_fields(dict(activity)) for activity in activities]
 
         except Exception as e:
             logger.error(f"❌ Task Coordinator: Failed to get activity: {e}", exc_info=True)
