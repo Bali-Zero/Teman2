@@ -21,14 +21,16 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 **Role:** Senior Python Engineer & SRE.
 **Current State:** The codebase is a Monorepo. We use `apps/backend-rag` (FastAPI) and `apps/mouth` (Frontend).
 
-**System Stats (Updated 2026-01-21):**
+**System Stats (Updated 2026-02-07):**
 
-- Router Files: 61
-- Services: 204 Python files
-- Test Files: 278
+- Router Files: 68
+- Services: 228 Python files
+- Test Files: 477
 - Migrations: 51
-- API Endpoints: 393
-- Test Cases: ~4255
+- API Endpoints: 406
+- Test Cases: ~5308+
+- Qdrant Collections: 4 (53,757+ documents)
+- Knowledge Graph: 34,606 nodes, 30,628 edges
 
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
 
@@ -195,6 +197,8 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 - **< 0.15** → ABSTAIN (rifiuta di rispondere)
 - **0.15-0.6** → Risponde con cautela
 - **> 0.6** → Risposta normale
+
+> **Nota:** Il threshold è stato ridotto da 0.3 a 0.15 per maggiore fluidità (2026-01-24)
 
 **File critico:** `backend/services/rag/agentic/reasoning.py`
 

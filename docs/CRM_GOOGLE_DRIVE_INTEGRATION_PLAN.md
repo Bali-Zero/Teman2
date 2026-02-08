@@ -460,8 +460,7 @@ WHERE id = $2
 
 ## 📚 DOCUMENTAZIONE CORRELATA
 
-- **CRM System Docs:** `docs/CRM_SYSTEM_DOCUMENTATION.md`
-- **CRM Overview:** `docs/CRM_SYSTEM.md`
+- **CRM Complete:** `docs/CRM_COMPLETE.md` (consolidated documentation)
 - **Google Drive API:** `apps/backend-rag/backend/app/routers/crm_drive_folders.py`
 - **Reorganization Script:** `google-apps-script/ReorganizeCRM.gs`
 - **Python Scanner:** `tools/reorganize_gdrive.py`
