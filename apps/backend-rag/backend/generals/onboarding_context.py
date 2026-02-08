@@ -13,19 +13,25 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Resolve AI_ONBOARDING.md path — works in both local dev and Docker:
-#   Local:  .../nuzantara/apps/backend-rag/backend/generals/ → parents[4] = nuzantara/
-#   Docker: /app/backend/generals/ → parents[2] = /app/
-_THIS_DIR = Path(__file__).resolve().parent  # generals/
-_BACKEND_ROOT = _THIS_DIR.parent.parent  # backend-rag/ (local) or /app/ (Docker)
+# Resolve AI_ONBOARDING.md path — works in both local dev and Docker.
+# Walk up from this file until we find docs/AI_ONBOARDING.md or hit root.
+_THIS_FILE = Path(__file__).resolve()
 
-# Try multiple candidate paths for AI_ONBOARDING.md
-_CANDIDATES = [
-    _THIS_DIR.parents[3] / "docs" / "AI_ONBOARDING.md",  # local: nuzantara/docs/
-    _BACKEND_ROOT / "docs" / "AI_ONBOARDING.md",          # Docker: /app/docs/
-    Path("/app") / "docs" / "AI_ONBOARDING.md",           # Docker fallback
-]
-_ONBOARDING_PATH = next((p for p in _CANDIDATES if p.exists()), _CANDIDATES[0])
+
+def _find_onboarding_path() -> Path:
+    """Walk ancestors to find docs/AI_ONBOARDING.md."""
+    current = _THIS_FILE.parent
+    while current != current.parent:  # stop at filesystem root
+        candidate = current / "docs" / "AI_ONBOARDING.md"
+        if candidate.exists():
+            return candidate
+        current = current.parent
+    # Fallback: relative to backend-rag root (may not exist in Docker)
+    return _THIS_FILE.parent.parent.parent / "docs" / "AI_ONBOARDING.md"
+
+
+_ONBOARDING_PATH = _find_onboarding_path()
+_BACKEND_ROOT = _THIS_FILE.parent.parent.parent  # backend-rag/ (local) or /app/ (Docker)
 
 
 def load_onboarding_document() -> str:
