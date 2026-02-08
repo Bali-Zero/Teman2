@@ -17,12 +17,25 @@ from typing import Any
 import asyncpg
 
 from backend.app.core.config import settings
+from backend.generals.onboarding_context import (
+    get_enforced_env,
+    get_working_directory,
+    log_onboarding_compliance,
+    validate_command,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CodingGeneral:
-    """General responsible for executing code-related tasks."""
+    """General responsible for executing code-related tasks.
+
+    Every execution respects AI_ONBOARDING.md Golden Rules:
+    - Virtualenv enforced in PATH
+    - PYTHONPATH set to backend root
+    - Commands validated for hardcoded secrets
+    - Working directory defaults to apps/backend-rag/
+    """
 
     def __init__(self, database_url: str | None = None, poll_interval: int = 5):
         """
@@ -39,6 +52,9 @@ class CodingGeneral:
         self.pool: asyncpg.Pool | None = None
         self.running = False
         self.general_name = "coding_general"
+
+        # Load onboarding context — this is our constitution
+        log_onboarding_compliance(self.general_name)
 
     async def initialize(self) -> None:
         """Initialize database connection pool."""
@@ -280,13 +296,29 @@ class CodingGeneral:
             if not any([command, script_path, code]):
                 raise ValueError("Task payload must contain 'command', 'script_path', or 'code'")
 
-            # Prepare environment
-            env = {**payload.get("env_vars", {})}
-            if env:
-                # Merge with current environment
-                import os
+            # AI_ONBOARDING: Enforce Golden Rules environment
+            # - Virtualenv in PATH
+            # - PYTHONPATH includes backend root
+            # - Custom env vars merged on top
+            env = get_enforced_env()
+            if payload.get("env_vars"):
+                env.update(payload["env_vars"])
 
-                env = {**os.environ, **env}
+            # AI_ONBOARDING: Validate command against Golden Rules
+            if command:
+                is_valid, warning = validate_command(command)
+                if warning:
+                    logger.warning(f"📋 Onboarding check: {warning}")
+                    await self._log_activity(
+                        "onboarding_warning",
+                        warning,
+                        task_id=task_id,
+                        metadata={"command": command},
+                    )
+
+            # AI_ONBOARDING: Default working directory to backend root
+            if not working_dir:
+                working_dir = get_working_directory(payload)
 
             # Execute based on what's provided
             if command:

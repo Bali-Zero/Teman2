@@ -14,6 +14,10 @@ from typing import Any
 import asyncpg
 
 from backend.app.core.config import settings
+from backend.generals.onboarding_context import (
+    get_intelligence_system_instruction,
+    log_onboarding_compliance,
+)
 
 # Import Gemini client
 try:
@@ -27,7 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 class IntelligenceGeneral:
-    """General responsible for research and intelligence tasks using Gemini 3 Pro."""
+    """General responsible for research and intelligence tasks using Gemini 3 Pro.
+
+    Every research task includes AI_ONBOARDING.md as system context,
+    ensuring all analysis and code suggestions follow the Golden Rules.
+    """
 
     def __init__(self, database_url: str | None = None, poll_interval: int = 5):
         """
@@ -44,6 +52,9 @@ class IntelligenceGeneral:
         self.pool: asyncpg.Pool | None = None
         self.running = False
         self.general_name = "intelligence_general"
+
+        # Load onboarding context — this is our constitution
+        log_onboarding_compliance(self.general_name)
         
         # Initialize Gemini client
         self.genai_client: GenAIClient | None = None
@@ -328,14 +339,8 @@ class IntelligenceGeneral:
                 if memory_data:
                     memory_context = "\n\nShared Memory Context:\n" + "\n".join(memory_data)
 
-            # Build system instruction
-            system_instruction = """You are an intelligence analyst specializing in research and analysis.
-Your role is to provide comprehensive, accurate, and well-structured research reports.
-- Analyze the query thoroughly
-- Provide actionable insights
-- Cite sources when available
-- Structure your response clearly
-- Be concise but complete"""
+            # AI_ONBOARDING: Build system instruction with Golden Rules context
+            system_instruction = get_intelligence_system_instruction()
 
             # Build user prompt
             user_prompt = f"""Research Query: {query}"""
