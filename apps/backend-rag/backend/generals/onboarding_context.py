@@ -13,11 +13,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Resolve AI_ONBOARDING.md path relative to project root
-# parents: [0]=generals/ [1]=backend/ [2]=backend-rag/ [3]=apps/ [4]=nuzantara/
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]  # nuzantara/
-_ONBOARDING_PATH = _PROJECT_ROOT / "docs" / "AI_ONBOARDING.md"
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]  # apps/backend-rag/
+# Resolve AI_ONBOARDING.md path — works in both local dev and Docker:
+#   Local:  .../nuzantara/apps/backend-rag/backend/generals/ → parents[4] = nuzantara/
+#   Docker: /app/backend/generals/ → parents[2] = /app/
+_THIS_DIR = Path(__file__).resolve().parent  # generals/
+_BACKEND_ROOT = _THIS_DIR.parent.parent  # backend-rag/ (local) or /app/ (Docker)
+
+# Try multiple candidate paths for AI_ONBOARDING.md
+_CANDIDATES = [
+    _THIS_DIR.parents[3] / "docs" / "AI_ONBOARDING.md",  # local: nuzantara/docs/
+    _BACKEND_ROOT / "docs" / "AI_ONBOARDING.md",          # Docker: /app/docs/
+    Path("/app") / "docs" / "AI_ONBOARDING.md",           # Docker fallback
+]
+_ONBOARDING_PATH = next((p for p in _CANDIDATES if p.exists()), _CANDIDATES[0])
 
 
 def load_onboarding_document() -> str:
