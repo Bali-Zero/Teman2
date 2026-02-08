@@ -35,6 +35,7 @@ UPDATED 2025-12-23:
 - Using GenAIClient wrapper for centralized client management
 """
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -853,11 +854,14 @@ class LLMGateway:
             if current_content_parts:
                 contents.append({"role": "user", "parts": current_content_parts})
 
-            # 3. Call model with full history
-            response = await client._client.aio.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config,
+            # 3. Call model with full history (with timeout to avoid hang)
+            response = await asyncio.wait_for(
+                client._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                ),
+                timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
             )
 
             # 4. Update chat history manually
@@ -916,10 +920,13 @@ class LLMGateway:
             if has_images:
                 logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
 
-            response = await client._client.aio.models.generate_content(
-                model=model_name,
-                contents=content,
-                config=config,
+            response = await asyncio.wait_for(
+                client._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=content,
+                    config=config,
+                ),
+                timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT,
             )
 
             # Extract token usage from response
