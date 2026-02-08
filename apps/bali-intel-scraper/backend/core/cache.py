@@ -107,6 +107,11 @@ class CacheManager(Generic[T]):
         self._redis: Optional[Redis] = None
         self._lock = asyncio.Lock()
     
+    @property
+    def redis(self) -> Optional[Redis]:
+        """Access to raw Redis client for advanced operations."""
+        return self._redis
+    
     async def initialize(self) -> None:
         """Initialize Redis connection."""
         if self._redis is not None:
