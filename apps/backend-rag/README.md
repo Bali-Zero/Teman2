@@ -64,20 +64,30 @@ pytest -v
 
 ## Documentation
 
-| Document                                                                   | Description                         |
-| -------------------------------------------------------------------------- | ----------------------------------- |
-| [CLAUDE.md](CLAUDE.md)                                                     | AI assistant context and guidelines |
-| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation          |
-| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)                             | Testing best practices              |
-| [docs/ai/](docs/ai/)                                                       | AI-specific documentation           |
+| Document                                                                   | Description                                  |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| [docs/README.md](docs/README.md)                                           | Backend docs index and quick links           |
+| [docs/OPENAPI.md](docs/OPENAPI.md)                                         | OpenAPI / Swagger usage and regeneration     |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                               | Architecture diagrams (Mermaid)              |
+| [docs/DOCSTRINGS.md](docs/DOCSTRINGS.md)                                   | Docstring standards for endpoints/services   |
+| [CLAUDE.md](CLAUDE.md)                                                     | AI assistant context and guidelines          |
+| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation                   |
+| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)                             | Testing best practices                       |
+| [docs/ai/](docs/ai/)                                                       | AI-specific documentation                    |
 
 ## API Endpoints
 
-Core endpoints available at `/docs` (Swagger UI):
+Core endpoints are documented in Swagger UI and the OpenAPI schema:
+
+- Swagger UI: `/docs`
+- OpenAPI JSON: `/api/v1/openapi.json`
+- Reference docs: `docs/OPENAPI.md`
+
+Examples:
 
 - `POST /api/v1/chat` - Main chat endpoint
 - `POST /api/v1/search` - Document search
-- `GET /api/v1/health` - Health check
+- `GET /health` - Health check
 - `POST /api/v1/oracle/{collection}/query` - Oracle-specific queries
 
 ## Services Documentation

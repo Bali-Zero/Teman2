@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class InstagramService:
     """Service for interacting with Meta Instagram Graph API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._token = settings.instagram_access_token
         self._account_id = settings.instagram_account_id
         self._client: httpx.AsyncClient | None = None
@@ -44,7 +44,7 @@ class InstagramService:
             self._client = httpx.AsyncClient(timeout=HttpTimeoutConstants.EXTERNAL_API_TIMEOUT)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
@@ -89,7 +89,7 @@ class InstagramService:
                 json=payload,
             )
 
-            result = response.json()
+            result: dict[str, Any] = response.json()
 
             if response.status_code != 200:
                 error_data = result.get("error", {})
@@ -161,7 +161,7 @@ class InstagramService:
                 },
             )
 
-            result = response.json()
+            result: dict[str, Any] = response.json()
 
             if response.status_code != 200:
                 error_data = result.get("error", {})

@@ -14,6 +14,7 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
+from typing import Any
 
 import asyncpg
 
@@ -65,7 +66,7 @@ LANGUAGE_PATTERNS = {
 }
 
 
-def detect_language(text: str, history: list[dict] | None = None) -> str:
+def detect_language(text: str, history: list[dict[str, str]] | None = None) -> str:
     """
     Detect language from text and optionally conversation history.
 
@@ -90,7 +91,7 @@ def detect_language(text: str, history: list[dict] | None = None) -> str:
             scores[lang] = score
 
     if scores:
-        return max(scores, key=scores.get)
+        return max(scores, key=lambda lang: scores[lang])
 
     return "en"  # Default to English
 
@@ -129,7 +130,7 @@ def get_time_of_day() -> str:
         return "evening"
 
 
-def infer_client_type(profile: dict) -> str:
+def infer_client_type(profile: dict[str, Any]) -> str:
     """Infer client type from their interests and discussions."""
     interests = set(profile.get("interests", []))
     visas = set(v.lower() for v in profile.get("visa_discussed", []))
@@ -157,7 +158,7 @@ async def build_context(
     sender_name: str | None,
     message_text: str,
     db_pool: asyncpg.Pool | None,
-) -> dict:
+) -> dict[str, Any]:
     """
     Build rich context for a WhatsApp message.
 

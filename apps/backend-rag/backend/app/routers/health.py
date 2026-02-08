@@ -370,3 +370,112 @@ async def qdrant_metrics() -> dict[str, Any]:
 # TEMPORARY debug endpoint removed - use /api/debug/state instead
 # Configuration debugging is available via the debug router at /api/debug/state
 # which requires authentication and is only available in development/staging
+
+
+@router.get("/kg-stats")
+async def knowledge_graph_stats(request: Request) -> dict[str, Any]:
+    """
+    Knowledge Graph statistics for auditing and monitoring.
+
+    Returns:
+        dict: KG statistics including node/edge counts and distributions
+    """
+    try:
+        db_pool = getattr(request.app.state, "db_pool", None)
+        if not db_pool:
+            return {
+                "status": "error",
+                "error": "Database pool not available",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+        async with db_pool.acquire() as conn:
+            # Total counts
+            nodes = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
+            edges = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
+
+            # By collection
+            by_coll = await conn.fetch("""
+                SELECT source_collection, COUNT(*) as count
+                FROM kg_nodes
+                GROUP BY source_collection
+                ORDER BY count DESC
+            """)
+
+            # By entity type
+            by_type = await conn.fetch("""
+                SELECT entity_type, COUNT(*) as count
+                FROM kg_nodes
+                GROUP BY entity_type
+                ORDER BY count DESC
+                LIMIT 15
+            """)
+
+            # By relationship type
+            by_rel = await conn.fetch("""
+                SELECT relationship_type, COUNT(*) as count
+                FROM kg_edges
+                GROUP BY relationship_type
+                ORDER BY count DESC
+                LIMIT 15
+            """)
+
+            # KBLI nodes
+            kbli_nodes = await conn.fetchval(
+                "SELECT COUNT(*) FROM kg_nodes WHERE entity_id LIKE 'kbli:%'"
+            )
+
+            # Perizinan nodes
+            perizinan_nodes = await conn.fetchval(
+                "SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'perizinan'"
+            )
+
+            # Orphan nodes
+            orphans = await conn.fetchval("""
+                SELECT COUNT(*) FROM kg_nodes n
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM kg_edges e
+                    WHERE e.source_entity_id = n.entity_id
+                       OR e.target_entity_id = n.entity_id
+                )
+            """)
+
+            # Connectivity
+            connected = nodes - orphans
+            connectivity_pct = (connected / nodes * 100) if nodes > 0 else 0
+            avg_edges_per_node = (edges / nodes) if nodes > 0 else 0
+
+            return {
+                "status": "ok",
+                "summary": {
+                    "total_nodes": nodes,
+                    "total_edges": edges,
+                    "connected_nodes": connected,
+                    "orphan_nodes": orphans,
+                    "connectivity_pct": round(connectivity_pct, 1),
+                    "avg_edges_per_node": round(avg_edges_per_node, 1),
+                    "kbli_nodes": kbli_nodes,
+                    "perizinan_nodes": perizinan_nodes,
+                },
+                "nodes_by_collection": [
+                    {"collection": row["source_collection"] or "NULL", "count": row["count"]}
+                    for row in by_coll
+                ],
+                "top_entity_types": [
+                    {"entity_type": row["entity_type"], "count": row["count"]}
+                    for row in by_type
+                ],
+                "top_relationship_types": [
+                    {"relationship_type": row["relationship_type"], "count": row["count"]}
+                    for row in by_rel
+                ],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to get KG stats: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }

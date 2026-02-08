@@ -133,7 +133,7 @@ class TierClassifier:
         "pema chödrön",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize classifier with compiled regex patterns"""
         self.tier_patterns_compiled = {
             tier: [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
@@ -177,7 +177,7 @@ class TierClassifier:
 
         # Find tier with highest score
         if max(tier_scores.values()) > 0:
-            best_tier = max(tier_scores, key=tier_scores.get)
+            best_tier = max(tier_scores, key=lambda t: tier_scores[t])
             logger.info(
                 f"Classified '{book_title}' as Tier {best_tier.value} (scores: {tier_scores})"
             )
