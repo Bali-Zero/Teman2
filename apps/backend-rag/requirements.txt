@@ -41,8 +41,11 @@ EbookLib>=0.18
 beautifulsoup4>=4.14.3  # Security and stability updates
 
 # LangChain Ecosystem
-langgraph>=0.0.1
+langgraph>=1.0.0
+langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
 langchain-core>=0.1.0
+langchain-anthropic>=1.0.0  # Required for KG LangGraph orchestrator
+langchain-openai>=1.0.0  # Required for KG LangGraph orchestrator fallback
 # langchain-google-genai removed to resolve conflicts
 
 # HTTP/Network - UPGRADED TO RESOLVE CONFLICTS
