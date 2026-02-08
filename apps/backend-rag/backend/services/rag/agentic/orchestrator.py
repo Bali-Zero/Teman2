@@ -19,6 +19,7 @@ Architecture:
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from collections.abc import AsyncGenerator
@@ -94,7 +95,7 @@ class AgenticRAGOrchestrator:
         self,
         tools: list[BaseTool],
         db_pool: Any = None,
-        model_name: str = "gemini-2.5-flash",  # Zantara AI - Gemini 3 Flash equiv
+        model_name: str = "gemini-3-flash-preview",  # Zantara AI - Gemini 3 Flash Preview
         semantic_cache: SemanticCache = None,
         retriever: Any = None,
         clarification_service: ClarificationService = None,
@@ -182,10 +183,24 @@ class AgenticRAGOrchestrator:
         )
         logger.debug("AgenticRAGOrchestrator: EntityExtractionService initialized")
 
-        # Initialize KG-Enhanced Retrieval Service
+        # Initialize KG-Enhanced Retrieval Service (legacy)
         self.kg_retrieval = KGEnhancedRetrieval(db_pool) if db_pool else None
         if self.kg_retrieval:
-            logger.info("✅ KG-Enhanced Retrieval initialized")
+            logger.info("✅ KG-Enhanced Retrieval initialized (legacy)")
+
+        # Initialize KG LangGraph Orchestrator (Phase 3)
+        # Feature flag: Set to None to disable LangGraph workflow synthesis
+        self.kg_langgraph_orchestrator = None
+        if db_pool and os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes"):
+            try:
+                from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
+
+                self.kg_langgraph_orchestrator = KGLangGraphOrchestrator(db_pool)
+                logger.info("✅ KG LangGraph Orchestrator initialized (Phase 3 - feature flag enabled)")
+            except ImportError as e:
+                logger.warning(f"⚠️ KG LangGraph Orchestrator not available: {e}")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True)
 
         # Initialize Follow-up & Golden Answer services
         self.followup_service = FollowupService()
@@ -230,6 +245,7 @@ class AgenticRAGOrchestrator:
             kg_retrieval=self.kg_retrieval,
             semantic_cache=self.semantic_cache,
             db_pool=db_pool,
+            kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
         )
 
         # Initialize streaming components
