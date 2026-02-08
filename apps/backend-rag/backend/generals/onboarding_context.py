@@ -75,7 +75,7 @@ CRITICAL_KNOWLEDGE = {
 # Working directory rules
 WORKING_DIRS = {
     "backend": str(_BACKEND_ROOT),
-    "project_root": str(_PROJECT_ROOT),
+    "project_root": str(_ONBOARDING_PATH.parent.parent) if _ONBOARDING_PATH.exists() else str(_BACKEND_ROOT.parent),
     "virtualenv": str(VIRTUALENV_PATH),
 }
 
