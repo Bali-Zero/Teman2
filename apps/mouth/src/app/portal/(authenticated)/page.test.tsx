@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PortalHomePage from './page';
 import type { PortalDashboard } from '@/lib/api/portal/portal.types';
 
@@ -87,6 +88,23 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
+// QueryClient wrapper for tests
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+}
+
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+}
+
 describe('PortalHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,7 +118,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockImplementation(() => new Promise(() => {})); // Never resolves
     mockGetTimeline.mockImplementation(() => new Promise(() => {}));
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     // Should show skeleton loaders
     const skeletons = screen.getAllByRole('generic');
@@ -114,7 +132,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue(mockTimeline);
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Welcome Back')).toBeInTheDocument();
@@ -128,7 +146,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Immigration')).toBeInTheDocument();
@@ -141,10 +159,12 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockRejectedValue(new Error('API Error'));
     mockGetTimeline.mockRejectedValue(new Error('API Error'));
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unable to Load Dashboard Data')).toBeInTheDocument();
+      expect(screen.getByText('Unable to load dashboard')).toBeInTheDocument();
+      expect(screen.getByText('API Error')).toBeInTheDocument();
+      expect(screen.getByText('Retry')).toBeInTheDocument();
     });
   });
 
@@ -166,7 +186,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue(mockTimeline);
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Timeline')).toBeInTheDocument();
@@ -180,7 +200,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('No activity yet. Your journey starts here.')).toBeInTheDocument();
@@ -193,7 +213,7 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockResolvedValue(mockDashboard);
     mockGetTimeline.mockResolvedValue({ entries: [] });
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Immigration')).toBeInTheDocument();
@@ -217,12 +237,12 @@ describe('PortalHomePage', () => {
     mockGetDashboard.mockRejectedValue(new Error('API Error'));
     mockGetTimeline.mockResolvedValue({ entries: [] });
 
-    render(<PortalHomePage />);
+    renderWithQueryClient(<PortalHomePage />);
 
     await waitFor(() => {
-      // Should still render cards with default values
-      expect(screen.getByText('Immigration')).toBeInTheDocument();
-      expect(screen.getByText('No Visa')).toBeInTheDocument();
+      // When dashboard API fails, error state is shown (not default cards)
+      expect(screen.getByText('Unable to load dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Welcome Back')).toBeInTheDocument();
     });
   });
 });

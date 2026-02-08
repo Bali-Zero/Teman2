@@ -90,7 +90,8 @@ class Logger {
         debug(logMessage);
         break;
       case LogLevel.INFO:
-        debug(logMessage);
+        // eslint-disable-next-line no-console
+        console.info(logMessage);
         break;
       case LogLevel.WARN:
         warn(logMessage);
