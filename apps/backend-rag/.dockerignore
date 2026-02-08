@@ -69,7 +69,7 @@ coverage/
 ../memory-service
 ../bali-intel-scraper
 ../packages
-../scripts
+# ../scripts  # ← COMMENTED OUT - We need scripts/agents/ for KBLI KG expansion
 !README.md
 !*.json
 !*.yml
