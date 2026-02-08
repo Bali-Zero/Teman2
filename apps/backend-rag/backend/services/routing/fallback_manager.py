@@ -40,8 +40,15 @@ class FallbackManagerService:
     # Phase 3: Smart Fallback Chains
     # Define fallback priority for each primary collection
     FALLBACK_CHAINS = {
-        "visa_oracle": ["immigration_circulars", "legal_architect", "tax_genius"],  # Circulars first for TKA/policy
-        "immigration_circulars": ["visa_oracle", "legal_architect"],  # Circulars fallback to main visa
+        "visa_oracle": [
+            "immigration_circulars",
+            "legal_architect",
+            "tax_genius",
+        ],  # Circulars first for TKA/policy
+        "immigration_circulars": [
+            "visa_oracle",
+            "legal_architect",
+        ],  # Circulars fallback to main visa
         "kbli_eye": ["legal_architect", "tax_genius", "visa_oracle"],
         "kbli_comprehensive": ["kbli_eye", "legal_architect", "tax_genius"],
         "tax_genius": [
@@ -55,6 +62,11 @@ class FallbackManagerService:
         "legal_updates": ["legal_architect", "tax_updates", "visa_oracle"],
         "property_knowledge": ["property_listings", "legal_architect", "visa_oracle"],
         "property_listings": ["property_knowledge", "legal_architect", "tax_knowledge"],
+        "training_conversations_hybrid": [
+            "legal_architect",
+            "tax_genius",
+            "kbli_eye",
+        ],  # Business setup fallback to legal/tax/kbli
         "zantara_books": ["visa_oracle"],  # Books is standalone, default fallback
         "bali_zero_team": [
             "visa_oracle",

@@ -400,8 +400,10 @@ async def test_synthesize_workflow_node_no_chains(sample_state, mock_db_pool):
 
 def test_route_after_understanding_golden_route(sample_state):
     """Test routing to golden route for exact intent match."""
-    sample_state["intent"] = "pt_pma_setup"
-    sample_state["extracted_entities"] = ["pt_pma"]
+    # Use nib_oss which is in golden_route_intents but doesn't match subgraph keywords
+    sample_state["intent"] = "nib_oss"
+    sample_state["extracted_entities"] = ["nib"]
+    sample_state["query"] = "Come ottenere NIB per la mia attività?"
 
     route = route_after_query_understanding(sample_state)
 
@@ -410,8 +412,10 @@ def test_route_after_understanding_golden_route(sample_state):
 
 def test_route_after_understanding_complex_query(sample_state):
     """Test routing to graph traversal for complex query."""
-    sample_state["intent"] = "company_setup"
-    sample_state["extracted_entities"] = ["kbli:56101", "pt_pma", "kitas"]
+    # Use generic entities that don't match subgraph keywords
+    sample_state["intent"] = "business_regulation"
+    sample_state["extracted_entities"] = ["regulation_123", "license_456", "document_789"]
+    sample_state["query"] = "Quali regolamenti e licenze servono?"
 
     route = route_after_query_understanding(sample_state)
 

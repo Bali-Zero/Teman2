@@ -327,6 +327,37 @@ BOOKS_KEYWORDS = [
     "literature",
 ]
 
+# Business setup & capital requirements keywords (for training_conversations_hybrid)
+BUSINESS_KEYWORDS = [
+    "pt pma",
+    "pt lokal",
+    "business setup",
+    "company setup",
+    "modal disetor",
+    "paid-up capital",
+    "capitale versato",
+    "capitale minimo",
+    "minimum capital",
+    "authorized capital",
+    "modal dasar",
+    "business entity",
+    "restaurant setup",
+    "villa rental",
+    "business guide",
+    "setup guide",
+    "investment requirement",
+    "capital requirement",
+    "notarial cost",
+    "incorporation cost",
+    "lkpm",
+    "investment report",
+    "business comparison",
+    "pt comparison",
+    "local vs foreign",
+    "investor kitas",
+    "business structure",
+]
+
 
 class KeywordMatcherService:
     """
@@ -346,6 +377,7 @@ class KeywordMatcherService:
             "team": TEAM_KEYWORDS + TEAM_ENUMERATION_KEYWORDS,
             "books": BOOKS_KEYWORDS,
             "circular": CIRCULAR_KEYWORDS,  # Kemnaker/Imigrasi circulars
+            "business": BUSINESS_KEYWORDS,  # Business setup & capital (training_conversations_hybrid)
         }
         self.modifier_keywords = {
             "updates": UPDATE_KEYWORDS,
