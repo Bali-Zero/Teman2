@@ -67,3 +67,5 @@ pre-commit==3.6.0
 
 # Production
 gunicorn>=22.0.0
+brotli-asgi
+slowapi

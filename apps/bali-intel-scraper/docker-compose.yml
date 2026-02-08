@@ -1,11 +1,10 @@
 version: '3.8'
 
 services:
-  # Main API Server
+  # Main API Server (Optimized Image)
+  # NOTE: Includes InMemoryTaskQueue for background tasks
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: bali-intel:optimized
     container_name: bali-intel-api
     restart: unless-stopped
     ports:
@@ -51,62 +50,6 @@ services:
       options:
         max-size: '100m'
         max-file: '3'
-
-  # Worker for background tasks
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: bali-intel-worker
-    restart: unless-stopped
-    command: celery -A backend.core.task_queue worker --loglevel=info --concurrency=4
-    environment:
-      - APP_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bali_intel
-      - DB_USER=postgres
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    depends_on:
-      - postgres
-      - redis
-      - api
-    networks:
-      - bali-intel
-    volumes:
-      - ./data:/app/data
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-
-  # Scheduler for periodic tasks
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: bali-intel-scheduler
-    restart: unless-stopped
-    command: celery -A backend.core.task_queue beat --loglevel=info
-    environment:
-      - APP_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bali_intel
-      - DB_USER=postgres
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - bali-intel
 
   # PostgreSQL Database
   postgres:
