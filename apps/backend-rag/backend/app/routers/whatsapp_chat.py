@@ -83,7 +83,7 @@ async def notify_zero_conversation_log(
 ):
     """
     Log EVERY bot conversation to Zero via Telegram.
-    
+
     Args:
         phone: Client phone
         sender_name: Client name
@@ -93,14 +93,14 @@ async def notify_zero_conversation_log(
     """
     if not settings.admin_telegram_chat_id:
         return
-    
+
     display_name = sender_name or "Unknown"
     lang_flag = {"it": "🇮🇹", "en": "🇬🇧", "de": "🇩🇪", "id": "🇮🇩"}.get(language or "?", "🌐")
-    
+
     # Keep it short for Zero
     client_msg_preview = client_message[:200] + ("..." if len(client_message) > 200 else "")
     bot_response_preview = bot_response[:300] + ("..." if len(bot_response) > 300 else "")
-    
+
     log_text = f"""💬 **WhatsApp Bot Conversation Log**
 
 **Cliente:** {display_name} (+{phone}) {lang_flag}
@@ -114,7 +114,7 @@ _{bot_response_preview}_
 ---
 _Log automatico - ogni conversazione viene tracciata_
 """
-    
+
     try:
         await telegram_bot.send_message(
             chat_id=settings.admin_telegram_chat_id,
@@ -269,6 +269,7 @@ async def process_whatsapp_message(
             ctx = {}
             if db_pool:
                 from backend.services.whatsapp_context_builder import build_context
+
                 try:
                     ctx = await build_context(phone, sender_name, message_text, db_pool)
                 except Exception:
@@ -297,14 +298,13 @@ async def process_whatsapp_message(
             logger.info(f"Welcome message sent to {phone}")
             return
 
-        # 4. AI CAN HANDLE — Claude Sonnet with RAG context + dynamic persona + memory
-        from backend.llm.providers.anthropic_direct import anthropic_provider
+        # 4. AI CAN HANDLE — Gemini 3 Flash with RAG (direct response, no Claude)
         from backend.prompts.whatsapp_persona import build_system_prompt
         from backend.services.whatsapp_context_builder import build_context
 
         db_pool = _get_db_pool(request)
 
-        logger.info(f"🚀 Processing query from {phone} with Claude Sonnet (RAG + Zan persona)")
+        logger.info(f"🚀 Processing query from {phone} with Gemini 3 Flash (RAG + Zan persona)")
 
         start_time = time.time()
 
@@ -312,54 +312,51 @@ async def process_whatsapp_message(
             # Build rich context
             ctx = await build_context(phone, sender_name, message_text, db_pool)
 
-            # --- RAG CONTEXT: Query the knowledge base ---
-            rag_context = ""
-            try:
-                from backend.app.dependencies import get_orchestrator
-                orchestrator = get_orchestrator(request)
-                wa_user_id = f"whatsapp_{phone}"
-                session_id = f"wa_session_{phone}"
-
-                rag_result = await orchestrator.process_query(
-                    query=message_text,
-                    user_id=wa_user_id,
-                    session_id=session_id,
-                )
-
-                # Extract useful context from RAG (answer + sources)
-                if rag_result and hasattr(rag_result, 'answer') and rag_result.answer:
-                    rag_answer = rag_result.answer.strip()
-                    # Only use RAG context if it's substantive (not just closing phrases)
-                    if len(rag_answer) > 50 and not rag_answer.startswith(("Fammi sapere", "Let me know", "Non ho")):
-                        rag_context = f"\n\n[CONTESTO DAL DATABASE BALI ZERO - usa queste informazioni per rispondere]\n{rag_answer}\n[FINE CONTESTO]"
-                        logger.info(f"📚 RAG context added: {len(rag_answer)} chars")
-                    else:
-                        logger.info(f"📚 RAG returned short/closing response ({len(rag_answer)} chars), skipping")
-                else:
-                    logger.info("📚 No useful RAG context found")
-            except Exception as rag_err:
-                logger.warning(f"RAG query failed (non-blocking): {rag_err}")
-                # RAG failure is non-blocking — Claude can still answer from system prompt
-
-            # Build dynamic system prompt with client context + RAG context
-            system_prompt = build_system_prompt(
+            # Build dynamic WhatsApp persona instructions
+            whatsapp_persona_instructions = build_system_prompt(
                 client_name=ctx["client_name"],
                 client_profile=ctx["client_profile"],
                 is_first_message=ctx["is_first_message"],
                 detected_language=ctx["detected_language"],
                 time_of_day=ctx["time_of_day"],
-            ) + rag_context
-
-            # Prepare messages: history + current
-            messages = ctx["conversation_history"] + [{"role": "user", "content": message_text}]
-
-            # Call Claude Sonnet 4.5
-            response_text = await anthropic_provider.generate(
-                system_prompt=system_prompt,
-                messages=messages,
-                temperature=0.75,
-                max_tokens=1024,
             )
+
+            # --- DIRECT RAG: Query with Gemini 2.5 Flash ---
+            from backend.app.dependencies import get_orchestrator
+
+            orchestrator = get_orchestrator(request)
+            wa_user_id = f"whatsapp_{phone}"
+            session_id = f"wa_session_{phone}"
+
+            # Inject WhatsApp persona at start of conversation history (system-like context)
+            # This guides Zantara's base persona to be more WhatsApp-natural
+            enhanced_history = []
+            if ctx["is_first_message"]:
+                # Add persona instructions as first "context" message
+                enhanced_history.append({
+                    "role": "user",
+                    "content": f"[CONTESTO WHATSAPP]\n{whatsapp_persona_instructions}\n\nRispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp (no markdown, tono umano)."
+                })
+                enhanced_history.append({
+                    "role": "assistant",
+                    "content": "Capito, rispondo come Zan su WhatsApp - tono naturale, niente markdown, focus su visa e business a Bali."
+                })
+            
+            enhanced_history.extend(ctx["conversation_history"])
+
+            # Direct RAG query (Gemini will respond with Zantara + WhatsApp persona blend)
+            rag_result = await orchestrator.process_query(
+                query=message_text,
+                user_id=wa_user_id,
+                session_id=session_id,
+                conversation_history=enhanced_history,
+            )
+
+            # Extract response from RAG
+            if rag_result and hasattr(rag_result, "answer") and rag_result.answer:
+                response_text = rag_result.answer.strip()
+            else:
+                response_text = "Scusa, qualcosa è andato storto 😅 Riprova!"
 
             if not response_text:
                 response_text = "Scusa, qualcosa è andato storto 😅 Riprova!"
@@ -453,6 +450,7 @@ def _get_db_pool(request: Request):
     """Get database pool safely."""
     try:
         from backend.app.dependencies import get_database
+
         return get_database(request)
     except Exception:
         return None
@@ -497,13 +495,18 @@ async def _save_conversation(
 
                 await conn.execute(
                     "UPDATE conversations SET messages = $1::jsonb, metadata = $2::jsonb WHERE id = $3",
-                    json.dumps(all_msgs), json.dumps(client_profile), existing_row_id,
+                    json.dumps(all_msgs),
+                    json.dumps(client_profile),
+                    existing_row_id,
                 )
             else:
                 # Create new conversation row
                 await conn.execute(
                     "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at) VALUES ($1, $2, $3::jsonb, $4::jsonb, NOW())",
-                    wa_user_id, session_id, json.dumps(conversation_msgs), json.dumps(client_profile),
+                    wa_user_id,
+                    session_id,
+                    json.dumps(conversation_msgs),
+                    json.dumps(client_profile),
                 )
 
         logger.info(f"💾 Conversation saved for {phone} (session: {session_id})")
@@ -609,7 +612,7 @@ async def whatsapp_status():
         "phone_number_id": settings.whatsapp_phone_number_id if configured else None,
         "triage_enabled": True,
         "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
-        "ai_model": "claude-sonnet-4-5",
+        "ai_model": "gemini-3-flash",
         "persona": "zan_v2",
     }
 

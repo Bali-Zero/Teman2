@@ -94,7 +94,7 @@ class AgenticRAGOrchestrator:
         self,
         tools: list[BaseTool],
         db_pool: Any = None,
-        model_name: str = "gemini-2.0-flash-001",  # Zantara AI
+        model_name: str = "gemini-2.5-flash",  # Zantara AI - Gemini 3 Flash equiv
         semantic_cache: SemanticCache = None,
         retriever: Any = None,
         clarification_service: ClarificationService = None,
