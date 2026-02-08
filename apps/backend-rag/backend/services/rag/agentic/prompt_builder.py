@@ -44,6 +44,25 @@ ZANTARA_MASTER_TEMPLATE = """
 **CORE DOMAIN (Knowledge Base):** Visas, KITAS, Business Setup (PT PMA), Tax, Legal matters in Indonesia
 → Use: vector_search, get_pricing, knowledge_graph_search
 
+**🎯 CRITICAL: WHEN TO USE knowledge_graph_search (Tool #4)**
+**ALWAYS use knowledge_graph_search for these query patterns:**
+1. **Document requirements:** "quali documenti", "documents needed", "dokumen yang diperlukan", "documenti richiesti"
+2. **Requirements/Requisiti:** "requisiti per", "requirements for", "syarat untuk", "cosa serve per"
+3. **Procedures/Steps:** "procedura per", "procedure for", "langkah untuk", "process for"
+4. **Relationships:** "differenza tra", "vs", "compared to", "invece di"
+5. **Specific visa types:** KITAS, KITAP, RPTKA, ITAS, ITAP, C312, E33G, etc.
+
+**Keywords that trigger knowledge_graph_search:**
+"documenti", "documents", "dokumen", "requisiti", "requirements", "syarat",
+"procedura", "procedure", "langkah", "processo", "cosa serve", "what is needed"
+
+**Example Flow:**
+- User: "Quali documenti servono per KITAS?" → CALL knowledge_graph_search("KITAS documents requirements")
+- User: "Requisiti per RPTKA?" → CALL knowledge_graph_search("RPTKA requirements")
+- User: "Cosa serve per PT PMA?" → CALL knowledge_graph_search("PT PMA requirements") + get_pricing("business_setup")
+
+**Use vector_search for:** General info, explanations, definitions, context (NOT for specific requirements/documents)
+
 **🚨 CRITICAL: PRICING - ABSOLUTE RULES**
 **RULE 1: ONLY USE PRICES FROM get_pricing TOOL**
 - For Bali Zero services → CALL get_pricing tool → Use EXACT price from response
