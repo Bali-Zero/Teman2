@@ -10,16 +10,74 @@ Managed Services:
 5. Golden Routes Seeder - Seed common query patterns (one-time at startup)
 6. Renewal Alerts Checker - Visa/permit expiry alerts 90/60/30 days (every 12h)
 7. Knowledge Graph Builder Agent - Build knowledge graphs (every 4h)
+
+Leader Election:
+- Uses Redis SET NX EX to ensure only one instance executes each task
+- Safe across multiple Fly.io machines and uvicorn workers
+- Falls back to normal execution if Redis is unavailable
 """
 
 import asyncio
 import logging
+import os
+import uuid
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+try:
+    import redis.asyncio as aioredis
+except ImportError:
+    aioredis = None
+
 logger = logging.getLogger(__name__)
+
+# Unique ID for this worker instance (machine + process)
+_WORKER_ID = f"{os.getenv('FLY_MACHINE_ID', 'local')}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+# Redis key prefix for task locks
+_LOCK_PREFIX = "nuzantara:scheduler:lock:"
+
+
+async def _get_redis() -> "aioredis.Redis | None":
+    """Get a Redis client for leader election. Returns None if unavailable."""
+    if aioredis is None:
+        return None
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return None
+    try:
+        client = await aioredis.from_url(redis_url, decode_responses=True)
+        await client.ping()
+        return client
+    except Exception:
+        return None
+
+
+async def _acquire_task_lock(task_name: str, ttl_seconds: int) -> bool:
+    """
+    Try to acquire a distributed lock for a task.
+
+    Uses Redis SET NX EX: only one worker wins per interval.
+    Lock auto-expires after ttl_seconds (= task interval).
+
+    Returns True if this worker acquired the lock (should run the task).
+    Returns True if Redis is unavailable (fallback: run anyway, best effort).
+    """
+    client = await _get_redis()
+    if client is None:
+        return True  # No Redis = no coordination, run anyway
+
+    lock_key = f"{_LOCK_PREFIX}{task_name}"
+    try:
+        acquired = await client.set(lock_key, _WORKER_ID, nx=True, ex=ttl_seconds)
+        return bool(acquired)
+    except Exception as e:
+        logger.debug(f"Lock acquisition error for {task_name}: {e}")
+        return True  # On error, run anyway
+    finally:
+        await client.aclose()
 
 
 @dataclass
@@ -93,6 +151,20 @@ class AutonomousScheduler:
                 continue
 
             try:
+                # Leader election: only one worker runs each task
+                lock_ttl = max(task.interval_seconds, 30)  # Lock for at least 30s
+                if not await _acquire_task_lock(task.name, lock_ttl):
+                    logger.debug(f"⏭️ Task {task.name} locked by another worker, skipping")
+                    # Still wait the full interval before trying again
+                    try:
+                        await asyncio.wait_for(
+                            self._shutdown_event.wait(), timeout=task.interval_seconds
+                        )
+                        break
+                    except asyncio.TimeoutError:
+                        pass
+                    continue
+
                 logger.info(f"⏰ Running scheduled task: {task.name}")
                 task.last_run = datetime.now()
 
@@ -385,14 +457,13 @@ async def create_and_start_scheduler(
 
             async def seed_golden_routes_once():
                 """Seed golden_routes with common query patterns (one-time)."""
-                logger.info("🌟 Checking Golden Routes...")
-
                 async with db_pool.acquire() as conn:
                     # Check if already seeded
                     count = await conn.fetchval("SELECT COUNT(*) FROM golden_routes")
                     if count > 0:
-                        logger.info(f"🌟 Golden Routes already seeded ({count} routes)")
+                        logger.debug(f"Golden Routes already seeded ({count} routes)")
                         return
+                    logger.info("🌟 Seeding Golden Routes...")
 
                     # Common query patterns for Indonesian business/immigration
                     common_routes = [
@@ -612,27 +683,32 @@ async def create_and_start_scheduler(
     # Enriches client birthplace with cultural context for personalized conversations
     # Runs daily at ~22:00 Bali time (after work hours, when Ollama has capacity)
     # ═══════════════════════════════════════════════════════════════════════════
-    try:
-        from backend.services.crm.birthplace_enrichment_service import (
-            run_birthplace_enrichment_task,
-        )
+    # Skip in production (Ollama not available on Fly.io)
+    _is_production = os.getenv("ENVIRONMENT", "").lower() == "production"
+    if _is_production:
+        logger.debug("Birthplace Enrichment disabled in production (no Ollama)")
+    else:
+        try:
+            from backend.services.crm.birthplace_enrichment_service import (
+                run_birthplace_enrichment_task,
+            )
 
-        async def run_birthplace_enrichment():
-            try:
-                stats = await run_birthplace_enrichment_task(db_pool)
-                logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
-            except Exception as e:
-                logger.error(f"❌ Birthplace Enrichment error: {e}", exc_info=True)
+            async def run_birthplace_enrichment():
+                try:
+                    stats = await run_birthplace_enrichment_task(db_pool)
+                    logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
+                except Exception as e:
+                    logger.error(f"❌ Birthplace Enrichment error: {e}", exc_info=True)
 
-        scheduler.register_task(
-            name="birthplace_enrichment",
-            task_func=run_birthplace_enrichment,
-            interval_seconds=86400,  # 24 hours
-            enabled=True,
-        )
-        logger.info("✅ Birthplace Enrichment registered (24h interval)")
-    except Exception as e:
-        logger.error(f"❌ Failed to register Birthplace Enrichment: {e}")
+            scheduler.register_task(
+                name="birthplace_enrichment",
+                task_func=run_birthplace_enrichment,
+                interval_seconds=86400,  # 24 hours
+                enabled=True,
+            )
+            logger.info("✅ Birthplace Enrichment registered (24h interval)")
+        except Exception as e:
+            logger.error(f"❌ Failed to register Birthplace Enrichment: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 9: BIRTHDAY EMAIL SERVICE

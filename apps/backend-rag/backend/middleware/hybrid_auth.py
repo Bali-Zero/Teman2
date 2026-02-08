@@ -199,20 +199,24 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             # Step 1: Check if this is a public endpoint
             if self.is_public_endpoint(request):
+                # Skip verbose logging for health check (called every 15s by Fly)
+                path = request.url.path
+                if path in ("/health", "/api/health"):
+                    return await call_next(request)
+
                 # Log structured access to public endpoints for security audit
                 correlation_id = _get_correlation_id(request)
                 client_ip = request.client.host if request.client else "unknown"
                 user_agent = request.headers.get("user-agent", "unknown")
 
-                # Structured logging for public endpoint access
                 logger.info(
                     "Public endpoint accessed",
                     extra={
                         "event_type": "public_endpoint_access",
-                        "endpoint": request.url.path,
+                        "endpoint": path,
                         "method": request.method,
                         "client_ip": client_ip,
-                        "user_agent": user_agent[:200],  # Truncate long user agents
+                        "user_agent": user_agent[:200],
                         "correlation_id": correlation_id,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
