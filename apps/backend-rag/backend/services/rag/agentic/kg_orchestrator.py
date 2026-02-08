@@ -548,7 +548,7 @@ Answer:"""
             )
 
             # Send message
-            response, model_used, response_obj = await self.llm_gateway.send_message(
+            response, model_used, response_obj, _usage = await self.llm_gateway.send_message(
                 chat=chat,
                 message=user_message,
                 tier=tier,

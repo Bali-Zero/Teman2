@@ -792,6 +792,17 @@ class Settings(BaseSettings):
         description="Path for pending Intel approval storage. Defaults to /tmp/pending_intel. Set via INTEL_PENDING_PATH env var",
     )
 
+    # Allowed directories for VisionTool file access (security sandbox)
+    vision_allowed_dirs: str = Field(
+        default="/app/uploads,/tmp,/app/data",
+        description="Comma-separated list of directories the VisionTool may access. Set via VISION_ALLOWED_DIRS env var",
+    )
+
+    @property
+    def get_vision_allowed_dirs(self) -> list[str]:
+        """Get list of allowed directories for VisionTool file access."""
+        return [d.strip() for d in self.vision_allowed_dirs.split(",") if d.strip()]
+
     @property
     def get_intel_staging_base_dir(self) -> str:
         """Get Intel staging base directory with fallback logic."""

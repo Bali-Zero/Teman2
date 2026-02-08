@@ -493,10 +493,10 @@ async def get_collection_stats(
 @router.get("/parent-documents-public/{document_id}")
 async def get_parent_documents_public(
     document_id: str,
+    _current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get parent documents (BAB) from PostgreSQL for a legal document.
-    PUBLIC endpoint for testing - NO AUTH REQUIRED.
 
     Args:
         document_id: Document ID (e.g. "PP_31_2013")

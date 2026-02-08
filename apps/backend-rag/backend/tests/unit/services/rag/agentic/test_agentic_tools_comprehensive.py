@@ -300,8 +300,8 @@ class TestVisionTool:
         assert "image" in tool.description.lower() or "vision" in tool.description.lower()
 
     @pytest.mark.asyncio
-    async def test_execute_with_url(self, mock_vision_service):
-        """Test execute with file path"""
+    async def test_execute_allowed_path(self, mock_vision_service):
+        """Test execute with file path inside allowed directory."""
         with patch.object(VisionTool, "__init__", lambda self: None):
             tool = VisionTool()
             tool.vision_service = mock_vision_service
@@ -310,16 +310,145 @@ class TestVisionTool:
                 return_value={"answer": "test analysis"}
             )
 
-            result = await tool.execute(file_path="/path/to/file.pdf", query="test query")
-            assert "test" in result.lower()
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
+                result = await tool.execute(
+                    file_path="/tmp/test.pdf", query="test query"
+                )
+                assert "analysis result" in result.lower()
+                mock_vision_service.process_pdf.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_execute_error_handling(self, mock_vision_service):
-        """Test error handling"""
+    async def test_execute_blocked_path_outside_allowed_dirs(self, mock_vision_service):
+        """Test that paths outside allowed directories are blocked."""
         with patch.object(VisionTool, "__init__", lambda self: None):
             tool = VisionTool()
             tool.vision_service = mock_vision_service
-            mock_vision_service.process_pdf = AsyncMock(side_effect=Exception("Vision error"))
 
-            result = await tool.execute(file_path="invalid", query="test")
-            assert "error" in result.lower()
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
+                result = await tool.execute(
+                    file_path="/etc/passwd", query="read this"
+                )
+                assert "error" in result.lower()
+                assert "not allowed" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_blocked_path_etc_shadow(self, mock_vision_service):
+        """Test that sensitive system files are blocked."""
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
+                result = await tool.execute(
+                    file_path="/etc/shadow", query="extract content"
+                )
+                assert "error" in result.lower()
+                assert "not allowed" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_blocked_directory_traversal(self, mock_vision_service):
+        """Test that directory traversal via .. is blocked.
+
+        /tmp/../etc/passwd resolves to /etc/passwd which fails the
+        allowed-dirs check before the '..' check is reached. Either way,
+        the path is blocked -- that's what matters.
+        """
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
+                result = await tool.execute(
+                    file_path="/tmp/../etc/passwd", query="read"
+                )
+                assert "error" in result.lower()
+                assert "not allowed" in result.lower() or "traversal" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_blocked_nested_traversal(self, mock_vision_service):
+        """Test that deeply nested directory traversal is blocked."""
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/app/uploads"]
+                result = await tool.execute(
+                    file_path="/app/uploads/../../etc/passwd", query="read"
+                )
+                assert "error" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_blocked_home_directory(self, mock_vision_service):
+        """Test that home directory access is blocked."""
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp"]
+                result = await tool.execute(
+                    file_path="/home/user/.ssh/id_rsa", query="read"
+                )
+                assert "error" in result.lower()
+                assert "not allowed" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_error_handling(self, mock_vision_service):
+        """Test error handling when vision service fails."""
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+            mock_vision_service.process_pdf = AsyncMock(
+                side_effect=Exception("Vision error")
+            )
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                mock_settings.get_vision_allowed_dirs = ["/tmp"]
+                result = await tool.execute(
+                    file_path="/tmp/test.pdf", query="test"
+                )
+                assert "error" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_respects_custom_allowed_dirs(self, mock_vision_service):
+        """Test that custom VISION_ALLOWED_DIRS from settings is respected."""
+        with patch.object(VisionTool, "__init__", lambda self: None):
+            tool = VisionTool()
+            tool.vision_service = mock_vision_service
+
+            with patch(
+                "backend.app.core.config.settings"
+            ) as mock_settings:
+                # Only /custom/dir is allowed
+                mock_settings.get_vision_allowed_dirs = ["/custom/dir"]
+                result = await tool.execute(
+                    file_path="/tmp/test.pdf", query="test"
+                )
+                # /tmp should be blocked because only /custom/dir is allowed
+                assert "error" in result.lower()
+                assert "not allowed" in result.lower()
+                mock_vision_service.process_pdf.assert_not_called()

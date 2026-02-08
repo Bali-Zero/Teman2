@@ -20,7 +20,7 @@ from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_a
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
-from backend.core.cache import cached
+from backend.core.cache import cached, invalidate_cache
 
 logger = get_logger(__name__)
 
@@ -322,6 +322,7 @@ async def create_client(
                         from_status="none", to_status=client.status, changed_by=user_email
                     ).inc()
 
+                    invalidate_cache("zantara:crm_clients_stats:*")
                     return ClientResponse(**new_client)
         except asyncio.TimeoutError:
             logger.error("Database connection acquisition timeout")
@@ -625,6 +626,7 @@ async def update_client(
             # Track metrics
             # crm_client_operations.labels(operation="update", status="success").inc()
 
+            invalidate_cache("zantara:crm_clients_stats:*")
             return ClientResponse(**dict(row))
 
     except HTTPException:
@@ -689,6 +691,7 @@ async def delete_client(
             # Track metrics
             # crm_client_operations.labels(operation="delete", status="success").inc()
 
+            invalidate_cache("zantara:crm_clients_stats:*")
             return {"success": True, "message": "Client marked as inactive"}
 
     except HTTPException:
