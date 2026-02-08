@@ -13,13 +13,7 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, Dict, List, Optional, Any
 from urllib.parse import urlparse
 
-from playwright.async_api import (
-    async_playwright,
-    Browser,
-    BrowserContext,
-    Page,
-    Response
-)
+from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 
 from config.settings import settings
 from backend.core.logger import get_logger, LogAction
@@ -31,6 +25,7 @@ logger = get_logger(__name__, component="browser")
 @dataclass
 class BrowserConfig:
     """Browser configuration."""
+
     headless: bool = True
     browser_type: str = "chromium"
     viewport_width: int = 1920
@@ -38,7 +33,7 @@ class BrowserConfig:
     user_agent: Optional[str] = None
     locale: str = "en-US"
     timezone: str = "America/New_York"
-    
+
     # Stealth options
     stealth_enabled: bool = True
     webdriver_patch: bool = True
@@ -48,7 +43,7 @@ class BrowserConfig:
 
 class StealthPlugin:
     """Apply stealth patches to avoid bot detection."""
-    
+
     @staticmethod
     def get_webdriver_patch() -> str:
         """Patch to hide webdriver property."""
@@ -59,7 +54,7 @@ class StealthPlugin:
             });
         }
         """
-    
+
     @staticmethod
     def get_chrome_runtime_patch() -> str:
         """Patch to fix chrome runtime."""
@@ -70,7 +65,7 @@ class StealthPlugin:
             };
         }
         """
-    
+
     @staticmethod
     def get_navigator_patch() -> str:
         """Patch navigator properties."""
@@ -84,7 +79,7 @@ class StealthPlugin:
             });
         }
         """
-    
+
     @staticmethod
     def get_permissions_patch() -> str:
         """Patch permissions API."""
@@ -98,7 +93,7 @@ class StealthPlugin:
             );
         }
         """
-    
+
     @staticmethod
     def get_canvas_noise_patch() -> str:
         """Add subtle noise to canvas fingerprint."""
@@ -121,7 +116,7 @@ class StealthPlugin:
             };
         }
         """
-    
+
     @classmethod
     def get_all_scripts(cls) -> List[str]:
         """Get all stealth scripts."""
@@ -136,69 +131,58 @@ class StealthPlugin:
 
 class BrowserManager:
     """Manages browser instances and contexts."""
-    
+
     def __init__(self, config: Optional[BrowserConfig] = None):
-        self.config = config or BrowserConfig(
-            headless=settings.scraping.headless
-        )
+        self.config = config or BrowserConfig(headless=settings.scraping.headless)
         self._browser: Optional[Browser] = None
         self._playwright = None
         self._context_pool: List[BrowserContext] = []
         self._max_contexts = settings.scraping.max_concurrent_browsers
         self._lock = asyncio.Lock()
-    
+
     async def initialize(self) -> None:
         """Initialize browser instance."""
         if self._browser is not None:
             return
-        
+
         logger.info(
             "Initializing browser",
             action=LogAction.START,
             metadata={
                 "browser_type": self.config.browser_type,
-                "headless": self.config.headless
-            }
+                "headless": self.config.headless,
+            },
         )
-        
+
         try:
             self._playwright = await async_playwright().start()
-            
-            browser_class = getattr(
-                self._playwright,
-                self.config.browser_type
-            )
-            
+
+            browser_class = getattr(self._playwright, self.config.browser_type)
+
             self._browser = await browser_class.launch(
                 headless=self.config.headless,
                 args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--disable-site-isolation-trials'
-                ]
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--disable-site-isolation-trials",
+                ],
             )
-            
-            logger.info(
-                "Browser initialized",
-                action=LogAction.END
-            )
-            
+
+            logger.info("Browser initialized", action=LogAction.END)
+
         except Exception as e:
             logger.error(
                 "Browser initialization failed",
                 action=LogAction.ERROR,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
             raise
-    
+
     async def close(self) -> None:
         """Close browser and cleanup."""
-        logger.info(
-            "Closing browser",
-            action=LogAction.START
-        )
-        
+        logger.info("Closing browser", action=LogAction.START)
+
         # Close all contexts
         for context in self._context_pool:
             try:
@@ -206,73 +190,70 @@ class BrowserManager:
             except Exception:
                 pass
         self._context_pool.clear()
-        
+
         if self._browser:
             await self._browser.close()
             self._browser = None
-        
+
         if self._playwright:
             await self._playwright.stop()
             self._playwright = None
-        
-        logger.info(
-            "Browser closed",
-            action=LogAction.END
-        )
-    
+
+        logger.info("Browser closed", action=LogAction.END)
+
     async def create_context(
         self,
         proxy: Optional[Dict[str, str]] = None,
-        extra_headers: Optional[Dict[str, str]] = None
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> BrowserContext:
         """Create a new browser context with stealth settings."""
         if self._browser is None:
             await self.initialize()
-        
+
         context_options = {
             "viewport": {
                 "width": self.config.viewport_width,
-                "height": self.config.viewport_height
+                "height": self.config.viewport_height,
             },
             "locale": self.config.locale,
             "timezone_id": self.config.timezone,
         }
-        
+
         if proxy:
             context_options["proxy"] = proxy
-        
+
         if extra_headers:
             context_options["extra_http_headers"] = extra_headers
-        
+
         context = await self._browser.new_context(**context_options)
-        
+
         # Apply stealth patches
         if self.config.stealth_enabled:
             for script in StealthPlugin.get_all_scripts():
                 await context.add_init_script(script)
-        
+
         return context
-    
+
     @asynccontextmanager
     async def get_context(
         self,
         proxy: Optional[Dict[str, str]] = None,
-        extra_headers: Optional[Dict[str, str]] = None
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> AsyncGenerator[BrowserContext, None]:
         """Get a context from pool or create new one."""
         context = None
-        
+
         try:
             # Try to reuse from pool
             async with self._lock:
                 if self._context_pool:
                     context = self._context_pool.pop()
-                
+
             if context is None:
                 context = await self.create_context(proxy, extra_headers)
-            
+
             yield context
-            
+
         finally:
             if context:
                 # Return to pool if not full, otherwise close
@@ -283,67 +264,58 @@ class BrowserManager:
                         self._context_pool.append(context)
                     else:
                         await context.close()
-    
+
     @asynccontextmanager
     async def get_page(
         self,
         url: Optional[str] = None,
         proxy: Optional[Dict[str, str]] = None,
-        extra_headers: Optional[Dict[str, str]] = None
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> AsyncGenerator[Page, None]:
         """Get a page with automatic cleanup."""
         async with self.get_context(proxy, extra_headers) as context:
             page = await context.new_page()
-            
+
             try:
                 if url:
                     # Apply rate limiting
                     parsed = urlparse(url)
                     await limit_scrape_request(parsed.netloc)
-                    
+
                     response = await page.goto(
                         url,
                         wait_until="networkidle",
-                        timeout=settings.scraping.page_load_timeout * 1000
+                        timeout=settings.scraping.page_load_timeout * 1000,
                     )
-                    
+
                     if response.status >= 400:
-                        raise BrowserError(
-                            f"HTTP {response.status} for {url}"
-                        )
-                
+                        raise BrowserError(f"HTTP {response.status} for {url}")
+
                 yield page
-                
+
             finally:
                 await page.close()
-    
+
     async def get_page_content(
         self,
         url: str,
         wait_for_selector: Optional[str] = None,
-        proxy: Optional[Dict[str, str]] = None
+        proxy: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Get page content with metadata."""
         async with self.get_page(url, proxy) as page:
             if wait_for_selector:
-                await page.wait_for_selector(
-                    wait_for_selector,
-                    timeout=10000
-                )
-            
+                await page.wait_for_selector(wait_for_selector, timeout=10000)
+
             content = await page.content()
             title = await page.title()
-            
-            return {
-                "url": url,
-                "title": title,
-                "content": content,
-                "status": 200
-            }
+
+            return {"url": url, "title": title, "content": content, "status": 200}
 
 
 class BrowserError(Exception):
     """Browser operation error."""
+
     pass
 
 

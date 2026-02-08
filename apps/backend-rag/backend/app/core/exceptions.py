@@ -27,7 +27,9 @@ class ZantaraError(Exception):
 class AuthenticationError(ZantaraError):
     """Raised when authentication fails."""
 
-    def __init__(self, message: str = "Authentication failed", details: dict[str, Any] | None = None):
+    def __init__(
+        self, message: str = "Authentication failed", details: dict[str, Any] | None = None
+    ):
         super().__init__(message, "AUTHENTICATION_ERROR", details)
 
 

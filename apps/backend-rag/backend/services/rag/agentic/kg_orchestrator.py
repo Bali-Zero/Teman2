@@ -84,7 +84,7 @@ class KGAgenticOrchestrator:
         ...     query="How to open a restaurant in Bali as a foreigner?",
         ...     session_id="session_123"
         ... )
-        >>> print(response.reasoning_trace)
+        >>> logger.info(response.reasoning_trace)
         ['Detected intent: business_setup + immigration', ...]
     """
 
@@ -127,10 +127,10 @@ class KGAgenticOrchestrator:
         self.collection_routing = {
             "visa": ["visa_oracle"],
             "immigration": ["visa_oracle"],
-            "company": ["legal_unified_hybrid", "kbli_unified"],
-            "business": ["legal_unified_hybrid", "kbli_unified"],
+            "company": ["legal_unified_hybrid", "kbli_2025_final"],
+            "business": ["legal_unified_hybrid", "kbli_2025_final"],
             "tax": ["tax_genius_hybrid"],
-            "kbli": ["kbli_unified"],
+            "kbli": ["kbli_2025_final"],
             "pricing": ["bali_zero_pricing"],
         }
 
@@ -455,7 +455,7 @@ class KGAgenticOrchestrator:
             if entity_type in ["kitas", "kitap", "vitas", "evisa", "visa"]:
                 collections.add("visa_oracle")
             elif entity_type in ["kbli", "nib", "oss"]:
-                collections.add("kbli_unified")
+                collections.add("kbli_2025_final")
             elif entity_type in ["pph", "ppn", "pbb", "npwp", "tax"]:
                 collections.add("tax_genius_hybrid")
             elif entity_type in ["pt_pma", "pt_pmdn", "badan_usaha", "undang_undang"]:
@@ -465,7 +465,7 @@ class KGAgenticOrchestrator:
         if kg_context.golden_route:
             route_id = kg_context.golden_route.route_id
             if "restaurant" in route_id or "company" in route_id:
-                collections.update(["legal_unified_hybrid", "kbli_unified", "visa_oracle"])
+                collections.update(["legal_unified_hybrid", "kbli_2025_final", "visa_oracle"])
             elif "work" in route_id or "kitas" in route_id:
                 collections.add("visa_oracle")
 

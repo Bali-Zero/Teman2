@@ -32,7 +32,9 @@ def analyze_excel(path):
     try:
         # Load raw first to detect headers
         df_raw = pd.read_excel(path, header=None)
-        logger.info(f"📊 Raw Dimensions: {df_raw.shape[0]} rows x {df_raw.shape[1]} cols")
+        logger.info(
+            f"📊 Raw Dimensions: {df_raw.shape[0]} rows x {df_raw.shape[1]} cols"
+        )
     except Exception as e:
         logger.error(f"❌ Read Failed: {e}")
         return

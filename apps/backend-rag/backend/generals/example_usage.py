@@ -6,9 +6,10 @@ This demonstrates how to use the system from ZANTARA's perspective.
 
 import asyncio
 import logging
-from backend.generals.task_coordinator import TaskCoordinator
+
 from backend.generals.coding_general import CodingGeneral
 from backend.generals.intelligence_general import IntelligenceGeneral
+from backend.generals.task_coordinator import TaskCoordinator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,9 +26,7 @@ async def example_submit_and_wait():
             task_type="code",
             title="Run Python script",
             description="Execute a Python script",
-            payload={
-                "command": "python -c 'print(\"Hello from Coding General!\")'"
-            },
+            payload={"command": "python -c 'logger.info(\"Hello from Coding General!\")'"},
             priority=7,
         )
         logger.info(f"✅ Submitted task {task_id}")
@@ -104,8 +103,8 @@ async def example_run_generals():
         for i in range(3):
             task_id = await coordinator.submit_task(
                 task_type="code",
-                title=f"Task {i+1}",
-                payload={"command": f"echo 'Task {i+1} completed'"},
+                title=f"Task {i + 1}",
+                payload={"command": f"echo 'Task {i + 1} completed'"},
                 priority=5,
             )
             task_ids.append(task_id)
@@ -174,7 +173,9 @@ async def example_memory_sharing():
         # Check memory
         ml_basics = await coordinator.get_memory("ml_basics")
         ml_apps = await coordinator.get_memory("ml_applications")
-        logger.info(f"✅ Memory keys available: ml_basics={ml_basics is not None}, ml_applications={ml_apps is not None}")
+        logger.info(
+            f"✅ Memory keys available: ml_basics={ml_basics is not None}, ml_applications={ml_apps is not None}"
+        )
 
     finally:
         await coordinator.close()
@@ -188,7 +189,7 @@ async def example_monitoring():
     try:
         # Get system stats
         stats = await coordinator.get_stats()
-        logger.info(f"📊 System Stats:")
+        logger.info("📊 System Stats:")
         logger.info(f"  Tasks: {stats['tasks']}")
         logger.info(f"  Memory: {stats['memory']}")
         logger.info(f"  Activity: {stats['activity']}")
@@ -197,7 +198,9 @@ async def example_monitoring():
         activities = await coordinator.get_activity(limit=10)
         logger.info(f"📋 Recent Activity ({len(activities)} entries):")
         for activity in activities[:5]:
-            logger.info(f"  {activity['general_name']}: {activity['activity_type']} - {activity['message']}")
+            logger.info(
+                f"  {activity['general_name']}: {activity['activity_type']} - {activity['message']}"
+            )
 
         # Get pending tasks
         pending = await coordinator.get_tasks(status="pending")
@@ -208,13 +211,13 @@ async def example_monitoring():
 
 
 if __name__ == "__main__":
-    print("The Generals Multi-Agent System - Examples")
-    print("=" * 50)
-    print("\n1. Submit and Wait Example")
+    logger.info("The Generals Multi-Agent System - Examples")
+    logger.info("=" * 50)
+    logger.info("\n1. Submit and Wait Example")
     asyncio.run(example_submit_and_wait())
-    print("\n2. Research Task Example")
+    logger.info("\n2. Research Task Example")
     asyncio.run(example_research_task())
-    print("\n3. Memory Sharing Example")
+    logger.info("\n3. Memory Sharing Example")
     asyncio.run(example_memory_sharing())
-    print("\n4. Monitoring Example")
+    logger.info("\n4. Monitoring Example")
     asyncio.run(example_monitoring())

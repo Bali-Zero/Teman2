@@ -22,7 +22,7 @@ import httpx
 
 if TYPE_CHECKING:
     # Avoid circular imports at runtime
-    from backend.services.routing.query_router_integration import QueryRouterIntegration
+    pass
 from qdrant_client.http import exceptions as qdrant_exceptions
 
 logger = logging.getLogger(__name__)
@@ -478,7 +478,7 @@ class SearchService:
                     # CRITICAL: Hybrid collections require named vector "dense"
                     use_vector_name = (
                         "dense"
-                        if collection_name.endswith("_hybrid") or collection_name == "kbli_unified"
+                        if collection_name.endswith("_hybrid") or collection_name == "kbli_2025_final"
                         else None
                     )
                     raw_results = await vector_db.search(
@@ -494,7 +494,7 @@ class SearchService:
                 # CRITICAL: Hybrid collections require named vector "dense"
                 use_vector_name = (
                     "dense"
-                    if collection_name.endswith("_hybrid") or collection_name == "kbli_unified"
+                    if collection_name.endswith("_hybrid") or collection_name == "kbli_2025_final"
                     else None
                 )
                 raw_results = await vector_db.search(
@@ -887,11 +887,11 @@ class SearchService:
             ...     user_level=2,
             ...     limit=5
             ... )
-            >>> print(f"Primary: {results['primary_collection']}")
-            >>> print(f"Searched: {results['collections_searched']}")
-            >>> print(f"Conflicts: {results['conflicts_detected']}")
+            >>> logger.info(f"Primary: {results['primary_collection']}")
+            >>> logger.info(f"Searched: {results['collections_searched']}")
+            >>> logger.info(f"Conflicts: {results['conflicts_detected']}")
             >>> for conflict in results['conflicts']:
-            ...     print(f"  - {conflict['type']}: {conflict['reason']}")
+            ...     logger.info(f"  - {conflict['type']}: {conflict['reason']}")
         """
         try:
             self.conflict_stats["total_multi_collection_searches"] += 1
@@ -1081,8 +1081,8 @@ class SearchService:
 
         Example:
             >>> stats = search_service.get_conflict_stats()
-            >>> print(f"Conflict rate: {stats['conflict_rate']}")
-            >>> print(f"Resolution rate: {stats['resolution_rate']}")
+            >>> logger.info(f"Conflict rate: {stats['conflict_rate']}")
+            >>> logger.info(f"Resolution rate: {stats['resolution_rate']}")
         """
         resolver_stats = self.conflict_resolver.get_stats()
         total_searches = self.conflict_stats["total_multi_collection_searches"]

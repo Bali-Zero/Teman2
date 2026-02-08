@@ -7,7 +7,6 @@ Tests: health, embeddings, reasoning utils
 import argparse
 import asyncio
 import sys
-import time
 
 import httpx
 
@@ -19,13 +18,13 @@ async def test_health(endpoint: str) -> bool:
             response = await client.get(f"{endpoint}/health")
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Health: {data.get('status', 'unknown')}")
+                logger.info(f"✅ Health: {data.get('status', 'unknown')}")
                 return True
             else:
-                print(f"❌ Health failed: {response.status_code}")
+                logger.info(f"❌ Health failed: {response.status_code}")
                 return False
     except Exception as e:
-        print(f"❌ Health error: {e}")
+        logger.info(f"❌ Health error: {e}")
         return False
 
 
@@ -33,10 +32,10 @@ async def test_embeddings_cache(endpoint: str) -> bool:
     """Test that embeddings cache is working"""
     try:
         # This would be an internal endpoint or we check via metrics
-        print("✅ Embeddings cache: enabled (LRU with 1000 max_size)")
+        logger.info("✅ Embeddings cache: enabled (LRU with 1000 max_size)")
         return True
     except Exception as e:
-        print(f"❌ Embeddings cache error: {e}")
+        logger.info(f"❌ Embeddings cache error: {e}")
         return False
 
 
@@ -53,19 +52,19 @@ async def main():
     else:
         endpoint = "http://localhost:8080"
 
-    print(f"🧪 Smoke testing: {endpoint}")
-    print("=" * 50)
+    logger.info(f"🧪 Smoke testing: {endpoint}")
+    logger.info("=" * 50)
 
     results = []
     results.append(await test_health(endpoint))
     results.append(await test_embeddings_cache(endpoint))
 
-    print("=" * 50)
+    logger.info("=" * 50)
     if all(results):
-        print("✅ All smoke tests passed!")
+        logger.info("✅ All smoke tests passed!")
         return 0
     else:
-        print("❌ Some tests failed")
+        logger.info("❌ Some tests failed")
         return 1
 
 

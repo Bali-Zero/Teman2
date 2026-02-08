@@ -115,19 +115,19 @@ class TestPlatformConvenience:
 
     def test_chunk_whatsapp_default(self) -> None:
         """WhatsApp uses 4000 char limit."""
-        text = ("\n\n".join(["x" * 1500] * 6))  # ~9000 chars with paragraph breaks
+        text = "\n\n".join(["x" * 1500] * 6)  # ~9000 chars with paragraph breaks
         result = chunk_whatsapp(text)
         assert len(result) >= 2
 
     def test_chunk_instagram_default(self) -> None:
         """Instagram uses 950 char limit."""
-        text = ("\n\n".join(["x" * 400] * 6))  # ~2400 chars with paragraph breaks
+        text = "\n\n".join(["x" * 400] * 6)  # ~2400 chars with paragraph breaks
         result = chunk_instagram(text)
         assert len(result) >= 2
 
     def test_chunk_telegram_default(self) -> None:
         """Telegram uses 4000 char limit."""
-        text = ("\n\n".join(["x" * 1500] * 6))  # ~9000 chars with paragraph breaks
+        text = "\n\n".join(["x" * 1500] * 6)  # ~9000 chars with paragraph breaks
         result = chunk_telegram(text)
         assert len(result) >= 2
 

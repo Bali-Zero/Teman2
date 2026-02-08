@@ -6,14 +6,13 @@ Prevents path traversal attacks by validating paths against allowed base directo
 
 import logging
 from pathlib import Path
-from typing import Union
 
 logger = logging.getLogger(__name__)
 
 # Default allowed base directories
 DEFAULT_ALLOWED_BASES = [
     "/app/data",
-    "/app/uploads", 
+    "/app/uploads",
     "/tmp",
     "data",
     "uploads",
@@ -24,7 +23,7 @@ DEFAULT_ALLOWED_BASES = [
 
 
 def validate_path(
-    path: Union[str, Path],
+    path: str | Path,
     allowed_bases: list[str] | None = None,
     must_exist: bool = False,
     allow_relative: bool = True,

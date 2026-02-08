@@ -13,13 +13,12 @@ Uses:
 """
 
 import json
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 # Set env vars before importing module under test
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("API_KEYS", "test_api_key_1")
@@ -27,9 +26,6 @@ os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 from backend.services.whatsapp_context_builder import (
-    INTEREST_KEYWORDS,
-    LANGUAGE_PATTERNS,
-    VISA_CODES,
     build_context,
     detect_language,
     extract_interests,
@@ -37,7 +33,6 @@ from backend.services.whatsapp_context_builder import (
     get_time_of_day,
     infer_client_type,
 )
-
 
 # ============================================================================
 # FIXTURES
@@ -66,21 +61,25 @@ def sample_conversation_row():
     """Sample database row for conversations table."""
     return {
         "id": 42,
-        "messages": json.dumps([
-            {"role": "user", "content": "Ciao, vorrei informazioni sul KITAS"},
-            {"role": "assistant", "content": "Buongiorno! Certamente..."},
-            {"role": "user", "content": "Quanto costa la PT PMA?"},
-        ]),
-        "metadata": json.dumps({
-            "channel": "whatsapp",
-            "phone": "+628123456789",
-            "sender_name": "Marco Rossi",
-            "detected_language": "it",
-            "message_count": 3,
-            "visa_discussed": ["KITAS"],
-            "interests": ["company_setup"],
-            "client_type": "entrepreneur",
-        }),
+        "messages": json.dumps(
+            [
+                {"role": "user", "content": "Ciao, vorrei informazioni sul KITAS"},
+                {"role": "assistant", "content": "Buongiorno! Certamente..."},
+                {"role": "user", "content": "Quanto costa la PT PMA?"},
+            ]
+        ),
+        "metadata": json.dumps(
+            {
+                "channel": "whatsapp",
+                "phone": "+628123456789",
+                "sender_name": "Marco Rossi",
+                "detected_language": "it",
+                "message_count": 3,
+                "visa_discussed": ["KITAS"],
+                "interests": ["company_setup"],
+                "client_type": "entrepreneur",
+            }
+        ),
     }
 
 
@@ -108,10 +107,17 @@ class TestDetectLanguage:
             ("Hola, necesito ayuda", "es"),
         ],
         ids=[
-            "it-ciao", "it-buongiorno", "it-grazie",
-            "en-hello", "en-how-much", "en-thanks",
-            "id-halo", "id-berapa",
-            "de-hallo", "fr-bonjour", "es-hola",
+            "it-ciao",
+            "it-buongiorno",
+            "it-grazie",
+            "en-hello",
+            "en-how-much",
+            "en-thanks",
+            "id-halo",
+            "id-berapa",
+            "de-hallo",
+            "fr-bonjour",
+            "es-hola",
         ],
     )
     def test_single_language_detection(self, text: str, expected_lang: str) -> None:
@@ -216,8 +222,26 @@ class TestExtractVisaMentions:
 
     @pytest.mark.parametrize(
         "code",
-        ["c1", "c2", "c7a", "c7b", "d12", "e33g", "voa", "b211", "kitas",
-         "kitap", "merp", "epo", "erp", "pma", "npwp", "spt", "sktt", "skck"],
+        [
+            "c1",
+            "c2",
+            "c7a",
+            "c7b",
+            "d12",
+            "e33g",
+            "voa",
+            "b211",
+            "kitas",
+            "kitap",
+            "merp",
+            "epo",
+            "erp",
+            "pma",
+            "npwp",
+            "spt",
+            "sktt",
+            "skck",
+        ],
         ids=lambda c: f"code-{c}",
     )
     def test_all_visa_codes_detected(self, code: str) -> None:
@@ -340,13 +364,21 @@ class TestInferClientType:
             ({"interests": []}, "potential_client"),
         ],
         ids=[
-            "retiree-interest", "retiree-visa",
-            "entrepreneur-interest", "entrepreneur-visa",
-            "nomad-interest", "nomad-visa",
-            "family", "investor",
-            "expat-kitas", "expat-working",
-            "visitor-d12", "visitor-c1", "visitor-voa",
-            "empty-profile", "empty-interests",
+            "retiree-interest",
+            "retiree-visa",
+            "entrepreneur-interest",
+            "entrepreneur-visa",
+            "nomad-interest",
+            "nomad-visa",
+            "family",
+            "investor",
+            "expat-kitas",
+            "expat-working",
+            "visitor-d12",
+            "visitor-c1",
+            "visitor-voa",
+            "empty-profile",
+            "empty-interests",
         ],
     )
     def test_client_type_inference(self, profile: dict, expected_type: str) -> None:
@@ -455,14 +487,16 @@ class TestBuildContext:
         conn.fetchrow.return_value = {
             "id": 10,
             "messages": json.dumps([{"role": "user", "content": "Ciao"}]),
-            "metadata": json.dumps({
-                "channel": "whatsapp",
-                "phone": "+628111",
-                "first_contact": "2026-01-01T00:00:00",
-                "visa_discussed": ["KITAS"],
-                "interests": ["company_setup"],
-                "message_count": 5,
-            }),
+            "metadata": json.dumps(
+                {
+                    "channel": "whatsapp",
+                    "phone": "+628111",
+                    "first_contact": "2026-01-01T00:00:00",
+                    "visa_discussed": ["KITAS"],
+                    "interests": ["company_setup"],
+                    "message_count": 5,
+                }
+            ),
         }
 
         result = await build_context(
@@ -605,11 +639,13 @@ class TestBuildContextIntegration:
         mock_conn.fetchrow.return_value = {
             "id": 1,
             "messages": json.dumps([{"role": "user", "content": "I want to invest"}]),
-            "metadata": json.dumps({
-                "interests": ["investment"],
-                "visa_discussed": [],
-                "message_count": 1,
-            }),
+            "metadata": json.dumps(
+                {
+                    "interests": ["investment"],
+                    "visa_discussed": [],
+                    "message_count": 1,
+                }
+            ),
         }
 
         ctx = await build_context(

@@ -29,14 +29,38 @@ logger = logging.getLogger(__name__)
 # Short generic terms that are not useful entities
 NOISE_TERMS = {
     # Indonesian generic terms
-    "dan", "atau", "yang", "dari", "untuk", "dengan", "dalam", "pada",
-    "ini", "itu", "tersebut", "bahwa", "oleh", "ke", "di", "tidak",
+    "dan",
+    "atau",
+    "yang",
+    "dari",
+    "untuk",
+    "dengan",
+    "dalam",
+    "pada",
+    "ini",
+    "itu",
+    "tersebut",
+    "bahwa",
+    "oleh",
+    "ke",
+    "di",
+    "tidak",
     # Budget allocation codes (not laws)
-    "dak", "dau", "dbh", "apbn", "apbd",
+    "dak",
+    "dau",
+    "dbh",
+    "apbn",
+    "apbd",
     # Generic English
-    "the", "and", "for", "with", "from",
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
     # Numbers and dates only
-    "tahun", "bulan", "hari",
+    "tahun",
+    "bulan",
+    "hari",
 }
 
 # Patterns for invalid entity names
@@ -60,9 +84,18 @@ SPECIFIC_ENTITY_TYPES = {
 
 # Generic terms that should NOT be classified as laws
 NOT_A_LAW = {
-    "dak", "dau", "dbh", "apbn", "apbd", "pip", "dipa",
-    "peraturan perundang-undangan", "perundang-undangan",
-    "hukum", "undang-undang pertamina", "undang-undang dasar",
+    "dak",
+    "dau",
+    "dbh",
+    "apbn",
+    "apbd",
+    "pip",
+    "dipa",
+    "peraturan perundang-undangan",
+    "perundang-undangan",
+    "hukum",
+    "undang-undang pertamina",
+    "undang-undang dasar",
 }
 
 
@@ -95,9 +128,11 @@ ENTITY_TYPE_CORRECTIONS = {
 # QUALITY FILTER CLASS
 # ============================================================================
 
+
 @dataclass
 class QualityStats:
     """Statistics from quality filtering"""
+
     entities_input: int = 0
     entities_filtered: int = 0
     entities_corrected: int = 0
@@ -181,7 +216,8 @@ class KGQualityFilter:
         # Step 4: Filter orphan relations (referencing non-existent entities)
         valid_entity_ids = {e.id for e in merged_entities}
         valid_relations = [
-            r for r in updated_relations
+            r
+            for r in updated_relations
             if r.source_id in valid_entity_ids and r.target_id in valid_entity_ids
         ]
 
@@ -295,7 +331,7 @@ class KGQualityFilter:
             canonical = entity
 
             # Find similar entities
-            for j, other in enumerate(entities[i+1:], start=i+1):
+            for j, other in enumerate(entities[i + 1 :], start=i + 1):
                 if j in used:
                     continue
 
@@ -413,20 +449,22 @@ class KGQualityFilter:
 
                         # Check if relation already exists
                         exists = any(
-                            r.source_id == orphan.id and
-                            r.target_id == target.id and
-                            r.type == rel_type
+                            r.source_id == orphan.id
+                            and r.target_id == target.id
+                            and r.type == rel_type
                             for r in existing_relations + inferred
                         )
 
                         if not exists:
-                            inferred.append(ExtractedRelation(
-                                source_id=orphan.id,
-                                target_id=target.id,
-                                type=rel_type,
-                                evidence="[inferred from co-occurrence]",
-                                confidence=0.6,  # Lower confidence for inferred
-                            ))
+                            inferred.append(
+                                ExtractedRelation(
+                                    source_id=orphan.id,
+                                    target_id=target.id,
+                                    type=rel_type,
+                                    evidence="[inferred from co-occurrence]",
+                                    confidence=0.6,  # Lower confidence for inferred
+                                )
+                            )
                             break  # Only one inference per orphan
 
         return inferred
@@ -457,8 +495,7 @@ class KGQualityFilter:
 
         # Relationship bonus (up to 0.2)
         rel_count = sum(
-            1 for r in relations
-            if r.source_id == entity.id or r.target_id == entity.id
+            1 for r in relations if r.source_id == entity.id or r.target_id == entity.id
         )
         if rel_count > 3:
             base_confidence += 0.2
@@ -485,6 +522,7 @@ class KGQualityFilter:
 # ============================================================================
 # BATCH QUALITY FILTER
 # ============================================================================
+
 
 async def apply_quality_filter_to_batch(
     results: list[ExtractionResult],

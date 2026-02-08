@@ -72,6 +72,7 @@ def chunk_message(text: str, max_length: int = 4000) -> list[str]:
 
 # Platform-specific convenience functions
 
+
 def chunk_whatsapp(text: str) -> list[str]:
     """Chunk for WhatsApp (4096 char limit, 4000 safety)."""
     return chunk_message(text, max_length=4000)

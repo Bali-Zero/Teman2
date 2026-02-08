@@ -2,8 +2,6 @@
 Tests for error_sanitizer utility module.
 """
 
-import pytest
-
 from backend.app.utils.error_sanitizer import (
     create_safe_error_response,
     sanitize_error_message,

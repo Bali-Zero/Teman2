@@ -57,7 +57,7 @@ GOLDEN_RULES = {
     "type_hints_required": True,
     "no_hardcoding": True,
     "separation_of_data_and_logic": True,
-    "clean_logging": True,  # logger.info(), never print()
+    "clean_logging": True,  # logger.info(), never logger.info()
     "quality_standard": True,
 }
 
@@ -75,7 +75,9 @@ CRITICAL_KNOWLEDGE = {
 # Working directory rules
 WORKING_DIRS = {
     "backend": str(_BACKEND_ROOT),
-    "project_root": str(_ONBOARDING_PATH.parent.parent) if _ONBOARDING_PATH.exists() else str(_BACKEND_ROOT.parent),
+    "project_root": str(_ONBOARDING_PATH.parent.parent)
+    if _ONBOARDING_PATH.exists()
+    else str(_BACKEND_ROOT.parent),
     "virtualenv": str(VIRTUALENV_PATH),
 }
 
@@ -93,6 +95,7 @@ PRE_EXECUTION_CHECKLIST = [
 # ──────────────────────────────────────────────────────────
 # ENFORCEMENT: Pre-flight checks for CodingGeneral
 # ──────────────────────────────────────────────────────────
+
 
 def validate_command(command: str) -> tuple[bool, str | None]:
     """
@@ -116,9 +119,9 @@ def validate_command(command: str) -> tuple[bool, str | None]:
             f"Prefer: source {VIRTUALENV_PATH}/bin/activate && {command}"
         )
 
-    # Rule: No print() in production code
-    if "print(" in command and "python" in command:
-        warnings.append("⚠️ Using print() instead of logger. Use logging module.")
+    # Rule: No logger.info() in production code
+    if "logger.info(" in command and "python" in command:
+        warnings.append("⚠️ Using logger.info() instead of logger. Use logging module.")
 
     if warnings:
         return True, " | ".join(warnings)  # Allow but warn
@@ -166,6 +169,7 @@ def get_working_directory(task_payload: dict[str, Any]) -> str:
 # CONTEXT: System instruction for IntelligenceGeneral
 # ──────────────────────────────────────────────────────────
 
+
 def get_intelligence_system_instruction() -> str:
     """
     Build system instruction for Intelligence General that includes
@@ -188,7 +192,7 @@ You MUST follow these rules in ALL your analysis and code output:
 5. TYPE HINTS REQUIRED on all functions
 6. NO HARDCODING - Secrets from env vars, data from Qdrant/Postgres
 7. SEPARATION OF DATA AND LOGIC - Volatile data in KB, logic in services
-8. CLEAN LOGGING - logger.info(), never print()
+8. CLEAN LOGGING - logger.info(), never logger.info()
 9. QUALITY STANDARD - Tests, logging, error handling, type hints
 
 ### Critical Knowledge (prevents real bugs)
@@ -212,13 +216,14 @@ You MUST follow these rules in ALL your analysis and code output:
 - Be concise but complete
 - ANY code you suggest MUST follow the Golden Rules above
 
-{f"### Full Onboarding Reference (truncated)" if len(onboarding_doc) > 5000 else ""}
+{"### Full Onboarding Reference (truncated)" if len(onboarding_doc) > 5000 else ""}
 """
 
 
 # ──────────────────────────────────────────────────────────
 # LOGGING: Compliance check results
 # ──────────────────────────────────────────────────────────
+
 
 def log_onboarding_compliance(general_name: str) -> None:
     """Log that a General has loaded onboarding context."""

@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "apps" / "backend-rag"))
 
 import httpx
+
 from backend.app.core.config import settings
 
 logging.basicConfig(
@@ -48,9 +49,7 @@ async def extract_kbli_from_qdrant() -> list[dict]:
     all_documents = []
     offset = None
 
-    async with httpx.AsyncClient(
-        base_url=QDRANT_URL, headers=headers, timeout=30.0
-    ) as client:
+    async with httpx.AsyncClient(base_url=QDRANT_URL, headers=headers, timeout=30.0) as client:
         logger.info(f"Connecting to Qdrant: {QDRANT_URL}")
         logger.info(f"Collection: {COLLECTION_NAME}")
 
@@ -85,18 +84,14 @@ async def extract_kbli_from_qdrant() -> list[dict]:
                         all_documents.append(payload)
 
                 offset = data.get("result", {}).get("next_page_offset")
-                logger.info(
-                    f"Fetched {len(points)} documents (total: {len(all_documents)})"
-                )
+                logger.info(f"Fetched {len(points)} documents (total: {len(all_documents)})")
 
                 if not offset:
                     logger.info("Reached end of collection")
                     break
 
             except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error: {e.response.status_code} - {e.response.text}"
-                )
+                logger.error(f"HTTP error: {e.response.status_code} - {e.response.text}")
                 raise
             except Exception as e:
                 logger.error(f"Error during extraction: {e}", exc_info=True)

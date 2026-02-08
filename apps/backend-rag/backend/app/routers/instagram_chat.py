@@ -23,19 +23,14 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from asyncpg import Pool
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 
 from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user, get_database
 from backend.services.integrations.instagram_service import instagram_service
 from backend.services.integrations.telegram_bot_service import telegram_bot
-from backend.services.whatsapp_context_builder import (
-    detect_language,
-    extract_interests,
-    extract_visa_mentions,
-    get_time_of_day,
-    infer_client_type,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +39,237 @@ logger = logging.getLogger(__name__)
 _conversation_cache: dict[str, list[dict]] = defaultdict(list)
 MAX_HISTORY_MESSAGES = 20
 
-router = APIRouter(prefix="/webhook/instagram", tags=["instagram"])
+router = APIRouter(prefix="/api/instagram", tags=["instagram"])
+
+
+@router.get("/conversations")
+async def get_instagram_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get Instagram conversations from Zan's sessions.
+    Format compatible with frontend InstagramConversation type.
+    """
+    try:
+        async with db.acquire() as conn:
+            # Query conversations table where session_id starts with 'ig_session_'
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    c.id,
+                    c.session_id,
+                    c.user_id,
+                    c.messages,
+                    c.metadata,
+                    c.created_at,
+                    c.created_at as updated_at,
+                    REGEXP_REPLACE(c.user_id, '^instagram_', '') as instagram_user_id,
+                    NULL as client_id,
+                    NULL as client_name
+                FROM conversations c
+                WHERE c.session_id LIKE 'ig_session_%' OR c.user_id LIKE 'instagram_%'
+                ORDER BY c.created_at DESC
+                LIMIT $1 OFFSET $2
+                """,
+                limit,
+                offset,
+            )
+
+            conversations = []
+            for row in rows:
+                messages_raw = row["messages"]
+                messages = []
+                if isinstance(messages_raw, str):
+                    try:
+                        import json
+                        messages = json.loads(messages_raw)
+                    except:
+                        messages = []
+                else:
+                    messages = messages_raw or []
+
+                last_message = ""
+                unread_count = 0
+
+                if messages:
+                    last_msg = messages[-1] if messages else {}
+                    if isinstance(last_msg, dict):
+                        last_message = last_msg.get("content", "")[:200]
+                    else:
+                        last_message = str(last_msg)[:200]
+
+                    # Simple unread logic: count user messages after last assistant message
+                    last_assistant_idx = -1
+                    for i in range(len(messages) - 1, -1, -1):
+                        msg = messages[i]
+                        if isinstance(msg, dict) and msg.get("role") == "assistant":
+                            last_assistant_idx = i
+                            break
+
+                    if last_assistant_idx >= 0:
+                        unread_count = sum(
+                            1
+                            for msg in messages[last_assistant_idx + 1 :]
+                            if isinstance(msg, dict) and msg.get("role") == "user"
+                        )
+                    else:
+                        unread_count = len(messages)
+
+                metadata = row["metadata"]
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                    except:
+                        metadata = {}
+                metadata = metadata or {}
+
+                client_name = (
+                    row["client_name"]
+                    or metadata.get("client_name")
+                    or metadata.get("sender_name")
+                    or f"IG User {row['instagram_user_id']}"
+                )
+
+                conversations.append(
+                    {
+                        "id": row["id"],
+                        "instagram_user_id": row["instagram_user_id"],
+                        "username": metadata.get("username") or metadata.get("instagram_username"),
+                        "client_id": row["client_id"],
+                        "client_name": client_name,
+                        "last_message": last_message,
+                        "last_message_date": row["updated_at"].isoformat()
+                        if row["updated_at"]
+                        else row["created_at"].isoformat(),
+                        "unread_count": unread_count,
+                        "interaction_count": len(messages),
+                    }
+                )
+
+            return conversations
+    except Exception as e:
+        logger.error(f"Failed to fetch Instagram conversations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch conversations")
+
+
+@router.get("/messages/{instagram_user_id}")
+async def get_instagram_messages(
+    instagram_user_id: str,
+    limit: int = 100,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get messages for a specific Instagram user.
+    """
+    try:
+        user_id = f"instagram_{instagram_user_id}"
+        session_id = f"ig_session_{instagram_user_id}"
+
+        async with db.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, messages, metadata, created_at, created_at as updated_at
+                FROM conversations
+                WHERE user_id = $1 OR session_id = $2
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                user_id,
+                session_id,
+            )
+
+            if not row:
+                return []
+
+            messages = row["messages"] or []
+            result = []
+            for i, msg in enumerate(messages[-limit:]):
+                role = msg.get("role", "user")
+
+                # Try to extract media info if it exists in message
+                media_url = msg.get("media_url")
+                media_type = msg.get("media_type")
+
+                result.append(
+                    {
+                        "id": i,
+                        "interaction_id": row["id"],
+                        "instagram_user_id": instagram_user_id,
+                        "message_text": msg.get("content", ""),
+                        "direction": "inbound" if role == "user" else "outbound",
+                        "timestamp": row["updated_at"].isoformat()
+                        if row["updated_at"]
+                        else row["created_at"].isoformat(),
+                        "status": "read",
+                        "media_url": media_url,
+                        "media_type": media_type,
+                    }
+                )
+            return result
+    except Exception as e:
+        logger.error(f"Failed to fetch Instagram messages for {instagram_user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch messages")
+
+
+@router.post("/send")
+async def send_instagram_message(
+    request: Request,
+    db: Pool = Depends(get_database),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Send Instagram message from omnichannel dashboard.
+    Body: { "instagram_user_id": "12345", "text": "message" }
+    """
+    try:
+        body = await request.json()
+        recipient_id = body.get("instagram_user_id")
+        text = body.get("text")
+
+        if not recipient_id or not text:
+            raise HTTPException(status_code=400, detail="Missing instagram_user_id or text")
+
+        # Send via Instagram service
+        await instagram_service.send_message(
+            recipient_id=recipient_id,
+            text=text,
+        )
+
+        # Save to conversation history
+        user_id = f"instagram_{recipient_id}"
+        session_id = f"ig_session_{recipient_id}"
+
+        async with db.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT id, messages FROM conversations WHERE session_id = $1", session_id
+            )
+
+            new_msg = {"role": "assistant", "content": text}
+
+            if existing:
+                messages = existing["messages"] or []
+                messages.append(new_msg)
+                await conn.execute(
+                    "UPDATE conversations SET messages = $1::jsonb WHERE id = $2",
+                    json.dumps(messages),
+                    existing["id"],
+                )
+            else:
+                await conn.execute(
+                    "INSERT INTO conversations (user_id, session_id, messages, created_at) VALUES ($1, $2, $3::jsonb, NOW())",
+                    user_id,
+                    session_id,
+                    json.dumps([new_msg]),
+                )
+
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to send Instagram message: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send message")
 
 
 async def notify_admin_error(
@@ -133,7 +358,8 @@ async def process_instagram_message(
                     async with db_pool.acquire() as conn:
                         row = await conn.fetchrow(
                             "SELECT id, messages, metadata FROM conversations WHERE user_id = $1 AND session_id = $2 ORDER BY created_at DESC LIMIT 1",
-                            ig_user_id, session_id,
+                            ig_user_id,
+                            session_id,
                         )
                         if row:
                             existing_row_id = row["id"]
@@ -148,7 +374,9 @@ async def process_instagram_message(
                                 meta = json.loads(meta)
                             if meta:
                                 client_profile = meta
-                            logger.info(f"Loaded {len(history)} messages from DB for IG {sender_id}")
+                            logger.info(
+                                f"Loaded {len(history)} messages from DB for IG {sender_id}"
+                            )
             except Exception as hist_err:
                 logger.warning(f"Failed to load history for IG {sender_id}: {hist_err}")
                 history = _conversation_cache.get(sender_id, [])[-MAX_HISTORY_MESSAGES:]
@@ -226,14 +454,21 @@ async def process_instagram_message(
                             all_msgs = all_msgs[-MAX_HISTORY_MESSAGES:]
                             await conn.execute(
                                 "UPDATE conversations SET messages = $1::jsonb, metadata = $2::jsonb WHERE id = $3",
-                                json.dumps(all_msgs), json.dumps(client_profile), existing_row_id,
+                                json.dumps(all_msgs),
+                                json.dumps(client_profile),
+                                existing_row_id,
                             )
                         else:
                             await conn.execute(
                                 "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at) VALUES ($1, $2, $3::jsonb, $4::jsonb, NOW())",
-                                ig_user_id, session_id, json.dumps(conversation_msgs), json.dumps(client_profile),
+                                ig_user_id,
+                                session_id,
+                                json.dumps(conversation_msgs),
+                                json.dumps(client_profile),
                             )
-                    logger.info(f"Conversation + profile saved for IG {sender_id} (session: {session_id})")
+                    logger.info(
+                        f"Conversation + profile saved for IG {sender_id} (session: {session_id})"
+                    )
             except Exception as save_err:
                 logger.warning(f"Failed to save conversation for IG {sender_id}: {save_err}")
 
@@ -241,7 +476,9 @@ async def process_instagram_message(
             _conversation_cache[sender_id].append({"role": "user", "content": message_text})
             _conversation_cache[sender_id].append({"role": "assistant", "content": response_text})
             if len(_conversation_cache[sender_id]) > MAX_HISTORY_MESSAGES:
-                _conversation_cache[sender_id] = _conversation_cache[sender_id][-MAX_HISTORY_MESSAGES:]
+                _conversation_cache[sender_id] = _conversation_cache[sender_id][
+                    -MAX_HISTORY_MESSAGES:
+                ]
 
             total_duration = time.time() - start_time
             logger.info(

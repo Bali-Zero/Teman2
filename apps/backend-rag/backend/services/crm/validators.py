@@ -6,7 +6,6 @@ Validazione robusta per dati CRM con sanitizzazione input.
 
 import logging
 import re
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -16,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 class ClientValidator(BaseModel):
     """Validatore per dati cliente."""
-    
+
     full_name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr | None = None
     phone: str | None = Field(None, max_length=50)
     whatsapp: str | None = Field(None, max_length=50)
     nationality: str | None = Field(None, max_length=100)
     passport_number: str | None = Field(None, max_length=100)
-    
+
     @field_validator("full_name")
     @classmethod
     def validate_name(cls, v: str) -> str:
@@ -34,7 +33,7 @@ class ClientValidator(BaseModel):
         # Remove multiple spaces
         v = re.sub(r"\s+", " ", v)
         return v
-    
+
     @field_validator("phone", "whatsapp")
     @classmethod
     def validate_phone(cls, v: str | None) -> str | None:
@@ -46,7 +45,7 @@ class ClientValidator(BaseModel):
         if len(cleaned) < 8:
             raise ValueError("Phone number too short")
         return cleaned
-    
+
     @field_validator("passport_number")
     @classmethod
     def validate_passport(cls, v: str | None) -> str | None:
@@ -61,23 +60,30 @@ class ClientValidator(BaseModel):
 
 class PracticeValidator(BaseModel):
     """Validatore per pratiche."""
-    
+
     client_id: int = Field(..., gt=0)
     practice_type_id: int = Field(..., gt=0)
     status: str = Field(default="inquiry")
     priority: str = Field(default="normal")
     quoted_price: float | None = Field(None, ge=0)
     actual_price: float | None = Field(None, ge=0)
-    
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        allowed = {"inquiry", "quotation_sent", "payment_pending", 
-                   "in_progress", "completed", "cancelled", "on_hold"}
+        allowed = {
+            "inquiry",
+            "quotation_sent",
+            "payment_pending",
+            "in_progress",
+            "completed",
+            "cancelled",
+            "on_hold",
+        }
         if v not in allowed:
             raise ValueError(f"Status must be one of: {allowed}")
         return v
-    
+
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: str) -> str:
@@ -89,7 +95,7 @@ class PracticeValidator(BaseModel):
 
 class InteractionValidator(BaseModel):
     """Validatore per interazioni."""
-    
+
     client_id: int | None = Field(None, gt=0)
     practice_id: int | None = Field(None, gt=0)
     interaction_type: str
@@ -97,7 +103,7 @@ class InteractionValidator(BaseModel):
     subject: str | None = Field(None, max_length=500)
     summary: str | None = None
     sentiment: str | None = Field(None, max_length=20)
-    
+
     @field_validator("interaction_type")
     @classmethod
     def validate_type(cls, v: str) -> str:
@@ -105,7 +111,7 @@ class InteractionValidator(BaseModel):
         if v not in allowed:
             raise ValueError(f"Type must be one of: {allowed}")
         return v
-    
+
     @field_validator("sentiment")
     @classmethod
     def validate_sentiment(cls, v: str | None) -> str | None:
@@ -138,56 +144,53 @@ def validate_uuid(uuid: str) -> bool:
 def normalize_phone_e164(phone: str) -> str | None:
     """
     Normalizza numero telefono a formato E.164.
-    
+
     Args:
         phone: Numero telefono in qualsiasi formato
-        
+
     Returns:
         Numero normalizzato o None se invalido
     """
     if not phone:
         return None
-    
+
     # Remove all non-digit characters
     digits = re.sub(r"\D", "", phone)
-    
+
     if len(digits) < 8:
         return None
-    
+
     # Handle Indonesian numbers
     if digits.startswith("0"):
         digits = "62" + digits[1:]
     elif digits.startswith("8"):
         digits = "62" + digits
-    
+
     return "+" + digits
 
 
 def extract_entities_from_text(text: str) -> dict[str, Any]:
     """
     Estrae entità rilevanti da testo conversazione.
-    
+
     Returns:
         Dict con email, phone, passport trovati
     """
-    entities = {
-        "emails": [],
-        "phones": [],
-        "passports": [],
-        "dates": []
-    }
-    
+    entities = {"emails": [], "phones": [], "passports": [], "dates": []}
+
     # Email pattern
     email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
     entities["emails"] = re.findall(email_pattern, text)
-    
+
     # Phone pattern (Indonesian focus)
-    phone_pattern = r"(?:\+62|62|0)[\s-]?8[\s-]?[0-9]{1}[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2,3}"
+    phone_pattern = (
+        r"(?:\+62|62|0)[\s-]?8[\s-]?[0-9]{1}[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2,3}"
+    )
     phones = re.findall(phone_pattern, text)
     entities["phones"] = [normalize_phone_e164(p) for p in phones if normalize_phone_e164(p)]
-    
+
     # Passport pattern (generic alphanumeric)
     passport_pattern = r"\b[A-Z]{1,2}[0-9]{6,9}\b"
     entities["passports"] = re.findall(passport_pattern, text.upper())
-    
+
     return entities

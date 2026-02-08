@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { WhatsAppList, WhatsAppViewer } from '@/components/whatsapp';
 import { TelegramList, TelegramViewer } from '@/components/telegram';
@@ -49,6 +50,40 @@ export default function OmnichannelPage() {
   const [twitterMessages, setTwitterMessages] = useState<TwitterMessage[]>([]);
   const [twitterClient, setTwitterClient] = useState<Client | null>(null);
   const [isLoadingTwitter, setIsLoadingTwitter] = useState(true);
+
+  // Force sync handler
+  const handleForceSync = async () => {
+    const toastId = toast.loading('Syncing omnichannel data...');
+    try {
+      setIsLoadingWhatsapp(true);
+      setIsLoadingTelegram(true);
+      setIsLoadingInstagram(true);
+      setIsLoadingTwitter(true);
+
+      // Parallel fetch with cache busting
+      const [wa, tg, ig, tw] = await Promise.all([
+        api.whatsapp.getConversations({ limit: 50 }),
+        api.telegram.getConversations({ limit: 50 }),
+        api.instagram.getConversations({ limit: 50 }),
+        api.twitter.getConversations({ limit: 50 })
+      ]);
+
+      setWhatsappConversations(wa);
+      setTelegramConversations(tg);
+      setInstagramConversations(ig);
+      setTwitterConversations(tw);
+
+      toast.success('Sync complete', { id: toastId });
+    } catch (error) {
+      logger.error('Sync failed:', {}, error as Error);
+      toast.error('Sync failed. Check logs.', { id: toastId });
+    } finally {
+      setIsLoadingWhatsapp(false);
+      setIsLoadingTelegram(false);
+      setIsLoadingInstagram(false);
+      setIsLoadingTwitter(false);
+    }
+  };
 
   // Load conversations for active channel
   const loadConversations = useCallback(async (channel: Channel) => {
@@ -306,10 +341,11 @@ export default function OmnichannelPage() {
   return (
     <div className="h-[calc(100vh-8rem)] -m-4 md:-m-6 lg:-m-8 flex flex-col">
       {/* Channel Tabs */}
-      <div className="flex items-center gap-3 p-4 border-b border-[var(--border)] bg-[var(--background-secondary)]">
-        {channels.map((channel) => {
-          const conversationCount =
-            channel.id === 'whatsapp'
+      <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--background-secondary)]">
+        <div className="flex items-center gap-3">
+          {channels.map((channel) => {
+            const conversationCount =
+              channel.id === 'whatsapp'
               ? whatsappConversations.length
               : channel.id === 'telegram'
                 ? telegramConversations.length
@@ -337,11 +373,20 @@ export default function OmnichannelPage() {
                 </span>
               )}
             </button>
-          );
-        })}
-      </div>
-
-      {/* Channel Content */}
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={handleForceSync}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)] hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+                    title="Force refresh data"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Sync
+                  </button>
+                </div>
+                {/* Channel Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Conversations List */}
         <div className="w-96 border-r border-[var(--border)] bg-[var(--background)] flex flex-col">

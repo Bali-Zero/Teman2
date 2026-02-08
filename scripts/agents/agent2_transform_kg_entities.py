@@ -238,9 +238,7 @@ def create_kbli_edges(
                 "source_entity_id": kbli_entity_id,
                 "target_entity_id": perizinan_node["entity_id"],
                 "relationship_type": "REQUIRES",
-                "metadata": {
-                    "scales": perizinan_node["metadata"]["applicable_scales"]
-                },
+                "metadata": {"scales": perizinan_node["metadata"]["applicable_scales"]},
                 "confidence": 1.0,
                 "source_collection": "kbli_2025_final",
             }
@@ -322,7 +320,7 @@ def transform_kbli_to_kg(
             )
             continue
 
-    logger.info(f"✅ Transformation complete:")
+    logger.info("✅ Transformation complete:")
     logger.info(f"   Total nodes: {len(nodes):,}")
     logger.info(f"     - KBLI nodes: {len(kbli_documents):,}")
     logger.info(f"     - Sektor nodes: {len(sektor_ids_seen):,}")

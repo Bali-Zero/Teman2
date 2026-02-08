@@ -42,7 +42,9 @@ async def import_kg():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         logger.error("DATABASE_URL not set")
-        logger.info("Usage: DATABASE_URL='postgres://...' python import_kemnaker_kg_production.py")
+        logger.info(
+            "Usage: DATABASE_URL='postgres://...' python import_kemnaker_kg_production.py"
+        )
         logger.info("Or use Fly.io proxy: fly proxy 15432:5432 -a nuzantara-rag")
         sys.exit(1)
 
@@ -125,7 +127,9 @@ async def import_kg():
                 rel.get("confidence", 0.9),
                 COLLECTION_NAME,
             )
-            logger.info(f"  ✅ {rel['source_entity_id']} --{rel['relationship_type']}--> {rel['target_entity_id']}")
+            logger.info(
+                f"  ✅ {rel['source_entity_id']} --{rel['relationship_type']}--> {rel['target_entity_id']}"
+            )
 
         logger.info("=" * 60)
         logger.info("KG IMPORT COMPLETE")

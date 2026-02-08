@@ -48,7 +48,7 @@ def sample_article_data():
         "content": "This is test content.",
         "author": "Test Author",
         "published_at": "2024-01-01T00:00:00",
-        "category": "technology"
+        "category": "technology",
     }
 
 
@@ -59,5 +59,5 @@ def sample_source_data():
         "name": "Test Source",
         "url": "https://example.com",
         "feed_url": "https://example.com/feed",
-        "is_active": True
+        "is_active": True,
     }

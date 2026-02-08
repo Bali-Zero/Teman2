@@ -53,13 +53,15 @@ limiter = Limiter(key_func=get_remote_address)
 
 from prometheus_client import REGISTRY
 
+
 def get_or_create_metric(metric_class, name, documentation, labelnames=(), **kwargs):
     """Helper to avoid duplicate registration in tests"""
     # Check if metric already exists in the registry
     for collector in REGISTRY._collector_to_names:
-        if hasattr(collector, '_name') and collector._name == name:
+        if hasattr(collector, "_name") and collector._name == name:
             return collector
     return metric_class(name, documentation, labelnames, **kwargs)
+
 
 article_compose_payloads = get_or_create_metric(
     Counter,
@@ -291,8 +293,8 @@ async def shutdown_event():
 @limiter.limit("10/minute")  # Rate limiting: 10 requests per minute per IP
 async def compose_article(
     payload: ComposeRequest,  # Body
-    request: Request = None, # type: ignore
-    background_tasks: BackgroundTasks = None, # type: ignore
+    request: Request = None,  # type: ignore
+    background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
 ):
     """

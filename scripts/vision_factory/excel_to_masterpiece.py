@@ -52,7 +52,9 @@ def parse_excel(xlsx_path):
             break
 
     if header_idx is None:
-        logger.warning(f"Could not find header row in {xlsx_path}. Assuming raw structure.")
+        logger.warning(
+            f"Could not find header row in {xlsx_path}. Assuming raw structure."
+        )
         return []
 
     # Reload with header
@@ -132,7 +134,9 @@ def parse_excel(xlsx_path):
 
 def main():
     if len(sys.argv) < 3:
-        logger.error("Usage: python3 excel_to_masterpiece.py <input_xlsx> <output_json>")
+        logger.error(
+            "Usage: python3 excel_to_masterpiece.py <input_xlsx> <output_json>"
+        )
         return
 
     input_xlsx = Path(sys.argv[1])

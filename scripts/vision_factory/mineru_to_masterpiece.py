@@ -196,7 +196,9 @@ def convert_csv_to_masterpiece(csv_path: str, output_path: str):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         # Fallback for testing
-        logger.error("Usage: python3 mineru_to_masterpiece.py <input.csv> <output.json>")
+        logger.error(
+            "Usage: python3 mineru_to_masterpiece.py <input.csv> <output.json>"
+        )
         # HARDCODED TEST PATHS FOR USER CONVENIENCE
         input_csv = "/Users/antonellosiano/Desktop/nuzantara/2.7 Lampiran I.G PP Nomor 28 Tahun 2025 (I.G.1-341)_consolidated.csv"
         output_json = "/Users/antonellosiano/Desktop/nuzantara/reports/kbli_extraction/kbli_lampiran_ig_final.json"

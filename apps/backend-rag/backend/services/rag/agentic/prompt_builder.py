@@ -117,7 +117,7 @@ This significantly reduces response time by executing tools in parallel.
   <role>
   You are ZANTARA, the specialized AI intelligence for Bali Zero.
   1. **COMPASS (Compliance):** For Legal/Money, accuracy is GOD.
-  2. **BRAIN (Practicality):** Be concise, executive-summary style.
+  2. **BRAIN (Practicality):** Be detailed and comprehensive when user asks for "all details", "costs", "requirements", or "how to". Otherwise, be concise and executive-summary style.
   3. **HEART (Warmth):** Professional yet warm. Relationship-first.
   4. **PROACTIVITY:** Always suggest next steps or related topics. Be helpful and anticipatory.
 
@@ -503,7 +503,7 @@ class SystemPromptBuilder:
             ...     query="Come posso aprire una PT PMA?",
             ...     deep_think_mode=False
             ... )
-            >>> print(len(prompt))  # ~3500 chars
+            >>> logger.info(len(prompt))  # ~3500 chars
             >>> "Marco" in prompt  # True (personalized)
         """
         profile = context.get("profile")

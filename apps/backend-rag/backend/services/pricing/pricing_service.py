@@ -122,11 +122,44 @@ class PricingService:
 
         # Extract keywords from query (remove common words)
         noise_words = {
-            "berapa", "harga", "biaya", "price", "cost", "how", "much",
-            "is", "the", "quanto", "costa", "what", "untuk", "for",
-            "di", "in", "bali", "un", "una", "il", "la", "anno", "anni",
-            "year", "years", "prezzo", "a", "of", "per", "del", "della",
-            "dei", "delle", "con", "and", "e", "or", "o",
+            "berapa",
+            "harga",
+            "biaya",
+            "price",
+            "cost",
+            "how",
+            "much",
+            "is",
+            "the",
+            "quanto",
+            "costa",
+            "what",
+            "untuk",
+            "for",
+            "di",
+            "in",
+            "bali",
+            "un",
+            "una",
+            "il",
+            "la",
+            "anno",
+            "anni",
+            "year",
+            "years",
+            "prezzo",
+            "a",
+            "of",
+            "per",
+            "del",
+            "della",
+            "dei",
+            "delle",
+            "con",
+            "and",
+            "e",
+            "or",
+            "o",
         }
 
         # Split query and remove noise words; also remove short numeric tokens
@@ -158,9 +191,7 @@ class PricingService:
                     # Also check legacy_names if present
                     legacy_names = service_item.get("legacy_names", [])
                     if isinstance(legacy_names, list):
-                        service_text += " " + " ".join(
-                            n.lower() for n in legacy_names
-                        )
+                        service_text += " " + " ".join(n.lower() for n in legacy_names)
 
                     # Score: count how many keywords match
                     match_count = sum(1 for term in clean_keywords if term in service_text)
@@ -318,7 +349,11 @@ class PricingService:
                     duration = item.get("duration", "")
                     suffix = f" ({duration})" if duration else ""
                     usd_str = f" (~${price_usd})" if price_usd else ""
-                    lines.append(f"- {name}: IDR {price_idr:,}{usd_str}{suffix}" if isinstance(price_idr, (int, float)) else f"- {name}: {price_idr}{usd_str}{suffix}")
+                    lines.append(
+                        f"- {name}: IDR {price_idr:,}{usd_str}{suffix}"
+                        if isinstance(price_idr, (int, float))
+                        else f"- {name}: {price_idr}{usd_str}{suffix}"
+                    )
         elif isinstance(category_data, dict):
             for name, data in category_data.items():
                 if isinstance(data, dict):
@@ -346,7 +381,9 @@ class PricingService:
         if service_type == "visa" or service_type is None:
             context_parts.append("## VISA PRICES")
             context_parts.extend(self._format_service_list(services.get("single_entry_visas", [])))
-            context_parts.extend(self._format_service_list(services.get("multiple_entry_visas", [])))
+            context_parts.extend(
+                self._format_service_list(services.get("multiple_entry_visas", []))
+            )
             context_parts.append("")
 
         if service_type == "kitas" or service_type is None:

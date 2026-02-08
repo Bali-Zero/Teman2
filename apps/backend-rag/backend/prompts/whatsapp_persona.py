@@ -100,7 +100,9 @@ def build_system_prompt(
     if visas_discussed:
         context_lines.append(f"Visti già discussi: {', '.join(visas_discussed)}.")
 
-    context_section = " ".join(context_lines) if context_lines else "Nuovo cliente, nessun contesto precedente."
+    context_section = (
+        " ".join(context_lines) if context_lines else "Nuovo cliente, nessun contesto precedente."
+    )
 
     greeting_note = ""
     if is_first_message:

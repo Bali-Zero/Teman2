@@ -247,9 +247,7 @@ def create_kbli_edges(
     return edges
 
 
-def transform_kbli_to_kg(
-    kbli_documents: list[dict], consolidate_f: bool = True
-) -> dict:
+def transform_kbli_to_kg(kbli_documents: list[dict], consolidate_f: bool = True) -> dict:
     """
     Transform KBLI documents to KG entities.
 
@@ -293,9 +291,7 @@ def transform_kbli_to_kg(
 
             # Create Perizinan nodes from per_skala
             per_skala = kbli_doc.get("per_skala", {})
-            perizinan_nodes = create_perizinan_nodes(
-                kbli_doc.get("kode_kbli", ""), per_skala
-            )
+            perizinan_nodes = create_perizinan_nodes(kbli_doc.get("kode_kbli", ""), per_skala)
 
             # Deduplicate perizinan nodes
             for perizinan_node in perizinan_nodes:
@@ -315,9 +311,7 @@ def transform_kbli_to_kg(
                 )
 
         except Exception as e:
-            logger.warning(
-                f"Error processing KBLI {kbli_doc.get('kode_kbli', 'unknown')}: {e}"
-            )
+            logger.warning(f"Error processing KBLI {kbli_doc.get('kode_kbli', 'unknown')}: {e}")
             continue
 
     logger.info("✅ Transformation complete:")
@@ -332,9 +326,7 @@ def transform_kbli_to_kg(
     if len(sektor_ids_seen) == expected_sektors:
         logger.info(f"   ✅ KBLI 2025 compliance: {len(sektor_ids_seen)} sektors (A-V)")
     else:
-        logger.warning(
-            f"   ⚠️  Expected {expected_sektors} sektors, got {len(sektor_ids_seen)}"
-        )
+        logger.warning(f"   ⚠️  Expected {expected_sektors} sektors, got {len(sektor_ids_seen)}")
         missing = expected_sektors - len(sektor_ids_seen)
         logger.warning(f"   Missing {missing} sektors")
 
@@ -343,9 +335,7 @@ def transform_kbli_to_kg(
 
 def main():
     """Main execution"""
-    parser = argparse.ArgumentParser(
-        description="Transform KBLI extraction to KG entities"
-    )
+    parser = argparse.ArgumentParser(description="Transform KBLI extraction to KG entities")
     parser.add_argument(
         "--input",
         type=str,
@@ -372,7 +362,7 @@ def main():
     logger.info(f"Input file: {input_file}")
 
     # Load data
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         kbli_documents = json.load(f)
 
     logger.info(f"Loaded {len(kbli_documents):,} KBLI documents")

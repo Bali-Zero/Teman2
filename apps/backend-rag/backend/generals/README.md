@@ -3,6 +3,7 @@
 A distributed task execution system where specialized "Generals" handle different types of tasks:
 - **Coding General**: Executes code-related tasks (shell commands, Python scripts, code execution)
 - **Intelligence General**: Performs research and analysis using Gemini 3 Pro
+- **Antigravity General**: System orchestrator for multi-tool coordination and IDE automation
 - **Task Coordinator**: Provides high-level API for ZANTARA to submit tasks and monitor execution
 
 ## Architecture
@@ -85,6 +86,63 @@ if task:
 - `temperature`: Temperature for generation (default: 0.7)
 - `model`: Override model name (default: gemini-2.0-pro-exp-02-05)
 
+### AntigravityGeneral (`antigravity_general.py`)
+
+Polls `generals_tasks` for tasks with `task_type='orchestration'` and handles system-level coordination.
+
+**Features:**
+- Polls database for pending orchestration tasks
+- Controls Antigravity.app via AppleScript
+- Executes multi-tool workflows
+- System-level automation
+- IDE coordination
+
+**Usage:**
+```python
+from backend.generals import AntigravityGeneral
+
+general = AntigravityGeneral(poll_interval=10)
+await general.initialize()
+
+# Run polling loop (blocking)
+await general.run()
+
+# Or use singleton
+from backend.generals.antigravity_general import get_antigravity_general
+general = get_antigravity_general()
+```
+
+**Task Payload Options:**
+- `app_command`: Control Antigravity app ('open' | 'quit' | 'activate' | 'status')
+- `applescript`: Raw AppleScript code to execute
+- `description`: Human-readable orchestration task description (for future LLM-based planning)
+
+**Examples:**
+```python
+# Open Antigravity IDE
+await coordinator.submit_task(
+    task_type="orchestration",
+    title="Open Antigravity IDE",
+    payload={"app_command": "open"},
+)
+
+# Execute custom AppleScript
+await coordinator.submit_task(
+    task_type="orchestration",
+    title="Custom automation",
+    payload={
+        "applescript": 'tell application "Finder" to get name of startup disk'
+    },
+)
+
+# Check app status
+await coordinator.submit_task(
+    task_type="orchestration",
+    title="Check Antigravity status",
+    payload={"app_command": "status"},
+)
+```
+
 ### TaskCoordinator (`task_coordinator.py`)
 
 High-level API for ZANTARA to interact with the system.
@@ -166,6 +224,28 @@ Payload options:
 - `max_tokens`: Max tokens (default: 8192)
 - `temperature`: Temperature (default: 0.7)
 - `model`: Model override
+
+### Orchestration Tasks (`task_type='orchestration'`)
+
+Payload options:
+- `app_command`: Control Antigravity app ('open' | 'quit' | 'activate' | 'status')
+- `applescript`: Raw AppleScript code to execute
+- `description`: Orchestration task description (for future LLM planning)
+
+Examples:
+```python
+# Open Antigravity IDE
+{"app_command": "open"}
+
+# Check if app is running
+{"app_command": "status"}
+
+# Custom AppleScript
+{"applescript": 'tell application "System Events" to get name of processes'}
+
+# Future: Complex orchestration
+{"description": "Deploy frontend to production and notify team"}
+```
 
 ## Task Status Flow
 

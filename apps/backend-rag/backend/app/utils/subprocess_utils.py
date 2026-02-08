@@ -67,7 +67,7 @@ def secure_subprocess_run(
             **kwargs,
         )
         return result
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         logger.error(f"Command timed out after {timeout}s: {command}")
         raise
     except subprocess.CalledProcessError as e:

@@ -136,6 +136,38 @@ Write code that works, is testable, and handles errors. Scale effort to complexi
 
 The goal is pragmatic quality, not ceremony. A well-tested 50-line service beats a 1,500-line over-documented one.
 
+### 10. NEVER PRESUME - ALWAYS VERIFY SOURCES
+
+**CRITICAL:** When analyzing data, answering questions, or making claims about the system:
+
+**WRONG:**
+```python
+# Assuming without verification
+"The database contains outdated PT PMA data"
+"This price is incorrect"
+"The model is not working properly"
+```
+
+**CORRECT:**
+```python
+# Verify first, then conclude
+# 1. Query the actual data source (Qdrant, Postgres, logs)
+# 2. Read the exact document/chunk being referenced
+# 3. Check the context and metadata
+# 4. ONLY THEN make a conclusion with evidence
+
+# Example: "After checking Qdrant collection 'bali_zero_pricing_hybrid', 
+# document ID xyz contains: [actual content]. This shows..."
+```
+
+**Never say "the database is wrong" without:**
+- [ ] Querying the actual collection
+- [ ] Reading the exact chunk/document
+- [ ] Checking metadata (source, date, version)
+- [ ] Understanding the full context
+
+**Evidence-based analysis only.** Speculation and assumptions lead to wrong fixes.
+
 ---
 
 ## CRITICAL KNOWLEDGE (PREVENTS REAL BUGS)

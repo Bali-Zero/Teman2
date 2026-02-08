@@ -13,7 +13,6 @@ Target: Test complete integration of conversation management
 """
 
 import sys
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -32,7 +31,7 @@ def mock_db_pool():
     """Mock PostgreSQL connection pool"""
     pool = MagicMock()
     conn = AsyncMock()
-    
+
     # Mock acquire() to be a standard MagicMock that returns an async context manager
     cm = AsyncMock()
     cm.__aenter__.return_value = conn

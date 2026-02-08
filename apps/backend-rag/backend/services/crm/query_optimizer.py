@@ -15,26 +15,23 @@ logger = logging.getLogger(__name__)
 
 class CRMQueryOptimizer:
     """Ottimizzatore query per operazioni CRM frequenti."""
-    
+
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
-    
-    async def batch_insert_clients(
-        self,
-        clients: list[dict[str, Any]]
-    ) -> list[int]:
+
+    async def batch_insert_clients(self, clients: list[dict[str, Any]]) -> list[int]:
         """
         Inserimento batch clienti per massima performance.
-        
+
         Args:
             clients: Lista di dizionari con dati cliente
-            
+
         Returns:
             Lista di ID clienti creati
         """
         if not clients:
             return []
-        
+
         async with self.db_pool.acquire() as conn:
             # Usa executemany per batch insert
             query = """
@@ -47,7 +44,7 @@ class CRMQueryOptimizer:
                 )
                 RETURNING id
             """
-            
+
             # Prepara parametri
             params = [
                 (
@@ -60,76 +57,69 @@ class CRMQueryOptimizer:
                     c.get("status", "active"),
                     c.get("client_type", "individual"),
                     c.get("assigned_to"),
-                    c.get("custom_fields", {})
+                    c.get("custom_fields", {}),
                 )
                 for c in clients
             ]
-            
+
             # Esegui batch insert
             records = await conn.fetchmany(query, params)
             return [r["id"] for r in records]
-    
-    async def batch_update_practices(
-        self,
-        updates: list[dict[str, Any]]
-    ) -> int:
+
+    async def batch_update_practices(self, updates: list[dict[str, Any]]) -> int:
         """
         Aggiornamento batch pratiche.
-        
+
         Args:
             updates: Lista di update con id e campi da aggiornare
-            
+
         Returns:
             Numero di righe aggiornate
         """
         if not updates:
             return 0
-        
-        async with self.db_pool.acquire() as conn:
-            async with conn.transaction():
-                total_updated = 0
-                
-                for update in updates:
-                    practice_id = update.pop("id")
-                    if not update:
-                        continue
-                    
-                    # Costruisci query dinamica
-                    fields = []
-                    values = []
-                    for i, (key, value) in enumerate(update.items(), start=1):
-                        fields.append(f"{key} = ${i}")
-                        values.append(value)
-                    
-                    values.append(practice_id)
-                    
-                    query = f"""
+
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            total_updated = 0
+
+            for update in updates:
+                practice_id = update.pop("id")
+                if not update:
+                    continue
+
+                # Costruisci query dinamica
+                fields = []
+                values = []
+                for i, (key, value) in enumerate(update.items(), start=1):
+                    fields.append(f"{key} = ${i}")
+                    values.append(value)
+
+                values.append(practice_id)
+
+                query = f"""
                         UPDATE practices
-                        SET {', '.join(fields)}, updated_at = NOW()
+                        SET {", ".join(fields)}, updated_at = NOW()
                         WHERE id = ${len(values)}
                     """
-                    
-                    result = await conn.execute(query, *values)
-                    total_updated += int(result.split()[-1])
-                
-                return total_updated
-    
-    async def get_clients_with_practices(
-        self,
-        client_ids: list[int]
-    ) -> list[dict[str, Any]]:
+
+                result = await conn.execute(query, *values)
+                total_updated += int(result.split()[-1])
+
+            return total_updated
+
+    async def get_clients_with_practices(self, client_ids: list[int]) -> list[dict[str, Any]]:
         """
         Recupera clienti con le loro pratiche in una singola query.
-        
+
         Args:
             client_ids: Lista di ID clienti
-            
+
         Returns:
             Lista clienti con pratiche annidate
         """
         if not client_ids:
             return []
-        
+
         async with self.db_pool.acquire() as conn:
             query = """
                 SELECT 
@@ -152,31 +142,28 @@ class CRMQueryOptimizer:
                 WHERE c.id = ANY($1)
                 GROUP BY c.id
             """
-            
+
             rows = await conn.fetch(query, client_ids)
             return [dict(row) for row in rows]
-    
+
     async def search_clients_optimized(
-        self,
-        query: str,
-        limit: int = 20,
-        offset: int = 0
+        self, query: str, limit: int = 20, offset: int = 0
     ) -> tuple[list[dict], int]:
         """
         Ricerca clienti ottimizzata con full-text search.
-        
+
         Args:
             query: Termine di ricerca
             limit: Limite risultati
             offset: Offset per paginazione
-            
+
         Returns:
             Tuple (risultati, conteggio totale)
         """
         async with self.db_pool.acquire() as conn:
             # Normalizza query per tsvector
             ts_query = " & ".join(query.split())
-            
+
             # Cerca con tsvector se disponibile, altrimenti LIKE
             sql = """
                 WITH results AS (
@@ -200,28 +187,25 @@ class CRMQueryOptimizer:
                 ORDER BY relevance DESC, full_name ASC
                 LIMIT $2 OFFSET $3
             """
-            
+
             search_pattern = f"%{query}%"
             rows = await conn.fetch(sql, search_pattern, limit, offset)
-            
+
             if not rows:
                 return [], 0
-            
+
             total = rows[0]["total_count"]
             results = [{k: v for k, v in dict(row).items() if k != "total_count"} for row in rows]
-            
+
             return results, total
-    
-    async def get_practice_statistics(
-        self,
-        assigned_to: str | None = None
-    ) -> dict[str, Any]:
+
+    async def get_practice_statistics(self, assigned_to: str | None = None) -> dict[str, Any]:
         """
         Statistiche pratiche aggregate.
-        
+
         Args:
             assigned_to: Filtra per assegnatario (opzionale)
-            
+
         Returns:
             Dizionario con statistiche
         """
@@ -237,57 +221,50 @@ class CRMQueryOptimizer:
                 FROM practices
                 WHERE 1=1
             """
-            
+
             params = []
             if assigned_to:
                 base_query += " AND assigned_to = $1"
                 params.append(assigned_to)
-            
+
             base_query += " GROUP BY status, priority"
-            
+
             rows = await conn.fetch(base_query, *params)
-            
+
             # Aggrega risultati
             stats = {
                 "by_status": {},
                 "by_priority": {},
-                "financials": {
-                    "total_quoted": 0,
-                    "total_actual": 0,
-                    "total_paid": 0
-                }
+                "financials": {"total_quoted": 0, "total_actual": 0, "total_paid": 0},
             }
-            
+
             for row in rows:
                 status = row["status"]
                 priority = row["priority"]
                 count = row["count"]
-                
+
                 stats["by_status"][status] = stats["by_status"].get(status, 0) + count
                 stats["by_priority"][priority] = stats["by_priority"].get(priority, 0) + count
-                
+
                 stats["financials"]["total_quoted"] += float(row["total_quoted"] or 0)
                 stats["financials"]["total_actual"] += float(row["total_actual"] or 0)
                 stats["financials"]["total_paid"] += float(row["total_paid"] or 0)
-            
+
             return stats
-    
-    async def get_overdue_practices(
-        self,
-        days: int = 7
-    ) -> list[dict[str, Any]]:
+
+    async def get_overdue_practices(self, days: int = 7) -> list[dict[str, Any]]:
         """
         Recupera pratiche scadute o in scadenza.
-        
+
         Args:
             days: Giorni per considerare "in scadenza"
-            
+
         Returns:
             Lista pratiche scadute/in scadenza
         """
         async with self.db_pool.acquire() as conn:
             threshold = datetime.utcnow() + timedelta(days=days)
-            
+
             query = """
                 SELECT 
                     p.*,
@@ -311,7 +288,7 @@ class CRMQueryOptimizer:
                     END,
                     p.expiry_date ASC
             """
-            
+
             rows = await conn.fetch(query, threshold)
             return [dict(row) for row in rows]
 
@@ -319,19 +296,19 @@ class CRMQueryOptimizer:
 async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
     """
     Verifica integrità tabelle CRM.
-    
+
     Returns:
         Dict con stato tabelle
     """
     async with db_pool.acquire() as conn:
         checks = {}
-        
+
         # Conta record per tabella
         tables = ["clients", "practices", "practice_types", "interactions"]
         for table in tables:
             count = await conn.fetchval(f"SELECT COUNT(*) FROM {table}")
             checks[table] = {"count": count}
-        
+
         # Verifica clienti senza pratiche
         orphan_clients = await conn.fetchval("""
             SELECT COUNT(*) FROM clients c
@@ -340,7 +317,7 @@ async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
             )
         """)
         checks["orphan_clients"] = orphan_clients
-        
+
         # Verifica pratiche senza cliente
         orphan_practices = await conn.fetchval("""
             SELECT COUNT(*) FROM practices p
@@ -349,5 +326,5 @@ async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
             )
         """)
         checks["orphan_practices"] = orphan_practices
-        
+
         return checks

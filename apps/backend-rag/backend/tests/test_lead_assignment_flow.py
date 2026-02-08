@@ -171,7 +171,10 @@ async def test_assign_lead_department_match(db_pool):
 
     assert result["assigned_lead"] == "specialist@balizero.com"
     assert result["assigned_lead_name"] == "KITAS Specialist"
-    assert "setup" in result["assignment_reason"].lower() or "Department" in result["assignment_reason"]
+    assert (
+        "setup" in result["assignment_reason"].lower()
+        or "Department" in result["assignment_reason"]
+    )
     logger.info("✅ Test passed: assign_lead_department_match")
 
 

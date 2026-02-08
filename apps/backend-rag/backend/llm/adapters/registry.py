@@ -5,9 +5,9 @@ from backend.llm.adapters.gemini import GeminiAdapter
 
 
 class ModelType(Enum):
-    """Active models only - updated 2026-02-09 for Gemini 2.5"""
+    """Active models only - updated 2026-02-09 for Gemini 2.5 Flash"""
 
-    GEMINI_3_FLASH = "gemini-2.5-flash"  # Primary tier (Gemini 2.5 Flash - latest stable)
+    GEMINI_3_FLASH = "gemini-3-flash-preview"  # Primary tier (Gemini 3 Flash Preview - latest)
     GEMINI_FLASH = "gemini-2.0-flash-001"  # Fallback tier
 
 

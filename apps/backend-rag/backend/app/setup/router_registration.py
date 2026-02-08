@@ -61,6 +61,7 @@ from backend.app.routers import (
     team_analytics,
     team_drive,
     telegram,
+    twitter,
     voice,
     webhooks,
     websocket,
@@ -99,9 +100,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(agentic_rag.router)
-    
+
     # Generals Multi-Agent System router
     from backend.generals.task_coordinator import router as generals_router
+
     api.include_router(generals_router)
 
     # Conversation & Memory routers
@@ -149,6 +151,7 @@ def include_routers(api: FastAPI) -> None:
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
+    api.include_router(twitter.router)  # Twitter/X omnichannel API
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
     api.include_router(whatsapp_chat.alias_router)  # Legacy Meta webhook URL alias
     api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API

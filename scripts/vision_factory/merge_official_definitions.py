@@ -66,7 +66,9 @@ def merge_definitions(enriched_path, official_path, output_path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(enriched_data, f, indent=2, ensure_ascii=False)
 
-    logger.info(f"✅ Merged {updated_count} official definitions. Saved to {output_path}")
+    logger.info(
+        f"✅ Merged {updated_count} official definitions. Saved to {output_path}"
+    )
 
 
 if __name__ == "__main__":

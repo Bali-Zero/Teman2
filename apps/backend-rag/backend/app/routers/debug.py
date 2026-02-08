@@ -9,14 +9,14 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from backend.middleware.request_tracing import (
-    RequestTracingMiddleware,
-    get_correlation_id,
-)
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user
+from backend.middleware.request_tracing import (
+    RequestTracingMiddleware,
+    get_correlation_id,
+)
 
 logger = logging.getLogger(__name__)
 

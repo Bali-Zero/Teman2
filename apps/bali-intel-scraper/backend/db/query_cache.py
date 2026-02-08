@@ -11,8 +11,7 @@ Provides:
 import hashlib
 import json
 from functools import wraps
-from typing import Any, Callable, Optional, List, Dict
-from contextlib import asynccontextmanager
+from typing import Any, Callable, Optional
 
 from backend.core.cache import cache, CacheKeyBuilder
 from backend.core.logger import get_logger, LogAction
@@ -22,9 +21,9 @@ logger = get_logger(__name__, component="query_cache")
 
 class QueryCache:
     """Cache for database query results."""
-    
+
     DEFAULT_TTL = 300  # 5 minutes
-    
+
     @staticmethod
     def _generate_query_hash(query: str, params: tuple) -> str:
         """Generate unique hash for query and params."""
@@ -35,12 +34,12 @@ class QueryCache:
         return hashlib.md5(
             json.dumps(query_data, sort_keys=True, default=str).encode()
         ).hexdigest()
-    
+
     @staticmethod
     def _build_cache_key(query_hash: str, table: str) -> str:
         """Build cache key for query result."""
         return CacheKeyBuilder.build("query", table, query_hash)
-    
+
     @classmethod
     async def get(
         cls,
@@ -50,36 +49,36 @@ class QueryCache:
     ) -> Optional[Any]:
         """
         Get cached query result.
-        
+
         Args:
             query: SQL query string
             params: Query parameters
             table: Table name for cache invalidation
-            
+
         Returns:
             Cached result or None
         """
         query_hash = cls._generate_query_hash(query, params)
         cache_key = cls._build_cache_key(query_hash, table)
-        
+
         try:
             result = await cache.get(cache_key)
             if result is not None:
                 logger.debug(
                     "Query cache hit",
                     action=LogAction.FETCH,
-                    metadata={"table": table, "query_hash": query_hash[:8]}
+                    metadata={"table": table, "query_hash": query_hash[:8]},
                 )
                 return result
         except Exception as e:
             logger.warning(
                 "Query cache fetch error",
                 action=LogAction.ERROR,
-                metadata={"error": str(e), "table": table}
+                metadata={"error": str(e), "table": table},
             )
-        
+
         return None
-    
+
     @classmethod
     async def set(
         cls,
@@ -91,7 +90,7 @@ class QueryCache:
     ) -> None:
         """
         Cache query result.
-        
+
         Args:
             query: SQL query string
             params: Query parameters
@@ -101,7 +100,7 @@ class QueryCache:
         """
         query_hash = cls._generate_query_hash(query, params)
         cache_key = cls._build_cache_key(query_hash, table)
-        
+
         try:
             await cache.set(cache_key, result, ttl=ttl)
             logger.debug(
@@ -111,28 +110,28 @@ class QueryCache:
                     "table": table,
                     "query_hash": query_hash[:8],
                     "ttl": ttl,
-                }
+                },
             )
         except Exception as e:
             logger.warning(
                 "Query cache store error",
                 action=LogAction.ERROR,
-                metadata={"error": str(e), "table": table}
+                metadata={"error": str(e), "table": table},
             )
-    
+
     @classmethod
     async def invalidate_table(cls, table: str) -> int:
         """
         Invalidate all cached queries for a table.
-        
+
         Args:
             table: Table name
-            
+
         Returns:
             Number of keys invalidated
         """
         pattern = CacheKeyBuilder.build("query", table, "*")
-        
+
         try:
             keys = await cache.redis.keys(pattern)
             if keys:
@@ -140,23 +139,23 @@ class QueryCache:
                 logger.info(
                     "Query cache invalidated",
                     action=LogAction.DELETE,
-                    metadata={"table": table, "keys": len(keys)}
+                    metadata={"table": table, "keys": len(keys)},
                 )
                 return len(keys)
         except Exception as e:
             logger.error(
                 "Query cache invalidation error",
                 action=LogAction.ERROR,
-                metadata={"error": str(e), "table": table}
+                metadata={"error": str(e), "table": table},
             )
-        
+
         return 0
-    
+
     @classmethod
     async def invalidate_all(cls) -> int:
         """Invalidate all query caches."""
         pattern = CacheKeyBuilder.build("query", "*")
-        
+
         try:
             keys = await cache.redis.keys(pattern)
             if keys:
@@ -164,16 +163,16 @@ class QueryCache:
                 logger.info(
                     "All query caches invalidated",
                     action=LogAction.DELETE,
-                    metadata={"keys": len(keys)}
+                    metadata={"keys": len(keys)},
                 )
                 return len(keys)
         except Exception as e:
             logger.error(
                 "Query cache invalidation error",
                 action=LogAction.ERROR,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
-        
+
         return 0
 
 
@@ -184,12 +183,12 @@ def cached_query(
 ):
     """
     Decorator for caching database query results.
-    
+
     Args:
         table: Table name for cache invalidation
         ttl: Cache TTL in seconds
         skip_on_error: If True, execute query on cache error
-        
+
     @example
     ```python
     @cached_query(table="articles", ttl=600)
@@ -198,6 +197,7 @@ def cached_query(
         return await db.fetch(query, days)
     ```
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -207,7 +207,7 @@ def cached_query(
                 "args": args,
                 "kwargs": kwargs,
             }
-            
+
             # Try to get from cache
             try:
                 cached = await QueryCache.get(
@@ -223,12 +223,12 @@ def cached_query(
                 logger.warning(
                     f"Cache get error in {func.__name__}",
                     action=LogAction.ERROR,
-                    metadata={"error": str(e)}
+                    metadata={"error": str(e)},
                 )
-            
+
             # Execute query
             result = await func(*args, **kwargs)
-            
+
             # Cache result
             try:
                 await QueryCache.set(
@@ -244,21 +244,21 @@ def cached_query(
                 logger.warning(
                     f"Cache set error in {func.__name__}",
                     action=LogAction.ERROR,
-                    metadata={"error": str(e)}
+                    metadata={"error": str(e)},
                 )
-            
+
             return result
-        
+
         return wrapper
-    
+
     return decorator
 
 
 class QueryInvalidationMixin:
     """Mixin for models to auto-invalidate query cache on changes."""
-    
+
     _query_cache_table: str = ""
-    
+
     async def invalidate_cache(self) -> int:
         """Invalidate query cache for this model's table."""
         if self._query_cache_table:
@@ -282,13 +282,13 @@ COMMON_QUERIES = {
 async def prefetch_common_queries() -> None:
     """Prefetch and cache common queries on startup."""
     logger.info("Prefetching common queries", action=LogAction.START)
-    
+
     for table, queries in COMMON_QUERIES.items():
         for query in queries:
             # Execute and cache will happen on first request
             logger.debug(
                 "Registered common query for prefetch",
-                metadata={"table": table, "query": query[:50]}
+                metadata={"table": table, "query": query[:50]},
             )
-    
+
     logger.info("Common queries registered", action=LogAction.END)

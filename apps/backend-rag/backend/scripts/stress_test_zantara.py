@@ -15,7 +15,7 @@ project_root = os.path.dirname(backend_dir)  # apps/backend-rag
 sys.path.insert(0, backend_dir)
 sys.path.insert(0, project_root)
 
-logger = logging.getLogger("stress_test") # Defined earlier
+logger = logging.getLogger("stress_test")  # Defined earlier
 
 logger.debug(f"sys.path[0] = {sys.path[0]}")
 logger.debug(f"sys.path[1] = {sys.path[1]}")
@@ -97,7 +97,7 @@ async def run_stress_test():
         step_id = turn["id"]
         query = turn["content"]
 
-        logger.info(f"\n[{idx+1}/{len(scenarios)}] USER: {query}")
+        logger.info(f"\n[{idx + 1}/{len(scenarios)}] USER: {query}")
 
         start_turn = time.time()
 
@@ -147,7 +147,7 @@ async def run_stress_test():
             consecutive_errors += 1
             duration = time.time() - start_turn
             logger.error(f"❌ ERROR on step {step_id}: {e}")
-            logger.error(f"ERROR: {e}") # Replaced print with logger.error
+            logger.error(f"ERROR: {e}")  # Replaced print with logger.error
 
             results.append(
                 {"id": step_id, "status": "error", "error": str(e), "duration": duration}
@@ -155,9 +155,11 @@ async def run_stress_test():
 
             if consecutive_errors >= 4:
                 logger.critical("🚨 CIRCUIT BREAKER TRIPPED: 4 Consecutive Errors. Stopping Test.")
-                logger.critical("\n" + "!" * 60) # Replaced print with logger.critical
-                logger.critical("🚨 STOPPING TEST: TOO MANY ERRORS") # Replaced print with logger.critical
-                logger.critical("!" * 60 + "\n") # Replaced print with logger.critical
+                logger.critical("\n" + "!" * 60)  # Replaced print with logger.critical
+                logger.critical(
+                    "🚨 STOPPING TEST: TOO MANY ERRORS"
+                )  # Replaced print with logger.critical
+                logger.critical("!" * 60 + "\n")  # Replaced print with logger.critical
                 break
 
         # Small sleep
@@ -168,16 +170,16 @@ async def run_stress_test():
     success_count = len([r for r in results if r["status"] == "success"])
     avg_latency = sum([r["duration"] for r in results]) / len(results) if results else 0
 
-    logger.info("\n" + "=" * 60) # Replaced print with logger.info
-    logger.info("📊 TEST SUMMARY") # Replaced print with logger.info
-    logger.info("=" * 60) # Replaced print with logger.info
-    logger.info(f"Total Steps: {len(results)}/{len(scenarios)}") # Replaced print with logger.info
+    logger.info("\n" + "=" * 60)  # Replaced print with logger.info
+    logger.info("📊 TEST SUMMARY")  # Replaced print with logger.info
+    logger.info("=" * 60)  # Replaced print with logger.info
+    logger.info(f"Total Steps: {len(results)}/{len(scenarios)}")  # Replaced print with logger.info
     logger.info(
         f"Success Rate: {success_count}/{len(results)} ({success_count / len(results) * 100:.1f}%)"
-    ) # Replaced print with logger.info
-    logger.info(f"Total Time: {total_duration:.1f}s") # Replaced print with logger.info
-    logger.info(f"Avg Latency: {avg_latency:.2f}s") # Replaced print with logger.info
-    logger.info("=" * 60) # Replaced print with logger.info
+    )  # Replaced print with logger.info
+    logger.info(f"Total Time: {total_duration:.1f}s")  # Replaced print with logger.info
+    logger.info(f"Avg Latency: {avg_latency:.2f}s")  # Replaced print with logger.info
+    logger.info("=" * 60)  # Replaced print with logger.info
 
     # Cleanup
     await db.disconnect()

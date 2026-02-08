@@ -48,7 +48,9 @@ async def extract_kbli_from_qdrant() -> list[dict]:
     all_documents = []
     offset = None
 
-    async with httpx.AsyncClient(base_url=QDRANT_URL, headers=headers, timeout=30.0) as client:
+    async with httpx.AsyncClient(
+        base_url=QDRANT_URL, headers=headers, timeout=30.0
+    ) as client:
         logger.info(f"Connecting to Qdrant: {QDRANT_URL}")
         logger.info(f"Collection: {COLLECTION_NAME}")
 
@@ -92,7 +94,9 @@ async def extract_kbli_from_qdrant() -> list[dict]:
                     break
 
             except httpx.HTTPStatusError as e:
-                logger.error(f"HTTP error: {e.response.status_code} - {e.response.text}")
+                logger.error(
+                    f"HTTP error: {e.response.status_code} - {e.response.text}"
+                )
                 raise
             except Exception as e:
                 logger.error(f"Error during extraction: {e}", exc_info=True)

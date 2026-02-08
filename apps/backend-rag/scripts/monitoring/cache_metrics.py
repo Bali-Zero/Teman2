@@ -71,31 +71,33 @@ class CacheMetricsExporter:
         c = metrics["cache"]
         p = metrics["performance"]
 
-        print("\n" + "=" * 60)
-        print("📊 EMBEDDING CACHE METRICS")
-        print("=" * 60)
-        print(f"  Hit Rate:     {c['hit_rate']*100:.2f}%  ({c['hits']} hits / {c['misses']} misses)")
-        print(f"  Size:         {c['size']} / {c['max_size']} ({c['utilization']*100:.1f}% full)")
-        print(f"  Est. Savings: ~{p['estimated_ms_saved']}ms total")
-        print("=" * 60)
+        logger.info("\n" + "=" * 60)
+        logger.info("📊 EMBEDDING CACHE METRICS")
+        logger.info("=" * 60)
+        logger.info(
+            f"  Hit Rate:     {c['hit_rate'] * 100:.2f}%  ({c['hits']} hits / {c['misses']} misses)"
+        )
+        logger.info(f"  Size:         {c['size']} / {c['max_size']} ({c['utilization'] * 100:.1f}% full)")
+        logger.info(f"  Est. Savings: ~{p['estimated_ms_saved']}ms total")
+        logger.info("=" * 60)
 
         # Recommendations
         if c["hit_rate"] < 0.1:
-            print("⚠️  Low hit rate - consider increasing cache size")
+            logger.info("⚠️  Low hit rate - consider increasing cache size")
         elif c["hit_rate"] > 0.8:
-            print("✅ Excellent hit rate!")
-        
+            logger.info("✅ Excellent hit rate!")
+
         if c["utilization"] > 0.9:
-            print("⚠️  Cache nearing capacity - consider increasing max_size")
+            logger.info("⚠️  Cache nearing capacity - consider increasing max_size")
 
 
 def main():
     exporter = CacheMetricsExporter()
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "--prometheus":
-        print(exporter.export_prometheus())
+        logger.info(exporter.export_prometheus())
     elif len(sys.argv) > 1 and sys.argv[1] == "--json":
-        print(json.dumps(exporter.get_metrics(), indent=2))
+        logger.info(json.dumps(exporter.get_metrics(), indent=2))
     else:
         exporter.print_dashboard()
 
