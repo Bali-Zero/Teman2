@@ -36,6 +36,7 @@ tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0
 pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+Pillow>=10.0.0  # Required for PDF/vision (pdf_vision_service, vision_rag)
 EbookLib>=0.18
 beautifulsoup4>=4.14.3  # Security and stability updates
 
