@@ -31,6 +31,12 @@ from backend.services.rag.kg_graph_nodes import (
 )
 from backend.services.rag.kg_graph_state import KGAgentState
 
+# Import subgraphs (Phase 3)
+from backend.services.rag.kg_subgraph_company import build_company_subgraph
+from backend.services.rag.kg_subgraph_property import build_property_subgraph
+from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
+from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
+
 logger = logging.getLogger(__name__)
 
 
@@ -121,22 +127,54 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     Decide next step after query understanding.
 
     Routing logic:
-    - If intent matches golden route → use_golden_route
-    - If complex query (multiple entities) → resolve_entities
-    - If simple query → fallback_to_vector (END)
+    1. Check if domain-specific subgraph (company, visa, property, tax) → route to subgraph
+    2. Check if intent matches golden route → use_golden_route
+    3. If complex query (multiple entities) → resolve_entities
+    4. If simple query → fallback_to_vector (END)
 
     Args:
         state: Current KGAgentState
 
     Returns:
-        Next node name: "use_golden_route" | "resolve_entities" | "END"
+        Next node name: "company_subgraph" | "visa_subgraph" | "property_subgraph" |
+                        "tax_subgraph" | "use_golden_route" | "resolve_entities" | "END"
     """
     intent = state.get("intent")
     entities_count = len(state.get("extracted_entities", []))
+    query_lower = state.get("query", "").lower()
 
     logger.info(
         f"🔀 [Router] After understand_query: intent={intent}, entities={entities_count}"
     )
+
+    # Phase 3: Domain-Specific Subgraph Routing
+    # Company setup queries
+    company_keywords = ["pt pma", "pt lokal", "perorangan", "cv", "company", "azienda", "società"]
+    if intent in ["company_setup", "pt_pma_setup", "business_formation"] or \
+       any(kw in query_lower for kw in company_keywords):
+        logger.info(f"🏢 [Router] Company-related query, routing to CompanySubgraph")
+        return "company_subgraph"
+
+    # Visa/immigration queries
+    visa_keywords = ["kitas", "kitap", "vitas", "visa", "work permit", "rptka", "immigration"]
+    if intent in ["visa_application", "kitas_work", "immigration"] or \
+       any(kw in query_lower for kw in visa_keywords):
+        logger.info(f"🛂 [Router] Visa-related query, routing to VisaSubgraph")
+        return "visa_subgraph"
+
+    # Property queries
+    property_keywords = ["property", "villa", "hak pakai", "hgb", "hak milik", "rental", "real estate"]
+    if intent in ["property_acquisition", "property_purchase"] or \
+       any(kw in query_lower for kw in property_keywords):
+        logger.info(f"🏠 [Router] Property-related query, routing to PropertySubgraph")
+        return "property_subgraph"
+
+    # Tax queries
+    tax_keywords = ["tax", "pph", "ppn", "npwp", "pajak", "tasse", "fiscal", "vat"]
+    if intent in ["tax_compliance", "npwp_registration"] or \
+       any(kw in query_lower for kw in tax_keywords):
+        logger.info(f"🧾 [Router] Tax-related query, routing to TaxSubgraph")
+        return "tax_subgraph"
 
     # Check if golden route exists for this intent
     golden_route_intents = ["pt_pma_setup", "kitas_work", "nib_oss", "npwp_registration"]
@@ -184,6 +222,130 @@ def route_after_traversal(state: KGAgentState) -> str:
     else:
         logger.info(f"❌ [Router] No graph evidence found, terminating")
         return END
+
+
+# ============================================================================
+# Subgraph Invocation Nodes (Phase 3)
+# ============================================================================
+
+
+async def invoke_company_subgraph(
+    state: KGAgentState,
+    db_pool: asyncpg.Pool,
+) -> KGAgentState:
+    """
+    Invoke Company Setup Subgraph.
+
+    Handles PT PMA, Perorangan, CV company formation workflows.
+
+    Args:
+        state: Current KGAgentState
+        db_pool: PostgreSQL connection pool
+
+    Returns:
+        Updated state with workflow from CompanySubgraph
+    """
+    logger.info("🏢 [CompanySubgraph] Invoking Company Setup Subgraph...")
+
+    llm = get_llm_for_reasoning()
+    subgraph = build_company_subgraph(db_pool, llm)
+    compiled_subgraph = subgraph.compile()
+
+    # Pass current state to subgraph
+    subgraph_result = await compiled_subgraph.ainvoke(state)
+
+    # Merge workflow back to parent state
+    state["workflow"] = subgraph_result.get("workflow")
+    logger.info(f"✅ [CompanySubgraph] Workflow synthesized: {state['workflow']['name']}")
+
+    return state
+
+
+async def invoke_visa_subgraph(
+    state: KGAgentState,
+    db_pool: asyncpg.Pool,
+) -> KGAgentState:
+    """
+    Invoke Visa/Immigration Subgraph.
+
+    Handles KITAS, KITAP, VITAS visa processing workflows.
+
+    Args:
+        state: Current KGAgentState
+        db_pool: PostgreSQL connection pool
+
+    Returns:
+        Updated state with workflow from VisaSubgraph
+    """
+    logger.info("🛂 [VisaSubgraph] Invoking Visa/Immigration Subgraph...")
+
+    llm = get_llm_for_reasoning()
+    subgraph = build_visa_subgraph(db_pool, llm)
+    compiled_subgraph = subgraph.compile()
+
+    subgraph_result = await compiled_subgraph.ainvoke(state)
+    state["workflow"] = subgraph_result.get("workflow")
+    logger.info(f"✅ [VisaSubgraph] Workflow synthesized: {state['workflow']['name']}")
+
+    return state
+
+
+async def invoke_property_subgraph(
+    state: KGAgentState,
+    db_pool: asyncpg.Pool,
+) -> KGAgentState:
+    """
+    Invoke Property Acquisition Subgraph.
+
+    Handles Hak Pakai, HGB, rental property workflows.
+
+    Args:
+        state: Current KGAgentState
+        db_pool: PostgreSQL connection pool
+
+    Returns:
+        Updated state with workflow from PropertySubgraph
+    """
+    logger.info("🏠 [PropertySubgraph] Invoking Property Acquisition Subgraph...")
+
+    llm = get_llm_for_reasoning()
+    subgraph = build_property_subgraph(db_pool, llm)
+    compiled_subgraph = subgraph.compile()
+
+    subgraph_result = await compiled_subgraph.ainvoke(state)
+    state["workflow"] = subgraph_result.get("workflow")
+    logger.info(f"✅ [PropertySubgraph] Workflow synthesized: {state['workflow']['name']}")
+
+    return state
+
+
+async def invoke_tax_subgraph(
+    state: KGAgentState,
+    db_pool: asyncpg.Pool,
+) -> KGAgentState:
+    """
+    Invoke Tax Compliance Subgraph.
+
+    Handles PPh, PPN, NPWP tax workflows.
+
+    Args:
+        state: Current KGAgentState
+        db_pool: PostgreSQL connection pool
+
+    Returns:
+        Updated state with workflow from TaxSubgraph
+    """
+    logger.info("🧾 [TaxSubgraph] Invoking Tax Compliance Subgraph...")
+
+    llm = get_llm_for_reasoning()
+    subgraph = build_tax_subgraph(db_pool, llm)
+    compiled_subgraph = subgraph.compile()
+
+    subgraph_result = await compiled_subgraph.ainvoke(state)
+    state["workflow"] = subgraph_result.get("workflow")
+    logger.info(f"✅ [TaxSubgraph] Workflow synthesized: {state['workflow']['name']}")
+
+    return state
 
 
 # ============================================================================
@@ -260,7 +422,7 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     # Initialize StateGraph
     workflow = StateGraph(KGAgentState)
 
-    # Add nodes
+    # Add core nodes
     workflow.add_node("understand_query", understand_query_wrapper)
     workflow.add_node(
         "resolve_entities",
@@ -280,14 +442,38 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
         lambda state: use_golden_route_node(state, db_pool),
     )
 
+    # Add subgraph nodes (Phase 3)
+    workflow.add_node(
+        "company_subgraph",
+        lambda state: invoke_company_subgraph(state, db_pool),
+    )
+    workflow.add_node(
+        "visa_subgraph",
+        lambda state: invoke_visa_subgraph(state, db_pool),
+    )
+    workflow.add_node(
+        "property_subgraph",
+        lambda state: invoke_property_subgraph(state, db_pool),
+    )
+    workflow.add_node(
+        "tax_subgraph",
+        lambda state: invoke_tax_subgraph(state, db_pool),
+    )
+
     # Set entry point
     workflow.set_entry_point("understand_query")
 
-    # Add conditional edges
+    # Add conditional edges from understand_query
     workflow.add_conditional_edges(
         "understand_query",
         route_after_query_understanding,
         {
+            # Subgraph routes (Phase 3)
+            "company_subgraph": "company_subgraph",
+            "visa_subgraph": "visa_subgraph",
+            "property_subgraph": "property_subgraph",
+            "tax_subgraph": "tax_subgraph",
+            # Core routes
             "use_golden_route": "use_golden_route",
             "resolve_entities": "resolve_entities",
             END: END,
@@ -314,7 +500,13 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     # Golden route → END
     workflow.add_edge("use_golden_route", END)
 
-    logger.info("✅ [Build Workflow] StateGraph constructed with 6 nodes and routing logic")
+    # Subgraph routes → END (Phase 3)
+    workflow.add_edge("company_subgraph", END)
+    workflow.add_edge("visa_subgraph", END)
+    workflow.add_edge("property_subgraph", END)
+    workflow.add_edge("tax_subgraph", END)
+
+    logger.info("✅ [Build Workflow] StateGraph constructed with 10 nodes (6 core + 4 subgraphs) and routing logic")
 
     return workflow
 

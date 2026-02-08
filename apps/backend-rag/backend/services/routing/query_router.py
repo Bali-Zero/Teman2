@@ -30,7 +30,7 @@ from .routing_stats import RoutingStatsService
 
 logger = logging.getLogger(__name__)
 
-# Phase 2/3: Extended collection support (5 → 16 collections with Oracle + expanded KBLI/Legal/Tax + Team + Circulars)
+# Phase 2/3: Extended collection support (5 → 17 collections with Oracle + expanded KBLI/Legal/Tax + Team + Circulars + Business)
 CollectionName = Literal[
     "visa_oracle",
     "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
@@ -44,10 +44,11 @@ CollectionName = Literal[
     "property_listings",
     "property_knowledge",
     "legal_updates",
-    "bali_zero_pricing",
+    "bali_zero_pricing_hybrid",
     "kb_indonesian",
     "cultural_insights",
     "bali_zero_team",
+    "training_conversations_hybrid",  # Business setup guides & capital requirements
 ]
 
 
@@ -511,6 +512,7 @@ class QueryRouter:
         self.TEAM_KEYWORDS = self.keyword_matcher.domain_keywords["team"]
         self.BOOKS_KEYWORDS = self.keyword_matcher.domain_keywords["books"]
         self.CIRCULAR_KEYWORDS = self.keyword_matcher.domain_keywords["circular"]
+        self.BUSINESS_KEYWORDS = self.keyword_matcher.domain_keywords["business"]
         self.UPDATE_KEYWORDS = self.keyword_matcher.modifier_keywords["updates"]
         self.TAX_GENIUS_KEYWORDS = self.keyword_matcher.modifier_keywords["tax_genius"]
         self.BACKEND_SERVICES_KEYWORDS = self.priority_override.backend_services_keywords
@@ -590,6 +592,12 @@ class QueryRouter:
             logger.info(
                 f"🧭 Route: {collection} (property unified: property={domain_scores['property']})"
             )
+        elif primary_domain == "business":
+            # Business setup & capital requirements: route to training_conversations_hybrid
+            collection = "training_conversations_hybrid"
+            logger.info(
+                f"🧭 Route: {collection} (business setup: business={domain_scores['business']})"
+            )
         elif primary_domain == "circular" or (
             primary_domain == "visa" and domain_scores.get("circular", 0) > 0
         ):
@@ -603,12 +611,12 @@ class QueryRouter:
             collection = "visa_oracle"
             logger.info(f"🧭 Route: {collection} (visa: score={domain_scores['visa']})")
         elif primary_domain == "kbli":
-            collection = "kbli_unified"
+            collection = "kbli_2025_final"
             logger.info(f"🧭 Route: {collection} (kbli: score={domain_scores['kbli']})")
         elif primary_domain == "team":
             # FIXED 2026-01-10: bali_zero_team doesn't exist, fallback to bali_zero_pricing
             # TODO: Recreate bali_zero_team collection or use alternative
-            collection = "bali_zero_pricing"  # Temporary fallback
+            collection = "bali_zero_pricing_hybrid"  # Temporary fallback
             logger.warning(
                 f"⚠️ Route: {collection} (team query - bali_zero_team not found, using fallback)"
             )
