@@ -309,8 +309,8 @@ nuzantara-mcp  # starts stdio server
 
 The system uses `evidence_score` (0.0-1.0) to decide responses:
 
-- **< 0.3** -> ABSTAIN (refuses to answer)
-- **0.3-0.6** -> Cautious response
+- **< 0.15** -> ABSTAIN (refuses to answer)
+- **0.15-0.6** -> Cautious response
 - **> 0.6** -> Normal response
 
 ### Trusted Tools (Bypass Evidence Check)
@@ -484,6 +484,7 @@ npm run dev
 | **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference     |
 | **KG Value Assessment**   | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph details |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper            |
+| **Documentation Archive** | `docs/archive/MANIFEST.md`                               | Old docs & reports      |
 
 ---
 
@@ -494,5 +495,6 @@ npm run dev
 3. **Check for rogue changes** before deploying - other AI tools may have modified shared files
 4. **Use `--no-verify` for non-JS commits** - prettier pre-commit hook is known to fail on Python/markdown
 5. **Don't over-document** - code that speaks for itself doesn't need a 450-line report. Focus on why, not what.
+6. **Check the archive** - Old session reports and transient docs are in `docs/archive/MANIFEST.md`
 
 **Remember:** This is a production system serving real clients. Be careful with changes, verify the embedding model matches, and test your work.
