@@ -14,9 +14,8 @@ backend/.env*
 .git
 .gitignore
 
-# Documentation (keep AI_ONBOARDING for Generals context)
+# Documentation
 docs/
-!docs/AI_ONBOARDING.md
 README*
 
 # Dependencies

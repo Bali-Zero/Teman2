@@ -56,8 +56,6 @@ COPY backend ./backend
 COPY scripts ./scripts
 COPY training-data ./training-data
 COPY *.py ./
-# AI_ONBOARDING.md used by Generals as constitutional context
-COPY docs/AI_ONBOARDING.md ./docs/AI_ONBOARDING.md
 
 # Set Python path to include /app, /app/backend, and user site-packages
 # This aligns with local development structure
