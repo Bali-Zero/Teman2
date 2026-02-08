@@ -22,6 +22,7 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn(),
     back: vi.fn(),
   }),
+  usePathname: () => '/portal',
 }));
 
 // Mock components
@@ -45,8 +46,14 @@ vi.mock('@/components/workspace/Header', () => ({
   ),
 }));
 
-vi.mock('@/components/portal/PortalBottomNav', () => ({
+vi.mock('@/components/portal', () => ({
   PortalBottomNav: () => <nav data-testid="bottom-nav">Bottom Nav</nav>,
+  PortalHeader: ({ userName, onToggleSidebar }: { userName: string; onToggleSidebar: () => void }) => (
+    <header data-testid="portal-header">Portal Header: {userName}</header>
+  ),
+  PortalErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PortalCardSkeleton: () => <div>Loading...</div>,
+  PortalPageLoader: () => <div>Loading...</div>,
 }));
 
 vi.mock('@/components/ui/toast', () => ({
@@ -160,7 +167,7 @@ describe('PortalLayout', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('app-sidebar')).toBeInTheDocument();
-      expect(screen.getByTestId('header')).toBeInTheDocument();
+      expect(screen.getByTestId('portal-header')).toBeInTheDocument();
     });
   });
 
