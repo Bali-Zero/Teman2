@@ -401,13 +401,25 @@ async def synthesize_tax_workflow_node(
         }
     })
 
+    from dataclasses import asdict
+
+    from backend.services.rag.confidence import calculate_subgraph_confidence
+
+    breakdown = calculate_subgraph_confidence(
+        workflow_source="tax_subgraph",
+        steps_count=len(steps),
+        has_db_validation=False,
+        unique_sources=1,
+    )
+
     workflow = {
         "id": f"tax_compliance:{entity_type}",
         "type": "tax_compliance",
         "name": f"{entity_type.upper()} Tax Compliance",
         "steps": steps,
         "source": "tax_subgraph",
-        "confidence": 0.85,
+        "confidence": breakdown.overall,
+        "confidence_breakdown": asdict(breakdown),
     }
 
     state["workflow"] = workflow
@@ -443,23 +455,24 @@ def build_tax_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
 
     subgraph = StateGraph(TaxState)
 
+    # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
+    async def _identify(state):
+        return await identify_tax_type_node(state, llm)
+
+    async def _get_obligations(state):
+        return await get_tax_obligations_node(state, db_pool)
+
+    async def _calculate(state):
+        return await calculate_tax_requirements_node(state)
+
+    async def _synthesize(state):
+        return await synthesize_tax_workflow_node(state)
+
     # Add nodes
-    subgraph.add_node(
-        "identify_tax_type",
-        lambda state: identify_tax_type_node(state, llm)
-    )
-    subgraph.add_node(
-        "get_tax_obligations",
-        lambda state: get_tax_obligations_node(state, db_pool)
-    )
-    subgraph.add_node(
-        "calculate_tax_requirements",
-        lambda state: calculate_tax_requirements_node(state)
-    )
-    subgraph.add_node(
-        "synthesize_tax_workflow",
-        lambda state: synthesize_tax_workflow_node(state)
-    )
+    subgraph.add_node("identify_tax_type", _identify)
+    subgraph.add_node("get_tax_obligations", _get_obligations)
+    subgraph.add_node("calculate_tax_requirements", _calculate)
+    subgraph.add_node("synthesize_tax_workflow", _synthesize)
 
     # Set entry point
     subgraph.set_entry_point("identify_tax_type")

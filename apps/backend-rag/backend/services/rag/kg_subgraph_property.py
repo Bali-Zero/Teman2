@@ -130,13 +130,25 @@ async def synthesize_property_workflow_node(state: PropertyState) -> PropertySta
         {"step": 7, "action": "Register at Land Office (BPN)", "entity_id": "bpn_registration"},
     ]
 
+    from dataclasses import asdict
+
+    from backend.services.rag.confidence import calculate_subgraph_confidence
+
+    breakdown = calculate_subgraph_confidence(
+        workflow_source="property_subgraph",
+        steps_count=len(steps),
+        has_db_validation=False,
+        unique_sources=1,
+    )
+
     workflow = {
         "id": f"property:{prop_type}",
         "type": "property_acquisition",
         "name": f"{prop_type.upper()} Property Acquisition",
         "steps": steps,
         "source": "property_subgraph",
-        "confidence": 0.85,
+        "confidence": breakdown.overall,
+        "confidence_breakdown": asdict(breakdown),
     }
 
     state["workflow"] = workflow
@@ -149,9 +161,20 @@ def build_property_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
     logger.info("🏗️ [Property Subgraph] Building property subgraph...")
 
     subgraph = StateGraph(PropertyState)
-    subgraph.add_node("identify_property_type", lambda s: identify_property_type_node(s, llm))
-    subgraph.add_node("get_property_requirements", lambda s: get_property_requirements_node(s, db_pool))
-    subgraph.add_node("synthesize_property_workflow", synthesize_property_workflow_node)
+
+    # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
+    async def _identify(s):
+        return await identify_property_type_node(s, llm)
+
+    async def _get_reqs(s):
+        return await get_property_requirements_node(s, db_pool)
+
+    async def _synthesize(s):
+        return await synthesize_property_workflow_node(s)
+
+    subgraph.add_node("identify_property_type", _identify)
+    subgraph.add_node("get_property_requirements", _get_reqs)
+    subgraph.add_node("synthesize_property_workflow", _synthesize)
 
     subgraph.set_entry_point("identify_property_type")
     subgraph.add_edge("identify_property_type", "get_property_requirements")

@@ -336,13 +336,26 @@ async def synthesize_company_workflow_node(
         }
     })
 
+    from dataclasses import asdict
+
+    from backend.services.rag.confidence import calculate_subgraph_confidence
+
+    has_db = state.get("is_foreign_investor", False)  # PMA eligibility checked DB
+    breakdown = calculate_subgraph_confidence(
+        workflow_source="company_subgraph",
+        steps_count=len(steps),
+        has_db_validation=has_db,
+        unique_sources=1,
+    )
+
     workflow = {
         "id": f"company_setup:{company_type}",
         "type": "company_setup",
         "name": f"{company_type.upper()} Company Setup",
         "steps": steps,
         "source": "company_subgraph",
-        "confidence": 0.9,
+        "confidence": breakdown.overall,
+        "confidence_breakdown": asdict(breakdown),
     }
 
     state["workflow"] = workflow
@@ -378,23 +391,24 @@ def build_company_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
 
     subgraph = StateGraph(CompanyState)
 
+    # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
+    async def _identify(state):
+        return await identify_company_type_node(state, llm)
+
+    async def _check_pma(state):
+        return await check_pma_eligibility_node(state, db_pool)
+
+    async def _get_capital(state):
+        return await get_capital_requirements_node(state, db_pool)
+
+    async def _synthesize(state):
+        return await synthesize_company_workflow_node(state)
+
     # Add nodes
-    subgraph.add_node(
-        "identify_company_type",
-        lambda state: identify_company_type_node(state, llm)
-    )
-    subgraph.add_node(
-        "check_pma_eligibility",
-        lambda state: check_pma_eligibility_node(state, db_pool)
-    )
-    subgraph.add_node(
-        "get_capital_requirements",
-        lambda state: get_capital_requirements_node(state, db_pool)
-    )
-    subgraph.add_node(
-        "synthesize_company_workflow",
-        lambda state: synthesize_company_workflow_node(state)
-    )
+    subgraph.add_node("identify_company_type", _identify)
+    subgraph.add_node("check_pma_eligibility", _check_pma)
+    subgraph.add_node("get_capital_requirements", _get_capital)
+    subgraph.add_node("synthesize_company_workflow", _synthesize)
 
     # Set entry point
     subgraph.set_entry_point("identify_company_type")

@@ -373,13 +373,25 @@ async def synthesize_visa_workflow_node(
             }
         })
 
+    from dataclasses import asdict
+
+    from backend.services.rag.confidence import calculate_subgraph_confidence
+
+    breakdown = calculate_subgraph_confidence(
+        workflow_source="visa_subgraph",
+        steps_count=len(steps),
+        has_db_validation=state.get("requires_rptka", False),
+        unique_sources=1,
+    )
+
     workflow = {
         "id": f"visa_processing:{visa_type}",
         "type": "visa_processing",
         "name": f"{visa_type.upper()} Visa Processing",
         "steps": steps,
         "source": "visa_subgraph",
-        "confidence": 0.9,
+        "confidence": breakdown.overall,
+        "confidence_breakdown": asdict(breakdown),
     }
 
     state["workflow"] = workflow
@@ -415,23 +427,24 @@ def build_visa_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
 
     subgraph = StateGraph(VisaState)
 
+    # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
+    async def _identify(state):
+        return await identify_visa_type_node(state, llm)
+
+    async def _check_rptka(state):
+        return await check_rptka_requirements_node(state, db_pool)
+
+    async def _get_requirements(state):
+        return await get_visa_requirements_node(state, db_pool)
+
+    async def _synthesize(state):
+        return await synthesize_visa_workflow_node(state)
+
     # Add nodes
-    subgraph.add_node(
-        "identify_visa_type",
-        lambda state: identify_visa_type_node(state, llm)
-    )
-    subgraph.add_node(
-        "check_rptka_requirements",
-        lambda state: check_rptka_requirements_node(state, db_pool)
-    )
-    subgraph.add_node(
-        "get_visa_requirements",
-        lambda state: get_visa_requirements_node(state, db_pool)
-    )
-    subgraph.add_node(
-        "synthesize_visa_workflow",
-        lambda state: synthesize_visa_workflow_node(state)
-    )
+    subgraph.add_node("identify_visa_type", _identify)
+    subgraph.add_node("check_rptka_requirements", _check_rptka)
+    subgraph.add_node("get_visa_requirements", _get_requirements)
+    subgraph.add_node("synthesize_visa_workflow", _synthesize)
 
     # Set entry point
     subgraph.set_entry_point("identify_visa_type")
