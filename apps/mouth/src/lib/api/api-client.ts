@@ -16,6 +16,7 @@ import { WhatsAppApi } from './whatsapp/whatsapp.api';
 import { TelegramApi } from './telegram/telegram.api';
 import { InstagramApi } from './instagram/instagram.api';
 import { TwitterApi } from './twitter/twitter.api';
+import { workflowApi } from './workflow';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
 import { KnowledgeActivityApi } from './knowledge-activity.api';
@@ -168,6 +169,10 @@ export class ApiClient extends ApiClientBase {
 
   public get twitter(): TwitterApi {
     return this.twitterApi;
+  }
+
+  public get workflow() {
+    return workflowApi;
   }
 
   // ============================================================================

@@ -117,6 +117,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/telegram/messages/",
             "/api/instagram/conversations",
             "/api/instagram/messages/",
+            "/api/workflow/",
             # ========================================================================
             # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
             # ========================================================================
