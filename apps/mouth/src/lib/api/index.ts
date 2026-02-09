@@ -39,11 +39,8 @@ export type { IApiClient, ApiRequestOptions } from './types/api-client.types';
 
 // In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.
 
-// In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.
-// Always use relative path so requests go to Next.js API routes first.
-// This allows specific routes (like /api/crm/clients) to be intercepted by mocks,
-// while others fall through to the [...path] proxy to reach the real backend.
-const API_BASE_URL = '';
+// Use direct backend URL in production to avoid proxy issues, fallback to relative in dev
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nuzantara-rag.fly.dev';
 
 // Create and export the API client instance (backward compatible)
 export const api = new ApiClient(API_BASE_URL);
