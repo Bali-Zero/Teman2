@@ -871,11 +871,11 @@ async def initialize_services(app: FastAPI) -> None:
         db_pool,
     )
 
-    # 9. Background services
-    await _init_background_services(app, search_service, ai_client, db_pool)
+    # 9. Background services (DISABLED for omnichannel stabilization)
+    # await _init_background_services(app, search_service, ai_client, db_pool)
 
-    # 10. The Generals Multi-Agent System (background polling loops)
-    await _init_generals(app, db_pool)
+    # 10. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
+    # await _init_generals(app, db_pool)
 
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True

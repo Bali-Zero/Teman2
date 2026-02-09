@@ -32,6 +32,7 @@ from backend.services.tools.definitions import AgentState
 
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
+from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
 
 from .llm_gateway import LLMGateway
 from .orchestrator_context import OrchestratorContextManager
@@ -105,6 +106,18 @@ class OrchestratorCore:
         self.routing_manager = OrchestratorRoutingManager()
         self.metrics_manager = OrchestratorMetricsManager()
         self.response_builder = OrchestratorResponseBuilder(entity_extractor=entity_extractor)
+
+        # Phase 6: Multi-Agent Coordinator (lazy-initialized)
+        self._multi_agent_coordinator: MultiAgentCoordinator | None = None
+        if db_pool or kg_retrieval:
+            try:
+                self._multi_agent_coordinator = MultiAgentCoordinator(
+                    kg_retrieval=kg_retrieval,
+                    db_pool=db_pool,
+                )
+                logger.info("✅ [Phase 6] MultiAgentCoordinator ready")
+            except Exception as e:
+                logger.warning(f"⚠️ [Phase 6] MultiAgentCoordinator init skipped: {e}")
 
     async def check_semantic_cache(
         self,
@@ -564,6 +577,26 @@ class OrchestratorCore:
         )
         if cached_result:
             return cached_result
+
+        # 3b. Phase 6: Check if multi-agent coordination is needed
+        if self._multi_agent_coordinator and requires_multi_agent(query):
+            try:
+                logger.info("🔀 [Phase 6] Multi-agent query detected, delegating to coordinator")
+                ma_result = await self._multi_agent_coordinator.process(
+                    query=query,
+                    user_context={"extracted_entities": extracted_entities},
+                )
+                if ma_result.get("final_answer"):
+                    return CoreResult(
+                        answer=ma_result["final_answer"],
+                        sources=[],
+                        model_used="multi-agent-coordinator",
+                        entities=extracted_entities,
+                        timings={"total": time.time() - start_time},
+                        tools_called=["legal_agent", "financial_agent", "timeline_agent"],
+                    )
+            except Exception as e:
+                logger.warning(f"⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: {e}")
 
         # 4. Route query (intent classification + tier selection)
         model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)

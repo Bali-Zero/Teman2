@@ -667,7 +667,19 @@ class SystemPromptBuilder:
         # OPTIMIZATION: Check cache before building expensive prompt
         # Include detected language in cache key (use short form for key)
         lang_key = detected_lang.split()[0] if detected_lang else "ID"
-        cache_key = f"{user_id}:{deep_think_mode}:{len(facts)}:{len(collective_facts)}:{len(timeline_summary)}:{is_creator}:{is_team}:{len(additional_context)}:{lang_key}"
+        # Use hashes for stable cache keys that reflect content changes
+        import hashlib
+
+        def _stable_hash(obj: Any) -> str:
+            """Generate a stable short hash for any object."""
+            return hashlib.md5(str(obj).encode()).hexdigest()[:8]
+
+        facts_hash = _stable_hash(facts)
+        coll_facts_hash = _stable_hash(collective_facts)
+        timeline_hash = _stable_hash(timeline_summary)
+        ctx_hash = _stable_hash(additional_context)
+
+        cache_key = f"{user_id}:{deep_think_mode}:{facts_hash}:{coll_facts_hash}:{timeline_hash}:{is_creator}:{is_team}:{ctx_hash}:{lang_key}"
 
         if cache_key in self._cache:
             cached_prompt, cached_time = self._cache[cache_key]

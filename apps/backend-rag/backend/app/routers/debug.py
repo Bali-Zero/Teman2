@@ -12,7 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
-from backend.app.dependencies import get_current_user
+from backend.app.dependencies import get_current_user, require_team_member
 from backend.middleware.request_tracing import (
     RequestTracingMiddleware,
     get_correlation_id,
@@ -490,13 +490,14 @@ async def get_collection_stats(
     }
 
 
-@router.get("/parent-documents-public/{document_id}")
-async def get_parent_documents_public(
+@router.get("/parent-documents/{document_id}")
+async def get_parent_documents(
     document_id: str,
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team_member),
 ) -> dict[str, Any]:
     """
     Get parent documents (BAB) from PostgreSQL for a legal document.
+    Restricted to Admin/Founder.
 
     Args:
         document_id: Document ID (e.g. "PP_31_2013")
@@ -504,6 +505,10 @@ async def get_parent_documents_public(
     Returns:
         List of BAB (chapters) with metadata
     """
+    # Restrict to Admin/Founder
+    if current_user.get("role", "").lower() not in ["admin", "founder"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
     import asyncpg
 
     try:

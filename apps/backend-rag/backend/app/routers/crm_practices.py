@@ -303,7 +303,7 @@ async def create_practice(
             )
             log_database_operation(logger, "CREATE", "practices", record_id=new_practice["id"])
 
-            invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return PracticeResponse(**new_practice)
 
     except HTTPException:
@@ -757,7 +757,7 @@ async def update_practice(
                 practice_id=practice_id,
                 updated_by=user_email,
             )
-            invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return updated_practice
 
     except HTTPException:
@@ -817,7 +817,7 @@ async def delete_practice(
                 practice_id=practice_id,
                 deleted_by=user_email,
             )
-            invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {"success": True, "message": "Practice marked as cancelled"}
 
     except HTTPException:

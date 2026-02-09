@@ -5,6 +5,28 @@ Backward-compatible re-exports for all services after reorganization.
 All services can still be imported from backend.services.X for compatibility.
 """
 
+# KG Monitoring services (Phase 8)
+from .kg_monitoring import (
+    AutoIngestionService,
+    ChangeDetector,
+    ChangeEvent,
+    ChangeType,
+    DimensionScore,
+    DocumentState,
+    DocumentType,
+    ExtractedDocument,
+    IngestionResult,
+    IngestionStatus,
+    LegalScraper,
+    QualityCheckService,
+    QualityDimension,
+    QualityLevel,
+    QualityReport,
+    ScrapedDocument,
+    SourceConfig,
+    SourceType,
+)
+
 # Search services
 # Analytics services
 from .analytics import (
@@ -200,6 +222,25 @@ from .search.search_service import SearchService
 from .search.semantic_cache import SemanticCache
 
 __all__ = [
+    # KG Monitoring
+    "LegalScraper",
+    "ScrapedDocument",
+    "SourceConfig",
+    "SourceType",
+    "ChangeDetector",
+    "DocumentState",
+    "ChangeType",
+    "ChangeEvent",
+    "AutoIngestionService",
+    "IngestionResult",
+    "IngestionStatus",
+    "ExtractedDocument",
+    "DocumentType",
+    "QualityCheckService",
+    "QualityLevel",
+    "QualityReport",
+    "QualityDimension",
+    "DimensionScore",
     # Search
     "SearchService",
     "build_search_filter",

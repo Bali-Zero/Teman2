@@ -395,7 +395,7 @@ async def get_neural_pulse(
     """
     # Check cache first
     cache_key = "dashboard:neural_pulse"
-    cached_result = _cache.get(cache_key)
+    cached_result = await _cache.get(cache_key)
     if cached_result:
         return cached_result
 
@@ -455,7 +455,7 @@ async def get_neural_pulse(
         }
 
         # Cache the result
-        _cache.set(cache_key, result, NEURAL_PULSE_CACHE_TTL)
+        await _cache.set(cache_key, result, NEURAL_PULSE_CACHE_TTL)
         return result
 
     except Exception as e:

@@ -137,13 +137,6 @@ class CacheService:
 
     Uses dependency injection instead of global state.
     Each instance has its own in-memory cache (instance-level, not module-level).
-
-    Usage with DI:
-        from fastapi import Depends
-        from backend.core.cache import get_cache_service
-
-        async def endpoint(cache: CacheService = Depends(get_cache_service)):
-            value = cache.get("key")
     """
 
     def __init__(self):
@@ -151,22 +144,20 @@ class CacheService:
         self.redis_client = None
         self.stats = {"hits": 0, "misses": 0, "errors": 0}
 
-        # Instance-level in-memory cache (not module-level)
-        # This prevents shared state between instances and test isolation issues
+        # Instance-level in-memory cache
         self._memory_cache = LRUCache()
 
-        # Try to connect to Redis (Fly.io provides REDIS_URL)
+        # Try to connect to Redis
         from backend.app.core.config import settings
 
         redis_url = settings.redis_url
         if redis_url:
             try:
-                import redis
+                import redis.asyncio as aioredis
 
-                self.redis_client = redis.from_url(redis_url, decode_responses=True)
-                self.redis_client.ping()
+                self.redis_client = aioredis.from_url(redis_url, decode_responses=True)
                 self.redis_available = True
-                logger.info("✅ Redis cache connected")
+                logger.info("✅ Redis cache connected (async)")
             except Exception as e:
                 logger.warning(f"⚠️ Redis not available, using memory cache: {e}")
         else:
@@ -174,92 +165,57 @@ class CacheService:
 
     def _is_serializable(self, obj: Any) -> bool:
         """Check if an object is JSON serializable."""
-        # Skip known non-serializable types
         type_name = type(obj).__name__
         non_serializable_types = {
-            "Pool",  # asyncpg.Pool
-            "Connection",  # asyncpg.Connection
-            "Request",  # fastapi.Request
-            "Response",  # fastapi.Response
-            "WebSocket",  # fastapi.WebSocket
-            "BackgroundTasks",  # fastapi.BackgroundTasks
-            "State",  # starlette.State
-            "HTTPConnection",  # starlette.HTTPConnection
+            "Pool",
+            "Connection",
+            "Request",
+            "Response",
+            "WebSocket",
+            "BackgroundTasks",
+            "State",
+            "HTTPConnection",
         }
         if type_name in non_serializable_types:
             return False
 
-        # Try to serialize
         try:
             json.dumps(obj)
             return True
         except (TypeError, ValueError):
             return False
 
-    def _safe_serialize(self, obj: Any) -> Any:
-        """Safely convert an object to a serializable form."""
-        if obj is None:
-            return None
-        if isinstance(obj, (str, int, float, bool)):
-            return obj
-        if isinstance(obj, (list, tuple)):
-            return [self._safe_serialize(item) for item in obj if self._is_serializable(item)]
-        if isinstance(obj, dict):
-            return {k: self._safe_serialize(v) for k, v in obj.items() if self._is_serializable(v)}
-        if self._is_serializable(obj):
-            return obj
-        # For non-serializable objects, return type name as placeholder
-        return f"<{type(obj).__name__}>"
-
     def _generate_key(self, prefix: str, *args, **kwargs) -> str:
-        """
-        Generate cache key from function arguments.
-
-        Format: zantara:{prefix}:{hash}
-        Hash is MD5 of JSON-serialized args/kwargs (first 12 chars).
-
-        Automatically filters out non-JSON-serializable arguments like
-        Request, Pool, Connection, etc.
-
-        Example:
-            >>> cache._generate_key("test", "arg1", key="value")
-            'zantara:test:a1b2c3d4e5f6'
-        """
-        # Filter args: skip 'self' and non-serializable objects
+        """Generate cache key from function arguments."""
         filtered_args = []
         for i, arg in enumerate(args):
-            # Skip 'self' (first argument for instance methods)
             if i == 0 and hasattr(arg, "__dict__"):
                 continue
-            # Skip non-serializable types
             if not self._is_serializable(arg):
                 continue
             filtered_args.append(arg)
 
-        # Filter kwargs: skip non-serializable values
         filtered_kwargs = {k: v for k, v in kwargs.items() if self._is_serializable(v)}
 
-        # Create deterministic key from filtered arguments
         key_data = json.dumps(
             {"args": filtered_args, "kwargs": filtered_kwargs},
             sort_keys=True,
-            default=str,  # Fallback for any remaining non-serializable types
+            default=str,
         )
         key_hash = hashlib.md5(key_data.encode()).hexdigest()[:CACHE_KEY_HASH_LENGTH]
         return f"zantara:{prefix}:{key_hash}"
 
-    def get(self, key: str) -> Any | None:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache"""
         try:
             if self.redis_available and self.redis_client:
-                value = self.redis_client.get(key)
+                value = await self.redis_client.get(key)
                 if value:
                     self.stats["hits"] += 1
                     return json.loads(value)
                 self.stats["misses"] += 1
                 return None
             else:
-                # In-memory fallback with LRU + TTL (instance-level)
                 value = self._memory_cache.get(key)
                 if value is not None:
                     self.stats["hits"] += 1
@@ -271,14 +227,13 @@ class CacheService:
             self.stats["errors"] += 1
             return None
 
-    def set(self, key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) -> bool:
+    async def set(self, key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) -> bool:
         """Set value in cache with TTL (seconds)"""
         try:
             if self.redis_available and self.redis_client:
-                self.redis_client.setex(key, ttl, json.dumps(value, cls=DecimalEncoder))
+                await self.redis_client.setex(key, ttl, json.dumps(value, cls=DecimalEncoder))
                 return True
             else:
-                # In-memory fallback with LRU + TTL (instance-level)
                 self._memory_cache.set(key, value, ttl)
                 return True
         except Exception as e:
@@ -286,11 +241,11 @@ class CacheService:
             self.stats["errors"] += 1
             return False
 
-    def delete(self, key: str) -> bool:
+    async def delete(self, key: str) -> bool:
         """Delete key from cache"""
         try:
             if self.redis_available and self.redis_client:
-                self.redis_client.delete(key)
+                await self.redis_client.delete(key)
                 return True
             else:
                 return self._memory_cache.delete(key)
@@ -298,16 +253,15 @@ class CacheService:
             logger.error(f"Cache delete error: {e}")
             return False
 
-    def clear_pattern(self, pattern: str) -> int:
+    async def clear_pattern(self, pattern: str) -> int:
         """Clear all keys matching pattern"""
         try:
             if self.redis_available and self.redis_client:
-                keys = self.redis_client.keys(pattern)
+                keys = await self.redis_client.keys(pattern)
                 if keys:
-                    return self.redis_client.delete(*keys)
+                    return await self.redis_client.delete(*keys)
                 return 0
             else:
-                # In-memory: clear keys matching pattern (instance-level)
                 return self._memory_cache.clear_pattern(pattern)
         except Exception as e:
             logger.error(f"Cache clear error: {e}")
@@ -381,21 +335,20 @@ def cached(
             cache_key = cache_inst._generate_key(prefix, *args, **kwargs)
 
             # Try to get from cache
-            cached_value = cache_inst.get(cache_key)
+            cached_value = await cache_inst.get(cache_key)
             if cached_value is not None:
-                # Sanitize cache_key for logging (show only first 8 chars to avoid exposing sensitive data)
+                # Sanitize cache_key for logging
                 sanitized_key = f"{cache_key[:8]}..." if len(cache_key) > 8 else cache_key[:8]
                 logger.debug(f"✅ Cache HIT: {sanitized_key}")
                 return cached_value
 
             # Cache miss - execute function
-            # Sanitize cache_key for logging (show only first 8 chars to avoid exposing sensitive data)
             sanitized_key = f"{cache_key[:8]}..." if len(cache_key) > 8 else cache_key[:8]
             logger.debug(f"❌ Cache MISS: {sanitized_key}")
             result = await func(*args, **kwargs)
 
             # Store in cache
-            cache_inst.set(cache_key, result, ttl)
+            await cache_inst.set(cache_key, result, ttl)
 
             return result
 
@@ -404,7 +357,7 @@ def cached(
     return decorator
 
 
-def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | None = None):
+async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | None = None):
     """
     Invalidate cache entries matching pattern
 
@@ -413,9 +366,74 @@ def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | N
         cache_service: Optional CacheService instance (for dependency injection/testing)
 
     Example:
-        invalidate_cache("zantara:agents:*")
+        await invalidate_cache("zantara:agents:*")
     """
     cache_inst = cache_service if cache_service is not None else get_cache_service()
-    count = cache_inst.clear_pattern(pattern)
+    count = await cache_inst.clear_pattern(pattern)
     logger.info(f"🗑️ Invalidated {count} cache entries matching '{pattern}'")
     return count
+
+
+async def invalidate_namespace(namespace: str, cache_service: CacheService | None = None):
+    """
+    Invalidate all cache entries in a namespace.
+
+    Convenience wrapper for invalidate_cache with namespace prefix.
+
+    Args:
+        namespace: Cache namespace (e.g., 'clients', 'practices', 'analytics')
+
+    Example:
+        # After a client INSERT/UPDATE/DELETE:
+        await invalidate_namespace("clients")
+    """
+    return await invalidate_cache(f"zantara:{namespace}:*", cache_service=cache_service)
+
+
+def cached_query(
+    namespace: str,
+    ttl: int = DEFAULT_CACHE_TTL,
+    cache_service: CacheService | None = None,
+):
+    """
+    Decorator to cache database query results with namespace-based invalidation.
+
+    Similar to @cached but uses explicit namespaces for targeted cache invalidation
+    on INSERT/UPDATE/DELETE operations.
+
+    Args:
+        namespace: Cache namespace for grouped invalidation (e.g., 'clients', 'practices')
+        ttl: Time to live in seconds (default: 5 minutes)
+        cache_service: Optional CacheService instance (for testing)
+
+    Example:
+        @cached_query(namespace="clients", ttl=300)
+        async def get_all_clients(db_pool, status=None):
+            ...
+
+        # After mutation:
+        await invalidate_namespace("clients")
+    """
+    cache_inst = cache_service if cache_service is not None else get_cache_service()
+
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            cache_key = cache_inst._generate_key(namespace, *args, **kwargs)
+
+            cached_value = await cache_inst.get(cache_key)
+            if cached_value is not None:
+                logger.debug(f"Cache HIT [{namespace}]: {func.__name__}")
+                return cached_value
+
+            logger.debug(f"Cache MISS [{namespace}]: {func.__name__}")
+            result = await func(*args, **kwargs)
+
+            await cache_inst.set(cache_key, result, ttl)
+            return result
+
+        wrapper.cache_namespace = namespace
+        wrapper.invalidate = lambda: invalidate_namespace(namespace, cache_service=cache_inst)
+        return wrapper
+
+    return decorator

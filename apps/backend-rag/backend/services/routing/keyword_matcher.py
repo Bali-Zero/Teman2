@@ -25,6 +25,11 @@ VISA_KEYWORDS = [
     "residence",
     "immigration office",
     "dirjen imigrasi",
+    # Italian keywords
+    "visto",
+    "permesso di soggiorno",
+    "straniero",
+    "immigrazione",
     # Kemnaker/TKA circulars keywords (SE 3/836/2026)
     "alih status",
     "kesamaan sponsor",
@@ -62,6 +67,23 @@ KBLI_KEYWORDS = [
     "business activity",
     "kegiatan usaha",
     "kode klasifikasi",
+    # Italian keywords
+    "codice kbli",
+    "classificazione",
+    "codice attività",
+    "attività commerciale",
+    # Common business type keywords (trigger KBLI lookup)
+    "kode kbli",
+    "restaurant",
+    "ristorante",
+    "cafe",
+    "hotel",
+    "retail",
+    "trading",
+    "construction",
+    "consulting",
+    "it services",
+    "manufacturing",
 ]
 
 TAX_KEYWORDS = [
@@ -137,6 +159,11 @@ LEGAL_KEYWORDS = [
     "permen",
     "pasal",
     "ayat",
+    # Italian additions
+    "società",
+    "costituzione",
+    "investimento straniero",
+    "responsabilità limitata",
 ]
 
 PROPERTY_KEYWORDS = [
@@ -356,6 +383,46 @@ BUSINESS_KEYWORDS = [
     "local vs foreign",
     "investor kitas",
     "business structure",
+    # Indonesian license/permit acronyms
+    "slhs",
+    "npbbkc",
+    "siup",
+    "siujpt",
+    "tdp",
+    "skdp",
+    "situ",
+    "izin lokasi",
+    "izin lingkungan",
+    "izin mendirikan bangunan",
+    "imb",
+    "pbg",
+    "sertifikat laik fungsi",
+    "slf",
+    "halal",
+    "bpom",
+    "pirt",
+    "haccp",
+    # Italian keywords
+    "aprire",
+    "avviare",
+    "costituire",
+    "licenza",
+    "licenze",
+    "permesso",
+    "autorizzazione",
+    "societ\u00e0",
+    "impresa",
+    "attivit\u00e0",
+    "straniero",
+    "investitore",
+    # English additions
+    "open a business",
+    "start a business",
+    "foreigner",
+    "foreign investor",
+    "license",
+    "licence",
+    "permits",
 ]
 
 
@@ -437,3 +504,24 @@ class KeywordMatcherService:
         query_lower = query.lower()
         keywords = self.domain_keywords[domain]
         return [kw for kw in keywords if kw in query_lower]
+
+    def detect_multi_domain(self, query: str, threshold: int = 1) -> list[str]:
+        """
+        Detect if query spans multiple domains.
+
+        Args:
+            query: User query text
+            threshold: Minimum score to consider a domain active
+
+        Returns:
+            List of active domain names (domains with score >= threshold)
+        """
+        scores = self.calculate_domain_scores(query)
+        active_domains = [domain for domain, score in scores.items() if score >= threshold]
+        if len(active_domains) > 1:
+            active_scores = {k: v for k, v in scores.items() if v > 0}
+            logger.info(
+                f"🔀 [KeywordMatcher] Multi-domain query detected: {active_domains} "
+                f"(scores: {active_scores})"
+            )
+        return active_domains

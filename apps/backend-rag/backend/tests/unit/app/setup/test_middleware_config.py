@@ -35,5 +35,5 @@ class TestMiddlewareConfig:
             # Verify CORS middleware was registered
             mock_cors.assert_called_once_with(mock_app)
 
-            # Verify other middleware were added
-            assert mock_app.add_middleware.call_count >= 4
+            # Verify other middleware were added (Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging + Brotli/GZip = 6)
+            assert mock_app.add_middleware.call_count >= 5

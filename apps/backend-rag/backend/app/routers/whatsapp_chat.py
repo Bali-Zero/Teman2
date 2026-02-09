@@ -272,8 +272,9 @@ async def process_whatsapp_message(
 
                 try:
                     ctx = await build_context(phone, sender_name, message_text, db_pool)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Error building context for WhatsApp: {e}", exc_info=True)
+                    ctx = None
 
             await notify_human_telegram(
                 phone=phone,
@@ -452,7 +453,8 @@ def _get_db_pool(request: Request):
         from backend.app.dependencies import get_database
 
         return get_database(request)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error getting database for WhatsApp chat: {e}", exc_info=True)
         return None
 
 

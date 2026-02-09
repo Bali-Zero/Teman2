@@ -40,6 +40,7 @@ FILES_TO_REINGEST = [
     "training-data/business/business_028_pt_pma_restaurant_setup.md",  # FIXED: SLHS 9M, NPBBKC 15M
     "training-data/business/business_029_pt_pma_villa_rental.md",
     "training-data/business/business_032_pt_lokal_vs_pt_pma.md",
+    "training-data/business/business_033_kbli_foreign_ownership.md",  # KBLI foreign ownership matrix
     # Visa - All visa types with correct Bali Zero 2025 prices
     "training-data/visa/visa_001_e33g_digital_nomad_basic.md",
     "training-data/visa/visa_003_e28a_investor_kitas.md",
@@ -52,6 +53,8 @@ FILES_TO_REINGEST = [
     # Licenses - SLHS, NPBBKC
     "training-data/licenses/licenses_001_slhs_hygiene_certificate.md",
     "training-data/licenses/licenses_002_npbbkc_alcohol_license.md",
+    "training-data/licenses/licenses_003_slhs_procedure.md",
+    "training-data/licenses/licenses_004_npbbkc_procedure.md",
     # Tax & Compliance
     "training-data/tax/tax_016_pph21_individual_indonesian.md",
     "training-data/tax/tax_019_ppn_vat_full_cycle.md",
@@ -59,6 +62,7 @@ FILES_TO_REINGEST = [
     "training-data/tax/tax_021_npwp_registration.md",
     "training-data/tax/tax_022_spt_annual_tax.md",
     "training-data/tax/tax_023_lkpm_investment_report.md",
+    "training-data/tax/tax_024_pph21_foreign_employees.md",
     "training-data/tax_pph_ppn_conversation.md",
     # Customs
     "training-data/customs/customs_040_import_duty_basics.md",

@@ -299,6 +299,28 @@ def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> 
     return user["email"]
 
 
+def require_team_member(user: dict = Depends(get_current_user)) -> dict:
+    """
+    Dependency that ensures the current user is a team member (not a client).
+    
+    Args:
+        user: User information from get_current_user
+
+    Returns:
+        dict: The user information
+
+    Raises:
+        HTTPException: 403 if user is a client
+    """
+    if user.get("role") == "client":
+        logger.warning(f"Access denied to client user: {user.get('email')}")
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. This endpoint is only accessible to team members.",
+        )
+    return user
+
+
 def get_cache(request: Request) -> CacheService:
     """
     Dependency injection for CacheService.

@@ -42,6 +42,7 @@ from backend.app.utils.tracing import (
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.tools.definitions import AgentState, AgentStep
 
+from .query_helpers import detect_query_language
 from .reasoning_utils import (
     calculate_evidence_score,
     detect_team_query,
@@ -153,6 +154,29 @@ class ReasoningEngine:
         """Validate context quality and return score (0.0-1.0)."""
         return _validate_context_quality(query, context_items)
 
+    def _get_localized_stub(self, key: str, language: str) -> str:
+        """Get localized stub message for common scenarios."""
+        stubs = {
+            "abstain": {
+                "ITALIAN": "Mi dispiace, non ho trovato informazioni verificate sufficienti nei documenti ufficiali per rispondere alla tua domanda specifica. Posso aiutarti con altro?",
+                "INDONESIAN": "Maaf, saya tidak menemukan informasi terverifikasi yang cukup dalam dokumen resmi untuk menjawab pertanyaan spesifik Anda. Ada lagi yang bisa saya bantu?",
+                "ENGLISH": "I'm sorry, I couldn't find sufficient verified information in the official documents to answer your specific question. Can I help you with anything else?",
+            },
+            "error": {
+                "ITALIAN": "Mi dispiace, non sono riuscito a completare la richiesta. Riprova.",
+                "INDONESIAN": "Maaf, saya tidak dapat menyelesaikan permintaan tersebut. Silakan coba lagi.",
+                "ENGLISH": "I'm sorry, I couldn't complete the request. Please try again.",
+            },
+            "confused": {
+                "ITALIAN": "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla? Posso aiutarti con visti, aziende e leggi in Indonesia.",
+                "INDONESIAN": "Maaf, saya tidak mengerti permintaan Anda. Bisakah Anda merumuskannya kembali? Saya dapat membantu Anda dengan visa, perusahaan, dan hukum di Indonesia.",
+                "ENGLISH": "I'm sorry, I didn't quite understand your request. Could you rephrase it? I can help you with visas, companies, and laws in Indonesia.",
+            },
+        }
+        # Fallback order: Requested Lang -> English -> Generic
+        lang_stubs = stubs.get(key, {})
+        return lang_stubs.get(language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request."))
+
     async def execute_react_loop(
         self,
         state: AgentState,
@@ -182,6 +206,7 @@ class ReasoningEngine:
         Returns:
             Tuple of (updated_state, model_name_used, conversation_messages, token_usage)
         """
+        language = detect_query_language(query)
         conversation_messages = []
         model_used_name = "unknown"
         accumulated_usage = TokenUsage()  # Track total token usage across ReAct loop
@@ -641,11 +666,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         intent_type=intent_type, error_type=error_type
                     ).inc()
                     logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
-                    state.final_answer = (
-                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                        "Posso aiutarti con altro?"
-                    )
+                    state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
@@ -760,11 +781,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             exc_info=True,
                         )
                         # Fallback to ABSTAIN if LLM fails
-                        state.final_answer = (
-                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                            "Posso aiutarti con altro?"
-                        )
+                        state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
@@ -832,9 +849,7 @@ Make it feel natural and helpful, not forced.
                     accumulated_usage = accumulated_usage + final_usage
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
-                    state.final_answer = (
-                        "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
-                    )
+                    state.final_answer = self._get_localized_stub("error", language)
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
                 intent_type = getattr(state, "intent_type", "simple")
@@ -849,11 +864,7 @@ Make it feel natural and helpful, not forced.
                         intent_type=intent_type, domain_type=domain_type
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
-                    state.final_answer = (
-                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                        "Posso aiutarti con altro?"
-                    )
+                    state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
                     tier1_fallback_activated_total.labels(
@@ -914,11 +925,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             f"Failed to generate Tier 1 fallback answer: {error_type}",
                             exc_info=True,
                         )
-                        state.final_answer = (
-                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                            "Posso aiutarti con altro?"
-                        )
+                        state.final_answer = self._get_localized_stub("abstain", language)
 
         # Filter out stub responses
         if state.final_answer and (
@@ -926,7 +933,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
             or "observation: none" in state.final_answer.lower()
         ):
             logger.warning("⚠️ Detected stub response, generating fallback")
-            state.final_answer = "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla? Posso aiutarti con visti, aziende e leggi in Indonesia."
+            state.final_answer = self._get_localized_stub("confused", language)
 
         # ==================== RESPONSE PIPELINE PROCESSING ====================
         # 🔍 TRACING: Response pipeline processing
@@ -1034,6 +1041,7 @@ Do not invent information. If the context is insufficient, admit it.
         Yields:
             Events with types: "thinking", "tool_call", "observation", "token"
         """
+        language = detect_query_language(query)
         # ==================== REACT LOOP ====================
         while state.current_step < state.max_steps:
             state.current_step += 1
@@ -1292,11 +1300,7 @@ Do not invent information. If the context is insufficient, admit it.
                     intent_type=intent_type, domain_type=domain_type
                 ).inc()
                 abstain_decision_total.labels(decision_type="strict_abstain").inc()
-                state.final_answer = (
-                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                    "Posso aiutarti con altro?"
-                )
+                state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # TIER 1: Regenerate with Transparency Protocol (streaming)
                 has_context = bool(state.context_gathered)
@@ -1356,11 +1360,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         intent_type=intent_type, error_type=error_type
                     ).inc()
                     logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
-                    state.final_answer = (
-                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                        "Posso aiutarti con altro?"
-                    )
+                    state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
@@ -1470,11 +1470,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             exc_info=True,
                         )
                         # Fallback to ABSTAIN if LLM fails
-                        state.final_answer = (
-                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                            "Posso aiutarti con altro?"
-                        )
+                        state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # Generate answer with optional warning for weak evidence
                 context = "\n\n".join(state.context_gathered)
@@ -1530,9 +1526,7 @@ Make it feel natural and helpful, not forced.
                     )
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
-                    state.final_answer = (
-                        "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
-                    )
+                    state.final_answer = self._get_localized_stub("error", language)
             else:
                 # No context gathered - apply same Tier 1 vs ABSTAIN logic
                 intent_type = getattr(state, "intent_type", "simple")
@@ -1547,11 +1541,7 @@ Make it feel natural and helpful, not forced.
                         intent_type=intent_type, domain_type=domain_type
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
-                    state.final_answer = (
-                        "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                        "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                        "Posso aiutarti con altro?"
-                    )
+                    state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
                     tier1_fallback_activated_total.labels(
@@ -1606,20 +1596,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             f"Failed to generate Tier 1 fallback answer: {error_type}",
                             exc_info=True,
                         )
-                        state.final_answer = (
-                            "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                            "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                            "Posso aiutarti con altro?"
-                        )
+                        state.final_answer = self._get_localized_stub("abstain", language)
 
         # Filter stub responses
         if state.final_answer and (
             "no further action needed" in state.final_answer.lower()
             or "observation: none" in state.final_answer.lower()
         ):
-            state.final_answer = (
-                "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla?"
-            )
+            state.final_answer = self._get_localized_stub("confused", language)
 
         # Process through pipeline
         if state.final_answer and self.response_pipeline:

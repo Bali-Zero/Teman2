@@ -73,6 +73,9 @@ redis>=7.1.0  # Security updates and new features
 sqlmodel>=0.0.31  # Bug fixes and compatibility updates
 sqlalchemy>=2.0.0
 
+# Compression
+brotli-asgi>=1.4.0  # Brotli compression middleware (replaces GZip, ~20% better compression)
+
 # Utilities - UPGRADED VERSIONS
 python-dotenv>=1.0.0
 # loguru removed - using standard logging instead

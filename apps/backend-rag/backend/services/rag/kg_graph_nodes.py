@@ -302,7 +302,12 @@ async def traverse_graph_node(
                     SELECT e.relationship_type, e.target_entity_id,
                            s.name as source_name, s.entity_type as source_type,
                            t.name as target_name, t.entity_type as target_type,
-                           t.confidence as target_confidence
+                           t.confidence as target_confidence,
+                           e.confidence as edge_confidence,
+                           e.source_collection as edge_source_collection,
+                           t.source_collection as target_source_collection,
+                           t.created_at as target_created_at,
+                           e.created_at as edge_created_at
                     FROM kg_edges e
                     JOIN kg_nodes s ON e.source_entity_id = s.entity_id
                     JOIN kg_nodes t ON e.target_entity_id = t.entity_id
@@ -326,6 +331,13 @@ async def traverse_graph_node(
                         "target_name": edge["target_name"],
                         "target_type": edge["target_type"],
                         "depth": depth + 1,
+                        # Phase 2: Enriched fields for confidence scoring
+                        # Use .get() for backward compatibility with mocks/older schemas
+                        "edge_confidence": edge.get("edge_confidence"),
+                        "edge_source_collection": edge.get("edge_source_collection"),
+                        "target_source_collection": edge.get("target_source_collection"),
+                        "target_created_at": edge.get("target_created_at"),
+                        "edge_created_at": edge.get("edge_created_at"),
                     }
 
                     # Add to chains (group by path)
@@ -482,13 +494,20 @@ async def synthesize_workflow_node(
     # Sort by depth (ensures logical order)
     steps.sort(key=lambda x: x["depth"])
 
-    # Build workflow output
+    # Build workflow output with dynamic confidence scoring (Phase 2)
+    from dataclasses import asdict
+
+    from backend.services.rag.confidence import calculate_dynamic_confidence
+
+    breakdown = calculate_dynamic_confidence(state)
+
     workflow = {
         "id": f"dynamic:{state['intent']}_{len(steps)}steps",
         "type": state["intent"] or "general",
         "steps": steps,
         "source": "graph_traversal",
-        "confidence": calculate_workflow_confidence(state),
+        "confidence": breakdown.overall,
+        "confidence_breakdown": asdict(breakdown),
         "generated_at": "2026-02-09",  # TODO: Use actual timestamp
     }
 
@@ -574,6 +593,10 @@ def extract_evidence_from_chains(chains: list[list[dict]]) -> list[dict]:
 def calculate_workflow_confidence(state: KGAgentState) -> float:
     """
     Calculate confidence score for synthesized workflow.
+
+    .. deprecated::
+        Use ``confidence.calculate_dynamic_confidence(state)`` instead.
+        Kept for backward compatibility with existing tests.
 
     Based on:
     - Number of chains found (more = higher confidence)
