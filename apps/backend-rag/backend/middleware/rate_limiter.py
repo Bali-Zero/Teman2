@@ -159,7 +159,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/api/intel/scraper/submit": (10, 60),  # 10 per minute - prevent spam
         "/api/intel/staging/approve/": (20, 60),  # 20 per minute - prevent abuse
         "/api/audio/": (30, 60),  # 30 per minute - prevent cost abuse (TTS/STT)
-        "/api/voice/elevenlabs": (60, 60),  # 60 per minute - webhook rate limit
         "/api/whatsapp/send": (30, 60),  # 30 per minute - prevent send/message abuse
         "/api/knowledge/visa": (100, 60),  # 100 per minute - public knowledge base
         "/preview/": (60, 60),  # 60 per minute - article previews
