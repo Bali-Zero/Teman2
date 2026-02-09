@@ -88,29 +88,71 @@ def build_system_prompt(
     profile = client_profile or {}
     interests = profile.get("interests", [])
     visas_discussed = profile.get("visa_discussed", [])
+    lang = detected_language or "en"
 
-    # Minimal client context
-    context_lines = []
-    if client_name:
-        context_lines.append(f"Il cliente si chiama {client_name}.")
-    if detected_language:
-        context_lines.append(f"Lingua rilevata: {detected_language}.")
-    if interests:
-        context_lines.append(f"Interessi noti: {', '.join(interests)}.")
-    if visas_discussed:
-        context_lines.append(f"Visti già discussi: {', '.join(visas_discussed)}.")
+    # Multilingual templates
+    TEMPLATES = {
+        "it": {
+            "client_name": f"Il cliente si chiama {client_name}." if client_name else "",
+            "detected_lang": f"Lingua rilevata: {detected_language}." if detected_language else "",
+            "interests": f"Interessi noti: {', '.join(interests)}." if interests else "",
+            "visas": f"Visti già discussi: {', '.join(visas_discussed)}." if visas_discussed else "",
+            "no_context": "Nuovo cliente, nessun contesto precedente.",
+            "greeting": "Questo e' il primo messaggio del cliente. Puoi salutare una volta.",
+            "no_greeting": "NON salutare. Vai dritto alla risposta.",
+            "response_instruction": "🚨 CRITICO: Rispondi SEMPRE in ITALIANO, tono naturale WhatsApp.",
+        },
+        "en": {
+            "client_name": f"Client name: {client_name}." if client_name else "",
+            "detected_lang": f"Detected language: {detected_language}." if detected_language else "",
+            "interests": f"Known interests: {', '.join(interests)}." if interests else "",
+            "visas": f"Visas discussed: {', '.join(visas_discussed)}." if visas_discussed else "",
+            "no_context": "New client, no previous context.",
+            "greeting": "This is the client's first message. You can greet once.",
+            "no_greeting": "NO greeting. Go straight to the answer.",
+            "response_instruction": "🚨 CRITICAL: ALWAYS respond in ENGLISH, natural WhatsApp tone.",
+        },
+        "id": {
+            "client_name": f"Nama klien: {client_name}." if client_name else "",
+            "detected_lang": f"Bahasa terdeteksi: {detected_language}." if detected_language else "",
+            "interests": f"Minat: {', '.join(interests)}." if interests else "",
+            "visas": f"Visa yang dibahas: {', '.join(visas_discussed)}." if visas_discussed else "",
+            "no_context": "Klien baru, tidak ada konteks sebelumnya.",
+            "greeting": "Ini pesan pertama klien. Anda bisa menyapa sekali.",
+            "no_greeting": "JANGAN sapa. Langsung jawab.",
+            "response_instruction": "🚨 KRITIS: SELALU balas dalam BAHASA INDONESIA, nada WhatsApp natural.",
+        },
+        "de": {
+            "client_name": f"Kundenname: {client_name}." if client_name else "",
+            "detected_lang": f"Erkannte Sprache: {detected_language}." if detected_language else "",
+            "interests": f"Bekannte Interessen: {', '.join(interests)}." if interests else "",
+            "visas": f"Besprochene Visa: {', '.join(visas_discussed)}." if visas_discussed else "",
+            "no_context": "Neuer Kunde, kein vorheriger Kontext.",
+            "greeting": "Dies ist die erste Nachricht des Kunden. Sie können einmal grüßen.",
+            "no_greeting": "KEIN Gruß. Direkt zur Antwort.",
+            "response_instruction": "🚨 KRITISCH: Antworten Sie IMMER auf DEUTSCH, natürlicher WhatsApp-Ton.",
+        },
+    }
 
-    context_section = (
-        " ".join(context_lines) if context_lines else "Nuovo cliente, nessun contesto precedente."
-    )
+    # Get templates for detected language (fallback to English)
+    templates = TEMPLATES.get(lang, TEMPLATES["en"])
 
-    greeting_note = ""
-    if is_first_message:
-        greeting_note = "Questo e' il primo messaggio del cliente. Puoi salutare una volta."
-    else:
-        greeting_note = "NON salutare. Vai dritto alla risposta."
+    # Build context lines
+    context_lines = [
+        templates["client_name"],
+        templates["detected_lang"],
+        templates["interests"],
+        templates["visas"],
+    ]
+    context_lines = [line for line in context_lines if line]
+
+    context_section = " ".join(context_lines) if context_lines else templates["no_context"]
+
+    greeting_note = templates["greeting"] if is_first_message else templates["no_greeting"]
 
     prompt = f"""{_BASE_PROMPT}
+
+{templates["response_instruction"]}
 
 REGOLA CRITICA: Non dire MAI al cliente che "non hai accesso", "non hai info nel sistema", "non ti sono stati caricati i dati", "non posso cercare". Tu sei un consulente esperto, non un software. Se non conosci qualcosa, dì "verifico col team e ti faccio sapere" oppure rispondi con quello che sai sull'argomento. Non chiedere MAI al cliente di darti informazioni su regolamenti — sei tu l'esperto.
 
