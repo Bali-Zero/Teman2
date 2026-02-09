@@ -71,6 +71,7 @@ from backend.app.routers import (
     websocket,
     whatsapp_chat,
     whatsapp_conversations,
+    omnichannel_workflow,
     zoho_email,
 )
 
@@ -160,6 +161,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
     # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses
     api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API (dashboard only)
+    api.include_router(omnichannel_workflow.router) # [NEW] Omnichannel Workflow & CRM Enrichment
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhook_chat.router)  # Webhook chat with auto-persistence
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)

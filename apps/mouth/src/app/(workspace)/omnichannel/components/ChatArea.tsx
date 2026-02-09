@@ -9,9 +9,10 @@ interface ChatAreaProps {
   conversation: EnrichedConversation | null;
   messages: Message[];
   onSendMessage: (text: string, isNote: boolean) => void;
+  onStatusChange?: (status: string) => void;
 }
 
-export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProps) {
+export function ChatArea({ conversation, messages, onSendMessage, onStatusChange }: ChatAreaProps) {
   const [inputText, setInputText] = React.useState('');
   const [isInternalNote, setIsInternalNote] = React.useState(false);
 
@@ -59,7 +60,12 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="font-bold text-xs uppercase border-slate-300">Mark as Done</Button>
+          <Button 
+            onClick={() => onStatusChange?.('closed')}
+            variant="outline" size="sm" className="font-bold text-xs uppercase border-slate-300"
+          >
+            Mark as Done
+          </Button>
         </div>
       </div>
 

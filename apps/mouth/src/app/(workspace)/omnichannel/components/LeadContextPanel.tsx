@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   User, Briefcase, MapPin, Calendar, 
-  TrendingUp, AlertTriangle, CheckCircle 
+  TrendingUp, AlertTriangle, CheckCircle, Search
 } from "lucide-react";
 
 interface LeadContextPanelProps {
   conversation: EnrichedConversation | null;
+  enrichment: any;
+  onAssign: (userId: string) => void;
 }
 
-export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
+export function LeadContextPanel({ conversation, enrichment, onAssign }: LeadContextPanelProps) {
   if (!conversation) {
     return (
       <div className="w-[350px] border-l border-slate-200 bg-white p-6 flex flex-col items-center justify-center text-center">
@@ -22,11 +24,16 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
     );
   }
 
-  const clientName = conversation.client_name || conversation.phone || "Unknown";
-  const dealValue = conversation.crmData?.dealValue || "$2,500";
+  const clientName = enrichment?.profile?.full_name || conversation.client_name || "Unknown Lead";
+  const email = enrichment?.profile?.email || "No email linked";
+  const nationality = enrichment?.profile?.nationality || "Unknown Nationality";
+  const crmStatus = enrichment?.profile?.status || "Prospect";
+  
+  // Real practices from CRM
+  const practices = enrichment?.practices || [];
 
   return (
-    <div className="w-[350px] border-l border-white/10 bg-[#DC2626] overflow-y-auto h-full text-white shadow-2xl transition-all duration-500"> {/* Bold Red (Red 600) */}
+    <div className="w-[350px] border-l border-white/10 bg-[#DC2626] overflow-y-auto h-full text-white shadow-2xl transition-all duration-500">
       <div className="p-6 space-y-6">
         
         {/* Profile Card */}
@@ -35,49 +42,74 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
             {clientName.substring(0, 2).toUpperCase()}
           </div>
           <h2 className="font-black text-xl tracking-tight leading-none mb-1 uppercase">{clientName}</h2>
+          <p className="text-[10px] text-white/60 font-black mb-1 tracking-tighter uppercase">{email}</p>
           <p className="text-sm text-white/80 font-black mb-4 tracking-tighter">{conversation.phone}</p>
+          
           <div className="flex justify-center gap-2">
-            <Button size="sm" variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20 font-black border-2 text-[10px] uppercase">CRM Profile</Button>
-            <Button size="sm" className="bg-white text-red-600 hover:bg-red-50 font-black text-[10px] uppercase shadow-lg">Create Deal</Button>
+            <Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 font-black border-2 text-[10px] uppercase">
+              {enrichment?.exists_in_crm ? "View CRM Profile" : "Add to CRM"}
+            </Button>
           </div>
         </div>
 
         <div className="h-0.5 bg-white/20 w-full rounded-full" />
 
-        {/* Lead Score AI */}
+        {/* Lead Intelligence */}
         <Card className="bg-black/30 border-white/30 text-white shadow-inner">
           <CardHeader className="pb-2">
             <CardTitle className="text-[10px] uppercase font-black text-white flex justify-between tracking-[0.2em]">
-              AI LEAD SCORE
-              <span className="text-lg text-white bg-red-500 px-2 py-0 rounded shadow-sm">75/100</span>
+              CRM MATCH STATUS
+              <span className="text-[10px] text-white bg-black/40 px-2 py-0.5 rounded uppercase">{crmStatus}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="w-full bg-black/40 h-3 rounded-full overflow-hidden border border-white/20 p-0.5">
-              <div className="bg-gradient-to-r from-red-400 to-white h-full w-[75%] rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
-            </div>
-            <p className="text-xs text-white mt-4 font-black leading-tight uppercase italic tracking-tighter">
-              High intent detected for <span className="text-yellow-300 underline underline-offset-4 decoration-2">PT PMA Setup</span>.
-            </p>
+            {enrichment?.exists_in_crm ? (
+              <div className="space-y-3 mt-2">
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <CheckCircle className="w-4 h-4 text-green-400" /> Linked to Client Record
+                </div>
+                <p className="text-[10px] text-white/80 leading-relaxed font-medium italic">
+                  "{enrichment.profile.notes || "No recent notes in CRM."}"
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 mt-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-yellow-300 uppercase">
+                  <AlertTriangle className="w-4 h-4" /> New Lead (No CRM Match)
+                </div>
+                <Button size="sm" className="w-full bg-white text-red-600 font-black text-[10px] uppercase">Initialize Profile</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* CRM Details */}
+        {/* Active Practices */}
+        {practices.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60 italic">Active Deals</h3>
+            {practices.map((p: any, i: number) => (
+              <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/10">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-xs font-black uppercase">{p.practice_name}</span>
+                  <span className="text-[9px] bg-white/20 px-1.5 rounded">{p.status}</span>
+                </div>
+                <div className="text-[10px] font-bold text-white/60 italic">Value: {p.quoted_price ? `${p.quoted_price} IDR` : "Not quoted"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Lead Data */}
         <div className="space-y-4">
-          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Lead Intelligence</h3>
-          
+          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Lead Data</h3>
           <div className="grid gap-4">
             <div className="flex items-center gap-3 text-sm font-black uppercase">
-              <div className="p-2 bg-black/20 rounded-xl shadow-lg border border-white/10"><Briefcase className="w-4 h-4 text-white" /></div>
-              <span className="tracking-tighter">Digital Nomad (Solo)</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm font-black uppercase">
               <div className="p-2 bg-black/20 rounded-xl shadow-lg border border-white/10"><MapPin className="w-4 h-4 text-white" /></div>
-              <span className="tracking-tighter">Bali, Indonesia</span>
+              <span className="tracking-tighter">{nationality}</span>
             </div>
             <div className="flex items-center gap-3 text-sm font-black uppercase">
-              <div className="p-2 bg-black/20 rounded-xl shadow-lg border border-white/10"><TrendingUp className="w-4 h-4 text-white" /></div>
-              <span className="tracking-tighter">Deal Value: <span className="text-yellow-300 bg-black/40 px-2 py-0.5 rounded ml-1">{dealValue}</span></span>
+              <div className="p-2 bg-black/20 rounded-xl shadow-lg border border-white/10"><Briefcase className="w-4 h-4 text-white" /></div>
+              <span className="tracking-tighter">{enrichment?.profile?.client_type || "Prospect"}</span>
             </div>
           </div>
         </div>
@@ -88,24 +120,15 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
         <div className="space-y-3">
           <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Team Actions</h3>
           <div className="grid grid-cols-1 gap-3">
-            <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-white/10 border-white/40 text-white hover:bg-white/20 border-2 uppercase tracking-widest shadow-md">
-              <User className="w-3 h-3 mr-3" /> Assign to Sales
-            </Button>
-            <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-white/10 border-white/40 text-white hover:bg-white/20 border-2 uppercase tracking-widest shadow-md">
-              <CheckCircle className="w-3 h-3 mr-3" /> Close Ticket
+            <Button 
+              onClick={() => onAssign('Sales Team')}
+              variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-white/10 border-white/40 text-white hover:bg-white/20 border-2 uppercase tracking-widest shadow-md"
+            >
+              <User className="w-3 h-3 mr-3" /> Assign to Me
             </Button>
             <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-black/40 border-yellow-400/50 text-yellow-400 hover:bg-black/60 border-2 uppercase tracking-widest shadow-lg">
-              <AlertTriangle className="w-3 h-3 mr-3" /> Legal Escalation
+              <AlertTriangle className="w-3 h-3 mr-3" /> Escalate to Legal
             </Button>
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div>
-          <h3 className="font-black text-[10px] uppercase tracking-widest text-white/60 mb-2">Labels</h3>
-          <div className="flex flex-wrap gap-2">
-            <div className="px-3 py-1 rounded bg-black/40 text-white text-[9px] font-black uppercase border border-white/20 shadow-sm">#VISA-REQ</div>
-            <div className="px-3 py-1 rounded bg-black/40 text-white text-[9px] font-black uppercase border border-white/20 shadow-sm">#HIGH-VALUE</div>
           </div>
         </div>
 
