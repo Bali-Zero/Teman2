@@ -10,7 +10,7 @@ across multiple LLM clients and services.
 class ModelName:
     """Gemini model names."""
 
-    FLASH = "gemini-3-flash-preview-12-2025"  # Primary: Gemini 3 Flash Preview (Dec 2025)
+    FLASH = "gemini-2.5-flash"  # Primary: Gemini 2.5 Flash (latest stable, June 2025)
     FLASH_FALLBACK = "gemini-2.0-flash-001"  # Fallback: Gemini 2.0 Flash
     PRO = "gemini-2.0-pro"
     PRO_EXPERIMENTAL = "gemini-2.0-pro-exp-02-05"
