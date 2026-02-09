@@ -97,9 +97,11 @@ class OrchestratorStreamingCore:
         extracted_entities = {}
         kg_context_str = ""
 
+        langgraph_workflow = None
+
         if initial_user_context:
             # FAST PATH: Using pre-loaded basic context
-            # We need to enrich it with Memory + Entities (Heavy Lifting)
+            # We need to enrich it with Memory + Entities + LangGraph (Heavy Lifting)
             user_context = initial_user_context
             optimized_history = conversation_history or user_context.get("history", [])
 
@@ -108,26 +110,28 @@ class OrchestratorStreamingCore:
                 ThinkingPhase.SEARCHING, message_override="🔍 Retrieving memory & facts..."
             )
 
-            # Parallel Enrichment: Memory + Entities
+            # Parallel Enrichment: Memory + Entities + LangGraph
             async def _enrich_memory():
                 return await self.core.context_manager.enrich_user_context(
                     user_context, user_id, query
                 )
 
-            async def _extract_entities():
-                return await self.core.entity_extractor.extract_entities(query)
+            async def _extract_entities_and_kg():
+                return await self.core.extract_entities_and_kg_context(
+                    query, user_context=user_context
+                )
 
             enrich_results = await asyncio.gather(
-                _enrich_memory(), _extract_entities(), return_exceptions=True
+                _enrich_memory(), _extract_entities_and_kg(), return_exceptions=True
             )
 
             # Process Memory result
             if not isinstance(enrich_results[0], Exception):
                 user_context = enrich_results[0]
 
-            # Process Entity result
+            # Process Entity+KG result (now returns 3-tuple)
             if not isinstance(enrich_results[1], Exception):
-                extracted_entities = enrich_results[1]
+                extracted_entities, kg_context_str, langgraph_workflow = enrich_results[1]
 
         else:
             # LEGACY / FULL LOAD PATH
@@ -141,6 +145,7 @@ class OrchestratorStreamingCore:
                 optimized_history,
                 extracted_entities,
                 kg_context_str,
+                langgraph_workflow,
             ) = await self.core.prepare_query_context(
                 query=query,
                 user_id=user_id,
@@ -237,6 +242,15 @@ class OrchestratorStreamingCore:
             # Clear thinking state when done
             yield thinking_service.create_done_event()
 
+            # 5b. Stream KG LangGraph workflow if available
+            if langgraph_workflow:
+                workflow_text = self.core._format_workflow_for_prompt(langgraph_workflow)
+                # Stream workflow as additional tokens
+                for token in workflow_text.split():
+                    yield {"type": "token", "data": token + " "}
+                    await asyncio.sleep(0.005)
+                logger.info(f"\U0001f500 [Stream] Workflow appended: {langgraph_workflow.get('type')}")
+
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
             route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
@@ -245,6 +259,27 @@ class OrchestratorStreamingCore:
                 execution_time=execution_time,
                 route_used=route_used,
             )
+
+            # 7. Log to query_analytics (fire-and-forget)
+            collections_used = self.core.metrics_manager.extract_collections_from_state(state)
+            sources = self.core.metrics_manager.extract_sources_from_state(state)
+            try:
+                from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
+
+                if self.core.db_pool:
+                    repo = QueryAnalyticsRepository(self.core.db_pool)
+                    await repo.log_query(
+                        query_text=query,
+                        user_id=user_id,
+                        session_id=session_id,
+                        collections_queried=list(collections_used) if collections_used else [],
+                        chunks_retrieved_count=len(sources),
+                        response_generated=len(sources) > 0,
+                        model_used=model_tier,
+                        execution_time_ms=int(execution_time * 1000),
+                    )
+            except Exception as analytics_err:
+                logger.warning(f"Failed to log streaming query analytics (non-critical): {analytics_err}")
 
         except Exception as e:
             logger.error(f"❌ [Stream] ReAct loop failed: {e}", exc_info=True)

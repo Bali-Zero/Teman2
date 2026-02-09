@@ -513,9 +513,11 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
 
 async def compile_kg_workflow(db_pool: asyncpg.Pool) -> Any:
     """
-    Compile the KG workflow with PostgreSQL checkpointing.
+    Compile the KG workflow with optional PostgreSQL checkpointing.
 
-    Enables state persistence and resumption via PostgresSaver.
+    Attempts to enable state persistence via PostgresSaver.
+    Falls back to in-memory (no checkpointer) if PostgresSaver setup fails
+    (e.g., missing checkpoint tables, incompatible pool type).
 
     Args:
         db_pool: PostgreSQL connection pool
@@ -523,17 +525,31 @@ async def compile_kg_workflow(db_pool: asyncpg.Pool) -> Any:
     Returns:
         Compiled Pregel app (runnable workflow)
     """
-    logger.info("⚙️ [Compile] Compiling KG workflow with PostgreSQL checkpointing...")
+    logger.info("⚙️ [Compile] Compiling KG workflow...")
 
     workflow = build_kg_langgraph_workflow(db_pool)
 
-    # Configure PostgreSQL checkpointer
-    checkpointer = PostgresSaver(db_pool)
+    # Try PostgreSQL checkpointing, fall back to no checkpointer
+    checkpointer = None
+    try:
+        checkpointer = PostgresSaver(db_pool)
+        await checkpointer.setup()
+        logger.info("✅ [Compile] PostgreSQL checkpointer initialized")
+        kg_checkpoint_operations_total.labels(operation="setup").inc()
+    except Exception as e:
+        logger.warning(
+            f"⚠️ [Compile] PostgresSaver setup failed ({type(e).__name__}: {e}), "
+            f"compiling without checkpointer (no state persistence)"
+        )
+        checkpointer = None
 
-    # Compile workflow
+    # Compile workflow (with or without checkpointer)
     app = workflow.compile(checkpointer=checkpointer)
 
-    logger.info("✅ [Compile] KG workflow compiled successfully")
+    logger.info(
+        f"✅ [Compile] KG workflow compiled successfully "
+        f"(checkpointer={'postgres' if checkpointer else 'none'})"
+    )
 
     return app
 
@@ -626,8 +642,8 @@ class KGLangGraphOrchestrator:
 
             return final_state
         except Exception as e:
-            # Track error metrics
+            # Track error metrics and return empty result (don't crash the caller)
             intent = initial_state.get("intent", "unknown")
             kg_langgraph_queries_total.labels(status="error", intent=intent).inc()
             logger.error(f"❌ [Query] KG exploration failed: {e}", exc_info=True)
-            raise
+            return {"workflow": None, "error": str(e)}

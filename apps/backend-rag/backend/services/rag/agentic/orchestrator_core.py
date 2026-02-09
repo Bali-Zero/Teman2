@@ -16,6 +16,7 @@ Mantiene il flusso principale pulito e leggibile (target: 300-400 righe).
 import asyncio
 import logging
 import time
+import uuid
 from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
@@ -28,6 +29,9 @@ from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
+
+from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
+from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
 
 from .llm_gateway import LLMGateway
 from .orchestrator_context import OrchestratorContextManager
@@ -155,7 +159,7 @@ class OrchestratorCore:
         self,
         query: str,
         user_context: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], str, dict | None]:
         """
         Estrae entities e KG context per query.
 
@@ -169,7 +173,7 @@ class OrchestratorCore:
             user_context: Optional user context (for KGLangGraph)
 
         Returns:
-            Tuple di (extracted_entities, system_context_for_prompt)
+            Tuple di (extracted_entities, system_context_for_prompt, langgraph_workflow_or_none)
         """
         start_time = time.time()
 
@@ -290,6 +294,15 @@ class OrchestratorCore:
             workflow_str = self._format_workflow_for_prompt(workflow)
             system_context_for_prompt += "\n" + workflow_str
 
+            # Phase 4: Track workflow generation (fire-and-forget)
+            asyncio.create_task(
+                self._track_workflow(
+                    query=query,
+                    workflow=workflow,
+                    execution_time_ms=int((time.time() - langgraph_start) * 1000),
+                )
+            )
+
         total_time = time.time() - start_time
 
         # Log parallel execution summary
@@ -305,11 +318,18 @@ class OrchestratorCore:
                 f"speedup: ~{speedup:.3f}s vs sequential ~{estimated_sequential_time:.3f}s)"
             )
 
-        return extracted_entities, system_context_for_prompt
+        # Extract workflow dict for direct answer injection
+        workflow_result = None
+        if langgraph_result and isinstance(langgraph_result, dict) and langgraph_result.get("workflow"):
+            workflow_result = langgraph_result["workflow"]
+
+        return extracted_entities, system_context_for_prompt, workflow_result
 
     def _format_workflow_for_prompt(self, workflow: dict) -> str:
         """
         Format LangGraph workflow for system prompt.
+
+        Includes confidence breakdown when available (Phase 2).
 
         Args:
             workflow: Workflow dict from KGLangGraphOrchestrator
@@ -322,21 +342,20 @@ class OrchestratorCore:
         steps = workflow.get("steps", [])
         source = workflow.get("source", "unknown")
         confidence = workflow.get("confidence", 0.0)
+        breakdown = workflow.get("confidence_breakdown")
 
-        formatted = f"\n## 🔀 SUGGESTED WORKFLOW (from {source}, confidence: {confidence:.0%})"
+        formatted = f"\n## SUGGESTED WORKFLOW (from {source}, confidence: {confidence:.0%})"
         formatted += f"\n**{workflow_name}** ({workflow_type}):\n"
 
         for step_data in steps:
             step_num = step_data.get("step", "?")
             action = step_data.get("action", "Unknown action")
-            entity_id = step_data.get("entity_id", "")
 
             formatted += f"\n{step_num}. {action}"
 
             # Add details if available
             details = step_data.get("details")
             if details and isinstance(details, dict):
-                # Show key details (avoid overwhelming the prompt)
                 if "requirement" in details:
                     formatted += f" ({details['requirement']})"
                 elif "location" in details:
@@ -344,9 +363,60 @@ class OrchestratorCore:
                 elif "processing_time" in details:
                     formatted += f" (Processing: {details['processing_time']})"
 
-        formatted += "\n\n⚠️ **IMPORTANT**: This is a suggested workflow. Always verify current requirements with the user."
+        # Phase 2: Confidence breakdown
+        if breakdown:
+            warning_level = breakdown.get("warning_level", "unknown")
+            warning_message = breakdown.get("warning_message", "")
+            source_count = breakdown.get("unique_source_count", 0)
+            rel_strength = breakdown.get("relationship_strength_avg", 0.0)
+
+            formatted += f"\n\n**Confidence**: {warning_level} — {source_count} source(s), relationship strength {rel_strength:.0%}"
+
+            if warning_level in ("low", "very_low"):
+                formatted += f"\nWARNING: {warning_message}"
+
+        formatted += "\n\nIMPORTANT: This is a suggested workflow. Always verify current requirements with the user."
 
         return formatted
+
+    async def _track_workflow(
+        self,
+        query: str,
+        workflow: dict,
+        execution_time_ms: int | None = None,
+        user_email: str | None = None,
+    ) -> None:
+        """
+        Track workflow generation to workflow_analytics (fire-and-forget).
+
+        Args:
+            query: Original user query
+            workflow: Workflow dict from KGLangGraphOrchestrator
+            execution_time_ms: Time taken to generate workflow
+            user_email: Optional user email
+        """
+        if not self.db_pool:
+            return
+
+        try:
+            repo = WorkflowAnalyticsRepository(self.db_pool)
+            steps = workflow.get("steps", [])
+            workflow_id = f"wf-{uuid.uuid4().hex[:12]}"
+
+            await repo.log_workflow(
+                workflow_id=workflow_id,
+                query=query,
+                user_email=user_email,
+                workflow_type=workflow.get("type"),
+                workflow_name=workflow.get("name"),
+                steps_count=len(steps),
+                steps_json=steps,
+                source=workflow.get("source", "kg_langgraph"),
+                confidence=workflow.get("confidence", 0.0),
+                execution_time_ms=execution_time_ms,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to track workflow analytics: {e}")
 
     async def execute_react_loop(
         self,
@@ -464,6 +534,7 @@ class OrchestratorCore:
             optimized_history,
             extracted_entities,
             system_context_for_prompt,
+            langgraph_workflow,
         ) = await self.prepare_query_context(
             query=query,
             user_id=user_id,
@@ -533,6 +604,16 @@ class OrchestratorCore:
         sources = self.metrics_manager.extract_sources_from_state(state)
         context_used = self.metrics_manager.calculate_context_used(state)
 
+        # Retrieval debug logging
+        logger.info(f"\U0001f4da [Retrieval] Collections interrogated: {collections_used}")
+        source_collections = list({
+            s.get('collection', s.get('source', 'unknown')) if isinstance(s, dict) else str(s)
+            for s in sources
+        }) if sources else []
+        logger.info(
+            f"\U0001f4c4 [Retrieval] Chunks retrieved: {len(sources)} from {source_collections}"
+        )
+
         # 9. Record metrics
         self.metrics_manager.record_rag_metrics(
             state=state,
@@ -557,8 +638,20 @@ class OrchestratorCore:
             token_usage=token_usage,
         )
 
-        # 10. Build and return response
-        return self.response_builder.build_core_result(
+        # 10. Log to query_analytics (fire-and-forget, non-blocking)
+        await self._log_query_analytics(
+            query=query,
+            user_id=user_id,
+            session_id=session_id,
+            collections_used=collections_used,
+            sources=sources,
+            model_used=model_used_name,
+            token_usage=token_usage,
+            timings=timings,
+        )
+
+        # 11. Build and return response
+        result = self.response_builder.build_core_result(
             state=state,
             sources=sources,
             extracted_entities=extracted_entities,
@@ -568,6 +661,51 @@ class OrchestratorCore:
             start_time=start_time,
         )
 
+        # 12. Append KG LangGraph workflow to answer if available
+        if langgraph_workflow:
+            workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
+            result.answer = result.answer.rstrip() + "\n\n" + workflow_text
+            logger.info(f"\U0001f500 [KG LangGraph] Workflow appended to answer: {langgraph_workflow.get('type')}")
+
+        return result
+
+    async def _log_query_analytics(
+        self,
+        query: str,
+        user_id: str | None,
+        session_id: str | None,
+        collections_used: set[str],
+        sources: list[Any],
+        model_used: str,
+        token_usage: TokenUsage,
+        timings: dict[str, float],
+        error_message: str | None = None,
+    ) -> None:
+        """
+        Persist query execution data to query_analytics table.
+        Fails silently to never block the main query flow.
+        """
+        if not self.db_pool:
+            return
+
+        try:
+            repo = QueryAnalyticsRepository(self.db_pool)
+            await repo.log_query(
+                query_text=query,
+                user_id=user_id,
+                session_id=session_id,
+                collections_queried=list(collections_used) if collections_used else [],
+                chunks_retrieved_count=len(sources),
+                response_generated=len(sources) > 0,
+                model_used=model_used,
+                execution_time_ms=int(timings.get("total", 0) * 1000),
+                token_usage_total=token_usage.total_tokens,
+                cost_usd=token_usage.cost_usd,
+                error_message=error_message,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log query analytics (non-critical): {e}")
+
     # ========== COMMON METHODS FOR STREAMING AND NON-STREAMING ==========
 
     async def prepare_query_context(
@@ -576,13 +714,13 @@ class OrchestratorCore:
         user_id: str | None,
         conversation_history: list[dict] | None,
         session_id: str | None = None,
-    ) -> tuple[dict[str, Any], list[dict], dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], list[dict], dict[str, Any], str, dict | None]:
         """
         Common context preparation for both streaming and non-streaming.
         Executes Context Loading and Entity/KG Extraction in PARALLEL.
 
         Returns:
-            Tuple of (user_context, optimized_history, extracted_entities, kg_context_str)
+            Tuple of (user_context, optimized_history, extracted_entities, kg_context_str, workflow)
         """
         import asyncio
 
@@ -607,14 +745,15 @@ class OrchestratorCore:
         async def _extract_entities_kg_with_context():
             return await self.extract_entities_and_kg_context(query, user_context=user_context)
 
+        workflow = None
         try:
-            extracted_entities, system_context_for_prompt = await _extract_entities_kg_with_context()
+            extracted_entities, system_context_for_prompt, workflow = await _extract_entities_kg_with_context()
         except Exception as e:
             logger.error(f"❌ KG extraction failed: {e}", exc_info=True)
             extracted_entities = {}
             system_context_for_prompt = ""
 
-        return user_context, optimized_history, extracted_entities, system_context_for_prompt
+        return user_context, optimized_history, extracted_entities, system_context_for_prompt, workflow
 
     async def check_gates_and_cache(
         self,
