@@ -40,7 +40,7 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
         >
           <Bot className="w-16 h-16 mb-4 opacity-20" />
           <p className="text-lg font-bold uppercase tracking-widest">Select a conversation</p>
-          <p className="text-xs font-medium">Command Center v2.0 - Ready</p>
+          <p className="text-xs font-black text-blue-500 uppercase">--- SYSTEM VERIFIED v2.2 ---</p>
         </motion.div>
       </div>
     );

@@ -592,7 +592,11 @@ class Settings(BaseSettings):
     # ========================================
     telegram_bot_token: str | None = Field(
         default=None,
-        description="OpenClaw webhook secret for HMAC signature verification. Set via OPENCLAW_WEBHOOK_SECRET env var.",
+        description="Telegram bot token for sending notifications. Set via TELEGRAM_BOT_TOKEN env var.",
+    )
+    admin_telegram_chat_id: str | None = Field(
+        default=None,
+        description="Admin Telegram chat ID for WhatsApp escalation notifications. Set via ADMIN_TELEGRAM_CHAT_ID env var.",
     )
 
     # ========================================
