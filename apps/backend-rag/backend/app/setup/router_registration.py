@@ -155,9 +155,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     # api.include_router(telegram.router)  # Telegram bot integration
     # api.include_router(twitter.router)  # Twitter/X omnichannel API
-    api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
-    api.include_router(whatsapp_chat.alias_router)  # Legacy Meta webhook URL alias
-    api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API
+    api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
+    # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses
+    api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API (dashboard only)
     # api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhook_chat.router)  # Webhook chat with auto-persistence
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
