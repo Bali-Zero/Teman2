@@ -38,8 +38,8 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
     <motion.div 
       initial={{ x: 50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="w-[350px] border-l border-white/10 bg-[#DC2626] overflow-y-auto h-full text-white shadow-2xl transition-all duration-500"
-    >
+      className="w-[350px] border-l border-white/10 bg-[#0EA5E9] overflow-y-auto h-full text-white shadow-2xl transition-all duration-500"
+    > {/* Bright Light Blue (Sky 500) */}
       <div className="p-6 space-y-6">
         
         {/* Profile Card */}
@@ -53,12 +53,12 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
             {clientName.substring(0, 2).toUpperCase()}
           </motion.div>
           <h2 className="font-black text-xl tracking-tight leading-none mb-1 uppercase drop-shadow-md">{clientName}</h2>
-          <p className="text-[10px] text-white/60 font-black mb-1 tracking-tighter uppercase">{email}</p>
-          <p className="text-sm text-white/80 font-black mb-4 tracking-tighter">{conversation.phone}</p>
+          <p className="text-[10px] text-white/70 font-black mb-1 tracking-tighter uppercase">{email}</p>
+          <p className="text-sm text-white font-black mb-4 tracking-tighter">{conversation.phone}</p>
           
           <div className="flex justify-center gap-2">
             <Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 font-black border-2 text-[10px] uppercase transition-all active:scale-95">
-              {enrichment?.exists_in_crm ? "View CRM Profile" : "Add to CRM"}
+              {enrichment?.exists_in_crm ? "Profile Details" : "Add to CRM"}
             </Button>
           </div>
         </div>
@@ -66,11 +66,11 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
         <div className="h-0.5 bg-white/20 w-full rounded-full" />
 
         {/* Lead Intelligence */}
-        <Card className="bg-black/30 border-white/30 text-white shadow-xl overflow-hidden">
+        <Card className="bg-black/20 border-white/30 text-white shadow-xl overflow-hidden">
           <CardHeader className="pb-2 bg-black/10">
             <CardTitle className="text-[10px] uppercase font-black text-white flex justify-between tracking-[0.2em]">
-              CRM STATUS
-              <span className="text-[10px] text-white bg-red-500 px-2 py-0.5 rounded uppercase font-black">{crmStatus}</span>
+              SYSTEM CONTEXT
+              <span className="text-[10px] text-white bg-blue-600 px-2 py-0.5 rounded uppercase font-black shadow-lg border border-white/20">{crmStatus}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -81,19 +81,19 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
               </div>
             ) : enrichment?.exists_in_crm ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black uppercase text-green-300">
-                  <CheckCircle className="w-4 h-4" /> CRM Verified Record
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-blue-100">
+                  <CheckCircle className="w-4 h-4" /> CRM Linked Verified
                 </div>
-                <p className="text-[11px] text-white/90 leading-relaxed font-bold italic bg-white/5 p-2 rounded border border-white/10">
-                  "{enrichment.profile.notes || "High priority client with no recent updates."}"
+                <p className="text-[11px] text-white leading-relaxed font-black italic bg-white/10 p-3 rounded border border-white/20 shadow-inner">
+                  "{enrichment.profile.notes || "Ready for follow-up. High engagement detected."}"
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black text-yellow-300 uppercase animate-pulse">
-                  <AlertTriangle className="w-4 h-4" /> New Lead Entry
+                <div className="flex items-center gap-2 text-xs font-black text-white uppercase animate-pulse">
+                  <AlertTriangle className="w-4 h-4 text-yellow-300" /> Lead Sync Required
                 </div>
-                <Button size="sm" className="w-full bg-white text-red-600 font-black text-[10px] uppercase shadow-lg hover:bg-red-50">Initialize Profile</Button>
+                <Button size="sm" className="w-full bg-white text-blue-600 font-black text-[10px] uppercase shadow-lg hover:bg-blue-50">Initialize Sync</Button>
               </div>
             )}
           </CardContent>
@@ -109,13 +109,13 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
             >
               <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60 italic">Active Deals</h3>
               {practices.map((p: any, i: number) => (
-                <div key={i} className="bg-white text-red-700 p-3 rounded-lg border-2 border-white/20 shadow-lg transform transition-transform hover:rotate-1">
+                <div key={i} className="bg-white text-blue-700 p-3 rounded-lg border-2 border-white/20 shadow-lg transform transition-transform hover:-rotate-1">
                   <div className="flex justify-between items-start mb-1">
                     <span className="text-xs font-black uppercase tracking-tight">{p.practice_name}</span>
-                    <span className="text-[9px] bg-red-100 text-red-700 px-1.5 rounded font-black uppercase border border-red-200">{p.status}</span>
+                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 rounded font-black uppercase border border-blue-200">{p.status}</span>
                   </div>
                   <div className="text-[10px] font-black italic opacity-70 uppercase tracking-tighter">
-                    Value: {p.quoted_price ? `${p.quoted_price} IDR` : "QUOTE PENDING"}
+                    Est. Value: {p.quoted_price ? `${p.quoted_price} IDR` : "PENDING"}
                   </div>
                 </div>
               ))}
@@ -125,15 +125,15 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
 
         {/* Lead Data */}
         <div className="space-y-4">
-          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Lead Profile</h3>
+          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Profile Info</h3>
           <div className="grid gap-3">
-            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/5">
-              <MapPin className="w-4 h-4 text-white/60" />
+            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/10 shadow-sm">
+              <MapPin className="w-4 h-4 text-white" />
               <span className="tracking-tighter">{nationality}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/5">
-              <Briefcase className="w-4 h-4 text-white/60" />
-              <span className="tracking-tighter">{enrichment?.profile?.client_type || "Individual Lead"}</span>
+            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/10 shadow-sm">
+              <Briefcase className="w-4 h-4 text-white" />
+              <span className="tracking-tighter">{enrichment?.profile?.client_type || "Direct Lead"}</span>
             </div>
           </div>
         </div>
@@ -142,16 +142,16 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
 
         {/* Actions */}
         <div className="space-y-3">
-          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Workflow</h3>
+          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Quick Operations</h3>
           <div className="grid grid-cols-1 gap-3">
             <Button 
-              onClick={() => onAssign('Team')}
+              onClick={() => onAssign('Me')}
               variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-white/10 border-white/40 text-white hover:bg-white/20 border-2 uppercase tracking-widest shadow-md active:scale-95 transition-all"
             >
               <User className="w-3 h-3 mr-3" /> Assign to Me
             </Button>
-            <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-black/40 border-yellow-400/50 text-yellow-400 hover:bg-black/60 border-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-              <AlertTriangle className="w-3 h-3 mr-3" /> Legal Escalation
+            <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-black/30 border-white/20 text-white hover:bg-black/40 border-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+              <CheckCircle className="w-3 h-3 mr-3" /> Processed
             </Button>
           </div>
         </div>
