@@ -427,7 +427,9 @@ class AutonomousExecutor:
             step: The step requiring approval
         """
         approval_key = f"{plan['plan_id']}_{step['step_id']}"
-        self._approvals[approval_key] = None  # Pending
+        # Only set to pending if no approval has been recorded yet
+        if approval_key not in self._approvals:
+            self._approvals[approval_key] = None  # Pending
 
         message = (
             f"🚨 **Approval Required**\n\n"

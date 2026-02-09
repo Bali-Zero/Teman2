@@ -2,8 +2,6 @@ import React from 'react';
 import { EnrichedConversation } from '../types';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   User, Briefcase, MapPin, Calendar, 
   TrendingUp, AlertTriangle, CheckCircle 
@@ -22,10 +20,8 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
     );
   }
 
-  // Mock CRM data for visual impact (will be real later)
+  const clientName = conversation.client_name || conversation.phone || "Unknown";
   const dealValue = conversation.crmData?.dealValue || "$2,500";
-  const sentiment = conversation.crmData?.sentiment || "neutral";
-  const score = 75; // Mock lead score
 
   return (
     <div className="w-[350px] border-l border-border bg-card overflow-y-auto h-full">
@@ -34,9 +30,9 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
         {/* Profile Card */}
         <div className="text-center">
           <div className="w-20 h-20 bg-muted rounded-full mx-auto mb-3 flex items-center justify-center text-2xl font-bold text-muted-foreground">
-            {conversation.client_name.substring(0, 2).toUpperCase()}
+            {clientName.substring(0, 2).toUpperCase()}
           </div>
-          <h2 className="font-bold text-xl">{conversation.client_name}</h2>
+          <h2 className="font-bold text-xl">{clientName}</h2>
           <p className="text-sm text-muted-foreground">{conversation.phone}</p>
           <div className="flex justify-center gap-2 mt-3">
             <Button size="sm" variant="outline">CRM Profile</Button>
@@ -44,7 +40,7 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
           </div>
         </div>
 
-        <Separator />
+        <div className="h-px bg-border w-full" />
 
         {/* Lead Score AI */}
         <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 dark:from-indigo-950/20 dark:to-purple-950/20 dark:border-indigo-900">
@@ -88,7 +84,7 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
           </div>
         </div>
 
-        <Separator />
+        <div className="h-px bg-border w-full" />
 
         {/* Actions */}
         <div className="space-y-3">
@@ -110,9 +106,8 @@ export function LeadContextPanel({ conversation }: LeadContextPanelProps) {
         <div>
           <h3 className="font-semibold text-sm mb-2">Tags</h3>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary" className="text-[10px]">#Visa</Badge>
-            <Badge variant="secondary" className="text-[10px]">#NewLead</Badge>
-            <Badge variant="outline" className="text-[10px] border-dashed border-muted-foreground">+ Add</Badge>
+            <div className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px]">#Visa</div>
+            <div className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px]">#NewLead</div>
           </div>
         </div>
 

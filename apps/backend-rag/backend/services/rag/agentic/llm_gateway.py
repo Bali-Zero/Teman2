@@ -57,7 +57,7 @@ from .chat_session import ChatSession, MockChatSession
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
 TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-001
@@ -115,15 +115,15 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 3 Flash Preview (Primary), 2.0 Flash (Fallback)
-        # UPDATED 2026-02-09: Using Gemini 3 Flash Preview as primary (latest, best reasoning)
-        # Benefits: Latest model, enhanced multimodal understanding, better coding capabilities
-        self.model_name_pro = "gemini-3-flash-preview"  # Primary tier
-        self.model_name_flash = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash Preview (latest)
-        self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: previous version
+        # Model name constants - Gemini 2.5 Flash (latest stable on Vertex AI)
+        # UPDATED 2026-02-09: Using gemini-2.5-flash (latest stable, released June 2025)
+        # See: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+        self.model_name_pro = "gemini-2.5-flash"  # Primary tier
+        self.model_name_flash = "gemini-2.5-flash"  # Primary: latest stable
+        self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: previous stable
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
             "gemini-2.0-flash-001 fallback)"
         )
 

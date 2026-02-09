@@ -11,16 +11,18 @@ export type ConversationStatus = 'new' | 'open' | 'pending' | 'closed';
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export interface EnrichedConversation extends WhatsAppConversation {
-  // Enhanced fields for UI (to be populated by backend in Phase 2)
+export interface EnrichedConversation {
+  id: number;
+  phone: string;
+  client_name: string;
+  last_message: string;
+  last_message_date: string;
   channel: ChannelType;
   status: ConversationStatus;
   priority: LeadPriority;
-  assignedTo?: string; // User ID
+  assignedTo?: string;
   tags: string[];
   unreadCount: number;
-  
-  // CRM Data (Mocked for now)
   crmData?: {
     dealValue?: string;
     company?: string;

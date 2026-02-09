@@ -1,8 +1,7 @@
 import React from 'react';
 import { EnrichedConversation, ChannelType } from '../types';
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Phone, Send, Instagram } from "lucide-react";
+import { Search, Phone, Send, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface InboxSidebarProps {
@@ -16,8 +15,8 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
   const [filter, setFilter] = React.useState('');
 
   const filtered = conversations.filter(c => 
-    c.client_name?.toLowerCase().includes(filter.toLowerCase()) || 
-    c.phone.includes(filter)
+    (c.client_name?.toLowerCase().includes(filter.toLowerCase()) || 
+     c.phone.includes(filter))
   );
 
   const ChannelIcon = ({ type }: { type: ChannelType }) => {
@@ -44,10 +43,8 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">All</Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-muted">Unread</Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-muted">My Leads</Badge>
-          <Badge variant="outline" className="cursor-pointer hover:bg-muted">High Priority</Badge>
+          <div className="px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] font-medium cursor-pointer">All</div>
+          <div className="px-2 py-1 rounded border border-border text-[10px] font-medium cursor-pointer">Unread</div>
         </div>
       </div>
 
@@ -68,8 +65,8 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
               >
                 <div className="flex justify-between items-start mb-1">
                   <div className="font-semibold text-sm flex items-center gap-2">
-                    {conv.client_name}
-                    {conv.unread_count > 0 && (
+                    {conv.client_name || conv.phone}
+                    {(conv.unreadCount || 0) > 0 && (
                       <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                     )}
                   </div>
@@ -83,20 +80,19 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
                 </p>
 
                 <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="outline" className={cn(
-                    "text-[10px] px-1.5 h-5 gap-1 font-normal",
+                  <div className={cn(
+                    "text-[10px] px-1.5 h-5 flex items-center gap-1 rounded border font-normal",
                     conv.channel === 'whatsapp' && "bg-green-50 text-green-700 border-green-200",
                     conv.channel === 'telegram' && "bg-blue-50 text-blue-700 border-blue-200",
                     conv.channel === 'instagram' && "bg-pink-50 text-pink-700 border-pink-200",
                   )}>
                     <ChannelIcon type={conv.channel} />
                     {conv.channel}
-                  </Badge>
+                  </div>
                   
-                  {/* Mock Status Badge */}
-                  <Badge variant="secondary" className="text-[10px] px-1.5 h-5 font-normal bg-gray-100 text-gray-600">
+                  <div className="text-[10px] px-1.5 h-5 flex items-center rounded border bg-gray-100 text-gray-600 border-gray-200 font-normal">
                     {conv.status || 'New'}
-                  </Badge>
+                  </div>
                 </div>
               </div>
             ))}
