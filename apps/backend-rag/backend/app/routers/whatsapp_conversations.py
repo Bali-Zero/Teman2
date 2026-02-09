@@ -7,11 +7,12 @@ Reads from 'conversations' table (Zan's chat history), not crm_interactions.
 
 import json
 import logging
+import time
 
 from asyncpg import Pool
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from backend.app.dependencies import get_current_user, get_database
+from backend.app.dependencies import get_current_user, get_database, require_team_member
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ async def get_whatsapp_conversations(
                     NULL as client_id,
                     NULL as client_name
                 FROM conversations c
-                WHERE c.session_id LIKE 'wa_session_%'
+                WHERE c.session_id LIKE 'wa_session_%' OR c.user_id LIKE 'whatsapp_%'
                 ORDER BY c.created_at DESC
                 LIMIT $1 OFFSET $2
                 """,
@@ -60,59 +61,22 @@ async def get_whatsapp_conversations(
 
             conversations = []
             for row in rows:
-                # Ultra-robust parsing for WhatsApp messages
+                # Fast parsing for preview only
                 messages_raw = row["messages"]
-                messages = []
+                last_message = ""
+                interaction_count = 0
                 
                 if isinstance(messages_raw, list):
-                    messages = messages_raw
+                    interaction_count = len(messages_raw)
+                    if messages_raw:
+                        last_msg = messages_raw[-1]
+                        last_message = last_msg.get("content", "")[:200] if isinstance(last_msg, dict) else str(last_msg)[:200]
                 elif isinstance(messages_raw, str):
-                    try:
-                        messages = json.loads(messages_raw)
-                    except:
-                        messages = []
-                
-                # Handling bizarre case where asyncpg might return list of string
-                if isinstance(messages, list) and len(messages) == 1 and isinstance(messages[0], str):
-                    try:
-                        messages = json.loads(messages[0])
-                    except:
-                        pass
+                    # If it's a string, we just say "Long conversation" to avoid heavy json.loads
+                    last_message = "New messages received"
+                    interaction_count = 1
 
-                # Final string check
-                if isinstance(messages, str):
-                    try:
-                        messages = json.loads(messages)
-                    except:
-                        messages = []
-
-                last_message = ""
-                unread_count = 0
-
-                if messages:
-                    # Last message in array
-                    last_msg = messages[-1] if messages else {}
-                    if isinstance(last_msg, dict):
-                        last_message = last_msg.get("content", "")[:200]
-                    else:
-                        last_message = str(last_msg)[:200]
-
-                    # Count unread (messages with role=user after last assistant message)
-                    last_assistant_idx = -1
-                    for i in range(len(messages) - 1, -1, -1):
-                        msg = messages[i]
-                        if isinstance(msg, dict) and msg.get("role") == "assistant":
-                            last_assistant_idx = i
-                            break
-
-                    if last_assistant_idx >= 0:
-                        unread_count = sum(
-                            1
-                            for msg in messages[last_assistant_idx + 1 :]
-                            if isinstance(msg, dict) and msg.get("role") == "user"
-                        )
-                    else:
-                        unread_count = len(messages)
+                unread_count = 0 # Default for performance
 
                 # Get client name from metadata or crm.clients
                 metadata = row["metadata"]
@@ -157,7 +121,7 @@ async def get_whatsapp_messages(
     phone: str,
     limit: int = 100,
     db: Pool = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team_member),
 ):
     """
     Get messages for a specific WhatsApp phone number.
@@ -187,11 +151,40 @@ async def get_whatsapp_messages(
                 logger.warning(f"No conversation found for phone {phone}")
                 return []
 
-            messages = row["messages"] or []
+            # Ultra-robust parsing for messages history
+            messages_raw = row["messages"]
+            messages = []
+            
+            if isinstance(messages_raw, list):
+                messages = messages_raw
+            elif isinstance(messages_raw, str):
+                try:
+                    messages = json.loads(messages_raw)
+                except:
+                    messages = []
+            
+            # Handling list of string case
+            if isinstance(messages, list) and len(messages) == 1 and isinstance(messages[0], str):
+                try:
+                    messages = json.loads(messages[0])
+                except:
+                    pass
+
+            # Final string check
+            if isinstance(messages, str):
+                try:
+                    messages = json.loads(messages)
+                except:
+                    messages = []
 
             # Convert to WhatsAppMessage format
             result = []
-            for i, msg in enumerate(messages[-limit:]):  # Last N messages
+            for i, msg in enumerate(messages[-limit:]):
+                if not isinstance(msg, dict):
+                    # Fallback for weird data formats
+                    logger.warning(f"Message at index {i} is not a dict: {msg}")
+                    continue
+                    
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
 
@@ -221,7 +214,7 @@ async def get_whatsapp_messages(
 async def send_whatsapp_message(
     request: Request,
     db: Pool = Depends(get_database),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team_member),
 ):
     """
     Send WhatsApp message from omnichannel dashboard.
@@ -289,6 +282,3 @@ async def send_whatsapp_message(
     except Exception as e:
         logger.error(f"Failed to send WhatsApp message: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to send message")
-
-
-import time
