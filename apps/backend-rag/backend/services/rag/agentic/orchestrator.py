@@ -511,7 +511,7 @@ Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
                     team_chat = self.llm_gateway.create_chat_with_history(
                         history_to_use=history_to_use, model_tier=TIER_FLASH
                     )
-                    team_response, model_used, _ = await self.llm_gateway.send_message(
+                    team_response, model_used, _, _ = await self.llm_gateway.send_message(
                         team_chat,
                         team_prompt,
                         system_prompt="",

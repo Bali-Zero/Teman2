@@ -73,6 +73,22 @@ class FallbackManagerService:
             "legal_architect",
             "kbli_eye",
         ],  # Team fallback to main company collections
+        "kbli_2025_final": [
+            "training_conversations_hybrid",
+            "legal_architect",
+            "tax_genius",
+        ],  # KBLI 2025 fallback to business setup/legal/tax
+        "legal_unified_hybrid": [
+            "legal_architect",
+            "kbli_2025_final",
+            "tax_genius",
+            "visa_oracle",
+        ],  # Default collection fallback to specialized oracles
+        "property_unified": [
+            "property_knowledge",
+            "property_listings",
+            "legal_architect",
+        ],  # Property unified fallback
     }
 
     CONFIDENCE_THRESHOLD_HIGH = RoutingConstants.CONFIDENCE_THRESHOLD_HIGH

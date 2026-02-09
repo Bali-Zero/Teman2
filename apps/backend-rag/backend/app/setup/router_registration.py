@@ -16,6 +16,7 @@ from backend.app.routers import (
     article_composer,
     auth,
     autonomous_agents,
+    autonomous_execution,
     blog_ask,
     collective_memory,
     conversations,
@@ -102,6 +103,7 @@ def include_routers(api: FastAPI) -> None:
     # Agent routers
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
+    api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
     api.include_router(agentic_rag.router)
 
     # Generals Multi-Agent System router
@@ -153,12 +155,12 @@ def include_routers(api: FastAPI) -> None:
 
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
-    # api.include_router(telegram.router)  # Telegram bot integration
-    # api.include_router(twitter.router)  # Twitter/X omnichannel API
+    api.include_router(telegram.router)  # Telegram bot integration
+    api.include_router(twitter.router)  # Twitter/X omnichannel API
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
     # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses
     api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API (dashboard only)
-    # api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
+    api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhook_chat.router)  # Webhook chat with auto-persistence
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(

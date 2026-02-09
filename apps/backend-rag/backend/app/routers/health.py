@@ -249,6 +249,32 @@ async def detailed_health(request: Request) -> dict[str, Any]:
     except Exception as e:
         services["health_monitor"] = {"status": "error", "critical": False, "error": str(e)}
 
+    # Check Query Cache
+    try:
+        from backend.core.cache import get_cache_service
+
+        cache_stats = get_cache_service().get_stats()
+        services["query_cache"] = {
+            "status": "healthy",
+            "critical": False,
+            "details": cache_stats,
+        }
+    except Exception as e:
+        services["query_cache"] = {"status": "unavailable", "critical": False, "error": str(e)}
+
+    # Check Rate Limiter
+    try:
+        from backend.middleware.rate_limiter import get_rate_limit_stats
+
+        rl_stats = get_rate_limit_stats()
+        services["rate_limiter"] = {
+            "status": "healthy",
+            "critical": False,
+            "details": rl_stats,
+        }
+    except Exception as e:
+        services["rate_limiter"] = {"status": "unavailable", "critical": False, "error": str(e)}
+
     # Get service registry status if available
     service_registry_status = None
     try:

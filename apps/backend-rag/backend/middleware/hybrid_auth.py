@@ -384,7 +384,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                             error_msg = f"{error_type}: {error_msg[:200]}..."
                     except (TypeError, ValueError, AttributeError):
                         error_msg = f"{error_type} error during authentication"
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error sanitizing authentication exception: {e}", exc_info=True)
                 error_msg = "Authentication service error"
 
             cors_headers = self._cors_headers_for_request(request)

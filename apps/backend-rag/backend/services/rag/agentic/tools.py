@@ -129,39 +129,53 @@ class VectorSearchTool(BaseTool):
             all_chunks = []
             seen_content = set()
 
-            # Execute search across target collections
-            for target_col in target_collections:
+            # Execute search across target collections in parallel for better performance
+            import asyncio
+
+            async def _search_collection(target_col):
                 try:
-                    if hasattr(self.retriever, "search_with_reranking"):
-                        res = await self.retriever.search_with_reranking(
-                            query=query,
-                            user_level=1,
-                            limit=5 if len(target_collections) > 1 else top_k,
-                            collection_override=target_col,
-                        )
-                    else:
-                        res = await self.retriever.search(
-                            query=query,
-                            user_level=1,
-                            limit=5 if len(target_collections) > 1 else top_k,
-                            collection_override=target_col,
-                        )
-
-                    for chunk in res.get("results", []):
-                        text = (
-                            chunk.get("text", "")
-                            if isinstance(chunk, dict)
-                            else getattr(chunk, "text", "")
-                        )
-                        # Deduplicate by first 100 chars
-                        if text[:100] not in seen_content:
-                            seen_content.add(text[:100])
-                            if isinstance(chunk, dict):
-                                chunk["_source_collection"] = target_col
-                            all_chunks.append(chunk)
-
+                    # Per-collection timeout to prevent one slow collection from blocking everything
+                    async with asyncio.timeout(10.0):
+                        if hasattr(self.retriever, "search_with_reranking"):
+                            res = await self.retriever.search_with_reranking(
+                                query=query,
+                                user_level=1,
+                                limit=5 if len(target_collections) > 1 else top_k,
+                                collection_override=target_col,
+                            )
+                        else:
+                            res = await self.retriever.search(
+                                query=query,
+                                user_level=1,
+                                limit=5 if len(target_collections) > 1 else top_k,
+                                collection_override=target_col,
+                            )
+                        return target_col, res.get("results", [])
+                except asyncio.TimeoutError:
+                    logger.warning(f"⏱️ Search timeout (10s) for collection {target_col}")
+                    return target_col, []
                 except Exception as e:
                     logger.warning(f"Search failed for {target_col}: {e}")
+                    return target_col, []
+
+            search_results = await asyncio.gather(
+                *[_search_collection(col) for col in target_collections]
+            )
+
+            # Process and deduplicate results
+            for target_col, chunks_res in search_results:
+                for chunk in chunks_res:
+                    text = (
+                        chunk.get("text", "")
+                        if isinstance(chunk, dict)
+                        else getattr(chunk, "text", "")
+                    )
+                    # Deduplicate by first 100 chars
+                    if text[:100] not in seen_content:
+                        seen_content.add(text[:100])
+                        if isinstance(chunk, dict):
+                            chunk["_source_collection"] = target_col
+                        all_chunks.append(chunk)
 
             # Sort by score and take top results
             all_chunks.sort(
@@ -292,24 +306,30 @@ class VisionTool(BaseTool):
         try:
             # Security: validate file path to prevent path traversal
             from pathlib import Path
-
             from backend.app.core.config import settings
 
             resolved = Path(file_path).resolve()
-            allowed_dirs = [Path(d) for d in settings.get_vision_allowed_dirs]
-            if not any(
-                str(resolved).startswith(str(d.resolve())) for d in allowed_dirs
-            ):
-                logger.warning(
-                    f"🛡️ VisionTool path traversal blocked: {file_path}"
-                )
-                return "Error: file path not allowed. Only files in permitted directories are accessible."
+            allowed_dirs = [Path(d).resolve() for d in settings.get_vision_allowed_dirs]
+            
+            # Use is_relative_to for robust path checking (Python 3.9+)
+            is_allowed = False
+            for allowed_dir in allowed_dirs:
+                try:
+                    if resolved.is_relative_to(allowed_dir):
+                        is_allowed = True
+                        break
+                except ValueError:
+                    continue
+            
+            if not is_allowed:
+                logger.warning(f"🛡️ VisionTool path traversal blocked: {file_path}")
+                return "Error: Access denied. File must be in one of the following directories: " + ", ".join(settings.get_vision_allowed_dirs)
 
-            if ".." in str(file_path):
-                logger.warning(
-                    f"🛡️ VisionTool directory traversal blocked: {file_path}"
-                )
-                return "Error: directory traversal not allowed."
+            # Validate file extension
+            allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.webp'}
+            if resolved.suffix.lower() not in allowed_extensions:
+                logger.warning(f"🛡️ VisionTool invalid extension blocked: {resolved.suffix}")
+                return f"Error: File type {resolved.suffix} not supported. Allowed types: {', '.join(allowed_extensions)}"
 
             doc = await self.vision_service.process_pdf(str(resolved))
             result = await self.vision_service.query_with_vision(query, [doc], include_images=True)

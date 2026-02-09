@@ -218,7 +218,7 @@ async def create_interaction(
                 logger, "CREATE", "interactions", record_id=new_interaction["id"]
             )
 
-            invalidate_cache("zantara:crm_interactions_stats:*")
+            await invalidate_cache("zantara:crm_interactions_stats:*")
             return InteractionResponse(**new_interaction)
 
     except HTTPException:

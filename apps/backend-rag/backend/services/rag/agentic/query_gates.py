@@ -14,6 +14,7 @@ compute resources and improve response latency.
 """
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -37,6 +38,14 @@ class GateResult:
     metadata: dict[str, Any] | None = None
 
 
+def detect_team_query(query: str) -> bool:
+    """Returns True if query is about team/people."""
+    patterns = [r'\bwho is\b', r'\bworking on\b', r'\bassigned to\b',
+                r'\bteam\b', r'\bmembers?\b', r'\bstaff\b',
+                r'\bchi è\b', r'\bchi si occupa\b', r'\bdipendenti\b']
+    return any(re.search(p, query.lower()) for p in patterns)
+
+
 class QueryGates:
     """
     Collection of pre-processing gates for query handling.
@@ -47,14 +56,14 @@ class QueryGates:
 
     def __init__(
         self,
-        prompt_builder: SystemPromptBuilder,
+        prompt_builder: SystemPromptBuilder | None = None,
         clarification_service: ClarificationService | None = None,
     ):
         """
         Initialize QueryGates.
 
         Args:
-            prompt_builder: SystemPromptBuilder for pattern detection
+            prompt_builder: SystemPromptBuilder for pattern detection (optional for testing)
             clarification_service: Optional ClarificationService for ambiguity detection
         """
         self.prompt_builder = prompt_builder

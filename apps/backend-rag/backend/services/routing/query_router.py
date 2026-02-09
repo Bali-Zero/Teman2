@@ -665,16 +665,39 @@ class QueryRouter:
         Returns:
             Collection name from 9 available collections
         """
+        logger.info(f"\U0001f50d [QueryRouter] Query: {query}")
+
         # Check priority overrides first
         override = self._check_priority_overrides(query)
         if override:
+            logger.info(f"\u26a1 [QueryRouter] Priority override → {override}")
             return override
 
         # Calculate domain scores
         domain_scores = self._calculate_domain_scores(query)
 
+        # Log detected keywords per active domain
+        active_scores = {k: v for k, v in domain_scores.items() if v > 0}
+        detected_keywords = {}
+        for domain in active_scores:
+            detected_keywords[domain] = self.keyword_matcher.get_matched_keywords(query, domain)
+        logger.info(f"\U0001f3af [QueryRouter] Detected keywords: {detected_keywords}")
+        logger.info(f"\U0001f4ca [QueryRouter] Domain scores: {active_scores}")
+
+        # Detect multi-domain queries
+        active_domains = self.keyword_matcher.detect_multi_domain(query)
+        if len(active_domains) > 1:
+            logger.info(f"\U0001f500 [QueryRouter] MULTI-DOMAIN query: {active_domains}")
+
         # Determine collection
-        return self._determine_collection(domain_scores, query)
+        collection = self._determine_collection(domain_scores, query)
+        logger.info(f"\U0001f4e6 [QueryRouter] Primary collection: {collection}")
+
+        # Log fallback chain
+        fallback_chain = self.FALLBACK_CHAINS.get(collection, [])
+        logger.info(f"\U0001f504 [QueryRouter] Fallback chain: {fallback_chain}")
+
+        return collection
 
     def calculate_confidence(self, query: str, domain_scores: dict) -> float:
         """

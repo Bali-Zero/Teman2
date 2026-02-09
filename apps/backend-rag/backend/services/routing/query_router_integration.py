@@ -126,21 +126,55 @@ class QueryRouterIntegration:
                 "is_pricing": True,
             }
 
+        # Multi-domain detection: auto-enable fallbacks when query spans multiple domains
+        active_domains = self.router.keyword_matcher.detect_multi_domain(query)
+        is_multi_domain = len(active_domains) > 1
+        if is_multi_domain and not enable_fallbacks:
+            logger.info(
+                f"🔀 [Routing] Multi-domain query detected ({active_domains}), "
+                f"auto-enabling fallbacks"
+            )
+            enable_fallbacks = True
+
         # Use QueryRouter for intelligent routing
         if enable_fallbacks:
             primary_collection, confidence, collections = self.router.route_with_confidence(
                 query, return_fallbacks=True
             )
+
+            # For multi-domain queries, ensure all relevant domain collections are included
+            if is_multi_domain:
+                domain_to_collection = {
+                    "visa": "visa_oracle",
+                    "kbli": "kbli_2025_final",
+                    "tax": "tax_genius",
+                    "legal": "legal_unified_hybrid",
+                    "property": "property_unified",
+                    "business": "training_conversations_hybrid",
+                    "circular": "immigration_circulars",
+                    "books": "zantara_books",
+                }
+                for domain in active_domains:
+                    target_collection = domain_to_collection.get(domain)
+                    if target_collection and target_collection not in collections:
+                        collections.append(target_collection)
+                        logger.info(
+                            f"📎 [Routing] Added {target_collection} for domain '{domain}'"
+                        )
+
             logger.info(
                 f"🎯 [Routing] Primary: {primary_collection} "
                 f"(confidence={confidence:.2f}), "
-                f"Total collections: {len(collections)}"
+                f"Total collections: {len(collections)}, "
+                f"multi_domain={is_multi_domain}"
             )
             return {
                 "collection_name": primary_collection,
                 "collections": collections,
                 "confidence": confidence,
                 "is_pricing": False,
+                "is_multi_domain": is_multi_domain,
+                "active_domains": active_domains,
             }
         else:
             collection_name = self.router.route(query)

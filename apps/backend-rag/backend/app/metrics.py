@@ -737,8 +737,8 @@ class MetricsCollector:
 
             cache = get_cache_service()
             start = time.time()
-            cache.set("metrics_ping", "pong", ttl=1)
-            cache.get("metrics_ping")  # Verify cache works
+            await cache.set("metrics_ping", "pong", ttl=1)
+            await cache.get("metrics_ping")  # Verify cache works
             latency = (time.time() - start) * 1000
             redis_latency.set(latency)
             self.last_redis_check = latency

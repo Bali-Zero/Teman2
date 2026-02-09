@@ -50,6 +50,15 @@ TAX_DOCUMENTS = [
         "tier": "A",
     },
     {
+        "path": "training-data/tax/tax_024_pph21_foreign_employees.md",
+        "title": "PPh 21 - Foreign Employee Tax Guide (Expats, KITAS, E33G)",
+        "category": "income_tax",
+        "subcategory": "pph21_foreign",
+        "topics": ["PPh 21", "foreign employee tax", "PPh 26", "non-resident tax", "NPWP expat", "tax treaty", "E33G tax", "KITAS tax", "withholding", "PMK 168/2023", "TER", "double taxation"],
+        "language": "multi",
+        "tier": "A",
+    },
+    {
         "path": "training-data/tax_pph_ppn_conversation.md",
         "title": "PPh & PPN Conversation Examples",
         "category": "general_tax",
