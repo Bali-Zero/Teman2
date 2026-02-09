@@ -126,8 +126,12 @@ export class ChatApi {
     maxTotalTimeMs: number = 600000, // 10min max total time
     images?: Array<{ base64: string; name: string }> // Vision images
   ): Promise<void> {
-    // Always use standard Zantara AI endpoint (v2.0)
-    const endpoint = '/api/agentic-rag/stream';
+    // CRITICAL FIX: Bypass Vercel proxy for SSE streaming (Vercel kills SSE streams)
+    // Use direct Fly.io endpoint when NEXT_PUBLIC_SSE_DIRECT=true
+    const useDirectEndpoint = process.env.NEXT_PUBLIC_SSE_DIRECT === 'true';
+    const endpoint = useDirectEndpoint 
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/agentic-rag/stream`
+      : '/api/agentic-rag/stream';
 
     // Metrics tracking
     const startTime = Date.now();
@@ -249,8 +253,10 @@ export class ChatApi {
         streamHeaders['Authorization'] = `Bearer ${token}`;
       }
 
+      // Build full URL: if endpoint is absolute (starts with http), use it directly
+      // Otherwise, concatenate with baseUrl (proxy path)
       const baseUrl = this.client.getBaseUrl();
-      const fullUrl = `${baseUrl}${endpoint}`;
+      const fullUrl = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: streamHeaders,
