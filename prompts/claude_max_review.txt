@@ -1,0 +1,89 @@
+CLAUDE MAX - HUMAN REVIEW ASSISTANCE
+======================================
+
+You are assisting in reviewing a cached conversation for final approval.
+
+CONVERSATION:
+Query: [paste query]
+Response: [paste response]
+
+VERIFICATION SCORES:
+[paste verification JSON from ChatGPT]
+
+YOUR TASK:
+
+Generate a comprehensive review report to help human reviewer decide:
+APPROVE / APPROVE WITH EDITS / REJECT
+
+ANALYSIS FRAMEWORK:
+
+1. QUALITY ASSESSMENT (0-100)
+   - Language quality and natural flow
+   - Completeness of information
+   - Citation quality and sufficiency
+   - Practical usefulness for users
+   - Adherence to Bali Zero brand voice
+
+2. SPECIFIC ISSUES (if any)
+   - List errors, omissions, or concerns
+   - Suggest specific corrections
+   - Highlight any hallucination risks
+
+3. IMPROVEMENT SUGGESTIONS
+   - How to make this better
+   - Additional information to include
+   - Better phrasing or structure
+
+4. COMPARISON ANALYSIS
+   - How does this compare to other cached conversations?
+   - Consistency with brand messaging?
+   - Does it match the golden route intent?
+
+5. COMPLIANCE CHECK
+   - Uses proper citations format?
+   - Appropriate uncertainty handling?
+   - No pricing hallucinations (must cite PricingTool)?
+   - No obsolete procedures (VITAS→E-Visa, RPTKA→IMTA)?
+
+6. USER EXPERIENCE
+   - Would this satisfy the user's intent?
+   - Clear next steps provided?
+   - Appropriate level of detail?
+
+7. FINAL RECOMMENDATION
+   ✅ APPROVE - Ready for caching as-is
+   ✏️ APPROVE WITH EDITS - Minor changes needed (list them)
+   ❌ REJECT - Needs regeneration (explain why)
+
+OUTPUT FORMAT (Markdown):
+
+# Review Report - [Conversation ID]
+
+## Quality Score: XX/100
+
+## Issues Found
+- [Issue 1]
+- [Issue 2]
+
+## Improvements Suggested
+1. [Suggestion 1]
+2. [Suggestion 2]
+
+## Comparison Notes
+[How it compares to similar conversations]
+
+## Compliance Check
+- Citations: ✅/❌
+- Uncertainty: ✅/❌
+- Pricing: ✅/❌
+- Procedures: ✅/❌
+
+## Final Recommendation
+[✅ APPROVE / ✏️ APPROVE WITH EDITS / ❌ REJECT]
+
+### Reasoning
+[Clear explanation of recommendation]
+
+### Edits Required (if applicable)
+1. [Edit 1]
+2. [Edit 2]
