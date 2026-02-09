@@ -209,7 +209,9 @@ class OrchestratorCore:
         async def _fetch_langgraph_workflow_task():
             """KGLangGraphOrchestrator task (Phase 3)"""
             if not self.kg_langgraph_orchestrator:
+                logger.debug("🔀 [KG LangGraph] Orchestrator not initialized (feature flag off or db_pool missing)")
                 return None
+            logger.info("🔀 [KG LangGraph] Starting workflow synthesis...")
 
             try:
                 with trace_span("kg.langgraph", {"query_length": len(query)}):
