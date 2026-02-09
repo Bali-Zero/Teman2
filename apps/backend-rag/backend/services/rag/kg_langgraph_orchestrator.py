@@ -15,10 +15,27 @@ import os
 from typing import Any
 
 import asyncpg
-from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, StateGraph
+
+logger = logging.getLogger(__name__)
+
+try:
+    from langgraph.checkpoint.postgres import PostgresSaver
+except ImportError:
+    PostgresSaver = None  # type: ignore[assignment,misc]
+    logger.warning("langgraph-checkpoint-postgres not installed, checkpointing disabled")
+
+try:
+    from langchain_anthropic import ChatAnthropic
+except ImportError:
+    ChatAnthropic = None  # type: ignore[assignment,misc]
+    logger.warning("langchain-anthropic not installed, Claude reasoning unavailable")
+
+try:
+    from langchain_openai import ChatOpenAI
+except ImportError:
+    ChatOpenAI = None  # type: ignore[assignment,misc]
+    logger.warning("langchain-openai not installed, OpenAI reasoning unavailable")
 
 from backend.services.rag.kg_graph_nodes import (
     kg_checkpoint_operations_total,
@@ -36,8 +53,6 @@ from backend.services.rag.kg_subgraph_company import build_company_subgraph
 from backend.services.rag.kg_subgraph_property import build_property_subgraph
 from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
 from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
-
-logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -58,14 +73,14 @@ def get_llm_for_reasoning() -> Any:
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
-    if anthropic_key:
+    if anthropic_key and ChatAnthropic is not None:
         logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning")
         return ChatAnthropic(
             model="claude-sonnet-4-5-20250929",
             temperature=0.2,  # Low temp for deterministic reasoning
             api_key=anthropic_key,
         )
-    elif openai_key:
+    elif openai_key and ChatOpenAI is not None:
         logger.info("🤖 [LLM] Using OpenAI GPT-4 for reasoning (Anthropic unavailable)")
         return ChatOpenAI(
             model="gpt-4-turbo-preview",
@@ -73,7 +88,11 @@ def get_llm_for_reasoning() -> Any:
             api_key=openai_key,
         )
     else:
-        raise ValueError("No LLM API key configured (ANTHROPIC_API_KEY or OPENAI_API_KEY required)")
+        raise ValueError(
+            "No LLM available for KG reasoning. "
+            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'}), "
+            f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'})"
+        )
 
 
 # ============================================================================
@@ -531,17 +550,20 @@ async def compile_kg_workflow(db_pool: asyncpg.Pool) -> Any:
 
     # Try PostgreSQL checkpointing, fall back to no checkpointer
     checkpointer = None
-    try:
-        checkpointer = PostgresSaver(db_pool)
-        await checkpointer.setup()
-        logger.info("✅ [Compile] PostgreSQL checkpointer initialized")
-        kg_checkpoint_operations_total.labels(operation="setup").inc()
-    except Exception as e:
-        logger.warning(
-            f"⚠️ [Compile] PostgresSaver setup failed ({type(e).__name__}: {e}), "
-            f"compiling without checkpointer (no state persistence)"
-        )
-        checkpointer = None
+    if PostgresSaver is None:
+        logger.warning("⚠️ [Compile] PostgresSaver not available, compiling without checkpointer")
+    else:
+        try:
+            checkpointer = PostgresSaver(db_pool)
+            await checkpointer.setup()
+            logger.info("✅ [Compile] PostgreSQL checkpointer initialized")
+            kg_checkpoint_operations_total.labels(operation="setup").inc()
+        except Exception as e:
+            logger.warning(
+                f"⚠️ [Compile] PostgresSaver setup failed ({type(e).__name__}: {e}), "
+                f"compiling without checkpointer (no state persistence)"
+            )
+            checkpointer = None
 
     # Compile workflow (with or without checkpointer)
     app = workflow.compile(checkpointer=checkpointer)
