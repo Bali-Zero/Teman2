@@ -294,6 +294,7 @@ async def create_and_start_scheduler(
     conversation_trainer_enabled: bool = True,
     client_value_predictor_enabled: bool = True,
     knowledge_graph_enabled: bool = True,
+    conversation_cleanup_enabled: bool = True,
 ) -> AutonomousScheduler:
     """
     Create and start the autonomous scheduler with all agents.
@@ -537,7 +538,6 @@ async def create_and_start_scheduler(
                 interval_seconds=86400 * 365,  # Effectively one-time (1 year)
                 enabled=True,
             )
-            logger.info("✅ Golden Routes Seeder registered (one-time)")
         except Exception as e:
             logger.error(f"❌ Failed to register Golden Routes Seeder: {e}")
 
@@ -736,6 +736,38 @@ async def create_and_start_scheduler(
         logger.info("✅ Birthday Notifier registered (24h interval)")
     except Exception as e:
         logger.error(f"❌ Failed to register Birthday Notifier: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 10: CONVERSATION CLEANUP (daily)
+    # Cleans up old conversations (>30 days) and anonymizes user data (>7 days)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if conversation_cleanup_enabled and db_pool:
+        try:
+            from backend.jobs.conversation_cleanup import cleanup_conversations
+
+            async def run_conversation_cleanup():
+                try:
+                    result = await cleanup_conversations(
+                        retention_days=30,
+                        anonymize_days=7,
+                    )
+                    if result["success"]:
+                        logger.info(
+                            f"🧹 Conversation cleanup: {result['deleted_count']} deleted, "
+                            f"{result['anonymized_count']} anonymized"
+                        )
+                except Exception as e:
+                    logger.error(f"❌ Conversation cleanup error: {e}", exc_info=True)
+
+            scheduler.register_task(
+                name="conversation_cleanup",
+                task_func=run_conversation_cleanup,
+                interval_seconds=86400,
+                enabled=True,
+            )
+            logger.info("✅ Conversation Cleanup registered (24h interval)")
+        except Exception as e:
+            logger.error(f"❌ Failed to register Conversation Cleanup: {e}")
 
     # Start the scheduler
     await scheduler.start()
