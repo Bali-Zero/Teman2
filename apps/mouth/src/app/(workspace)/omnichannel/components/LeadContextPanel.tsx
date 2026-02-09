@@ -13,10 +13,11 @@ interface LeadContextPanelProps {
   conversation: EnrichedConversation | null;
   enrichment: any;
   onAssign: (userId: string) => void;
+  onStatusChange: (status: string) => void;
   isLoading?: boolean;
 }
 
-export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading }: LeadContextPanelProps) {
+export function LeadContextPanel({ conversation, enrichment, onAssign, onStatusChange, isLoading }: LeadContextPanelProps) {
   if (!conversation) {
     return (
       <div className="w-[350px] border-l border-slate-200 bg-white p-6 flex flex-col items-center justify-center text-center">
@@ -39,7 +40,7 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
       initial={{ x: 50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       className="w-[350px] border-l border-white/10 bg-[#0EA5E9] overflow-y-auto h-full text-white shadow-2xl transition-all duration-500"
-    > {/* Bright Light Blue (Sky 500) */}
+    >
       <div className="p-6 space-y-6">
         
         {/* Profile Card */}
@@ -47,7 +48,6 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
             className="w-20 h-20 bg-black/20 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl font-black text-white border-4 border-white/40 shadow-xl"
           >
             {clientName.substring(0, 2).toUpperCase()}
@@ -93,65 +93,38 @@ export function LeadContextPanel({ conversation, enrichment, onAssign, isLoading
                 <div className="flex items-center gap-2 text-xs font-black text-white uppercase animate-pulse">
                   <AlertTriangle className="w-4 h-4 text-yellow-300" /> Lead Sync Required
                 </div>
-                <Button size="sm" className="w-full bg-white text-blue-600 font-black text-[10px] uppercase shadow-lg hover:bg-blue-50">Initialize Sync</Button>
+                <Button 
+                  onClick={() => onStatusChange('open')}
+                  size="sm" className="w-full bg-white text-blue-600 font-black text-[10px] uppercase shadow-lg hover:bg-blue-50"
+                >
+                  Initialize Sync
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Active Practices */}
-        <AnimatePresence>
-          {practices.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3"
-            >
-              <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60 italic">Active Deals</h3>
-              {practices.map((p: any, i: number) => (
-                <div key={i} className="bg-white text-blue-700 p-3 rounded-lg border-2 border-white/20 shadow-lg transform transition-transform hover:-rotate-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-xs font-black uppercase tracking-tight">{p.practice_name}</span>
-                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 rounded font-black uppercase border border-blue-200">{p.status}</span>
-                  </div>
-                  <div className="text-[10px] font-black italic opacity-70 uppercase tracking-tighter">
-                    Est. Value: {p.quoted_price ? `${p.quoted_price} IDR` : "PENDING"}
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Lead Data */}
-        <div className="space-y-4">
-          <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Profile Info</h3>
-          <div className="grid gap-3">
-            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/10 shadow-sm">
-              <MapPin className="w-4 h-4 text-white" />
-              <span className="tracking-tighter">{nationality}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm font-black uppercase bg-black/10 p-2 rounded-lg border border-white/10 shadow-sm">
-              <Briefcase className="w-4 h-4 text-white" />
-              <span className="tracking-tighter">{enrichment?.profile?.client_type || "Direct Lead"}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-0.5 bg-white/20 w-full rounded-full" />
 
         {/* Actions */}
         <div className="space-y-3">
           <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/60">Quick Operations</h3>
           <div className="grid grid-cols-1 gap-3">
             <Button 
-              onClick={() => onAssign('Me')}
+              onClick={() => onAssign('Team Member')}
               variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-white/10 border-white/40 text-white hover:bg-white/20 border-2 uppercase tracking-widest shadow-md active:scale-95 transition-all"
             >
               <User className="w-3 h-3 mr-3" /> Assign to Me
             </Button>
-            <Button variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-black/30 border-white/20 text-white hover:bg-black/40 border-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-              <CheckCircle className="w-3 h-3 mr-3" /> Processed
+            <Button 
+              onClick={() => onStatusChange('closed')}
+              variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-black/30 border-white/20 text-white hover:bg-black/40 border-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+            >
+              <CheckCircle className="w-3 h-3 mr-3" /> Processed & Close
+            </Button>
+            <Button 
+              onClick={() => onStatusChange('escalated')}
+              variant="outline" size="sm" className="w-full justify-start text-[10px] font-black bg-yellow-400 text-blue-900 hover:bg-yellow-300 border-none uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+            >
+              <AlertTriangle className="w-3 h-3 mr-3" /> Legal Escalation
             </Button>
           </div>
         </div>

@@ -11,36 +11,29 @@ interface InboxSidebarProps {
   selectedId: number | null;
   onSelect: (id: number) => void;
   isLoading: boolean;
+  filterMode: 'all' | 'unread';
+  onFilterChange: (mode: 'all' | 'unread') => void;
 }
 
-export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }: InboxSidebarProps) {
-  const [filter, setFilter] = React.useState('');
+export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, filterMode, onFilterChange }: InboxSidebarProps) {
+  const [search, setSearch] = React.useState('');
 
   const selectedConv = useMemo(() => conversations.find(c => c.id === selectedId), [conversations, selectedId]);
   const activeChannel = selectedConv?.channel;
 
   const filtered = useMemo(() => 
     conversations.filter(c => 
-      (c.client_name?.toLowerCase().includes(filter.toLowerCase()) || 
-       c.phone.includes(filter))
-    ), [conversations, filter]
+      (c.client_name?.toLowerCase().includes(search.toLowerCase()) || 
+       c.phone.includes(search))
+    ), [conversations, search]
   );
 
   const getChannelColor = (type?: ChannelType) => {
     switch (type) {
-      case 'whatsapp': return 'bg-[#4ADE80]'; // Lighter, vibrant green
+      case 'whatsapp': return 'bg-[#4ADE80]';
       case 'telegram': return 'bg-[#0088cc]';
       case 'instagram': return 'bg-[#C13584]';
       default: return 'bg-slate-900';
-    }
-  };
-
-  const ChannelIcon = ({ type }: { type: ChannelType }) => {
-    switch (type) {
-      case 'whatsapp': return <Phone className="w-3 h-3 text-white" />;
-      case 'telegram': return <Send className="w-3 h-3 text-white" />;
-      case 'instagram': return <Instagram className="w-3 h-3 text-white" />;
-      default: return <Phone className="w-3 h-3 text-white" />;
     }
   };
 
@@ -51,19 +44,31 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
     )}>
       {/* Header & Search */}
       <div className="p-4 border-b border-white/20 space-y-4 shadow-md bg-black/10">
-        <h2 className="font-black text-xl tracking-tighter px-1 text-white uppercase italic drop-shadow-md">Inbox</h2>
+        <h2 className="font-black text-xl tracking-tighter px-1 text-white uppercase italic drop-shadow-md text-center">Inbox</h2>
         <div className="relative group">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white group-focus-within:text-white transition-colors" />
           <Input 
             placeholder="Search leads..." 
             className="pl-9 bg-black/30 border-white/40 text-white placeholder:text-white/70 focus-visible:ring-white font-black transition-all shadow-inner"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <div className="flex gap-2">
-          <div className="px-4 py-1 rounded-full bg-white text-black text-[10px] font-black cursor-pointer shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">ALL</div>
-          <div className="px-4 py-1 rounded-full bg-black/20 text-white text-[10px] font-black cursor-pointer border border-white/30 hover:bg-black/30 transition-all uppercase tracking-widest">UNREAD</div>
+          <div 
+            onClick={() => onFilterChange('all')}
+            className={cn(
+              "flex-1 text-center py-1 rounded-full text-[10px] font-black cursor-pointer shadow-lg transition-all uppercase tracking-widest",
+              filterMode === 'all' ? "bg-white text-black scale-105" : "bg-black/20 text-white/60 border border-white/10"
+            )}
+          >ALL</div>
+          <div 
+            onClick={() => onFilterChange('unread')}
+            className={cn(
+              "flex-1 text-center py-1 rounded-full text-[10px] font-black cursor-pointer shadow-lg transition-all uppercase tracking-widest",
+              filterMode === 'unread' ? "bg-white text-black scale-105" : "bg-black/20 text-white/60 border border-white/10"
+            )}
+          >UNREAD</div>
         </div>
       </div>
 
@@ -89,7 +94,6 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
                   layout
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
                   key={conv.id}
                   onClick={() => onSelect(conv.id)}
                   className={cn(
@@ -100,9 +104,9 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
                   )}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <div className="font-black text-sm flex items-center gap-2 text-white tracking-tight drop-shadow-md">
+                    <div className="font-black text-sm flex items-center gap-2 text-white tracking-tight drop-shadow-sm">
                       {conv.client_name || conv.phone}
-                      {(conv.unreadCount || 0) > 0 && (
+                      {conv.unreadCount > 0 && (
                         <span className="w-3 h-3 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,1)] animate-pulse" />
                       )}
                     </div>
@@ -117,12 +121,12 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
 
                   <div className="flex items-center gap-2 mt-2">
                     <div className="text-[9px] px-2 py-0.5 flex items-center gap-1 rounded bg-white text-black font-black uppercase shadow-lg">
-                      <ChannelIcon type={conv.channel} />
+                      <Phone className="w-3 h-3" />
                       <span>{conv.channel}</span>
                     </div>
                     
                     <div className={cn(
-                      "text-[9px] px-2 py-0.5 flex items-center rounded bg-black/50 text-white border border-white/20 font-black uppercase tracking-widest",
+                      "text-[9px] px-2 py-0.5 flex items-center rounded bg-black/50 text-white border border-white/20 font-black uppercase tracking-widest shadow-sm",
                       conv.status === 'closed' && "opacity-50"
                     )}>
                       {conv.status || 'New'}
