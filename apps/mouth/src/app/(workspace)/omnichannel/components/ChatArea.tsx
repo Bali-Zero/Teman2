@@ -1,27 +1,47 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { EnrichedConversation, Message } from '../types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip, Mic, Lock, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ChatAreaProps {
   conversation: EnrichedConversation | null;
   messages: Message[];
   onSendMessage: (text: string, isNote: boolean) => void;
   onStatusChange?: (status: string) => void;
+  isLoading?: boolean;
 }
 
-export function ChatArea({ conversation, messages, onSendMessage, onStatusChange }: ChatAreaProps) {
+export function ChatArea({ conversation, messages, onSendMessage, onStatusChange, isLoading }: ChatAreaProps) {
   const [inputText, setInputText] = React.useState('');
   const [isInternalNote, setIsInternalNote] = React.useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [messages, isLoading]);
 
   if (!conversation) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-slate-400 bg-[#f8fafc]">
-        <Bot className="w-16 h-16 mb-4 opacity-20" />
-        <p className="text-lg font-bold uppercase tracking-widest">Select a conversation</p>
-        <p className="text-xs font-medium">Command Center v2.0 - Ready</p>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center"
+        >
+          <Bot className="w-16 h-16 mb-4 opacity-20" />
+          <p className="text-lg font-bold uppercase tracking-widest">Select a conversation</p>
+          <p className="text-xs font-medium">Command Center v2.0 - Ready</p>
+        </motion.div>
       </div>
     );
   }
@@ -35,9 +55,13 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
   const clientName = conversation.client_name || conversation.phone || "Unknown";
 
   return (
-    <div className="flex flex-col h-full bg-[#f3f4f6]"> {/* Light Gray Background */}
+    <div className="flex flex-col h-full bg-[#f3f4f6] overflow-hidden">
       {/* Header */}
-      <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-white shadow-sm z-10">
+      <motion.div 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-white shadow-sm z-10"
+      >
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white border-2 border-white shadow-sm">
             {clientName.substring(0, 2).toUpperCase()}
@@ -55,48 +79,59 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
               </span>
             </h3>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-              {conversation.phone} • Last active {new Date(conversation.last_message_date).toLocaleTimeString()}
+              {conversation.phone}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button 
             onClick={() => onStatusChange?.('closed')}
-            variant="outline" size="sm" className="font-bold text-xs uppercase border-slate-300"
+            variant="outline" size="sm" className="font-bold text-xs uppercase border-slate-300 hover:bg-slate-50 transition-colors"
           >
             Mark as Done
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Messages Stream */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((msg) => (
-          <div key={msg.id} className={cn(
-            "flex w-full",
-            msg.sender === 'agent' ? "justify-end" : "justify-start"
-          )}>
-            <div className={cn(
-              "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
-              msg.sender === 'agent' && !msg.isInternalNote && "bg-slate-800 text-white rounded-tr-none", // Agent messages in Dark Slate
-              msg.sender === 'user' && "bg-white border border-slate-200 text-slate-900 rounded-tl-none font-medium",
-              msg.isInternalNote && "bg-amber-100 border-amber-200 text-amber-900 border font-medium"
-            )}>
-              {msg.isInternalNote && (
-                <div className="flex items-center gap-1 text-[9px] font-black uppercase mb-1 text-amber-700">
-                  <Lock className="w-3 h-3" /> Internal Team Note
-                </div>
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth"
+      >
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <motion.div 
+              key={msg.id}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "flex w-full",
+                msg.sender === 'agent' ? "justify-end" : "justify-start"
               )}
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-              <span className={cn(
-                "text-[9px] mt-2 block text-right font-bold uppercase opacity-50",
-                msg.sender === 'agent' ? "text-white/70" : "text-slate-400"
+            >
+              <div className={cn(
+                "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm transition-all",
+                msg.sender === 'agent' && !msg.isInternalNote && "bg-slate-800 text-white rounded-tr-none hover:bg-slate-700",
+                msg.sender === 'user' && "bg-white border border-slate-200 text-slate-900 rounded-tl-none font-medium hover:border-slate-300",
+                msg.isInternalNote && "bg-amber-100 border-amber-200 text-amber-900 border font-medium shadow-inner"
               )}>
-                {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </span>
-            </div>
-          </div>
-        ))}
+                {msg.isInternalNote && (
+                  <div className="flex items-center gap-1 text-[9px] font-black uppercase mb-1 text-amber-700">
+                    <Lock className="w-3 h-3" /> Internal Team Note
+                  </div>
+                )}
+                <p className="text-sm whitespace-pre-wrap leading-relaxed tracking-tight">{msg.text}</p>
+                <span className={cn(
+                  "text-[9px] mt-2 block text-right font-bold uppercase opacity-50",
+                  msg.sender === 'agent' ? "text-white/70" : "text-slate-400"
+                )}>
+                  {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Input Area */}
@@ -105,7 +140,7 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
         isInternalNote ? "bg-amber-50" : "bg-white"
       )}>
         <div className="flex items-center gap-2 mb-2">
-          <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+          <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200 shadow-sm">
             <button 
               onClick={() => setIsInternalNote(false)}
               className={cn(
@@ -133,7 +168,7 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={isInternalNote ? "Add a private team note..." : "Type your message..."}
             className={cn(
-              "pr-24 min-h-[50px] py-3 border-slate-300 font-medium placeholder:text-slate-400",
+              "pr-24 min-h-[50px] py-3 border-slate-300 font-medium placeholder:text-slate-400 shadow-sm transition-all focus:shadow-md",
               isInternalNote && "bg-amber-50 border-amber-300 focus-visible:ring-amber-400"
             )}
           />
@@ -145,7 +180,7 @@ export function ChatArea({ conversation, messages, onSendMessage, onStatusChange
               size="icon" 
               onClick={handleSend}
               className={cn(
-                "h-8 w-8 ml-1 rounded-full",
+                "h-8 w-8 ml-1 rounded-full shadow-lg transition-all active:scale-95",
                 isInternalNote ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-slate-900 hover:bg-slate-800 text-white"
               )}
             >
