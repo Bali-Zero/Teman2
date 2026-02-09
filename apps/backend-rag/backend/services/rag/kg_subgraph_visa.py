@@ -207,7 +207,7 @@ async def get_visa_requirements_node(
         "kitas": {
             "documents": [
                 "Passport (valid >18 months)",
-                "VITAS (electronic visa approval)",
+                "E-Visa approval",
                 "Sponsorship letter from PT PMA",
                 "IMTA (work permit approval)",
                 "Employment contract",
@@ -332,8 +332,8 @@ async def synthesize_visa_workflow_node(
     if visa_type in ["kitas", "kitap"]:
         steps.append({
             "step": len(steps) + 1,
-            "action": f"Apply for VITAS online via imigrasi.go.id",
-            "entity_id": f"evitas_{visa_type}",
+            "action": f"Apply for E-Visa online via imigrasi.go.id",
+            "entity_id": f"evisa_{visa_type}",
             "details": {
                 "system": "Online application via immigration portal",
                 "processing_time": "7-14 days",
