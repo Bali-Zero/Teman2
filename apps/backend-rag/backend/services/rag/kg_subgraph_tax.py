@@ -170,7 +170,9 @@ async def get_tax_obligations_node(
                 "note": "May be reduced by tax treaty",
             },
             "ppn": {
-                "rate": 0.11,  # 11% VAT (effective 2022)
+                # TODO: VERIFY PPN RATE FOR 2026 - Was 11% in 2022-2024, planned increase to 12% in Jan 2025
+                # Current rate needs verification from official sources (Direktorat Jenderal Pajak)
+                "rate": 0.11,  # 11% VAT (effective 2022, may be outdated)
                 "description": "Value Added Tax",
                 "filing_deadline": "End of following month",
                 "threshold": 4_800_000_000,  # 4.8B IDR
@@ -268,6 +270,7 @@ async def calculate_tax_requirements_node(
         }
 
         if state.get("vat_applicable"):
+            # TODO: VERIFY PPN RATE - May be 12% in 2026 (was 11% in 2022-2024)
             # VAT: 11% on revenue (simplified)
             vat_payable = revenue * 0.11
             tax_summary["vat_ppn"] = vat_payable
