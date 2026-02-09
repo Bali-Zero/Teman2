@@ -207,7 +207,7 @@ async def get_visa_requirements_node(
         "kitas": {
             "documents": [
                 "Passport (valid >18 months)",
-                "e-VITAS (electronic visa approval)",
+                "VITAS (electronic visa approval)",
                 "Sponsorship letter from PT PMA",
                 "IMTA (work permit approval)",
                 "Employment contract",
@@ -316,14 +316,14 @@ async def synthesize_visa_workflow_node(
 
     steps = []
 
-    # Step 1: RPTKA (if work visa)
+    # Step 1: IMTA/TKA Allocation (if work visa)
     if requires_rptka:
         steps.append({
             "step": 1,
-            "action": "Apply for RPTKA via OSS",
-            "entity_id": "rptka",
+            "action": "Apply for TKA allocation quota and IMTA via SPKP system (Kementerian Ketenagakerjaan)",
+            "entity_id": "imta_tka",
             "details": {
-                "requirement": "Work permit for foreign employee",
+                "requirement": "Work permit for foreign employee (IMTA)",
                 "processing_time": "2-4 weeks",
             }
         })
@@ -332,10 +332,10 @@ async def synthesize_visa_workflow_node(
     if visa_type in ["kitas", "kitap"]:
         steps.append({
             "step": len(steps) + 1,
-            "action": f"Apply for VITAS 21{1 if visa_type == 'kitas' else 3}",
-            "entity_id": f"vitas_{visa_type}",
+            "action": f"Apply for VITAS online via imigrasi.go.id",
+            "entity_id": f"evitas_{visa_type}",
             "details": {
-                "location": "Indonesian embassy in home country",
+                "system": "Online application via immigration portal",
                 "processing_time": "7-14 days",
             }
         })

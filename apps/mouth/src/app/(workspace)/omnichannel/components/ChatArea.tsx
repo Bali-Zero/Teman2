@@ -2,7 +2,7 @@ import React from 'react';
 import { EnrichedConversation, Message } from '../types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, Mic, Lock, User, Bot } from "lucide-react";
+import { Send, Paperclip, Mic, Lock, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatAreaProps {
@@ -17,10 +17,10 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
 
   if (!conversation) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-muted/10">
+      <div className="flex flex-col items-center justify-center h-full text-slate-400 bg-[#f8fafc]">
         <Bot className="w-16 h-16 mb-4 opacity-20" />
-        <p className="text-lg font-medium">Select a conversation to start working</p>
-        <p className="text-sm">Pick a lead from the inbox on the left.</p>
+        <p className="text-lg font-bold uppercase tracking-widest">Select a conversation</p>
+        <p className="text-xs font-medium">Command Center v2.0 - Ready</p>
       </div>
     );
   }
@@ -34,18 +34,18 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
   const clientName = conversation.client_name || conversation.phone || "Unknown";
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border">
+    <div className="flex flex-col h-full bg-[#f3f4f6]"> {/* Light Gray Background */}
       {/* Header */}
-      <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50">
+      <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-white shadow-sm z-10">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground border-2 border-background">
+          <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white border-2 border-white shadow-sm">
             {clientName.substring(0, 2).toUpperCase()}
           </div>
           <div>
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 flex items-center gap-2">
               {clientName}
               <span className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider",
+                "px-2 py-0.5 rounded-full text-[10px] uppercase font-black tracking-widest",
                 conversation.channel === 'whatsapp' && "bg-green-100 text-green-700",
                 conversation.channel === 'telegram' && "bg-blue-100 text-blue-700",
                 conversation.channel === 'instagram' && "bg-pink-100 text-pink-700",
@@ -53,36 +53,39 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
                 {conversation.channel}
               </span>
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
               {conversation.phone} • Last active {new Date(conversation.last_message_date).toLocaleTimeString()}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">Mark as Done</Button>
+          <Button variant="outline" size="sm" className="font-bold text-xs uppercase border-slate-300">Mark as Done</Button>
         </div>
       </div>
 
       {/* Messages Stream */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/5">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((msg) => (
           <div key={msg.id} className={cn(
             "flex w-full",
             msg.sender === 'agent' ? "justify-end" : "justify-start"
           )}>
             <div className={cn(
-              "max-w-[70%] rounded-2xl px-4 py-3 shadow-sm",
-              msg.sender === 'agent' && !msg.isInternalNote && "bg-primary text-primary-foreground rounded-tr-none",
-              msg.sender === 'user' && "bg-card border border-border text-foreground rounded-tl-none",
-              msg.isInternalNote && "bg-yellow-100 border-yellow-200 text-yellow-900 border"
+              "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
+              msg.sender === 'agent' && !msg.isInternalNote && "bg-slate-800 text-white rounded-tr-none", // Agent messages in Dark Slate
+              msg.sender === 'user' && "bg-white border border-slate-200 text-slate-900 rounded-tl-none font-medium",
+              msg.isInternalNote && "bg-amber-100 border-amber-200 text-amber-900 border font-medium"
             )}>
               {msg.isInternalNote && (
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase mb-1 opacity-70">
-                  <Lock className="w-3 h-3" /> Internal Note
+                <div className="flex items-center gap-1 text-[9px] font-black uppercase mb-1 text-amber-700">
+                  <Lock className="w-3 h-3" /> Internal Team Note
                 </div>
               )}
               <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-              <span className="text-[10px] opacity-50 mt-2 block text-right">
+              <span className={cn(
+                "text-[9px] mt-2 block text-right font-bold uppercase opacity-50",
+                msg.sender === 'agent' ? "text-white/70" : "text-slate-400"
+              )}>
                 {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
               </span>
             </div>
@@ -92,16 +95,16 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
 
       {/* Input Area */}
       <div className={cn(
-        "p-4 border-t border-border transition-colors duration-300",
-        isInternalNote ? "bg-yellow-50/50" : "bg-background"
+        "p-4 border-t border-slate-200 bg-white transition-all duration-300",
+        isInternalNote ? "bg-amber-50" : "bg-white"
       )}>
         <div className="flex items-center gap-2 mb-2">
-          <div className="flex bg-muted rounded-lg p-1">
+          <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
             <button 
               onClick={() => setIsInternalNote(false)}
               className={cn(
-                "px-3 py-1 rounded-md text-xs font-medium transition-all",
-                !isInternalNote ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                "px-4 py-1 rounded-md text-[10px] font-black uppercase transition-all",
+                !isInternalNote ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600"
               )}
             >
               Reply
@@ -109,11 +112,11 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
             <button 
               onClick={() => setIsInternalNote(true)}
               className={cn(
-                "px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1",
-                isInternalNote ? "bg-yellow-100 text-yellow-800 shadow-sm" : "text-muted-foreground hover:text-foreground"
+                "px-4 py-1 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1",
+                isInternalNote ? "bg-amber-200 text-amber-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
               )}
             >
-              <Lock className="w-3 h-3" /> Note
+              <Lock className="w-3 h-3" /> Team Note
             </button>
           </div>
         </div>
@@ -122,35 +125,27 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={isInternalNote ? "Add a private note for the team..." : "Type a message to the client..."}
+            placeholder={isInternalNote ? "Add a private team note..." : "Type your message..."}
             className={cn(
-              "pr-24 min-h-[50px] py-3",
-              isInternalNote && "bg-yellow-50 border-yellow-200 focus-visible:ring-yellow-400"
+              "pr-24 min-h-[50px] py-3 border-slate-300 font-medium placeholder:text-slate-400",
+              isInternalNote && "bg-amber-50 border-amber-300 focus-visible:ring-amber-400"
             )}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:bg-slate-100">
               <Paperclip className="w-4 h-4" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-              <Mic className="w-4 h-4" />
             </Button>
             <Button 
               size="icon" 
               onClick={handleSend}
               className={cn(
-                "h-8 w-8 ml-1",
-                isInternalNote ? "bg-yellow-500 hover:bg-yellow-600 text-white" : ""
+                "h-8 w-8 ml-1 rounded-full",
+                isInternalNote ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-slate-900 hover:bg-slate-800 text-white"
               )}
             >
               <Send className="w-4 h-4" />
             </Button>
           </div>
-        </div>
-        <div className="flex justify-between items-center mt-2 px-1">
-          <span className="text-[10px] text-muted-foreground">
-            <strong>AI Draft:</strong> Press <kbd className="bg-muted px-1 rounded">Tab</kbd> to complete
-          </span>
         </div>
       </div>
     </div>

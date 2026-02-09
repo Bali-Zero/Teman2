@@ -14,10 +14,22 @@ interface InboxSidebarProps {
 export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }: InboxSidebarProps) {
   const [filter, setFilter] = React.useState('');
 
+  const selectedConv = conversations.find(c => c.id === selectedId);
+  const activeChannel = selectedConv?.channel;
+
   const filtered = conversations.filter(c => 
     (c.client_name?.toLowerCase().includes(filter.toLowerCase()) || 
      c.phone.includes(filter))
   );
+
+  const getChannelColor = (type?: ChannelType) => {
+    switch (type) {
+      case 'whatsapp': return 'bg-[#075E54]'; // WA Dark Green
+      case 'telegram': return 'bg-[#0088cc]'; // TG Blue
+      case 'instagram': return 'bg-[#C13584]'; // IG Pink/Purple
+      default: return 'bg-slate-900';
+    }
+  };
 
   const ChannelIcon = ({ type }: { type: ChannelType }) => {
     switch (type) {
@@ -29,68 +41,68 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading }:
   };
 
   return (
-    <div className="w-[350px] flex flex-col border-r border-border bg-card h-full">
+    <div className={cn(
+      "w-[350px] flex flex-col border-r border-white/10 h-full transition-colors duration-500",
+      getChannelColor(activeChannel)
+    )}>
       {/* Header & Search */}
-      <div className="p-4 border-b border-border space-y-4">
-        <h2 className="font-bold text-lg tracking-tight px-1">Inbox</h2>
+      <div className="p-4 border-b border-white/10 space-y-4">
+        <h2 className="font-bold text-lg tracking-tight px-1 text-white">Inbox</h2>
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white/60" />
           <Input 
             placeholder="Search leads..." 
-            className="pl-9 bg-background"
+            className="pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <div className="px-2 py-1 rounded bg-secondary text-secondary-foreground text-[10px] font-medium cursor-pointer">All</div>
-          <div className="px-2 py-1 rounded border border-border text-[10px] font-medium cursor-pointer">Unread</div>
+          <div className="px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-bold cursor-pointer hover:bg-white/30 transition-colors">ALL</div>
+          <div className="px-3 py-1 rounded-full border border-white/20 text-white/80 text-[10px] font-bold cursor-pointer hover:bg-white/10 transition-colors">UNREAD</div>
         </div>
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading conversations...</div>
+          <div className="p-8 text-center text-white/40 text-sm">Loading conversations...</div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-white/5">
             {filtered.map((conv) => (
               <div 
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}
                 className={cn(
-                  "p-4 cursor-pointer hover:bg-accent/50 transition-colors group relative",
-                  selectedId === conv.id && "bg-accent border-l-4 border-l-primary pl-[13px]"
+                  "p-4 cursor-pointer transition-all group relative border-l-4 border-l-transparent",
+                  selectedId === conv.id 
+                    ? "bg-white/10 border-l-white shadow-inner" 
+                    : "hover:bg-white/5"
                 )}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <div className="font-semibold text-sm flex items-center gap-2">
+                  <div className="font-bold text-sm flex items-center gap-2 text-white">
                     {conv.client_name || conv.phone}
                     {(conv.unreadCount || 0) > 0 && (
-                      <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      <span className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
                     )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  <span className="text-[10px] text-white/50 font-medium">
                     {new Date(conv.last_message_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </span>
                 </div>
                 
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pr-4 leading-relaxed">
+                <p className="text-xs text-white/70 line-clamp-2 mb-2 pr-4 leading-relaxed font-medium">
                   {conv.last_message || "No messages yet"}
                 </p>
 
                 <div className="flex items-center gap-2 mt-2">
-                  <div className={cn(
-                    "text-[10px] px-1.5 h-5 flex items-center gap-1 rounded border font-normal",
-                    conv.channel === 'whatsapp' && "bg-green-50 text-green-700 border-green-200",
-                    conv.channel === 'telegram' && "bg-blue-50 text-blue-700 border-blue-200",
-                    conv.channel === 'instagram' && "bg-pink-50 text-pink-700 border-pink-200",
-                  )}>
+                  <div className="text-[9px] px-2 py-0.5 flex items-center gap-1 rounded-full bg-white/10 text-white border border-white/10 font-bold uppercase tracking-tighter">
                     <ChannelIcon type={conv.channel} />
                     {conv.channel}
                   </div>
                   
-                  <div className="text-[10px] px-1.5 h-5 flex items-center rounded border bg-gray-100 text-gray-600 border-gray-200 font-normal">
+                  <div className="text-[9px] px-2 py-0.5 flex items-center rounded-full bg-black/20 text-white/80 border border-white/5 font-bold uppercase tracking-tighter">
                     {conv.status || 'New'}
                   </div>
                 </div>
