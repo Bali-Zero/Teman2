@@ -52,6 +52,7 @@ from backend.app.routers import (
     oracle_universal,
     performance,
     portal,
+    query_analytics,
     portal_invite,
     portal_taxes,
     portal_visa,
@@ -63,7 +64,9 @@ from backend.app.routers import (
     telegram,
     twitter,
     voice,
+    webhook_chat,  # [NEW] Webhook Chat with auto-persistence
     webhooks,
+    workflow_analytics,  # [NEW] Workflow analytics & feedback
     websocket,
     whatsapp_chat,
     whatsapp_conversations,
@@ -150,12 +153,13 @@ def include_routers(api: FastAPI) -> None:
 
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
-    api.include_router(telegram.router)  # Telegram bot integration
-    api.include_router(twitter.router)  # Twitter/X omnichannel API
+    # api.include_router(telegram.router)  # Telegram bot integration
+    # api.include_router(twitter.router)  # Twitter/X omnichannel API
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage
     api.include_router(whatsapp_chat.alias_router)  # Legacy Meta webhook URL alias
     api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API
-    api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
+    # api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
+    api.include_router(webhook_chat.router)  # Webhook chat with auto-persistence
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router
@@ -204,6 +208,12 @@ def include_routers(api: FastAPI) -> None:
 
     # Analytics router (Founder-only dashboard)
     api.include_router(analytics.router)
+
+    # Query Analytics router (RAG query insights dashboard)
+    api.include_router(query_analytics.router)
+
+    # Workflow Analytics router (LangGraph workflow tracking & feedback)
+    api.include_router(workflow_analytics.router)
 
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)
