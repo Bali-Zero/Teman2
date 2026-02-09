@@ -5,15 +5,15 @@ from backend.llm.adapters.gemini import GeminiAdapter
 
 
 class ModelType(Enum):
-    """Active models only - updated 2026-02-09 for Gemini 2.5 Flash"""
+    """Active models only - updated 2026-02-09 (Vertex AI stable models)"""
 
-    GEMINI_3_FLASH = "gemini-3-flash-preview"  # Primary tier (Gemini 3 Flash Preview - latest)
-    GEMINI_FLASH = "gemini-2.0-flash-001"  # Fallback tier
+    GEMINI_FLASH = "gemini-2.5-flash"  # Primary tier (latest stable, June 2025)
+    GEMINI_FLASH_FALLBACK = "gemini-2.0-flash-001"  # Fallback tier
 
 
 ADAPTER_REGISTRY = {
-    ModelType.GEMINI_3_FLASH: GeminiAdapter,
     ModelType.GEMINI_FLASH: GeminiAdapter,
+    ModelType.GEMINI_FLASH_FALLBACK: GeminiAdapter,
 }
 
 

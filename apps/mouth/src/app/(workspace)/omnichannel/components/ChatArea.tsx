@@ -1,6 +1,5 @@
 import React from 'react';
 import { EnrichedConversation, Message } from '../types';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Paperclip, Mic, Lock, User, Bot } from "lucide-react";
@@ -32,17 +31,19 @@ export function ChatArea({ conversation, messages, onSendMessage }: ChatAreaProp
     setInputText('');
   };
 
+  const clientName = conversation.client_name || conversation.phone || "Unknown";
+
   return (
     <div className="flex flex-col h-full bg-background border-r border-border">
       {/* Header */}
       <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-background">
-            <AvatarFallback>{conversation.client_name.substring(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground border-2 border-background">
+            {clientName.substring(0, 2).toUpperCase()}
+          </div>
           <div>
             <h3 className="font-semibold text-foreground flex items-center gap-2">
-              {conversation.client_name}
+              {clientName}
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider",
                 conversation.channel === 'whatsapp' && "bg-green-100 text-green-700",
