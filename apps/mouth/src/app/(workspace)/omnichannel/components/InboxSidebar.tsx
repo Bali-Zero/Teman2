@@ -44,7 +44,7 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, f
     )}>
       {/* Header & Search */}
       <div className="p-4 border-b border-white/20 space-y-4 shadow-md bg-black/10">
-        <h2 className="font-black text-xl tracking-tighter px-1 text-white uppercase italic drop-shadow-md text-center">Inbox</h2>
+        <h2 className="font-black text-xl tracking-tighter px-1 text-white uppercase italic drop-shadow-md text-center">INBOX v2.1</h2>
         <div className="relative group">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white group-focus-within:text-white transition-colors" />
           <Input 
