@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/mouth/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "installCommand": "npm install --include=dev",
+  "buildCommand": "cd apps/mouth && npm run build"
+}
