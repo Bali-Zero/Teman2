@@ -16,7 +16,7 @@ import { WhatsAppApi } from './whatsapp/whatsapp.api';
 import { TelegramApi } from './telegram/telegram.api';
 import { InstagramApi } from './instagram/instagram.api';
 import { TwitterApi } from './twitter/twitter.api';
-import { workflowApi } from './workflow';
+import { WorkflowApi } from './workflow';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
 import { KnowledgeActivityApi } from './knowledge-activity.api';
@@ -58,6 +58,7 @@ export class ApiClient extends ApiClientBase {
   private telegramApi: TelegramApi;
   private instagramApi: InstagramApi;
   private twitterApi: TwitterApi;
+  private workflowApi: WorkflowApi;
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
   private kbActivityApi: KnowledgeActivityApi;
@@ -81,6 +82,7 @@ export class ApiClient extends ApiClientBase {
     this.telegramApi = new TelegramApi(this);
     this.instagramApi = new InstagramApi(this);
     this.twitterApi = new TwitterApi(this);
+    this.workflowApi = new WorkflowApi(this);
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
     this.kbActivityApi = new KnowledgeActivityApi(this);
@@ -171,8 +173,8 @@ export class ApiClient extends ApiClientBase {
     return this.twitterApi;
   }
 
-  public get workflow() {
-    return workflowApi;
+  public get workflow(): WorkflowApi {
+    return this.workflowApi;
   }
 
   // ============================================================================
