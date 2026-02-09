@@ -159,10 +159,11 @@ async def check_rptka_requirements_node(
         "requirement_type": "rptka",
         "description": "Work Permit for Foreign Workers",
         "steps": [
-            "Submit RPTKA application via OSS",
+            "Submit TKA allocation quota application to Kementerian Ketenagakerjaan",
+            "Apply for IMTA (Izin Mempekerjakan Tenaga Kerja Asing) online via SPKP system",
             "Provide job description and justification",
             "Provide local training plan (mentorship program)",
-            "Pay RPTKA fee (USD 100/month)",
+            "Pay IMTA fee per worker",
         ],
         "duration": "Typically 2-4 weeks",
         "validity": "Matches employment contract (max 5 years)",
