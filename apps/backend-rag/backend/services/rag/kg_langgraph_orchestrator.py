@@ -441,43 +441,45 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     # Initialize StateGraph
     workflow = StateGraph(KGAgentState)
 
+    # Create async closures that capture db_pool
+    # (lambdas can't be async, so we need proper async functions)
+    async def _resolve(state: KGAgentState) -> KGAgentState:
+        return await resolve_entities_wrapper(state, db_pool)
+
+    async def _traverse(state: KGAgentState) -> KGAgentState:
+        return await traverse_graph_wrapper(state, db_pool)
+
+    async def _synthesize(state: KGAgentState) -> KGAgentState:
+        return await synthesize_workflow_wrapper(state, db_pool)
+
+    async def _golden_route(state: KGAgentState) -> KGAgentState:
+        return await use_golden_route_node(state, db_pool)
+
+    async def _company_subgraph(state: KGAgentState) -> KGAgentState:
+        return await invoke_company_subgraph(state, db_pool)
+
+    async def _visa_subgraph(state: KGAgentState) -> KGAgentState:
+        return await invoke_visa_subgraph(state, db_pool)
+
+    async def _property_subgraph(state: KGAgentState) -> KGAgentState:
+        return await invoke_property_subgraph(state, db_pool)
+
+    async def _tax_subgraph(state: KGAgentState) -> KGAgentState:
+        return await invoke_tax_subgraph(state, db_pool)
+
     # Add core nodes
     workflow.add_node("understand_query", understand_query_wrapper)
-    workflow.add_node(
-        "resolve_entities",
-        lambda state: resolve_entities_wrapper(state, db_pool),
-    )
-    workflow.add_node(
-        "traverse_graph",
-        lambda state: traverse_graph_wrapper(state, db_pool),
-    )
+    workflow.add_node("resolve_entities", _resolve)
+    workflow.add_node("traverse_graph", _traverse)
     workflow.add_node("reason", reason_wrapper)
-    workflow.add_node(
-        "synthesize_workflow",
-        lambda state: synthesize_workflow_wrapper(state, db_pool),
-    )
-    workflow.add_node(
-        "use_golden_route",
-        lambda state: use_golden_route_node(state, db_pool),
-    )
+    workflow.add_node("synthesize_workflow", _synthesize)
+    workflow.add_node("use_golden_route", _golden_route)
 
     # Add subgraph nodes (Phase 3)
-    workflow.add_node(
-        "company_subgraph",
-        lambda state: invoke_company_subgraph(state, db_pool),
-    )
-    workflow.add_node(
-        "visa_subgraph",
-        lambda state: invoke_visa_subgraph(state, db_pool),
-    )
-    workflow.add_node(
-        "property_subgraph",
-        lambda state: invoke_property_subgraph(state, db_pool),
-    )
-    workflow.add_node(
-        "tax_subgraph",
-        lambda state: invoke_tax_subgraph(state, db_pool),
-    )
+    workflow.add_node("company_subgraph", _company_subgraph)
+    workflow.add_node("visa_subgraph", _visa_subgraph)
+    workflow.add_node("property_subgraph", _property_subgraph)
+    workflow.add_node("tax_subgraph", _tax_subgraph)
 
     # Set entry point
     workflow.set_entry_point("understand_query")
