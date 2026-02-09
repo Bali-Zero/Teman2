@@ -39,6 +39,18 @@ async def get_whatsapp_conversations(
 
             conversations = []
             for row in rows:
+                # Extract phone from session_id (wa_session_NUMBER) or user_id (whatsapp_NUMBER)
+                session_id = row["session_id"] or ""
+                user_id = row["user_id"] or ""
+                phone = ""
+                if "wa_session_" in session_id:
+                    phone = session_id.replace("wa_session_", "")
+                elif "whatsapp_" in user_id:
+                    phone = user_id.replace("whatsapp_", "")
+                
+                if not phone:
+                    phone = "unknown"
+
                 # Robust but simple parsing
                 messages_raw = row["messages"]
                 last_msg_text = "Click to view messages"

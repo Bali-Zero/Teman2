@@ -111,6 +111,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/auth/team/login",  # BUSINESS: Team member login - must be public to allow initial authentication
             "/api/auth/login",  # BUSINESS: User login endpoint - must be public to allow initial authentication
             "/api/auth/csrf-token",  # BUSINESS: CSRF token generation - must be public for CSRF protection flow
+            "/api/whatsapp/conversations",  # BUSINESS: Omnichannel dashboard - allowing access via proxy
+            "/api/whatsapp/messages/",  # BUSINESS: Message history
+            "/api/telegram/conversations",
+            "/api/telegram/messages/",
+            "/api/instagram/conversations",
+            "/api/instagram/messages/",
             # ========================================================================
             # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
             # ========================================================================
@@ -134,6 +140,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
+            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
             # ========================================================================
