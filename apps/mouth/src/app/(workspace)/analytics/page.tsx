@@ -131,7 +131,7 @@ function StatCard({
       className={cn(
         'p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]',
         onClick &&
-          'cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all',
+        'cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all',
         accent?.border
       )}
     >
@@ -293,6 +293,43 @@ function DataTable({
   );
 }
 
+// Query Insights Types (from /api/analytics/query-insights)
+interface QueryInsightsData {
+  period_days: number;
+  failed_queries: Array<{
+    query_text: string;
+    fail_count: number;
+    collections_attempted: string[];
+    last_seen: string;
+  }>;
+  collection_hit_rates: Array<{
+    collection_name: string;
+    total_queries: number;
+    successful_queries: number;
+    hit_rate_percent: number;
+  }>;
+  query_volume_hourly: Array<{
+    bucket: string;
+    query_count: number;
+    failed_count: number;
+    avg_latency_ms: number;
+  }>;
+  query_volume_daily: Array<{
+    bucket: string;
+    query_count: number;
+    failed_count: number;
+    avg_latency_ms: number;
+  }>;
+  satisfaction: {
+    thumbs_up: number;
+    thumbs_down: number;
+    total_feedback: number;
+    total_queries: number;
+    satisfaction_percent: number | null;
+  };
+  generated_at: string;
+}
+
 // LLM Usage Stats Types
 interface LLMUsageStats {
   total_prompt_tokens: number;
@@ -321,6 +358,7 @@ interface LLMUsageStats {
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<AllAnalytics | null>(null);
   const [llmUsage, setLlmUsage] = useState<LLMUsageStats | null>(null);
+  const [queryInsights, setQueryInsights] = useState<QueryInsightsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -331,10 +369,15 @@ export default function AnalyticsDashboard() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch both analytics and LLM usage in parallel
-      const [analytics, llmStats] = await Promise.all([
+      // Fetch analytics, LLM usage, and query insights in parallel
+      const [analytics, llmStats, qInsights] = await Promise.all([
         api.analytics.getAll(),
         fetch('/api/analytics/llm-usage', {
+          credentials: 'include',
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null),
+        fetch('/api/analytics/query-insights?days=7', {
           credentials: 'include',
         })
           .then((res) => (res.ok ? res.json() : null))
@@ -343,6 +386,7 @@ export default function AnalyticsDashboard() {
 
       setData(analytics);
       setLlmUsage(llmStats);
+      setQueryInsights(qInsights);
       setLastRefresh(new Date());
 
       if (showToast) {
@@ -370,6 +414,7 @@ export default function AnalyticsDashboard() {
     const exportData = {
       ...data,
       llm_usage: llmUsage,
+      query_insights: queryInsights,
       exported_at: new Date().toISOString(),
     };
 
@@ -731,6 +776,179 @@ export default function AnalyticsDashboard() {
             )}
           </div>
         </ExpandableSection>
+
+        {/* Query Insights */}
+        {queryInsights && (
+          <ExpandableSection
+            title="Query Insights"
+            icon={Search}
+            isExpanded={expandedSection === 'query-insights'}
+            onToggle={() => toggleSection('query-insights')}
+            summary={
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
+                  <p className="text-xs text-[var(--foreground-muted)]">Total Queries</p>
+                  <p className="text-lg font-bold">{queryInsights.satisfaction.total_queries}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-[var(--error)]/10 text-center">
+                  <p className="text-xs text-[var(--error)]">Failed Queries</p>
+                  <p className="text-lg font-bold text-[var(--error)]">{queryInsights.failed_queries.length}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-[var(--success)]/10 text-center">
+                  <p className="text-xs text-[var(--success)]">Satisfaction</p>
+                  <p className="text-lg font-bold text-[var(--success)]">
+                    {queryInsights.satisfaction.satisfaction_percent != null
+                      ? `${queryInsights.satisfaction.satisfaction_percent}%`
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            }
+          >
+            <div className="space-y-6">
+              {/* Satisfaction Overview */}
+              <div>
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[var(--accent)]" />
+                  User Satisfaction
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
+                    <p className="text-xs text-[var(--success)]">Thumbs Up</p>
+                    <p className="text-2xl font-bold text-[var(--success)]">
+                      {queryInsights.satisfaction.thumbs_up}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
+                    <p className="text-xs text-[var(--error)]">Thumbs Down</p>
+                    <p className="text-2xl font-bold text-[var(--error)]">
+                      {queryInsights.satisfaction.thumbs_down}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
+                    <p className="text-xs text-[var(--foreground-muted)]">Total Feedback</p>
+                    <p className="text-2xl font-bold">{queryInsights.satisfaction.total_feedback}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
+                    <p className="text-xs text-[var(--accent)]">Satisfaction</p>
+                    <p className="text-2xl font-bold text-[var(--accent)]">
+                      {queryInsights.satisfaction.satisfaction_percent != null
+                        ? `${queryInsights.satisfaction.satisfaction_percent}%`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collection Hit Rates */}
+              {queryInsights.collection_hit_rates.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Database className="w-4 h-4 text-[var(--accent)]" />
+                    Collection Hit Rates
+                  </h4>
+                  <div className="space-y-3">
+                    {queryInsights.collection_hit_rates.map((c) => (
+                      <div key={c.collection_name}>
+                        <ProgressBar
+                          value={c.hit_rate_percent}
+                          label={`${c.collection_name} (${c.total_queries} queries)`}
+                          color={c.hit_rate_percent > 70 ? 'success' : c.hit_rate_percent > 40 ? 'warning' : 'danger'}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Failed Queries */}
+              {queryInsights.failed_queries.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-[var(--error)]" />
+                    Top Failed Queries (0 chunks retrieved)
+                  </h4>
+                  <DataTable
+                    headers={['Query', 'Fails', 'Collections', 'Last Seen']}
+                    rows={queryInsights.failed_queries.map((q) => [
+                      <span key="q" className="truncate max-w-[250px] block text-sm">
+                        {q.query_text}
+                      </span>,
+                      <span key="c" className="font-medium text-[var(--error)]">
+                        {q.fail_count}x
+                      </span>,
+                      <span key="col" className="text-xs text-[var(--foreground-muted)]">
+                        {q.collections_attempted?.join(', ') || '-'}
+                      </span>,
+                      <span key="t" className="text-xs text-[var(--foreground-muted)]">
+                        {q.last_seen ? new Date(q.last_seen).toLocaleDateString() : '-'}
+                      </span>,
+                    ])}
+                  />
+                </div>
+              )}
+
+              {/* Query Volume (Daily) */}
+              {queryInsights.query_volume_daily.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-[var(--accent)]" />
+                    Query Volume (Daily)
+                  </h4>
+                  <div className="flex items-end gap-2 h-32">
+                    {queryInsights.query_volume_daily
+                      .slice()
+                      .reverse()
+                      .map((v, i) => {
+                        const maxCount = Math.max(
+                          ...queryInsights.query_volume_daily.map((d) => d.query_count),
+                          1
+                        );
+                        const heightPercent = (v.query_count / maxCount) * 100;
+                        const failPercent =
+                          v.query_count > 0 ? (v.failed_count / v.query_count) * 100 : 0;
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                              {v.query_count}
+                            </span>
+                            <div
+                              className="w-full rounded-t relative overflow-hidden"
+                              style={{ height: `${Math.max(heightPercent, 4)}%` }}
+                            >
+                              <div className="absolute inset-0 bg-[var(--accent)]" />
+                              {failPercent > 0 && (
+                                <div
+                                  className="absolute bottom-0 left-0 right-0 bg-[var(--error)]"
+                                  style={{ height: `${failPercent}%` }}
+                                />
+                              )}
+                            </div>
+                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                              {v.bucket
+                                ? new Date(v.bucket).toLocaleDateString('en', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                                : '-'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-[10px] text-[var(--foreground-muted)]">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-sm bg-[var(--accent)]" /> Total
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-sm bg-[var(--error)]" /> Failed
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ExpandableSection>
+        )}
 
         {/* System Health */}
         <ExpandableSection
@@ -1301,9 +1519,9 @@ export default function AnalyticsDashboard() {
                 <p className="text-2xl font-bold">
                   {data.feedback.total_ratings > 0
                     ? (
-                        (1 - data.feedback.negative_feedback_count / data.feedback.total_ratings) *
-                        100
-                      ).toFixed(0)
+                      (1 - data.feedback.negative_feedback_count / data.feedback.total_ratings) *
+                      100
+                    ).toFixed(0)
                     : 0}
                   %
                 </p>
