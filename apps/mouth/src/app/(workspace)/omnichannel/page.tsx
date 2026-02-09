@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { InboxSidebar } from './components/InboxSidebar';
@@ -16,11 +16,12 @@ export default function OmnichannelPage() {
   const [loading, setLoading] = useState(true);
   const [enrichment, setEnrichment] = useState<any>(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
-  const { toast, success, error: toastError } = useToast();
+  const [filterMode, setFilterType] = useState<'all' | 'unread'>('all');
+  const { success, error: toastError } = useToast();
 
   const selectedConversation = conversations.find(c => c.id === selectedId) || null;
 
-  // Fetch conversations (Inbox)
+  // 1. Fetch conversations (Inbox)
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
@@ -49,15 +50,13 @@ export default function OmnichannelPage() {
     }
   }, [toastError]);
 
-  // Load conversation details (Messages, CRM, Notes)
+  // 2. Load conversation details
   useEffect(() => {
     if (!selectedId || !selectedConversation) return;
 
     const loadDetails = async () => {
       try {
         setIsDetailsLoading(true);
-        
-        // Parallel requests for better performance
         const [msgs, enrichData, notesData] = await Promise.all([
           selectedConversation.channel === 'whatsapp' ? api.whatsapp.getMessages(selectedConversation.phone) : Promise.resolve([]),
           api.workflow.getEnrichment(selectedId),
@@ -98,33 +97,21 @@ export default function OmnichannelPage() {
     fetchConversations();
   }, [fetchConversations]);
 
+  // 3. Actions
   const handleSendMessage = async (text: string, isNote: boolean) => {
     if (!selectedConversation || !selectedId) return;
-
     const optimisticId = Date.now().toString();
-    const optimisticMsg: Message = {
-      id: optimisticId,
-      text,
-      sender: 'agent',
-      timestamp: new Date().toISOString(),
-      isInternalNote: isNote
-    };
-
-    // Optimistic Update
-    setMessages(prev => [...prev, optimisticMsg]);
+    setMessages(prev => [...prev, { id: optimisticId, text, sender: 'agent', timestamp: new Date().toISOString(), isInternalNote: isNote }]);
 
     try {
       if (isNote) {
-        await api.workflow.addNote(selectedId, text, "me", "Team");
-        success('Note Saved', 'Internal note added to thread.');
+        await api.workflow.addNote(selectedId, text, "current_user", "Team");
+        success('Note Saved', 'Internal note added.');
       } else {
-        if (selectedConversation.channel === 'whatsapp') {
-          await api.whatsapp.sendMessage(selectedConversation.phone, text);
-        }
+        await api.whatsapp.sendMessage(selectedConversation.phone, text);
       }
     } catch (err) {
       toastError('Send Failed', 'Message could not be delivered.');
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== optimisticId));
     }
   };
@@ -135,28 +122,36 @@ export default function OmnichannelPage() {
       await api.workflow.assign(selectedId, userId);
       success('Assigned', `Lead assigned to ${userId}`);
       fetchConversations();
-    } catch (e) { toastError('Assignment Error', 'Could not assign lead.'); }
+    } catch (e) { toastError('Error', 'Could not assign lead.'); }
   };
 
   const handleStatusChange = async (status: string) => {
     if (!selectedId) return;
     try {
       await api.workflow.updateStatus(selectedId, status);
-      success('Status Updated', `Conversation marked as ${status}`);
+      success('Status Updated', `Set to ${status}`);
       fetchConversations();
     } catch (e) { toastError('Error', 'Could not update status.'); }
   };
 
+  // 4. Filtering Logic
+  const filteredConversations = useMemo(() => {
+    if (filterMode === 'unread') return conversations.filter(c => c.unreadCount > 0);
+    return conversations;
+  }, [conversations, filterMode]);
+
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden selection:bg-red-100 selection:text-red-900">
+    <div className="flex h-full w-full bg-background overflow-hidden">
       <InboxSidebar 
-        conversations={conversations} 
+        conversations={filteredConversations} 
         selectedId={selectedId} 
         onSelect={setSelectedId}
         isLoading={loading}
+        filterMode={filterMode}
+        onFilterChange={setFilterType}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 shadow-inner">
+      <div className="flex-1 flex flex-col min-w-0">
         <ChatArea 
           conversation={selectedConversation} 
           messages={messages}
@@ -170,6 +165,7 @@ export default function OmnichannelPage() {
         conversation={selectedConversation} 
         enrichment={enrichment}
         onAssign={handleAssign}
+        onStatusChange={handleStatusChange}
         isLoading={isDetailsLoading}
       />
     </div>
