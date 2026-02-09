@@ -15,11 +15,12 @@ export default function OmnichannelPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrichment, setEnrichment] = useState<any>(null);
-  const [notes, setNotes] = useState<any[]>([]);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+  const { toast, success, error: toastError } = useToast();
 
   const selectedConversation = conversations.find(c => c.id === selectedId) || null;
 
-  // 1. Fetch conversations (with real status/assignee from DB)
+  // Fetch conversations (Inbox)
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,34 +41,31 @@ export default function OmnichannelPage() {
       }));
 
       setConversations(enriched);
-    } catch (error) {
+    } catch (err) {
       logger.error('Failed to fetch conversations');
+      toastError('Sync Error', 'Could not fetch inbox from cloud.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toastError]);
 
-  // 2. Fetch messages & enrichment when selection changes
+  // Load conversation details (Messages, CRM, Notes)
   useEffect(() => {
     if (!selectedId || !selectedConversation) return;
 
     const loadDetails = async () => {
       try {
-        // Fetch Messages
-        let msgs: any[] = [];
-        if (selectedConversation.channel === 'whatsapp') {
-          msgs = await api.whatsapp.getMessages(selectedConversation.phone);
-        }
+        setIsDetailsLoading(true);
         
-        // Fetch CRM Enrichment
-        const enrichData = await api.workflow.getEnrichment(selectedId);
-        setEnrichment(enrichData);
+        // Parallel requests for better performance
+        const [msgs, enrichData, notesData] = await Promise.all([
+          selectedConversation.channel === 'whatsapp' ? api.whatsapp.getMessages(selectedConversation.phone) : Promise.resolve([]),
+          api.workflow.getEnrichment(selectedId),
+          api.workflow.getNotes(selectedId)
+        ]);
 
-        // Fetch Internal Notes
-        const notesData = await api.workflow.getNotes(selectedId);
-        setNotes(notesData);
+        setEnrichment(enrichData);
         
-        // Combine real messages with internal notes for the UI
         const uiMessages: Message[] = [
           ...msgs.map((m: any) => ({
             id: m.id || Math.random().toString(),
@@ -86,8 +84,10 @@ export default function OmnichannelPage() {
         ];
 
         setMessages(uiMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
-      } catch (error) {
+      } catch (err) {
         logger.error('Failed to load conversation details');
+      } finally {
+        setIsDetailsLoading(false);
       }
     };
 
@@ -98,57 +98,57 @@ export default function OmnichannelPage() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // 3. Actions
   const handleSendMessage = async (text: string, isNote: boolean) => {
     if (!selectedConversation || !selectedId) return;
 
-    if (isNote) {
-      try {
-        await api.workflow.addNote(selectedId, text, "current_user", "Team Member");
-        // Reload notes
-        const updatedNotes = await api.workflow.getNotes(selectedId);
-        setNotes(updatedNotes);
-        // Optimistic add to UI
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          text,
-          sender: 'agent',
-          timestamp: new Date().toISOString(),
-          isInternalNote: true
-        }]);
-      } catch (e) { logger.error("Failed to add note"); }
-    } else {
-      try {
+    const optimisticId = Date.now().toString();
+    const optimisticMsg: Message = {
+      id: optimisticId,
+      text,
+      sender: 'agent',
+      timestamp: new Date().toISOString(),
+      isInternalNote: isNote
+    };
+
+    // Optimistic Update
+    setMessages(prev => [...prev, optimisticMsg]);
+
+    try {
+      if (isNote) {
+        await api.workflow.addNote(selectedId, text, "me", "Team");
+        success('Note Saved', 'Internal note added to thread.');
+      } else {
         if (selectedConversation.channel === 'whatsapp') {
           await api.whatsapp.sendMessage(selectedConversation.phone, text);
-          // Add to UI
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(),
-            text,
-            sender: 'agent',
-            timestamp: new Date().toISOString(),
-            isInternalNote: false
-          }]);
         }
-      } catch (error) { logger.error('Failed to send message'); }
+      }
+    } catch (err) {
+      toastError('Send Failed', 'Message could not be delivered.');
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
     }
   };
 
   const handleAssign = async (userId: string) => {
     if (!selectedId) return;
-    await api.workflow.assign(selectedId, userId);
-    fetchConversations(); // Refresh list
+    try {
+      await api.workflow.assign(selectedId, userId);
+      success('Assigned', `Lead assigned to ${userId}`);
+      fetchConversations();
+    } catch (e) { toastError('Assignment Error', 'Could not assign lead.'); }
   };
 
   const handleStatusChange = async (status: string) => {
     if (!selectedId) return;
-    await api.workflow.updateStatus(selectedId, status);
-    fetchConversations(); // Refresh list
+    try {
+      await api.workflow.updateStatus(selectedId, status);
+      success('Status Updated', `Conversation marked as ${status}`);
+      fetchConversations();
+    } catch (e) { toastError('Error', 'Could not update status.'); }
   };
 
   return (
-    <div className="flex h-full w-full bg-background">
-      {/* Pane 1: Inbox */}
+    <div className="flex h-full w-full bg-background overflow-hidden selection:bg-red-100 selection:text-red-900">
       <InboxSidebar 
         conversations={conversations} 
         selectedId={selectedId} 
@@ -156,21 +156,21 @@ export default function OmnichannelPage() {
         isLoading={loading}
       />
 
-      {/* Pane 2: Action Stream */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 shadow-inner">
         <ChatArea 
           conversation={selectedConversation} 
           messages={messages}
           onSendMessage={handleSendMessage}
           onStatusChange={handleStatusChange}
+          isLoading={isDetailsLoading}
         />
       </div>
 
-      {/* Pane 3: Intelligence Panel */}
       <LeadContextPanel 
         conversation={selectedConversation} 
         enrichment={enrichment}
         onAssign={handleAssign}
+        isLoading={isDetailsLoading}
       />
     </div>
   );
