@@ -201,93 +201,93 @@ async def voice_query(
         raise HTTPException(status_code=500, detail="Voice query failed")
 
 
-class ElevenLabsRequest(BaseModel):
-    """ElevenLabs webhook request - flexible field names."""
-
-    query: str | None = None
-    question: str | None = None  # Alternative field name
-    text: str | None = None  # Another alternative
-    message: str | None = None  # Yet another
-
-    def get_query(self) -> str:
-        """Get query from any field."""
-        return self.query or self.question or self.text or self.message or ""
-
-
-from fastapi.responses import JSONResponse
-
-
-@router.options("/elevenlabs")
-async def elevenlabs_options():
-    """CORS preflight for ElevenLabs webhook."""
-    return JSONResponse(
-        content={},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
-        },
-    )
-
-
-@router.post("/elevenlabs")
-async def elevenlabs_webhook(
-    request: ElevenLabsRequest,
-    http_request: Request,
-    search_service=Depends(get_search_service),
-):
-    """
-    ElevenLabs Conversational AI webhook.
-
-    PUBLIC endpoint - no auth required for ElevenLabs to call.
-    Returns: {"result": "text response"}
-    """
-    start_time = time.time()
-
-    # Log raw request for debugging
-    logger.info(f"🎤 ElevenLabs RAW request: {request.model_dump()}")
-
-    query = request.get_query()
-    if not query or not query.strip():
-        return {"result": "Non ho capito la domanda. Puoi ripetere?"}
-
-    logger.info(f"🎤 ElevenLabs query: '{query[:50]}...'")
-
-    try:
-        # Fast vector search
-        search_results = await search_service.search(
-            query=query,
-            user_level=2,
-            limit=3,
-            apply_filters=False,
-        )
-
-        # Build context
-        context_parts = []
-        for result in search_results.get("results", [])[:3]:
-            text = result.get("text", "")
-            if text:
-                context_parts.append(text[:500])
-
-        context = "\n\n".join(context_parts) if context_parts else "No relevant information found."
-
-        # Generate response
-        answer = await generate_fast_response(
-            query=query,
-            context=context,
-        )
-
-        execution_time = time.time() - start_time
-        logger.info(f"🎤 ElevenLabs response in {execution_time:.2f}s: {answer[:100]}...")
-
-        # Return format that ElevenLabs can use as context
-        return JSONResponse(
-            content={"result": answer}, headers={"Access-Control-Allow-Origin": "*"}
-        )
-
-    except Exception as e:
-        logger.error(f"ElevenLabs query failed: {e}", exc_info=True)
-        return JSONResponse(
-            content={"result": "Mi dispiace, c'è stato un errore. Riprova tra poco."},
-            headers={"Access-Control-Allow-Origin": "*"},
-        )
+# DISABLED: class ElevenLabsRequest(BaseModel):
+# DISABLED:     """ElevenLabs webhook request - flexible field names."""
+# DISABLED: 
+# DISABLED:     query: str | None = None
+# DISABLED:     question: str | None = None  # Alternative field name
+# DISABLED:     text: str | None = None  # Another alternative
+# DISABLED:     message: str | None = None  # Yet another
+# DISABLED: 
+# DISABLED:     def get_query(self) -> str:
+# DISABLED:         """Get query from any field."""
+# DISABLED:         return self.query or self.question or self.text or self.message or ""
+# DISABLED: 
+# DISABLED: 
+# DISABLED: from fastapi.responses import JSONResponse
+# DISABLED: 
+# DISABLED: 
+# DISABLED: @router.options("/elevenlabs")
+# DISABLED: async def elevenlabs_options():
+# DISABLED:     """CORS preflight for ElevenLabs webhook."""
+# DISABLED:     return JSONResponse(
+# DISABLED:         content={},
+# DISABLED:         headers={
+# DISABLED:             "Access-Control-Allow-Origin": "*",
+# DISABLED:             "Access-Control-Allow-Methods": "POST, OPTIONS",
+# DISABLED:             "Access-Control-Allow-Headers": "Content-Type",
+# DISABLED:         },
+# DISABLED:     )
+# DISABLED: 
+# DISABLED: 
+# DISABLED: @router.post("/elevenlabs")
+# DISABLED: async def elevenlabs_webhook(
+# DISABLED:     request: ElevenLabsRequest,
+# DISABLED:     http_request: Request,
+# DISABLED:     search_service=Depends(get_search_service),
+# DISABLED: ):
+# DISABLED:     """
+# DISABLED:     ElevenLabs Conversational AI webhook.
+# DISABLED: 
+# DISABLED:     PUBLIC endpoint - no auth required for ElevenLabs to call.
+# DISABLED:     Returns: {"result": "text response"}
+# DISABLED:     """
+# DISABLED:     start_time = time.time()
+# DISABLED: 
+# DISABLED:     # Log raw request for debugging
+# DISABLED:     logger.info(f"🎤 ElevenLabs RAW request: {request.model_dump()}")
+# DISABLED: 
+# DISABLED:     query = request.get_query()
+# DISABLED:     if not query or not query.strip():
+# DISABLED:         return {"result": "Non ho capito la domanda. Puoi ripetere?"}
+# DISABLED: 
+# DISABLED:     logger.info(f"🎤 ElevenLabs query: '{query[:50]}...'")
+# DISABLED: 
+# DISABLED:     try:
+# DISABLED:         # Fast vector search
+# DISABLED:         search_results = await search_service.search(
+# DISABLED:             query=query,
+# DISABLED:             user_level=2,
+# DISABLED:             limit=3,
+# DISABLED:             apply_filters=False,
+# DISABLED:         )
+# DISABLED: 
+# DISABLED:         # Build context
+# DISABLED:         context_parts = []
+# DISABLED:         for result in search_results.get("results", [])[:3]:
+# DISABLED:             text = result.get("text", "")
+# DISABLED:             if text:
+# DISABLED:                 context_parts.append(text[:500])
+# DISABLED: 
+# DISABLED:         context = "\n\n".join(context_parts) if context_parts else "No relevant information found."
+# DISABLED: 
+# DISABLED:         # Generate response
+# DISABLED:         answer = await generate_fast_response(
+# DISABLED:             query=query,
+# DISABLED:             context=context,
+# DISABLED:         )
+# DISABLED: 
+# DISABLED:         execution_time = time.time() - start_time
+# DISABLED:         logger.info(f"🎤 ElevenLabs response in {execution_time:.2f}s: {answer[:100]}...")
+# DISABLED: 
+# DISABLED:         # Return format that ElevenLabs can use as context
+# DISABLED:         return JSONResponse(
+# DISABLED:             content={"result": answer}, headers={"Access-Control-Allow-Origin": "*"}
+# DISABLED:         )
+# DISABLED: 
+# DISABLED:     except Exception as e:
+# DISABLED:         logger.error(f"ElevenLabs query failed: {e}", exc_info=True)
+# DISABLED:         return JSONResponse(
+# DISABLED:             content={"result": "Mi dispiace, c'è stato un errore. Riprova tra poco."},
+# DISABLED:             headers={"Access-Control-Allow-Origin": "*"},
+# DISABLED:         )
