@@ -207,9 +207,9 @@ async def get_visa_requirements_node(
         "kitas": {
             "documents": [
                 "Passport (valid >18 months)",
-                "VITAS (211/212)",
+                "e-VITAS (electronic visa approval)",
                 "Sponsorship letter from PT PMA",
-                "RPTKA approval",
+                "IMTA (work permit approval)",
                 "Employment contract",
                 "Health insurance",
                 "CV and certificates",

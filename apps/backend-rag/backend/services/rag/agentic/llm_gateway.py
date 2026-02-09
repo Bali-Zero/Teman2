@@ -57,7 +57,7 @@ from .chat_session import ChatSession, MockChatSession
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview-12-2025
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
 TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-001
@@ -82,8 +82,8 @@ class LLMGateway:
     Attributes:
         gemini_tools (list): Function declarations for native tool calling
         _genai_client (GenAIClient): Centralized GenAI client instance
-        model_name_pro (str): Gemini 3 Flash Preview (same as flash tier)
-        model_name_flash (str): Gemini 3 Flash Preview (primary model)
+        model_name_pro (str): Gemini 3 Flash Preview Dec 2025 (same as flash tier)
+        model_name_flash (str): Gemini 3 Flash Preview Dec 2025 (primary model)
         model_name_fallback (str): Gemini 2.0 Flash (stable fallback)
         thinking_level (str): Gemini 3 reasoning depth ("minimal", "low", "medium", "high")
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
@@ -115,15 +115,15 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 2.5 Flash (latest stable on Vertex AI)
-        # UPDATED 2026-02-09: Using gemini-2.5-flash (latest stable, released June 2025)
-        # See: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
-        self.model_name_pro = "gemini-2.5-flash"  # Primary tier
-        self.model_name_flash = "gemini-2.5-flash"  # Primary: latest stable
-        self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: previous stable
+        # Model name constants - Gemini 3 Flash Preview (Dec 2025)
+        # UPDATED 2026-02-09: Using gemini-3-flash-preview-12-2025 (preview, Dec 2025)
+        # Advanced agentic reasoning and coding capabilities
+        self.model_name_pro = "gemini-3-flash-preview-12-2025"  # Primary tier
+        self.model_name_flash = "gemini-3-flash-preview-12-2025"  # Primary: preview model
+        self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: stable
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview-12-2025 primary, "
             "gemini-2.0-flash-001 fallback)"
         )
 
