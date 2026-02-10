@@ -342,8 +342,8 @@ class VisionTool(BaseTool):
 class PricingTool(BaseTool):
     """Tool for official service pricing lookup"""
 
-    def __init__(self):
-        self.pricing_service = get_pricing_service()
+    def __init__(self, pricing_service=None):
+        self.pricing_service = pricing_service or get_pricing_service()
 
     @property
     def name(self) -> str:
@@ -965,3 +965,36 @@ class TimeSheetTool(BaseTool):
 
         except Exception as e:
             return json.dumps({"error": str(e)})
+
+
+def create_default_tools(search_service=None) -> list[BaseTool]:
+    """
+    Create default tool set for AgenticRAGOrchestrator.
+
+    This is used as a fallback when creating a minimal orchestrator
+    for channel routing when the main orchestrator is not initialized.
+
+    Args:
+        search_service: Optional SearchService instance for VectorSearchTool
+
+    Returns:
+        List of BaseTool instances with essential tools
+    """
+    tools = []
+
+    # 1. VectorSearchTool (if search_service available)
+    if search_service:
+        tools.append(VectorSearchTool(retriever=search_service))
+
+    # 2. PricingTool (essential for pricing queries)
+    pricing_service = get_pricing_service()
+    tools.append(PricingTool(pricing_service=pricing_service))
+
+    # 3. CalculatorTool (always available)
+    tools.append(CalculatorTool())
+
+    # 4. TeamKnowledgeTool (always available)
+    tools.append(TeamKnowledgeTool())
+
+    logger.info(f"Created {len(tools)} default tools for orchestrator")
+    return tools

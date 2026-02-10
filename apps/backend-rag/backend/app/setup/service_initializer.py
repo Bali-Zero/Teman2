@@ -14,6 +14,7 @@ Non-critical services will log errors and continue with degraded functionality.
 import asyncio
 import json
 import logging
+import os
 import random
 
 import asyncpg
@@ -799,6 +800,152 @@ async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
         logger.error(f"❌ Failed to initialize Generals: {e}")
 
 
+async def initialize_channel_router(
+    app: FastAPI,
+    ai_client: ZantaraAIClient,
+    db_pool: asyncpg.Pool | None,
+) -> None:
+    """
+    Initialize Multi-Channel Architecture (ChannelRouter + adapters).
+
+    Registers channel adapters for Telegram, Web, WhatsApp, Instagram, and Twitter.
+    Configures each adapter with appropriate settings and services.
+
+    Args:
+        app: FastAPI application instance
+        ai_client: ZantaraAIClient instance (for conversation processing)
+        db_pool: Database pool instance (for conversation persistence)
+    """
+    try:
+        # Import channel components
+        from backend.channels.router import ChannelRouter
+        from backend.channels.telegram.adapter import TelegramChannelAdapter
+        from backend.channels.web.adapter import WebChannelAdapter
+        from backend.conversation.engine import ConversationEngine
+
+        # Get orchestrator from app.state (initialized earlier)
+        orchestrator = getattr(app.state, "orchestrator", None)
+        if not orchestrator:
+            logger.warning("⚠️ Orchestrator not initialized, creating minimal fallback orchestrator")
+            # Create a minimal orchestrator for channel router
+            # Uses tools from tool_executor if available, otherwise empty list
+            from backend.services.rag.agentic import AgenticRAGOrchestrator
+            from backend.services.rag.agentic.tools import create_default_tools
+
+            # Get retriever (search_service) and db_pool for orchestrator
+            search_service = getattr(app.state, "search_service", None)
+            tool_executor_instance = getattr(app.state, "tool_executor", None)
+
+            # Create tools list from ZantaraTools or use default tools
+            tools = create_default_tools(search_service=search_service)
+
+            orchestrator = AgenticRAGOrchestrator(
+                tools=tools,
+                db_pool=db_pool,
+                retriever=search_service,
+            )
+            logger.info(f"✅ Fallback orchestrator created with {len(tools)} tools")
+
+        # Initialize ConversationEngine (bridge between channels and orchestrator)
+        conversation_engine = ConversationEngine(orchestrator)
+        app.state.conversation_engine = conversation_engine
+        logger.info("✅ ConversationEngine initialized")
+
+        # Initialize ChannelRouter
+        channel_router = ChannelRouter(conversation_engine)
+        app.state.channel_router = channel_router
+        logger.info("✅ ChannelRouter initialized")
+
+        # Register Telegram adapter (if configured)
+        telegram_token = settings.telegram_bot_token
+        if telegram_token:
+            telegram_config = {
+                "bot_token": telegram_token,
+                "max_message_length": 4096,
+                "update_interval": 1.5,
+                "parse_mode": "Markdown",
+            }
+            telegram_adapter = TelegramChannelAdapter(telegram_config)
+            channel_router.register_adapter("telegram", telegram_adapter)
+            logger.info("✅ TelegramChannelAdapter registered")
+        else:
+            logger.warning("⚠️ TELEGRAM_BOT_TOKEN not configured, Telegram adapter disabled")
+
+        # Register Web adapter (always enabled)
+        web_config = {
+            "max_message_length": 100000,
+            "supports_markdown": True,
+            "supports_media": True,
+            "stream_mode": "sse",
+        }
+        web_adapter = WebChannelAdapter(web_config)
+        channel_router.register_adapter("web", web_adapter)
+        logger.info("✅ WebChannelAdapter registered")
+
+        # Register WhatsApp adapter (if configured)
+        whatsapp_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+        whatsapp_phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+        if whatsapp_token and whatsapp_phone_id:
+            from backend.channels.whatsapp.adapter import WhatsAppChannelAdapter
+
+            whatsapp_config = {
+                "access_token": whatsapp_token,
+                "phone_number_id": whatsapp_phone_id,
+                "max_message_length": 1600,
+            }
+            whatsapp_adapter = WhatsAppChannelAdapter(whatsapp_config)
+            channel_router.register_adapter("whatsapp", whatsapp_adapter)
+            logger.info("✅ WhatsAppChannelAdapter registered")
+        else:
+            logger.warning("⚠️ WhatsApp credentials not configured, adapter disabled")
+
+        # Register Instagram adapter (if configured)
+        instagram_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+        instagram_account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+        if instagram_token and instagram_account_id:
+            from backend.channels.instagram.adapter import InstagramChannelAdapter
+
+            instagram_config = {
+                "access_token": instagram_token,
+                "instagram_account_id": instagram_account_id,
+            }
+            instagram_adapter = InstagramChannelAdapter(instagram_config)
+            channel_router.register_adapter("instagram", instagram_adapter)
+            logger.info("✅ InstagramChannelAdapter registered")
+        else:
+            logger.warning("⚠️ Instagram credentials not configured, adapter disabled")
+
+        # Register Twitter adapter (if configured)
+        twitter_bearer = os.getenv("TWITTER_BEARER_TOKEN")
+        if twitter_bearer:
+            from backend.channels.twitter.adapter import TwitterChannelAdapter
+
+            twitter_config = {
+                "bearer_token": twitter_bearer,
+                "api_key": os.getenv("TWITTER_API_KEY"),
+                "api_secret": os.getenv("TWITTER_API_SECRET"),
+            }
+            twitter_adapter = TwitterChannelAdapter(twitter_config)
+            channel_router.register_adapter("twitter", twitter_adapter)
+            logger.info("✅ TwitterChannelAdapter registered")
+        else:
+            logger.warning("⚠️ Twitter credentials not configured, adapter disabled")
+
+        # Register service in health monitoring
+        service_registry.register("channel_router", ServiceStatus.HEALTHY, critical=False)
+
+        # Log registered channels
+        available_channels = channel_router.get_available_channels()
+        logger.info(f"📡 Multi-Channel Architecture ready: {available_channels}")
+
+    except Exception as e:
+        service_registry.register(
+            "channel_router", ServiceStatus.DEGRADED, error=str(e), critical=False
+        )
+        logger.error(f"❌ Failed to initialize Channel Router: {e}", exc_info=True)
+        app.state.channel_router_init_error = str(e)
+
+
 async def initialize_services(app: FastAPI) -> None:
     """
     Initialize all ZANTARA RAG services with fail-fast for critical services.
@@ -871,10 +1018,13 @@ async def initialize_services(app: FastAPI) -> None:
         db_pool,
     )
 
-    # 9. Background services (DISABLED for omnichannel stabilization)
+    # 9. Multi-Channel Architecture (Telegram, Web, WhatsApp, Instagram, Twitter)
+    await initialize_channel_router(app, ai_client, db_pool)
+
+    # 10. Background services (DISABLED for omnichannel stabilization)
     # await _init_background_services(app, search_service, ai_client, db_pool)
 
-    # 10. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
+    # 11. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
     # await _init_generals(app, db_pool)
 
     logger.info("DEBUG: Setting services_initialized to True")
