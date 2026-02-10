@@ -63,6 +63,7 @@ from backend.app.routers import (
     team_analytics,
     team_drive,
     telegram,
+    telegram_webhook,  # [NEW] Telegram webhook for multi-channel architecture
     twitter,
     voice,
     webhook_chat,  # [NEW] Webhook Chat with auto-persistence
@@ -156,7 +157,8 @@ def include_routers(api: FastAPI) -> None:
 
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
-    api.include_router(telegram.router)  # Telegram bot integration
+    api.include_router(telegram.router)  # Telegram bot integration (query endpoints)
+    api.include_router(telegram_webhook.router)  # [NEW] Telegram webhook (multi-channel architecture)
     api.include_router(twitter.router)  # Twitter/X omnichannel API
     api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
     # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses

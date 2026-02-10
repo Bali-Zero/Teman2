@@ -26,6 +26,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
+from backend.channels.router import ChannelRouter
 from backend.core.cache import CacheService, get_cache_service
 from backend.llm.zantara_ai_client import ZantaraAIClient
 from backend.services.memory import MemoryServicePostgres
@@ -535,3 +536,53 @@ async def get_current_portal_client(
             )
 
         return dict(client_row)
+
+
+# ============================================================================
+# CHANNEL ROUTER DEPENDENCIES
+# ============================================================================
+
+
+def get_channel_router(request: Request):
+    """
+    Get ChannelRouter for multi-channel architecture.
+
+    The ChannelRouter is initialized in service_initializer.py during application startup.
+    It manages adapters for different communication channels (Telegram, Web, WhatsApp, etc.).
+
+    Args:
+        request: FastAPI Request object to access app.state
+
+    Returns:
+        ChannelRouter: The initialized channel router instance
+
+    Raises:
+        HTTPException: 503 if channel router not initialized
+
+    Usage:
+        from fastapi import Depends
+        from backend.app.dependencies import get_channel_router
+
+        @router.post("/webhook/telegram")
+        async def telegram_webhook(
+            channel_router: ChannelRouter = Depends(get_channel_router)
+        ):
+            await channel_router.route_message("telegram", update)
+    """
+    channel_router = getattr(request.app.state, "channel_router", None)
+    if channel_router is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Channel router unavailable",
+                "message": "The multi-channel router failed to initialize. Check server logs.",
+                "retry_after": 30,
+                "service": "channel_router",
+                "troubleshooting": [
+                    "Verify all channel adapters are properly configured",
+                    "Check environment variables (TELEGRAM_BOT_TOKEN, etc.)",
+                    "Review application startup logs for errors",
+                ],
+            },
+        )
+    return channel_router
