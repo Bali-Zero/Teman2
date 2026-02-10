@@ -88,11 +88,13 @@ async def get_overview(
     """Get overview statistics for team activity"""
     try:
         async with db_pool.acquire() as conn:
-            # Total conversations and messages
+            # Total conversations and messages (using view for robust counting)
             total_convs = await conn.fetchval("SELECT COUNT(*) FROM conversations")
-            total_msgs = await conn.fetchval(
-                "SELECT COALESCE(SUM(jsonb_array_length(messages)), 0) FROM conversations"
-            )
+            total_msgs = await conn.fetchval("SELECT COUNT(*) FROM v_messages")
+
+            # Knowledge Base Stats (Intelligence Center)
+            kg_nodes = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
+            kg_edges = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
 
             # Team members count
             total_team = await conn.fetchval(
@@ -146,6 +148,8 @@ async def get_overview(
                 "total_team_members": total_team,
                 "active_today": active_today or 0,
                 "messages_today": msgs_today or 0,
+                "total_kg_nodes": kg_nodes,
+                "total_kg_edges": kg_edges,
             },
             "top_users": [dict(u) for u in top_users],
         }
