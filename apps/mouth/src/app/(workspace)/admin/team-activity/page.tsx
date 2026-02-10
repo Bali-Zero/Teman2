@@ -33,6 +33,8 @@ interface OverviewStats {
   total_team_members: number;
   active_today: number;
   messages_today: number;
+  total_kg_nodes?: number;
+  total_kg_edges?: number;
 }
 
 interface TopUser {
@@ -303,6 +305,22 @@ export default function TeamActivityPage() {
             value={stats.messages_today.toString()}
             bgColor="bg-cyan-500/10"
           />
+          {stats.total_kg_nodes !== undefined && (
+            <>
+              <StatCard
+                icon={<BookOpen className="w-5 h-5 text-amber-500" />}
+                label="Knowledge Nodes"
+                value={stats.total_kg_nodes.toLocaleString()}
+                bgColor="bg-amber-500/10"
+              />
+              <StatCard
+                icon={<Layers className="w-5 h-5 text-orange-500" />}
+                label="Knowledge Edges"
+                value={stats.total_kg_edges?.toLocaleString() || '0'}
+                bgColor="bg-orange-500/10"
+              />
+            </>
+          )}
         </div>
       )}
 
