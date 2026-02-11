@@ -301,6 +301,19 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
         try:
             logger.info(f"Database initialization attempt {attempt + 1}/{max_retries}")
 
+            # Prepare DSN and SSL options for asyncpg
+            dsn = settings.database_url
+            ssl_context = None
+            
+            # Handle sslmode=disable manually for asyncpg
+            if "sslmode=disable" in dsn:
+                dsn = dsn.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+                ssl_context = False
+                logger.info("DEBUG: Detected sslmode=disable, setting ssl=False explicitly")
+            elif "sslmode=require" in dsn:
+                 # let asyncpg handle default SSL or configure context if needed
+                 pass
+
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn):
                 await conn.set_type_codec(
@@ -318,13 +331,20 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 # Validate connection
                 await conn.execute("SELECT 1")
 
-            db_pool = await asyncpg.create_pool(
-                dsn=settings.database_url,
-                min_size=getattr(settings, "db_pool_min_size", None) or 5,
-                max_size=getattr(settings, "db_pool_max_size", None) or 20,
-                command_timeout=getattr(settings, "db_command_timeout", None) or 60,
-                init=init_db_connection,
-            )
+            # Configure pool kwargs
+            pool_kwargs = {
+                "dsn": dsn,
+                "min_size": getattr(settings, "db_pool_min_size", None) or 5,
+                "max_size": getattr(settings, "db_pool_max_size", None) or 20,
+                "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
+                "init": init_db_connection,
+            }
+            
+            # Add ssl parameter if explicitly determined
+            if ssl_context is False:
+                pool_kwargs["ssl"] = False
+
+            db_pool = await asyncpg.create_pool(**pool_kwargs)
 
             # Verify pool works
             async with db_pool.acquire() as conn:
@@ -518,6 +538,49 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
             break
         except Exception as e:
             logger.exception(f"Error in database health check loop: {e}")
+
+
+async def initialize_faq_cache_service(app: FastAPI) -> None:
+    """
+    Initialize FAQ Cache service for reducing API costs.
+
+    Non-critical service - if Redis is unavailable, system continues without caching.
+
+    Args:
+        app: FastAPI application instance
+    """
+    try:
+        from backend.services.caching import NotebookLMCacheService
+
+        # Check feature flag
+        enable_cache = os.getenv("ENABLE_FAQ_CACHE", "true").lower() == "true"
+
+        if not enable_cache:
+            logger.info("ℹ️  FAQ cache disabled (ENABLE_FAQ_CACHE=false)")
+            app.state.faq_cache = None
+            service_registry.register_service("faq_cache", ServiceStatus.DISABLED)
+            return
+
+        cache_service = NotebookLMCacheService()
+        await cache_service.initialize()
+
+        if cache_service.redis_client:
+            app.state.faq_cache = cache_service
+            service_registry.register_service("faq_cache", ServiceStatus.HEALTHY)
+            logger.info("✅ FAQ Cache service initialized (Redis connected)")
+
+            # Log cache stats
+            stats = await cache_service.get_stats()
+            logger.info(f"   📊 Cached entries: {stats.get('total_keys', 0)}, Memory: {stats.get('memory_usage_mb', 0)} MB")
+        else:
+            logger.warning("⚠️  FAQ cache disabled (Redis connection failed)")
+            app.state.faq_cache = None
+            service_registry.register_service("faq_cache", ServiceStatus.DEGRADED)
+
+    except Exception as e:
+        logger.warning(f"⚠️  FAQ Cache initialization failed: {e}")
+        app.state.faq_cache = None
+        service_registry.register_service("faq_cache", ServiceStatus.DEGRADED, error=str(e))
 
 
 async def initialize_crm_and_memory_services(
@@ -843,6 +906,7 @@ async def initialize_channel_router(
                 tools=tools,
                 db_pool=db_pool,
                 retriever=search_service,
+                faq_cache=getattr(app.state, "faq_cache", None),  # FAQ cache from Step 2.5
             )
             logger.info(f"✅ Fallback orchestrator created with {len(tools)} tools")
 
@@ -959,19 +1023,32 @@ async def initialize_services(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
+    print("DEBUG: Starting initialize_services", flush=True)
     if getattr(app.state, "services_initialized", False):
         return
 
     logger.info("🚀 Initializing ZANTARA RAG services...")
 
     # 1. Critical services (fail-fast)
+    print("DEBUG: Init critical services...", flush=True)
     search_service, ai_client = await _init_critical_services(app)
+    print("DEBUG: Critical services init done", flush=True)
 
     # 2. Tool stack
+    print("DEBUG: Init tool stack...", flush=True)
     tool_executor = await _init_tool_stack(app)
+    print("DEBUG: Tool stack done", flush=True)
+
+    # 2.5 FAQ Cache (non-critical, graceful degradation)
+    print("DEBUG: Init FAQ cache...", flush=True)
+    await initialize_faq_cache_service(app)
+    print("DEBUG: FAQ cache done", flush=True)
 
     # 3. RAG components
+    print("DEBUG: Init RAG components...", flush=True)
     query_router = await _init_rag_components(app, search_service)
+    print("DEBUG: RAG components done", flush=True)
+
     cultural_insights_service = getattr(app.state, "cultural_insights", None)
     if cultural_insights_service:
         cultural_rag_service = CulturalRAGService(
@@ -982,19 +1059,26 @@ async def initialize_services(app: FastAPI) -> None:
         cultural_rag_service = CulturalRAGService(search_service=search_service)
 
     # 4. Specialized agents
+    print("DEBUG: Init specialized agents...", flush=True)
     (
         autonomous_research_service,
         cross_oracle_synthesis_service,
         client_journey_orchestrator,
     ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
+    print("DEBUG: Specialized agents done", flush=True)
 
     # 5. Database services
+    print("DEBUG: Init database services...", flush=True)
     db_pool = await initialize_database_services(app)
+    print("DEBUG: Database services done", flush=True)
 
     # 6. CRM & Memory
+    print("DEBUG: Init CRM & Memory...", flush=True)
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
+    print("DEBUG: CRM & Memory done", flush=True)
 
     # 7. CollaboratorService (needed for IntelligentRouter)
+    print("DEBUG: Init CollaboratorService...", flush=True)
     collaborator_service = None
     try:
         collaborator_service = CollaboratorService()
