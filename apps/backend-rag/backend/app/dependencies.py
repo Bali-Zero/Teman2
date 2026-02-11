@@ -284,6 +284,23 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Authentication failed") from e
 
 
+def get_current_user_optional(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict | None:
+    """
+    Optional version of get_current_user that returns None instead of raising 401.
+    """
+    try:
+        return get_current_user(request, credentials)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
+    except Exception:
+        return None
+
+
 def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> str:
     """
     Extract email from authenticated user.

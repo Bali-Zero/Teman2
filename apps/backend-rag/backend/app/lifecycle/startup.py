@@ -26,6 +26,10 @@ def register_startup_handlers(app: FastAPI) -> None:
     @app.on_event("startup")
     async def on_startup() -> None:
         # Initialize AlertService at startup (avoid import-time instantiation)
-        app.state.alert_service = AlertService()
+        try:
+            app.state.alert_service = AlertService()
+        except Exception as e:
+            logger.error(f"Failed to initialize AlertService: {e}")
+
         await initialize_services(app)
         await initialize_plugins(app)
