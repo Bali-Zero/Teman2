@@ -73,25 +73,37 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
       isAbortedRef.current = false;
 
       try {
-        await api.sendMessageStreaming(
+        await api.webhookChatApi.sendMessageStreaming(
           message,
-          sessionId || undefined,
+          sessionId || '',
           // onChunk
           (chunk: string) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
             callbacks.onChunk(chunk);
           },
           // onComplete
-          (
-            fullResponse: string,
-            sources: Array<{ title?: string; content?: string }>,
-            metadata?: Message['metadata']
-          ) => {
+          (response) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
             if (isMountedRef.current && !isAbortedRef.current) {
               monitoring.trackMessage(false);
             }
-            callbacks.onComplete(fullResponse, sources as Source[], metadata);
+            
+            // Format sources correctly
+            const formattedSources = response.sources.map(s => ({
+              title: s.title || 'Source',
+              content: s.content || ''
+            }));
+
+            callbacks.onComplete(
+              response.answer, 
+              formattedSources as Source[], 
+              { 
+                conversation_id: response.conversation_id,
+                execution_time: response.execution_time,
+                persisted: response.persisted
+              }
+            );
+            
             if (isMountedRef.current && !isAbortedRef.current) {
               setIsStreaming(false);
             }
@@ -100,7 +112,7 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
           (error: Error) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
             logger.error(
-              'Failed to send message',
+              'Failed to send message via webhook',
               { component: 'ChatStreaming', action: 'sendMessage' },
               toError(error)
             );
@@ -114,19 +126,7 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
             if (isMountedRef.current && !isAbortedRef.current) {
               setIsStreaming(false);
             }
-          },
-          // onStep
-          (step: AgentStep) => {
-            if (!isMountedRef.current || isAbortedRef.current) return;
-            callbacks.onStep(step);
-          },
-          120000,
-          conversationHistory,
-          abortController.signal,
-          requestId,
-          60000,
-          600000,
-          images
+          }
         );
       } catch (error) {
         if (!isMountedRef.current || isAbortedRef.current) return;

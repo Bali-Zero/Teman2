@@ -18,6 +18,7 @@ import { useChatSidebar } from './useChatSidebar';
 import { useChatSend } from './useChatSend';
 import { useConversations } from './useConversations';
 import { useTeamStatus } from './useTeamStatus';
+import { useConversationPersistence } from './useConversationPersistence';
 import type { ChatMessage, Source } from '@/app/chat/actions';
 import type { AgentStep } from '@/types';
 
@@ -98,17 +99,15 @@ export function useChatPage(): UseChatPageReturn {
   const isMountedRef = useRef(true);
   const isAbortedRef = useRef(false);
 
-  // Session state
-  const [sessionId, setSessionId] = useState(() => {
-    const id = generateSessionId();
-    logger.info('Session ID generated with UUID v4', {
-      component: 'useChatPage',
-      action: 'init_session',
-      metadata: { sessionIdFormat: 'uuid_v4', length: id.length },
-    });
-    return id;
-  });
+  const { sessionId, isLoading: isSessionLoading } = useConversationPersistence();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // Update loading state when session is ready
+  useEffect(() => {
+    if (!isSessionLoading) {
+      setIsInitialLoading(false);
+    }
+  }, [isSessionLoading]);
   const [messages, setMessages] = useState<OptimisticMessage[]>([]);
   const [currentStatus, setCurrentStatus] = useState('');
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
@@ -215,41 +214,21 @@ export function useChatPage(): UseChatPageReturn {
       setCurrentStatus('');
 
       startTransition(async () => {
-        try {
-          // Use the functional state to get the latest messages for saving
-          // We can't use displayMessages here safely if it's stale
-          // But saveConversation is async anyway.
-          // Best effort: rely on 'messages' which will be updated in next render?
-          // No, inside startTransition we need the data.
-          // Re-using the known fullResponse for the last message.
+        // Conversation is now automatically saved by the backend (WebhookChatApi)
+        // No need for manual saveConversation call here anymore.
+        logger.info('Conversation persisted automatically by backend', {
+          component: 'useChatPage',
+          action: 'persistence',
+          metadata: { sessionId },
+        });
 
-          await saveConversation(
-            displayMessages
-              .filter((m) => !m.isStreaming)
-              .map((m) => ({
-                ...m,
-                content:
-                  m.id === displayMessages[displayMessages.length - 1]?.id
-                    ? fullResponse
-                    : m.content,
-              })),
-            sessionId
-          );
+        // Track metrics
+        chatMetrics.conversationSaved(
+          sessionId,
+          displayMessages.filter((m) => !m.isStreaming).length
+        );
 
-          // Track metrics
-          chatMetrics.conversationSaved(
-            sessionId,
-            displayMessages.filter((m) => !m.isStreaming).length
-          );
-
-          trackEvent('chat_conversation_saved', { sessionId }, userProfile?.email);
-        } catch (error) {
-          logger.error(
-            'Failed to save conversation',
-            { component: 'useChatPage', action: 'saveConversation', metadata: { sessionId } },
-            error instanceof Error ? error : new Error(String(error))
-          );
-        }
+        trackEvent('chat_conversation_saved', { sessionId }, userProfile?.email);
       });
     },
     onError: (error: Error) => {

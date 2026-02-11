@@ -8,8 +8,10 @@ import { ChatArea } from './components/ChatArea';
 import { LeadContextPanel } from './components/LeadContextPanel';
 import { EnrichedConversation, Message, ChannelType, ConversationStatus } from './types';
 import { useToast } from '@/components/ui/toast';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function OmnichannelPage() {
+  const { systemStatus } = useDashboardData();
   const [conversations, setConversations] = useState<EnrichedConversation[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,6 +28,17 @@ export default function OmnichannelPage() {
     try {
       setLoading(true);
       const waData = await api.whatsapp.getConversations();
+      
+      logger.info('WhatsApp conversations fetched', {
+        component: 'OmnichannelPage',
+        action: 'fetchConversations',
+        count: Array.isArray(waData) ? waData.length : 'not an array',
+        data: waData
+      });
+
+      if (!Array.isArray(waData)) {
+        throw new Error('Received invalid data format from WhatsApp API');
+      }
       
       const enriched: EnrichedConversation[] = waData.map(c => ({
         id: c.id,
@@ -149,6 +162,7 @@ export default function OmnichannelPage() {
         isLoading={loading}
         filterMode={filterMode}
         onFilterChange={setFilterType}
+        systemStatus={systemStatus}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
