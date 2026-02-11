@@ -1,5 +1,17 @@
 """
-Shutdown Lifecycle Handlers
+Shutdown Lifecycle Handlers (DEPRECATED - 2026-02-11)
+
+⚠️ DEPRECATION NOTICE:
+This file uses the old @app.on_event("shutdown") API which is deprecated
+in FastAPI 0.100+ and can cause lifespan conflicts.
+
+DO NOT USE THIS FILE FOR NEW CODE.
+
+Modern approach: Use the lifespan context manager in app_factory.py.
+See: backend/app/setup/app_factory.py @asynccontextmanager lifespan()
+
+This file is kept only for backward compatibility with existing tests.
+It will be removed in a future version.
 
 Handles application shutdown events.
 """

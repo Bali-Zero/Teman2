@@ -56,9 +56,17 @@ async def on_startup() -> None:
 
     This function replicates the original startup behavior for tests.
     It initializes AlertService and calls initialize_services/initialize_plugins.
+
+    NOTE: In production, startup is handled by the lifespan context manager
+    in app_factory.py. This function exists only for backward compatibility
+    with tests that call on_startup() directly.
     """
     # Initialize AlertService at startup (avoid import-time instantiation)
-    app.state.alert_service = AlertService()
+    try:
+        app.state.alert_service = AlertService()
+    except Exception as e:
+        logger.error(f"Failed to initialize AlertService: {e}")
+
     await initialize_services(app)
     await initialize_plugins(app)
 
