@@ -24,31 +24,9 @@ async def get_whatsapp_conversations(
     db: Pool | None = Depends(get_optional_database_pool),
 ):
     if not db:
-        logger.warning("Database unavailable, returning mock conversation list")
-        return [
-            {
-                "id": 1001,
-                "phone": "6281234567890",
-                "client_id": None,
-                "client_name": "Budi (Mock)",
-                "last_message": "Ciao, vorrei informazioni sulla PT PMA",
-                "last_message_date": datetime.now().isoformat(),
-                "unread_count": 1,
-                "interaction_count": 5,
-                "session_id": "wa_session_6281234567890"
-            },
-            {
-                "id": 1002,
-                "phone": "393471234567",
-                "client_id": None,
-                "client_name": "Marco (Mock)",
-                "last_message": "Ricordi i documenti per il KITAS?",
-                "last_message_date": datetime.now().isoformat(),
-                "unread_count": 0,
-                "interaction_count": 12,
-                "session_id": "wa_session_393471234567"
-            }
-        ]
+        logger.warning("Database unavailable")
+        # Return empty list gracefully if DB is down, but don't fake data
+        return []
 
     try:
         async with db.acquire() as conn:
@@ -132,27 +110,7 @@ async def get_whatsapp_messages(
     current_user: dict = Depends(get_current_user),
 ):
     if not db:
-        # Mock messages for preview
-        return [
-            {
-                "id": "mock_1",
-                "interaction_id": 1001,
-                "phone": phone,
-                "message_text": "Ciao, vorrei informazioni sulla PT PMA",
-                "direction": "inbound",
-                "timestamp": datetime.now().isoformat(),
-                "status": "read"
-            },
-            {
-                "id": "mock_2",
-                "interaction_id": 1001,
-                "phone": phone,
-                "message_text": "Buongiorno! Certo, la PT PMA è una società a capitale straniero in Indonesia. Il capitale minimo richiesto è di 10 miliardi di IDR.",
-                "direction": "outbound",
-                "timestamp": datetime.now().isoformat(),
-                "status": "read"
-            }
-        ]
+        return []
 
     try:
         user_id = f"whatsapp_{phone}"
