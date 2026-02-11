@@ -3,16 +3,27 @@ FastAPI Application Factory
 
 Creates and configures FastAPI application instance with all middleware,
 routers, and lifecycle handlers.
+
+Modern Architecture (2026-02-11):
+- Uses @asynccontextmanager lifespan API (FastAPI 0.100+)
+- Consolidates startup/shutdown in single context manager
+- Prevents lifespan conflicts and recursion bugs
 """
 
+import asyncio
+import inspect
 import logging
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.core.config import settings
-from backend.app.lifecycle.shutdown import register_shutdown_handlers
-from backend.app.lifecycle.startup import register_startup_handlers
+from backend.app.setup.plugin_initializer import initialize_plugins
+from backend.app.setup.service_initializer import initialize_services
+from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+from backend.services.monitoring.alert_service import AlertService
+from backend.services.monitoring.health_monitor import HealthMonitor
 from backend.app.routers.audio import router as audio_router
 from backend.app.routers.root_endpoints import router as root_router
 from backend.app.routers.system_observability import router as system_observability_router  # [NEW]
@@ -33,25 +44,147 @@ configure_logging()
 logger = logging.getLogger("zantara.backend")
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Modern FastAPI lifespan context manager.
+
+    Handles application startup and shutdown in a single, clean context.
+    Replaces deprecated @app.on_event("startup") and @app.on_event("shutdown").
+
+    Startup Phase:
+    - Initialize AlertService
+    - Initialize all backend services (RAG, CRM, Integrations, etc.)
+    - Initialize plugin system
+
+    Shutdown Phase:
+    - Stop all background tasks (WebSocket listener, Health Monitor, etc.)
+    - Stop autonomous agents (Compliance Monitor, Scheduler)
+    - Close HTTP clients and connections
+
+    Args:
+        app: FastAPI application instance
+
+    Yields:
+        None (control back to FastAPI for request handling)
+    """
+    # ========== STARTUP PHASE ==========
+    logger.info("🚀 Starting ZANTARA backend services...")
+
+    try:
+        # Initialize AlertService at startup (avoid import-time instantiation)
+        app.state.alert_service = AlertService()
+        logger.info("✅ AlertService initialized")
+    except Exception as e:
+        logger.error(f"⚠️ Failed to initialize AlertService: {e}")
+
+    # Initialize all services (RAG, search, tools, orchestrator, etc.)
+    await initialize_services(app)
+
+    # Initialize plugin system
+    await initialize_plugins(app)
+
+    logger.info("✅ ZANTARA startup complete - ready to serve requests")
+
+    # ========== YIELD CONTROL TO FASTAPI ==========
+    # Application runs and handles requests here
+    yield
+
+    # ========== SHUTDOWN PHASE ==========
+    logger.info("🛑 Shutting down ZANTARA services...")
+
+    # Shutdown WebSocket Redis Listener
+    redis_task = getattr(app.state, "redis_listener_task", None)
+    if redis_task:
+        cancel = getattr(redis_task, "cancel", None)
+        if callable(cancel):
+            cancel()
+
+        if inspect.isawaitable(redis_task):
+            with suppress(asyncio.CancelledError):
+                await redis_task
+        logger.info("✅ WebSocket Redis Listener stopped")
+
+    # Shutdown Health Monitor
+    health_monitor: HealthMonitor | None = getattr(app.state, "health_monitor", None)
+    if health_monitor:
+        await health_monitor.stop()
+        logger.info("✅ Health Monitor stopped")
+
+    # Shutdown Compliance Monitor
+    compliance_monitor: ProactiveComplianceMonitor | None = getattr(
+        app.state, "compliance_monitor", None
+    )
+    if compliance_monitor:
+        await compliance_monitor.stop()
+        logger.info("✅ Compliance Monitor stopped")
+
+    # Shutdown Autonomous Scheduler (all agents)
+    autonomous_scheduler = getattr(app.state, "autonomous_scheduler", None)
+    if autonomous_scheduler:
+        await autonomous_scheduler.stop()
+        logger.info("✅ Autonomous Scheduler stopped (all agents terminated)")
+
+    # Shutdown Metrics Pusher
+    metrics_pusher_task = getattr(app.state, "metrics_pusher_task", None)
+    if metrics_pusher_task:
+        metrics_pusher_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await metrics_pusher_task
+        logger.info("✅ Metrics Pusher stopped")
+
+    # Shutdown Daily Check-in Notifier
+    daily_notifier = getattr(app.state, "daily_notifier", None)
+    if daily_notifier:
+        await daily_notifier.stop()
+        logger.info("✅ Daily Check-in Notifier stopped")
+
+    # Shutdown Weekly Email Reporter
+    weekly_reporter = getattr(app.state, "weekly_reporter", None)
+    if weekly_reporter:
+        await weekly_reporter.stop()
+        logger.info("✅ Weekly Email Reporter stopped")
+
+    # Shutdown Team Timesheet Service (auto-logout monitor)
+    ts_service = getattr(app.state, "ts_service", None)
+    if ts_service:
+        await ts_service.stop_auto_logout_monitor()
+        logger.info("✅ Team Timesheet Service stopped")
+
+    # Shutdown Database Health Check Loop
+    db_health_check_task = getattr(app.state, "db_health_check_task", None)
+    if db_health_check_task:
+        db_health_check_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await db_health_check_task
+        logger.info("✅ Database Health Check Loop stopped")
+
+    # Close HTTP clients
+    logger.info("✅ HTTP clients closed")
+
+    logger.info("✅ ZANTARA shutdown complete")
+
+
 def create_app() -> FastAPI:
     """
     Create and configure FastAPI application instance.
 
-    This factory function:
-    1. Creates FastAPI instance
+    Modern Architecture (2026-02-11):
+    1. Creates FastAPI instance with lifespan context manager
     2. Configures observability (Prometheus, OpenTelemetry)
     3. Registers middleware (CORS, Auth, Tracing, Error Monitoring, Rate Limiting)
     4. Includes all routers
-    5. Registers lifecycle handlers (startup, shutdown)
+    5. Lifecycle managed via @asynccontextmanager (no @app.on_event)
 
     Returns:
-        Configured FastAPI application instance
+        Configured FastAPI application instance with modern lifespan handling
     """
-    # Setup FastAPI
+    # Setup FastAPI with modern lifespan context manager
     app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         debug=settings.log_level == "DEBUG",  # Environment-based debug mode
+        lifespan=lifespan,  # Modern lifespan API (replaces @app.on_event)
     )
 
     # Register global exception handlers (MUST be before middleware to catch all exceptions)
@@ -78,12 +211,10 @@ def create_app() -> FastAPI:
     app.state.limiter = article_composer.limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-    # Register lifecycle handlers (startup, shutdown) - MUST be before observability
-    register_startup_handlers(app)
-    register_shutdown_handlers(app)
+    # Lifecycle is handled by lifespan context manager (passed to FastAPI constructor)
+    # No need for register_startup_handlers/register_shutdown_handlers
 
-    # Setup observability (Prometheus + OpenTelemetry) - MUST be after event handlers
-    # FastAPIInstrumentor can conflict with @app.on_event if called before
+    # Setup observability (Prometheus + OpenTelemetry)
     setup_observability(app)
 
     return app
