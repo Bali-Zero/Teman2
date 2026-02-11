@@ -9,10 +9,17 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from backend.app.dependencies import get_current_user, get_database_pool, get_orchestrator
+from backend.app.dependencies import (
+    get_current_user,
+    get_current_user_optional,
+    get_database_pool,
+    get_optional_database_pool,
+    get_orchestrator,
+)
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
 from backend.db.repositories.conversation_repository import ConversationRepository
 from backend.services.rag.agentic import AgenticRAGOrchestrator
@@ -46,53 +53,61 @@ class ChatResponse(BaseModel):
 @router.post("/chat", response_model=ChatResponse)
 async def webhook_chat(
     request: ChatRequest,
-    current_user: dict = Depends(get_current_user),
+    stream: bool = Query(False),
+    current_user: dict | None = Depends(get_current_user_optional),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
-    db_pool: asyncpg.Pool | None = Depends(get_database_pool),
+    db_pool: asyncpg.Pool | None = Depends(get_optional_database_pool),
 ):
     """
     Chat endpoint with automatic conversation persistence
-
-    Features:
-    - Retrieves conversation history from DB before processing query
-    - Injects history into RAG context for continuity
-    - Saves user query + assistant response after processing
-    - Returns conversation_id for tracking
-
-    Request body:
-    {
-        "query": "What is the capital of France?",
-        "session_id": "session-123",
-        "metadata": {"source": "webapp", "query_type": "general"}
-    }
-
-    Response:
-    {
-        "answer": "The capital of France is Paris.",
-        "session_id": "session-123",
-        "conversation_id": 42,
-        "sources": [...],
-        "execution_time": 1.23,
-        "persisted": true
-    }
+    (Public access allowed, authenticated users are tracked)
     """
-    # SECURITY: Use authenticated user's email
-    user_email = current_user.get("email") or current_user.get("user_id")
+    # Use authenticated user if available, otherwise fallback to request.user_id or anonymous
+    if current_user:
+        user_email = current_user.get("email") or current_user.get("user_id")
+    else:
+        user_email = request.user_id or f"anonymous_{request.session_id[:8]}"
 
-    if not user_email:
-        raise HTTPException(status_code=401, detail="User email not found in token")
+    # Step 1: Retrieve conversation history
+    conversation_history = []
+    if db_pool:
+        repo = ConversationRepository(db_pool)
+        conversation_history = await repo.get_messages(
+            session_id=request.session_id,
+            limit=20,
+        )
 
+    # Step 2: Handle Streaming
+    if stream:
+        return StreamingResponse(
+            webhook_chat_stream_generator(
+                request, user_email, conversation_history, orchestrator, db_pool
+            ),
+            media_type="text/event-stream",
+        )
+
+    # Step 3: Handle Normal (Sync) Response
     if not db_pool:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+        # Graceful degradation
+        try:
+            result = await orchestrator.process_query(
+                query=request.query,
+                user_id=user_email,
+                session_id=request.session_id,
+                conversation_history=[],
+            )
+            return ChatResponse(
+                answer=result.answer,
+                session_id=request.session_id,
+                sources=result.sources,
+                persisted=False,
+                error="Database unavailable, conversation not saved",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     # Initialize repository
     repo = ConversationRepository(db_pool)
-
-    # Step 1: Retrieve conversation history from DB
-    conversation_history = await repo.get_messages(
-        session_id=request.session_id,
-        limit=20,  # Last 20 messages for context
-    )
 
     logger.info(
         f"📚 Retrieved {len(conversation_history)} messages for session {request.session_id}"
@@ -178,8 +193,8 @@ async def webhook_chat(
 async def get_chat_history(
     session_id: str,
     limit: int = 20,
-    current_user: dict = Depends(get_current_user),
-    db_pool: asyncpg.Pool | None = Depends(get_database_pool),
+    current_user: dict | None = Depends(get_current_user_optional),
+    db_pool: asyncpg.Pool | None = Depends(get_optional_database_pool),
 ):
     """
     Retrieve conversation history for a session
@@ -233,3 +248,80 @@ async def cleanup_old_conversations(
         "deleted_count": deleted_count,
         "cutoff_days": days,
     }
+
+
+async def webhook_chat_stream_generator(
+    request: ChatRequest,
+    user_email: str,
+    conversation_history: list[dict],
+    orchestrator: AgenticRAGOrchestrator,
+    db_pool: asyncpg.Pool | None,
+):
+    """
+    Generator for persistent chat streaming.
+    Collects full response and saves it to DB after stream finishes.
+    """
+    full_answer = ""
+    sources = []
+    start_time = datetime.now()
+
+    try:
+        async for event in orchestrator.stream_query(
+            query=request.query,
+            user_id=user_email,
+            conversation_history=conversation_history,
+            session_id=request.session_id,
+        ):
+            if event["type"] == "token":
+                full_answer += event["data"]
+            elif event["type"] == "sources":
+                sources = event["data"]
+
+            yield f"data: {json.dumps(event)}\n\n"
+
+        # After stream finishes, save to DB
+        execution_time = (datetime.now() - start_time).total_seconds()
+        conversation_id = None
+        persisted = False
+
+        if db_pool and full_answer:
+            repo = ConversationRepository(db_pool)
+            new_messages = [
+                {"role": "user", "content": request.query, "timestamp": datetime.now().isoformat()},
+                {
+                    "role": "assistant",
+                    "content": full_answer,
+                    "timestamp": datetime.now().isoformat(),
+                },
+            ]
+            
+            conversation_metadata = {
+                **(request.metadata or {}),
+                "execution_time": execution_time,
+                "streamed": True,
+            }
+
+            conversation_id = await repo.save_messages(
+                session_id=request.session_id,
+                user_id=user_email,
+                messages=new_messages,
+                metadata=conversation_metadata,
+            )
+            persisted = conversation_id is not None
+
+        # Send final metadata with persistence info
+        final_meta = {
+            "type": "metadata",
+            "data": {
+                "conversation_id": conversation_id,
+                "persisted": persisted,
+                "execution_time": execution_time,
+            }
+        }
+        yield f"data: {json.dumps(final_meta)}\n\n"
+        yield "data: {\"type\": \"done\"}\n\n"
+
+    except Exception as e:
+        logger.error(f"Error in webhook stream: {e}", exc_info=True)
+        yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
+

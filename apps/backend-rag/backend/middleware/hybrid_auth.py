@@ -143,6 +143,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
+            "/webhook/chat",  # BUSINESS: Public AI chat webhook for website visitors
+            "/webhook/chat/history",  # BUSINESS: Public chat history retrieval for session persistence
             # ========================================================================
             # BLOG & MARKETING ENDPOINTS (Public for website visitors)
             # ========================================================================

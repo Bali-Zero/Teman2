@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import (
     get_current_user,
+    get_current_user_optional,
     get_optional_database_pool,
     get_orchestrator,
 )
@@ -166,24 +167,25 @@ class AgenticQueryResponse(BaseModel):
 @router.post("/query", response_model=AgenticQueryResponse)
 async def query_agentic_rag(
     request: AgenticQueryRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_current_user_optional),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ):
     """
     Esegue una query usando il sistema Agentic RAG completo.
 
-    **AUTHENTICATION REQUIRED**: This endpoint requires a valid JWT token.
-    The user_id is extracted from the authenticated user, not from the request body.
+    **AUTHENTICATION OPTIONAL**: Supports both logged-in and anonymous users.
+    For anonymous users, uses session_id for tracking.
     """
-    # SECURITY FIX: Use authenticated user's email/id instead of trusting request body
-    authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+    # SECURITY: Use authenticated user if available, otherwise session-based
+    if current_user:
+        authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+    else:
+        authenticated_user_id = f"anonymous_{request.session_id[:12] if request.session_id else 'guest'}"
 
-    # DIAGNOSTIC: Log current_user structure and authenticated_user_id
-    logger.warning(
-        f"🔍 [USER_ID_DEBUG] current_user keys: {list(current_user.keys())}, "
-        f"email={current_user.get('email')}, id={current_user.get('id')}, "
-        f"authenticated_user_id={authenticated_user_id}"
+    # DIAGNOSTIC: Log identity info
+    logger.info(
+        f"🔍 Sync query: user={authenticated_user_id} (authenticated: {current_user is not None})"
     )
 
     try:
@@ -348,26 +350,30 @@ async def get_conversation_history_for_agentic(
 async def stream_agentic_rag(
     request_body: AgenticQueryRequest,
     http_request: Request,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_current_user_optional),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ):
     """
     Stream the Agentic RAG process (SSE).
 
-    **AUTHENTICATION REQUIRED**: This endpoint requires a valid JWT token.
-    The user_id is extracted from the authenticated user, not from the request body.
+    **AUTHENTICATION OPTIONAL**: Supports both logged-in and anonymous users.
+    For anonymous users, uses session_id for tracking.
 
     Supports conversation history via:
     1. Direct conversation_history from frontend (preferred - works even if DB is down)
     2. conversation_id or session_id lookup from database (fallback)
     """
-    # SECURITY FIX: Use authenticated user's email/id instead of trusting request body
-    # This prevents user_id spoofing and unauthorized access to other users' data
-    authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+    # SECURITY: Use authenticated user if available, otherwise fallback to session-based identity
+    if current_user:
+        authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+    else:
+        # For anonymous users, we use a session-based virtual ID
+        # This allows context awareness within the same session
+        authenticated_user_id = f"anonymous_{request_body.session_id[:12] if request_body.session_id else 'guest'}"
 
     logger.info(
-        f"🔐 Authenticated user: {authenticated_user_id} (role: {current_user.get('role', 'user')})"
+        f"📡 Chat Stream: user={authenticated_user_id} (authenticated: {current_user is not None})"
     )
     # Get correlation ID from request state (set by RequestTracingMiddleware)
     correlation_id = (
