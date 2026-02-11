@@ -19,6 +19,7 @@ from backend.app.dependencies import (
     get_ai_client,
     get_cache,
     get_current_user,
+    get_current_user_optional,
     get_database_pool,
     get_intelligent_router,
     get_memory_service,
@@ -222,3 +223,53 @@ class TestDependencies:
             cache = get_cache(mock_request)
             assert cache is not None
             mock_get_cache.assert_called_once()
+
+    def test_get_current_user_optional_no_credentials(self, mock_request):
+        """Test get_current_user_optional returns None when no credentials"""
+        mock_request.state.user = None
+
+        user = get_current_user_optional(mock_request, credentials=None)
+        assert user is None
+
+    def test_get_current_user_optional_invalid_token(self, mock_request):
+        """Test get_current_user_optional returns None on invalid token"""
+        mock_request.state.user = None
+
+        mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
+        mock_credentials.credentials = "invalid_token"
+
+        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+            from jose import JWTError
+
+            mock_decode.side_effect = JWTError("Invalid token")
+
+            user = get_current_user_optional(mock_request, credentials=mock_credentials)
+            assert user is None
+
+    def test_get_current_user_optional_valid_token(self, mock_request):
+        """Test get_current_user_optional returns user dict on valid token"""
+        mock_request.state.user = None
+
+        mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
+        mock_credentials.credentials = "valid_token"
+
+        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+            mock_decode.return_value = {
+                "email": "test@example.com",
+                "user_id": "123",
+                "role": "user",
+            }
+
+            user = get_current_user_optional(mock_request, credentials=mock_credentials)
+            assert user is not None
+            assert user["email"] == "test@example.com"
+            assert user["user_id"] == "123"
+
+    def test_get_current_user_optional_from_middleware(self, mock_request):
+        """Test get_current_user_optional returns user from middleware"""
+        mock_request.state.user = {"email": "test@example.com", "id": "123", "role": "admin"}
+
+        user = get_current_user_optional(mock_request, credentials=None)
+        assert user is not None
+        assert user["email"] == "test@example.com"
+        assert user["user_id"] == "123"
