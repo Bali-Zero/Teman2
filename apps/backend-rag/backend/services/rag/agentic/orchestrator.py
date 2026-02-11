@@ -97,7 +97,6 @@ class AgenticRAGOrchestrator:
         db_pool: Any = None,
         model_name: str = "gemini-3-flash-preview",  # Zantara AI - Gemini 3 Flash Preview
         semantic_cache: SemanticCache = None,
-        faq_cache: Any = None,  # NotebookLMCacheService
         retriever: Any = None,
         clarification_service: ClarificationService = None,
         entity_extractor: EntityExtractionService = None,
@@ -113,7 +112,6 @@ class AgenticRAGOrchestrator:
             db_pool: Optional asyncpg connection pool for database operations
             model_name: Base model name (legacy, not actively used)
             semantic_cache: Optional semantic cache instance for query deduplication
-            faq_cache: Optional FAQ cache for exact question matching (< 1ms)
             retriever: SearchService or KnowledgeService instance for embeddings
             clarification_service: Optional service for resolving ambiguous queries
             entity_extractor: Optional EntityExtractionService instance
@@ -129,7 +127,6 @@ class AgenticRAGOrchestrator:
         self.db_pool = db_pool
         self.model_name = model_name
         self.semantic_cache = semantic_cache
-        self.faq_cache = faq_cache  # FAQ cache (exact match, reduces API costs)
         self.retriever = retriever
         self.clarification_service = clarification_service
         self.llm_gateway = llm_gateway or LLMGateway()  # Initialize LLMGateway here
@@ -247,7 +244,6 @@ class AgenticRAGOrchestrator:
             entity_extractor=self.entity_extractor,
             kg_retrieval=self.kg_retrieval,
             semantic_cache=self.semantic_cache,
-            faq_cache=self.faq_cache,  # FAQ cache (exact match, < 1ms)
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
         )

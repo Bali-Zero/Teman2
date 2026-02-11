@@ -70,25 +70,6 @@ cache_set_operations = safe_register_counter(
     "zantara_cache_set_operations_total", "Total cache set operations"
 )
 
-# FAQ Cache Metrics (exact match, < 1ms lookup)
-faq_cache_hits_total = safe_register_counter(
-    "zantara_faq_cache_hits_total",
-    "Total FAQ cache hits (exact question match)",
-    ["domain"]  # tax, visa, kbli, property
-)
-faq_cache_misses_total = safe_register_counter(
-    "zantara_faq_cache_misses_total",
-    "Total FAQ cache misses (question not in cache)"
-)
-faq_cache_errors_total = safe_register_counter(
-    "zantara_faq_cache_errors_total",
-    "Total FAQ cache errors (Redis connection failures)"
-)
-faq_cache_api_cost_saved_usd = safe_register_counter(
-    "zantara_faq_cache_api_cost_saved_usd_total",
-    "Estimated API cost savings from FAQ cache (USD)"
-)
-
 # AI Metrics
 ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
 ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
