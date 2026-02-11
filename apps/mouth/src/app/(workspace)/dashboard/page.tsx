@@ -138,8 +138,9 @@ export default function DashboardPage() {
   }, [error]);
 
   // Log dashboard metrics
+  const hasLoggedSuccess = React.useRef(false);
   React.useEffect(() => {
-    if (!isLoading && user?.email) {
+    if (!isLoading && user?.email && !hasLoggedSuccess.current) {
       const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', user.email);
       dashboardMetrics.trackPageView(user.email);
 
@@ -149,6 +150,7 @@ export default function DashboardPage() {
         user: user.email,
         metadata: { loadTime, systemStatus },
       });
+      hasLoggedSuccess.current = true;
     }
   }, [isLoading, user?.email, systemStatus]);
 

@@ -13,19 +13,23 @@ interface InboxSidebarProps {
   isLoading: boolean;
   filterMode: 'all' | 'unread';
   onFilterChange: (mode: 'all' | 'unread') => void;
+  systemStatus?: string;
 }
 
-export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, filterMode, onFilterChange }: InboxSidebarProps) {
+export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, filterMode, onFilterChange, systemStatus }: InboxSidebarProps) {
   const [search, setSearch] = React.useState('');
+
+  const isDegraded = systemStatus === 'degraded';
 
   const selectedConv = useMemo(() => conversations.find(c => c.id === selectedId), [conversations, selectedId]);
   const activeChannel = selectedConv?.channel;
 
   const filtered = useMemo(() => 
-    conversations.filter(c => 
-      (c.client_name?.toLowerCase().includes(search.toLowerCase()) || 
-       c.phone.includes(search))
-    ), [conversations, search]
+    conversations.filter(c => {
+      const nameMatch = c.client_name?.toLowerCase().includes(search.toLowerCase()) || false;
+      const phoneMatch = c.phone?.includes(search) || false;
+      return nameMatch || phoneMatch;
+    }), [conversations, search]
   );
 
   const getChannelColor = (type?: ChannelType) => {
@@ -45,6 +49,13 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, f
       {/* Header & Search */}
       <div className="p-4 border-b border-white/20 space-y-4 shadow-md bg-black/10">
         <h2 className="font-black text-xl tracking-tighter px-1 text-white uppercase italic drop-shadow-md text-center">INBOX v2.1</h2>
+        
+        {isDegraded && (
+          <div className="bg-red-500/80 p-2 rounded text-[10px] font-black text-white uppercase tracking-widest animate-pulse border border-white/30 text-center">
+            ⚠️ Database Offline - Mock Data Active
+          </div>
+        )}
+
         <div className="relative group">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-white group-focus-within:text-white transition-colors" />
           <Input 
@@ -89,51 +100,64 @@ export function InboxSidebar({ conversations, selectedId, onSelect, isLoading, f
             </div>
           ) : (
             <div className="divide-y divide-white/10">
-              {filtered.map((conv) => (
-                <motion.div 
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  key={conv.id}
-                  onClick={() => onSelect(conv.id)}
-                  className={cn(
-                    "p-4 cursor-pointer transition-all group relative border-l-[8px] border-l-transparent",
-                    selectedId === conv.id 
-                      ? "bg-black/30 border-l-white shadow-2xl z-10" 
-                      : "hover:bg-black/10"
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="font-black text-sm flex items-center gap-2 text-white tracking-tight drop-shadow-sm">
-                      {conv.client_name || conv.phone}
-                      {conv.unreadCount > 0 && (
-                        <span className="w-3 h-3 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,1)] animate-pulse" />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-white font-black uppercase opacity-70">
-                      {new Date(conv.last_message_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </span>
-                  </div>
-                  
-                  <p className="text-xs text-white line-clamp-2 mb-2 pr-4 leading-relaxed font-black tracking-tight drop-shadow-sm">
-                    {conv.last_message || "No messages yet"}
-                  </p>
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="text-[9px] px-2 py-0.5 flex items-center gap-1 rounded bg-white text-black font-black uppercase shadow-lg">
-                      <Phone className="w-3 h-3" />
-                      <span>{conv.channel}</span>
+              {filtered.length > 0 ? (
+                filtered.map((conv) => (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    key={conv.id}
+                    onClick={() => onSelect(conv.id)}
+                    className={cn(
+                      "p-4 cursor-pointer transition-all group relative border-l-[8px] border-l-transparent",
+                      selectedId === conv.id 
+                        ? "bg-black/30 border-l-white shadow-2xl z-10" 
+                        : "hover:bg-black/10"
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="font-black text-sm flex items-center gap-2 text-white tracking-tight drop-shadow-sm">
+                        {conv.client_name || conv.phone}
+                        {conv.unreadCount > 0 && (
+                          <span className="w-3 h-3 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,1)] animate-pulse" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-white font-black uppercase opacity-70">
+                        {new Date(conv.last_message_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
                     </div>
                     
-                    <div className={cn(
-                      "text-[9px] px-2 py-0.5 flex items-center rounded bg-black/50 text-white border border-white/20 font-black uppercase tracking-widest shadow-sm",
-                      conv.status === 'closed' && "opacity-50"
-                    )}>
-                      {conv.status || 'New'}
+                    <p className="text-xs text-white line-clamp-2 mb-2 pr-4 leading-relaxed font-black tracking-tight drop-shadow-sm">
+                      {conv.last_message || "No messages yet"}
+                    </p>
+
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="text-[9px] px-2 py-0.5 flex items-center gap-1 rounded bg-white text-black font-black uppercase shadow-lg">
+                        <Phone className="w-3 h-3" />
+                        <span>{conv.channel}</span>
+                      </div>
+                      
+                      <div className={cn(
+                        "text-[9px] px-2 py-0.5 flex items-center rounded bg-black/50 text-white border border-white/20 font-black uppercase tracking-widest shadow-sm",
+                        conv.status === 'closed' && "opacity-50"
+                      )}>
+                        {conv.status || 'New'}
+                      </div>
                     </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="p-10 text-center space-y-4">
+                  <div className="text-white/30 text-xs font-black uppercase tracking-widest">
+                    No leads found in inbox
                   </div>
-                </motion.div>
-              ))}
+                  {isDegraded && (
+                    <div className="text-[10px] text-red-300/60 font-medium italic">
+                      Check database connection or try refreshing
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </AnimatePresence>

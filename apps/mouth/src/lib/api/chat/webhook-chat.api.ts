@@ -86,6 +86,103 @@ export class WebhookChatApi {
   }
 
   /**
+   * Send message with streaming and automatic conversation persistence
+   * 
+   * @param query - User message
+   * @param sessionId - Session ID for conversation continuity
+   * @param onChunk - Callback for message chunks
+   * @param onComplete - Callback when message is complete
+   * @param onError - Callback for errors
+   * @param metadata - Optional metadata
+   */
+  async sendMessageStreaming(
+    query: string,
+    sessionId: string,
+    onChunk: (chunk: string) => void,
+    onComplete: (response: WebhookChatResponse) => void,
+    onError: (error: Error) => void,
+    metadata?: Record<string, unknown>
+  ): Promise<void> {
+    try {
+      const response = await fetch(`${this.client.getBaseUrl()}/webhook/chat?stream=true`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.client.getToken() || ''}`,
+        },
+        body: JSON.stringify({
+          query,
+          session_id: sessionId,
+          metadata: {
+            source: 'webapp',
+            timestamp: new Date().toISOString(),
+            ...metadata,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullAnswer = '';
+      let sources: any[] = [];
+      let conversationId: number | null = null;
+      let executionTime = 0;
+      let persisted = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'token') {
+              fullAnswer += data.data;
+              onChunk(fullAnswer);
+            } else if (data.type === 'sources') {
+              sources = data.data;
+            } else if (data.type === 'metadata') {
+              if (data.data.conversation_id) conversationId = data.data.conversation_id;
+              if (data.data.execution_time) executionTime = data.data.execution_time;
+              if (data.data.persisted) persisted = data.data.persisted;
+            } else if (data.type === 'error') {
+              throw new Error(data.data);
+            }
+          } catch (e) {
+            logger.error('Failed to parse SSE chunk', { error: e });
+          }
+        }
+      }
+
+      onComplete({
+        answer: fullAnswer,
+        session_id: sessionId,
+        conversation_id: conversationId,
+        sources,
+        execution_time: executionTime,
+        persisted,
+      });
+
+    } catch (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
    * Retrieve conversation history for a session
    * 
    * @param sessionId - Session ID

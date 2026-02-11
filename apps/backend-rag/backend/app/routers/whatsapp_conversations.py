@@ -5,11 +5,12 @@ WhatsApp Conversations API - Final Stabilized Version
 import json
 import logging
 import time
+from datetime import datetime
 
 from asyncpg import Pool
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from backend.app.dependencies import get_current_user, get_database
+from backend.app.dependencies import get_current_user, get_optional_database_pool
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,35 @@ router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 async def get_whatsapp_conversations(
     limit: int = 50,
     offset: int = 0,
-    db: Pool = Depends(get_database),
+    db: Pool | None = Depends(get_optional_database_pool),
 ):
+    if not db:
+        logger.warning("Database unavailable, returning mock conversation list")
+        return [
+            {
+                "id": 1001,
+                "phone": "6281234567890",
+                "client_id": None,
+                "client_name": "Budi (Mock)",
+                "last_message": "Ciao, vorrei informazioni sulla PT PMA",
+                "last_message_date": datetime.now().isoformat(),
+                "unread_count": 1,
+                "interaction_count": 5,
+                "session_id": "wa_session_6281234567890"
+            },
+            {
+                "id": 1002,
+                "phone": "393471234567",
+                "client_id": None,
+                "client_name": "Marco (Mock)",
+                "last_message": "Ricordi i documenti per il KITAS?",
+                "last_message_date": datetime.now().isoformat(),
+                "unread_count": 0,
+                "interaction_count": 12,
+                "session_id": "wa_session_393471234567"
+            }
+        ]
+
     try:
         async with db.acquire() as conn:
             # Simple query without REGEXP_REPLACE to be safe
@@ -100,9 +128,32 @@ async def get_whatsapp_conversations(
 async def get_whatsapp_messages(
     phone: str,
     limit: int = 100,
-    db: Pool = Depends(get_database),
+    db: Pool | None = Depends(get_optional_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
+    if not db:
+        # Mock messages for preview
+        return [
+            {
+                "id": "mock_1",
+                "interaction_id": 1001,
+                "phone": phone,
+                "message_text": "Ciao, vorrei informazioni sulla PT PMA",
+                "direction": "inbound",
+                "timestamp": datetime.now().isoformat(),
+                "status": "read"
+            },
+            {
+                "id": "mock_2",
+                "interaction_id": 1001,
+                "phone": phone,
+                "message_text": "Buongiorno! Certo, la PT PMA è una società a capitale straniero in Indonesia. Il capitale minimo richiesto è di 10 miliardi di IDR.",
+                "direction": "outbound",
+                "timestamp": datetime.now().isoformat(),
+                "status": "read"
+            }
+        ]
+
     try:
         user_id = f"whatsapp_{phone}"
         session_id = f"wa_session_{phone}"
