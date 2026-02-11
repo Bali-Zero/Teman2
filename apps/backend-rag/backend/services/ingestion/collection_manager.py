@@ -103,12 +103,6 @@ class CollectionManager:
                 "doc_count": 4,
                 "description": "Kemnaker and Imigrasi circular letters on TKA procedures",
             },
-            # Team Q&A - Bilingual knowledge base from team-curated documents
-            "team_knowledge_qa": {
-                "priority": "high",
-                "doc_count": 114,
-                "description": "Bilingual (EN+ID) team Q&A on Tax, Visa, KBLI, and Property topics",
-            },
         }
 
         logger.info("✅ CollectionManager initialized (lazy loading enabled)")

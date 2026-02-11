@@ -68,6 +68,7 @@ class OrchestratorCore:
         entity_extractor: EntityExtractionService,
         kg_retrieval: KGEnhancedRetrieval | None,
         semantic_cache: SemanticCache | None,
+        faq_cache: Any = None,  # NotebookLMCacheService
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
     ):
@@ -84,6 +85,7 @@ class OrchestratorCore:
             entity_extractor: EntityExtractionService per entity extraction
             kg_retrieval: Optional KGEnhancedRetrieval per KG context (legacy)
             semantic_cache: Optional SemanticCache per caching
+            faq_cache: Optional NotebookLMCacheService per FAQ caching (exact match)
             db_pool: Optional database pool
             kg_langgraph_orchestrator: Optional KGLangGraphOrchestrator (Phase 3)
         """
@@ -94,6 +96,7 @@ class OrchestratorCore:
         self.entity_extractor = entity_extractor
         self.kg_retrieval = kg_retrieval
         self.semantic_cache = semantic_cache
+        self.faq_cache = faq_cache  # FAQ cache (exact match, < 1ms)
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
         self.db_pool = db_pool  # Store for later use
 
@@ -118,6 +121,74 @@ class OrchestratorCore:
                 logger.info("✅ [Phase 6] MultiAgentCoordinator ready")
             except Exception as e:
                 logger.warning(f"⚠️ [Phase 6] MultiAgentCoordinator init skipped: {e}")
+
+    async def check_faq_cache(
+        self,
+        query: str,
+        extracted_entities: dict[str, Any],
+        start_time: float,
+    ) -> CoreResult | None:
+        """
+        Check FAQ cache for exact question match (Redis hash lookup < 1ms).
+
+        FAQ cache is faster than semantic cache (exact match vs vector similarity).
+        Covers ~60-80% of common questions with pre-calculated answers.
+
+        Args:
+            query: Query string
+            extracted_entities: Entities estratte
+            start_time: Timestamp di inizio
+
+        Returns:
+            CoreResult se cache hit, None altrimenti
+        """
+        if not self.faq_cache:
+            return None
+
+        try:
+            cached = await self.faq_cache.get(query)
+
+            if cached:
+                # Cache HIT! Return instant response
+                logger.info(f"✅ FAQ Cache HIT: {query[:60]}... (< 1ms)")
+
+                # Record metrics
+                from backend.app.metrics import faq_cache_hits_total
+                faq_cache_hits_total.labels(domain=cached.get("metadata", {}).get("domain", "unknown")).inc()
+
+                return CoreResult(
+                    answer=cached["answer"],
+                    sources=[{
+                        "type": "faq_cache",
+                        "source": cached.get("metadata", {}).get("source", "team_qa"),
+                        "domain": cached.get("metadata", {}).get("domain", "unknown")
+                    }],
+                    model_used="faq_cache",
+                    entities=extracted_entities,
+                    timings={"total": time.time() - start_time, "faq_cache_lookup": 0.001},
+                    tools_called=[],
+                )
+            else:
+                # Cache MISS - continue to semantic cache / full processing
+                logger.debug(f"FAQ Cache MISS: {query[:60]}...")
+
+                # Record metrics
+                from backend.app.metrics import faq_cache_misses_total
+                faq_cache_misses_total.inc()
+
+                return None
+
+        except Exception as e:
+            logger.warning(f"⚠️ FAQ Cache error: {e}")
+
+            # Record error metric
+            try:
+                from backend.app.metrics import faq_cache_errors_total
+                faq_cache_errors_total.inc()
+            except ImportError:
+                pass
+
+            return None  # Graceful degradation
 
     async def check_semantic_cache(
         self,
@@ -568,7 +639,16 @@ class OrchestratorCore:
                 gate_result, start_time, extracted_entities=extracted_entities
             )
 
-        # 3. Check semantic cache
+        # 3. Check FAQ cache (exact match, < 1ms)
+        faq_cached_result = await self.check_faq_cache(
+            query=query,
+            extracted_entities=extracted_entities,
+            start_time=start_time,
+        )
+        if faq_cached_result:
+            return faq_cached_result
+
+        # 3b. Check semantic cache (vector similarity, ~50ms)
         # (Already have entities from parallel step 1)
         cached_result = await self.check_semantic_cache(
             query=query,
