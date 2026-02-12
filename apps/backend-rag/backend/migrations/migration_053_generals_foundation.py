@@ -25,11 +25,46 @@ Date: 2026-02-12
 
 import logging
 from typing import Any
+import asyncpg
+from backend.db.migration_base import BaseMigration
 
 logger = logging.getLogger(__name__)
 
 
-async def apply(conn: Any) -> None:
+class Migration053(BaseMigration):
+    """Generals Foundation Migration"""
+
+    def __init__(self):
+        super().__init__(
+            migration_number=53,
+            description="Create Generals Foundation tables (tasks, memory, activity, locks)",
+        )
+
+    async def up(self, conn: asyncpg.Connection) -> None:
+        """Apply the migration - create Generals Foundation tables."""
+        await _apply_migration(conn)
+
+    async def down(self, conn: asyncpg.Connection) -> None:
+        """Rollback the migration - drop all Generals Foundation tables."""
+        await _rollback_migration(conn)
+
+    async def verify(self, conn: asyncpg.Connection) -> bool:
+        """Verify all Generals tables were created"""
+        tables = await conn.fetch(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name IN (
+                'generals_tasks', 'generals_memory',
+                'generals_activity', 'generals_locks'
+            )
+        """
+        )
+        return len(tables) == 4
+
+
+async def _apply_migration(conn: Any) -> None:
     """Apply the migration - create Generals Foundation tables."""
 
     logger.info("Applying migration 053: Generals Foundation")
@@ -213,7 +248,7 @@ async def apply(conn: Any) -> None:
     print("✅ Applied migration 053: Generals Foundation (tasks, memory, activity, locks)")
 
 
-async def rollback(conn: Any) -> None:
+async def _rollback_migration(conn: Any) -> None:
     """Rollback the migration - drop all Generals Foundation tables."""
 
     logger.info("Rolling back migration 053: Generals Foundation")
@@ -233,3 +268,10 @@ async def rollback(conn: Any) -> None:
 
     logger.info("Migration 053 rolled back successfully")
     print("⏪ Rolled back migration 053: Generals Foundation")
+
+
+async def main():
+    """Run migration standalone"""
+    migration = Migration053()
+    success = await migration.apply()
+    return success
