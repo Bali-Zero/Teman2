@@ -8,7 +8,7 @@ Provides high-level API for ZANTARA to submit tasks and monitor execution.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -471,6 +471,224 @@ class TaskCoordinator:
         except Exception as e:
             logger.error(f"❌ Task Coordinator: Error deleting memory: {e}", exc_info=True)
             return False
+
+    # ========== LOCK MANAGEMENT (NEW - Phase 1: Foundation) ==========
+
+    async def acquire_lock(
+        self,
+        resource_key: str,
+        owner_general: str,
+        ttl_seconds: int = 60,
+    ) -> bool:
+        """
+        Acquire a resource lock for conflict resolution.
+
+        Uses INSERT ... ON CONFLICT to ensure atomic lock acquisition.
+        Automatically cleans up expired locks before attempting acquisition.
+
+        Args:
+            resource_key: Resource identifier (e.g., "file:backend/main.py", "deploy:production")
+            owner_general: General name attempting to acquire lock
+            ttl_seconds: Lock time-to-live in seconds (default: 60)
+
+        Returns:
+            True if lock acquired, False if resource already locked
+
+        Example:
+            ```python
+            # Coding General wants to edit a file
+            locked = await coordinator.acquire_lock(
+                "file:backend/main.py",
+                "coding_general",
+                ttl_seconds=120
+            )
+            if locked:
+                # Proceed with edit
+                ...
+                await coordinator.release_lock("file:backend/main.py")
+            else:
+                # Resource is locked by another general
+                logger.warning("Resource locked, skipping task")
+            ```
+        """
+        if not self.pool:
+            await self.initialize()
+
+        try:
+            # Cleanup expired locks first
+            await self.cleanup_expired_locks()
+
+            async with self.pool.acquire() as conn:
+                # Try to insert lock (fails if key exists and not expired)
+                expires_at = datetime.now(timezone.utc).astimezone() + timedelta(seconds=ttl_seconds)
+                
+                result = await conn.execute(
+                    """
+                    INSERT INTO generals_locks (resource_key, owner_general, expires_at)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (resource_key) DO NOTHING
+                    """,
+                    resource_key,
+                    owner_general,
+                    expires_at,
+                )
+
+                acquired = result == "INSERT 0 1"
+
+                if acquired:
+                    logger.info(
+                        f"🔒 Lock acquired: {resource_key} by {owner_general} (TTL: {ttl_seconds}s)"
+                    )
+                    
+                    # Log activity
+                    await conn.execute(
+                        """
+                        INSERT INTO generals_activity (general_name, activity_type, message, metadata)
+                        VALUES ($1, 'lock_acquired', $2, $3)
+                        """,
+                        owner_general,
+                        f"Acquired lock on {resource_key}",
+                        json.dumps({"resource_key": resource_key, "ttl_seconds": ttl_seconds}),
+                    )
+                else:
+                    # Check who owns the lock
+                    lock_info = await conn.fetchrow(
+                        "SELECT owner_general, expires_at FROM generals_locks WHERE resource_key = $1",
+                        resource_key,
+                    )
+                    if lock_info:
+                        logger.warning(
+                            f"🔒 Lock denied: {resource_key} locked by {lock_info['owner_general']} "
+                            f"(expires: {lock_info['expires_at']})"
+                        )
+
+                return acquired
+
+        except Exception as e:
+            logger.error(f"❌ Task Coordinator: Error acquiring lock: {e}", exc_info=True)
+            return False
+
+    async def release_lock(self, resource_key: str, owner_general: str | None = None) -> bool:
+        """
+        Release a resource lock.
+
+        Args:
+            resource_key: Resource identifier
+            owner_general: Optional - only release if owned by this general (safety check)
+
+        Returns:
+            True if lock released, False if lock not found or owned by different general
+        """
+        if not self.pool:
+            await self.initialize()
+
+        try:
+            async with self.pool.acquire() as conn:
+                if owner_general:
+                    # Only release if owned by specified general
+                    result = await conn.execute(
+                        """
+                        DELETE FROM generals_locks
+                        WHERE resource_key = $1 AND owner_general = $2
+                        """,
+                        resource_key,
+                        owner_general,
+                    )
+                else:
+                    # Release unconditionally (e.g., admin cleanup)
+                    result = await conn.execute(
+                        """
+                        DELETE FROM generals_locks
+                        WHERE resource_key = $1
+                        """,
+                        resource_key,
+                    )
+
+                released = result == "DELETE 1"
+
+                if released:
+                    logger.info(f"🔓 Lock released: {resource_key}")
+                    
+                    # Log activity
+                    if owner_general:
+                        await conn.execute(
+                            """
+                            INSERT INTO generals_activity (general_name, activity_type, message, metadata)
+                            VALUES ($1, 'lock_released', $2, $3)
+                            """,
+                            owner_general,
+                            f"Released lock on {resource_key}",
+                            json.dumps({"resource_key": resource_key}),
+                        )
+
+                return released
+
+        except Exception as e:
+            logger.error(f"❌ Task Coordinator: Error releasing lock: {e}", exc_info=True)
+            return False
+
+    async def cleanup_expired_locks(self) -> int:
+        """
+        Remove all expired locks from the database.
+
+        Called automatically by acquire_lock, but can also be called manually
+        for periodic cleanup (e.g., via cron).
+
+        Returns:
+            Number of locks removed
+        """
+        if not self.pool:
+            await self.initialize()
+
+        try:
+            async with self.pool.acquire() as conn:
+                result = await conn.execute(
+                    """
+                    DELETE FROM generals_locks
+                    WHERE expires_at <= NOW()
+                    """
+                )
+
+                # Parse "DELETE N" to get count
+                count = int(result.split()[-1]) if result.startswith("DELETE") else 0
+
+                if count > 0:
+                    logger.info(f"🧹 Cleaned up {count} expired locks")
+
+                return count
+
+        except Exception as e:
+            logger.error(f"❌ Task Coordinator: Error cleaning up locks: {e}", exc_info=True)
+            return 0
+
+    async def get_active_locks(self) -> list[dict[str, Any]]:
+        """
+        Get all currently active (non-expired) locks.
+
+        Returns:
+            List of active lock records
+        """
+        if not self.pool:
+            await self.initialize()
+
+        try:
+            async with self.pool.acquire() as conn:
+                locks = await conn.fetch(
+                    """
+                    SELECT resource_key, owner_general, acquired_at, expires_at
+                    FROM generals_locks
+                    WHERE expires_at > NOW()
+                    ORDER BY acquired_at DESC
+                    """
+                )
+
+                return [dict(lock) for lock in locks]
+
+        except Exception as e:
+            logger.error(f"❌ Task Coordinator: Error getting active locks: {e}", exc_info=True)
+            return []
+
+    # ========== END LOCK MANAGEMENT ==========
 
     async def get_activity(
         self,
