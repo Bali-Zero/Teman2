@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any
 
-from .constants import (
+from backend.core.legal.constants import (
     LEGAL_TYPE_ABBREV,
     LEGAL_TYPE_PATTERN,
     NUMBER_PATTERN,

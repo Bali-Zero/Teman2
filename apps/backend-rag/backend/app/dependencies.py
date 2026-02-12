@@ -378,7 +378,7 @@ def get_cache(request: Request) -> CacheService:
 _agentic_rag_orchestrator = None
 
 
-def get_orchestrator(request: Request):
+def get_orchestrator(request: Request) -> Any:
     """
     Dependency injection for AgenticRAGOrchestrator.
 
@@ -406,7 +406,7 @@ def get_orchestrator(request: Request):
     return _agentic_rag_orchestrator
 
 
-def get_optional_database_pool(request: Request):
+def get_optional_database_pool(request: Request) -> Any:
     """
     Get database pool with graceful degradation.
 
@@ -433,7 +433,7 @@ def get_optional_database_pool(request: Request):
 # ============================================================================
 
 
-def get_retriever(request: Request):
+def get_retriever(request: Request) -> Any:
     """
     Dependency injection for Qdrant retriever client.
 
@@ -560,7 +560,7 @@ async def get_current_portal_client(
 # ============================================================================
 
 
-def get_channel_router(request: Request):
+def get_channel_router(request: Request) -> Any:
     """
     Get ChannelRouter for multi-channel architecture.
 

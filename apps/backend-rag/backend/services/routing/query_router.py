@@ -22,11 +22,11 @@ from typing import Any, Literal
 from backend.app.core.constants import RoutingConstants
 
 # Import directly from modules to avoid circular imports with __init__.py
-from .confidence_calculator import ConfidenceCalculatorService
-from .fallback_manager import FallbackManagerService
-from .keyword_matcher import KeywordMatcherService
-from .priority_override import PriorityOverrideService
-from .routing_stats import RoutingStatsService
+from backend.services.routing.confidence_calculator import ConfidenceCalculatorService
+from backend.services.routing.fallback_manager import FallbackManagerService
+from backend.services.routing.keyword_matcher import KeywordMatcherService
+from backend.services.routing.priority_override import PriorityOverrideService
+from backend.services.routing.routing_stats import RoutingStatsService
 
 logger = logging.getLogger(__name__)
 

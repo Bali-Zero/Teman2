@@ -22,7 +22,7 @@ from backend.core.parsers import DocumentParseError, auto_detect_and_parse
 from backend.core.qdrant_db import QdrantClient
 from backend.utils.tier_classifier import TierClassifier
 
-from .ingestion_logger import IngestionStage, ingestion_logger
+from backend.services.ingestion.ingestion_logger import IngestionStage, ingestion_logger
 
 logger = logging.getLogger(__name__)
 

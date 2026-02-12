@@ -251,7 +251,7 @@ def log_error_with_context(
     error: Exception,
     context: dict[str, Any],
     level: str = "ERROR",
-):
+) -> Any:
     """
     Log error with full context for debugging.
 

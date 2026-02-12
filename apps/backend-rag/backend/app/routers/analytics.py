@@ -10,6 +10,8 @@ Endpoints:
 - GET /api/analytics/monthly-report/{year}/{month}
 """
 
+from typing import Any
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,7 +28,7 @@ from backend.services.analytics.historical_analytics import (
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
-def verify_founder_access(current_user=Depends(get_current_user)):
+def verify_founder_access(current_user: Any=Depends(get_current_user)) -> Any:
     """
     Verify that the user has founder or admin level access.
     """

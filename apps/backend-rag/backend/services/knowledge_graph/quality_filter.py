@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any
 
-from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
-from .ontology import EntityType, RelationType
+from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
+from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
 logger = logging.getLogger(__name__)
 
@@ -514,7 +514,7 @@ class KGQualityFilter:
         """Get filtering statistics"""
         return self.stats.to_dict()
 
-    def reset_stats(self):
+    def reset_stats(self) -> Any:
         """Reset statistics"""
         self.stats = QualityStats()
 

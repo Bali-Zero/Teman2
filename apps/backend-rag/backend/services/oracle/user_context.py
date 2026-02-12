@@ -6,9 +6,9 @@ Responsibility: Manage user profile, memory, and personality context
 import logging
 from typing import Any
 
-from ..memory.memory_service_postgres import MemoryServicePostgres
-from ..misc.personality_service import PersonalityService
-from .oracle_database import db_manager
+from backend.services.memory.memory_service_postgres import MemoryServicePostgres
+from backend.services.misc.personality_service import PersonalityService
+from backend.services.oracle.oracle_database import db_manager
 
 logger = logging.getLogger(__name__)
 

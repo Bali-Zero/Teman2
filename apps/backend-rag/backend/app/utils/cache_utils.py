@@ -39,7 +39,7 @@ def cached(
     ttl: int = 300,
     key_prefix: str = "",
     cache_attr: str = "cache",
-):
+) -> Any:
     """
     Decorator for caching async method results.
 
@@ -52,7 +52,7 @@ def cached(
         Decorated function
     """
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
             # Get cache service
@@ -94,7 +94,7 @@ def cached_sync(
     ttl: int = 300,
     key_prefix: str = "",
     maxsize: int = 128,
-):
+) -> Any:
     """
     Decorator for caching sync function results using LRU cache.
 

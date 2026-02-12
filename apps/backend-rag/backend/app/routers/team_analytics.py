@@ -3,6 +3,8 @@ Team Analytics API Router
 Exposes TeamAnalyticsService functionality via REST API endpoints
 """
 
+from typing import Any
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -18,7 +20,7 @@ router = APIRouter(prefix="/api/team-analytics", tags=["team-analytics"])
 _team_analytics_service: TeamAnalyticsService | None = None
 
 
-def get_team_analytics_service(db_pool=Depends(get_database_pool)) -> TeamAnalyticsService:
+def get_team_analytics_service(db_pool: Any=Depends(get_database_pool)) -> TeamAnalyticsService:
     """Get or create TeamAnalyticsService instance"""
     global _team_analytics_service
     if _team_analytics_service is None:

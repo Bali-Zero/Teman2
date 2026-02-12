@@ -52,7 +52,7 @@ from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_cli
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
 
-from .chat_session import ChatSession, MockChatSession
+from backend.services.rag.agentic.chat_session import ChatSession, MockChatSession
 
 logger = logging.getLogger(__name__)
 

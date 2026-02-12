@@ -3,6 +3,8 @@ Prerequisites Checker Service
 Responsibility: Check step prerequisites
 """
 
+from typing import Any
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ class PrerequisitesCheckerService:
     Responsibility: Verify if prerequisites for a step are met.
     """
 
-    def check_prerequisites(self, journey, step_id: str) -> tuple[bool, list[str]]:
+    def check_prerequisites(self, journey: Any, step_id: str) -> tuple[bool, list[str]]:
         """
         Check if prerequisites for a step are met.
 

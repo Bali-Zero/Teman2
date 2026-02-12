@@ -18,7 +18,7 @@ import asyncpg
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
-from .invoice_generator import InvoiceGenerator
+from backend.services.invoicing.invoice_generator import InvoiceGenerator
 
 logger = get_logger(__name__)
 

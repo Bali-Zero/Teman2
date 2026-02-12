@@ -84,7 +84,7 @@ class CRMCache:
 crm_cache = CRMCache()
 
 
-def cache_crm_result(ttl: int = 300, key_prefix: str = ""):
+def cache_crm_result(ttl: int = 300, key_prefix: str = "") -> Any:
     """
     Decorator per caching risultati funzioni CRM.
 

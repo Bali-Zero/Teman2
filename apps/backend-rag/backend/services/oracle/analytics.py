@@ -7,7 +7,7 @@ import asyncio
 import hashlib
 import logging
 
-from .oracle_database import db_manager
+from backend.services.oracle.oracle_database import db_manager
 
 logger = logging.getLogger(__name__)
 

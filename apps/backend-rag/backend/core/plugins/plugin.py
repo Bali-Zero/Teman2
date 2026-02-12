@@ -75,7 +75,7 @@ class PluginMetadata(BaseModel):
     )
 
     @validator("version")
-    def validate_version(cls, v):
+    def validate_version(cls, v: Any) -> Any:
         """Validate semantic versioning format"""
         parts = v.split(".")
         if len(parts) != 3:

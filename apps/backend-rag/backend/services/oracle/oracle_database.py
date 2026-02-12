@@ -13,7 +13,7 @@ from sqlalchemy.pool import QueuePool
 
 from backend.db.utils import db_retry
 
-from .oracle_config import oracle_config
+from backend.services.oracle.oracle_config import oracle_config
 
 logger = logging.getLogger(__name__)
 

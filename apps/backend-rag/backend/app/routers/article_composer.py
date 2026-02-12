@@ -18,6 +18,8 @@ For marketing team to create articles manually with:
 - SEO optimization
 """
 
+from typing import Any
+
 import json
 import logging
 import os
@@ -54,7 +56,7 @@ limiter = Limiter(key_func=get_remote_address)
 from prometheus_client import REGISTRY
 
 
-def get_or_create_metric(metric_class, name, documentation, labelnames=(), **kwargs):
+def get_or_create_metric(metric_class: Any, name: Any, documentation: Any, labelnames: Any=(), **kwargs) -> Any:
     """Helper to avoid duplicate registration in tests"""
     # Check if metric already exists in the registry
     for collector in REGISTRY._collector_to_names:

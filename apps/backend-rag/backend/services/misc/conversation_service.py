@@ -6,7 +6,7 @@ import asyncpg
 from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.logging_utils import log_success_simple as log_success
 
-from ..memory.memory_fallback import get_memory_cache
+from backend.services.memory.memory_fallback import get_memory_cache
 
 logger = get_logger(__name__)
 

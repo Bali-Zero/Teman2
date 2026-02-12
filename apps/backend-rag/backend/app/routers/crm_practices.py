@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 # ================================================
 # HELPER: Resolve Query() defaults for direct calls
 # ================================================
-def resolve_query_param(value, default=None):
+def resolve_query_param(value: Any, default: Any=None) -> Any:
     """
     Resolve FastAPI Query() defaults to their actual values.
     When endpoint functions are called directly (not via HTTP),

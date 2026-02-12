@@ -3,6 +3,8 @@ Journey Builder Service
 Responsibility: Build journeys from templates
 """
 
+from typing import Any
+
 import logging
 from datetime import datetime, timedelta
 
@@ -34,7 +36,7 @@ class JourneyBuilderService:
         client_id: str,
         template_key: str,
         metadata: dict | None = None,
-    ):
+    ) -> Any:
         """
         Build journey from template.
 
@@ -103,7 +105,7 @@ class JourneyBuilderService:
         description: str,
         steps: list[dict],
         metadata: dict | None = None,
-    ):
+    ) -> Any:
         """
         Build custom journey from provided steps.
 

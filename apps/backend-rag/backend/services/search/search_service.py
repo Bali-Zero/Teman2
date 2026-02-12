@@ -301,7 +301,7 @@ class SearchService:
             logger.error(f"Failed to send BM25 failure alert: {alert_error}")
 
     @property
-    def cultural_insights(self):
+    def cultural_insights(self) -> Any:
         """Access to CulturalInsightsService (public API)."""
         return self._cultural_insights
 

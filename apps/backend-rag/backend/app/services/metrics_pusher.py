@@ -292,7 +292,7 @@ class MetricsPusher:
 
         logger.info("Metrics push loop stopped")
 
-    def start(self):
+    def start(self) -> Any:
         """Start the background metrics push task."""
         if self._running:
             logger.warning("MetricsPusher already running")

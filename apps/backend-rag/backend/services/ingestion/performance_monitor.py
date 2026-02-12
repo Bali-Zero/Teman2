@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from .ingestion_logger import ingestion_logger
+from backend.services.ingestion.ingestion_logger import ingestion_logger
 
 logger = logging.getLogger(__name__)
 
@@ -403,7 +403,7 @@ class PerformanceMonitor:
         """Get list of active alerts"""
         return [asdict(alert) for alert in self.active_alerts.values()]
 
-    def resolve_alert(self, alert_id: str):
+    def resolve_alert(self, alert_id: str) -> Any:
         """Resolve an active alert"""
         if alert_id in self.active_alerts:
             alert = self.active_alerts[alert_id]

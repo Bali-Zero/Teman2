@@ -407,7 +407,7 @@ async def synthesize_visa_workflow_node(
 # ============================================================================
 
 
-def build_visa_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
+def build_visa_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     """
     Build Visa Subgraph.
 
