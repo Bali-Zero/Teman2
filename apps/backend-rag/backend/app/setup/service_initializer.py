@@ -520,6 +520,47 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
             logger.exception(f"Error in database health check loop: {e}")
 
 
+async def initialize_faq_cache_service(app: FastAPI) -> None:
+    """
+    Initialize FAQ Cache service for reducing API costs.
+
+    Non-critical service - if Redis is unavailable, system continues without caching.
+
+    Args:
+        app: FastAPI application instance
+    """
+    try:
+        from backend.services.caching import NotebookLMCacheService
+
+        # Check feature flag
+        enable_cache = os.getenv("ENABLE_FAQ_CACHE", "true").lower() == "true"
+
+        if not enable_cache:
+            logger.info("ℹ️  FAQ cache disabled (ENABLE_FAQ_CACHE=false)")
+            app.state.faq_cache = None
+            service_registry.register_service("faq_cache", ServiceStatus.DISABLED)
+            return
+
+        cache_service = NotebookLMCacheService()
+        await cache_service.initialize()
+
+        if cache_service.redis_client:
+            app.state.faq_cache = cache_service
+            service_registry.register_service("faq_cache", ServiceStatus.HEALTHY)
+            logger.info("✅ FAQ Cache service initialized (Redis connected successfully)")
+            # NOTE: Stats fetching moved to dedicated /health/cache endpoint
+            # to avoid blocking startup with slow Redis scan operations
+        else:
+            logger.warning("⚠️  FAQ cache disabled (Redis connection failed)")
+            app.state.faq_cache = None
+            service_registry.register_service("faq_cache", ServiceStatus.DEGRADED)
+
+    except Exception as e:
+        logger.warning(f"⚠️  FAQ Cache initialization failed: {e}")
+        app.state.faq_cache = None
+        service_registry.register_service("faq_cache", ServiceStatus.DEGRADED, error=str(e))
+
+
 async def initialize_crm_and_memory_services(
     app: FastAPI, ai_client: ZantaraAIClient, db_pool: asyncpg.Pool | None
 ) -> None:
@@ -843,6 +884,7 @@ async def initialize_channel_router(
                 tools=tools,
                 db_pool=db_pool,
                 retriever=search_service,
+                faq_cache=getattr(app.state, "faq_cache", None),  # FAQ cache from Step 2.5
             )
             logger.info(f"✅ Fallback orchestrator created with {len(tools)} tools")
 
@@ -969,6 +1011,9 @@ async def initialize_services(app: FastAPI) -> None:
 
     # 2. Tool stack
     tool_executor = await _init_tool_stack(app)
+
+    # 2.5 FAQ Cache (non-critical, graceful degradation)
+    await initialize_faq_cache_service(app)
 
     # 3. RAG components
     query_router = await _init_rag_components(app, search_service)
