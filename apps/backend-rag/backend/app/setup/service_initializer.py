@@ -538,7 +538,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
         if not enable_cache:
             logger.info("ℹ️  FAQ cache disabled (ENABLE_FAQ_CACHE=false)")
             app.state.faq_cache = None
-            service_registry.register_service("faq_cache", ServiceStatus.DISABLED)
+            service_registry.register("faq_cache", ServiceStatus.DISABLED)
             return
 
         cache_service = NotebookLMCacheService()
@@ -546,19 +546,19 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
 
         if cache_service.redis_client:
             app.state.faq_cache = cache_service
-            service_registry.register_service("faq_cache", ServiceStatus.HEALTHY)
+            service_registry.register("faq_cache", ServiceStatus.HEALTHY)
             logger.info("✅ FAQ Cache service initialized (Redis connected successfully)")
             # NOTE: Stats fetching moved to dedicated /health/cache endpoint
             # to avoid blocking startup with slow Redis scan operations
         else:
             logger.warning("⚠️  FAQ cache disabled (Redis connection failed)")
             app.state.faq_cache = None
-            service_registry.register_service("faq_cache", ServiceStatus.DEGRADED)
+            service_registry.register("faq_cache", ServiceStatus.DEGRADED)
 
     except Exception as e:
         logger.warning(f"⚠️  FAQ Cache initialization failed: {e}")
         app.state.faq_cache = None
-        service_registry.register_service("faq_cache", ServiceStatus.DEGRADED, error=str(e))
+        service_registry.register("faq_cache", ServiceStatus.DEGRADED, error=str(e))
 
 
 async def initialize_crm_and_memory_services(
