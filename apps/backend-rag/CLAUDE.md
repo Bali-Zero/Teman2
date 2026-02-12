@@ -1,5 +1,55 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-02-12 - FAQ Cache Production Crash Investigation)
+
+### Problem Identified
+
+FAQ caching system deployment caused production crash with child process death loops. Initial deployment (commit `4836ad06f`) failed with lifespan recursion errors, fixed by modernizing to `@asynccontextmanager` API. Re-deployment on modern architecture still crashed.
+
+**Binary Search Investigation (3.5 hours, 8 deployments):**
+
+| Test | Component | Result | Version |
+|------|-----------|--------|---------|
+| Baseline | Modern lifespan only | ✅ STABLE | v1960 |
+| STEP 1 | Redis import test | ✅ SUCCESS | v1971 |
+| STEP 2 | Prometheus metrics | ✅ SUCCESS | v1973 |
+| STEP 3A | orchestrator.py + metrics | ✅ SUCCESS | v1975 |
+| STEP 3B | orchestrator_core.py | ✅ SUCCESS | v1976 |
+| FULL | Complete FAQ cache | ❌ CRASH | v1977 |
+| Fix Attempt | Remove get_stats() | ❌ CRASH | v1979 |
+| Rollback | Stable base | ✅ RESTORED | v1982 |
+
+**Root Cause:** Bug is in `NotebookLMCacheService` initialization (`service_initializer.py:544-554`), NOT in orchestrator code or metrics.
+
+**Symptoms:**
+- Child process crash loop (5-second intervals)
+- No Python tracebacks visible (suggests import-time or very early crash)
+- Health check status: 1 critical
+
+**Attempted Fix:**
+Removed blocking `await cache_service.get_stats()` call (hypothesis: Redis scan_iter blocks startup) → Still crashed
+
+**Production Recovery:**
+- Emergency rollback to `8ab496211` (modern lifespan, no FAQ cache)
+- Status: ✅ HEALTHY (v1982, 1 passing health check)
+- Downtime: ~15 minutes (during investigation)
+
+**Next Steps:**
+1. Isolate cache service testing (outside FastAPI context)
+2. Add extensive debug logging to NotebookLMCacheService
+3. Verify Redis connection string format and accessibility
+4. Consider alternative approaches (in-memory LRU, lazy initialization)
+
+**Documentation:** `docs/FAQ_CACHE_INVESTIGATION_2026_02_12.md` (527 lines)
+
+**Key Learnings:**
+- Binary search effective for isolating complex bugs
+- Import-time crashes leave no Python tracebacks
+- Quick rollback discipline prevented extended outage
+- Complex bugs need fresh perspective after 3+ hours
+
+---
+
 ## Session Update (2026-01-23 - Google Drive Service Account Fix)
 
 ### Problem Identified
