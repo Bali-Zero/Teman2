@@ -68,7 +68,7 @@ class DatabaseQueryDebugger:
         params: tuple | None = None,
         connection_id: str | None = None,
         transaction_id: str | None = None,
-    ):
+    ) -> Any:
         """
         Context manager for tracing a database query.
 

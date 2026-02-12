@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter(prefix="/api/handlers", tags=["handlers"])
 
 
-def extract_handlers_from_router(module) -> list[dict[str, Any]]:
+def extract_handlers_from_router(module: Any) -> list[dict[str, Any]]:
     """Extract all route handlers from a router module"""
     handlers = []
 

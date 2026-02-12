@@ -19,7 +19,7 @@ except ImportError:
     pass
 
 
-def get_tracer(name: str = "nuzantara-backend"):
+def get_tracer(name: str = "nuzantara-backend") -> Any:
     """
     Get OpenTelemetry tracer.
 
@@ -40,7 +40,7 @@ def get_tracer(name: str = "nuzantara-backend"):
 
 
 @contextmanager
-def trace_span(span_name: str, attributes: dict[str, Any] | None = None):
+def trace_span(span_name: str, attributes: dict[str, Any] | None = None) -> Any:
     """
     Context manager for creating a trace span.
 

@@ -22,8 +22,8 @@ from typing import Any
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 
-from .prompt_builder import SystemPromptBuilder
-from .schema import CoreResult
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.schema import CoreResult
 
 logger = logging.getLogger(__name__)
 

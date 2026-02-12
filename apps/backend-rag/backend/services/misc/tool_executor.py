@@ -10,8 +10,8 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from .mcp_client_service import MCPClientService
-    from .zantara_tools import ZantaraTools
+    from backend.services.misc.mcp_client_service import MCPClientService
+    from backend.services.misc.zantara_tools import ZantaraTools
 
 logger = logging.getLogger(__name__)
 

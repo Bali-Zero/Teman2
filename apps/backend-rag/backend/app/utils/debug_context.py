@@ -128,7 +128,7 @@ def debug_mode(
     request_id: str | None = None,
     enable_verbose_logging: bool = True,
     capture_api_calls: bool = True,
-):
+) -> Any:
     """
     Convenience context manager for debug mode.
 

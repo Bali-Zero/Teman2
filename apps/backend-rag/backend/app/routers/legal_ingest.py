@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/legal", tags=["legal-ingestion"])
 
 
-def save_upload_file_sync(path: Path, content: bytes):
+def save_upload_file_sync(path: Path, content: bytes) -> Any:
     """Helper for sync file writing"""
     with open(path, "wb") as f:
         f.write(content)

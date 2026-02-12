@@ -105,7 +105,7 @@ class CircuitBreaker:
             if elapsed >= self.timeout:
                 self._transition_to_half_open()
 
-    def record_success(self):
+    def record_success(self) -> Any:
         """Record a successful operation."""
         self._check_timeout()
 
@@ -117,7 +117,7 @@ class CircuitBreaker:
             # Reset failure count on success
             self.failure_count = 0
 
-    def record_failure(self):
+    def record_failure(self) -> Any:
         """Record a failed operation."""
         self.failure_count += 1
         self.last_failure_time = time.time()

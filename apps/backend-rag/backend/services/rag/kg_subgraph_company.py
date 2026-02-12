@@ -370,7 +370,7 @@ async def synthesize_company_workflow_node(
 # ============================================================================
 
 
-def build_company_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
+def build_company_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     """
     Build Company Setup Subgraph.
 

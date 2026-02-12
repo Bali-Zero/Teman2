@@ -202,7 +202,7 @@ class AutoIngestionOrchestrator:
         logger.info("✅ AutoIngestionOrchestrator initialized")
         logger.info(f"   Monitored sources: {len(self.sources)}")
 
-    def add_source(self, source: MonitoredSource):
+    def add_source(self, source: MonitoredSource) -> Any:
         """Add a new monitored source"""
         self.sources[source.source_id] = source
         logger.info(f"➕ Added source: {source.name} → {source.target_collection}")

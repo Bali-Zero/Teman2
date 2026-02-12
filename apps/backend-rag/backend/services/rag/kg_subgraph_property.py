@@ -156,7 +156,7 @@ async def synthesize_property_workflow_node(state: PropertyState) -> PropertySta
     return state
 
 
-def build_property_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
+def build_property_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     """Build Property Subgraph."""
     logger.info("🏗️ [Property Subgraph] Building property subgraph...")
 

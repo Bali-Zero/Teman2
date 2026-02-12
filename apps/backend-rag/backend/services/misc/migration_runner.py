@@ -160,7 +160,7 @@ class MigrationRunner:
         visited: set[int] = set()
         temp_visited: set[int] = set()
 
-        def visit(node: int):
+        def visit(node: int) -> Any:
             if node in temp_visited:
                 raise MigrationError(f"Circular dependency detected involving migration {node}")
             if node in visited:

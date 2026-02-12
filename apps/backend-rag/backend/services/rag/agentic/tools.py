@@ -17,6 +17,8 @@ DESIGN PRINCIPLE: No hardcoded keywords, patterns, or domain knowledge.
 The LLM decides which collection to search based on the tool description.
 """
 
+from typing import Any
+
 import json
 import logging
 
@@ -967,7 +969,7 @@ class TimeSheetTool(BaseTool):
             return json.dumps({"error": str(e)})
 
 
-def create_default_tools(search_service=None) -> list[BaseTool]:
+def create_default_tools(search_service: Any=None) -> list[BaseTool]:
     """
     Create default tool set for AgenticRAGOrchestrator.
 

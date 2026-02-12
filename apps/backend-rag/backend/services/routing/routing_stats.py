@@ -3,6 +3,8 @@ Routing Statistics Service
 Responsibility: Track routing statistics and metrics
 """
 
+from typing import Any
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ class RoutingStatsService:
         fallbacks_used: bool,
         confidence_threshold_high: float = 0.7,
         confidence_threshold_low: float = 0.3,
-    ):
+    ) -> Any:
         """
         Record a routing decision.
 
@@ -79,7 +81,7 @@ class RoutingStatsService:
             },
         }
 
-    def reset_stats(self):
+    def reset_stats(self) -> Any:
         """Reset all statistics."""
         self.fallback_stats = {
             "total_routes": 0,

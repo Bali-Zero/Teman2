@@ -17,9 +17,9 @@ from typing import Any
 
 import asyncpg
 
-from .coreference import CoreferenceResolver
-from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult, KGExtractor
-from .quality_filter import KGQualityFilter
+from backend.services.knowledge_graph.coreference import CoreferenceResolver
+from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractedRelation, ExtractionResult, KGExtractor
+from backend.services.knowledge_graph.quality_filter import KGQualityFilter
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class KGPipeline:
 
         # Initialize extractor based on type
         if self.config.extractor_type == "gemini":
-            from .extractor_gemini import GeminiKGExtractor
+            from backend.services.knowledge_graph.extractor_gemini import GeminiKGExtractor
 
             self.extractor = GeminiKGExtractor(
                 model=self.config.model,

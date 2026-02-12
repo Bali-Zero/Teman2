@@ -45,19 +45,19 @@ from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import BaseTool
 
-from .llm_gateway import LLMGateway
-from .memory_handler import MemoryHandler
-from .pipeline import create_default_pipeline
-from .prompt_builder import SystemPromptBuilder
-from .query_gates import QueryGates
-from .query_helpers import (
+from backend.services.rag.agentic.llm_gateway import LLMGateway
+from backend.services.rag.agentic.memory_handler import MemoryHandler
+from backend.services.rag.agentic.pipeline import create_default_pipeline
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.query_gates import QueryGates
+from backend.services.rag.agentic.query_helpers import (
     TIER_FLASH,
     is_conversation_recall_query,
     wrap_query_with_language_instruction,
 )
-from .reasoning import ReasoningEngine, detect_team_query
-from .schema import CoreResult
-from .tool_executor import execute_tool
+from backend.services.rag.agentic.reasoning import ReasoningEngine, detect_team_query
+from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.tool_executor import execute_tool
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,6 @@ class AgenticRAGOrchestrator:
         db_pool: Any = None,
         model_name: str = "gemini-3-flash-preview",  # Zantara AI - Gemini 3 Flash Preview
         semantic_cache: SemanticCache = None,
-        faq_cache: Any = None,  # NotebookLMCacheService
         retriever: Any = None,
         clarification_service: ClarificationService = None,
         entity_extractor: EntityExtractionService = None,
@@ -113,7 +112,6 @@ class AgenticRAGOrchestrator:
             db_pool: Optional asyncpg connection pool for database operations
             model_name: Base model name (legacy, not actively used)
             semantic_cache: Optional semantic cache instance for query deduplication
-            faq_cache: Optional FAQ cache for exact question matching (< 1ms)
             retriever: SearchService or KnowledgeService instance for embeddings
             clarification_service: Optional service for resolving ambiguous queries
             entity_extractor: Optional EntityExtractionService instance
@@ -129,7 +127,6 @@ class AgenticRAGOrchestrator:
         self.db_pool = db_pool
         self.model_name = model_name
         self.semantic_cache = semantic_cache
-        self.faq_cache = faq_cache  # FAQ cache (exact match, reduces API costs)
         self.retriever = retriever
         self.clarification_service = clarification_service
         self.llm_gateway = llm_gateway or LLMGateway()  # Initialize LLMGateway here
@@ -233,9 +230,9 @@ class AgenticRAGOrchestrator:
         logger.debug("AgenticRAGOrchestrator.__init__ completed")
 
         # Initialize OrchestratorCore (delegates main logic)
-        from .orchestrator_core import OrchestratorCore
-        from .orchestrator_streaming import OrchestratorStreamingManager
-        from .orchestrator_streaming_core import OrchestratorStreamingCore
+        from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+        from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
+        from backend.services.rag.agentic.orchestrator_streaming_core import OrchestratorStreamingCore
 
         self.core = OrchestratorCore(
             llm_gateway=self.llm_gateway,
@@ -247,7 +244,6 @@ class AgenticRAGOrchestrator:
             entity_extractor=self.entity_extractor,
             kg_retrieval=self.kg_retrieval,
             semantic_cache=self.semantic_cache,
-            faq_cache=self.faq_cache,  # FAQ cache (exact match, < 1ms)
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
         )

@@ -33,11 +33,11 @@ import asyncpg
 
 from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
-from .collective_memory_service import CollectiveMemoryService
-from .episodic_memory_service import EpisodicMemoryService
-from .memory_fact_extractor import MemoryFactExtractor
-from .memory_service_postgres import MemoryServicePostgres
-from .models import (
+from backend.services.memory.collective_memory_service import CollectiveMemoryService
+from backend.services.memory.episodic_memory_service import EpisodicMemoryService
+from backend.services.memory.memory_fact_extractor import MemoryFactExtractor
+from backend.services.memory.memory_service_postgres import MemoryServicePostgres
+from backend.services.memory.models import (
     FactType,
     MemoryContext,
     MemoryFact,

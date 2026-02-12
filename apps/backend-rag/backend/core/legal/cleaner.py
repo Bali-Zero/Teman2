@@ -6,7 +6,7 @@ Removes non-content artifacts from Indonesian legal documents
 import logging
 import re
 
-from .constants import NOISE_PATTERNS, WHITESPACE_FIXES
+from backend.core.legal.constants import NOISE_PATTERNS, WHITESPACE_FIXES
 
 logger = logging.getLogger(__name__)
 

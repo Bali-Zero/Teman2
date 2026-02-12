@@ -438,7 +438,7 @@ async def synthesize_tax_workflow_node(
 # ============================================================================
 
 
-def build_tax_subgraph(db_pool: asyncpg.Pool, llm) -> StateGraph:
+def build_tax_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     """
     Build Tax Compliance Subgraph.
 
