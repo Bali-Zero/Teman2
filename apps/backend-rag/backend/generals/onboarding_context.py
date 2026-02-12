@@ -225,6 +225,53 @@ You MUST follow these rules in ALL your analysis and code output:
 # ──────────────────────────────────────────────────────────
 
 
+def get_intelligence_system_instruction_v2() -> str:
+    """
+    Build system instruction for Intelligence General v2 (Hybrid Strategist).
+    
+    Loads the v2 hybrid prompt that includes:
+    - Real-time web search capability
+    - Multi-step research workflow
+    - Fact-checking and source verification
+    - Inter-agent coordination guidelines
+    - AI_ONBOARDING Golden Rules
+    """
+    # Load v2 hybrid prompt
+    v2_prompt_path = _THIS_FILE.parent / "SYSTEM_PROMPTS" / "intelligence_general_v2_hybrid.md"
+    try:
+        v2_prompt = v2_prompt_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        logger.warning(f"⚠️ intelligence_general_v2_hybrid.md not found, using fallback")
+        v2_prompt = """You are Intelligence General v2 - a hybrid strategist combining internal data with live web search."""
+    
+    # Append Golden Rules reminder
+    onboarding_doc = load_onboarding_document()
+    
+    golden_rules_summary = """
+
+## CRITICAL: Golden Rules (AI_ONBOARDING.md)
+
+When providing code suggestions or technical recommendations:
+1. VIRTUALENV IS MANDATORY
+2. NO ROOT EXECUTION - Use `python -m backend.scripts.script_name`
+3. ABSOLUTE IMPORTS ONLY - `from backend.core import config`
+4. ASYNC FIRST - Use httpx, not requests
+5. TYPE HINTS REQUIRED on all functions
+6. NO HARDCODING - Secrets from env vars
+7. SEPARATION OF DATA AND LOGIC - Data in KB, not code
+8. CLEAN LOGGING - Use logger, not print()
+9. QUALITY STANDARD - Tests, error handling, graceful degradation
+
+Critical Knowledge:
+- Embedding model: text-embedding-3-small (1536 dims)
+- KBLI collection has FLAT payload (not nested)
+- Pricing from PricingTool only, never from KG
+- Production: nuzantara-rag on Fly.io (Singapore)
+"""
+    
+    return v2_prompt + golden_rules_summary
+
+
 def log_onboarding_compliance(general_name: str) -> None:
     """Log that a General has loaded onboarding context."""
     onboarding_exists = _ONBOARDING_PATH.exists()
