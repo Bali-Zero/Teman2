@@ -9,7 +9,7 @@ from typing import Any
 
 from backend.core.embeddings import create_embeddings_generator
 
-from .constants import MAX_PASAL_TOKENS, PASAL_PATTERN
+from backend.core.legal.constants import MAX_PASAL_TOKENS, PASAL_PATTERN
 
 logger = logging.getLogger(__name__)
 

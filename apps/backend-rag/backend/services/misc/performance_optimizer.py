@@ -33,7 +33,7 @@ class PerformanceMonitor:
         }
         self.lock = threading.Lock()
 
-    def record_request(self, duration: float, cache_hit: bool = False):
+    def record_request(self, duration: float, cache_hit: bool = False) -> Any:
         with self.lock:
             self.metrics["request_count"] += 1
             self.metrics["total_time"] += duration
@@ -46,7 +46,7 @@ class PerformanceMonitor:
             else:
                 self.metrics["cache_misses"] += 1
 
-    def record_component_time(self, component: str, duration: float):
+    def record_component_time(self, component: str, duration: float) -> Any:
         with self.lock:
             if component in self.metrics:
                 self.metrics[component] += duration
@@ -71,10 +71,10 @@ class PerformanceMonitor:
 perf_monitor = PerformanceMonitor()
 
 
-def async_timed(component: str = "request"):
+def async_timed(component: str = "request") -> Any:
     """Decorator to time async functions"""
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             start_time = time.time()
@@ -91,12 +91,12 @@ def async_timed(component: str = "request"):
     return decorator
 
 
-def timed(component: str = "request"):
+def timed(component: str = "request") -> Any:
     """Decorator to time sync functions"""
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> Any:
             start_time = time.time()
             try:
                 result = func(*args, **kwargs)
@@ -322,7 +322,7 @@ class OptimizedSearchService:
         )
 
 
-def create_optimized_app():
+def create_optimized_app() -> Any:
     """Create FastAPI app with performance optimizations"""
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
@@ -376,7 +376,7 @@ class MemoryOptimizer:
     """Memory usage optimization"""
 
     @staticmethod
-    def optimize_chroma_settings():
+    def optimize_chroma_settings() -> Any:
         """Optimize Qdrant settings for production"""
         return {
             "anonymized_telemetry": False,
@@ -387,7 +387,7 @@ class MemoryOptimizer:
         }
 
     @staticmethod
-    def optimize_embedding_model():
+    def optimize_embedding_model() -> Any:
         """Optimize embedding model settings"""
         return {
             "device": "cpu",  # Use GPU if available

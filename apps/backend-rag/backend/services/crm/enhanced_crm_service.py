@@ -21,10 +21,10 @@ from backend.app.core.exceptions import (
 )
 from backend.app.utils.error_sanitizer import sanitize_error_message
 
-from .audit_trail import AuditAction, CRMAuditor, init_audit_table
-from .cache_manager import crm_cache, invalidate_client_cache, query_cache
-from .query_optimizer import CRMQueryOptimizer, health_check_crm_tables
-from .validators import ClientValidator, PracticeValidator, normalize_phone_e164
+from backend.services.crm.audit_trail import AuditAction, CRMAuditor, init_audit_table
+from backend.services.crm.cache_manager import crm_cache, invalidate_client_cache, query_cache
+from backend.services.crm.query_optimizer import CRMQueryOptimizer, health_check_crm_tables
+from backend.services.crm.validators import ClientValidator, PracticeValidator, normalize_phone_e164
 
 logger = logging.getLogger(__name__)
 

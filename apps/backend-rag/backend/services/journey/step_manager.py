@@ -3,6 +3,8 @@ Step Manager Service
 Responsibility: Manage step lifecycle
 """
 
+from typing import Any
+
 import logging
 from datetime import datetime
 
@@ -16,7 +18,7 @@ class StepManagerService:
     Responsibility: Start, complete, and block steps.
     """
 
-    def start_step(self, journey, step_id: str) -> bool:
+    def start_step(self, journey: Any, step_id: str) -> bool:
         """
         Start a journey step.
 
@@ -48,7 +50,7 @@ class StepManagerService:
         logger.info(f"▶️ Started step: {step_id} - {step.title}")
         return True
 
-    def complete_step(self, journey, step_id: str, notes: list[str] | None = None) -> bool:
+    def complete_step(self, journey: Any, step_id: str, notes: list[str] | None = None) -> bool:
         """
         Complete a journey step.
 
@@ -83,7 +85,7 @@ class StepManagerService:
 
         return True
 
-    def block_step(self, journey, step_id: str, reason: str) -> bool:
+    def block_step(self, journey: Any, step_id: str, reason: str) -> bool:
         """
         Block a journey step.
 

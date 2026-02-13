@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
-from .alert_service import AlertLevel, AlertService
+from backend.services.monitoring.alert_service import AlertLevel, AlertService
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class HealthMonitor:
         intelligent_router: Any = None,
         tool_executor: Any = None,
         app_state: Any = None,
-    ):
+    ) -> Any:
         """Inject services after initialization"""
         self.memory_service = memory_service
         self.intelligent_router = intelligent_router

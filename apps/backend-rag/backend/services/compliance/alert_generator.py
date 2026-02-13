@@ -10,8 +10,8 @@ from enum import Enum
 
 from backend.app.core.config import settings
 
-from .compliance_tracker import ComplianceItem
-from .severity_calculator import AlertSeverity
+from backend.services.compliance.compliance_tracker import ComplianceItem
+from backend.services.compliance.severity_calculator import AlertSeverity
 
 logger = logging.getLogger(__name__)
 

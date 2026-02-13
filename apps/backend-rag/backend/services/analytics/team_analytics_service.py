@@ -27,13 +27,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-from .burnout_detector import BurnoutDetectorService
-from .optimal_hours import OptimalHoursService
-from .pattern_analyzer import PatternAnalyzerService
-from .performance_trend import PerformanceTrendService
-from .productivity_scorer import ProductivityScorerService
-from .team_insights import TeamInsightsService
-from .workload_balance import WorkloadBalanceService
+from backend.services.analytics.burnout_detector import BurnoutDetectorService
+from backend.services.analytics.optimal_hours import OptimalHoursService
+from backend.services.analytics.pattern_analyzer import PatternAnalyzerService
+from backend.services.analytics.performance_trend import PerformanceTrendService
+from backend.services.analytics.productivity_scorer import ProductivityScorerService
+from backend.services.analytics.team_insights import TeamInsightsService
+from backend.services.analytics.workload_balance import WorkloadBalanceService
 
 logger = logging.getLogger(__name__)
 

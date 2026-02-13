@@ -108,7 +108,7 @@ class RAGPipelineDebugger:
         """
         self.trace = RAGPipelineTrace(query=query, correlation_id=correlation_id)
 
-    def step(self, step_name: str, **metadata):
+    def step(self, step_name: str, **metadata) -> Any:
         """
         Context manager for a pipeline step.
 

@@ -127,7 +127,7 @@ class CollectionHealthService:
 
     def record_query(
         self, collection_name: str, had_results: bool, result_count: int = 0, avg_score: float = 0.0
-    ):
+    ) -> Any:
         """
         Record a query to a collection for health tracking.
 
@@ -151,7 +151,7 @@ class CollectionHealthService:
             if avg_score > 0:
                 metrics["confidence_scores"].append(avg_score)
 
-    def record_queries_batch(self, health_metrics: list[dict[str, Any]]):
+    def record_queries_batch(self, health_metrics: list[dict[str, Any]]) -> Any:
         """
         Record multiple query metrics in a single batch operation.
 

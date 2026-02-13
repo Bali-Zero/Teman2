@@ -80,7 +80,7 @@ class ClientCreate(BaseModel):
 
     @field_validator("email", "passport_expiry", "date_of_birth", mode="before")
     @classmethod
-    def validate_optional_fields(cls, v):
+    def validate_optional_fields(cls, v: Any) -> Any:
         """Convert empty strings to None for optional fields"""
         if isinstance(v, str) and not v.strip():
             return None
@@ -137,7 +137,7 @@ class ClientUpdate(BaseModel):
 
     @field_validator("email", "passport_expiry", "date_of_birth", mode="before")
     @classmethod
-    def validate_optional_fields(cls, v):
+    def validate_optional_fields(cls, v: Any) -> Any:
         """Convert empty strings to None for optional fields"""
         if isinstance(v, str) and not v.strip():
             return None
@@ -188,7 +188,7 @@ class ClientResponse(BaseModel):
 
     @field_validator("uuid", mode="before")
     @classmethod
-    def convert_uuid_to_string(cls, v):
+    def convert_uuid_to_string(cls, v: Any) -> Any:
         """Convert UUID object to string if needed"""
         if v is None:
             return ""
@@ -196,7 +196,7 @@ class ClientResponse(BaseModel):
 
     @field_validator("tags", mode="before")
     @classmethod
-    def ensure_tags_list(cls, v):
+    def ensure_tags_list(cls, v: Any) -> Any:
         """Ensure tags is always a list"""
         if v is None:
             return []
@@ -204,7 +204,7 @@ class ClientResponse(BaseModel):
 
     @field_validator("passport_expiry", "date_of_birth", mode="before")
     @classmethod
-    def convert_date_to_string(cls, v):
+    def convert_date_to_string(cls, v: Any) -> Any:
         """Convert date objects to ISO format strings"""
         if v is None:
             return None

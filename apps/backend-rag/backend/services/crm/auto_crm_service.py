@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 from backend.app.core.constants import CRMConstants
 
-from .ai_crm_extractor import get_extractor
-from .lead_assignment_agent import trigger_lead_assignment
+from backend.services.crm.ai_crm_extractor import get_extractor
+from backend.services.crm.lead_assignment_agent import trigger_lead_assignment
 
 logger = logging.getLogger(__name__)
 
@@ -499,9 +499,9 @@ _auto_crm_instance: AutoCRMService | None = None
 
 
 def get_auto_crm_service(
-    ai_client=None,
+    ai_client: Any=None,
     db_pool: "asyncpg.Pool | None" = None,
-    telegram_service=None,
+    telegram_service: Any=None,
 ) -> AutoCRMService:
     """
     Get or create singleton auto-CRM service instance

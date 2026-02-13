@@ -3,6 +3,8 @@ Enhanced Prometheus Metrics for ZANTARA-PERFECT-100
 Provides detailed system monitoring and performance tracking
 """
 
+from typing import Any
+
 import logging
 import time
 
@@ -12,21 +14,21 @@ from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_late
 logger = logging.getLogger(__name__)
 
 
-def safe_register_gauge(name, documentation, labelnames=()):
+def safe_register_gauge(name: Any, documentation: Any, labelnames: Any=()) -> Any:
     try:
         return Gauge(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_counter(name, documentation, labelnames=()):
+def safe_register_counter(name: Any, documentation: Any, labelnames: Any=()) -> Any:
     try:
         return Counter(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_histogram(name, documentation, labelnames=(), buckets=Histogram.DEFAULT_BUCKETS):
+def safe_register_histogram(name: Any, documentation: Any, labelnames: Any=(), buckets: Any=Histogram.DEFAULT_BUCKETS) -> Any:
     try:
         return Histogram(name, documentation, labelnames, buckets=buckets)
     except ValueError:
@@ -744,7 +746,7 @@ class MetricsCollector:
         self.last_redis_check = 0
         self.last_sse_latency = 0
 
-    def update_session_count(self, count: int):
+    def update_session_count(self, count: int) -> Any:
         """Update active sessions count"""
         self.session_count = count
         active_sessions.set(count)
@@ -772,12 +774,12 @@ class MetricsCollector:
         # For now, return last known value
         return self.last_sse_latency
 
-    def update_sse_latency(self, latency: float):
+    def update_sse_latency(self, latency: float) -> Any:
         """Update SSE latency from actual measurements"""
         self.last_sse_latency = latency
         sse_latency.set(latency)
 
-    def update_system_metrics(self):
+    def update_system_metrics(self) -> Any:
         """Update system-level metrics"""
         # Uptime
         uptime = time.time() - BOOT_TIME
@@ -798,24 +800,24 @@ class MetricsCollector:
         except Exception:
             pass
 
-    def record_request(self, method: str, endpoint: str, status: int, duration: float):
+    def record_request(self, method: str, endpoint: str, status: int, duration: float) -> Any:
         """Record HTTP request metrics"""
         http_requests_total.labels(method=method, endpoint=endpoint, status=str(status)).inc()
         request_duration.labels(method=method, endpoint=endpoint).observe(duration)
 
-    def record_cache_hit(self):
+    def record_cache_hit(self) -> Any:
         """Record a cache hit"""
         cache_hits.inc()
 
-    def record_cache_miss(self):
+    def record_cache_miss(self) -> Any:
         """Record a cache miss"""
         cache_misses.inc()
 
-    def record_cache_set(self):
+    def record_cache_set(self) -> Any:
         """Record a cache set operation"""
         cache_set_operations.inc()
 
-    def record_ai_request(self, model: str, latency: float, tokens: int = 0):
+    def record_ai_request(self, model: str, latency: float, tokens: int = 0) -> Any:
         """Record AI request metrics"""
         ai_requests.labels(model=model).inc()
         ai_latency.labels(model=model).observe(latency)
@@ -829,7 +831,7 @@ class MetricsCollector:
         completion_tokens: int,
         cost_usd: float,
         endpoint: str = "chat",
-    ):
+    ) -> Any:
         """Record detailed LLM token usage metrics.
 
         Args:
@@ -855,11 +857,11 @@ class MetricsCollector:
         if total_tokens > 0:
             ai_tokens_used.labels(model=model).inc(total_tokens)
 
-    def update_db_connections(self, count: int):
+    def update_db_connections(self, count: int) -> Any:
         """Update database connection count"""
         db_connections_active.set(count)
 
-    def record_db_query(self, duration: float):
+    def record_db_query(self, duration: float) -> Any:
         """Record database query duration"""
         db_query_duration.observe(duration)
 
@@ -869,7 +871,7 @@ class MetricsCollector:
         route_used: str,
         status: str,
         context_tokens: int = 0,
-    ):
+    ) -> Any:
         """Record a RAG query with routing and status info.
 
         Args:
@@ -890,7 +892,7 @@ class MetricsCollector:
         documents_count: int,
         collection: str = "unknown",
         route_used: str = "agentic",
-    ):
+    ) -> Any:
         """Record detailed RAG performance metrics.
 
         Args:
@@ -908,7 +910,7 @@ class MetricsCollector:
         self,
         duration_seconds: float,
         fact_types: list[str],
-    ):
+    ) -> Any:
         """Record memory fact extraction metrics.
 
         Args:
@@ -921,7 +923,7 @@ class MetricsCollector:
                 fact_type=f_type, source="regex", confidence_level="medium"
             ).inc()
 
-    def record_kg_metrics(self, entity_count: int, relationship_count: int, method: str):
+    def record_kg_metrics(self, entity_count: int, relationship_count: int, method: str) -> Any:
         """Record Knowledge Graph extraction metrics."""
         kg_extraction_total.labels(type="entity", method=method).inc(entity_count)
         kg_extraction_total.labels(type="relationship", method=method).inc(relationship_count)
@@ -930,7 +932,7 @@ class MetricsCollector:
             density = relationship_count / entity_count
             kg_relationship_density.observe(density)
 
-    def record_tool_call(self, tool_name: str, status: str):
+    def record_tool_call(self, tool_name: str, status: str) -> Any:
         """Record a tool call in agentic RAG.
 
         Args:
@@ -939,7 +941,7 @@ class MetricsCollector:
         """
         rag_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
 
-    def record_llm_fallback(self, from_model: str, to_model: str):
+    def record_llm_fallback(self, from_model: str, to_model: str) -> Any:
         """Record an LLM model fallback event.
 
         Args:
@@ -948,7 +950,7 @@ class MetricsCollector:
         """
         rag_fallback_count.labels(from_model=from_model, to_model=to_model).inc()
 
-    def record_memory_lock_timeout(self, user_id: str):
+    def record_memory_lock_timeout(self, user_id: str) -> Any:
         """Record a memory lock timeout event.
 
         Args:
@@ -956,7 +958,7 @@ class MetricsCollector:
         """
         memory_lock_timeout_total.labels(user_id=user_id).inc()
 
-    def record_memory_lock_contention(self, operation: str, wait_time_seconds: float):
+    def record_memory_lock_contention(self, operation: str, wait_time_seconds: float) -> Any:
         """Record memory lock contention time.
 
         Args:
@@ -965,7 +967,7 @@ class MetricsCollector:
         """
         memory_lock_contention_seconds.labels(operation=operation).observe(wait_time_seconds)
 
-    def record_collection_lock_timeout(self, collection_name: str):
+    def record_collection_lock_timeout(self, collection_name: str) -> Any:
         """Record a collection lock timeout event.
 
         Args:
@@ -973,7 +975,7 @@ class MetricsCollector:
         """
         collection_lock_timeout_total.labels(collection_name=collection_name).inc()
 
-    def record_cache_db_consistency_error(self, session_id: str):
+    def record_cache_db_consistency_error(self, session_id: str) -> Any:
         """Record a cache-DB consistency error.
 
         Args:
@@ -989,7 +991,7 @@ class MetricsCollector:
         status: str,
         duration_seconds: float = 0,
         file_size_bytes: int = 0,
-    ):
+    ) -> Any:
         """Record a Google Drive operation.
 
         Args:
@@ -1012,7 +1014,7 @@ class MetricsCollector:
         if file_size_bytes > 0:
             drive_file_size_bytes.labels(operation=operation).observe(file_size_bytes)
 
-    def record_drive_oauth_refresh(self, status: str):
+    def record_drive_oauth_refresh(self, status: str) -> Any:
         """Record an OAuth token refresh operation.
 
         Args:
@@ -1020,7 +1022,7 @@ class MetricsCollector:
         """
         drive_oauth_refresh_total.labels(status=status).inc()
 
-    def set_drive_oauth_expiry(self, seconds_until_expiry: float):
+    def set_drive_oauth_expiry(self, seconds_until_expiry: float) -> Any:
         """Set the time until OAuth token expires.
 
         Args:
@@ -1028,7 +1030,7 @@ class MetricsCollector:
         """
         drive_oauth_token_expiry_seconds.set(seconds_until_expiry)
 
-    def record_drive_error(self, error_type: str, operation: str):
+    def record_drive_error(self, error_type: str, operation: str) -> Any:
         """Record a Google Drive error.
 
         Args:
@@ -1037,7 +1039,7 @@ class MetricsCollector:
         """
         drive_errors_total.labels(error_type=error_type, operation=operation).inc()
 
-    def set_drive_quota_usage(self, usage_percent: float):
+    def set_drive_quota_usage(self, usage_percent: float) -> Any:
         """Set the Drive quota usage percentage.
 
         Args:
@@ -1045,7 +1047,7 @@ class MetricsCollector:
         """
         drive_quota_usage_percent.set(usage_percent)
 
-    def set_drive_active_users(self, count: int):
+    def set_drive_active_users(self, count: int) -> Any:
         """Set the number of active Drive users.
 
         Args:
@@ -1053,7 +1055,7 @@ class MetricsCollector:
         """
         drive_active_users.set(count)
 
-    def record_drive_file_access(self, file_type: str, action: str):
+    def record_drive_file_access(self, file_type: str, action: str) -> Any:
         """Record a file access event.
 
         Args:
@@ -1070,7 +1072,7 @@ class MetricsCollector:
         status: str,
         duration_seconds: float = 0,
         attachment_size_bytes: int = 0,
-    ):
+    ) -> Any:
         """Record an email operation.
 
         Args:
@@ -1093,7 +1095,7 @@ class MetricsCollector:
         if attachment_size_bytes > 0:
             email_attachment_size_bytes.labels(operation=operation).observe(attachment_size_bytes)
 
-    def record_email_oauth_refresh(self, status: str):
+    def record_email_oauth_refresh(self, status: str) -> Any:
         """Record an email OAuth token refresh operation.
 
         Args:
@@ -1101,7 +1103,7 @@ class MetricsCollector:
         """
         email_oauth_refresh_total.labels(status=status).inc()
 
-    def record_email_error(self, error_type: str, operation: str):
+    def record_email_error(self, error_type: str, operation: str) -> Any:
         """Record an email error.
 
         Args:
@@ -1110,7 +1112,7 @@ class MetricsCollector:
         """
         email_errors_total.labels(error_type=error_type, operation=operation).inc()
 
-    def set_email_unread_count(self, user_id: str, count: int):
+    def set_email_unread_count(self, user_id: str, count: int) -> Any:
         """Set the unread email count for a user.
 
         Args:
@@ -1120,7 +1122,7 @@ class MetricsCollector:
         safe_user_id = user_id[:8] if user_id else "unknown"
         email_unread_count.labels(user_id=safe_user_id).set(count)
 
-    def set_email_active_users(self, count: int):
+    def set_email_active_users(self, count: int) -> Any:
         """Set the number of users with connected email accounts.
 
         Args:
@@ -1136,7 +1138,7 @@ class MetricsCollector:
         collection: str,
         status: str,
         chunks_created: int = 0,
-    ):
+    ) -> Any:
         """Record a document ingestion event.
 
         Args:
@@ -1153,7 +1155,7 @@ class MetricsCollector:
         if chunks_created > 0:
             chunks_created_total.labels(collection=collection, source=source).inc(chunks_created)
 
-    def record_parsing_duration(self, file_type: str, source: str, duration_seconds: float):
+    def record_parsing_duration(self, file_type: str, source: str, duration_seconds: float) -> Any:
         """Record document parsing duration.
 
         Args:
@@ -1165,7 +1167,7 @@ class MetricsCollector:
             duration_seconds
         )
 
-    def record_parsing_error(self, file_type: str, error_type: str, source: str):
+    def record_parsing_error(self, file_type: str, error_type: str, source: str) -> Any:
         """Record a parsing error.
 
         Args:
@@ -1177,7 +1179,7 @@ class MetricsCollector:
 
     def record_document_processing_duration(
         self, source: str, collection: str, duration_seconds: float
-    ):
+    ) -> Any:
         """Record total document processing duration.
 
         Args:
@@ -1191,7 +1193,7 @@ class MetricsCollector:
 
     def record_metadata_extraction_duration(
         self, document_type: str, source: str, duration_seconds: float
-    ):
+    ) -> Any:
         """Record metadata extraction duration.
 
         Args:
@@ -1205,7 +1207,7 @@ class MetricsCollector:
 
     def record_chunking_duration(
         self, file_type: str, chunk_strategy: str, duration_seconds: float
-    ):
+    ) -> Any:
         """Record chunking duration.
 
         Args:
@@ -1219,7 +1221,7 @@ class MetricsCollector:
 
     def record_embedding_generation_duration(
         self, model: str, batch_size: int, duration_seconds: float
-    ):
+    ) -> Any:
         """Record embedding generation duration.
 
         Args:
@@ -1233,7 +1235,7 @@ class MetricsCollector:
 
     def record_vector_storage_duration(
         self, collection: str, operation: str, duration_seconds: float
-    ):
+    ) -> Any:
         """Record vector storage duration.
 
         Args:
@@ -1245,7 +1247,7 @@ class MetricsCollector:
             duration_seconds
         )
 
-    def update_ingestion_failure_rate(self, source: str, file_type: str, failure_rate: float):
+    def update_ingestion_failure_rate(self, source: str, file_type: str, failure_rate: float) -> Any:
         """Update the ingestion failure rate gauge.
 
         Args:
@@ -1257,7 +1259,7 @@ class MetricsCollector:
 
     def record_scraper_data_normalized(
         self, scraper_type: str, source: str, status: str, duration_seconds: float = 0
-    ):
+    ) -> Any:
         """Record scraper data normalization.
 
         Args:
@@ -1277,7 +1279,7 @@ class MetricsCollector:
                 scraper_type=scraper_type, data_complexity=complexity
             ).observe(duration_seconds)
 
-    def record_scraper_normalization_error(self, scraper_type: str, error_type: str):
+    def record_scraper_normalization_error(self, scraper_type: str, error_type: str) -> Any:
         """Record a scraper normalization error.
 
         Args:
@@ -1312,7 +1314,7 @@ async def collect_all_metrics():
     return generate_latest()
 
 
-def get_metrics_middleware():
+def get_metrics_middleware() -> Any:
     """Middleware to track request metrics"""
     import time
 

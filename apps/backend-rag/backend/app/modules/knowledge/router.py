@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/search", tags=["knowledge"])
 _knowledge_service_fallback: KnowledgeService | None = None
 
 
-def get_search_service(request: Request):
+def get_search_service(request: Request) -> Any:
     """
     Get SearchService from backend.app.state (canonical retriever).
     Falls back to KnowledgeService singleton only if SearchService not initialized (test/local boot).

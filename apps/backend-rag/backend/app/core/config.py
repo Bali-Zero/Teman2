@@ -3,6 +3,8 @@ NUZANTARA PRIME - Centralized Configuration
 All environment variables centralized using pydantic-settings
 """
 
+from typing import Any
+
 import logging
 import os
 
@@ -42,7 +44,7 @@ class Settings(BaseSettings):
 
     @field_validator("google_credentials_json", mode="before")
     @classmethod
-    def resolve_google_credentials(cls, v):
+    def resolve_google_credentials(cls, v: Any) -> Any:
         """Resolve Google credentials from multiple env vars."""
         import os
 
@@ -77,7 +79,7 @@ class Settings(BaseSettings):
 
     @field_validator("openai_api_key", mode="before")
     @classmethod
-    def validate_openai_api_key(cls, v):
+    def validate_openai_api_key(cls, v: Any) -> Any:
         """Validate OpenAI API key - warn if missing in production"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"
@@ -105,7 +107,7 @@ class Settings(BaseSettings):
 
     @field_validator("embedding_dimensions", mode="before")
     @classmethod
-    def set_dimensions_from_provider(cls, _v, info):
+    def set_dimensions_from_provider(cls, _v: Any, info: Any) -> Any:
         """Automatically set embedding dimensions based on provider"""
         provider = info.data.get("embedding_provider", "openai")
         if provider == "openai":
@@ -139,7 +141,7 @@ class Settings(BaseSettings):
 
     @field_validator("qdrant_url")
     @classmethod
-    def validate_qdrant_url(cls, v):
+    def validate_qdrant_url(cls, v: Any) -> Any:
         """Validate Qdrant URL format - fail in production if invalid"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"
@@ -272,7 +274,7 @@ class Settings(BaseSettings):
 
     @field_validator("debug_mode", mode="before")
     @classmethod
-    def validate_debug_mode(cls, v):
+    def validate_debug_mode(cls, v: Any) -> Any:
         """Validate debug mode - disable in production"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"
@@ -331,7 +333,7 @@ class Settings(BaseSettings):
 
     @field_validator("database_url", mode="before")
     @classmethod
-    def validate_database_url(cls, v):
+    def validate_database_url(cls, v: Any) -> Any:
         """Validate database URL - warn if missing in production"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"
@@ -375,7 +377,7 @@ class Settings(BaseSettings):
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod
-    def validate_jwt_secret(cls, v):
+    def validate_jwt_secret(cls, v: Any) -> Any:
         """
         Validate JWT secret key - fail in production if not set
 
@@ -425,7 +427,7 @@ class Settings(BaseSettings):
 
     @field_validator("api_keys", mode="before")
     @classmethod
-    def validate_api_keys(cls, v):
+    def validate_api_keys(cls, v: Any) -> Any:
         """
         Validate API keys - fail in production if using default
 
@@ -544,7 +546,7 @@ class Settings(BaseSettings):
 
     @field_validator("whatsapp_verify_token", mode="before")
     @classmethod
-    def validate_whatsapp_token(cls, v):
+    def validate_whatsapp_token(cls, v: Any) -> Any:
         """Validate WhatsApp token - warn in production if using default"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"
@@ -612,7 +614,7 @@ class Settings(BaseSettings):
 
     @field_validator("instagram_verify_token", mode="before")
     @classmethod
-    def validate_instagram_token(cls, v):
+    def validate_instagram_token(cls, v: Any) -> Any:
         """Validate Instagram token - warn in production if using default"""
         env = os.getenv("ENVIRONMENT", "development")
         is_production = env.lower() == "production"

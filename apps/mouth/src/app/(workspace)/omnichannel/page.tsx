@@ -32,8 +32,7 @@ export default function OmnichannelPage() {
       logger.info('WhatsApp conversations fetched', {
         component: 'OmnichannelPage',
         action: 'fetchConversations',
-        count: Array.isArray(waData) ? waData.length : 'not an array',
-        data: waData
+        count: Array.isArray(waData) ? waData.length : 'not an array'
       });
 
       if (!Array.isArray(waData)) {

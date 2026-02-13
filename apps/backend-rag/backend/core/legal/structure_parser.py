@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any
 
-from .constants import (
+from backend.core.legal.constants import (
     AYAT_PATTERN,
     BAB_PATTERN,
     BAGIAN_PATTERN,

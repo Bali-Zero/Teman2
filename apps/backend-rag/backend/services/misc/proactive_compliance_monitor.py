@@ -30,7 +30,7 @@ import asyncio
 import logging
 from datetime import datetime
 
-from ..compliance import (
+from backend.services.compliance import (
     AlertGeneratorService,
     AlertSeverity,
     ComplianceNotificationService,
@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 
 
 # Import types from sub-services for backward compatibility
-from ..compliance.alert_generator import AlertStatus, ComplianceAlert
-from ..compliance.compliance_tracker import ComplianceItem
+from backend.services.compliance.alert_generator import AlertStatus, ComplianceAlert
+from backend.services.compliance.compliance_tracker import ComplianceItem
 
 
 class ProactiveComplianceMonitor:

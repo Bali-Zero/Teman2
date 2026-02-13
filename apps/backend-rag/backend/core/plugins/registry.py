@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .plugin import Plugin, PluginCategory, PluginMetadata
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ import os
 
 from googleapiclient.http import MediaIoBaseDownload
 
-from .oracle_google_services import google_services
+from backend.services.oracle.oracle_google_services import google_services
 
 logger = logging.getLogger(__name__)
 

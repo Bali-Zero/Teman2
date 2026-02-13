@@ -3,6 +3,8 @@ Progress Tracker Service
 Responsibility: Track journey progress
 """
 
+from typing import Any
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ class ProgressTrackerService:
     Responsibility: Calculate progress metrics and identify next steps.
     """
 
-    def get_next_steps(self, journey) -> list:
+    def get_next_steps(self, journey: Any) -> list:
         """
         Get next actionable steps (prerequisites met, not completed).
 
@@ -43,7 +45,7 @@ class ProgressTrackerService:
 
         return next_steps
 
-    def get_progress(self, journey) -> dict:
+    def get_progress(self, journey: Any) -> dict:
         """
         Get journey progress summary.
 

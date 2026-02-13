@@ -42,16 +42,16 @@ from backend.app.utils.tracing import (
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.tools.definitions import AgentState, AgentStep
 
-from .query_helpers import detect_query_language
-from .reasoning_utils import (
+from backend.services.rag.agentic.query_helpers import detect_query_language
+from backend.services.rag.agentic.reasoning_utils import (
     calculate_evidence_score,
     detect_team_query,
     get_critical_domain_type,
     is_critical_domain,
     is_valid_tool_call,
 )
-from .response_processor import post_process_response
-from .tool_executor import execute_tool, parse_tool_call
+from backend.services.rag.agentic.response_processor import post_process_response
+from backend.services.rag.agentic.tool_executor import execute_tool, parse_tool_call
 
 logger = logging.getLogger(__name__)
 

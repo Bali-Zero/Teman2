@@ -17,7 +17,7 @@ from typing import Any
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.tools.definitions import AgentState
 
-from .schema import CoreResult
+from backend.services.rag.agentic.schema import CoreResult
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for response building

@@ -101,7 +101,7 @@ class IntelligentRouter:
             # for backwards compatibility we must handle accessing it safely.
 
             # Helper to get attribute or dict item
-            def get_val(obj, attr, default=None):
+            def get_val(obj: Any, attr: Any, default: Any=None) -> Any:
                 if hasattr(obj, attr):
                     return getattr(obj, attr)
                 if isinstance(obj, dict):

@@ -16,7 +16,7 @@ from typing import Any
 
 import anthropic
 
-from .ontology import (
+from backend.services.knowledge_graph.ontology import (
     ENTITY_SCHEMAS,
     RELATION_SCHEMAS,
     EntityType,

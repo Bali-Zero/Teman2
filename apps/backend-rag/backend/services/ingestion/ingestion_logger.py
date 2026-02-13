@@ -237,7 +237,7 @@ class IngestionLogger:
         duration_ms: float,
         source: str = "file_upload",
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log successful parsing"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -260,7 +260,7 @@ class IngestionLogger:
         error: Exception,
         source: str = "file_upload",
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log parsing error with detailed information"""
         error_type = type(error).__name__
         error_details = str(error)
@@ -297,7 +297,7 @@ class IngestionLogger:
         metadata: dict[str, Any],
         source: str = "unknown",
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log successful metadata extraction"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -318,7 +318,7 @@ class IngestionLogger:
         duration_ms: float,
         source: str = "file_upload",
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log chunking completion"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -344,7 +344,7 @@ class IngestionLogger:
         source: str = "file_upload",
         trace_id: str | None = None,
         user_id: str | None = None,
-    ):
+    ) -> None:
         """Log successful ingestion completion"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -374,7 +374,7 @@ class IngestionLogger:
         source: str = "file_upload",
         trace_id: str | None = None,
         user_id: str | None = None,
-    ):
+    ) -> None:
         """Log ingestion failure"""
         error_type = type(error).__name__
         error_details = str(error)
@@ -416,7 +416,7 @@ class IngestionLogger:
         _duration_ms: float,
         normalized_fields: dict[str, Any],
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log scraper data normalization"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -437,7 +437,7 @@ class IngestionLogger:
         source: str = "file_upload",
         trace_id: str | None = None,
         additional_context: dict[str, Any] | None = None,
-    ):
+    ) -> Any:
         """Log progress through ingestion stages"""
         event = self._create_event(
             level=LogLevel.DEBUG,
@@ -460,7 +460,7 @@ class IngestionLogger:
         current_value: float,
         threshold: float,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log performance alert"""
         event = self._create_event(
             level=LogLevel.WARNING,
@@ -489,7 +489,7 @@ class IngestionLogger:
         description: str,
         expected_improvement: str,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log optimization recommendation"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -517,7 +517,7 @@ class IngestionLogger:
         disk_io_mb: float,
         network_io_mb: float,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log resource utilization metrics"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -546,7 +546,7 @@ class IngestionLogger:
         total_duration_ms: float,
         avg_document_size_mb: float,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log batch processing summary"""
         success_rate = (successful / total_documents * 100) if total_documents > 0 else 0
 
@@ -580,7 +580,7 @@ class IngestionLogger:
         recovery_action: str,
         success: bool,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log error recovery attempt"""
         event = self._create_event(
             level=LogLevel.INFO if success else LogLevel.WARNING,
@@ -607,7 +607,7 @@ class IngestionLogger:
         total_requests: int,
         avg_response_time_ms: float,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log cache performance metrics"""
         event = self._create_event(
             level=LogLevel.INFO,
@@ -637,7 +637,7 @@ class IngestionLogger:
         rows_affected: int,
         query_complexity: str,
         trace_id: str | None = None,
-    ):
+    ) -> Any:
         """Log database performance metrics"""
         event = self._create_event(
             level=LogLevel.INFO,

@@ -311,7 +311,7 @@ def get_cache_service() -> CacheService:
 
 def cached(
     ttl: int = DEFAULT_CACHE_TTL, prefix: str = "default", cache_service: CacheService | None = None
-):
+) -> Any:
     """
     Decorator to cache function results
 
@@ -328,7 +328,7 @@ def cached(
     # Use provided cache service or get default
     cache_inst = cache_service if cache_service is not None else get_cache_service()
 
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Any:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Generate cache key
@@ -394,7 +394,7 @@ def cached_query(
     namespace: str,
     ttl: int = DEFAULT_CACHE_TTL,
     cache_service: CacheService | None = None,
-):
+) -> Any:
     """
     Decorator to cache database query results with namespace-based invalidation.
 
@@ -416,7 +416,7 @@ def cached_query(
     """
     cache_inst = cache_service if cache_service is not None else get_cache_service()
 
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Any:
         @wraps(func)
         async def wrapper(*args, **kwargs):
             cache_key = cache_inst._generate_key(namespace, *args, **kwargs)

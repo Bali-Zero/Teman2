@@ -3,6 +3,8 @@ Authentication Decorators
 Provides decorators for endpoint security classification and access control
 """
 
+from typing import Any
+
 import logging
 from collections.abc import Callable
 from functools import wraps
@@ -13,7 +15,7 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
-def require_auth(auth_type: str = "any", permissions: list = None):
+def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
     """
     Authentication decorator for endpoint protection
 
@@ -114,7 +116,7 @@ def optional_auth(func: Callable) -> Callable:
     return wrapper
 
 
-def role_required(allowed_roles: list):
+def role_required(allowed_roles: list) -> Any:
     """
     Decorator to restrict access by user roles
 
@@ -152,7 +154,7 @@ def role_required(allowed_roles: list):
     return decorator
 
 
-def api_key_required(permissions: list = None):
+def api_key_required(permissions: list = None) -> Any:
     """
     Decorator specifically for API Key authentication
 
@@ -288,7 +290,7 @@ def classify_endpoint(path: str) -> str:
     return SecurityLevel.HYBRID
 
 
-def apply_security_by_endpoint(path: str):
+def apply_security_by_endpoint(path: str) -> Any:
     """
     Factory function to create decorators based on endpoint path classification
 

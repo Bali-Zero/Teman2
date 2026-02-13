@@ -103,7 +103,7 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
         "почему",
     ]
 
-    def count_matches(markers, text, use_word_boundary=True):
+    def count_matches(markers: Any, text: Any, use_word_boundary: Any=True) -> Any:
         count = 0
         for marker in markers:
             if use_word_boundary:

@@ -10,6 +10,8 @@ User identity is taken from JWT token, NOT from request parameters.
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+from typing import Any
+
 import asyncio
 from datetime import datetime
 
@@ -40,7 +42,7 @@ SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
 _auto_crm_service = None
 
 
-def get_auto_crm():
+def get_auto_crm() -> Any:
     """
     Lazy import of auto-CRM service
 

@@ -288,6 +288,19 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
         try:
             logger.info(f"Database initialization attempt {attempt + 1}/{max_retries}")
 
+            # Prepare DSN and SSL options for asyncpg
+            dsn = settings.database_url
+            ssl_context = None
+            
+            # Handle sslmode=disable manually for asyncpg
+            if "sslmode=disable" in dsn:
+                dsn = dsn.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+                ssl_context = False
+                logger.info("DEBUG: Detected sslmode=disable, setting ssl=False explicitly")
+            elif "sslmode=require" in dsn:
+                 # let asyncpg handle default SSL or configure context if needed
+                 pass
+
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn):
                 await conn.set_type_codec(
@@ -305,13 +318,20 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 # Validate connection
                 await conn.execute("SELECT 1")
 
-            db_pool = await asyncpg.create_pool(
-                dsn=settings.database_url,
-                min_size=getattr(settings, "db_pool_min_size", None) or 5,
-                max_size=getattr(settings, "db_pool_max_size", None) or 20,
-                command_timeout=getattr(settings, "db_command_timeout", None) or 60,
-                init=init_db_connection,
-            )
+            # Configure pool kwargs
+            pool_kwargs = {
+                "dsn": dsn,
+                "min_size": getattr(settings, "db_pool_min_size", None) or 5,
+                "max_size": getattr(settings, "db_pool_max_size", None) or 20,
+                "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
+                "init": init_db_connection,
+            }
+            
+            # Add ssl parameter if explicitly determined
+            if ssl_context is False:
+                pool_kwargs["ssl"] = False
+
+            db_pool = await asyncpg.create_pool(**pool_kwargs)
 
             # Verify pool works
             async with db_pool.acquire() as conn:
