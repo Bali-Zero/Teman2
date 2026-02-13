@@ -46,8 +46,8 @@ import {
   Checklist,
   InfoCard,
   Calculator,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Manufacturing Business in Indonesia 2026: Foreign Investor Guide
 
@@ -56,6 +56,7 @@ Indonesia offers competitive manufacturing with large labor pool, strategic loca
 ## Why Manufacture in Indonesia?
 
 ### Advantages
+
 - **Labor force**: 130+ million workers
 - **Competitive costs**: Lower than China, Thailand
 - **Young population**: Median age 29
@@ -64,6 +65,7 @@ Indonesia offers competitive manufacturing with large labor pool, strategic loca
 - **Growing market**: 270 million consumers
 
 ### Challenges
+
 - Infrastructure varies by region
 - Bureaucracy can be slow
 - Labor regulations favor workers
@@ -81,53 +83,50 @@ Indonesia offers competitive manufacturing with large labor pool, strategic loca
       name: "Greater Jakarta",
       subtitle: "Bekasi, Karawang, Cikarang",
       values: {
-        "Infrastructure": "Excellent",
+        Infrastructure: "Excellent",
         "Labor Cost": "Higher",
-        "Logistics": "Best",
-        "Best For": "High-tech, export"
+        Logistics: "Best",
+        "Best For": "High-tech, export",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Surabaya Area",
       subtitle: "East Java industrial zones",
       values: {
-        "Infrastructure": "Good",
+        Infrastructure: "Good",
         "Labor Cost": "Medium",
-        "Logistics": "Good",
-        "Best For": "General manufacturing"
-      }
+        Logistics: "Good",
+        "Best For": "General manufacturing",
+      },
     },
     {
       name: "Central Java",
       subtitle: "Semarang, Solo area",
       values: {
-        "Infrastructure": "Moderate",
+        Infrastructure: "Moderate",
         "Labor Cost": "Lower",
-        "Logistics": "Moderate",
-        "Best For": "Labor-intensive"
-      }
+        Logistics: "Moderate",
+        "Best For": "Labor-intensive",
+      },
     },
     {
       name: "Batam",
       subtitle: "Free Trade Zone",
       values: {
-        "Infrastructure": "Good",
+        Infrastructure: "Good",
         "Labor Cost": "Medium",
-        "Logistics": "Singapore access",
-        "Best For": "Electronics, export"
-      }
-    }
+        Logistics: "Singapore access",
+        "Best For": "Electronics, export",
+      },
+    },
   ]}
 />
 
 <InfoCard variant="tip" title="Industrial Estate Benefits">
-Locating in an established industrial estate provides:
-- Ready infrastructure (power, water, roads)
-- Pre-approved zoning
-- Support services
-- Faster permit processing
-- Better security
+  Locating in an established industrial estate provides: - Ready infrastructure
+  (power, water, roads) - Pre-approved zoning - Support services - Faster permit
+  processing - Better security
 </InfoCard>
 
 ---
@@ -149,8 +148,8 @@ Locating in an established industrial estate provides:
         "Market research",
         "Production capacity planning",
         "Supply chain mapping",
-        "Location scouting"
-      ]
+        "Location scouting",
+      ],
     },
     {
       id: "company",
@@ -161,8 +160,8 @@ Locating in an established industrial estate provides:
       tips: [
         "Manufacturing KBLI codes",
         "IDR 10B minimum investment",
-        "Include import/export activities"
-      ]
+        "Include import/export activities",
+      ],
     },
     {
       id: "location",
@@ -173,8 +172,8 @@ Locating in an established industrial estate provides:
       tips: [
         "Industrial zone preferred",
         "Build or buy existing",
-        "Lease vs. own analysis"
-      ]
+        "Lease vs. own analysis",
+      ],
     },
     {
       id: "permits",
@@ -186,8 +185,8 @@ Locating in an established industrial estate provides:
         "NIB through OSS",
         "Environmental permit (AMDAL)",
         "Building permit",
-        "Industry-specific licenses"
-      ]
+        "Industry-specific licenses",
+      ],
     },
     {
       id: "setup",
@@ -199,8 +198,8 @@ Locating in an established industrial estate provides:
         "Construction/renovation",
         "Equipment installation",
         "Utility connections",
-        "Safety systems"
-      ]
+        "Safety systems",
+      ],
     },
     {
       id: "staff",
@@ -212,8 +211,8 @@ Locating in an established industrial estate provides:
         "Production workers",
         "Supervisors and managers",
         "Training programs",
-        "HR systems"
-      ]
+        "HR systems",
+      ],
     },
     {
       id: "production",
@@ -221,12 +220,8 @@ Locating in an established industrial estate provides:
       description: "Begin manufacturing",
       duration: "Ongoing",
       status: "final",
-      tips: [
-        "Trial production",
-        "Quality control",
-        "Ramp up capacity"
-      ]
-    }
+      tips: ["Trial production", "Quality control", "Ramp up capacity"],
+    },
   ]}
 />
 
@@ -308,7 +303,8 @@ Locating in an established industrial estate provides:
       currency: "IDR",
       note: `Approximately USD ${Math.round(adjusted / 16000).toLocaleString()}`
     };
-  }}
+
+}}
 />
 
 ---
@@ -325,57 +321,57 @@ Locating in an established industrial estate provides:
       label: "NIB (Business ID)",
       description: "From OSS system",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "industrial-license",
       label: "Industrial Business License",
       description: "For manufacturing activities",
       required: true,
-      category: "industry"
+      category: "industry",
     },
     {
       id: "amdal",
       label: "Environmental Permit",
       description: "AMDAL or UKL-UPL based on scale",
       required: true,
-      category: "environment"
+      category: "environment",
     },
     {
       id: "imb",
       label: "Building Permit (IMB/PBG)",
       description: "For factory construction",
       required: true,
-      category: "building"
+      category: "building",
     },
     {
       id: "safety",
       label: "Operational Safety License",
       description: "Fire, machinery safety",
       required: true,
-      category: "safety"
+      category: "safety",
     },
     {
       id: "api",
       label: "API-P (Producer Import)",
       description: "For importing raw materials",
       required: false,
-      category: "trade"
+      category: "trade",
     },
     {
       id: "sni",
       label: "SNI Certification",
       description: "For certain products",
       required: false,
-      category: "product"
+      category: "product",
     },
     {
       id: "halal",
       label: "Halal Certification",
       description: "For food/consumer products",
       required: false,
-      category: "product"
-    }
+      category: "product",
+    },
   ]}
   categories={[
     { id: "company", label: "Company", color: "blue" },
@@ -384,7 +380,7 @@ Locating in an established industrial estate provides:
     { id: "building", label: "Building", color: "purple" },
     { id: "safety", label: "Safety", color: "red" },
     { id: "trade", label: "Trade", color: "cyan" },
-    { id: "product", label: "Product", color: "pink" }
+    { id: "product", label: "Product", color: "pink" },
   ]}
   showProgress={true}
 />
@@ -395,31 +391,31 @@ Locating in an established industrial estate provides:
 
 ### Employment Basics
 
-| Requirement | Details |
-|-------------|---------|
-| Minimum Wage | Provincial (UMK) - varies IDR 2-5M/month |
-| BPJS Kesehatan | Mandatory health insurance |
-| BPJS Ketenagakerjaan | Mandatory employment insurance |
-| Working Hours | 40 hours/week maximum |
-| Overtime | 1.5x-4x base rate |
-| Severance | Significant obligations |
+| Requirement          | Details                                  |
+| -------------------- | ---------------------------------------- |
+| Minimum Wage         | Provincial (UMK) - varies IDR 2-5M/month |
+| BPJS Kesehatan       | Mandatory health insurance               |
+| BPJS Ketenagakerjaan | Mandatory employment insurance           |
+| Working Hours        | 40 hours/week maximum                    |
+| Overtime             | 1.5x-4x base rate                        |
+| Severance            | Significant obligations                  |
 
 <InfoCard variant="warning" title="Labor Laws Favor Workers">
-Indonesian labor law provides strong worker protections:
-- Difficult to terminate permanent employees
-- Severance can be substantial (up to 35 months)
-- Unions are common in manufacturing
-- Strikes are protected
+  Indonesian labor law provides strong worker protections: - Difficult to
+  terminate permanent employees - Severance can be substantial (up to 35 months)
+  - Unions are common in manufacturing - Strikes are protected
 </InfoCard>
 
 ### Foreign Workers
 
 Limited to:
+
 - Technical specialists
 - Management positions
 - Training roles
 
 Requirements:
+
 - RPTKA approval
 - DKP-TKA fees
 - Indonesian counterpart training
@@ -431,6 +427,7 @@ Requirements:
 ### Bonded Zone Benefits
 
 For export-focused manufacturing:
+
 - **Import duty deferral** on raw materials
 - **VAT exemption** on imported inputs
 - **Faster customs** processing
@@ -439,6 +436,7 @@ For export-focused manufacturing:
 ### KITE Facility
 
 Kemudahan Impor Tujuan Ekspor:
+
 - Duty/tax suspension for export production
 - Available outside bonded zones
 - Requires export commitment
@@ -451,6 +449,7 @@ Kemudahan Impor Tujuan Ekspor:
 ### AMDAL Requirements
 
 For large manufacturing:
+
 - Environmental Impact Assessment
 - Before construction begins
 - Community consultation required
@@ -474,7 +473,7 @@ For large manufacturing:
     "How do I find reliable suppliers in Indonesia?",
     "What are typical labor costs?",
     "Can I manufacture for export only?",
-    "What about quality control standards?"
+    "What about quality control standards?",
   ]}
 />
 

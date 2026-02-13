@@ -46,8 +46,8 @@ import {
   Checklist,
   InfoCard,
   GlossaryTerm,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Export-Import Business in Indonesia 2026: Complete Guide
 
@@ -56,6 +56,7 @@ Indonesia's strategic location and large market make it ideal for international 
 ## Trade Business Overview
 
 Indonesia offers:
+
 - **270 million** consumer market
 - Strategic position in ASEAN
 - Growing manufacturing base
@@ -74,29 +75,30 @@ Indonesia offers:
       name: "API-U (General)",
       subtitle: "Angka Pengenal Impor Umum",
       values: {
-        "Purpose": "Import for trading/selling",
+        Purpose: "Import for trading/selling",
         "Can Sell": "Yes, to anyone",
         "Most Common": "Trading companies",
-        "Restrictions": "Some product limits"
+        Restrictions: "Some product limits",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "API-P (Producer)",
       subtitle: "Angka Pengenal Impor Produsen",
       values: {
-        "Purpose": "Import for own production",
+        Purpose: "Import for own production",
         "Can Sell": "Only finished goods",
         "Most Common": "Manufacturers",
-        "Restrictions": "Raw materials only"
-      }
-    }
+        Restrictions: "Raw materials only",
+      },
+    },
   ]}
 />
 
 ### Export License
 
 For exports, you need:
+
 - **ET (Eksportir Terdaftar)** - Registered Exporter for certain goods
 - Some products require specific export permits
 - Most products can be exported with just NIB
@@ -108,17 +110,16 @@ For exports, you need:
 ### PT PMA for Trading
 
 Foreign-owned trading companies can:
+
 - Import goods for resale
 - Export Indonesian products
 - Act as distributor
 - Wholesale to retailers
 
 <InfoCard variant="note" title="Investment Requirement">
-Trading PT PMA requires:
-- Minimum **IDR 10 billion** investment
-- Paid-up capital **IDR 2.5 billion**
-- Proper warehouse facilities (for certain goods)
-- Registered import/export codes
+  Trading PT PMA requires: - Minimum **IDR 10 billion** investment - Paid-up
+  capital **IDR 2.5 billion** - Proper warehouse facilities (for certain goods)
+  - Registered import/export codes
 </InfoCard>
 
 ---
@@ -139,8 +140,8 @@ Trading PT PMA requires:
       tips: [
         "Choose trading KBLI codes",
         "Include import-export activities",
-        "Meet investment requirements"
-      ]
+        "Meet investment requirements",
+      ],
     },
     {
       id: "nib",
@@ -148,10 +149,7 @@ Trading PT PMA requires:
       description: "Business ID from OSS",
       duration: "1-2 weeks",
       status: "required",
-      tips: [
-        "Includes basic business license",
-        "Required for next steps"
-      ]
+      tips: ["Includes basic business license", "Required for next steps"],
     },
     {
       id: "api",
@@ -162,8 +160,8 @@ Trading PT PMA requires:
       tips: [
         "API-U for trading",
         "API-P for manufacturing",
-        "Through OSS system"
-      ]
+        "Through OSS system",
+      ],
     },
     {
       id: "nik",
@@ -171,10 +169,7 @@ Trading PT PMA requires:
       description: "Customs registration",
       duration: "1-2 weeks",
       status: "required",
-      tips: [
-        "Register with Customs (DJBC)",
-        "Required for clearing goods"
-      ]
+      tips: ["Register with Customs (DJBC)", "Required for clearing goods"],
     },
     {
       id: "warehouse",
@@ -185,8 +180,8 @@ Trading PT PMA requires:
       tips: [
         "Required for certain goods",
         "Bonded warehouse options",
-        "Cold storage if needed"
-      ]
+        "Cold storage if needed",
+      ],
     },
     {
       id: "supplier",
@@ -197,8 +192,8 @@ Trading PT PMA requires:
       tips: [
         "Verify supplier legitimacy",
         "Negotiate terms",
-        "Choose freight forwarder"
-      ]
+        "Choose freight forwarder",
+      ],
     },
     {
       id: "first",
@@ -209,9 +204,9 @@ Trading PT PMA requires:
       tips: [
         "Work with customs broker",
         "Complete documentation",
-        "Pay duties and taxes"
-      ]
-    }
+        "Pay duties and taxes",
+      ],
+    },
   ]}
 />
 
@@ -229,43 +224,43 @@ Trading PT PMA requires:
       label: "NIB (Business ID)",
       description: "Basic company registration",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "api",
       label: "API License (API-U or API-P)",
       description: "Import authorization",
       required: true,
-      category: "trade"
+      category: "trade",
     },
     {
       id: "nik",
       label: "NIK (Customs ID)",
       description: "Customs registration number",
       required: true,
-      category: "customs"
+      category: "customs",
     },
     {
       id: "npwp",
       label: "Company NPWP",
       description: "Tax registration",
       required: true,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "warehouse",
       label: "Warehouse registration",
       description: "For storing imported goods",
       required: false,
-      category: "operations"
+      category: "operations",
     },
     {
       id: "product-license",
       label: "Product-specific licenses",
       description: "BPOM, SNI, etc. as needed",
       required: false,
-      category: "product"
-    }
+      category: "product",
+    },
   ]}
   categories={[
     { id: "company", label: "Company", color: "blue" },
@@ -273,7 +268,7 @@ Trading PT PMA requires:
     { id: "customs", label: "Customs", color: "amber" },
     { id: "tax", label: "Tax", color: "red" },
     { id: "operations", label: "Operations", color: "purple" },
-    { id: "product", label: "Product", color: "cyan" }
+    { id: "product", label: "Product", color: "cyan" },
   ]}
   showProgress={true}
 />
@@ -284,14 +279,15 @@ Trading PT PMA requires:
 
 ### Import Duties
 
-| Category | Duty Rate | Notes |
-|----------|-----------|-------|
-| Raw materials | 0-5% | Often lower |
-| Semi-finished | 5-15% | Varies by product |
-| Finished goods | 10-40% | Higher protection |
-| Luxury items | 20-200% | Additional luxury tax |
+| Category       | Duty Rate | Notes                 |
+| -------------- | --------- | --------------------- |
+| Raw materials  | 0-5%      | Often lower           |
+| Semi-finished  | 5-15%     | Varies by product     |
+| Finished goods | 10-40%    | Higher protection     |
+| Luxury items   | 20-200%   | Additional luxury tax |
 
 ### Other Import Charges
+
 - **VAT (PPN)**: 11% on CIF + duty
 - **Income Tax (PPh 22)**: 2.5% with API, 7.5% without
 - **Luxury Tax (PPnBM)**: On certain goods
@@ -304,6 +300,7 @@ Research your product's **HS Code** (Harmonized System) to understand:
 - Documentation needs
 
 Use Indonesia's INSW portal for HS code lookup.
+
 </InfoCard>
 
 ---
@@ -313,6 +310,7 @@ Use Indonesia's INSW portal for HS code lookup.
 ### Import Restrictions
 
 Some products require additional permits:
+
 - **Food/Beverages**: BPOM registration
 - **Electronics**: SNI certification
 - **Cosmetics**: BPOM + Halal
@@ -320,6 +318,7 @@ Some products require additional permits:
 - **Textiles**: Quota systems may apply
 
 ### Prohibited Items
+
 - Drugs/narcotics
 - Weapons (without license)
 - Certain agricultural products
@@ -331,6 +330,7 @@ Some products require additional permits:
 ## Export Opportunities
 
 ### Top Indonesian Exports
+
 1. Palm oil products
 2. Coal and minerals
 3. Textiles and garments
@@ -340,6 +340,7 @@ Some products require additional permits:
 7. Furniture and handicrafts
 
 ### Export Requirements
+
 - ET (Registered Exporter) for certain goods
 - Export documentation (invoice, packing list, etc.)
 - Pre-shipment inspection (some products)
@@ -355,6 +356,7 @@ Some products require additional permits:
 />
 
 ### Benefits of Bonded Zones
+
 - Defer import duties until goods enter domestic market
 - VAT and income tax facilities
 - Streamlined customs procedures
@@ -365,18 +367,22 @@ Some products require additional permits:
 ## Freight and Logistics
 
 ### Key Ports
+
 - **Jakarta (Tanjung Priok)** - Largest, most congested
 - **Surabaya (Tanjung Perak)** - East Java hub
 - **Semarang (Tanjung Emas)** - Central Java
 - **Medan (Belawan)** - North Sumatra
 
 ### Air Cargo
+
 - **Soekarno-Hatta (CGK)** - Main international
 - **Ngurah Rai (DPS)** - Bali
 - **Juanda (SUB)** - Surabaya
 
 ### Freight Forwarders
+
 Work with established forwarders who can:
+
 - Handle customs clearance
 - Manage documentation
 - Arrange inland transport
@@ -387,12 +393,11 @@ Work with established forwarders who can:
 ## Common Mistakes
 
 <InfoCard variant="error" title="Avoid These Errors">
-1. **Wrong API type** - API-U vs API-P must match activity
-2. **Ignoring product regulations** - Some goods need special permits
-3. **Undervaluing goods** - Customs penalties are severe
-4. **No proper documentation** - Delays and extra costs
-5. **Wrong HS code** - Different duties, potential penalties
-6. **Ignoring quotas/restrictions** - Some products limited
+  1. **Wrong API type** - API-U vs API-P must match activity 2. **Ignoring
+  product regulations** - Some goods need special permits 3. **Undervaluing
+  goods** - Customs penalties are severe 4. **No proper documentation** - Delays
+  and extra costs 5. **Wrong HS code** - Different duties, potential penalties
+  6. **Ignoring quotas/restrictions** - Some products limited
 </InfoCard>
 
 ---
@@ -406,7 +411,7 @@ Work with established forwarders who can:
     "How long does customs clearance take?",
     "Can I import samples without API?",
     "What are bonded warehouse benefits?",
-    "Do I need a local partner to import?"
+    "Do I need a local partner to import?",
   ]}
 />
 

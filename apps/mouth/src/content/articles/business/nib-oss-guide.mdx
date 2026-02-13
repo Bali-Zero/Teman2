@@ -45,8 +45,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # NIB & OSS System Indonesia 2026: Complete Registration Guide
 
@@ -64,6 +64,7 @@ NIB (Nomor Induk Berusaha) through OSS (Online Single Submission) is the gateway
 - Issued instantly through OSS
 
 NIB functions as TDP (Company Registration), API (Importer ID), and customs access in one.
+
 </InfoCard>
 
 ---
@@ -78,38 +79,38 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
       name: "Company Registration",
       subtitle: "Former TDP",
       values: {
-        "Function": "Business identity",
-        "Previous": "TDP certificate",
-        "Now": "Included in NIB"
-      }
+        Function: "Business identity",
+        Previous: "TDP certificate",
+        Now: "Included in NIB",
+      },
     },
     {
       name: "Importer ID",
       subtitle: "Former API",
       values: {
-        "Function": "Import eligibility",
-        "Previous": "API-U/API-P",
-        "Now": "Included in NIB"
-      }
+        Function: "Import eligibility",
+        Previous: "API-U/API-P",
+        Now: "Included in NIB",
+      },
     },
     {
       name: "Customs Access",
       subtitle: "Former NIK Kepabeanan",
       values: {
-        "Function": "Customs clearance",
-        "Previous": "Separate registration",
-        "Now": "Included in NIB"
-      }
+        Function: "Customs clearance",
+        Previous: "Separate registration",
+        Now: "Included in NIB",
+      },
     },
     {
       name: "Land Rights",
       subtitle: "Location reference",
       values: {
-        "Function": "Land acquisition rights",
-        "Previous": "Separate permit",
-        "Now": "Referenced in NIB"
-      }
-    }
+        Function: "Land acquisition rights",
+        Previous: "Separate permit",
+        Now: "Referenced in NIB",
+      },
+    },
   ]}
 />
 
@@ -133,8 +134,8 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
         "SK Menkumham (Ministry approval)",
         "Director's ID and NPWP",
         "Company NPWP (if already issued)",
-        "KBLI codes determined"
-      ]
+        "KBLI codes determined",
+      ],
     },
     {
       id: "account",
@@ -146,8 +147,8 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
         "Go to oss.go.id",
         "Create user account",
         "Verify with OTP",
-        "Use director's email"
-      ]
+        "Use director's email",
+      ],
     },
     {
       id: "company-data",
@@ -159,8 +160,8 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
         "AHU online number",
         "Company details",
         "Shareholder information",
-        "Director/commissioner data"
-      ]
+        "Director/commissioner data",
+      ],
     },
     {
       id: "kbli",
@@ -172,8 +173,8 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
         "Match to actual activities",
         "Check DNI restrictions",
         "Multiple codes possible",
-        "Primary vs secondary"
-      ]
+        "Primary vs secondary",
+      ],
     },
     {
       id: "location",
@@ -184,8 +185,8 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
       tips: [
         "Full address required",
         "GPS coordinates",
-        "Match domicile letter"
-      ]
+        "Match domicile letter",
+      ],
     },
     {
       id: "submit",
@@ -197,9 +198,9 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
         "Review all information",
         "Submit application",
         "NIB issued instantly",
-        "Download NIB certificate"
-      ]
-    }
+        "Download NIB certificate",
+      ],
+    },
   ]}
 />
 
@@ -217,6 +218,7 @@ NIB functions as TDP (Company Registration), API (Importer ID), and customs acce
 - Changes require amendments
 
 Wrong KBLI can mean wrong permits or DNI violations.
+
 </InfoCard>
 
 ### Finding KBLI Codes
@@ -228,14 +230,14 @@ Wrong KBLI can mean wrong permits or DNI violations.
 
 ### Common KBLI Examples
 
-| Activity | KBLI Code |
-|----------|-----------|
-| Restaurant | 56101 |
-| Software development | 62012 |
-| Trading (general) | 46900 |
-| Consulting | 70201 |
-| Hotel | 55111 |
-| Manufacturing | Various 10xxx-33xxx |
+| Activity             | KBLI Code           |
+| -------------------- | ------------------- |
+| Restaurant           | 56101               |
+| Software development | 62012               |
+| Trading (general)    | 46900               |
+| Consulting           | 70201               |
+| Hotel                | 55111               |
+| Manufacturing        | Various 10xxx-33xxx |
 
 ---
 
@@ -245,12 +247,12 @@ After entering KBLI, OSS determines risk level:
 
 ### Risk Levels
 
-| Level | Requirements | Processing |
-|-------|--------------|------------|
-| Low | NIB only | Instant |
-| Medium-Low | NIB + Standard Certificate | Self-declare |
-| Medium-High | NIB + Standard Certificate | Verification |
-| High | NIB + Permit | Full assessment |
+| Level       | Requirements               | Processing      |
+| ----------- | -------------------------- | --------------- |
+| Low         | NIB only                   | Instant         |
+| Medium-Low  | NIB + Standard Certificate | Self-declare    |
+| Medium-High | NIB + Standard Certificate | Verification    |
+| High        | NIB + Permit               | Full assessment |
 
 ### What Determines Risk?
 
@@ -274,56 +276,56 @@ After entering KBLI, OSS determines risk level:
       label: "Company Deed (Akta)",
       description: "Notarized establishment deed",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "sk",
       label: "SK Menkumham",
       description: "Ministry approval letter",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "director-id",
       label: "Director's KTP/Passport",
       description: "ID of directors",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "director-npwp",
       label: "Director's NPWP",
       description: "Personal tax number",
       required: true,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "company-npwp",
       label: "Company NPWP",
       description: "If already issued",
       required: false,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "domicile",
       label: "Domicile Letter",
       description: "From landlord/building",
       required: true,
-      category: "location"
+      category: "location",
     },
     {
       id: "lease",
       label: "Office Lease Agreement",
       description: "Or ownership proof",
       required: true,
-      category: "location"
-    }
+      category: "location",
+    },
   ]}
   categories={[
     { id: "legal", label: "Legal", color: "blue" },
     { id: "identity", label: "Identity", color: "green" },
     { id: "tax", label: "Tax", color: "amber" },
-    { id: "location", label: "Location", color: "purple" }
+    { id: "location", label: "Location", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -353,13 +355,13 @@ After entering KBLI, OSS determines risk level:
 
 ### OSS Problems
 
-| Issue | Solution |
-|-------|----------|
-| AHU not synced | Wait or contact AHU |
-| KBLI not found | Use correct search terms |
-| Address rejected | Check format/coordinates |
-| System error | Try different browser/time |
-| Data mismatch | Ensure deed matches input |
+| Issue            | Solution                   |
+| ---------------- | -------------------------- |
+| AHU not synced   | Wait or contact AHU        |
+| KBLI not found   | Use correct search terms   |
+| Address rejected | Check format/coordinates   |
+| System error     | Try different browser/time |
+| Data mismatch    | Ensure deed matches input  |
 
 ### How to Fix Mistakes
 
@@ -372,6 +374,7 @@ If you made errors:
 4. **Ownership change** - Requires legal process first
 
 Always update OSS when company data changes.
+
 </InfoCard>
 
 ---
@@ -380,14 +383,14 @@ Always update OSS when company data changes.
 
 ### What You Can Do in OSS
 
-| Feature | Purpose |
-|---------|---------|
-| NIB registration | New business registration |
-| License applications | Sectoral permits |
-| Commitment tracking | Monitor requirements |
-| LKPM reporting | Investment reports |
-| Data amendments | Update information |
-| Certificate download | Get license documents |
+| Feature              | Purpose                   |
+| -------------------- | ------------------------- |
+| NIB registration     | New business registration |
+| License applications | Sectoral permits          |
+| Commitment tracking  | Monitor requirements      |
+| LKPM reporting       | Investment reports        |
+| Data amendments      | Update information        |
+| Certificate download | Get license documents     |
 
 ---
 
@@ -412,7 +415,7 @@ Always update OSS when company data changes.
     "How long does NIB take to get?",
     "Can I change KBLI after NIB?",
     "What if OSS system has errors?",
-    "Do I need agent for OSS?"
+    "Do I need agent for OSS?",
   ]}
 />
 

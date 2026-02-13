@@ -47,8 +47,8 @@ import {
   Checklist,
   ComparisonTable,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Starting a Restaurant in Indonesia 2026: Complete Guide for Foreigners
 
@@ -57,11 +57,10 @@ Opening a restaurant in Indonesia as a foreigner is absolutely possible, but req
 ## Can Foreigners Open Restaurants?
 
 <InfoCard variant="note" title="Yes, But With Requirements">
-Foreigners can own restaurants in Indonesia through a **PT PMA** (foreign investment company). Key requirements:
-- Minimum investment: IDR 10 billion (~USD 625,000)
-- Cannot be small warung/street food
-- Must be formal restaurant establishment
-- Need multiple permits and licenses
+  Foreigners can own restaurants in Indonesia through a **PT PMA** (foreign
+  investment company). Key requirements: - Minimum investment: IDR 10 billion
+  (~USD 625,000) - Cannot be small warung/street food - Must be formal
+  restaurant establishment - Need multiple permits and licenses
 </InfoCard>
 
 ---
@@ -77,37 +76,38 @@ Foreigners can own restaurants in Indonesia through a **PT PMA** (foreign invest
       subtitle: "Foreign-owned company",
       values: {
         "Foreign Ownership": "100%",
-        "Investment": "IDR 10B minimum",
-        "Control": "Full control",
-        "Best For": "Large restaurants, chains"
+        Investment: "IDR 10B minimum",
+        Control: "Full control",
+        "Best For": "Large restaurants, chains",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "PT Local + Nominee",
       subtitle: "Local company (risky)",
       values: {
         "Foreign Ownership": "0% official",
-        "Investment": "Lower",
-        "Control": "Risky arrangement",
-        "Best For": "Not recommended"
-      }
+        Investment: "Lower",
+        Control: "Risky arrangement",
+        "Best For": "Not recommended",
+      },
     },
     {
       name: "Franchise",
       subtitle: "License Indonesian brand",
       values: {
         "Foreign Ownership": "Varies",
-        "Investment": "Varies",
-        "Control": "Shared",
-        "Best For": "Known concepts"
-      }
-    }
+        Investment: "Varies",
+        Control: "Shared",
+        "Best For": "Known concepts",
+      },
+    },
   ]}
 />
 
 <InfoCard variant="warning" title="Avoid Nominee Arrangements">
-Using an Indonesian nominee to hold shares is illegal and risky. If discovered, you can lose everything. Use proper PT PMA structure.
+  Using an Indonesian nominee to hold shares is illegal and risky. If
+  discovered, you can lose everything. Use proper PT PMA structure.
 </InfoCard>
 
 ---
@@ -201,7 +201,8 @@ Using an Indonesian nominee to hold shares is illegal and risky. If discovered, 
       currency: "IDR",
       note: `Meets IDR 10B PMA minimum: ${finalTotal >= 10000000000 ? "Yes ✅" : "Need additional investment"}`
     };
-  }}
+
+}}
 />
 
 ---
@@ -218,78 +219,78 @@ Using an Indonesian nominee to hold shares is illegal and risky. If discovered, 
       label: "NIB (Business ID)",
       description: "Through OSS system",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "izin-usaha",
       label: "Izin Usaha (Business License)",
       description: "Restaurant activity license",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "tdup",
       label: "TDUP (Tourism Business License)",
       description: "If in tourist area (Bali)",
       required: false,
-      category: "industry"
+      category: "industry",
     },
     {
       id: "halal",
       label: "Halal Certificate",
       description: "If serving halal food",
       required: false,
-      category: "industry"
+      category: "industry",
     },
     {
       id: "bpom",
       label: "BPOM Registration",
       description: "For packaged/processed foods",
       required: false,
-      category: "industry"
+      category: "industry",
     },
     {
       id: "liquor",
       label: "SIUP-MB (Liquor License)",
       description: "If serving alcohol",
       required: false,
-      category: "special"
+      category: "special",
     },
     {
       id: "imb",
       label: "IMB/PBG (Building Permit)",
       description: "For the physical location",
       required: true,
-      category: "location"
+      category: "location",
     },
     {
       id: "slo",
       label: "SLO (Operations Worthiness)",
       description: "Safety compliance",
       required: true,
-      category: "location"
+      category: "location",
     },
     {
       id: "amdal",
       label: "Environmental Document",
       description: "SPPL, UKL-UPL, or AMDAL",
       required: true,
-      category: "location"
+      category: "location",
     },
     {
       id: "health",
       label: "Health Department Permit",
       description: "Food safety inspection",
       required: true,
-      category: "health"
-    }
+      category: "health",
+    },
   ]}
   categories={[
     { id: "company", label: "Company", color: "blue" },
     { id: "industry", label: "Industry", color: "green" },
     { id: "special", label: "Special", color: "purple" },
     { id: "location", label: "Location", color: "amber" },
-    { id: "health", label: "Health", color: "red" }
+    { id: "health", label: "Health", color: "red" },
   ]}
   showProgress={true}
 />
@@ -410,37 +411,39 @@ Liquor licenses in Indonesia are:
 - Subject to periodic review
 
 In Bali, licenses are more accessible. In other areas, may be impossible.
+
 </InfoCard>
 
 ### License Types
 
-| Type | Description | Where |
-|------|-------------|-------|
+| Type      | Description                               | Where               |
+| --------- | ----------------------------------------- | ------------------- |
 | SIUP-MB A | Alcoholic beverages (beer, wine, spirits) | Hotels, restaurants |
-| SIUP-MB B | Beer only | Bars, restaurants |
-| SIUP-MB C | Retail sale | Shops with license |
+| SIUP-MB B | Beer only                                 | Bars, restaurants   |
+| SIUP-MB C | Retail sale                               | Shops with license  |
 
 ---
 
 ## Staffing Requirements
 
 ### Indonesian Staff
+
 - Must hire Indonesian workers
 - Register with BPJS (health and employment insurance)
 - Follow minimum wage (UMR) by region
 - Provide employment contracts
 
 ### Foreign Staff
+
 - Limited to certain positions (chef, manager)
 - Requires RPTKA and KITAS
 - Must train Indonesian counterpart
 - Additional costs (DKP-TKA)
 
 <InfoCard variant="tip" title="Hiring Foreign Chefs">
-Foreign chefs are common in Indonesia but require:
-- Work permit (RPTKA + KITAS)
-- Justification why Indonesian chef not suitable
-- Indonesian sous chef to learn from them
+  Foreign chefs are common in Indonesia but require: - Work permit (RPTKA +
+  KITAS) - Justification why Indonesian chef not suitable - Indonesian sous chef
+  to learn from them
 </InfoCard>
 
 ---
@@ -465,7 +468,7 @@ Foreign chefs are common in Indonesia but require:
     "Can I open a small café with less investment?",
     "How hard is it to get a liquor license in Bali?",
     "What's the typical ROI for restaurants?",
-    "Can I use my own recipes without issue?"
+    "Can I use my own recipes without issue?",
   ]}
 />
 
