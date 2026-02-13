@@ -50,8 +50,8 @@ import {
   Checklist,
   InfoCard,
   Calculator,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # How to Register a PT PMA in Indonesia: Step by Step 2026
 
@@ -68,17 +68,18 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
 4. **Verifica capitale rafforzata** - BKPM può richiedere evidenza del deposito capitale
 
 **Requisiti investimento invariati**: IDR 10 miliardi minimo (circa $625,000) rimane lo standard per PT PMA.
+
 </InfoCard>
 
 ## Quick Overview
 
-| Aspect | Details |
-|--------|---------|
-| **Timeline** | 4-8 weeks |
-| **Min Investment** | IDR 10 billion (~$625,000) |
-| **Min Shareholders** | 2 (can be foreign) |
-| **Min Directors** | 1 (can be foreign) |
-| **Min Commissioners** | 1 (can be foreign) |
+| Aspect                | Details                    |
+| --------------------- | -------------------------- |
+| **Timeline**          | 4-8 weeks                  |
+| **Min Investment**    | IDR 10 billion (~$625,000) |
+| **Min Shareholders**  | 2 (can be foreign)         |
+| **Min Directors**     | 1 (can be foreign)         |
+| **Min Commissioners** | 1 (can be foreign)         |
 
 ---
 
@@ -99,13 +100,13 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
         "Business plan",
         "KBLI code selection",
         "Shareholder structure",
-        "Investment breakdown"
+        "Investment breakdown",
       ],
       tips: [
         "Choose KBLI codes carefully - they define your activities",
         "Check foreign ownership limits for your sector",
-        "Plan IDR 10B+ investment over 3 years"
-      ]
+        "Plan IDR 10B+ investment over 3 years",
+      ],
     },
     {
       id: "notary",
@@ -117,13 +118,13 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
         "Passport copies (all shareholders)",
         "Proof of address (all shareholders)",
         "3 company name options",
-        "Draft articles of association"
+        "Draft articles of association",
       ],
       tips: [
         "Company names must be Indonesian (2+ words)",
         "Prepare 3 options in case first is taken",
-        "All shareholders must sign or provide POA"
-      ]
+        "All shareholders must sign or provide POA",
+      ],
     },
     {
       id: "kemenkumham",
@@ -134,8 +135,8 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       tips: [
         "Notary handles this process",
         "Company name checked for uniqueness",
-        "Results in SK Kemenkumham certificate"
-      ]
+        "Results in SK Kemenkumham certificate",
+      ],
     },
     {
       id: "npwp",
@@ -147,12 +148,12 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
         "SK Kemenkumham",
         "Company deed",
         "Director passport/KITAS",
-        "Domicile letter"
+        "Domicile letter",
       ],
       tips: [
         "NPWP required before bank account",
-        "Format: XX.XXX.XXX.X-XXX.XXX"
-      ]
+        "Format: XX.XXX.XXX.X-XXX.XXX",
+      ],
     },
     {
       id: "oss",
@@ -160,16 +161,12 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       description: "Get NIB (Business ID) through OSS system",
       duration: "1-3 days",
       status: "required",
-      documents: [
-        "SK Kemenkumham",
-        "NPWP",
-        "KBLI codes list"
-      ],
+      documents: ["SK Kemenkumham", "NPWP", "KBLI codes list"],
       tips: [
         "OSS account linked to director",
         "NIB generated automatically",
-        "Add all planned KBLI codes"
-      ]
+        "Add all planned KBLI codes",
+      ],
     },
     {
       id: "bkpm",
@@ -180,8 +177,8 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       tips: [
         "Done through OSS system",
         "Submit investment plan",
-        "Include employment projections"
-      ]
+        "Include employment projections",
+      ],
     },
     {
       id: "bank",
@@ -194,13 +191,13 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
         "Company deed",
         "NPWP",
         "NIB",
-        "Director passport/KITAS"
+        "Director passport/KITAS",
       ],
       tips: [
         "BCA, Mandiri, CIMB Niaga are popular",
         "Deposit paid-up capital",
-        "Some banks require in-person visit"
-      ]
+        "Some banks require in-person visit",
+      ],
     },
     {
       id: "permits",
@@ -211,9 +208,9 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       tips: [
         "Depends on your KBLI codes",
         "Risk-based: low-medium-high",
-        "May need inspections"
-      ]
-    }
+        "May need inspections",
+      ],
+    },
   ]}
 />
 
@@ -231,55 +228,55 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       label: "Passport copies (all shareholders)",
       description: "Color scans, valid 18+ months",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "photo",
       label: "Passport photos (4x6, red bg)",
       description: "All shareholders and directors",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "address",
       label: "Proof of address (all shareholders)",
       description: "Utility bill, bank statement, or govt ID",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "names",
       label: "3 company name options",
       description: "Indonesian names, 2+ words",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "kbli",
       label: "KBLI codes list",
       description: "All planned business activities",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "investment",
       label: "Investment plan",
       description: "IDR 10B+ breakdown",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "domicile",
       label: "Domicile arrangement",
       description: "Virtual office or lease",
       required: true,
-      category: "operational"
-    }
+      category: "operational",
+    },
   ]}
   categories={[
     { id: "identity", label: "Identity", color: "blue" },
     { id: "company", label: "Company Info", color: "purple" },
-    { id: "operational", label: "Operational", color: "green" }
+    { id: "operational", label: "Operational", color: "green" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -347,7 +344,8 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
       currency: "IDR",
       note: "Excludes paid-up capital (IDR 10B minimum)"
     };
-  }}
+
+}}
 />
 
 ---
@@ -355,11 +353,10 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
 ## Tips for Success
 
 <InfoCard variant="tip" title="Registration Tips">
-1. **KBLI first**: Choose codes carefully before starting
-2. **Plan capital**: Know how you'll deploy IDR 10B
-3. **Use professionals**: Corporate secretary saves headaches
-4. **Timeline**: Allow 6-8 weeks to be safe
-5. **Director presence**: May need to be in Indonesia for bank account
+  1. **KBLI first**: Choose codes carefully before starting 2. **Plan capital**:
+  Know how you'll deploy IDR 10B 3. **Use professionals**: Corporate secretary
+  saves headaches 4. **Timeline**: Allow 6-8 weeks to be safe 5. **Director
+  presence**: May need to be in Indonesia for bank account
 </InfoCard>
 
 ---
@@ -373,7 +370,7 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
     "Can I register PT PMA remotely?",
     "What if I don't have IDR 10B?",
     "How do I choose company name?",
-    "Do I need to be in Indonesia?"
+    "Do I need to be in Indonesia?",
   ]}
 />
 
@@ -381,21 +378,25 @@ Le nuove regole entrate in vigore nel 2025 portano alcune semplificazioni:
 
 ## Opinioni e Discussioni in Corso
 
-<InfoCard variant="note" title="⚠️ Nota: Questa sezione contiene OPINIONI e discussioni non ancora confermate ufficialmente">
-Informazioni basate su analisi di settore e discussioni tra esperti. **Non confermate da BKPM o Kemenkumham**.
+<InfoCard
+  variant="note"
+  title="⚠️ Nota: Questa sezione contiene OPINIONI e discussioni non ancora confermate ufficialmente"
+>
+  Informazioni basate su analisi di settore e discussioni tra esperti. **Non
+  confermate da BKPM o Kemenkumham**.
 </InfoCard>
 
 ### Possibili sviluppi PT PMA (OPINIONE)
 
-1. **Capitale ridotto per settore tech** - Si discute di una possibile riduzione del requisito di capitale minimo (attualmente IDR 10 miliardi) per startup tecnologiche e servizi digitali. Alcuni ritengono potrebbe scendere a IDR 2.5-5 miliardi. *Solo discussione, nessuna conferma.*
+1. **Capitale ridotto per settore tech** - Si discute di una possibile riduzione del requisito di capitale minimo (attualmente IDR 10 miliardi) per startup tecnologiche e servizi digitali. Alcuni ritengono potrebbe scendere a IDR 2.5-5 miliardi. _Solo discussione, nessuna conferma._
 
-2. **Negative Investment List semplificata** - C'è discussione su ulteriori aperture settoriali per investitori stranieri, specialmente in educazione, sanità e logistica. *Nessun annuncio ufficiale.*
+2. **Negative Investment List semplificata** - C'è discussione su ulteriori aperture settoriali per investitori stranieri, specialmente in educazione, sanità e logistica. _Nessun annuncio ufficiale._
 
-3. **One-stop registration** - Si discute di un processo ancora più integrato che combinerebbe notaio, Kemenkumham, NPWP e OSS in un unico flusso. *Solo speculazione.*
+3. **One-stop registration** - Si discute di un processo ancora più integrato che combinerebbe notaio, Kemenkumham, NPWP e OSS in un unico flusso. _Solo speculazione._
 
-4. **Virtual company per freelancer** - Alcuni esperti discutono di una possibile struttura aziendale semplificata per freelancer stranieri, senza i requisiti completi di PT PMA. *Non confermato.*
+4. **Virtual company per freelancer** - Alcuni esperti discutono di una possibile struttura aziendale semplificata per freelancer stranieri, senza i requisiti completi di PT PMA. _Non confermato._
 
-5. **Incentivi zona economica speciale** - Si discute di possibili incentivi aggiuntivi (tax holiday, capitale ridotto) per PT PMA che si stabiliscono nelle Zone Economiche Speciali (KEK). *In fase di valutazione.*
+5. **Incentivi zona economica speciale** - Si discute di possibili incentivi aggiuntivi (tax holiday, capitale ridotto) per PT PMA che si stabiliscono nelle Zone Economiche Speciali (KEK). _In fase di valutazione._
 
 **Ricorda**: Per decisioni di investimento, attendi conferme ufficiali da oss.go.id o bkpm.go.id.
 

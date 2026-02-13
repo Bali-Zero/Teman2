@@ -45,8 +45,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Business Licenses in Indonesia 2026: Complete Overview
 
@@ -61,7 +61,7 @@ Since the **Job Creation Law (Omnibus Law)**, Indonesia uses the **OSS RBA** (Ri
 - Receive **NIB** (Nomor Induk Berusaha)
 - Risk level determines further requirements
 - Sectoral licenses integrated into OSS
-</InfoCard>
+  </InfoCard>
 
 ## License Categories
 
@@ -77,44 +77,49 @@ Since the **Job Creation Law (Omnibus Law)**, Indonesia uses the **OSS RBA** (Ri
         { label: "Manufacturing", next: "manufacture" },
         { label: "Food & beverage", next: "food" },
         { label: "Professional services", next: "services" },
-        { label: "Construction", next: "construction" }
-      ]
+        { label: "Construction", next: "construction" },
+      ],
     },
     {
       id: "trade",
       result: {
         title: "Trading Business Licenses",
-        description: "NIB + SIUP (Trading License). May need import licenses (API-U/API-P) if importing goods. Low to medium risk classification."
-      }
+        description:
+          "NIB + SIUP (Trading License). May need import licenses (API-U/API-P) if importing goods. Low to medium risk classification.",
+      },
     },
     {
       id: "manufacture",
       result: {
         title: "Manufacturing Licenses",
-        description: "NIB + IUI (Industrial Business License) + Environmental permits (AMDAL/UKL-UPL) + Location permit. Medium to high risk classification."
-      }
+        description:
+          "NIB + IUI (Industrial Business License) + Environmental permits (AMDAL/UKL-UPL) + Location permit. Medium to high risk classification.",
+      },
     },
     {
       id: "food",
       result: {
         title: "F&B Business Licenses",
-        description: "NIB + TDUP (Tourism Business License) or SIUP + BPOM/Food Safety Registration + Halal certification (for certain products). Medium risk."
-      }
+        description:
+          "NIB + TDUP (Tourism Business License) or SIUP + BPOM/Food Safety Registration + Halal certification (for certain products). Medium risk.",
+      },
     },
     {
       id: "services",
       result: {
         title: "Service Business Licenses",
-        description: "NIB is often sufficient. Some professional services need specific certifications. Low to medium risk classification."
-      }
+        description:
+          "NIB is often sufficient. Some professional services need specific certifications. Low to medium risk classification.",
+      },
     },
     {
       id: "construction",
       result: {
         title: "Construction Licenses",
-        description: "NIB + SBU (Construction Business Certificate) + SBUJK (specific to construction category). Medium to high risk."
-      }
-    }
+        description:
+          "NIB + SBU (Construction Business Certificate) + SBUJK (specific to construction category). Medium to high risk.",
+      },
+    },
   ]}
 />
 
@@ -130,43 +135,43 @@ Since the **Job Creation Law (Omnibus Law)**, Indonesia uses the **OSS RBA** (Ri
       name: "NIB",
       subtitle: "Business Identification Number",
       values: {
-        "Required": "All businesses",
+        Required: "All businesses",
         "Issued By": "OSS system",
-        "Cost": "Free",
-        "Validity": "Permanent"
+        Cost: "Free",
+        Validity: "Permanent",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "SIUP",
       subtitle: "Trading Business License",
       values: {
-        "Required": "Trading companies",
+        Required: "Trading companies",
         "Issued By": "OSS (via NIB)",
-        "Cost": "Free",
-        "Validity": "Per NIB"
-      }
+        Cost: "Free",
+        Validity: "Per NIB",
+      },
     },
     {
       name: "TDP",
       subtitle: "Company Registration",
       values: {
-        "Required": "All PT/CV",
+        Required: "All PT/CV",
         "Issued By": "OSS (via NIB)",
-        "Cost": "Free",
-        "Validity": "Per NIB"
-      }
+        Cost: "Free",
+        Validity: "Per NIB",
+      },
     },
     {
       name: "NPWP",
       subtitle: "Tax Identification",
       values: {
-        "Required": "All businesses",
+        Required: "All businesses",
         "Issued By": "Tax Office",
-        "Cost": "Free",
-        "Validity": "Permanent"
-      }
-    }
+        Cost: "Free",
+        Validity: "Permanent",
+      },
+    },
   ]}
 />
 
@@ -176,16 +181,17 @@ Since the **Job Creation Law (Omnibus Law)**, Indonesia uses the **OSS RBA** (Ri
 
 ### Risk Classification
 
-| Risk Level | Requirements | Examples |
-|------------|--------------|----------|
-| Low | NIB only | Small retail, basic services |
-| Medium-Low | NIB + Standard Certificate | Some trading, consultancy |
-| Medium-High | NIB + Standard Certificate | Food service, manufacturing |
-| High | NIB + Permit + Inspection | Large industry, hazardous |
+| Risk Level  | Requirements               | Examples                     |
+| ----------- | -------------------------- | ---------------------------- |
+| Low         | NIB only                   | Small retail, basic services |
+| Medium-Low  | NIB + Standard Certificate | Some trading, consultancy    |
+| Medium-High | NIB + Standard Certificate | Food service, manufacturing  |
+| High        | NIB + Permit + Inspection  | Large industry, hazardous    |
 
 ### How Risk is Determined
 
 Factors include:
+
 - Business sector (KBLI code)
 - Scale of operations
 - Environmental impact
@@ -208,57 +214,57 @@ Factors include:
       label: "API (Importer ID)",
       description: "For importing goods",
       required: false,
-      category: "trade"
+      category: "trade",
     },
     {
       id: "nib-siup",
       label: "Trading License (via NIB)",
       description: "For trading businesses",
       required: false,
-      category: "trade"
+      category: "trade",
     },
     {
       id: "tdup",
       label: "TDUP (Tourism Business)",
       description: "Hotels, tours, restaurants",
       required: false,
-      category: "tourism"
+      category: "tourism",
     },
     {
       id: "bpom",
       label: "BPOM Registration",
       description: "Food, drugs, cosmetics",
       required: false,
-      category: "health"
+      category: "health",
     },
     {
       id: "halal",
       label: "Halal Certification",
       description: "Certain food products",
       required: false,
-      category: "health"
+      category: "health",
     },
     {
       id: "iui",
       label: "IUI (Industrial License)",
       description: "Manufacturing",
       required: false,
-      category: "manufacturing"
+      category: "manufacturing",
     },
     {
       id: "sbu",
       label: "SBU (Construction Cert)",
       description: "Construction companies",
       required: false,
-      category: "construction"
+      category: "construction",
     },
     {
       id: "ojk",
       label: "OJK License",
       description: "Financial services",
       required: false,
-      category: "financial"
-    }
+      category: "financial",
+    },
   ]}
   categories={[
     { id: "trade", label: "Trade", color: "blue" },
@@ -266,7 +272,7 @@ Factors include:
     { id: "health", label: "Health/Food", color: "red" },
     { id: "manufacturing", label: "Manufacturing", color: "amber" },
     { id: "construction", label: "Construction", color: "purple" },
-    { id: "financial", label: "Financial", color: "cyan" }
+    { id: "financial", label: "Financial", color: "cyan" },
   ]}
   showProgress={false}
 />
@@ -277,34 +283,34 @@ Factors include:
 
 ### Trading/Import Business
 
-| License | Purpose |
-|---------|---------|
-| NIB | Base registration |
-| API-U | General importer |
-| API-P | Producer importer |
+| License              | Purpose                   |
+| -------------------- | ------------------------- |
+| NIB                  | Base registration         |
+| API-U                | General importer          |
+| API-P                | Producer importer         |
 | IT (Import Approval) | Specific product approval |
-| LS (Verification) | Certain commodities |
+| LS (Verification)    | Certain commodities       |
 
 ### Restaurant/Cafe
 
-| License | Purpose |
-|---------|---------|
-| NIB | Base registration |
-| TDUP | Tourism business license |
-| Health certificate | Food safety |
-| BPOM (if processing) | Packaged food |
-| Halal (recommended) | Muslim customers |
+| License              | Purpose                  |
+| -------------------- | ------------------------ |
+| NIB                  | Base registration        |
+| TDUP                 | Tourism business license |
+| Health certificate   | Food safety              |
+| BPOM (if processing) | Packaged food            |
+| Halal (recommended)  | Muslim customers         |
 
 ### Manufacturing
 
-| License | Purpose |
-|---------|---------|
-| NIB | Base registration |
-| IUI | Industrial license |
-| Environmental permit | AMDAL/UKL-UPL |
-| Location permit | Land use approval |
-| Building permit | IMB/PBG |
-| Operational permit | Final approval |
+| License              | Purpose            |
+| -------------------- | ------------------ |
+| NIB                  | Base registration  |
+| IUI                  | Industrial license |
+| Environmental permit | AMDAL/UKL-UPL      |
+| Location permit      | Land use approval  |
+| Building permit      | IMB/PBG            |
+| Operational permit   | Final approval     |
 
 ---
 
@@ -314,18 +320,21 @@ Factors include:
 Most businesses need environmental approval:
 
 **Low Impact (SPPL)**
+
 - Small retail/office
 - Simple declaration
 
 **Medium Impact (UKL-UPL)**
+
 - Medium businesses
 - Environmental management plan
 
 **High Impact (AMDAL)**
+
 - Large projects
 - Full environmental impact study
 - Public consultation required
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -333,12 +342,12 @@ Most businesses need environmental approval:
 
 ### Property-Related Permits
 
-| Permit | Purpose | When Needed |
-|--------|---------|-------------|
-| Location Permit | Land use approval | Acquiring land |
-| IMB/PBG | Building permit | Construction |
-| SLF | Building occupancy | Operating building |
-| HO (if applicable) | Nuisance permit | Some localities |
+| Permit             | Purpose            | When Needed        |
+| ------------------ | ------------------ | ------------------ |
+| Location Permit    | Land use approval  | Acquiring land     |
+| IMB/PBG            | Building permit    | Construction       |
+| SLF                | Building occupancy | Operating building |
+| HO (if applicable) | Nuisance permit    | Some localities    |
 
 ---
 
@@ -346,13 +355,13 @@ Most businesses need environmental approval:
 
 ### Typical Costs
 
-| License | Government Fee | Agent Fee |
-|---------|----------------|-----------|
-| NIB | Free | IDR 2-5M |
-| NPWP | Free | IDR 1-2M |
-| Environmental (SPPL) | Free-minimal | IDR 3-5M |
-| Environmental (UKL-UPL) | IDR 5-20M | IDR 20-50M |
-| Sectoral (varies) | Varies | IDR 5-20M |
+| License                 | Government Fee | Agent Fee  |
+| ----------------------- | -------------- | ---------- |
+| NIB                     | Free           | IDR 2-5M   |
+| NPWP                    | Free           | IDR 1-2M   |
+| Environmental (SPPL)    | Free-minimal   | IDR 3-5M   |
+| Environmental (UKL-UPL) | IDR 5-20M      | IDR 20-50M |
+| Sectoral (varies)       | Varies         | IDR 5-20M  |
 
 ---
 
@@ -368,42 +377,42 @@ Most businesses need environmental approval:
       label: "Annual LKPM report",
       description: "Investment activity report",
       required: true,
-      category: "reporting"
+      category: "reporting",
     },
     {
       id: "tax-filing",
       label: "Monthly/annual tax filing",
       description: "All tax obligations",
       required: true,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "oss-update",
       label: "OSS data updates",
       description: "When business changes",
       required: true,
-      category: "administrative"
+      category: "administrative",
     },
     {
       id: "renewal",
       label: "License renewals",
       description: "Before expiry",
       required: true,
-      category: "administrative"
+      category: "administrative",
     },
     {
       id: "env-report",
       label: "Environmental reporting",
       description: "If required by permit",
       required: false,
-      category: "environmental"
-    }
+      category: "environmental",
+    },
   ]}
   categories={[
     { id: "reporting", label: "Reporting", color: "blue" },
     { id: "tax", label: "Tax", color: "green" },
     { id: "administrative", label: "Administrative", color: "amber" },
-    { id: "environmental", label: "Environmental", color: "red" }
+    { id: "environmental", label: "Environmental", color: "red" },
   ]}
   showProgress={true}
 />
@@ -430,7 +439,7 @@ Most businesses need environmental approval:
     "What licenses does my business need?",
     "How long does licensing take?",
     "Can I operate while waiting for licenses?",
-    "What's the penalty for no license?"
+    "What's the penalty for no license?",
   ]}
 />
 

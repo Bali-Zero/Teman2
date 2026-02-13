@@ -46,8 +46,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Tourism & Hospitality Business in Indonesia 2026: Foreigner's Guide
 
@@ -66,8 +66,8 @@ Tourism is a major industry in Indonesia, especially in Bali, Lombok, and emergi
         { label: "Accommodation (hotel, villa)", next: "accommodation" },
         { label: "Tours & activities", next: "tours" },
         { label: "Travel agency", next: "travel" },
-        { label: "Adventure/outdoor", next: "adventure" }
-      ]
+        { label: "Adventure/outdoor", next: "adventure" },
+      ],
     },
     {
       id: "accommodation",
@@ -75,8 +75,8 @@ Tourism is a major industry in Indonesia, especially in Bali, Lombok, and emergi
       options: [
         { label: "Hotel (15+ rooms)", next: "hotel" },
         { label: "Villa rental (<15 units)", next: "villa" },
-        { label: "Boutique guesthouse", next: "guesthouse" }
-      ]
+        { label: "Boutique guesthouse", next: "guesthouse" },
+      ],
     },
     {
       id: "tours",
@@ -84,65 +84,73 @@ Tourism is a major industry in Indonesia, especially in Bali, Lombok, and emergi
       options: [
         { label: "Day tours & excursions", next: "day-tours" },
         { label: "Multi-day packages", next: "packages" },
-        { label: "Transport services", next: "transport" }
-      ]
+        { label: "Transport services", next: "transport" },
+      ],
     },
     {
       id: "hotel",
       result: {
         title: "Hotel PT PMA",
-        description: "Hotels require PT PMA with tourism KBLI codes, TDUP license, substantial investment. Highly regulated but 100% foreign ownership allowed."
-      }
+        description:
+          "Hotels require PT PMA with tourism KBLI codes, TDUP license, substantial investment. Highly regulated but 100% foreign ownership allowed.",
+      },
     },
     {
       id: "villa",
       result: {
         title: "Villa Rental Business",
-        description: "Villa rentals are complex - may require Pondok Wisata license, zoning permits, and tourism registration. Foreigners often face restrictions."
-      }
+        description:
+          "Villa rentals are complex - may require Pondok Wisata license, zoning permits, and tourism registration. Foreigners often face restrictions.",
+      },
     },
     {
       id: "guesthouse",
       result: {
         title: "Pondok Wisata License",
-        description: "Small guesthouses need Pondok Wisata license. Foreign ownership varies by location - some areas restrict or prohibit foreign-owned small accommodation."
-      }
+        description:
+          "Small guesthouses need Pondok Wisata license. Foreign ownership varies by location - some areas restrict or prohibit foreign-owned small accommodation.",
+      },
     },
     {
       id: "day-tours",
       result: {
         title: "Tour Operator PT PMA",
-        description: "Tour operators need PT PMA with tour business license. Can operate day tours, excursions, and activities."
-      }
+        description:
+          "Tour operators need PT PMA with tour business license. Can operate day tours, excursions, and activities.",
+      },
     },
     {
       id: "packages",
       result: {
         title: "Travel Agent License",
-        description: "Multi-day packages often require travel agent license (BPW). Different from simple tour operator."
-      }
+        description:
+          "Multi-day packages often require travel agent license (BPW). Different from simple tour operator.",
+      },
     },
     {
       id: "transport",
       result: {
         title: "Tourist Transport",
-        description: "Tourist transport requires specific licenses. Vehicle permits, driver licenses, insurance requirements apply."
-      }
+        description:
+          "Tourist transport requires specific licenses. Vehicle permits, driver licenses, insurance requirements apply.",
+      },
     },
     {
       id: "travel",
       result: {
         title: "Travel Agency (BPW)",
-        description: "Full travel agencies can book flights, hotels, and packages. Requires BPW license and financial guarantees."
-      }
+        description:
+          "Full travel agencies can book flights, hotels, and packages. Requires BPW license and financial guarantees.",
+      },
     },
     {
       id: "adventure",
       result: {
         title: "Adventure Tourism",
-        description: "Diving, surfing, rafting require specific licenses, safety certifications, and often guide qualifications."
-      }
-    }
+        description:
+          "Diving, surfing, rafting require specific licenses, safety certifications, and often guide qualifications.",
+      },
+    },
   ]}
 />
 
@@ -159,42 +167,42 @@ Tourism is a major industry in Indonesia, especially in Bali, Lombok, and emergi
       subtitle: "Full-scale hotel",
       values: {
         "Foreign Ownership": "100%",
-        "Investment": "IDR 10B+",
-        "License": "TDUP Hotel",
-        "Star Rating": "Optional but beneficial"
+        Investment: "IDR 10B+",
+        License: "TDUP Hotel",
+        "Star Rating": "Optional but beneficial",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Tour Operator",
       subtitle: "Day tours & activities",
       values: {
         "Foreign Ownership": "100%",
-        "Investment": "IDR 10B",
-        "License": "TDUP Tour",
-        "Star Rating": "N/A"
-      }
+        Investment: "IDR 10B",
+        License: "TDUP Tour",
+        "Star Rating": "N/A",
+      },
     },
     {
       name: "Travel Agency (BPW)",
       subtitle: "Full travel services",
       values: {
         "Foreign Ownership": "100%",
-        "Investment": "IDR 10B",
-        "License": "BPW License",
-        "Star Rating": "N/A"
-      }
+        Investment: "IDR 10B",
+        License: "BPW License",
+        "Star Rating": "N/A",
+      },
     },
     {
       name: "Villa Rental",
       subtitle: "Small-scale accommodation",
       values: {
         "Foreign Ownership": "Restricted",
-        "Investment": "Varies",
-        "License": "Pondok Wisata",
-        "Star Rating": "N/A"
-      }
-    }
+        Investment: "Varies",
+        License: "Pondok Wisata",
+        "Star Rating": "N/A",
+      },
+    },
   ]}
 />
 
@@ -214,83 +222,81 @@ Tourism is a major industry in Indonesia, especially in Bali, Lombok, and emergi
       label: "PT PMA establishment",
       description: "Tourism KBLI codes",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "nib",
       label: "NIB (Business ID)",
       description: "Through OSS",
       required: true,
-      category: "company"
+      category: "company",
     },
     {
       id: "tdup",
       label: "TDUP (Tourism Business License)",
       description: "Specific to hotel category",
       required: true,
-      category: "tourism"
+      category: "tourism",
     },
     {
       id: "building",
       label: "IMB/PBG (Building Permit)",
       description: "For the property",
       required: true,
-      category: "property"
+      category: "property",
     },
     {
       id: "amdal",
       label: "Environmental Permit",
       description: "SPPL, UKL-UPL, or AMDAL",
       required: true,
-      category: "property"
+      category: "property",
     },
     {
       id: "fire",
       label: "Fire Safety Certificate",
       description: "Inspection and approval",
       required: true,
-      category: "safety"
+      category: "safety",
     },
     {
       id: "health",
       label: "Health Department Approval",
       description: "Sanitation inspection",
       required: true,
-      category: "safety"
+      category: "safety",
     },
     {
       id: "star",
       label: "Star Rating (optional)",
       description: "Through tourism ministry",
       required: false,
-      category: "tourism"
-    }
+      category: "tourism",
+    },
   ]}
   categories={[
     { id: "company", label: "Company", color: "blue" },
     { id: "tourism", label: "Tourism", color: "green" },
     { id: "property", label: "Property", color: "amber" },
-    { id: "safety", label: "Safety", color: "red" }
+    { id: "safety", label: "Safety", color: "red" },
   ]}
   showProgress={true}
 />
 
 ### Hotel Star Ratings
 
-| Stars | Requirements | Typical Room Count |
-|-------|-------------|-------------------|
-| 1-star | Basic amenities | 15+ |
-| 2-star | Standard facilities | 20+ |
-| 3-star | Full service | 30+ |
-| 4-star | Premium service | 50+ |
-| 5-star | Luxury standards | 100+ |
+| Stars  | Requirements        | Typical Room Count |
+| ------ | ------------------- | ------------------ |
+| 1-star | Basic amenities     | 15+                |
+| 2-star | Standard facilities | 20+                |
+| 3-star | Full service        | 30+                |
+| 4-star | Premium service     | 50+                |
+| 5-star | Luxury standards    | 100+               |
 
 <InfoCard variant="note" title="Star Rating Benefits">
-While optional, star ratings help with:
-- Marketing and visibility
-- Online travel agent (OTA) positioning
-- Government tourism programs
-- Corporate bookings
+  While optional, star ratings help with: - Marketing and visibility - Online
+  travel agent (OTA) positioning - Government tourism programs - Corporate
+  bookings
 </InfoCard>
 
 ---
@@ -313,8 +319,8 @@ While optional, star ratings help with:
       tips: [
         "Tourism KBLI codes",
         "Include activities you'll offer",
-        "IDR 10B investment"
-      ]
+        "IDR 10B investment",
+      ],
     },
     {
       id: "licenses",
@@ -325,8 +331,8 @@ While optional, star ratings help with:
       tips: [
         "TDUP for tour operator",
         "Transport permits if needed",
-        "Activity-specific licenses"
-      ]
+        "Activity-specific licenses",
+      ],
     },
     {
       id: "insurance",
@@ -337,8 +343,8 @@ While optional, star ratings help with:
       tips: [
         "Liability insurance",
         "Vehicle insurance if applicable",
-        "Activity insurance (diving, etc.)"
-      ]
+        "Activity insurance (diving, etc.)",
+      ],
     },
     {
       id: "guides",
@@ -349,8 +355,8 @@ While optional, star ratings help with:
       tips: [
         "Indonesian guides with license",
         "Foreign guides limited",
-        "Language capabilities"
-      ]
+        "Language capabilities",
+      ],
     },
     {
       id: "vehicles",
@@ -361,8 +367,8 @@ While optional, star ratings help with:
       tips: [
         "Own or partner vehicles",
         "Tourist transport permits",
-        "Driver requirements"
-      ]
+        "Driver requirements",
+      ],
     },
     {
       id: "operations",
@@ -370,12 +376,8 @@ While optional, star ratings help with:
       description: "Start taking bookings",
       duration: "Ongoing",
       status: "final",
-      tips: [
-        "Online booking systems",
-        "OTA partnerships",
-        "Direct marketing"
-      ]
-    }
+      tips: ["Online booking systems", "OTA partnerships", "Direct marketing"],
+    },
   ]}
 />
 
@@ -400,7 +402,9 @@ Special considerations for adventure activities:
 - **Snorkeling tours** - Guide training, equipment
 
 <InfoCard variant="warning" title="Safety First">
-Adventure tourism carries liability risks. Proper insurance, certified guides, and safety protocols are essential - not just for compliance but for your protection.
+  Adventure tourism carries liability risks. Proper insurance, certified guides,
+  and safety protocols are essential - not just for compliance but for your
+  protection.
 </InfoCard>
 
 ---
@@ -408,11 +412,10 @@ Adventure tourism carries liability risks. Proper insurance, certified guides, a
 ## Villa Rental Challenges
 
 <InfoCard variant="error" title="Villa Rental Restrictions">
-Small-scale villa rental is one of the most restricted areas for foreigners:
-- Many areas prohibit foreign-owned Pondok Wisata
-- Bali has specific regulations limiting foreign villa operations
-- "Nominee" arrangements are illegal and risky
-- Leasing land + building villa has ownership complications
+  Small-scale villa rental is one of the most restricted areas for foreigners: -
+  Many areas prohibit foreign-owned Pondok Wisata - Bali has specific
+  regulations limiting foreign villa operations - "Nominee" arrangements are
+  illegal and risky - Leasing land + building villa has ownership complications
 </InfoCard>
 
 ### Villa Options for Foreigners
@@ -427,6 +430,7 @@ Small-scale villa rental is one of the most restricted areas for foreigners:
 ## Travel Agency (BPW)
 
 Full travel agencies can:
+
 - Book airline tickets
 - Arrange hotel reservations
 - Create package tours
@@ -450,7 +454,7 @@ Full travel agencies can:
     "Can I run a surf school as a foreigner?",
     "What about Airbnb hosting?",
     "How do I get tour guide licenses for my staff?",
-    "Are there restrictions in specific areas?"
+    "Are there restrictions in specific areas?",
   ]}
 />
 

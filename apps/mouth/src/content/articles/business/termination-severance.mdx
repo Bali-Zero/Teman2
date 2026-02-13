@@ -46,8 +46,8 @@ import {
   JourneyMap,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Employee Termination & Severance Indonesia 2026
 
@@ -63,43 +63,43 @@ Terminating employees in Indonesia (PHK - Pemutusan Hubungan Kerja) requires fol
       name: "Employer-Initiated",
       subtitle: "Company decision",
       values: {
-        "Examples": "Redundancy, poor performance",
-        "Severance": "Full or partial",
-        "Notice": "Required",
-        "Process": "Formal procedure"
-      }
+        Examples: "Redundancy, poor performance",
+        Severance: "Full or partial",
+        Notice: "Required",
+        Process: "Formal procedure",
+      },
     },
     {
       name: "Employee Resignation",
       subtitle: "Voluntary",
       values: {
-        "Examples": "Employee choice",
-        "Severance": "Compensation only",
-        "Notice": "30 days typically",
-        "Process": "Resignation letter"
-      }
+        Examples: "Employee choice",
+        Severance: "Compensation only",
+        Notice: "30 days typically",
+        Process: "Resignation letter",
+      },
     },
     {
       name: "End of Contract",
       subtitle: "PKWT expiry",
       values: {
-        "Examples": "Contract term ends",
-        "Severance": "Compensation payment",
-        "Notice": "Per contract",
-        "Process": "Automatic unless renewed"
-      }
+        Examples: "Contract term ends",
+        Severance: "Compensation payment",
+        Notice: "Per contract",
+        Process: "Automatic unless renewed",
+      },
     },
     {
       name: "Serious Misconduct",
       subtitle: "Immediate dismissal",
       values: {
-        "Examples": "Theft, violence, fraud",
-        "Severance": "None (usually)",
-        "Notice": "Not required",
-        "Process": "Investigation required"
+        Examples: "Theft, violence, fraud",
+        Severance: "None (usually)",
+        Notice: "Not required",
+        Process: "Investigation required",
       },
-      highlight: true
-    }
+      highlight: true,
+    },
   ]}
 />
 
@@ -115,6 +115,7 @@ Severance in Indonesia typically has **three components**:
 3. **Uang Penggantian Hak (UPH)** - Compensation for unused benefits
 
 The amount depends on reason for termination and years of service.
+
 </InfoCard>
 
 ---
@@ -241,7 +242,8 @@ The amount depends on reason for termination and years of service.
       currency: "IDR",
       note: `UP: ${upMonths} months × ${upMultiplier}, UPMK: ${upmkMonths} months`
     };
-  }}
+
+}}
 />
 
 ---
@@ -250,9 +252,9 @@ The amount depends on reason for termination and years of service.
 
 ### Uang Pesangon (UP) - Base Severance
 
-| Service Period | Months |
-|----------------|--------|
-| < 1 year | 1 month |
+| Service Period | Months   |
+| -------------- | -------- |
+| < 1 year       | 1 month  |
 | 1 to < 2 years | 2 months |
 | 2 to < 3 years | 3 months |
 | 3 to < 4 years | 4 months |
@@ -260,20 +262,20 @@ The amount depends on reason for termination and years of service.
 | 5 to < 6 years | 6 months |
 | 6 to < 7 years | 7 months |
 | 7 to < 8 years | 8 months |
-| 8+ years | 9 months |
+| 8+ years       | 9 months |
 
 ### UPMK - Long Service
 
-| Service Period | Months |
-|----------------|--------|
-| 3 to < 6 years | 2 months |
-| 6 to < 9 years | 3 months |
-| 9 to < 12 years | 4 months |
-| 12 to < 15 years | 5 months |
-| 15 to < 18 years | 6 months |
-| 18 to < 21 years | 7 months |
-| 21 to < 24 years | 8 months |
-| 24+ years | 10 months |
+| Service Period   | Months    |
+| ---------------- | --------- |
+| 3 to < 6 years   | 2 months  |
+| 6 to < 9 years   | 3 months  |
+| 9 to < 12 years  | 4 months  |
+| 12 to < 15 years | 5 months  |
+| 15 to < 18 years | 6 months  |
+| 18 to < 21 years | 7 months  |
+| 21 to < 24 years | 8 months  |
+| 24+ years        | 10 months |
 
 ---
 
@@ -286,59 +288,59 @@ The amount depends on reason for termination and years of service.
     {
       name: "Company Closure",
       values: {
-        "UP": "1× full",
-        "UPMK": "1× full",
-        "UPH": "Yes"
-      }
+        UP: "1× full",
+        UPMK: "1× full",
+        UPH: "Yes",
+      },
     },
     {
       name: "Redundancy",
       values: {
-        "UP": "1× full",
-        "UPMK": "1× full",
-        "UPH": "Yes"
-      }
+        UP: "1× full",
+        UPMK: "1× full",
+        UPH: "Yes",
+      },
     },
     {
       name: "Company Loss (2 years)",
       values: {
-        "UP": "0.5×",
-        "UPMK": "1× full",
-        "UPH": "Yes"
-      }
+        UP: "0.5×",
+        UPMK: "1× full",
+        UPH: "Yes",
+      },
     },
     {
       name: "Force Majeure",
       values: {
-        "UP": "0.5×",
-        "UPMK": "1× full",
-        "UPH": "Yes"
-      }
+        UP: "0.5×",
+        UPMK: "1× full",
+        UPH: "Yes",
+      },
     },
     {
       name: "Retirement",
       values: {
-        "UP": "1.75×",
-        "UPMK": "1× full",
-        "UPH": "Yes"
-      }
+        UP: "1.75×",
+        UPMK: "1× full",
+        UPH: "Yes",
+      },
     },
     {
       name: "Serious Misconduct",
       values: {
-        "UP": "None",
-        "UPMK": "None",
-        "UPH": "Only unused leave"
-      }
+        UP: "None",
+        UPMK: "None",
+        UPH: "Only unused leave",
+      },
     },
     {
       name: "Resignation",
       values: {
-        "UP": "None",
-        "UPMK": "Compensation only",
-        "UPH": "Unused leave"
-      }
-    }
+        UP: "None",
+        UPMK: "Compensation only",
+        UPH: "Unused leave",
+      },
+    },
   ]}
 />
 
@@ -361,8 +363,8 @@ The amount depends on reason for termination and years of service.
         "Performance documentation",
         "Warning letters (if applicable)",
         "Business justification",
-        "Legal review"
-      ]
+        "Legal review",
+      ],
     },
     {
       id: "bipartite",
@@ -374,8 +376,8 @@ The amount depends on reason for termination and years of service.
         "Meet with employee/union",
         "Attempt mutual agreement",
         "Document all discussions",
-        "Sign agreement if reached"
-      ]
+        "Sign agreement if reached",
+      ],
     },
     {
       id: "tripartite",
@@ -387,8 +389,8 @@ The amount depends on reason for termination and years of service.
         "If bipartite fails",
         "Apply to Disnaker",
         "Mediation/conciliation",
-        "Seek recommendation"
-      ]
+        "Seek recommendation",
+      ],
     },
     {
       id: "court",
@@ -400,8 +402,8 @@ The amount depends on reason for termination and years of service.
         "If no agreement reached",
         "File with PHI court",
         "Present case",
-        "Await decision"
-      ]
+        "Await decision",
+      ],
     },
     {
       id: "payment",
@@ -413,9 +415,9 @@ The amount depends on reason for termination and years of service.
         "Calculate all components",
         "Prepare documentation",
         "Process payment",
-        "Obtain receipts"
-      ]
-    }
+        "Obtain receipts",
+      ],
+    },
   ]}
 />
 
@@ -433,6 +435,7 @@ For performance/conduct issues, use progressive discipline:
 After SP3, termination is possible with reduced severance.
 
 **Note:** For serious misconduct, immediate termination possible without warnings.
+
 </InfoCard>
 
 ---
@@ -451,56 +454,56 @@ After SP3, termination is possible with reduced severance.
       label: "Fraud or embezzlement",
       description: "Stealing company assets",
       required: false,
-      category: "criminal"
+      category: "criminal",
     },
     {
       id: "violence",
       label: "Violence or threats",
       description: "Physical assault, threats",
       required: false,
-      category: "criminal"
+      category: "criminal",
     },
     {
       id: "drugs",
       label: "Drug use at workplace",
       description: "Possession or use",
       required: false,
-      category: "criminal"
+      category: "criminal",
     },
     {
       id: "secrets",
       label: "Disclosing trade secrets",
       description: "Confidential information leak",
       required: false,
-      category: "breach"
+      category: "breach",
     },
     {
       id: "gambling",
       label: "Gambling at workplace",
       description: "During work hours",
       required: false,
-      category: "policy"
+      category: "policy",
     },
     {
       id: "absent",
       label: "Absent 5+ days without notice",
       description: "Consecutive days",
       required: false,
-      category: "attendance"
+      category: "attendance",
     },
     {
       id: "immoral",
       label: "Immoral acts at workplace",
       description: "Sexual harassment, etc.",
       required: false,
-      category: "policy"
-    }
+      category: "policy",
+    },
   ]}
   categories={[
     { id: "criminal", label: "Criminal", color: "red" },
     { id: "breach", label: "Contract Breach", color: "amber" },
     { id: "policy", label: "Policy Violation", color: "purple" },
-    { id: "attendance", label: "Attendance", color: "blue" }
+    { id: "attendance", label: "Attendance", color: "blue" },
   ]}
   showProgress={false}
 />
@@ -513,17 +516,15 @@ For fixed-term contracts (PKWT), upon expiry:
 
 ### Compensation Formula
 
-| Contract Length | Compensation |
-|-----------------|--------------|
-| Each month of service | 1 day's wages |
-| Example: 12 months | 12 days' wages |
-| Example: 24 months | 24 days' wages |
+| Contract Length       | Compensation   |
+| --------------------- | -------------- |
+| Each month of service | 1 day's wages  |
+| Example: 12 months    | 12 days' wages |
+| Example: 24 months    | 24 days' wages |
 
 <InfoCard variant="note" title="PKWT Early Termination">
-If PKWT terminated early by employer:
-- Must pay remaining contract value
-- Plus compensation for service period
-- Unless for serious misconduct
+  If PKWT terminated early by employer: - Must pay remaining contract value -
+  Plus compensation for service period - Unless for serious misconduct
 </InfoCard>
 
 ---
@@ -532,26 +533,26 @@ If PKWT terminated early by employer:
 
 ### Required Documents
 
-| Document | Purpose |
-|----------|---------|
-| Termination letter | Official notice |
-| Severance calculation | Detailed breakdown |
-| Bipartite minutes | Meeting records |
-| Agreement | Mutual consent |
-| Receipt | Proof of payment |
-| Reference letter | For employee (optional) |
+| Document              | Purpose                 |
+| --------------------- | ----------------------- |
+| Termination letter    | Official notice         |
+| Severance calculation | Detailed breakdown      |
+| Bipartite minutes     | Meeting records         |
+| Agreement             | Mutual consent          |
+| Receipt               | Proof of payment        |
+| Reference letter      | For employee (optional) |
 
 ---
 
 ## Common Mistakes
 
-| Mistake | Impact |
-|---------|--------|
-| No written warnings | Can't prove cause |
-| Skipping bipartite | Process invalid |
-| Underpaying severance | Legal claims |
+| Mistake                               | Impact                     |
+| ------------------------------------- | -------------------------- |
+| No written warnings                   | Can't prove cause          |
+| Skipping bipartite                    | Process invalid            |
+| Underpaying severance                 | Legal claims               |
 | Immediate termination without grounds | Must reinstate or pay full |
-| Not documenting | Weak legal position |
+| Not documenting                       | Weak legal position        |
 
 ---
 
@@ -564,7 +565,7 @@ If PKWT terminated early by employer:
     "How much severance for 5 years service?",
     "Can I fire without severance?",
     "What's the termination process?",
-    "Do PKWT employees get severance?"
+    "Do PKWT employees get severance?",
   ]}
 />
 

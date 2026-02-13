@@ -45,8 +45,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # E-Commerce Business Indonesia 2026: Complete Guide
 
@@ -65,6 +65,7 @@ Indonesia is Southeast Asia's largest e-commerce market. Here's how to tap into 
 - Social commerce rising
 
 One of the world's fastest-growing e-commerce markets.
+
 </InfoCard>
 
 ---
@@ -81,8 +82,8 @@ One of the world's fastest-growing e-commerce markets.
       options: [
         { label: "Physical products", next: "physical" },
         { label: "Digital products", next: "digital" },
-        { label: "Services", next: "services" }
-      ]
+        { label: "Services", next: "services" },
+      ],
     },
     {
       id: "physical",
@@ -90,44 +91,49 @@ One of the world's fastest-growing e-commerce markets.
       options: [
         { label: "Yes, own stock", next: "own-stock" },
         { label: "No, dropshipping", next: "dropship" },
-        { label: "Marketplace seller", next: "marketplace" }
-      ]
+        { label: "Marketplace seller", next: "marketplace" },
+      ],
     },
     {
       id: "digital",
       result: {
         title: "Digital Products",
-        description: "Software, courses, digital content. Lower logistics complexity. Consider international delivery options. May need less local presence."
-      }
+        description:
+          "Software, courses, digital content. Lower logistics complexity. Consider international delivery options. May need less local presence.",
+      },
     },
     {
       id: "services",
       result: {
         title: "Service Marketplace",
-        description: "Connecting service providers with customers. Platform model. May need PT PMA with marketplace KBLI."
-      }
+        description:
+          "Connecting service providers with customers. Platform model. May need PT PMA with marketplace KBLI.",
+      },
     },
     {
       id: "own-stock",
       result: {
         title: "Traditional E-Commerce",
-        description: "Buy/make inventory, store, sell online, ship. Requires warehouse, logistics. PT PMA for foreign investment."
-      }
+        description:
+          "Buy/make inventory, store, sell online, ship. Requires warehouse, logistics. PT PMA for foreign investment.",
+      },
     },
     {
       id: "dropship",
       result: {
         title: "Dropshipping",
-        description: "Sell products without holding inventory. Supplier ships directly. Lower capital but less control."
-      }
+        description:
+          "Sell products without holding inventory. Supplier ships directly. Lower capital but less control.",
+      },
     },
     {
       id: "marketplace",
       result: {
         title: "Marketplace Seller",
-        description: "Sell on Tokopedia, Shopee, etc. Leverage existing traffic. Commission fees apply. Good starting point."
-      }
-    }
+        description:
+          "Sell on Tokopedia, Shopee, etc. Leverage existing traffic. Commission fees apply. Good starting point.",
+      },
+    },
   ]}
 />
 
@@ -146,9 +152,9 @@ One of the world's fastest-growing e-commerce markets.
         "Market share": "~35%",
         "Seller fees": "0-5%",
         "Best for": "General products",
-        "Foreign sellers": "Need local entity"
+        "Foreign sellers": "Need local entity",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Shopee",
@@ -157,8 +163,8 @@ One of the world's fastest-growing e-commerce markets.
         "Market share": "~35%",
         "Seller fees": "1-5%",
         "Best for": "Fashion, lifestyle",
-        "Foreign sellers": "Need local entity"
-      }
+        "Foreign sellers": "Need local entity",
+      },
     },
     {
       name: "Lazada",
@@ -167,8 +173,8 @@ One of the world's fastest-growing e-commerce markets.
         "Market share": "~15%",
         "Seller fees": "1-4%",
         "Best for": "Electronics, brands",
-        "Foreign sellers": "Cross-border option"
-      }
+        "Foreign sellers": "Cross-border option",
+      },
     },
     {
       name: "Bukalapak",
@@ -177,8 +183,8 @@ One of the world's fastest-growing e-commerce markets.
         "Market share": "~10%",
         "Seller fees": "0-2%",
         "Best for": "SME, traditional retail",
-        "Foreign sellers": "Need local entity"
-      }
+        "Foreign sellers": "Need local entity",
+      },
     },
     {
       name: "Own Website",
@@ -187,9 +193,9 @@ One of the world's fastest-growing e-commerce markets.
         "Market share": "N/A",
         "Seller fees": "Payment gateway only",
         "Best for": "Brands, DTC",
-        "Foreign sellers": "Flexible"
-      }
-    }
+        "Foreign sellers": "Flexible",
+      },
+    },
   ]}
 />
 
@@ -209,6 +215,7 @@ One of the world's fastest-growing e-commerce markets.
 - May need PPMSE registration
 
 Cannot just operate informally as foreigner.
+
 </InfoCard>
 
 ### Registration Requirements
@@ -223,50 +230,50 @@ Cannot just operate informally as foreigner.
       label: "PT PMA establishment",
       description: "Foreign investment company",
       required: true,
-      category: "entity"
+      category: "entity",
     },
     {
       id: "nib",
       label: "NIB (Business ID)",
       description: "Through OSS system",
       required: true,
-      category: "licenses"
+      category: "licenses",
     },
     {
       id: "kbli",
       label: "Correct KBLI codes",
       description: "E-commerce activities",
       required: true,
-      category: "licenses"
+      category: "licenses",
     },
     {
       id: "ppmse",
       label: "PPMSE registration",
       description: "E-commerce operator registration",
       required: true,
-      category: "ecommerce"
+      category: "ecommerce",
     },
     {
       id: "pkp",
       label: "PKP (VAT) registration",
       description: "If turnover exceeds threshold",
       required: false,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "consumer-protection",
       label: "Consumer protection compliance",
       description: "Return policies, etc.",
       required: true,
-      category: "compliance"
-    }
+      category: "compliance",
+    },
   ]}
   categories={[
     { id: "entity", label: "Entity", color: "blue" },
     { id: "licenses", label: "Licenses", color: "green" },
     { id: "ecommerce", label: "E-Commerce", color: "amber" },
     { id: "tax", label: "Tax", color: "purple" },
-    { id: "compliance", label: "Compliance", color: "red" }
+    { id: "compliance", label: "Compliance", color: "red" },
   ]}
   showProgress={true}
 />
@@ -277,14 +284,14 @@ Cannot just operate informally as foreigner.
 
 ### Categories with Special Requirements
 
-| Category | Requirement |
-|----------|-------------|
-| Food & beverage | BPOM registration |
-| Cosmetics | BPOM + halal (if applicable) |
-| Electronics | SNI certification |
-| Medicines | Strict controls |
-| Imported goods | Customs, duties |
-| Halal products | MUI certification |
+| Category        | Requirement                  |
+| --------------- | ---------------------------- |
+| Food & beverage | BPOM registration            |
+| Cosmetics       | BPOM + halal (if applicable) |
+| Electronics     | SNI certification            |
+| Medicines       | Strict controls              |
+| Imported goods  | Customs, duties              |
+| Halal products  | MUI certification            |
 
 ---
 
@@ -292,13 +299,13 @@ Cannot just operate informally as foreigner.
 
 ### Popular Options
 
-| Method | Usage |
-|--------|-------|
-| Bank transfer | Very common |
-| E-wallets (OVO, GoPay, Dana) | Growing rapidly |
-| Credit cards | Limited penetration |
-| COD (Cash on Delivery) | Still significant |
-| Installments | Popular for big purchases |
+| Method                       | Usage                     |
+| ---------------------------- | ------------------------- |
+| Bank transfer                | Very common               |
+| E-wallets (OVO, GoPay, Dana) | Growing rapidly           |
+| Credit cards                 | Limited penetration       |
+| COD (Cash on Delivery)       | Still significant         |
+| Installments                 | Popular for big purchases |
 
 <InfoCard variant="tip" title="Payment Strategy">
 **Offer multiple options:**
@@ -309,6 +316,7 @@ Cannot just operate informally as foreigner.
 - COD (if you can manage logistics)
 
 Indonesians prefer familiar payment methods.
+
 </InfoCard>
 
 ---
@@ -317,23 +325,23 @@ Indonesians prefer familiar payment methods.
 
 ### Delivery Options
 
-| Provider | Strength |
-|----------|----------|
-| JNE | Nationwide coverage |
-| J&T Express | E-commerce focused |
-| SiCepat | Fast, e-commerce |
-| Anteraja | Digital-first |
-| GoSend | Same-day (local) |
-| Grab Express | Same-day (local) |
+| Provider     | Strength            |
+| ------------ | ------------------- |
+| JNE          | Nationwide coverage |
+| J&T Express  | E-commerce focused  |
+| SiCepat      | Fast, e-commerce    |
+| Anteraja     | Digital-first       |
+| GoSend       | Same-day (local)    |
+| Grab Express | Same-day (local)    |
 
 ### Fulfillment Options
 
-| Model | Best For |
-|-------|----------|
-| Self-fulfillment | Low volume, local |
-| Marketplace fulfillment | Platform sellers |
-| 3PL warehousing | Scale operations |
-| Drop shipping | No inventory model |
+| Model                   | Best For           |
+| ----------------------- | ------------------ |
+| Self-fulfillment        | Low volume, local  |
+| Marketplace fulfillment | Platform sellers   |
+| 3PL warehousing         | Scale operations   |
+| Drop shipping           | No inventory model |
 
 ---
 
@@ -341,12 +349,12 @@ Indonesians prefer familiar payment methods.
 
 ### E-Commerce Tax
 
-| Tax | Rate | When |
-|-----|------|------|
-| Corporate income | 22% | Annual profit |
-| VAT (PPN) | 11% | If PKP, on sales |
-| Withholding | Various | On payments made |
-| Platform fees | No VAT charged | Commission to platform |
+| Tax              | Rate           | When                   |
+| ---------------- | -------------- | ---------------------- |
+| Corporate income | 22%            | Annual profit          |
+| VAT (PPN)        | 11%            | If PKP, on sales       |
+| Withholding      | Various        | On payments made       |
+| Platform fees    | No VAT charged | Commission to platform |
 
 <InfoCard variant="note" title="VAT on E-Commerce">
 **VAT considerations:**
@@ -356,7 +364,7 @@ Indonesians prefer familiar payment methods.
 - Issue e-Faktur
 - Platform may handle for marketplace sales
 - Cross-border has different rules
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -364,22 +372,22 @@ Indonesians prefer familiar payment methods.
 
 ### Digital Marketing
 
-| Channel | Effectiveness |
-|---------|---------------|
-| Social media | Very high (Instagram, TikTok) |
-| Search (Google) | Growing |
-| Marketplace ads | High ROI typically |
-| Influencer marketing | Very popular |
-| WhatsApp marketing | Common for CRM |
+| Channel              | Effectiveness                 |
+| -------------------- | ----------------------------- |
+| Social media         | Very high (Instagram, TikTok) |
+| Search (Google)      | Growing                       |
+| Marketplace ads      | High ROI typically            |
+| Influencer marketing | Very popular                  |
+| WhatsApp marketing   | Common for CRM                |
 
 ### Social Commerce
 
-| Platform | E-Commerce Feature |
-|----------|-------------------|
-| TikTok Shop | Integrated shopping |
-| Instagram Shopping | Product tags |
-| Facebook Shops | Catalog integration |
-| WhatsApp Business | Product catalogs |
+| Platform           | E-Commerce Feature  |
+| ------------------ | ------------------- |
+| TikTok Shop        | Integrated shopping |
+| Instagram Shopping | Product tags        |
+| Facebook Shops     | Catalog integration |
+| WhatsApp Business  | Product catalogs    |
 
 ---
 
@@ -387,14 +395,14 @@ Indonesians prefer familiar payment methods.
 
 ### Common Issues
 
-| Challenge | Solution |
-|-----------|----------|
-| Logistics complexity | Partner with 3PL |
-| Payment diversity | Multiple gateways |
-| Competition | Differentiation, niche |
-| Fraud | Verification systems |
-| Returns | Clear policies |
-| Regulation | Stay compliant |
+| Challenge            | Solution               |
+| -------------------- | ---------------------- |
+| Logistics complexity | Partner with 3PL       |
+| Payment diversity    | Multiple gateways      |
+| Competition          | Differentiation, niche |
+| Fraud                | Verification systems   |
+| Returns              | Clear policies         |
+| Regulation           | Stay compliant         |
 
 ---
 
@@ -410,7 +418,7 @@ Indonesians prefer familiar payment methods.
 5. **Flexible payment** - Many options
 6. **Fast shipping** - Expectation rising
 7. **Local partnerships** - Understand market
-</InfoCard>
+   </InfoCard>
 
 ---
 
@@ -418,24 +426,24 @@ Indonesians prefer familiar payment methods.
 
 ### Startup Costs
 
-| Item | Range |
-|------|-------|
-| PT PMA setup | IDR 50-150M |
-| Initial inventory | Varies |
-| Website/platform | IDR 10-50M |
-| Marketing launch | IDR 20-100M |
-| Logistics setup | IDR 10-30M |
+| Item              | Range       |
+| ----------------- | ----------- |
+| PT PMA setup      | IDR 50-150M |
+| Initial inventory | Varies      |
+| Website/platform  | IDR 10-50M  |
+| Marketing launch  | IDR 20-100M |
+| Logistics setup   | IDR 10-30M  |
 
 ### Ongoing Costs
 
-| Cost | Monthly |
-|------|---------|
-| Platform fees | 1-5% of sales |
-| Payment gateway | 2-3% of sales |
-| Logistics | Varies |
-| Marketing | 10-30% of revenue typical |
-| Staff | IDR 5-20M per person |
-| Compliance | Accounting, tax |
+| Cost            | Monthly                   |
+| --------------- | ------------------------- |
+| Platform fees   | 1-5% of sales             |
+| Payment gateway | 2-3% of sales             |
+| Logistics       | Varies                    |
+| Marketing       | 10-30% of revenue typical |
+| Staff           | IDR 5-20M per person      |
+| Compliance      | Accounting, tax           |
 
 ---
 
@@ -448,7 +456,7 @@ Indonesians prefer familiar payment methods.
     "Can foreigners sell on Tokopedia?",
     "What licenses do I need for e-commerce?",
     "Is dropshipping legal in Indonesia?",
-    "How do I handle VAT for online sales?"
+    "How do I handle VAT for online sales?",
   ]}
 />
 

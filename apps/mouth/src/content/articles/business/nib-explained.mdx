@@ -47,8 +47,8 @@ import {
   InfoCard,
   Checklist,
   JourneyMap,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # NIB Explained: Your Indonesian Business ID Number 2026
 
@@ -64,17 +64,20 @@ The NIB (Nomor Induk Berusaha) is the cornerstone of business registration in In
   sections={[
     {
       id: "definition",
-      original: "Nomor Induk Berusaha yang selanjutnya disingkat NIB adalah identitas Pelaku Usaha yang diterbitkan oleh Lembaga OSS setelah Pelaku Usaha melakukan Pendaftaran.",
-      explanation: "NIB is your unique business identification number, automatically issued when you register through the OSS (Online Single Submission) system. It serves as your basic business license and proof of legal business registration.",
+      original:
+        "Nomor Induk Berusaha yang selanjutnya disingkat NIB adalah identitas Pelaku Usaha yang diterbitkan oleh Lembaga OSS setelah Pelaku Usaha melakukan Pendaftaran.",
+      explanation:
+        "NIB is your unique business identification number, automatically issued when you register through the OSS (Online Single Submission) system. It serves as your basic business license and proof of legal business registration.",
       keyPoints: [
         "13-digit unique identifier",
         "Issued through OSS system",
         "Required for ALL business activities",
-        "Replaces multiple old licenses"
+        "Replaces multiple old licenses",
       ],
-      impact: "Without NIB, you cannot legally operate, open bank accounts, or apply for additional permits.",
-      severity: "high"
-    }
+      impact:
+        "Without NIB, you cannot legally operate, open bank accounts, or apply for additional permits.",
+      severity: "high",
+    },
   ]}
 />
 
@@ -84,15 +87,17 @@ The NIB (Nomor Induk Berusaha) is the cornerstone of business registration in In
 
 NIB consolidated several previously separate licenses:
 
-| Old License | Function | Now Part of NIB |
-|-------------|----------|-----------------|
-| **TDP** | Company registration | ✓ Replaced |
-| **API-U** | General importer ID | ✓ Replaced |
-| **Angka Pengenal Impor** | Import number | ✓ Replaced |
-| **Access to customs** | Import clearance | ✓ Included |
+| Old License              | Function             | Now Part of NIB |
+| ------------------------ | -------------------- | --------------- |
+| **TDP**                  | Company registration | ✓ Replaced      |
+| **API-U**                | General importer ID  | ✓ Replaced      |
+| **Angka Pengenal Impor** | Import number        | ✓ Replaced      |
+| **Access to customs**    | Import clearance     | ✓ Included      |
 
 <InfoCard variant="tip" title="One Number, Many Functions">
-NIB simplifies business registration. Instead of obtaining multiple separate licenses, you get one NIB that serves multiple purposes. This was a major improvement from the pre-2018 system.
+  NIB simplifies business registration. Instead of obtaining multiple separate
+  licenses, you get one NIB that serves multiple purposes. This was a major
+  improvement from the pre-2018 system.
 </InfoCard>
 
 ---
@@ -113,8 +118,8 @@ NIB simplifies business registration. Instead of obtaining multiple separate lic
       documents: [
         "SK Kemenkumham (legal entity approval)",
         "Company deed",
-        "Company NPWP"
-      ]
+        "Company NPWP",
+      ],
     },
     {
       id: "account",
@@ -125,8 +130,8 @@ NIB simplifies business registration. Instead of obtaining multiple separate lic
       tips: [
         "Go to oss.go.id",
         "Director creates account",
-        "Link to company data"
-      ]
+        "Link to company data",
+      ],
     },
     {
       id: "data",
@@ -138,8 +143,8 @@ NIB simplifies business registration. Instead of obtaining multiple separate lic
         "Company details",
         "Shareholder information",
         "KBLI codes selection",
-        "Investment plan"
-      ]
+        "Investment plan",
+      ],
     },
     {
       id: "submit",
@@ -150,9 +155,9 @@ NIB simplifies business registration. Instead of obtaining multiple separate lic
       tips: [
         "NIB issued automatically upon completion",
         "Download and save PDF",
-        "Contains 13-digit number"
-      ]
-    }
+        "Contains 13-digit number",
+      ],
+    },
   ]}
 />
 
@@ -172,48 +177,48 @@ Your NIB certificate includes:
       label: "13-digit NIB number",
       description: "Your unique business identifier",
       required: true,
-      category: "core"
+      category: "core",
     },
     {
       id: "company",
       label: "Company name and address",
       description: "Legal name and registered address",
       required: true,
-      category: "core"
+      category: "core",
     },
     {
       id: "kbli",
       label: "KBLI codes",
       description: "All registered business activities",
       required: true,
-      category: "business"
+      category: "business",
     },
     {
       id: "capital",
       label: "Capital information",
       description: "Investment and paid-up capital",
       required: true,
-      category: "business"
+      category: "business",
     },
     {
       id: "directors",
       label: "Directors and commissioners",
       description: "Management structure",
       required: true,
-      category: "business"
+      category: "business",
     },
     {
       id: "qr",
       label: "QR code for verification",
       description: "Scan to verify authenticity",
       required: true,
-      category: "verification"
-    }
+      category: "verification",
+    },
   ]}
   categories={[
     { id: "core", label: "Core Info", color: "blue" },
     { id: "business", label: "Business Details", color: "green" },
-    { id: "verification", label: "Verification", color: "purple" }
+    { id: "verification", label: "Verification", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -224,15 +229,17 @@ Your NIB certificate includes:
 
 Under OSS RBA (Risk-Based Approach), your NIB determines what additional permits you need:
 
-| Risk Level | NIB + What Else? |
-|------------|------------------|
-| **Low Risk** | NIB only |
-| **Medium-Low** | NIB + Sertifikat Standar |
+| Risk Level      | NIB + What Else?                        |
+| --------------- | --------------------------------------- |
+| **Low Risk**    | NIB only                                |
+| **Medium-Low**  | NIB + Sertifikat Standar                |
 | **Medium-High** | NIB + Sertifikat Standar + Verification |
-| **High Risk** | NIB + Full Izin (License) |
+| **High Risk**   | NIB + Full Izin (License)               |
 
 <InfoCard variant="note" title="Risk Determined by KBLI">
-Your business activity codes (KBLI) determine the risk level. Tech consulting is usually low-medium risk. Food production is higher risk. The OSS system automatically classifies based on your KBLI selection.
+  Your business activity codes (KBLI) determine the risk level. Tech consulting
+  is usually low-medium risk. Food production is higher risk. The OSS system
+  automatically classifies based on your KBLI selection.
 </InfoCard>
 
 ---
@@ -246,7 +253,7 @@ Your business activity codes (KBLI) determine the risk level. Tech consulting is
     "How long is NIB valid?",
     "Can I add KBLI codes to NIB later?",
     "What if my NIB has wrong information?",
-    "Is NIB the same as business license?"
+    "Is NIB the same as business license?",
   ]}
 />
 

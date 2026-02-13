@@ -44,8 +44,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Business Contracts Under Indonesian Law 2026
 
@@ -62,6 +62,7 @@ Under Indonesian Civil Code (Article 1320), a valid contract requires:
 4. **Lawful cause** - Legal purpose
 
 Missing any element can make contract void or voidable.
+
 </InfoCard>
 
 ---
@@ -76,53 +77,53 @@ Missing any element can make contract void or voidable.
       name: "Sales Agreement",
       subtitle: "Buying/selling goods",
       values: {
-        "Form": "Written recommended",
-        "Language": "Any (Indonesian preferred)",
+        Form: "Written recommended",
+        Language: "Any (Indonesian preferred)",
         "Stamp Duty": "Yes",
-        "Notarization": "Optional"
-      }
+        Notarization: "Optional",
+      },
     },
     {
       name: "Service Agreement",
       subtitle: "Providing services",
       values: {
-        "Form": "Written recommended",
-        "Language": "Any",
+        Form: "Written recommended",
+        Language: "Any",
         "Stamp Duty": "Yes",
-        "Notarization": "Optional"
-      }
+        Notarization: "Optional",
+      },
     },
     {
       name: "Employment Contract",
       subtitle: "Hiring employees",
       values: {
-        "Form": "Written required",
-        "Language": "Indonesian required",
+        Form: "Written required",
+        Language: "Indonesian required",
         "Stamp Duty": "Yes",
-        "Notarization": "No"
+        Notarization: "No",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Lease Agreement",
       subtitle: "Property rental",
       values: {
-        "Form": "Written required",
-        "Language": "Indonesian preferred",
+        Form: "Written required",
+        Language: "Indonesian preferred",
         "Stamp Duty": "Yes",
-        "Notarization": "For long-term"
-      }
+        Notarization: "For long-term",
+      },
     },
     {
       name: "Shareholder Agreement",
       subtitle: "Company ownership",
       values: {
-        "Form": "Notarized deed",
-        "Language": "Indonesian required",
+        Form: "Notarized deed",
+        Language: "Indonesian required",
         "Stamp Duty": "Yes",
-        "Notarization": "Required"
-      }
-    }
+        Notarization: "Required",
+      },
+    },
   ]}
 />
 
@@ -134,21 +135,23 @@ Missing any element can make contract void or voidable.
 Under **Law 24/2009**, contracts involving Indonesian parties **should be in Indonesian**.
 
 **Practical approach:**
+
 - Bilingual contracts (Indonesian + English)
 - Indonesian version prevails if conflict
 - Include clause stating which version governs
 
 Ignoring this can create enforcement issues.
+
 </InfoCard>
 
 ### Best Practice
 
-| Situation | Recommendation |
-|-----------|----------------|
-| Both parties Indonesian | Indonesian only |
-| One party foreign | Bilingual |
-| Both parties foreign | English OK (but Indonesian helps) |
-| Employment contract | Must include Indonesian |
+| Situation               | Recommendation                    |
+| ----------------------- | --------------------------------- |
+| Both parties Indonesian | Indonesian only                   |
+| One party foreign       | Bilingual                         |
+| Both parties foreign    | English OK (but Indonesian helps) |
+| Employment contract     | Must include Indonesian           |
 
 ---
 
@@ -164,71 +167,71 @@ Ignoring this can create enforcement issues.
       label: "Complete party details",
       description: "Names, addresses, ID numbers",
       required: true,
-      category: "parties"
+      category: "parties",
     },
     {
       id: "background",
       label: "Background/recitals",
       description: "Context and intent",
       required: false,
-      category: "intro"
+      category: "intro",
     },
     {
       id: "definitions",
       label: "Definitions",
       description: "Key terms defined",
       required: false,
-      category: "intro"
+      category: "intro",
     },
     {
       id: "obligations",
       label: "Rights and obligations",
       description: "What each party must do",
       required: true,
-      category: "substance"
+      category: "substance",
     },
     {
       id: "payment",
       label: "Payment terms",
       description: "Amount, timing, method",
       required: true,
-      category: "substance"
+      category: "substance",
     },
     {
       id: "term",
       label: "Duration/term",
       description: "Start, end, renewal",
       required: true,
-      category: "substance"
+      category: "substance",
     },
     {
       id: "termination",
       label: "Termination clauses",
       description: "How to end agreement",
       required: true,
-      category: "termination"
+      category: "termination",
     },
     {
       id: "dispute",
       label: "Dispute resolution",
       description: "How disputes handled",
       required: true,
-      category: "disputes"
+      category: "disputes",
     },
     {
       id: "governing",
       label: "Governing law",
       description: "Which law applies",
       required: true,
-      category: "disputes"
+      category: "disputes",
     },
     {
       id: "signatures",
       label: "Signatures + stamp duty",
       description: "All parties sign, stamps affixed",
       required: true,
-      category: "execution"
-    }
+      category: "execution",
+    },
   ]}
   categories={[
     { id: "parties", label: "Parties", color: "blue" },
@@ -236,7 +239,7 @@ Ignoring this can create enforcement issues.
     { id: "substance", label: "Substance", color: "amber" },
     { id: "termination", label: "Termination", color: "red" },
     { id: "disputes", label: "Disputes", color: "purple" },
-    { id: "execution", label: "Execution", color: "cyan" }
+    { id: "execution", label: "Execution", color: "cyan" },
   ]}
   showProgress={true}
 />
@@ -254,15 +257,16 @@ Ignoring this can create enforcement issues.
 **Current rate:** IDR 10,000 per document
 
 Without proper stamp duty, document may not be admissible as evidence.
+
 </InfoCard>
 
 ### How to Apply Stamp Duty
 
-| Method | Notes |
-|--------|-------|
-| Physical stamp | Affixed and signed across |
-| E-Meterai | Electronic stamp duty |
-| Post-stamping | Can be done later if needed |
+| Method         | Notes                       |
+| -------------- | --------------------------- |
+| Physical stamp | Affixed and signed across   |
+| E-Meterai      | Electronic stamp duty       |
+| Post-stamping  | Can be done later if needed |
 
 ---
 
@@ -270,12 +274,12 @@ Without proper stamp duty, document may not be admissible as evidence.
 
 ### Options
 
-| Method | Pros | Cons |
-|--------|------|------|
-| Negotiation | Fast, cheap | No enforcement |
-| Mediation | Neutral third party | Still non-binding |
-| Arbitration (BANI) | Binding, expert arbitrators | Costly |
-| Court litigation | State enforcement | Slow, public |
+| Method             | Pros                        | Cons              |
+| ------------------ | --------------------------- | ----------------- |
+| Negotiation        | Fast, cheap                 | No enforcement    |
+| Mediation          | Neutral third party         | Still non-binding |
+| Arbitration (BANI) | Binding, expert arbitrators | Costly            |
+| Court litigation   | State enforcement           | Slow, public      |
 
 ### Arbitration Clause
 
@@ -287,11 +291,12 @@ For significant commercial contracts:
 - Enforceable internationally
 
 Example clause should specify:
+
 - Institution (BANI, SIAC)
 - Location
 - Number of arbitrators
 - Language
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -299,12 +304,12 @@ Example clause should specify:
 
 ### For Foreign Investment
 
-| Situation | Governing Law |
-|-----------|---------------|
-| PT PMA contracts | Indonesian law typically |
-| Cross-border deals | Can choose neutral law |
-| Employment | Must be Indonesian law |
-| Property | Must be Indonesian law |
+| Situation          | Governing Law            |
+| ------------------ | ------------------------ |
+| PT PMA contracts   | Indonesian law typically |
+| Cross-border deals | Can choose neutral law   |
+| Employment         | Must be Indonesian law   |
+| Property           | Must be Indonesian law   |
 
 ---
 
@@ -312,12 +317,12 @@ Example clause should specify:
 
 ### When Notary Required
 
-| Document | Notarization |
-|----------|--------------|
-| Company deed | Required |
-| Share transfers | Required |
-| Property transfer | Required |
-| Power of attorney | Recommended |
+| Document            | Notarization |
+| ------------------- | ------------ |
+| Company deed        | Required     |
+| Share transfers     | Required     |
+| Property transfer   | Required     |
+| Power of attorney   | Recommended  |
 | Standard commercial | Not required |
 
 Indonesian notaries (PPAT/Notaris) have specific authority for certain documents.
@@ -326,14 +331,14 @@ Indonesian notaries (PPAT/Notaris) have specific authority for certain documents
 
 ## Common Contract Mistakes
 
-| Mistake | Risk |
-|---------|------|
-| No Indonesian version | Enforcement issues |
-| Missing stamp duty | Evidence problems |
-| Vague terms | Interpretation disputes |
-| Wrong capacity | Void contract |
-| No dispute clause | Uncertain resolution |
-| Overlooking regulations | Compliance issues |
+| Mistake                 | Risk                    |
+| ----------------------- | ----------------------- |
+| No Indonesian version   | Enforcement issues      |
+| Missing stamp duty      | Evidence problems       |
+| Vague terms             | Interpretation disputes |
+| Wrong capacity          | Void contract           |
+| No dispute clause       | Uncertain resolution    |
+| Overlooking regulations | Compliance issues       |
 
 ---
 
@@ -347,6 +352,7 @@ Under **Law 11/2008** (ITE Law):
 - Some exceptions (land, inheritance)
 
 Digital signing platforms can be used for most commercial contracts.
+
 </InfoCard>
 
 ---
@@ -354,11 +360,13 @@ Digital signing platforms can be used for most commercial contracts.
 ## Force Majeure
 
 Indonesian law recognizes force majeure (keadaan kahar):
+
 - Events beyond control
 - Make performance impossible
 - Must be specifically defined in contract
 
 Include clear force majeure clauses defining:
+
 - What events qualify
 - Notice requirements
 - Effect on obligations
@@ -375,7 +383,7 @@ Include clear force majeure clauses defining:
     "Do all contracts need to be in Indonesian?",
     "What's the stamp duty amount?",
     "Should I use arbitration or courts?",
-    "Are electronic signatures valid?"
+    "Are electronic signatures valid?",
   ]}
 />
 
