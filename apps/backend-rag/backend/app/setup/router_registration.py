@@ -1,93 +1,95 @@
 """
 Router Registration Module
-Centralizes all router inclusion logic
+Centralizes all router inclusion logic.
+
+All router imports are lazy (inside include_routers) to speed up module load time.
+This is critical for Fly.io health checks - the server must start listening within 60s.
 """
 
 from fastapi import FastAPI
 
-from backend.app.modules.identity.router import router as identity_router
-from backend.app.modules.knowledge.router import router as knowledge_router
-from backend.app.routers import (
-    admin_logs,
-    admin_team_activity,
-    agentic_rag,
-    agents,
-    analytics,
-    article_composer,
-    auth,
-    autonomous_agents,
-    autonomous_execution,
-    blog_ask,
-    collective_memory,
-    conversations,
-    crm_auto,
-    crm_clients,
-    crm_enhanced,
-    crm_interactions,
-    crm_portal_integration,
-    crm_practices,
-    crm_shared_memory,
-    dashboard_featured_articles,
-    dashboard_summary,
-    debug,
-    documents_proxy,
-    dream,  # [NEW] Dream Room Router
-    episodic_memory,
-    feedback,
-    google_drive,
-    handlers,
-    health,
-    ingest,
-    instagram_chat,
-    intel,
-    kbli_notebook,  # [NEW] KBLI 2025 Notebook Router
-    knowledge_activity,
-    knowledge_visa,
-    legal_ingest,
-    media,
-    messaging_identity,
-    news,
-    newsletter,
-    nusantara_health,
-    oracle_ingest,
-    oracle_universal,
-    performance,
-    portal,
-    query_analytics,
-    portal_invite,
-    portal_taxes,
-    portal_visa,
-    session,
-    team,
-    team_activity,
-    team_analytics,
-    team_drive,
-    telegram,
-    telegram_webhook,  # [NEW] Telegram webhook for multi-channel architecture
-    twitter,
-    voice,
-    webhook_chat,  # [NEW] Webhook Chat with auto-persistence
-    webhooks,
-    workflow_analytics,  # [NEW] Workflow analytics & feedback
-    websocket,
-    whatsapp_chat,
-    whatsapp_conversations,
-    omnichannel_workflow,
-    zoho_email,
-)
-
-# NOTE: Removed routers (will be MCP):
-# - productivity (Gmail/Calendar)
-# - notifications (Email/SMS/Slack/Discord)
-
 
 def include_routers(api: FastAPI) -> None:
     """
-    Include all API routers - Prime Standard modular structure
+    Include all API routers - Prime Standard modular structure.
+
+    All imports are done inside this function (lazy loading) to avoid
+    loading heavy dependencies (torch, sentence-transformers, etc.)
+    at module import time.
 
     Args:
         api: FastAPI application instance
     """
+    from backend.app.modules.identity.router import router as identity_router
+    from backend.app.modules.knowledge.router import router as knowledge_router
+    from backend.app.routers import (
+        admin_logs,
+        admin_team_activity,
+        agentic_rag,
+        agents,
+        analytics,
+        article_composer,
+        auth,
+        autonomous_agents,
+        autonomous_execution,
+        blog_ask,
+        collective_memory,
+        conversations,
+        crm_auto,
+        crm_clients,
+        crm_enhanced,
+        crm_interactions,
+        crm_portal_integration,
+        crm_practices,
+        crm_shared_memory,
+        dashboard_featured_articles,
+        dashboard_summary,
+        debug,
+        documents_proxy,
+        dream,
+        episodic_memory,
+        feedback,
+        google_drive,
+        handlers,
+        health,
+        ingest,
+        instagram_chat,
+        intel,
+        kbli_notebook,
+        knowledge_activity,
+        knowledge_visa,
+        legal_ingest,
+        media,
+        messaging_identity,
+        news,
+        newsletter,
+        nusantara_health,
+        oracle_ingest,
+        oracle_universal,
+        performance,
+        portal,
+        query_analytics,
+        portal_invite,
+        portal_taxes,
+        portal_visa,
+        session,
+        team,
+        team_activity,
+        team_analytics,
+        team_drive,
+        telegram,
+        telegram_webhook,
+        twitter,
+        voice,
+        webhook_chat,
+        webhooks,
+        workflow_analytics,
+        websocket,
+        whatsapp_chat,
+        whatsapp_conversations,
+        omnichannel_workflow,
+        zoho_email,
+    )
     # Core routers
     api.include_router(auth.router)
     api.include_router(health.router)

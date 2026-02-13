@@ -17,19 +17,16 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from backend.app.setup.app_factory import create_app
-from backend.app.setup.cors_config import get_allowed_origins
-from backend.app.setup.plugin_initializer import initialize_plugins
 from backend.app.setup.sentry_config import init_sentry
-from backend.app.setup.service_initializer import initialize_services
-from backend.services.monitoring.alert_service import AlertService
 
 logger = logging.getLogger("zantara.backend")
 
 # Initialize Sentry before creating app (must be first)
 init_sentry()
 
-# Create FastAPI application instance
+# Create FastAPI application instance (lazy imports inside app_factory)
+from backend.app.setup.app_factory import create_app
+
 app = create_app()
 
 # Backward compatibility: Export functions for tests and other modules
@@ -38,8 +35,6 @@ app = create_app()
 # Re-export initialization functions
 __all__ = [
     "app",
-    "initialize_services",
-    "initialize_plugins",
     "on_startup",
     "on_shutdown",
     "_parse_history",
@@ -61,6 +56,10 @@ async def on_startup() -> None:
     in app_factory.py. This function exists only for backward compatibility
     with tests that call on_startup() directly.
     """
+    from backend.services.monitoring.alert_service import AlertService
+    from backend.app.setup.service_initializer import initialize_services
+    from backend.app.setup.plugin_initializer import initialize_plugins
+
     # Initialize AlertService at startup (avoid import-time instantiation)
     try:
         app.state.alert_service = AlertService()
@@ -85,9 +84,6 @@ async def on_shutdown() -> None:
     import inspect
     from contextlib import suppress
 
-    from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-    from backend.services.monitoring.health_monitor import HealthMonitor
-
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)
     if redis_task:
@@ -101,13 +97,13 @@ async def on_shutdown() -> None:
         logger.info("✅ WebSocket Redis Listener stopped")
 
     # Shutdown Health Monitor
-    health_monitor: HealthMonitor | None = getattr(app.state, "health_monitor", None)
+    health_monitor = getattr(app.state, "health_monitor", None)
     if health_monitor:
         await health_monitor.stop()
         logger.info("✅ Health Monitor stopped")
 
     # Shutdown Compliance Monitor
-    compliance_monitor: ProactiveComplianceMonitor | None = getattr(
+    compliance_monitor = getattr(
         app.state, "compliance_monitor", None
     )
     if compliance_monitor:
@@ -151,6 +147,8 @@ def _parse_history(history_raw: str | None) -> list[dict[str, Any]]:
 
 def _allowed_origins() -> list[str]:
     """Get allowed CORS origins - backward compatibility wrapper."""
+    from backend.app.setup.cors_config import get_allowed_origins
+
     return get_allowed_origins()
 
 

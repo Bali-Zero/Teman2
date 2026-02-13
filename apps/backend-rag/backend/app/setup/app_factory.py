@@ -19,14 +19,6 @@ from fastapi import FastAPI, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.core.config import settings
-from backend.app.setup.plugin_initializer import initialize_plugins
-from backend.app.setup.service_initializer import initialize_services
-from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-from backend.services.monitoring.alert_service import AlertService
-from backend.services.monitoring.health_monitor import HealthMonitor
-from backend.app.routers.audio import router as audio_router
-from backend.app.routers.root_endpoints import router as root_router
-from backend.app.routers.system_observability import router as system_observability_router  # [NEW]
 from backend.app.setup.exception_handlers import (
     general_exception_handler,
     http_exception_handler,
@@ -35,8 +27,6 @@ from backend.app.setup.exception_handlers import (
 from backend.app.setup.logging_config import configure_logging
 from backend.app.setup.middleware_config import register_middleware
 from backend.app.setup.observability import setup_observability
-from backend.app.setup.router_registration import include_routers
-from backend.app.streaming import router as streaming_router
 
 # Configure structured logging FIRST (before any logger is used)
 configure_logging()
@@ -69,26 +59,48 @@ async def lifespan(app: FastAPI):
         None (control back to FastAPI for request handling)
     """
     # ========== STARTUP PHASE ==========
-    logger.info("🚀 Starting ZANTARA backend services...")
+    # CRITICAL: Yield quickly so uvicorn starts accepting connections.
+    # Fly.io health checks require HTTP 200 on /health within 60s grace period.
+    # The /health endpoint returns "initializing" when services aren't ready yet.
+    logger.info("🚀 Starting ZANTARA backend - deferring heavy service init to background...")
 
-    try:
-        # Initialize AlertService at startup (avoid import-time instantiation)
-        app.state.alert_service = AlertService()
-        logger.info("✅ AlertService initialized")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to initialize AlertService: {e}")
+    async def _background_init():
+        """Initialize all services in background after server starts listening."""
+        try:
+            from backend.services.monitoring.alert_service import AlertService
 
-    # Initialize all services (RAG, search, tools, orchestrator, etc.)
-    await initialize_services(app)
+            app.state.alert_service = AlertService()
+            logger.info("✅ AlertService initialized")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize AlertService: {e}")
 
-    # Initialize plugin system
-    await initialize_plugins(app)
+        from backend.app.setup.service_initializer import initialize_services
 
-    logger.info("✅ ZANTARA startup complete - ready to serve requests")
+        await initialize_services(app)
+
+        from backend.app.setup.plugin_initializer import initialize_plugins
+
+        await initialize_plugins(app)
+
+        logger.info("✅ ZANTARA startup complete - all services ready")
+
+    # Schedule background initialization
+    init_task = asyncio.create_task(_background_init())
+    app.state._init_task = init_task
+
+    logger.info("✅ Server listening - background service init started")
 
     # ========== YIELD CONTROL TO FASTAPI ==========
-    # Application runs and handles requests here
+    # Application runs and handles requests immediately.
+    # /health returns "initializing" until services are ready.
     yield
+
+    # Wait for background init to complete before shutdown
+    if not init_task.done():
+        logger.info("Waiting for background init to complete before shutdown...")
+        init_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await init_task
 
     # ========== SHUTDOWN PHASE ==========
     logger.info("🛑 Shutting down ZANTARA services...")
@@ -106,13 +118,13 @@ async def lifespan(app: FastAPI):
         logger.info("✅ WebSocket Redis Listener stopped")
 
     # Shutdown Health Monitor
-    health_monitor: HealthMonitor | None = getattr(app.state, "health_monitor", None)
+    health_monitor = getattr(app.state, "health_monitor", None)
     if health_monitor:
         await health_monitor.stop()
         logger.info("✅ Health Monitor stopped")
 
     # Shutdown Compliance Monitor
-    compliance_monitor: ProactiveComplianceMonitor | None = getattr(
+    compliance_monitor = getattr(
         app.state, "compliance_monitor", None
     )
     if compliance_monitor:
@@ -195,12 +207,26 @@ def create_app() -> FastAPI:
     # Register middleware (CORS, Auth, Tracing, Error Monitoring, Rate Limiting)
     register_middleware(app)
 
-    # Include routers
+    # Include routers (lazy imports to speed up module load)
+    from backend.app.setup.router_registration import include_routers
+
     include_routers(app)
+
+    from backend.app.routers.root_endpoints import router as root_router
+
     app.include_router(root_router)
+
+    from backend.app.routers.audio import router as audio_router
+
     app.include_router(audio_router, prefix="/api")
+
+    from backend.app.streaming import router as streaming_router
+
     app.include_router(streaming_router)
-    app.include_router(system_observability_router)  # [NEW]
+
+    from backend.app.routers.system_observability import router as system_observability_router
+
+    app.include_router(system_observability_router)
 
     # Setup rate limiter for article composer (must be after router inclusion)
     from slowapi import _rate_limit_exceeded_handler

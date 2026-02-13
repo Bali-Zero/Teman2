@@ -227,22 +227,32 @@ async def get_dashboard_summary(
     is_admin = _is_admin(current_user)
 
     try:
-        # Parallel fetch all data
+        # Per-task timeout to prevent one slow query from blocking the entire response
+        TASK_TIMEOUT = 8.0  # seconds
+
+        async def _with_timeout(coro, fallback):
+            try:
+                return await asyncio.wait_for(coro, timeout=TASK_TIMEOUT)
+            except asyncio.TimeoutError:
+                logger.warning(f"Dashboard task timed out after {TASK_TIMEOUT}s")
+                return fallback
+
+        # Parallel fetch all data with per-task timeouts
         tasks = [
-            get_practices_stats(user_id, db_pool),
-            get_interactions_stats(user_id, db_pool),
-            list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool),
-            list_interactions(interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool),
-            _get_email_stats(db_pool, user_id),
-            _get_critical_deadlines(db_pool, user_id, is_admin),
+            _with_timeout(get_practices_stats(user_id, db_pool), DEFAULT_PRACTICE_STATS),
+            _with_timeout(get_interactions_stats(user_id, db_pool), DEFAULT_INTERACTION_STATS),
+            _with_timeout(list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool), []),
+            _with_timeout(list_interactions(interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool), []),
+            _with_timeout(_get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0}),
+            _with_timeout(_get_critical_deadlines(db_pool, user_id, is_admin), 0),
         ]
 
         # Add admin-only tasks
         if is_admin:
             tasks.extend(
                 [
-                    _get_revenue_stats(db_pool),
-                    _calculate_revenue_growth(db_pool),
+                    _with_timeout(_get_revenue_stats(db_pool), {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0}),
+                    _with_timeout(_calculate_revenue_growth(db_pool), 0.0),
                 ]
             )
 
