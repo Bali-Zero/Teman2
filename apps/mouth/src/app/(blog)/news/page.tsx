@@ -19,8 +19,8 @@ export default function NewsPage() {
 
   // Get specific articles for the asymmetric collage - CONSTITUTIONAL CLASH FEATURED
   const mainNews1 = articles.find((a) => a.slug === 'constitutional-clash-bank-statements'); // RIGHT - large - MAIN FEATURE
-  const mainNews2 = articles.find((a) => a.slug === 'suwung-landfill-crisis'); // LEFT top - Waste Crisis
-  const mainNews3 = articles.find((a) => a.slug === 'dengue-alert-2026'); // MIDDLE top - Dengue Alert
+  const mainNews2 = articles.find((a) => a.slug === 'kbli-2025-bali-transformation'); // LEFT top - KBLI Bali
+  const mainNews3 = articles.find((a) => a.slug === 'art-of-strategic-patience'); // MIDDLE top - Strategic Patience
   const mainNews4 = articles.find((a) => a.slug === 'ota-data-crackdown-bali-2026'); // MIDDLE bottom - OTA TAX CRACKDOWN
   const mainNews5 = articles.find((a) => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
 
@@ -538,6 +538,51 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     trending: true,
     aiGenerated: false,
   },
+  // === KBLI 2025 ARTICLES (Feb 2026) ===
+  {
+    id: '300',
+    slug: 'kbli-2025-bali-transformation',
+    title: "KBLI 2025 and Bali's Business Transformation: Strategic Compliance for Local Operators",
+    excerpt:
+      "Bali's economy runs on tourism, hospitality, and digital services. KBLI 2025 reshuffles the classification deck. Here's what Bali businesses need to do before June 2026.",
+    coverImage: '/static/insights/business/kbli-bali-transformation.jpg',
+    category: 'business',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-avatar.png',
+      role: 'AI Business Advisor',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-02-12'),
+    readingTime: 14,
+    viewCount: 1240,
+    featured: false,
+    trending: true,
+    aiGenerated: true,
+  },
+  {
+    id: '301',
+    slug: 'art-of-strategic-patience',
+    title: "The Art of Strategic Patience: Navigating Indonesia's KBLI 2025 Transition Without Getting Burned",
+    excerpt:
+      "The OSS system isn't ready. The deadline is June 2026. And every move you make is now visible to the tax authority. Here's the strategic playbook for the transition period.",
+    coverImage: '/static/insights/business/strategic-patience-editorial.jpg',
+    category: 'business',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-avatar.png',
+      role: 'AI Business Advisor',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-02-12'),
+    readingTime: 13,
+    viewCount: 980,
+    featured: false,
+    trending: true,
+    aiGenerated: true,
+  },
   // === PERFECT STORM SERIES (Jan 2026) ===
   {
     id: '100',
@@ -580,7 +625,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     readingTime: 4,
     viewCount: 5230,
     featured: false,
-    trending: true,
+    trending: false,
     aiGenerated: false,
   },
   {
@@ -602,7 +647,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     readingTime: 4,
     viewCount: 7150,
     featured: false,
-    trending: true,
+    trending: false,
     aiGenerated: false,
   },
   {

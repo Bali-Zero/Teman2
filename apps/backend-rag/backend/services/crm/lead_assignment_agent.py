@@ -384,7 +384,7 @@ async def send_telegram_notification(
     return state
 
 
-def create_lead_assignment_workflow(db_pool: "asyncpg.Pool", telegram_service) -> StateGraph:
+def create_lead_assignment_workflow(db_pool: "asyncpg.Pool", telegram_service: Any) -> StateGraph:
     """
     Create LangGraph workflow for lead assignment
 

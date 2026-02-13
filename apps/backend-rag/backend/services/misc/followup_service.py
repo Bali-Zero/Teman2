@@ -23,14 +23,14 @@ from backend.llm.zantara_ai_client import ZantaraAIClient
 logger = logging.getLogger(__name__)
 
 
-def safe_register_counter(name, documentation, labelnames):
+def safe_register_counter(name: Any, documentation: Any, labelnames: Any) -> Any:
     try:
         return Counter(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_histogram(name, documentation, labelnames, buckets=None):
+def safe_register_histogram(name: Any, documentation: Any, labelnames: Any, buckets: Any=None) -> Any:
     try:
         if buckets:
             return Histogram(name, documentation, labelnames, buckets=buckets)

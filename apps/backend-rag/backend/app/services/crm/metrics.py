@@ -102,7 +102,7 @@ class CRMMetricsCollector:
     def __init__(self):
         self.pool = None
 
-    def initialize(self, pool: asyncpg.Pool):
+    def initialize(self, pool: asyncpg.Pool) -> Any:
         """Initialize with a database pool"""
         self.pool = pool
         logger.info("✅ CRMMetricsCollector initialized with database pool")
@@ -406,10 +406,10 @@ metrics_collector = CRMMetricsCollector()
 
 
 # Decorator for timing operations
-def track_client_creation(client_type: str = "individual", lead_source: str = "unknown"):
+def track_client_creation(client_type: str = "individual", lead_source: str = "unknown") -> Any:
     """Decorator to track client creation time"""
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             start_time = time.time()
@@ -434,10 +434,10 @@ def track_client_creation(client_type: str = "individual", lead_source: str = "u
     return decorator
 
 
-def track_application_processing(visa_type: str = "unknown", destination_country: str = "unknown"):
+def track_application_processing(visa_type: str = "unknown", destination_country: str = "unknown") -> Any:
     """Decorator to track application processing time"""
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             start_time = time.time()

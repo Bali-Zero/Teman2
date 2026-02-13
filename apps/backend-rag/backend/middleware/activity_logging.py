@@ -10,6 +10,8 @@ Features:
 - Error tracking
 """
 
+from typing import Any
+
 import time
 from collections.abc import Callable
 
@@ -215,7 +217,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
                 )
 
 
-def setup_activity_logging(app):
+def setup_activity_logging(app: Any) -> Any:
     """
     Setup activity logging middleware
 

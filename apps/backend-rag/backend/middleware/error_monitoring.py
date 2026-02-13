@@ -3,6 +3,8 @@ Error Monitoring Middleware
 Captures 4xx/5xx HTTP errors and sends alerts
 """
 
+from typing import Any
+
 import logging
 import time
 import uuid
@@ -176,7 +178,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                     logger.error(f"Failed to send error alert: {exc}")
 
 
-def create_error_monitoring_middleware(alert_service=None):
+def create_error_monitoring_middleware(alert_service: Any=None) -> Any:
     """
     Factory function to create ErrorMonitoringMiddleware
 
@@ -187,7 +189,7 @@ def create_error_monitoring_middleware(alert_service=None):
         ErrorMonitoringMiddleware instance
     """
 
-    def middleware_factory(app):
+    def middleware_factory(app: Any) -> Any:
         return ErrorMonitoringMiddleware(app, alert_service)
 
     return middleware_factory

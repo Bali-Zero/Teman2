@@ -20,10 +20,10 @@ from typing import Any
 
 from backend.app.utils.tracing import add_span_event
 
-from .orchestrator_core import OrchestratorCore
-from .orchestrator_streaming import OrchestratorStreamingManager
-from .query_helpers import wrap_query_with_language_instruction
-from .thinking_indicators import ThinkingIndicatorService, ThinkingPhase
+from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
+from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
+from backend.services.rag.agentic.thinking_indicators import ThinkingIndicatorService, ThinkingPhase
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

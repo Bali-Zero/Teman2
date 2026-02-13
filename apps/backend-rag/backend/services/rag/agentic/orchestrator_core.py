@@ -34,13 +34,13 @@ from backend.db.repositories.query_analytics_repository import QueryAnalyticsRep
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
 from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
 
-from .llm_gateway import LLMGateway
-from .orchestrator_context import OrchestratorContextManager
-from .orchestrator_metrics import OrchestratorMetricsManager
-from .orchestrator_response import OrchestratorResponseBuilder
-from .orchestrator_routing import OrchestratorRoutingManager
-from .query_helpers import wrap_query_with_language_instruction
-from .schema import CoreResult
+from backend.services.rag.agentic.llm_gateway import LLMGateway
+from backend.services.rag.agentic.orchestrator_context import OrchestratorContextManager
+from backend.services.rag.agentic.orchestrator_metrics import OrchestratorMetricsManager
+from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
+from backend.services.rag.agentic.orchestrator_routing import OrchestratorRoutingManager
+from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
+from backend.services.rag.agentic.schema import CoreResult
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration

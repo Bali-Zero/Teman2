@@ -22,7 +22,7 @@ class CRMAuditLogger:
     def __init__(self):
         self.pool = None
 
-    def initialize(self, pool: asyncpg.Pool):
+    def initialize(self, pool: asyncpg.Pool) -> Any:
         """Initialize with a database pool"""
         self.pool = pool
         logger.info("✅ CRMAuditLogger initialized with database pool")
@@ -273,12 +273,12 @@ audit_logger = CRMAuditLogger()
 
 
 # Decorator for automatic audit logging
-def audit_change(entity_type: str, change_type: str = "update"):
+def audit_change(entity_type: str, change_type: str = "update") -> Any:
     """
     Decorator to automatically log changes to CRM entities
     """
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract user and entity info from kwargs

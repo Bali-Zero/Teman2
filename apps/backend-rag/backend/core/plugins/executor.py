@@ -12,8 +12,8 @@ import time
 from collections import defaultdict
 from typing import Any, Protocol
 
-from .plugin import Plugin, PluginInput, PluginOutput
-from .registry import registry
+from backend.core.plugins.plugin import Plugin, PluginInput, PluginOutput
+from backend.core.plugins.registry import registry
 
 logger = logging.getLogger(__name__)
 

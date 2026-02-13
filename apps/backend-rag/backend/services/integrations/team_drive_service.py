@@ -83,7 +83,7 @@ class DriveAuditLogger:
         file_size_bytes: int = 0,
         error_message: str | None = None,
         extra: dict | None = None,
-    ):
+    ) -> None:
         """Log a structured audit entry."""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -144,7 +144,7 @@ class DriveAuditLogger:
 audit_logger = DriveAuditLogger()
 
 
-def drive_operation(operation_name: str):
+def drive_operation(operation_name: str) -> Any:
     """
     Decorator for Drive operations that handles metrics and audit logging.
 
@@ -154,7 +154,7 @@ def drive_operation(operation_name: str):
             ...
     """
 
-    def decorator(func: Callable):
+    def decorator(func: Callable) -> Any:
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
             start_time = time.time()
@@ -1455,7 +1455,7 @@ _team_drive_service: TeamDriveService | None = None
 _team_drive_service_with_oauth: TeamDriveService | None = None
 
 
-def get_team_drive_service(db_pool=None) -> TeamDriveService:
+def get_team_drive_service(db_pool: Any=None) -> TeamDriveService:
     """
     Get the TeamDriveService instance.
 

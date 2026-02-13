@@ -10,6 +10,8 @@ UPDATED 2025-12-23:
 - Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
+from typing import Any
+
 import io
 import json
 import logging
@@ -45,7 +47,7 @@ def get_oracle_client() -> GenAIClient | None:
 
 
 # 2. Google Drive Service (Using Service Account)
-def get_drive_service():
+def get_drive_service() -> Any:
     """Initialize Google Drive service using service account credentials"""
     from backend.app.core.config import settings
 
@@ -72,7 +74,7 @@ def get_drive_service():
 # --- OPERATIONAL FUNCTIONS ---
 
 
-def download_pdf_from_drive(filename_from_qdrant):
+def download_pdf_from_drive(filename_from_qdrant: Any) -> Any:
     """
     Cerca su Drive in modo 'intelligente', tollerando piccole differenze nel nome.
     """

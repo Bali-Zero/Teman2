@@ -15,7 +15,7 @@ from googleapiclient.discovery import build
 
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
-from .oracle_config import oracle_config
+from backend.services.oracle.oracle_config import oracle_config
 
 logger = logging.getLogger(__name__)
 

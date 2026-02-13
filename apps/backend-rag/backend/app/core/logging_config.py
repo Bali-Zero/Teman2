@@ -9,6 +9,8 @@ Provides configurable logging with:
 - Error aggregation
 """
 
+from typing import Any
+
 import logging
 import sys
 import time
@@ -63,7 +65,7 @@ class ColoredFormatter(logging.Formatter):
         "RESET": "\033[0m",  # Reset
     }
 
-    def format(self, record):
+    def format(self, record: Any) -> Any:
         if ENVIRONMENT == "development":
             color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
             record.levelname = f"{color}{record.levelname}{self.COLORS['RESET']}"
@@ -78,7 +80,7 @@ class ColoredFormatter(logging.Formatter):
 class StructuredJSONFormatter(jsonlogger.JsonFormatter):
     """JSON formatter for production with structured fields"""
 
-    def add_fields(self, log_record, record, message_dict):
+    def add_fields(self, log_record: Any, record: Any, message_dict: Any) -> Any:
         super().add_fields(log_record, record, message_dict)
 
         # Add standard fields
@@ -99,7 +101,7 @@ class StructuredJSONFormatter(jsonlogger.JsonFormatter):
             log_record["user_id"] = record.user_id
 
 
-def setup_logging():
+def setup_logging() -> Any:
     """Setup standardized logging configuration"""
 
     # Root logger configuration
@@ -131,7 +133,7 @@ def setup_logging():
     suppress_noise()
 
 
-def configure_component_loggers():
+def configure_component_loggers() -> Any:
     """Configure component-specific loggers"""
 
     components = {
@@ -148,7 +150,7 @@ def configure_component_loggers():
         logger.setLevel(level)
 
 
-def suppress_noise():
+def suppress_noise() -> Any:
     """Suppress noisy third-party loggers"""
 
     noisy_loggers = [
@@ -189,7 +191,7 @@ def get_performance_logger(name: str, operation: str) -> PerformanceLogger:
 
 
 # Structured logging with structlog
-def configure_structlog():
+def configure_structlog() -> Any:
     """Configure structlog for advanced structured logging"""
 
     structlog.configure(

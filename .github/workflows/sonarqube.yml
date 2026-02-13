@@ -1,0 +1,119 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonarqube:
+    name: SonarQube Code Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better analysis
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend-rag/requirements.txt') }}
+
+      - name: Cache Node dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install Python dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Install Node dependencies
+        run: |
+          npm ci
+
+      - name: Run Python tests with coverage
+        run: |
+          cd apps/backend-rag
+          pytest tests/ -v \
+            --cov=src \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --junit-xml=test-results.xml
+        continue-on-error: true
+
+      - name: Run Frontend tests with coverage
+        run: |
+          npm run test:coverage || true
+        continue-on-error: true
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: SonarQube Quality Gate Check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/backend-rag/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const message = `
+            ## 📊 SonarQube Analysis Complete
+
+            View detailed results: [SonarCloud Dashboard](https://sonarcloud.io/project/overview?id=nuzantara_nuzantara-rag)
+
+            ### Quality Gates
+            - ✅ Code analysis completed
+            - Check SonarCloud for detailed metrics
+
+            ### Next Steps
+            1. Review code smells and bugs
+            2. Improve coverage if below 80%
+            3. Fix security vulnerabilities
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: message
+            });

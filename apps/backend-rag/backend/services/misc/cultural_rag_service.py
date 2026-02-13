@@ -41,12 +41,12 @@ class CulturalRAGService:
             self.cultural_insights = getattr(search_service, "cultural_insights", None)
             if not self.cultural_insights:
                 # If no cultural_insights, create a minimal stub
-                from .cultural_insights_service import CulturalInsightsService
+                from backend.services.misc.cultural_insights_service import CulturalInsightsService
 
                 self.cultural_insights = CulturalInsightsService()
         else:
             # For test compatibility, allow initialization without services
-            from .cultural_insights_service import CulturalInsightsService
+            from backend.services.misc.cultural_insights_service import CulturalInsightsService
 
             self.cultural_insights = CulturalInsightsService()
 

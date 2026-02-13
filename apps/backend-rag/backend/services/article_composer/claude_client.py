@@ -57,7 +57,7 @@ class CircuitBreaker:
         self.last_failure_time: float | None = None
         self.half_open_calls = 0
 
-    def call(self, func, *args, **kwargs):
+    def call(self, func: Any, *args, **kwargs) -> Any:
         """Execute function with circuit breaker protection"""
         if self.state == CircuitState.OPEN:
             if self._should_attempt_reset():

@@ -15,8 +15,8 @@ from typing import Any
 
 import anthropic
 
-from .extractor import ExtractedEntity
-from .ontology import EntityType
+from backend.services.knowledge_graph.extractor import ExtractedEntity
+from backend.services.knowledge_graph.ontology import EntityType
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +247,7 @@ class CoreferenceResolver:
 
         return clusters
 
-    def update_cache(self, clusters: dict[str, EntityCluster]):
+    def update_cache(self, clusters: dict[str, EntityCluster]) -> Any:
         """
         Update entity cache with new clusters
 
@@ -435,7 +435,7 @@ class CoreferenceResolver:
 
         return deduplicated
 
-    def clear_cache(self):
+    def clear_cache(self) -> Any:
         """Clear the entity cache"""
         self.entity_cache.clear()
 

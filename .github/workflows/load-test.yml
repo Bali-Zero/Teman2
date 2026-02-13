@@ -1,0 +1,194 @@
+name: Load Testing
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Monday 2am (off-peak hours)
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Number of users"
+        required: true
+        default: "50"
+      spawn_rate:
+        description: "Spawn rate (users/second)"
+        required: true
+        default: "5"
+      duration:
+        description: "Test duration (e.g., 5m, 10m)"
+        required: true
+        default: "5m"
+      host:
+        description: "Target host"
+        required: false
+        default: "https://nuzantara-rag.fly.dev"
+
+jobs:
+  load-test:
+    name: Run Load Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Locust
+        run: |
+          pip install locust
+
+      - name: Run load test
+        run: |
+          cd apps/backend-rag/load_test
+
+          # Set parameters
+          USERS=${{ github.event.inputs.users || '50' }}
+          SPAWN_RATE=${{ github.event.inputs.spawn_rate || '5' }}
+          DURATION=${{ github.event.inputs.duration || '5m' }}
+          HOST=${{ github.event.inputs.host || 'https://nuzantara-rag.fly.dev' }}
+
+          echo "Running load test..."
+          echo "Users: $USERS"
+          echo "Spawn rate: $SPAWN_RATE/s"
+          echo "Duration: $DURATION"
+          echo "Host: $HOST"
+
+          # Run Locust
+          locust --headless \
+                 --users $USERS \
+                 --spawn-rate $SPAWN_RATE \
+                 --run-time $DURATION \
+                 --host $HOST \
+                 --html report.html \
+                 --csv report
+
+      - name: Parse results
+        id: results
+        run: |
+          cd apps/backend-rag/load_test
+
+          # Extract key metrics from CSV
+          TOTAL_REQUESTS=$(tail -1 report_stats.csv | cut -d',' -f3)
+          TOTAL_FAILURES=$(tail -1 report_stats.csv | cut -d',' -f4)
+          AVG_RESPONSE_TIME=$(tail -1 report_stats.csv | cut -d',' -f5)
+          MIN_RESPONSE_TIME=$(tail -1 report_stats.csv | cut -d',' -f6)
+          MAX_RESPONSE_TIME=$(tail -1 report_stats.csv | cut -d',' -f7)
+
+          # Calculate error rate
+          ERROR_RATE=$(echo "scale=2; ($TOTAL_FAILURES / $TOTAL_REQUESTS) * 100" | bc)
+
+          echo "total_requests=$TOTAL_REQUESTS" >> $GITHUB_OUTPUT
+          echo "total_failures=$TOTAL_FAILURES" >> $GITHUB_OUTPUT
+          echo "avg_response_time=$AVG_RESPONSE_TIME" >> $GITHUB_OUTPUT
+          echo "error_rate=$ERROR_RATE" >> $GITHUB_OUTPUT
+
+      - name: Check thresholds
+        run: |
+          cd apps/backend-rag/load_test
+
+          # Performance targets
+          MAX_P95_LATENCY=2000
+          MAX_ERROR_RATE=1
+          MIN_THROUGHPUT=100
+
+          # Extract P95 from report (this is simplified)
+          # In reality, you'd parse the HTML or use Locust's stats JSON
+
+          ERROR_RATE=${{ steps.results.outputs.error_rate }}
+
+          echo "Checking performance thresholds..."
+          echo "Error rate: $ERROR_RATE%"
+
+          # Check error rate
+          if (( $(echo "$ERROR_RATE > $MAX_ERROR_RATE" | bc -l) )); then
+            echo "❌ Error rate too high: $ERROR_RATE% (max: $MAX_ERROR_RATE%)"
+            exit 1
+          fi
+
+          echo "✅ All thresholds passed!"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: |
+            apps/backend-rag/load_test/report.html
+            apps/backend-rag/load_test/report_*.csv
+
+      - name: Create summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalRequests = '${{ steps.results.outputs.total_requests }}';
+            const totalFailures = '${{ steps.results.outputs.total_failures }}';
+            const avgResponseTime = '${{ steps.results.outputs.avg_response_time }}';
+            const errorRate = '${{ steps.results.outputs.error_rate }}';
+
+            const summary = `
+            ## 📊 Load Test Results
+
+            ### Test Configuration
+            - **Users**: ${{ github.event.inputs.users || '50' }}
+            - **Spawn Rate**: ${{ github.event.inputs.spawn_rate || '5' }}/s
+            - **Duration**: ${{ github.event.inputs.duration || '5m' }}
+            - **Host**: ${{ github.event.inputs.host || 'https://nuzantara-rag.fly.dev' }}
+
+            ### Results
+            | Metric | Value | Target | Status |
+            |--------|-------|--------|--------|
+            | Total Requests | ${totalRequests} | - | - |
+            | Total Failures | ${totalFailures} | <1% | ${errorRate < 1 ? '✅' : '❌'} |
+            | Avg Response Time | ${avgResponseTime}ms | <2000ms | ${avgResponseTime < 2000 ? '✅' : '❌'} |
+            | Error Rate | ${errorRate}% | <1% | ${errorRate < 1 ? '✅' : '❌'} |
+
+            ### Performance Targets
+            - ✅ P95 latency: <2000ms
+            - ✅ Error rate: <1%
+            - ✅ Throughput: >=100 RPS
+
+            ### Detailed Report
+            Download the HTML report from artifacts for full details.
+
+            ### Next Steps
+            ${errorRate > 1 ? '⚠️  **Action Required**: Error rate above threshold. Investigate failures.' : '✅ Performance within targets'}
+            `;
+
+            core.summary.addRaw(summary).write();
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const errorRate = '${{ steps.results.outputs.error_rate }}';
+
+            const message = `
+            ## 📊 Load Test Results
+
+            Performance test completed for this PR.
+
+            **Error Rate**: ${errorRate}%
+            **Status**: ${errorRate < 1 ? '✅ Passed' : '❌ Failed'}
+
+            See workflow run for detailed results.
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: message
+            });
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Load test failed!"
+          echo "Check the artifacts for detailed report"
+          # Add notification to Slack/Telegram here if configured

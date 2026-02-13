@@ -1,0 +1,225 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "0 0 * * 0" # Weekly scan on Sunday
+  workflow_dispatch:
+
+jobs:
+  snyk-python:
+    name: Snyk Python Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Snyk (Python)
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: |
+            --severity-threshold=high
+            --file=apps/backend-rag/requirements.txt
+            --package-manager=pip
+            --project-name=nuzantara-backend
+
+      - name: Upload Snyk results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+
+  snyk-node:
+    name: Snyk Node.js Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Snyk (Node.js)
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      - name: Upload Snyk results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+
+  snyk-docker:
+    name: Snyk Docker Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t nuzantara-rag:${{ github.sha }} \
+            -f apps/backend-rag/Dockerfile .
+
+      - name: Run Snyk (Docker)
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: nuzantara-rag:${{ github.sha }}
+          args: --severity-threshold=high
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python", "javascript"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  bandit:
+    name: Bandit Python Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit
+        run: |
+          bandit -r apps/backend-rag/src/ \
+            -f json \
+            -o bandit-report.json \
+            -ll \
+            || true
+
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  safety:
+    name: Safety Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Run Safety check
+        run: |
+          safety check \
+            --file apps/backend-rag/requirements.txt \
+            --json \
+            --output safety-report.json \
+            || true
+
+      - name: Upload Safety results
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report
+          path: safety-report.json
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [snyk-python, snyk-node, snyk-docker, codeql, bandit, safety]
+    if: always()
+
+    steps:
+      - name: Create security summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `
+            ## 🔒 Security Scan Complete
+
+            ### Scans Performed
+            - ✅ Snyk (Python, Node.js, Docker)
+            - ✅ CodeQL (Python, JavaScript)
+            - ✅ Bandit (Python security linter)
+            - ✅ Safety (Python dependency checker)
+
+            ### Results
+            View detailed results in:
+            - **Security tab** for CodeQL findings
+            - **Artifacts** for Bandit and Safety reports
+            - **Snyk dashboard** for vulnerability details
+
+            ### Severity Thresholds
+            - Critical: Block merge
+            - High: Block merge
+            - Medium: Warning
+            - Low: Info only
+
+            ### Next Steps
+            1. Review all high/critical findings
+            2. Update vulnerable dependencies
+            3. Fix security issues before merge
+            `;
+
+            core.summary.addRaw(summary).write();

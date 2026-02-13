@@ -5,6 +5,8 @@ Supports both OpenAI and Sentence Transformers
 OPTIMIZED: Added LRU caching for embeddings to reduce API calls and latency
 """
 
+from typing import Any
+
 import asyncio
 import json
 import logging
@@ -21,13 +23,13 @@ except ImportError:
     from contextlib import contextmanager
 
     @contextmanager
-    def trace_span(name, attrs=None):
+    def trace_span(name: Any, attrs: Any=None) -> Any:
         yield
 
-    def set_span_attribute(key, value):
+    def set_span_attribute(key: Any, value: Any) -> Any:
         pass
 
-    def set_span_status(status, msg=None):
+    def set_span_status(status: Any, msg: Any=None) -> Any:
         pass
 
 

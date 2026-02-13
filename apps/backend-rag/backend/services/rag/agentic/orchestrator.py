@@ -45,19 +45,19 @@ from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import BaseTool
 
-from .llm_gateway import LLMGateway
-from .memory_handler import MemoryHandler
-from .pipeline import create_default_pipeline
-from .prompt_builder import SystemPromptBuilder
-from .query_gates import QueryGates
-from .query_helpers import (
+from backend.services.rag.agentic.llm_gateway import LLMGateway
+from backend.services.rag.agentic.memory_handler import MemoryHandler
+from backend.services.rag.agentic.pipeline import create_default_pipeline
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.query_gates import QueryGates
+from backend.services.rag.agentic.query_helpers import (
     TIER_FLASH,
     is_conversation_recall_query,
     wrap_query_with_language_instruction,
 )
-from .reasoning import ReasoningEngine, detect_team_query
-from .schema import CoreResult
-from .tool_executor import execute_tool
+from backend.services.rag.agentic.reasoning import ReasoningEngine, detect_team_query
+from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.tool_executor import execute_tool
 
 logger = logging.getLogger(__name__)
 
@@ -233,9 +233,9 @@ class AgenticRAGOrchestrator:
         logger.debug("AgenticRAGOrchestrator.__init__ completed")
 
         # Initialize OrchestratorCore (delegates main logic)
-        from .orchestrator_core import OrchestratorCore
-        from .orchestrator_streaming import OrchestratorStreamingManager
-        from .orchestrator_streaming_core import OrchestratorStreamingCore
+        from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+        from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
+        from backend.services.rag.agentic.orchestrator_streaming_core import OrchestratorStreamingCore
 
         self.core = OrchestratorCore(
             llm_gateway=self.llm_gateway,
