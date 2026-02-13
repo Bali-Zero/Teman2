@@ -148,6 +148,9 @@ temp/
 data/temp/
 data/*.json
 data/*.log
+data/qdrant_production_snapshots/
+data/flyio-export-*/
+data/kg_production_export/
 benchmark_results/
 carousel-bali-traffic/output/
 carousel-bali-traffic/images/
