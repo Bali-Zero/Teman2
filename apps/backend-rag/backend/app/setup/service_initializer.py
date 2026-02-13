@@ -22,35 +22,13 @@ from fastapi import FastAPI
 
 from backend.app.core.config import settings
 from backend.app.core.service_health import ServiceStatus, service_registry
-from backend.app.routers.websocket import redis_listener
-from backend.llm.zantara_ai_client import ZantaraAIClient
-from backend.services.crm.auto_crm_service import get_auto_crm_service
-from backend.services.crm.collaborator_service import CollaboratorService
-from backend.services.integrations.telegram_bot_service import TelegramBotService
-from backend.services.memory import MemoryServicePostgres
-from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
-from backend.services.misc.autonomous_research_service import AutonomousResearchService
-from backend.services.misc.autonomous_scheduler import create_and_start_scheduler
-from backend.services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from backend.services.misc.conversation_service import ConversationService
-from backend.services.misc.cultural_rag_service import CulturalRAGService
-from backend.services.misc.mcp_client_service import initialize_mcp_client
-from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-from backend.services.misc.tool_executor import ToolExecutor
-from backend.services.misc.zantara_tools import ZantaraTools
-from backend.services.monitoring.alert_service import AlertService
-from backend.services.monitoring.health_monitor import HealthMonitor
-from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
-from backend.services.routing.intelligent_router import IntelligentRouter
-from backend.services.routing.query_router import QueryRouter
-from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger("zantara.backend")
 
 
 async def _init_critical_services(
     app: FastAPI,
-) -> tuple[SearchService | None, ZantaraAIClient | None]:
+) -> tuple:
     """
     Initialize critical services: SearchService and ZantaraAIClient.
 
@@ -65,6 +43,8 @@ async def _init_critical_services(
     Raises:
         RuntimeError: If critical services fail to initialize
     """
+    from backend.llm.zantara_ai_client import ZantaraAIClient
+    from backend.services.search.search_service import SearchService
     # Store service registry in app state for health endpoints
     app.state.service_registry = service_registry
 
@@ -144,7 +124,7 @@ async def _init_critical_services(
     return search_service, ai_client
 
 
-async def _init_tool_stack(app: FastAPI) -> ToolExecutor:
+async def _init_tool_stack(app: FastAPI):
     """
     Initialize tool stack: Python-native tools and MCP client.
 
@@ -154,6 +134,10 @@ async def _init_tool_stack(app: FastAPI) -> ToolExecutor:
     Returns:
         ToolExecutor instance
     """
+    from backend.services.misc.mcp_client_service import initialize_mcp_client
+    from backend.services.misc.tool_executor import ToolExecutor
+    from backend.services.misc.zantara_tools import ZantaraTools
+
     # Tool stack (Python-native + MCP)
     zantara_tools = ZantaraTools()
 
@@ -181,7 +165,7 @@ async def _init_tool_stack(app: FastAPI) -> ToolExecutor:
     return tool_executor
 
 
-async def _init_rag_components(app: FastAPI, search_service: SearchService) -> QueryRouter:
+async def _init_rag_components(app: FastAPI, search_service):
     """
     Initialize RAG components: CulturalRAGService and QueryRouter.
 
@@ -192,6 +176,9 @@ async def _init_rag_components(app: FastAPI, search_service: SearchService) -> Q
     Returns:
         QueryRouter instance
     """
+    from backend.services.misc.cultural_rag_service import CulturalRAGService
+    from backend.services.routing.query_router import QueryRouter
+
     # Initialize CulturalRAGService with CulturalInsightsService
     cultural_insights_service = getattr(app.state, "cultural_insights", None)
     if cultural_insights_service:
@@ -213,14 +200,10 @@ async def _init_rag_components(app: FastAPI, search_service: SearchService) -> Q
 
 async def _init_specialized_agents(
     _app: FastAPI,
-    search_service: SearchService,
-    ai_client: ZantaraAIClient,
-    query_router: QueryRouter,
-) -> tuple[
-    AutonomousResearchService | None,
-    CrossOracleSynthesisService | None,
-    ClientJourneyOrchestrator | None,
-]:
+    search_service,
+    ai_client,
+    query_router,
+) -> tuple:
     """
     Initialize specialized agents: AutonomousResearch, CrossOracle, ClientJourney.
 
@@ -233,6 +216,10 @@ async def _init_specialized_agents(
     Returns:
         Tuple of (autonomous_research_service, cross_oracle_synthesis_service, client_journey_orchestrator)
     """
+    from backend.services.misc.autonomous_research_service import AutonomousResearchService
+    from backend.services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+    from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+
     autonomous_research_service = None
     cross_oracle_synthesis_service = None
     client_journey_orchestrator = None
@@ -562,7 +549,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
 
 
 async def initialize_crm_and_memory_services(
-    app: FastAPI, ai_client: ZantaraAIClient, db_pool: asyncpg.Pool | None
+    app: FastAPI, ai_client, db_pool: asyncpg.Pool | None
 ) -> None:
     """
     Initialize CRM and Memory services: AutoCRM, MemoryService, ConversationService.
@@ -573,6 +560,12 @@ async def initialize_crm_and_memory_services(
         db_pool: Database pool instance (may be None)
     """
     try:
+        from backend.services.crm.auto_crm_service import get_auto_crm_service
+        from backend.services.integrations.telegram_bot_service import TelegramBotService
+        from backend.services.memory import MemoryServicePostgres
+        from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
+        from backend.services.misc.conversation_service import ConversationService
+
         # Initialize TelegramBotService for lead notifications
         telegram_service = TelegramBotService()
         logger.info("✅ TelegramBotService initialized for lead notifications")
@@ -640,14 +633,14 @@ async def initialize_crm_and_memory_services(
 
 async def initialize_intelligent_router(
     app: FastAPI,
-    ai_client: ZantaraAIClient,
-    search_service: SearchService,
-    tool_executor: ToolExecutor,
-    cultural_rag_service: CulturalRAGService,
-    autonomous_research_service: AutonomousResearchService | None,
-    cross_oracle_synthesis_service: CrossOracleSynthesisService | None,
-    client_journey_orchestrator: ClientJourneyOrchestrator | None,
-    collaborator_service: CollaboratorService | None,
+    ai_client,
+    search_service,
+    tool_executor,
+    cultural_rag_service,
+    autonomous_research_service,
+    cross_oracle_synthesis_service,
+    client_journey_orchestrator,
+    collaborator_service,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """
@@ -665,6 +658,9 @@ async def initialize_intelligent_router(
         collaborator_service: CollaboratorService instance (may be None)
         db_pool: Database pool instance (may be None)
     """
+    from backend.services.crm.collaborator_service import CollaboratorService
+    from backend.services.routing.intelligent_router import IntelligentRouter
+
     # Initialize CollaboratorService for user identity lookup
     if collaborator_service is None:
         try:
@@ -700,8 +696,8 @@ async def initialize_intelligent_router(
 
 async def _init_background_services(
     app: FastAPI,
-    search_service: SearchService,
-    ai_client: ZantaraAIClient,
+    search_service,
+    ai_client,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """
@@ -713,6 +709,12 @@ async def _init_background_services(
         ai_client: ZantaraAIClient instance
         db_pool: Database pool instance (may be None)
     """
+    from backend.app.routers.websocket import redis_listener
+    from backend.services.misc.autonomous_scheduler import create_and_start_scheduler
+    from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from backend.services.monitoring.alert_service import AlertService
+    from backend.services.monitoring.health_monitor import HealthMonitor
+
     # Plugin System: Modern system available in core/plugins/
     logger.info("🔌 Plugin System: Using HealthMonitor for monitoring")
 
@@ -843,7 +845,7 @@ async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
 
 async def initialize_channel_router(
     app: FastAPI,
-    ai_client: ZantaraAIClient,
+    ai_client,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """
@@ -1017,6 +1019,9 @@ async def initialize_services(app: FastAPI) -> None:
 
     # 3. RAG components
     query_router = await _init_rag_components(app, search_service)
+
+    from backend.services.misc.cultural_rag_service import CulturalRAGService
+
     cultural_insights_service = getattr(app.state, "cultural_insights", None)
     if cultural_insights_service:
         cultural_rag_service = CulturalRAGService(
@@ -1040,6 +1045,8 @@ async def initialize_services(app: FastAPI) -> None:
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
     # 7. CollaboratorService (needed for IntelligentRouter)
+    from backend.services.crm.collaborator_service import CollaboratorService
+
     collaborator_service = None
     try:
         collaborator_service = CollaboratorService()

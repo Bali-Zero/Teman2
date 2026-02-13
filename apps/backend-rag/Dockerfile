@@ -84,11 +84,12 @@ USER nuzantara
 EXPOSE 8080
 
 # Health check (model downloads on first request, not at startup)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Start uvicorn from root directory using module path
 # Bind to 0.0.0.0 (all IPv4 interfaces, Fly.io compatible)
 # Use PORT env var (set by Fly.io, defaults to 8080)
-# Use 2 workers to leverage 2 CPUs per VM
-CMD sh -c "uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 2"
+# CRITICAL: Use 1 worker only - each worker loads ~2GB of ML models (torch, sentence-transformers)
+# With 4GB VM, 2 workers = OOM kill. DO NOT change to --workers 2 without upgrading VM to 8GB.
+CMD sh -c "uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"
