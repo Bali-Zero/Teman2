@@ -1,0 +1,58 @@
+name: Frontend Lint + Type Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mouth/**'
+      - '!apps/mouth/**/*.md'
+  pull_request:
+    paths:
+      - 'apps/mouth/**'
+  workflow_dispatch:
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'apps/mouth/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd apps/mouth
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd apps/mouth
+          npm run lint 2>&1 | head -50
+
+      - name: Type check + Build
+        env:
+          NEXT_PUBLIC_API_URL: https://nuzantara-rag.fly.dev
+        run: |
+          cd apps/mouth
+          npm run build
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=🚨 *Frontend Checks Failed*%0ACommit: ${{ github.sha }}" \
+              -d "parse_mode=Markdown"
+          fi

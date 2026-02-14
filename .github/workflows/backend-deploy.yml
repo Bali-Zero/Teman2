@@ -1,0 +1,76 @@
+name: Backend Auto-Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend-rag/**'
+      - '!apps/backend-rag/docs/**'
+      - '!apps/backend-rag/**/*.md'
+  workflow_dispatch:
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'apps/backend-rag/requirements-prod.txt'
+
+      - name: Install dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --no-cache-dir -r requirements-prod.txt
+          pip install pytest pytest-asyncio pytest-timeout
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+          ENVIRONMENT: test
+        run: |
+          cd apps/backend-rag
+          python -m pytest tests/ -v --timeout=60 -x -q 2>&1 | head -100
+
+      - name: Setup Fly CLI
+        if: success()
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        if: success()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          cd apps/backend-rag
+          flyctl deploy --app nuzantara-rag --strategy rolling --wait-timeout 300
+
+      - name: Post-deploy health check
+        if: success()
+        run: |
+          sleep 30
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://nuzantara-rag.fly.dev/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status $STATUS"
+            exit 1
+          fi
+          echo "Health check passed (HTTP $STATUS)"
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=🚨 *Backend Deploy Failed*%0A%0AWorkflow: ${{ github.workflow }}%0ACommit: ${{ github.sha }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              -d "parse_mode=Markdown"
+          fi

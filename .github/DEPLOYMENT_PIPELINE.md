@@ -1,5 +1,15 @@
 # Nuzantara Deployment Pipeline Architecture
 
+## Workflow Status Badges
+
+| Workflow | Status |
+|----------|--------|
+| [Backend Deploy](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) | [![Backend Deploy](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) |
+| [Frontend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml) | [![Frontend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml) |
+| [CodeQL Analysis](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml) | [![CodeQL](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml) |
+
+---
+
 ## Overview
 
 This document describes the complete deployment pipeline architecture for the Nuzantara platform.

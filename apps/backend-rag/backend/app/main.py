@@ -6,6 +6,7 @@ with tests and imports that reference 'backend.app.main'.
 
 The actual application is defined in main_cloud.py.
 """
+# CI: backend-deploy workflow triggers on push to main when this path changes
 
 # Explicit imports instead of wildcard for better type checking and IDE support
 from backend.app.main_cloud import (

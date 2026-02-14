@@ -1,6 +1,7 @@
 {
   "name": "mouth",
   "version": "5.2.0",
+  "description": "Nuzantara frontend - Next.js 16 + React 19",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -6,6 +6,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black)
 ![React](https://img.shields.io/badge/React-19.2.1-blue)
 ![Deployment](https://img.shields.io/badge/deployment-vercel-black)
+[![Frontend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml)
 
 **Live:** [www.balizero.com](https://www.balizero.com)
 
