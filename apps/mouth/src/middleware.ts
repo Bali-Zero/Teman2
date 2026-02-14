@@ -164,12 +164,27 @@ export function middleware(request: NextRequest) {
 
   // === APP DOMAIN (zantara.balizero.com) ===
   if (isAppDomain) {
+    // SEO: Block indexing for zantara subdomain (internal app)
+    // robots.txt override
+    if (pathname === '/robots.txt') {
+      return new NextResponse('User-agent: *\nDisallow: /', {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+
+    // Add X-Robots-Tag header to all responses from zantara subdomain
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
     // Redirect portal routes to portal domain
     if (pathname.startsWith('/portal')) {
       const portalUrl = new URL(pathname, `https://${PORTAL_DOMAIN}`);
       portalUrl.search = request.nextUrl.search;
       const redirectResponse = NextResponse.redirect(portalUrl, 301); // Permanent redirect
       redirectResponse.headers.set('x-pathname', pathname);
+      redirectResponse.headers.set('X-Robots-Tag', 'noindex, nofollow'); // Also noindex redirects
       return redirectResponse;
     }
 

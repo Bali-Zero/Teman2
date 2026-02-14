@@ -319,3 +319,35 @@ export function WebsiteJsonLd() {
     />
   );
 }
+
+// Google Reviews AggregateRating — for rich snippets with stars
+export function AggregateRatingJsonLd() {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    name: 'Bali Zero',
+    url: baseUrl,
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '5.0',
+      bestRating: '5',
+      worstRating: '1',
+      ratingCount: '700',
+      reviewCount: '700',
+    },
+    priceRange: '$$',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Bali',
+      addressCountry: 'ID',
+    },
+  };
+
+  return (
+    <script
+      id="aggregate-rating-jsonld"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
