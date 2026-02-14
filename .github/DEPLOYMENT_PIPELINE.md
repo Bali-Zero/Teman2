@@ -1,10 +1,21 @@
 # Nuzantara Deployment Pipeline Architecture
 
+## Deployment Strategy
+
+| App | Deploy | Metodo |
+|-----|--------|--------|
+| **Backend** | Manuale da locale | `cd apps/backend-rag && fly deploy --app nuzantara-rag --strategy rolling` |
+| **Frontend** | Automatico | Push su `main` → Vercel (integrazione GitHub) |
+
+I workflow GitHub Actions eseguono solo **check** (test, lint, build), non deploy.
+
+---
+
 ## Workflow Status Badges
 
 | Workflow | Status |
 |----------|--------|
-| [Backend Deploy](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) | [![Backend Deploy](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) |
+| [Backend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) | [![Backend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml) |
 | [Frontend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml) | [![Frontend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/frontend-checks.yml) |
 | [CodeQL Analysis](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml) | [![CodeQL](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/codeql-analysis.yml) |
 

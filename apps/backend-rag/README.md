@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-v100--qdrant-blue)
 ![Status](https://img.shields.io/badge/status-production-green)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
-[![Backend Deploy](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml)
+[![Backend Checks](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml/badge.svg)](https://github.com/Balizero1987/Teman2/actions/workflows/backend-deploy.yml)
 
 ## Overview
 

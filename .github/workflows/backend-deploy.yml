@@ -1,4 +1,4 @@
-name: Backend Auto-Deploy
+name: Backend Checks
 
 on:
   push:
@@ -7,12 +7,15 @@ on:
       - 'apps/backend-rag/**'
       - '!apps/backend-rag/docs/**'
       - '!apps/backend-rag/**/*.md'
+  pull_request:
+    paths:
+      - 'apps/backend-rag/**'
   workflow_dispatch:
 
 jobs:
-  test-and-deploy:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -39,29 +42,6 @@ jobs:
           cd apps/backend-rag
           python -m pytest tests/ -v --timeout=60 -x -q 2>&1 | head -100
 
-      - name: Setup Fly CLI
-        if: success()
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy to Fly.io
-        if: success()
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          cd apps/backend-rag
-          flyctl deploy --app nuzantara-rag --strategy rolling --wait-timeout 300
-
-      - name: Post-deploy health check
-        if: success()
-        run: |
-          sleep 30
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://nuzantara-rag.fly.dev/health)
-          if [ "$STATUS" != "200" ]; then
-            echo "Health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Health check passed (HTTP $STATUS)"
-
       - name: Notify on failure
         if: failure()
         env:
@@ -71,6 +51,6 @@ jobs:
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" \
-              -d "text=🚨 *Backend Deploy Failed*%0A%0AWorkflow: ${{ github.workflow }}%0ACommit: ${{ github.sha }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              -d "text=🚨 *Backend Tests Failed*%0A%0AWorkflow: ${{ github.workflow }}%0ACommit: ${{ github.sha }}%0ARun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
               -d "parse_mode=Markdown"
           fi
