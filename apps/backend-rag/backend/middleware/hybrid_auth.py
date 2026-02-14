@@ -183,7 +183,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
     def is_public_endpoint(self, request: Request) -> bool:
         """Check if the requested endpoint is public (no auth required)"""
         path = request.url.path
-        return any(path.startswith(endpoint) for endpoint in self.public_endpoints)
+        is_public = any(path.startswith(endpoint) for endpoint in self.public_endpoints)
+
+        # Debug log for KBLI endpoints
+        if "kbli" in path.lower():
+            logger.info(f"🔍 KBLI endpoint check: path={path}, is_public={is_public}")
+            matching_endpoints = [ep for ep in self.public_endpoints if path.startswith(ep)]
+            logger.info(f"🔍 Matching public endpoints: {matching_endpoints}")
+
+        return is_public
 
     async def dispatch(self, request: Request, call_next):
         """

@@ -335,12 +335,23 @@ npm run build
 - [ ] Alt text audit completed (partial)
 
 ### Deploy Commands
-```bash
-# Frontend (Vercel)
-cd apps/mouth
-vercel --prod
 
-# Verify after deploy:
+⚠️ **BLOCKED:** Vercel deployment requires configuration fix. See `VERCEL_DEPLOYMENT_FIX.md` for details.
+
+**Issue:** Root Directory setting causes duplicate path error (`apps/mouth/apps/mouth`)
+
+**Fix Required:** https://vercel.com/nuzantara-2026/mouth/settings
+- Clear "Root Directory" field (set to empty)
+- Save changes
+
+**Then deploy:**
+```bash
+cd apps/mouth
+vercel --prod --yes
+```
+
+**Verify after deploy:**
+```bash
 curl https://balizero.com/sitemap.xml
 curl https://balizero.com/kbli/56101
 curl https://balizero.com/api/og?title=Test&category=Test
