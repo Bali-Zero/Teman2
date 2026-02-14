@@ -8,7 +8,6 @@ This is critical for Fly.io health checks - the server must start listening with
 
 from fastapi import FastAPI
 
-
 def include_routers(api: FastAPI) -> None:
     """
     Include all API routers - Prime Standard modular structure.
@@ -25,6 +24,7 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.routers import (
         admin_logs,
         admin_team_activity,
+        agent,  # [NEW] LangGraph agentic layer
         agentic_rag,
         agents,
         analytics,
@@ -105,6 +105,7 @@ def include_routers(api: FastAPI) -> None:
         api.include_router(debug.v1_router)
 
     # Agent routers
+    api.include_router(agent.router)  # [NEW] LangGraph agentic layer
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
