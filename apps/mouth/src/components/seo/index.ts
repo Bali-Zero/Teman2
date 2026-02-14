@@ -6,6 +6,7 @@ export {
   ServiceJsonLd,
   BreadcrumbJsonLd,
   WebsiteJsonLd,
+  AggregateRatingJsonLd,
 } from './JsonLd';
 
 export { HomepageFAQSchema, HomepageServicesSchema, HomepageSEOSchemas } from './HomepageFAQ';

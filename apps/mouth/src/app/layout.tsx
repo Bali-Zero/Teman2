@@ -2,7 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { headers } from 'next/headers';
-import { OrganizationJsonLd, LocalBusinessJsonLd, WebsiteJsonLd } from '@/components/seo';
+import {
+  OrganizationJsonLd,
+  LocalBusinessJsonLd,
+  WebsiteJsonLd,
+  AggregateRatingJsonLd,
+} from '@/components/seo';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ErrorBoundary } from '@/components/optimization';
 import { WebVitalsMonitor } from '@/components/providers/WebVitalsMonitor';
@@ -38,7 +43,7 @@ export const metadata: Metadata = {
     template: '%s | Bali Zero',
   },
   description:
-    'Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia. PT PMA registration, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.',
+    'Expert visa, immigration & company setup services in Bali. PT PMA, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.',
   keywords: [
     // Primary keywords
     'bali visa',
@@ -79,7 +84,7 @@ export const metadata: Metadata = {
     url: appUrl,
     title: 'Bali Zero | #1 Visa & Business Experts in Bali, Indonesia',
     description:
-      'Expert visa, immigration, company setup, and business consulting services in Bali. PT PMA, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.',
+      'Expert visa, immigration & company setup services in Bali. PT PMA, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.',
     siteName: 'Bali Zero',
     images: [
       {
@@ -414,6 +419,8 @@ export default async function RootLayout({
         <OrganizationJsonLd />
         <LocalBusinessJsonLd />
         <WebsiteJsonLd />
+        {/* Google Reviews AggregateRating - show stars in search results (homepage only) */}
+        {pathname === '/' && <AggregateRatingJsonLd />}
 
         {/* Page-specific JSON-LD schemas - Injected in <head> for Schema.org Validator */}
         {pageSchemas.map((schema, index) => {
