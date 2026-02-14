@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Building2, FileText, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface KBLIData {
   code: string;
@@ -15,6 +16,7 @@ interface KBLIData {
   pma_status?: string;
   required_licenses?: string[];
   capital_requirement?: string;
+  licensing_status?: string;
 }
 
 /**
@@ -90,19 +92,19 @@ export default function KBLICodePageClient({ code }: { code: string }) {
 
         // Transform backend response
         setData({
-          code: json.kode_kbli || code,
-          title_id: json.judul || `KBLI ${code}`,
-          title_en: json.title_en || json.judul || `KBLI ${code}`,
-          description: json.content || json.description || '',
-          category: json.kategori || json.category || 'Business',
-          section: json.sektor || json.section || '',
-          risk_level: json.kategori_risiko,
+          code: json.code || code,
+          title_id: json.title || `KBLI ${code}`,
+          title_en: json.title || `KBLI ${code}`,
+          description: json.description || '',
+          category: json.sector || 'Business',
+          section: json.sector || '',
+          risk_level: json.risk_profile,
           pma_status: json.pma_status,
-          required_licenses: json.required_licenses,
-          capital_requirement: json.capital_requirement,
+          required_licenses: json.licenses?.map((l: any) => l.type) || [],
+          capital_requirement: json.licensing_status,
         });
       } catch (err) {
-        console.error('Failed to fetch KBLI data:', err);
+        logger.error('Failed to fetch KBLI data', { error: err });
         setError(true);
       } finally {
         setLoading(false);
