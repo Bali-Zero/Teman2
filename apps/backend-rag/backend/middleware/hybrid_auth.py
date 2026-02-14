@@ -142,6 +142,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
             "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
+            "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
             "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
             "/webhook/chat",  # BUSINESS: Public AI chat webhook for website visitors
             "/webhook/chat/history",  # BUSINESS: Public chat history retrieval for session persistence
