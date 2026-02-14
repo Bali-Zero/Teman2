@@ -33,15 +33,15 @@ interface KBLIData {
   capital_requirement?: string;
 }
 
-// Backend API base URL - Hardcoded for reliability (env vars not applying in Vercel)
-const API_BASE_URL = 'https://nuzantara-rag.fly.dev';
-
 /**
- * Fetch KBLI data from backend API
+ * Fetch KBLI data via Next.js API proxy route
+ * This ensures reliable server-side fetching during builds
  */
 async function getKBLIData(code: string): Promise<KBLIData | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/kbli-notebook/inspect/${code}`, {
+    // Use internal API proxy route for reliable fetching
+    const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
+    const response = await fetch(`${baseUrl}/api/kbli/${code}`, {
       next: { revalidate: 86400 }, // Cache for 24 hours (KBLI codes rarely change)
     });
 
