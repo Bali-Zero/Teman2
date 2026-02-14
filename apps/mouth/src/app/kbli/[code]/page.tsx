@@ -34,15 +34,14 @@ interface KBLIData {
 }
 
 /**
- * Fetch KBLI data via Next.js API proxy route
- * This ensures reliable server-side fetching during builds
+ * Fetch KBLI data directly from backend
+ * Using absolute URL to avoid CORS/auth issues
  */
 async function getKBLIData(code: string): Promise<KBLIData | null> {
   try {
-    // Use internal API proxy route for reliable fetching
-    const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
-    const response = await fetch(`${baseUrl}/api/kbli/${code}`, {
+    const response = await fetch(`https://nuzantara-rag.fly.dev/api/v1/kbli-notebook/inspect/${code}`, {
       next: { revalidate: 86400 }, // Cache for 24 hours (KBLI codes rarely change)
+      cache: 'force-cache', // Aggressive caching
     });
 
     if (!response.ok) {
@@ -214,28 +213,14 @@ function getPMABadge(status?: string) {
   );
 }
 
-export default async function KBLICodePage({ params }: { params: { code: string } }) {
-  const data = await getKBLIData(params.code);
+import KBLICodePageClient from './client-page';
 
-  if (!data) {
-    notFound();
-  }
-
-  const schemas = generateStructuredData(data, params.code);
-
+export default function KBLICodePage({ params }: { params: { code: string } }) {
+  // Use client-side rendering for reliable data fetching
   return (
     <>
-      {/* JSON-LD Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.definedTerm) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumbs) }}
-      />
-
-      <div className="mx-auto min-h-screen max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <KBLICodePageClient code={params.code} />
+      <div className="hidden mx-auto min-h-screen max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="mb-8 flex items-center gap-2 text-sm text-muted-foreground">
           <Link href="/" className="hover:text-foreground">
