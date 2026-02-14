@@ -1099,6 +1099,32 @@ async def initialize_services(app: FastAPI) -> None:
     # 11. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
     # await _init_generals(app, db_pool)
 
+    # 12. LangGraph Agent Layer - Inject services into workflow nodes
+    print("DEBUG: Injecting services into LangGraph agent nodes...", flush=True)
+    try:
+        from backend.app.agents.graph import set_search_service, set_llm_gateway
+        from backend.services.rag.agentic.llm_gateway import LLMGateway
+
+        # Inject SearchService (already initialized)
+        if search_service:
+            set_search_service(search_service)
+            logger.info("✅ SearchService injected into LangGraph agent nodes")
+        else:
+            logger.warning("⚠️ SearchService not available for LangGraph agent injection")
+
+        # Create and inject LLMGateway
+        try:
+            llm_gateway = LLMGateway()
+            set_llm_gateway(llm_gateway)
+            logger.info("✅ LLMGateway created and injected into LangGraph agent nodes")
+        except Exception as llm_error:
+            logger.warning(f"⚠️ LLMGateway initialization failed: {llm_error}")
+            logger.info("Agent workflow will use fallback mock responses")
+
+    except Exception as e:
+        logger.warning(f"⚠️ LangGraph agent service injection failed: {e}")
+        logger.info("Agent workflow will continue with fallback behavior")
+
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True
     logger.info("✅ ZANTARA Services Initialization Complete.")
