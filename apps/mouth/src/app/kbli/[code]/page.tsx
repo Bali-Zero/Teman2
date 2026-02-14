@@ -33,8 +33,8 @@ interface KBLIData {
   capital_requirement?: string;
 }
 
-// Backend API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://nuzantara-rag.fly.dev';
+// Backend API base URL - Hardcoded for reliability (env vars not applying in Vercel)
+const API_BASE_URL = 'https://nuzantara-rag.fly.dev';
 
 /**
  * Fetch KBLI data from backend API
