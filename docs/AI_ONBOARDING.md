@@ -1,15 +1,15 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-02-15
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
 
-- Router Files: 68
-- Services: 228 Python files
-- Test Files: 477
+- Router Files: 78 (+10 since last update)
+- Services: 244 Python files (+16 since last update)
+- Test Files: 541 (+64 since last update)
 - Qdrant Collections: `kbli_2025_final` (9,612 docs), `legal_unified_hybrid`, `visa_oracle`, `tax_genius_hybrid`
-- Knowledge Graph: 34,606 nodes, 30,628 edges (PostgreSQL)
+- Knowledge Graph: 56,113 nodes, 161,173 edges (PostgreSQL) - **Expanded +62% nodes, +426% edges from LangGraph KG Phases 1-4**
 
 > **READ THIS FIRST** before making any changes to the codebase.
 
@@ -333,6 +333,100 @@ nuzantara-mcp  # starts stdio server
 
 ---
 
+## LANGGRAPH KNOWLEDGE GRAPH (PHASES 1-4 COMPLETE)
+
+**Status:** ✅ **PRODUCTION READY** (2026-02-09)
+
+**Implementation:** Agentic Knowledge Graph system built on LangGraph for intelligent query routing and workflow synthesis.
+
+### Architecture Overview
+
+**5 Core Nodes:**
+1. `understand_query_node` - Extract intent, entities, citizenship (LLM)
+2. `resolve_entities_node` - Map entities to KG via fuzzy match (PostgreSQL similarity)
+3. `traverse_graph_node` - BFS graph traversal (REQUIRES, ENABLES, PART_OF)
+4. `reason_over_graph_node` - LLM analyzes chains for answer
+5. `synthesize_workflow_node` - Convert chains to executable workflow
+
+**4 Domain-Specific Subgraphs:**
+- **Company Subgraph:** PT PMA, Perorangan, CV setup workflows
+- **Visa Subgraph:** KITAS, KITAP, VITAS requirements
+- **Property Subgraph:** Hak Pakai, HGB, rental regulations
+- **Tax Subgraph:** PPh, PPN, NPWP compliance
+
+### Key Files
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `backend/services/rag/kg_graph_state.py` | TypedDict state definitions | 100 |
+| `backend/services/rag/kg_graph_nodes.py` | 5 core nodes + helpers | 550 |
+| `backend/services/rag/kg_langgraph_orchestrator.py` | StateGraph + routing | 500+ |
+| `backend/services/rag/kg_subgraph_company.py` | Company setup workflows | 420 |
+| `backend/services/rag/kg_subgraph_visa.py` | Visa workflows | 448 |
+| `backend/services/rag/kg_subgraph_property.py` | Property workflows | 163 |
+| `backend/services/rag/kg_subgraph_tax.py` | Tax compliance workflows | 475 |
+| `backend/services/rag/confidence.py` | 6-factor confidence scoring | 250 |
+
+### Production Integration
+
+**Feature Flag:** `ENABLE_KG_LANGGRAPH` env var (default: disabled for backward compatibility)
+
+**Orchestrator Integration:**
+- 3-way parallel execution: Entity Extraction + KG Legacy + KG LangGraph
+- Workflow output formatted and added to system prompt as "SUGGESTED WORKFLOW"
+- File: `backend/services/rag/agentic/orchestrator_core.py` (lines 154-254)
+
+**Routing Priority:**
+1. Domain subgraphs (keyword match)
+2. Golden routes (high-confidence paths)
+3. Graph traversal (BFS)
+4. END (no results)
+
+### Performance
+
+| Metric | Value |
+|--------|-------|
+| Subgraph execution | <350ms |
+| 3-hop traversal | <500ms |
+| LLM reasoning | <2s |
+| Full pipeline | <3s |
+
+### Test Coverage
+
+**Tests:** 82/82 passing (100%)
+- Phase 1: 35 tests (kg_graph_nodes, orchestrator)
+- Phase 3: 23 tests (subgraphs)
+- Phase 2: 24 tests (confidence scoring)
+
+**Files:**
+- `backend/tests/services/rag/test_kg_langgraph.py`
+- `backend/tests/services/rag/test_kg_subgraphs.py`
+- `backend/tests/services/rag/test_confidence.py`
+
+### Documentation
+
+- **Architecture Guide:** `docs/KG_LANGGRAPH_ARCHITECTURE.md` (1,100+ lines)
+- **Evolution Plan:** `memory/langgraph-kg-evolution-plan.md` (954 lines, 4 phases)
+- **Session Notes:** `CLAUDE.md` backend session update (2026-02-09)
+
+### Confidence Scoring (Phase 2)
+
+**6-Factor Dynamic Scoring:**
+- Chain base confidence (30%)
+- Entity confidence (20%)
+- Relationship strength (20%)
+- Multi-source boost (15%)
+- Recency (10%)
+- Intent clarity (5%)
+
+**Warning Levels:**
+- High: ≥0.80
+- Medium: ≥0.55
+- Low: ≥0.35
+- Very Low: <0.35
+
+---
+
 ## CRITICAL FIXES & KNOWN ISSUES
 
 ### Evidence Score System
@@ -509,12 +603,14 @@ npm run dev
 
 | Document                  | Path                                                     | When to Read            |
 | ------------------------- | -------------------------------------------------------- | ----------------------- |
+| **AI Configuration Files**| `CLAUDE.md`, `.cursorrules`, `.antigravity/context.md`   | First session (AI setup)|
 | **AI Handover Protocol**  | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)  |
+| **LangGraph KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                   | Knowledge Graph implementation |
 | **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview   |
 | **Observability Guide**   | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring    |
 | **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying        |
 | **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference     |
-| **KG Value Assessment**   | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph details |
+| **KG Value Assessment**   | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI     |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper            |
 | **Documentation Archive** | `docs/archive/MANIFEST.md`                               | Old docs & reports      |
 
@@ -528,5 +624,9 @@ npm run dev
 4. **Use `--no-verify` for non-JS commits** - prettier pre-commit hook is known to fail on Python/markdown
 5. **Don't over-document** - code that speaks for itself doesn't need a 450-line report. Focus on why, not what.
 6. **Check the archive** - Old session reports and transient docs are in `docs/archive/MANIFEST.md`
+7. **LangGraph KG is production-ready** - 82 tests passing, 4 subgraphs deployed, feature flag controlled
+8. **Stats evolve rapidly** - This doc updated 2026-02-15 with +10 routers, +16 services, +64 tests since Feb 7
 
 **Remember:** This is a production system serving real clients. Be careful with changes, verify the embedding model matches, and test your work.
+
+**Cross-Reference:** See `CLAUDE.md` for Claude Code specific configuration and detailed session notes.
