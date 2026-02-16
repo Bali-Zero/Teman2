@@ -267,11 +267,14 @@ export class DriveApi {
 
   /**
    * Upload a file to Google Drive
+   * 
+   * @param signal - Optional AbortSignal to cancel the upload
    */
   async uploadFile(
     file: File,
     parentId: string,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
+    signal?: AbortSignal
   ): Promise<OperationResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -289,6 +292,26 @@ export class DriveApi {
 
       // Set timeout dynamically based on file size
       xhr.timeout = timeoutMs;
+
+      // Handle abort signal
+      if (signal) {
+        const abortHandler = () => {
+          xhr.abort();
+          reject(new Error('Upload cancelled by user'));
+        };
+        
+        if (signal.aborted) {
+          abortHandler();
+          return;
+        }
+        
+        signal.addEventListener('abort', abortHandler);
+        
+        // Cleanup listener on completion
+        xhr.addEventListener('loadend', () => {
+          signal.removeEventListener('abort', abortHandler);
+        });
+      }
 
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
@@ -326,6 +349,10 @@ export class DriveApi {
         reject(
           new Error('Network error during upload. Please check your connection and try again.')
         );
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('Upload cancelled'));
       });
 
       xhr.addEventListener('timeout', () => {

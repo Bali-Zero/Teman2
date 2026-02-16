@@ -167,7 +167,7 @@ export function useUpcomingRenewals(days: number = 90) {
       return renewals.map(
         (r: any) =>
           ({
-            id: r.id,
+            id: r.practice_id,  // Use practice_id, not alert id
             client_id: r.client_id,
             status: r.status,
             expiry_date: r.target_date,
