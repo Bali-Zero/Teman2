@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { toError } from '@/lib/types/common';
@@ -8,8 +8,6 @@ import {
   ZohoConnectBanner,
   FolderSidebar,
   EmailList,
-  EmailViewer,
-  EmailCompose,
   type ComposeData,
 } from '@/components/email';
 import type {
@@ -18,6 +16,39 @@ import type {
   EmailSummary,
   EmailDetail,
 } from '@/lib/api/email/email.types';
+
+// Lazy load heavy components
+const EmailViewer = lazy(() => import('@/components/email').then(m => ({ default: m.EmailViewer })));
+const EmailCompose = lazy(() => import('@/components/email').then(m => ({ default: m.EmailCompose })));
+
+// Skeleton for loading state
+const ViewerSkeleton = () => (
+  <div className="flex-1 flex flex-col bg-slate-900 animate-pulse">
+    <div className="h-16 border-b border-white/10 bg-slate-800" />
+    <div className="flex-1 p-6 space-y-4">
+      <div className="h-8 bg-slate-800 rounded w-3/4" />
+      <div className="h-4 bg-slate-800 rounded w-1/2" />
+      <div className="space-y-2 mt-8">
+        <div className="h-4 bg-slate-800 rounded" />
+        <div className="h-4 bg-slate-800 rounded" />
+        <div className="h-4 bg-slate-800 rounded w-2/3" />
+      </div>
+    </div>
+  </div>
+);
+
+const ComposeSkeleton = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="w-[600px] h-[500px] bg-slate-900 rounded-lg animate-pulse">
+      <div className="h-14 border-b border-white/10 bg-slate-800" />
+      <div className="p-6 space-y-4">
+        <div className="h-10 bg-slate-800 rounded" />
+        <div className="h-10 bg-slate-800 rounded" />
+        <div className="h-64 bg-slate-800 rounded" />
+      </div>
+    </div>
+  </div>
+);
 
 // Helper function to convert HTML to plain text (handles Zoho email HTML with embedded styles)
 function htmlToPlainText(html: string): string {
@@ -726,32 +757,38 @@ ${originalContent}`,
       </div>
 
       {/* Email Viewer */}
-      <EmailViewer
-        email={selectedEmail}
-        onClose={() => {
-          setSelectedEmailId(null);
-          setSelectedEmail(null);
-        }}
-        onReply={handleReply}
-        onReplyAll={handleReplyAll}
-        onForward={handleForward}
-        onToggleFlag={() => selectedEmailId && handleToggleFlag(selectedEmailId)}
-        onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
-        onDownloadAttachment={handleDownloadAttachment}
-        isLoading={isEmailDetailLoading}
-        onAddToCRM={handleAddToCRM}
-      />
+      <Suspense fallback={<ViewerSkeleton />}>
+        <EmailViewer
+          email={selectedEmail}
+          onClose={() => {
+            setSelectedEmailId(null);
+            setSelectedEmail(null);
+          }}
+          onReply={handleReply}
+          onReplyAll={handleReplyAll}
+          onForward={handleForward}
+          onToggleFlag={() => selectedEmailId && handleToggleFlag(selectedEmailId)}
+          onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
+          onDownloadAttachment={handleDownloadAttachment}
+          isLoading={isEmailDetailLoading}
+          onAddToCRM={handleAddToCRM}
+        />
+      </Suspense>
 
       {/* Compose Modal */}
-      <EmailCompose
-        isOpen={isComposeOpen}
-        onClose={() => setIsComposeOpen(false)}
-        onSend={handleSendEmail}
-        onSaveDraft={handleSaveDraft}
-        initialData={composeInitialData}
-        mode={composeMode}
-        isSending={isSending}
-      />
+      {isComposeOpen && (
+        <Suspense fallback={<ComposeSkeleton />}>
+          <EmailCompose
+            isOpen={isComposeOpen}
+            onClose={() => setIsComposeOpen(false)}
+            onSend={handleSendEmail}
+            onSaveDraft={handleSaveDraft}
+            initialData={composeInitialData}
+            mode={composeMode}
+            isSending={isSending}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
