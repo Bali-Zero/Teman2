@@ -460,7 +460,11 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
 
 @router.post("/chat", response_model=KBLINotebookChatResponse)
-async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get_search_service)):
+async def chat_kbli(
+    request: KBLINotebookChatRequest, 
+    http_req: Request,
+    search_service=Depends(get_search_service)
+):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{request.query[:50]}...'")
 
@@ -469,30 +473,57 @@ async def chat_kbli(request: KBLINotebookChatRequest, search_service=Depends(get
         search_query = await _translate_query_for_kbli(request.query)
 
         # Search semantic context with translated query
-        embedding = await search_service.embedder.generate_query_embedding(search_query)
-        raw_results = await _search_kbli_qdrant(embedding, 7)
-
-        # Deduplicate by code (same code can appear multiple times), take top 5
-        seen_codes = set()
         results = []
-        for r in raw_results:
-            p = r.get("payload", {})
-            code = p.get("kode_kbli", "N/A")
-            if code in seen_codes:
-                continue
-            seen_codes.add(code)
-            results.append(
-                KBLISearchResult(
-                    code=code,
-                    title=p.get("judul", "N/A"),
-                    description=(p.get("content", "") or "")[:200] + "...",
-                    score=round(r.get("score", 0.0), 4),
-                    pma_status=p.get("pma_status") or "UNKNOWN",
-                    risk_category=p.get("kategori_risiko") or "Unknown",
+        try:
+            embedding = await search_service.embedder.generate_query_embedding(search_query)
+            raw_results = await _search_kbli_qdrant(embedding, 7)
+            
+            # Deduplicate by code
+            seen_codes = set()
+            for r in raw_results:
+                p = r.get("payload", {})
+                code = p.get("kode_kbli", "N/A")
+                if code in seen_codes:
+                    continue
+                seen_codes.add(code)
+                results.append(
+                    KBLISearchResult(
+                        code=code,
+                        title=p.get("judul", "N/A"),
+                        description=(p.get("content", "") or "")[:200] + "...",
+                        score=round(r.get("score", 0.0), 4),
+                        pma_status=p.get("pma_status") or "UNKNOWN",
+                        risk_category=p.get("kategori_risiko") or "Unknown",
+                    )
                 )
-            )
-            if len(results) >= 5:
-                break
+                if len(results) >= 5:
+                    break
+        except Exception as q_err:
+            logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
+            # Fallback to Postgres search by name/code
+            try:
+                db_pool = await get_optional_database_pool(http_req)
+                if db_pool:
+                    async with db_pool.acquire() as conn:
+                        rows = await conn.fetch(
+                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
+                            f"%{search_query}%"
+                        )
+                        for row in rows:
+                            code = row["entity_id"].replace("kbli:", "")
+                            props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                            results.append(
+                                KBLISearchResult(
+                                    code=code,
+                                    title=row["name"],
+                                    description=row["description"][:200] + "...",
+                                    score=0.8, # Static score for fallback
+                                    pma_status=props.get("pma_status", "UNKNOWN"),
+                                    risk_category=props.get("kategori_risiko", "Unknown")
+                                )
+                            )
+            except Exception as db_err:
+                logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
 
         # Detect KBLI codes from results + regex on query
         codes_from_query = re.findall(r"\d{5}", request.query)

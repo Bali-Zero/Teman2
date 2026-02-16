@@ -1,3 +1,8 @@
+---
+trigger: glob
+globs: "apps/mouth/**/*.{ts,tsx,js,jsx,mdx}"
+---
+
 # Frontend Next.js — Regole (attiva su file in apps/mouth)
 
 ## Struttura

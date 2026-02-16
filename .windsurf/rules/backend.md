@@ -1,3 +1,8 @@
+---
+trigger: glob
+globs: apps/backend-rag/**/*.py
+---
+
 # Backend Python — Regole (attiva su file *.py in apps/backend-rag)
 
 ## Struttura

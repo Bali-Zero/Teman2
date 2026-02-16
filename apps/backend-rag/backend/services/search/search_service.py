@@ -56,6 +56,9 @@ from backend.services.routing.conflict_resolver import ConflictResolver
 from backend.services.search.query_expander import QueryExpander
 from backend.services.search.search_filters import build_search_filter
 
+# Hybrid search integration
+from backend.services.rag.hybrid_search import HybridSearchService, get_hybrid_search_service
+
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
 
 
@@ -304,6 +307,24 @@ class SearchService:
     def cultural_insights(self) -> Any:
         """Access to CulturalInsightsService (public API)."""
         return self._cultural_insights
+
+    @property
+    def hybrid_search_service(self) -> HybridSearchService:
+        """
+        Access to HybridSearchService for advanced hybrid search.
+        
+        Returns:
+            HybridSearchService instance for BM25 + dense vector search
+            
+        Example:
+            >>> hybrid_results = await search_service.hybrid_search_service.search_hybrid(
+            ...     query="visa KITAS",
+            ...     collection="legal_unified_hybrid",
+            ...     limit=10,
+            ...     alpha=0.5
+            ... )
+        """
+        return get_hybrid_search_service()
 
     async def _prepare_search_context(
         self,

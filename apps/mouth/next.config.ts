@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
     // Optimize CSS (removes unused CSS in production)
     optimizeCss: true,
     // Partial Prerendering - serves static shell immediately
-    // ppr: true, // Enable when Next.js 15 is stable with PPR
+    ppr: true, // Enable for 10/10 performance - static shell + dynamic content
     // Turbopack for faster builds (when stable)
     // turbo: {},
   },
@@ -145,6 +145,17 @@ const nextConfig: NextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
+          },
+        ],
+      },
+      {
+        // 103 Early Hints for critical resources
+        source: "/",
+        headers: [
+          {
+            key: "Link",
+            value:
+              "</_next/static/media/GeistVariableVF.woff2>; rel=preload; as=font; crossorigin, </_next/static/css/app/layout.css>; rel=preload; as=style, </assets/static/indonesian-flag-drape.jpg>; rel=preload; as=image",
           },
         ],
       },
