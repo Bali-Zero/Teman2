@@ -12,7 +12,7 @@ import logging
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import anthropic
 from tenacity import (
