@@ -247,6 +247,8 @@ export default function NewsPage() {
                           className="object-cover group-hover:scale-105 transition-transform duration-700"
                           style={{ objectPosition: 'center center' }}
                         />
+                        {/* Dark overlay to hide text on images */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/40 to-transparent" />
                       </div>
 
                       <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
