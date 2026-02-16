@@ -20,7 +20,17 @@ test.describe('Zantara AI Expert - Intense Browser Validation', () => {
     });
 
     await page.goto(htmlPath);
-    await page.waitForSelector('.bottom-nav');
+    
+    // Handle Splash Screen
+    const skipBtn = page.locator('button:has-text("Skip Intro")');
+    if (await skipBtn.isVisible()) {
+      await skipBtn.click();
+    } else {
+      // If skip button not visible, maybe wait for overlay to fade
+      await page.waitForSelector('.intro-overlay', { state: 'hidden', timeout: 10000 }).catch(() => {});
+    }
+
+    await page.waitForSelector('.bottom-nav', { state: 'visible' });
   });
 
   test('Should render enriched AI response with Markdown and Cards', async ({ page }) => {

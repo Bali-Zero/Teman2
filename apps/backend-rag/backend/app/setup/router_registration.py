@@ -61,6 +61,7 @@ def include_routers(api: FastAPI) -> None:
         legal_ingest,
         media,
         messaging_identity,
+        monitoring_rag,  # [NEW] RAG Retrieval Quality Monitoring
         news,
         newsletter,
         nusantara_health,
@@ -223,6 +224,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Workflow Analytics router (LangGraph workflow tracking & feedback)
     api.include_router(workflow_analytics.router)
+
+    # RAG Monitoring router (Retrieval quality metrics and alerts)
+    api.include_router(monitoring_rag.router)
 
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)

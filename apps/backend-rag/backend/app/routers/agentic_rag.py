@@ -1,5 +1,11 @@
 """
 Agentic RAG API Router
+
+Integrates A/B testing for retrieval strategy comparison.
+Experiments:
+- hybrid_vs_dense: Hybrid search vs dense-only
+- reranking_on_off: Cross-encoder reranking enabled/disabled
+- query_expansion: Query expansion enabled/disabled
 """
 
 import hashlib
@@ -22,8 +28,30 @@ from backend.app.dependencies import (
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
 from backend.services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.rag.evaluation import ABTestManager, MetricsTracker
 
 logger = logging.getLogger(__name__)
+
+# Global A/B testing components (lazy initialization)
+_ab_test_manager: ABTestManager | None = None
+_metrics_tracker: MetricsTracker | None = None
+
+
+def get_ab_test_manager() -> ABTestManager:
+    """Get or create global ABTestManager instance."""
+    global _ab_test_manager
+    if _ab_test_manager is None:
+        _metrics_tracker_instance = get_metrics_tracker()
+        _ab_test_manager = ABTestManager(metrics_tracker=_metrics_tracker_instance)
+    return _ab_test_manager
+
+
+def get_metrics_tracker() -> MetricsTracker:
+    """Get or create global MetricsTracker instance."""
+    global _metrics_tracker
+    if _metrics_tracker is None:
+        _metrics_tracker = MetricsTracker()
+    return _metrics_tracker
 
 
 def clean_image_generation_response(text: str) -> str:
@@ -162,6 +190,7 @@ class AgenticQueryResponse(BaseModel):
     tools_called: int = 0
     total_steps: int = 0
     debug_info: dict | None = None
+    ab_test: dict | None = None  # A/B test variant info
 
 
 @router.post("/query", response_model=AgenticQueryResponse)
@@ -176,6 +205,9 @@ async def query_agentic_rag(
 
     **AUTHENTICATION OPTIONAL**: Supports both logged-in and anonymous users.
     For anonymous users, uses session_id for tracking.
+    
+    **A/B TESTING**: Automatically assigns users to retrieval strategy variants
+    and records performance metrics for comparison.
     """
     # SECURITY: Use authenticated user if available, otherwise session-based
     if current_user:
@@ -188,7 +220,32 @@ async def query_agentic_rag(
         f"🔍 Sync query: user={authenticated_user_id} (authenticated: {current_user is not None})"
     )
 
+    # A/B TESTING: Assign variants and get configurations
+    ab_manager = get_ab_test_manager()
+    query_id = str(uuid.uuid4())
+    
+    # Assign variants for each experiment
+    ab_variants = {
+        "hybrid_vs_dense": ab_manager.assign_variant(authenticated_user_id, "hybrid_vs_dense"),
+        "reranking_on_off": ab_manager.assign_variant(authenticated_user_id, "reranking_on_off"),
+        "query_expansion": ab_manager.assign_variant(authenticated_user_id, "query_expansion"),
+    }
+    
+    # Get variant configurations
+    hybrid_config = ab_manager.get_variant_config("hybrid_vs_dense", ab_variants["hybrid_vs_dense"])
+    rerank_config = ab_manager.get_variant_config("reranking_on_off", ab_variants["reranking_on_off"])
+    expansion_config = ab_manager.get_variant_config("query_expansion", ab_variants["query_expansion"])
+    
+    logger.info(
+        f"🧪 A/B Test variants for {authenticated_user_id}: "
+        f"hybrid={ab_variants['hybrid_vs_dense']}, "
+        f"rerank={ab_variants['reranking_on_off']}, "
+        f"expansion={ab_variants['query_expansion']}"
+    )
+
     try:
+        query_start_time = time.time()
+        
         # Priority 1: Use conversation_history from frontend if provided
         conversation_history: list[dict] = []
 
@@ -222,6 +279,29 @@ async def query_agentic_rag(
             query_kwargs["conversation_history"] = conversation_history
 
         result = await orchestrator.process_query(**query_kwargs)
+        
+        # Calculate response time
+        response_time = time.time() - query_start_time
+
+        # A/B TESTING: Record metrics
+        metrics_to_record = {
+            "response_time": response_time,
+            "evidence_score": result.confidence_score if hasattr(result, "confidence_score") else 0.0,
+        }
+        
+        # Record metrics for each experiment
+        await ab_manager.metrics_tracker.record_query_metrics(
+            query_id=query_id,
+            user_id=authenticated_user_id,
+            experiment="hybrid_vs_dense",
+            variant=ab_variants["hybrid_vs_dense"],
+            metrics=metrics_to_record,
+            metadata={
+                "query": request.query[:100],
+                "route_used": result.route_used,
+                "document_count": result.document_count,
+            },
+        )
 
         # CoreResult is a Pydantic model, access via attributes
         return AgenticQueryResponse(
@@ -232,7 +312,19 @@ async def query_agentic_rag(
             route_used=result.route_used,
             tools_called=len(result.tools_called),
             total_steps=len(result.tools_called),
-            debug_info={"model": result.model_used, "cache_hit": result.cache_hit},
+            debug_info={
+                "model": result.model_used, 
+                "cache_hit": result.cache_hit,
+                "ab_config": {
+                    "hybrid": hybrid_config,
+                    "rerank": rerank_config,
+                    "expansion": expansion_config,
+                },
+            },
+            ab_test={
+                "query_id": query_id,
+                "variants": ab_variants,
+            },
         )
     except Exception as e:
         import traceback
@@ -750,3 +842,182 @@ async def trigger_proactivity(
             "X-Correlation-ID": correlation_id,
         },
     )
+
+
+# =============================================================================
+# A/B TESTING ENDPOINTS
+# =============================================================================
+
+class ABTestFeedbackRequest(BaseModel):
+    """Request to record user feedback for A/B testing."""
+    query_id: str
+    experiment: str
+    variant: str
+    feedback_type: str  # "thumbs_up", "thumbs_down", "click", "dismiss"
+    metadata: dict[str, Any] | None = None
+
+
+@router.post("/ab-test/feedback")
+async def record_ab_test_feedback(
+    request: ABTestFeedbackRequest,
+    current_user: dict | None = Depends(get_current_user_optional),
+):
+    """
+    Record user feedback for A/B testing metrics.
+    
+    This endpoint allows the frontend to report user interactions
+    (thumbs up/down, clicks) for measuring experiment success.
+    """
+    user_id = current_user.get("email") or current_user.get("user_id") if current_user else "anonymous"
+    
+    ab_manager = get_ab_test_manager()
+    
+    # Map feedback type to metric value
+    metric_values = {
+        "thumbs_up": 1.0,
+        "thumbs_down": 0.0,
+        "click": 1.0,
+        "dismiss": 0.0,
+    }
+    
+    metric_name = "satisfaction" if request.feedback_type in ["thumbs_up", "thumbs_down"] else "ctr"
+    value = metric_values.get(request.feedback_type, 0.0)
+    
+    await ab_manager.record_metric(
+        experiment=request.experiment,
+        variant=request.variant,
+        metric=metric_name,
+        value=value,
+        user_id=user_id,
+        query_id=request.query_id,
+        metadata=request.metadata,
+    )
+    
+    return {
+        "status": "recorded",
+        "query_id": request.query_id,
+        "experiment": request.experiment,
+        "variant": request.variant,
+        "metric": metric_name,
+        "value": value,
+    }
+
+
+@router.get("/ab-test/results/{experiment}")
+async def get_ab_test_results(
+    experiment: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get A/B test results for a specific experiment.
+    
+    Requires authentication. Returns aggregated metrics and
+    statistical significance analysis.
+    """
+    ab_manager = get_ab_test_manager()
+    
+    results = await ab_manager.get_experiment_results(experiment)
+    
+    if "error" in results:
+        raise HTTPException(status_code=404, detail=results["error"])
+    
+    return results
+
+
+@router.get("/ab-test/dashboard")
+async def get_ab_test_dashboard(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get A/B testing dashboard data.
+    
+    Returns overview of all experiments with current status,
+    sample sizes, and significance results.
+    """
+    ab_manager = get_ab_test_manager()
+    
+    dashboard = await ab_manager.get_dashboard_data()
+    
+    return dashboard
+
+
+@router.get("/ab-test/experiments")
+async def list_ab_test_experiments(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    List all available A/B test experiments.
+    
+    Returns experiment configurations without detailed results.
+    """
+    ab_manager = get_ab_test_manager()
+    
+    return {
+        "experiments": ab_manager.list_experiments(),
+    }
+
+
+class ABTestControlRequest(BaseModel):
+    """Request to enable/disable an experiment."""
+    enabled: bool
+
+
+@router.post("/ab-test/experiments/{experiment}/control")
+async def control_ab_test_experiment(
+    experiment: str,
+    request: ABTestControlRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Enable or disable an A/B test experiment.
+    
+    Requires team member access. Allows starting/stopping experiments.
+    """
+    # Check if user is team member (not client)
+    if current_user.get("role") == "client":
+        raise HTTPException(
+            status_code=403,
+            detail="Only team members can control experiments",
+        )
+    
+    ab_manager = get_ab_test_manager()
+    
+    if request.enabled:
+        success = ab_manager.enable_experiment(experiment)
+    else:
+        success = ab_manager.disable_experiment(experiment)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Experiment '{experiment}' not found")
+    
+    return {
+        "experiment": experiment,
+        "enabled": request.enabled,
+        "status": "updated",
+    }
+
+
+@router.get("/ab-test/user/{user_id}/exposure")
+async def get_user_exposure(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get experiment exposure history for a specific user.
+    
+    Useful for debugging and support.
+    """
+    # Only allow team members to check other users' exposure
+    if current_user.get("role") == "client" and user_id != current_user.get("email"):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only view your own exposure history",
+        )
+    
+    tracker = get_metrics_tracker()
+    exposure = await tracker.get_user_exposure(user_id)
+    
+    return {
+        "user_id": user_id,
+        "exposure": exposure,
+    }
