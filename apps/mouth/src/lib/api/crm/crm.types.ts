@@ -348,6 +348,147 @@ export const SERVICE_INTERESTS = [
   { value: 'other', label: 'Other' },
 ] as const;
 
+// ============================================
+// COMPANIES (Company-Centric CRM)
+// ============================================
+
+export interface Company {
+  id: number;
+  uuid: string;
+  company_name: string;
+  company_type: 'PT PMA' | 'PT Perorangan' | 'CV' | 'Other';
+  brand_name?: string;
+  kbli_code?: string;
+  kbli_description?: string;
+  nib?: string;
+  npwp_company?: string;
+  akta_pendirian_no?: string;
+  akta_pendirian_date?: string;
+  akta_perubahan_no?: string;
+  akta_perubahan_date?: string;
+  sk_menhumkam_no?: string;
+  sk_menhumkam_date?: string;
+  registered_address?: string;
+  office_address?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
+  company_phone?: string;
+  company_email?: string;
+  status: 'active' | 'dormant' | 'dissolved' | 'in_setup';
+  setup_progress: number;
+  google_drive_folder_id?: string;
+  custom_fields?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientCompanyLink {
+  link_id: number;
+  company_id: number;
+  company_name: string;
+  company_type: string;
+  role: 'Director' | 'Commissioner' | 'Shareholder' | 'Employee' | 'Agent' | 'Beneficial_Owner' | 'Authorized_Signatory';
+  is_primary: boolean;
+  ownership_percentage?: number;
+  shares_count?: number;
+  start_date?: string;
+  status: 'active' | 'resigned' | 'terminated' | 'pending';
+}
+
+export interface CompanyDocument {
+  id: number;
+  uuid: string;
+  document_type: string;
+  document_subtype?: string;
+  document_number?: string;
+  document_title?: string;
+  description?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  status: 'active' | 'expired' | 'archived' | 'pending';
+  google_drive_file_id?: string;
+  google_drive_file_url?: string;
+  file_name?: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
+export interface TaxRecord {
+  id: number;
+  uuid: string;
+  entity_type: 'client' | 'company';
+  entity_id: number;
+  npwp?: string;
+  npwp_status?: string;
+  tax_center?: string;
+  is_pph21_registered: boolean;
+  is_pph23_registered: boolean;
+  is_pph25_registered: boolean;
+  is_ppn_registered: boolean;
+  is_pph29_registered: boolean;
+  tax_year?: number;
+  reporting_period?: string;
+  next_filing_date?: string;
+  compliance_status: 'compliant' | 'overdue' | 'warning' | 'exempt';
+}
+
+export interface TaxDocument {
+  id: number;
+  uuid: string;
+  document_type: string;
+  tax_type?: string;
+  tax_year?: number;
+  tax_period?: string;
+  document_number?: string;
+  filing_date?: string;
+  reported_amount?: number;
+  paid_amount?: number;
+  status: 'filed' | 'paid' | 'corrected' | 'amended';
+  google_drive_file_id?: string;
+  file_name?: string;
+}
+
+// Company document types
+export const COMPANY_DOCUMENT_TYPES = [
+  { value: 'akta_pendirian', label: 'Akta Pendirian' },
+  { value: 'akta_perubahan', label: 'Akta Perubahan' },
+  { value: 'sk_menhumkam', label: 'SK Kemenkumham' },
+  { value: 'nib', label: 'NIB (Business ID)' },
+  { value: 'npwp', label: 'NPWP Company' },
+  { value: 'skt', label: 'SKT (Tax Registration)' },
+  { value: 'sppkp', label: 'SPPKP' },
+  { value: 'tdp', label: 'TDP' },
+  { value: 'domicile_letter', label: 'Domicile Letter' },
+  { value: 'decrees', label: 'Decrees' },
+  { value: 'licenses', label: 'Licenses' },
+  { value: 'contracts', label: 'Contracts' },
+  { value: 'others', label: 'Others' },
+] as const;
+
+// Company roles
+export const COMPANY_ROLES = [
+  { value: 'Director', label: 'Director' },
+  { value: 'Commissioner', label: 'Commissioner' },
+  { value: 'Shareholder', label: 'Shareholder' },
+  { value: 'Employee', label: 'Employee' },
+  { value: 'Agent', label: 'Agent' },
+  { value: 'Beneficial_Owner', label: 'Beneficial Owner' },
+  { value: 'Authorized_Signatory', label: 'Authorized Signatory' },
+] as const;
+
+// Tax document types
+export const TAX_DOCUMENT_TYPES = [
+  { value: 'SPT', label: 'SPT (Tax Return)' },
+  { value: 'Bukti_Potong', label: 'Bukti Potong' },
+  { value: 'SSP', label: 'SSP (Payment Slip)' },
+  { value: 'Faktur_Pajak', label: 'Faktur Pajak (Tax Invoice)' },
+  { value: 'SKT', label: 'SKT' },
+  { value: 'SPPKP', label: 'SPPKP' },
+  { value: 'Tax_Certificate', label: 'Tax Certificate' },
+  { value: 'Others', label: 'Others' },
+] as const;
+
 export interface RenewalAlert {
   id: number;
   practice_id: number;

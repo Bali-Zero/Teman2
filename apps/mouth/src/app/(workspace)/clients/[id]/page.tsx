@@ -48,6 +48,7 @@ import type {
   Client,
   DocumentCategory,
   DocumentCategoryType,
+  ClientCompanyLink,
 } from '@/lib/api/crm/crm.types';
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from '@/lib/api/crm/crm.types';
 import { cropToSquare } from '@/lib/utils/imageResize';
@@ -353,7 +354,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType = 'overview' | 'family' | 'documents' | 'process' | 'timeline';
+type TabType = 'overview' | 'family' | 'documents' | 'process' | 'timeline' | 'company' | 'tax';
 type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document' | 'edit_document';
 
 export default function ClientDetailPage() {
@@ -613,6 +614,8 @@ export default function ClientDetailPage() {
           { key: 'documents', label: `Documents (${stats.documents_count})`, icon: FileText },
           { key: 'process', label: `Process (${stats.practices_count})`, icon: FolderOpen },
           { key: 'timeline', label: 'Timeline', icon: Clock },
+          { key: 'company', label: 'Company', icon: Building2 },
+          { key: 'tax', label: 'Tax', icon: DollarSign },
         ].map(({ key, label, icon: Icon }) => (
           <Button
             key={key}
@@ -693,6 +696,14 @@ export default function ClientDetailPage() {
 
       {activeTab === 'timeline' && (
         <TimelineTab interactions={interactions} formatDate={formatDate} formatTime={formatTime} />
+      )}
+
+      {activeTab === 'company' && (
+        <CompanyTab clientId={clientId} formatDate={formatDate} />
+      )}
+
+      {activeTab === 'tax' && (
+        <TaxTab clientId={clientId} formatDate={formatDate} />
       )}
 
       {/* Modals */}
@@ -2938,5 +2949,311 @@ function EditDocumentModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+// ============================================
+// COMPANY TAB (Company-Centric CRM)
+// ============================================
+function CompanyTab({
+  clientId,
+  formatDate,
+}: {
+  clientId: number;
+  formatDate: (d: string) => string;
+}) {
+  const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadCompanies();
+  }, [clientId]);
+
+  const loadCompanies = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.crm.getClientCompanies(clientId);
+      setCompanies(data);
+    } catch (err) {
+      logger.error('Failed to load companies:', {}, err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Companies</h3>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            PT PMA, companies, and business entities
+          </p>
+        </div>
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={() => {
+            toast.info('Coming soon', { description: 'Company creation will be available shortly' });
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Add Company
+        </Button>
+      </div>
+
+      {companies.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
+          <Building2 className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
+          <p className="text-[var(--foreground-muted)]">No companies linked yet</p>
+          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+            Link this client to PT PMA or other companies
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {companies.map((company) => (
+            <div
+              key={company.company_id}
+              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-[var(--foreground)]">
+                      {company.company_name}
+                    </h4>
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      {company.company_type}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    company.status === 'active'
+                      ? 'bg-green-500/20 text-green-400'
+                      : company.status === 'in_setup'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                  }`}
+                >
+                  {company.status}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--foreground-muted)]">Role</span>
+                  <span className="font-medium">{company.role}</span>
+                </div>
+                {company.ownership_percentage !== undefined && company.ownership_percentage > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--foreground-muted)]">Ownership</span>
+                    <span className="font-medium">{company.ownership_percentage}%</span>
+                  </div>
+                )}
+                {company.nib && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--foreground-muted)]">NIB</span>
+                    <span className="font-mono text-xs">{company.nib}</span>
+                  </div>
+                )}
+                {company.kbli_code && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--foreground-muted)]">KBLI</span>
+                    <span className="text-xs">{company.kbli_code}</span>
+                  </div>
+                )}
+                {company.setup_progress > 0 && company.setup_progress < 100 && (
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-[var(--foreground-muted)]">Setup Progress</span>
+                      <span>{company.setup_progress}%</span>
+                    </div>
+                    <div className="h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                        style={{ width: `${company.setup_progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-[var(--border)] flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    toast.info('Company details', { 
+                      description: 'Full company management coming soon' 
+                    });
+                  }}
+                >
+                  View Details
+                </Button>
+                {company.is_primary && (
+                  <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">
+                    Primary
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// TAX TAB (Company-Centric CRM)
+// ============================================
+function TaxTab({
+  clientId,
+  formatDate,
+}: {
+  clientId: number;
+  formatDate: (d: string) => string;
+}) {
+  const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, [clientId]);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.crm.getClientCompanies(clientId);
+      setCompanies(data);
+    } catch (err) {
+      logger.error('Failed to load tax data:', {}, err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Tax Overview</h3>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Tax obligations and filings for linked companies
+          </p>
+        </div>
+      </div>
+
+      {/* Personal Tax Card */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
+            <User className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-[var(--foreground)]">Personal Tax</h4>
+            <p className="text-xs text-[var(--foreground-muted)]">Individual NPWP & obligations</p>
+          </div>
+        </div>
+        <div className="text-sm text-[var(--foreground-muted)]">
+          Personal tax management will be available in the next update.
+        </div>
+      </div>
+
+      {/* Company Tax Cards */}
+      {companies.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="font-medium text-[var(--foreground)]">Company Tax</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {companies.map((company) => (
+              <div
+                key={company.company_id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-[var(--foreground)]">
+                        {company.company_name}
+                      </h4>
+                      <p className="text-xs text-[var(--foreground-muted)]">{company.npwp_company || 'NPWP pending'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--foreground-muted)]">Status</span>
+                    <span className="text-emerald-400">Compliant</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--foreground-muted)]">Last Filing</span>
+                    <span className="text-[var(--foreground-muted)]">-</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--foreground-muted)]">Next Deadline</span>
+                    <span className="text-[var(--foreground-muted)]">-</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => {
+                      toast.info('Tax details', { 
+                        description: 'Full tax management coming soon' 
+                      });
+                    }}
+                  >
+                    View Tax Details
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Info Card */}
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-[var(--foreground-muted)] mt-0.5" />
+          <div>
+            <h4 className="font-medium text-[var(--foreground)]">Tax Management</h4>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1">
+              Tax document tracking and filing deadlines will be integrated here. 
+              For now, tax documents are stored in the 03_Tax folder in Google Drive.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
