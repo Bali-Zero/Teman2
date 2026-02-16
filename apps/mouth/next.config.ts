@@ -94,6 +94,56 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // ⚡ Performance: Add cache headers for static assets
+  async headers() {
+    return [
+      {
+        // Cache static assets for 1 year (immutable)
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Cache images for 1 year
+        source: '/_next/image/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Cache public assets (fonts, etc) for 1 year
+        source: '/:path*.woff2',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Add security headers
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+        ],
+      },
+    ];
+  },
+
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts
   // Do NOT add rewrites for /api/* here as they conflict with the API route handler
   // and can cause Mixed Content issues in production.
