@@ -424,6 +424,10 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
         <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
         
+        {/* ⚡ Preload critical resources */}
+        <link rel="preload" href="/_next/static/css/app/layout.css" as="style" />
+        <link rel="preload" href="/_next/static/media/GeistVariableVF.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        
         {/* AI Discovery Links -->
         <link
           rel="alternate"
