@@ -244,11 +244,13 @@ export default function NewsPage() {
                           src={article.coverImage}
                           alt={article.title}
                           fill
-                          className="object-cover object-bottom group-hover:scale-105 transition-transform duration-700"
-                          style={{ objectPosition: 'center bottom' }}
+                          className="object-cover group-hover:scale-[1.05] transition-transform duration-700"
+                          style={{
+                            objectPosition: 'center 25%', // Show only top portion with graphs
+                            transform: 'scale(1.8)', // Zoom in to crop out text at bottom
+                            transformOrigin: 'center 25%'
+                          }}
                         />
-                        {/* Dark box to completely hide text at top */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/80 to-transparent h-1/3" />
                       </div>
 
                       <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
