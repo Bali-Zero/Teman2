@@ -333,6 +333,9 @@ apps/backend-rag/backend/scripts/search_client.py
 # Lock files (use package-lock.json instead)
 pnpm-lock.yaml
 
+# Gemini CLI project config (local only)
+.gemini/
+
 # Syncthing artifacts
 *.sync-conflict-*
 .stfolder
