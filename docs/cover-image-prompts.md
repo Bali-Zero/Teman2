@@ -268,6 +268,108 @@ A foreign passport holder with tax deduction items floating around them like orb
 
 ---
 
+## BUSINESS OPERATIONS Articles (Cluster 4)
+
+Save to: `apps/mouth/public/static/insights/business/`
+
+### 82. `pt-pma-first-year-compliance.jpg`
+A baby tree planted in a pot shaped like a corporate building, with a checklist ribbon wrapping around it as it grows. First year, nurturing stage. Color palette: growth green, checklist blue, pot corporate gray, ribbon gold.
+
+### 83. `pt-pma-dormant-company.jpg`
+A sleeping corporate building with a "ZZZ" hovering above it, wrapped in cobwebs but with a small glowing ember at the base suggesting it can be revived. Color palette: dormant gray-blue, cobweb silver, ember warm amber, background midnight.
+
+### 84. `pt-pma-closure-dissolution.jpg`
+An origami corporate building gracefully unfolding back into a flat sheet of paper, with each fold releasing a small golden butterfly. Elegant end. Color palette: paper white, fold lines gold, butterflies warm amber, background soft blue.
+
+### 85. `minimum-wage-indonesia-2026.jpg`
+A map of Indonesia with each province glowing a different color based on minimum wage level - bright for high wage areas, soft for lower. A thermometer graphic on the side. Color palette: map gradient from cool blue (low) to hot red (high), ocean teal, labels white.
+
+### 86. `thr-bonus-indonesia-guide.jpg`
+A gift box bursting open with IDR banknotes flying out, surrounded by Eid/Lebaran decorative elements (crescent moon, lanterns). Celebration of the bonus. Color palette: gift box red, money green-gold, Eid gold, lantern warm amber, background festive purple.
+
+### 87. `bpjs-kesehatan-employer-guide.jpg`
+A medical cross symbol growing from a corporate building's roof like a flower, with employee silhouettes sheltered underneath. Protection and care. Color palette: medical cross green, building gray, employees warm tones, sky soft blue.
+
+### 88. `bpjs-ketenagakerjaan-employer-guide.jpg`
+Four interlocking shields (representing JKK, JKM, JHT, JP programs) forming a protective dome over a factory/office. Each shield a different color. Color palette: accident shield orange, death shield navy, retirement shield green, pension shield purple, building gray.
+
+### 89. `monthly-bookkeeping-indonesia.jpg`
+An open ledger book with pages turning into a flowing river of numbers, balanced perfectly on a traditional Balinese scale (timbangan). Harmony of old and new. Color palette: ledger cream, numbers ink blue, scale bronze, river flowing gold.
+
+### 90. `financial-statements-indonesia.jpg`
+Three transparent glass cubes stacked (Balance Sheet, P&L, Cash Flow), each containing different flowing elements - assets, revenue streams, cash drops. Crystalline and clear. Color palette: glass transparent blue, assets gold, revenue green, cash cyan, background dark.
+
+### 91. `audit-requirements-indonesia.jpg`
+A magnifying glass over a corporate building revealing its internal structure (like an X-ray), showing organized books and records inside. Nothing to hide. Color palette: magnifying glass brass, X-ray blue, internal structure gold, building stone, background dark.
+
+### 92. `accounting-software-indonesia.jpg`
+Multiple laptop screens showing different accounting interfaces, connected by flowing data streams, all converging into an Indonesian tax portal (DJP). Digital harmony. Color palette: screens various brand colors, data streams cyan, DJP portal red-white, background dark navy.
+
+### 93. `halal-certificate-bpjph-guide.jpg`
+A golden halal certification stamp descending onto a beautifully plated Indonesian dish, with BPJPH seal elements glowing. Officiality meets cuisine. Color palette: halal stamp emerald green, dish warm food tones, seal gold, background rich dark.
+
+---
+
+## PROPERTY & REAL ESTATE Articles (Cluster 5)
+
+Save to: `apps/mouth/public/static/insights/property/`
+
+### 94. `property-notary-ppat-indonesia.jpg`
+A PPAT official stamping a property deed with dramatic light rays emanating from the stamp, illuminating a land certificate and building plans. Color palette: stamp ink red, light rays gold, deed aged cream, building plans blue-line, background dark wood desk.
+
+### 95. `property-management-bali.jpg`
+A Bali villa seen through a smartphone screen showing real-time management dashboard - occupancy, revenue, maintenance alerts - while the real villa glows peacefully behind. Color palette: phone screen digital blue, villa tropical warm, dashboard elements neon accents, palm green.
+
+### 96. `construction-costs-bali-2026.jpg`
+A cross-section of a villa under construction showing layers: foundation, structure, finishing - each layer labeled with IDR costs per sqm. Architectural blueprint meets reality. Color palette: blueprint blue-white, concrete gray, finishing warm wood, cost labels gold, sky blue.
+
+### 97. `bali-property-market-trends-2026.jpg`
+A rising trend line made of tiny villa icons climbing across Bali's coastline, with price bubbles floating at different heights for different areas. Data visualization meets paradise. Color palette: trend line gold, villas white, price bubbles gradient green-to-red, ocean blue, coast sandy.
+
+### 98. `selling-property-indonesia.jpg`
+A "SOLD" sign planted triumphantly in front of a Bali villa, with document papers transforming into money flowing toward the seller. Achievement and process. Color palette: sold sign red, villa tropical, documents white, money flow gold, garden green.
+
+### 99. `property-financing-foreigners-indonesia.jpg`
+A locked treasure chest (Indonesian property) with multiple keys floating around it - labeled KPR, PT PMA, Developer Finance, Cash - only some keys glowing (viable options). Color palette: chest teak wood, viable keys gold glow, non-viable keys gray, background dramatic dark.
+
+### 100. `title-insurance-indonesia.jpg`
+A property deed floating unprotected in a storm, with a translucent shield trying to form around it but remaining incomplete. The vulnerability is the message. Color palette: deed cream, storm dark gray, incomplete shield cyan-transparent, lightning white, rain blue.
+
+### 101. `property-disputes-indonesia.jpg`
+Two figures on opposite sides of a property boundary line, each pulling it their direction. A gavel floats above as potential resolution. Dramatic tension. Color palette: figures dark silhouette, boundary line red, property green, gavel bronze, sky stormy.
+
+---
+
+## LIFESTYLE & PRACTICAL Articles (Cluster 6)
+
+Save to: `apps/mouth/public/static/insights/lifestyle/`
+
+### 102. `best-areas-bali-2026.jpg`
+A stylized map of Bali with each area represented as a distinct neighborhood vignette - Canggu (laptop+surfboard), Ubud (rice+yoga), Seminyak (cocktail+boutique), Sanur (family+calm sea). Color palette: each area its own vibrant color zone, ocean teal, Bali shape gold outline.
+
+### 103. `utilities-setup-bali.jpg`
+A modern Bali house with glowing utility lines connecting to it - electric bolt (PLN), water drop (PDAM), WiFi signal, gas flame - each in a different vibrant color. Color palette: electric yellow, water blue, WiFi cyan, gas orange, house tropical warm, garden green.
+
+### 104. `shopping-guide-bali.jpg`
+A split composition: traditional Bali market stall overflowing with tropical fruits and spices on one side, modern supermarket with imported goods on the other, connected by a shopping bag in the center. Color palette: market warm organic colors, supermarket cool clean colors, bag gold.
+
+### 105. `entertainment-bali-expats.jpg`
+A vibrant collage of Bali entertainment - beach club sunset, coworking space, yoga pose, surfboard, cocktail, gamelan - arranged in a mosaic pattern. Energy and variety. Color palette: sunset orange, ocean blue, yoga green, surf cyan, nightlife purple, culture gold.
+
+### 106. `hospitals-comparison-bali.jpg`
+Five hospital buildings in a row, each with a different size and style, with a rating system of stars floating above each. Clean comparative visual. Color palette: hospitals white with accent colors (BIMC blue, Kasih Ibu green, Siloam red, Sanglah yellow, BaliMed teal), stars gold.
+
+### 107. `pharmacies-bali-guide.jpg`
+A pharmacy counter with colorful medication bottles arranged like a Balinese offering tower, blending traditional and modern medicine. Jamu bottles next to prescription boxes. Color palette: pharmacy cross green, bottles multicolor, jamu warm brown, counter white, background soft.
+
+### 108. `dental-care-bali.jpg`
+A bright, modern dental chair with a tropical view through the window - palm trees and ocean visible. The contrast of clinical precision with Bali paradise. Color palette: dental white and teal, tropical green and blue through window, equipment silver, warm natural light.
+
+### 109. `mental-health-bali.jpg`
+A serene meditation figure surrounded by gentle concentric circles of light, set against a backdrop of both chaotic social media icons (fading) and peaceful Bali nature (brightening). Color palette: meditation figure warm gold, chaos icons fading gray, nature emerging green-blue, circles soft white.
+
+---
+
 ## Quick Reference
 
 All images should be:

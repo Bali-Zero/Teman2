@@ -455,9 +455,11 @@ n        t-test for continuous metrics (response_time, evidence_score).
         
         # Calculate relative uplift
         if control_mean != 0:
-            uplift = ((treatment_mean - control_mean) / control_mean) * 100
+            uplift = ((treatment_mean - control_mean) / abs(control_mean)) * 100
+        elif treatment_mean == 0:
+            uplift = 0.0
         else:
-            uplift = 0 if treatment_mean == 0 else float("inf")
+            uplift = float("inf") if treatment_mean > 0 else float("-inf")
         
         return {
             "significant": significant,

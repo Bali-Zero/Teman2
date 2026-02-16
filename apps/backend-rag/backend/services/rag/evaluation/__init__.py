@@ -1,17 +1,24 @@
 """
 Nuzantara RAG - Evaluation and A/B Testing Module
 
-This module provides A/B testing capabilities for comparing different
-retrieval strategies, ranking algorithms, and query processing techniques.
+This module provides A/B testing capabilities and quality monitoring for
+the RAG system, including retrieval quality metrics, alerting, and dashboards.
 
 Components:
 - ABTestManager: Core A/B testing logic with statistical significance
 - MetricsTracker: Persistent storage for experiment metrics
-- Experiment variants for hybrid search, reranking, and query expansion
+- RetrievalQualityMonitor: Real-time RAG quality monitoring and metrics
+- AlertThresholds: Configurable alert thresholds
 
 Usage:
-    from backend.services.rag.evaluation import ABTestManager, MetricsTracker
+    from backend.services.rag.evaluation import (
+        ABTestManager,
+        MetricsTracker,
+        RetrievalQualityMonitor,
+        retrieval_quality_monitor,
+    )
     
+    # A/B Testing
     ab_manager = ABTestManager()
     variant = ab_manager.assign_variant(user_id="user123", experiment="hybrid_vs_dense")
     
@@ -24,15 +31,44 @@ Usage:
         user_id="user123",
         query_id="query456"
     )
+    
+    # Monitoring
+    retrieval_quality_monitor.record_query_metrics(
+        query="test query",
+        results=results,
+        latency_ms=150.0,
+    )
 """
 
-from backend.services.rag.evaluation.ab_testing import ABTestManager, ExperimentConfig, Variant
-from backend.services.rag.evaluation.metrics_tracker import MetricsTracker, QueryMetric
+from backend.services.rag.evaluation.ab_testing import (
+    ABTestManager,
+    ExperimentConfig,
+    Variant,
+)
+from backend.services.rag.evaluation.metrics_tracker import (
+    MetricsTracker,
+    QueryMetric,
+)
+from backend.services.rag.evaluation.monitoring import (
+    AlertThresholds,
+    QueryMetricsRecord,
+    RetrievalQualityMonitor,
+    retrieval_quality_monitor,
+    get_retrieval_quality_monitor,
+)
 
 __all__ = [
+    # A/B Testing
     "ABTestManager",
-    "ExperimentConfig", 
+    "ExperimentConfig",
     "Variant",
+    # Metrics Tracking
     "MetricsTracker",
     "QueryMetric",
+    # Quality Monitoring
+    "AlertThresholds",
+    "QueryMetricsRecord",
+    "RetrievalQualityMonitor",
+    "retrieval_quality_monitor",
+    "get_retrieval_quality_monitor",
 ]
