@@ -12,6 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
+# Patch settings BEFORE importing any modules that use it
+from tests.conftest import create_mock_settings
+import backend.app.core.config
+
+# Replace settings with a proper test instance
+backend.app.core.config.settings = create_mock_settings()
+
 # Import the class to test
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 
@@ -54,10 +61,12 @@ class TestConversationTrainer:
 
         trainer = ConversationTrainer(db_pool=None)
 
+        # Use the proper Settings class to avoid MagicMock issues
+        from tests.conftest import create_mock_settings
+        mock_settings = create_mock_settings()
+
         with patch("backend.app.main_cloud.app", mock_app):
-            with patch("backend.agents.agents.conversation_trainer.settings") as mock_settings:
-                mock_settings.log_level = "INFO"
-                mock_settings.api_keys = "test-api-key"
+            with patch("backend.app.core.config.settings", mock_settings):
                 result = await trainer._get_db_pool()
 
         assert result == mock_pool
@@ -70,10 +79,12 @@ class TestConversationTrainer:
         mock_app = MagicMock()
         mock_app.state.db_pool = None
 
+        # Use the proper Settings class to avoid MagicMock issues
+        from tests.conftest import create_mock_settings
+        mock_settings = create_mock_settings()
+
         with patch("backend.app.main_cloud.app", mock_app):
-            with patch("backend.agents.agents.conversation_trainer.settings") as mock_settings:
-                mock_settings.log_level = "INFO"
-                mock_settings.api_keys = "test-api-key"
+            with patch("backend.app.core.config.settings", mock_settings):
                 with pytest.raises(RuntimeError) as exc_info:
                     await trainer._get_db_pool()
 

@@ -54,10 +54,14 @@ def mock_problematic_modules():
         "backend.services.ingestion",
         "backend.services.analytics",
         "backend.services.llm_clients",
-        "backend.services.monitoring",
         "backend.services.pricing",
     ]:
         sys.modules[m] = MagicMock()
+
+    # Special handling for monitoring to allow submodule imports
+    monitoring_mock = types.ModuleType("backend.services.monitoring")
+    monitoring_mock.__path__ = []
+    sys.modules["backend.services.monitoring"] = monitoring_mock
 
     sys.modules["qdrant_client"] = MagicMock()
 

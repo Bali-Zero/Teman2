@@ -60,7 +60,6 @@ def mock_problematic_modules():
         # Skip "backend.services.rag.agentic" - let other tests use the real module
         "backend.services.analytics",
         "backend.services.llm_clients",
-        "backend.services.monitoring",
         "backend.services.pricing",
     ]
 
@@ -73,6 +72,13 @@ def mock_problematic_modules():
         if m not in sys.modules:
             sys.modules[m] = MagicMock()
             _MOCKED_MODULES.add(m)
+
+    # Special handling for monitoring to allow submodule imports
+    if "backend.services.monitoring" not in sys.modules:
+        monitoring_mock = types.ModuleType("backend.services.monitoring")
+        monitoring_mock.__path__ = []
+        sys.modules["backend.services.monitoring"] = monitoring_mock
+        _MOCKED_MODULES.add("backend.services.monitoring")
 
     # Special handling for misc to allow submodule imports
     misc_mock = types.ModuleType("backend.services.misc")

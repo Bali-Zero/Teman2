@@ -42,53 +42,15 @@ def mock_problematic_modules():
             mock.Image.Image = MagicMock
         sys.modules[m] = mock
 
-    # Special handling for article_composer - import the real module first
-    import backend.services.article_composer as article_composer_module
+    # Mock qdrant_client BEFORE any backend imports
+    sys.modules["qdrant_client"] = MagicMock()
+    sys.modules["qdrant_client.http"] = MagicMock()
+    sys.modules["qdrant_client.http.exceptions"] = MagicMock()
 
-    # Mock backend services to avoid cascade
-    svc_mock = types.ModuleType("backend.services")
-    svc_mock.__path__ = []
-    sys.modules["backend.services"] = svc_mock
+    # Set up ALL backend.services submodules BEFORE importing article_composer
+    # This prevents import errors when article_composer triggers service imports
 
-    for m in [
-        "backend.services.oracle",
-        "backend.services.search",
-        "backend.services.rag",
-        "backend.services.rag.agentic",
-        "backend.services.ingestion",
-        "backend.services.analytics",
-        "backend.services.llm_clients",
-        "backend.services.monitoring",
-        "backend.services.pricing",
-        "qdrant_client",
-    ]:
-        sys.modules[m] = MagicMock()
-
-    # Add article_composer to the mock
-    sys.modules["backend.services.article_composer"] = article_composer_module
-    svc_mock.article_composer = article_composer_module
-
-    # Special handling for integrations (needed by other tests if this runs first)
-    integrations_mock = types.ModuleType("backend.services.integrations")
-    integrations_mock.__path__ = []
-    integrations_mock.messaging_identity_service = MagicMock()
-    integrations_mock.whatsapp_service = MagicMock()
-    integrations_mock.whatsapp_triage_service = MagicMock()
-    integrations_mock.github_publisher = MagicMock()
-    sys.modules["backend.services.integrations"] = integrations_mock
-    sys.modules["backend.services.integrations.messaging_identity_service"] = MagicMock()
-    sys.modules["backend.services.integrations.github_publisher"] = MagicMock()
-    sys.modules["backend.services.integrations.telegram_bot_service"] = MagicMock()
-    sys.modules["backend.services.integrations.whatsapp_service"] = MagicMock()
-    sys.modules["backend.services.integrations.whatsapp_triage_service"] = MagicMock()
-
-    # Special handling for memory
-    memory_mock = types.ModuleType("backend.services.memory")
-    memory_mock.__path__ = []
-    memory_mock.MemoryServicePostgres = MagicMock()
-    sys.modules["backend.services.memory"] = memory_mock
-
-    # Special handling for misc to allow submodule imports
+    # Special handling for misc to allow submodule imports (MUST be first)
     misc_mock = types.ModuleType("backend.services.misc")
     misc_mock.__path__ = []
 
@@ -197,8 +159,57 @@ def mock_problematic_modules():
     sys.modules["backend.services.routing"] = routing_mock
     sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
 
+    # Special handling for monitoring to allow submodule imports
+    monitoring_mock = types.ModuleType("backend.services.monitoring")
+    monitoring_mock.__path__ = []
+    sys.modules["backend.services.monitoring"] = monitoring_mock
 
-mock_problematic_modules()
+    # Special handling for integrations (needed by other tests if this runs first)
+    integrations_mock = types.ModuleType("backend.services.integrations")
+    integrations_mock.__path__ = []
+    integrations_mock.messaging_identity_service = MagicMock()
+    integrations_mock.whatsapp_service = MagicMock()
+    integrations_mock.whatsapp_triage_service = MagicMock()
+    integrations_mock.github_publisher = MagicMock()
+    sys.modules["backend.services.integrations"] = integrations_mock
+    sys.modules["backend.services.integrations.messaging_identity_service"] = MagicMock()
+    sys.modules["backend.services.integrations.github_publisher"] = MagicMock()
+    sys.modules["backend.services.integrations.telegram_bot_service"] = MagicMock()
+    sys.modules["backend.services.integrations.whatsapp_service"] = MagicMock()
+    sys.modules["backend.services.integrations.whatsapp_triage_service"] = MagicMock()
+
+    # Special handling for memory
+    memory_mock = types.ModuleType("backend.services.memory")
+    memory_mock.__path__ = []
+    memory_mock.MemoryServicePostgres = MagicMock()
+    sys.modules["backend.services.memory"] = memory_mock
+
+    # Special handling for article_composer - import the real module first
+    import backend.services.article_composer as article_composer_module
+
+    # Mock backend services to avoid cascade
+    svc_mock = types.ModuleType("backend.services")
+    svc_mock.__path__ = []
+    sys.modules["backend.services"] = svc_mock
+
+    for m in [
+        "backend.services.oracle",
+        "backend.services.rag",
+        "backend.services.rag.agentic",
+        "backend.services.analytics",
+        "backend.services.llm_clients",
+        "backend.services.pricing",
+    ]:
+        sys.modules[m] = MagicMock()
+
+    # Add article_composer to the mock
+    sys.modules["backend.services.article_composer"] = article_composer_module
+    svc_mock.article_composer = article_composer_module
+
+    return article_composer_module
+
+
+article_composer_module = mock_problematic_modules()
 
 from backend.app.routers.article_composer import (  # noqa: E402
     BaliZeroTake,
