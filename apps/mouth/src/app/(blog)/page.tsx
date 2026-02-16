@@ -687,7 +687,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "KBLI 2025: What Changed for Foreign Investors",
     excerpt:
       "The new KBLI 2025 classification system brings significant changes for foreign businesses operating in Indonesia. From restructured categories to updated PMA restrictions, understand what the 1,562 codes mean for your business strategy.",
-    coverImage: "/images/article-1-kbli-changes.png",
+    coverImage: "/images/kbli-changes-vibrant.jpg",
     category: "business",
     author: {
       id: "zantara-ai",
@@ -709,7 +709,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "High-Risk vs Low-Risk Business Codes Explained",
     excerpt:
       "KBLI 2025 introduces a sophisticated 4-level risk assessment system that directly impacts foreign worker permits, investment requirements, and compliance obligations. Learn how L, ML, MH, and H classifications affect your operations.",
-    coverImage: "/images/article-2-risk-levels.png",
+    coverImage: "/images/kbli-risk-vibrant.jpg",
     category: "immigration",
     author: {
       id: "zantara-ai",
@@ -731,7 +731,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "Finding Your Perfect KBLI Code in 30 Seconds",
     excerpt:
       "With 1,562 codes to choose from, finding the right classification can feel overwhelming. Our KBLI Navigator uses AI-powered search and intelligent categorization to help you identify the perfect code—fast.",
-    coverImage: "/images/article-3-finding-code.png",
+    coverImage: "/images/kbli-search-vibrant.jpg",
     category: "business",
     author: {
       id: "zantara-ai",
