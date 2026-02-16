@@ -332,3 +332,27 @@ apps/backend-rag/backend/scripts/search_client.py
 
 # Lock files (use package-lock.json instead)
 pnpm-lock.yaml
+
+# Syncthing artifacts
+*.sync-conflict-*
+.stfolder
+.stignore
+.stversions/
+
+# GIS/scraping one-off scripts (not part of project)
+mission_*.py
+scan_geonode*.json
+scan_rosetta.json
+scan_interactive.json
+heist_catalog.json
+
+# Misc root artifacts
+AI_CONFIG_DEPLOYMENT_LOG.md
+npm
+*.png.sync-conflict-*
+apps/backend-rag/MagicMock/
+apps/backend-rag/scripts/zantara_expert_test.py
+.antigravity/
+.launchd-test
+.sync-test
+.syncthing-restart-test
