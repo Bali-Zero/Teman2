@@ -56,6 +56,16 @@ from backend.services.rag.evaluation.monitoring import (
     retrieval_quality_monitor,
     get_retrieval_quality_monitor,
 )
+from backend.services.rag.evaluation.ragas_evaluator import (
+    RAGASEvaluator,
+    EvaluationResult,
+    get_ragas_evaluator,
+)
+from backend.services.rag.evaluation.benchmark import (
+    RAGBenchmark,
+    BenchmarkResult,
+    run_weekly_benchmark,
+)
 
 __all__ = [
     # A/B Testing
@@ -71,4 +81,12 @@ __all__ = [
     "RetrievalQualityMonitor",
     "retrieval_quality_monitor",
     "get_retrieval_quality_monitor",
+    # RAGAS Evaluation
+    "RAGASEvaluator",
+    "EvaluationResult",
+    "get_ragas_evaluator",
+    # Benchmark
+    "RAGBenchmark",
+    "BenchmarkResult",
+    "run_weekly_benchmark",
 ]

@@ -11,6 +11,7 @@ import {
   FinancialRealityWidget,
   AutoCRMWidget,
   FeaturedArticlesWidget,
+  HomepagePreviewWidget,
 } from '@/components/dashboard';
 import type { PraticaPreview, WhatsAppMessage } from '@/components/dashboard';
 import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
@@ -224,6 +225,11 @@ export default function DashboardPage() {
         {/* Admin-only widgets */}
         {isZero && (
           <>
+            {/* Bali Zero Homepage Live Preview */}
+            <div className="animate-in fade-in slide-in-from-top-4 duration-700">
+              <HomepagePreviewWidget />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
               <div className="flex flex-col gap-6">
                 <Link
