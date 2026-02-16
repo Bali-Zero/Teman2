@@ -239,17 +239,13 @@ export default function NewsPage() {
                 >
                   <Link href="/kbli-navigator">
                     <article className="group">
-                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
+                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
                         <Image
                           src={article.coverImage}
                           alt={article.title}
                           fill
-                          className="object-cover group-hover:scale-[1.05] transition-transform duration-700"
-                          style={{
-                            objectPosition: 'center 25%', // Show only top portion with graphs
-                            transform: 'scale(1.8)', // Zoom in to crop out text at bottom
-                            transformOrigin: 'center 25%'
-                          }}
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
+                          style={{ objectPosition: 'center center' }}
                         />
                       </div>
 

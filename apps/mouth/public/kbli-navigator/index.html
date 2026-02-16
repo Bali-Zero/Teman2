@@ -2288,10 +2288,6 @@ input, textarea { font-family: inherit; }
         </div>
 <!-- PODCAST PLAYER -->
     <div class="podcast-player">
-      <audio id="podcast-audio" preload="metadata">
-        <source src="/audio/kbli-2025-podcast.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
-      </audio>
       <div class="podcast-inner">
         <div class="podcast-artwork">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -2304,13 +2300,13 @@ input, textarea { font-family: inherit; }
           <div class="podcast-title">Surviving Indonesia&rsquo;s KBLI 2025 Licensing Reset</div>
           <p class="podcast-subtitle">Zero &bull; 17:46 &bull; The essential audio briefing for foreign investors</p>
           <div class="podcast-controls">
-            <button class="podcast-play-btn" id="podcast-play-btn" onclick="togglePodcast()">
-              <svg width="16" height="16" viewBox="0 0 24 24" id="podcast-icon"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <button class="podcast-play-btn" onclick="this.querySelector('svg').innerHTML=this.querySelector('svg').innerHTML.includes('polygon')?'<rect x=\'6\' y=\'4\' width=\'4\' height=\'16\'/><rect x=\'14\' y=\'4\' width=\'4\' height=\'16\'/>':'<polygon points=\'5 3 19 12 5 21 5 3\'/>'">
+              <svg width="16" height="16" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
-            <div class="podcast-waveform" onclick="seekPodcast(event)">
+            <div class="podcast-waveform">
               <div class="waveform-bars"><div class="bar" style="height:24px"></div><div class="bar" style="height:7px"></div><div class="bar" style="height:4px"></div><div class="bar" style="height:27px"></div><div class="bar" style="height:12px"></div><div class="bar" style="height:11px"></div><div class="bar" style="height:11px"></div><div class="bar" style="height:8px"></div><div class="bar" style="height:27px"></div><div class="bar" style="height:7px"></div><div class="bar" style="height:25px"></div><div class="bar" style="height:27px"></div><div class="bar" style="height:21px"></div><div class="bar" style="height:6px"></div><div class="bar" style="height:22px"></div><div class="bar" style="height:17px"></div><div class="bar" style="height:5px"></div><div class="bar" style="height:4px"></div><div class="bar" style="height:6px"></div><div class="bar" style="height:10px"></div><div class="bar" style="height:11px"></div><div class="bar" style="height:20px"></div><div class="bar" style="height:23px"></div><div class="bar" style="height:4px"></div><div class="bar" style="height:21px"></div><div class="bar" style="height:10px"></div><div class="bar" style="height:26px"></div><div class="bar" style="height:24px"></div><div class="bar" style="height:26px"></div><div class="bar" style="height:21px"></div><div class="bar" style="height:17px"></div><div class="bar" style="height:11px"></div><div class="bar" style="height:18px"></div><div class="bar" style="height:22px"></div><div class="bar" style="height:12px"></div><div class="bar" style="height:4px"></div><div class="bar" style="height:28px"></div><div class="bar" style="height:9px"></div><div class="bar" style="height:26px"></div><div class="bar" style="height:17px"></div><div class="bar" style="height:14px"></div><div class="bar" style="height:12px"></div><div class="bar" style="height:8px"></div><div class="bar" style="height:10px"></div><div class="bar" style="height:28px"></div><div class="bar" style="height:14px"></div><div class="bar" style="height:7px"></div><div class="bar" style="height:6px"></div><div class="bar" style="height:16px"></div><div class="bar" style="height:7px"></div><div class="bar" style="height:15px"></div><div class="bar" style="height:15px"></div><div class="bar" style="height:23px"></div><div class="bar" style="height:12px"></div><div class="bar" style="height:5px"></div></div>
-              <div class="podcast-progress" id="podcast-progress"><div class="podcast-progress-fill" id="podcast-progress-fill"></div></div>
-              <div class="podcast-time"><span id="podcast-current-time">0:00</span><span id="podcast-duration">17:46</span></div>
+              <div class="podcast-progress"><div class="podcast-progress-fill"></div></div>
+              <div class="podcast-time"><span>0:00</span><span>17:46</span></div>
             </div>
           </div>
         </div>
@@ -3118,55 +3114,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
 // Set Home active on load
 document.querySelector('.nav-item[data-section="welcome"]').classList.add('active');
-
-// Podcast player functionality
-const podcastAudio = document.getElementById('podcast-audio');
-const podcastPlayBtn = document.getElementById('podcast-play-btn');
-const podcastIcon = document.getElementById('podcast-icon');
-const podcastProgressFill = document.getElementById('podcast-progress-fill');
-const podcastCurrentTime = document.getElementById('podcast-current-time');
-const podcastDuration = document.getElementById('podcast-duration');
-
-function togglePodcast() {
-  if (podcastAudio.paused) {
-    podcastAudio.play();
-    podcastIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-  } else {
-    podcastAudio.pause();
-    podcastIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
-  }
-}
-
-function seekPodcast(event) {
-  const progressBar = event.currentTarget;
-  const rect = progressBar.getBoundingClientRect();
-  const percent = (event.clientX - rect.left) / rect.width;
-  podcastAudio.currentTime = percent * podcastAudio.duration;
-}
-
-function formatTime(seconds) {
-  if (isNaN(seconds)) return '0:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return mins + ':' + (secs < 10 ? '0' : '') + secs;
-}
-
-// Update progress bar and time
-podcastAudio.addEventListener('timeupdate', function() {
-  const percent = (podcastAudio.currentTime / podcastAudio.duration) * 100;
-  podcastProgressFill.style.width = percent + '%';
-  podcastCurrentTime.textContent = formatTime(podcastAudio.currentTime);
-});
-
-// Update duration when metadata is loaded
-podcastAudio.addEventListener('loadedmetadata', function() {
-  podcastDuration.textContent = formatTime(podcastAudio.duration);
-});
-
-// Reset play button when audio ends
-podcastAudio.addEventListener('ended', function() {
-  podcastIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
-});
 
 // Chat panel
 const chatPanel = document.getElementById('chatPanel');

@@ -1,5 +1,6 @@
 # Bali Zero - Visa & Business Experts in Bali, Indonesia
 # https://balizero.com
+# Updated: 2026-02-16
 
 # Allow all search engines
 User-agent: *
@@ -21,7 +22,7 @@ Allow: /
 Crawl-delay: 1
 
 User-agent: Googlebot-Image
-Allow: /images/
+Allow: /static/
 
 # Bing
 User-agent: Bingbot
@@ -30,29 +31,32 @@ Crawl-delay: 1
 
 # ============================================
 # AI CRAWLERS - WELCOME!
-# We want AI systems to understand our content
+# We want AI systems to cite our content
 # ============================================
 
-# OpenAI / ChatGPT
+# OpenAI / ChatGPT Search
 User-agent: GPTBot
 Allow: /
-Allow: /immigration/
-Allow: /business/
-Allow: /tax-legal/
-Allow: /property/
-Allow: /lifestyle/
-Allow: /services/
+Crawl-delay: 2
 
-# OpenAI ChatGPT Plugins
 User-agent: ChatGPT-User
 Allow: /
 
-# Anthropic / Claude
-User-agent: Claude-Web
+User-agent: OAI-SearchBot
 Allow: /
-Allow: /immigration/
-Allow: /business/
-Allow: /services/
+Crawl-delay: 2
+
+# Anthropic / Claude
+User-agent: ClaudeBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+Crawl-delay: 2
 
 User-agent: anthropic-ai
 Allow: /
@@ -60,12 +64,14 @@ Allow: /
 # Perplexity AI
 User-agent: PerplexityBot
 Allow: /
-Allow: /immigration/
-Allow: /business/
-Allow: /services/
+Crawl-delay: 2
 
-# Google Gemini / Bard
+# Google Gemini / AI Overview (allow for AI visibility)
 User-agent: Google-Extended
+Allow: /
+
+# Microsoft Copilot
+User-agent: Applebot-Extended
 Allow: /
 
 # Meta AI
@@ -75,7 +81,7 @@ Allow: /
 User-agent: Meta-ExternalAgent
 Allow: /
 
-# Common Crawl (used by many AI training)
+# Common Crawl (used by many AI training datasets)
 User-agent: CCBot
 Allow: /
 
@@ -84,12 +90,10 @@ User-agent: cohere-ai
 Allow: /
 
 # ============================================
-# SITEMAPS
+# SITEMAPS & AI CONTEXT
 # ============================================
 
 Sitemap: https://balizero.com/sitemap.xml
 
-# ============================================
-# LLMs.txt for AI Context
-# ============================================
-# See: /llms.txt for structured AI context
+# LLMs.txt for AI-structured context
+# See: https://balizero.com/llms.txt
