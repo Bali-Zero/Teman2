@@ -146,10 +146,14 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     Decide next step after query understanding.
 
     Routing logic:
-    1. Check if domain-specific subgraph (company, visa, property, tax) → route to subgraph
-    2. Check if intent matches golden route → use_golden_route
-    3. If complex query (multiple entities) → resolve_entities
-    4. If simple query → fallback_to_vector (END)
+    1. Check domain field (visa, tax, property) → route to appropriate subgraph
+    2. Check if domain-specific subgraph (company, visa, property, tax) → route to subgraph
+    3. Check if intent matches golden route → use_golden_route
+    4. If complex query (multiple entities) → resolve_entities
+    5. If simple query → fallback_to_vector (END)
+
+    CRITICAL: Visa/Tax/Property queries should NEVER be routed to KBLI resolution.
+    They should always go to their respective subgraphs.
 
     Args:
         state: Current KGAgentState
@@ -159,14 +163,33 @@ def route_after_query_understanding(state: KGAgentState) -> str:
                         "tax_subgraph" | "use_golden_route" | "resolve_entities" | "END"
     """
     intent = state.get("intent")
+    domain = state.get("domain", "general")
     entities_count = len(state.get("extracted_entities", []))
     query_lower = state.get("query", "").lower()
 
     logger.info(
-        f"🔀 [Router] After understand_query: intent={intent}, entities={entities_count}"
+        f"🔀 [Router] After understand_query: intent={intent}, domain={domain}, entities={entities_count}"
     )
 
-    # Phase 3: Domain-Specific Subgraph Routing
+    # PHASE 1: Domain-based routing (highest priority)
+    # This ensures visa/tax/property queries NEVER go to KBLI resolution
+    if domain == "visa":
+        logger.info(f"🛂 [Router] Domain='visa', routing to VisaSubgraph")
+        return "visa_subgraph"
+    
+    if domain == "tax":
+        logger.info(f"🧾 [Router] Domain='tax', routing to TaxSubgraph")
+        return "tax_subgraph"
+    
+    if domain == "property":
+        logger.info(f"🏠 [Router] Domain='property', routing to PropertySubgraph")
+        return "property_subgraph"
+    
+    if domain == "company" or domain == "kbli":
+        logger.info(f"🏢 [Router] Domain='{domain}', routing to CompanySubgraph")
+        return "company_subgraph"
+
+    # PHASE 2: Intent-based routing (fallback)
     # Company setup queries
     company_keywords = ["pt pma", "pt lokal", "perorangan", "cv", "company", "azienda", "società"]
     if intent in ["company_setup", "pt_pma_setup", "business_formation"] or \
@@ -176,36 +199,38 @@ def route_after_query_understanding(state: KGAgentState) -> str:
 
     # Visa/immigration queries
     visa_keywords = ["kitas", "kitap", "vitas", "visa", "work permit", "rptka", "immigration"]
-    if intent in ["visa_application", "kitas_work", "immigration"] or \
+    if intent in ["visa_application", "kitas_work", "immigration", "visa"] or \
        any(kw in query_lower for kw in visa_keywords):
         logger.info(f"🛂 [Router] Visa-related query, routing to VisaSubgraph")
         return "visa_subgraph"
 
     # Property queries
     property_keywords = ["property", "villa", "hak pakai", "hgb", "hak milik", "rental", "real estate"]
-    if intent in ["property_acquisition", "property_purchase"] or \
+    if intent in ["property_acquisition", "property_purchase", "property"] or \
        any(kw in query_lower for kw in property_keywords):
         logger.info(f"🏠 [Router] Property-related query, routing to PropertySubgraph")
         return "property_subgraph"
 
     # Tax queries
     tax_keywords = ["tax", "pph", "ppn", "npwp", "pajak", "tasse", "fiscal", "vat"]
-    if intent in ["tax_compliance", "npwp_registration"] or \
+    if intent in ["tax_compliance", "npwp_registration", "tax"] or \
        any(kw in query_lower for kw in tax_keywords):
         logger.info(f"🧾 [Router] Tax-related query, routing to TaxSubgraph")
         return "tax_subgraph"
 
-    # Check if golden route exists for this intent
+    # PHASE 3: Golden route matching
     golden_route_intents = ["pt_pma_setup", "kitas_work", "nib_oss", "npwp_registration"]
     if intent in golden_route_intents:
         logger.info(f"✅ [Router] Routing to golden route for intent: {intent}")
         return "use_golden_route"
 
+    # PHASE 4: Complex query routing
     # Complex query with multiple entities → graph traversal
     if entities_count >= 2 or "AND" in state["query"].upper():
         logger.info(f"✅ [Router] Complex query detected, routing to graph traversal")
         return "resolve_entities"
 
+    # PHASE 5: Simple query fallback
     # Simple query → skip graph, use vector search (terminate workflow)
     logger.info(f"✅ [Router] Simple query, terminating (fallback to vector search)")
     return END

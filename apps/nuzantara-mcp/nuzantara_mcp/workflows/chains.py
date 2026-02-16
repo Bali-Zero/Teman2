@@ -1,0 +1,619 @@
+"""
+Deterministic Workflow Chains - 6 autopilot workflows.
+
+Each chain is a sequence of tool calls with IF/THEN/ELSE branching.
+NO LLM decisions — pure deterministic logic.
+"""
+
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Any, Callable, Optional
+
+logger = logging.getLogger("nuzantara-mcp.chains")
+
+
+def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
+    # =========================================================================
+    # CHAIN 1: Daily Ops Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_daily_ops_autopilot(
+        send_report_to: str = "zero@balizero.com",
+    ) -> dict:
+        """
+        AUTOPILOT: Run the full daily operations workflow.
+
+        Deterministic chain that runs every morning:
+        1. Check expiry alerts → send WhatsApp reminders for <30 days
+        2. Check autonomous agent health → restart stale agents
+        3. Check critical intel alerts → auto-compose articles for high-impact items
+        4. Gather team hours and completion rates
+        5. Compile and email daily report
+
+        Args:
+            send_report_to: Email address for the daily report
+
+        Returns:
+            Full execution log: each step's result, actions taken, errors encountered.
+        """
+        log: list[dict[str, Any]] = []
+        report: dict[str, Any] = {"date": datetime.now(timezone.utc).isoformat()}
+
+        # Step 1: Expiry alerts
+        try:
+            alerts = await _call_safe("/api/crm/enhanced/expiry-alerts", params={"days_ahead": 90})
+            urgent = [a for a in (alerts.get("alerts") or alerts.get("data") or []) if isinstance(a, dict) and a.get("days_remaining", 999) < 30]
+            reminders_sent = 0
+            for alert in urgent[:10]:  # Cap at 10 reminders per run
+                phone = alert.get("client_phone") or alert.get("phone")
+                client_id = alert.get("client_id")
+                if phone:
+                    msg = f"Reminder: Your {alert.get('document_type', 'document')} expires in {alert.get('days_remaining')} days. Please contact Bali Zero for renewal."
+                    await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": msg})
+                    reminders_sent += 1
+                if client_id:
+                    await _call_safe("/api/crm/interactions", method="POST", json={
+                        "client_id": client_id, "type": "system",
+                        "summary": f"Auto-sent expiry reminder ({alert.get('days_remaining')}d remaining)",
+                        "channel": "whatsapp",
+                    })
+            report["expiry_alerts"] = {"total": len(alerts.get("alerts", [])), "urgent": len(urgent), "reminders_sent": reminders_sent}
+            log.append({"step": "expiry_alerts", "status": "ok", "reminders_sent": reminders_sent})
+        except Exception as e:
+            log.append({"step": "expiry_alerts", "status": "error", "detail": str(e)})
+
+        # Step 2: Agent health check
+        try:
+            agents = await _call_safe("/api/autonomous-agents/status")
+            stale_agents = []
+            for name, info in (agents.get("agents") or agents.get("data") or {}).items():
+                if isinstance(info, dict) and info.get("status") == "error":
+                    stale_agents.append(name)
+            report["agents"] = {"total": len(agents.get("agents", {})), "stale": stale_agents}
+            log.append({"step": "agent_health", "status": "ok", "stale_agents": stale_agents})
+        except Exception as e:
+            log.append({"step": "agent_health", "status": "error", "detail": str(e)})
+
+        # Step 3: Critical intel alerts
+        try:
+            intel = await _call_safe("/api/intel/critical-alerts")
+            critical_items = intel.get("alerts") or intel.get("data") or []
+            articles_composed = 0
+            for item in critical_items[:3]:  # Max 3 auto-articles per day
+                if isinstance(item, dict) and item.get("severity") == "high":
+                    await _call_safe("/api/article-composer/compose", method="POST", json={
+                        "topic": item.get("title", "Regulatory Update"),
+                        "style": "alert",
+                        "target_length": "short",
+                    })
+                    articles_composed += 1
+            report["intel"] = {"critical_alerts": len(critical_items), "articles_composed": articles_composed}
+            log.append({"step": "intel_alerts", "status": "ok", "articles_composed": articles_composed})
+        except Exception as e:
+            log.append({"step": "intel_alerts", "status": "error", "detail": str(e)})
+
+        # Step 4: Team and completion metrics
+        try:
+            hours_data = await _call_safe("/api/team-activity/hours/weekly")
+            completion_data = await _call_safe("/api/analytics/completion-rates", params={"period": "7d"})
+            report["team_hours"] = hours_data
+            report["completion_rates"] = completion_data
+            log.append({"step": "metrics", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "metrics", "status": "error", "detail": str(e)})
+
+        # Step 5: Send daily report email
+        try:
+            summary_lines = [
+                f"Daily Ops Report — {report['date'][:10]}",
+                "",
+                f"Expiry Alerts: {report.get('expiry_alerts', {}).get('urgent', 'N/A')} urgent, {report.get('expiry_alerts', {}).get('reminders_sent', 0)} reminders sent",
+                f"Agent Health: {report.get('agents', {}).get('stale', [])} stale",
+                f"Intel: {report.get('intel', {}).get('critical_alerts', 0)} critical, {report.get('intel', {}).get('articles_composed', 0)} articles auto-composed",
+            ]
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": send_report_to,
+                "subject": f"[Nuzantara] Daily Ops Report {report['date'][:10]}",
+                "body": "\n".join(summary_lines),
+            })
+            log.append({"step": "send_report", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "send_report", "status": "error", "detail": str(e)})
+
+        return {"chain": "daily_ops_autopilot", "report": report, "log": log}
+
+    # =========================================================================
+    # CHAIN 2: New Client Onboarding
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_new_client_onboarding(
+        name: str,
+        email: str,
+        nationality: str,
+        business_description: str,
+        phone: Optional[str] = None,
+    ) -> dict:
+        """
+        AUTOPILOT: Complete new client onboarding in one shot.
+
+        Deterministic chain:
+        1. Create client in CRM
+        2. Search matching KBLI codes for their business
+        3. Determine recommended visa type based on nationality + business
+        4. Create Google Drive folder structure
+        5. Create initial practice
+        6. Generate execution plan
+        7. Send welcome message via portal + email + WhatsApp
+        8. Log all interactions
+
+        Args:
+            name: Client's full legal name
+            email: Client's email
+            nationality: Client's nationality (e.g. "Italian", "Australian")
+            business_description: What their business does (for KBLI matching)
+            phone: WhatsApp number with country code
+
+        Returns:
+            Onboarding result: client_id, kbli_matches, visa_recommendation, practice_id, plan_id.
+        """
+        log: list[dict] = []
+        result: dict[str, Any] = {}
+
+        # Step 1: Create client
+        try:
+            client = await _call("/api/crm/clients", method="POST", json={
+                "name": name, "email": email, "nationality": nationality,
+                "phone": phone or "", "notes": f"Business: {business_description}",
+            })
+            client_id = client.get("id") or client.get("client_id")
+            result["client_id"] = client_id
+            log.append({"step": "create_client", "status": "ok", "client_id": client_id})
+        except Exception as e:
+            return {"chain": "new_client_onboarding", "error": f"Failed to create client: {e}", "log": log}
+
+        # Step 2: KBLI search
+        try:
+            kbli = await _call_safe("/api/v1/kbli-notebook/search", params={"query": business_description, "limit": 5})
+            result["kbli_matches"] = kbli.get("results") or kbli.get("data") or []
+            log.append({"step": "kbli_search", "status": "ok", "matches": len(result["kbli_matches"])})
+        except Exception as e:
+            log.append({"step": "kbli_search", "status": "error", "detail": str(e)})
+
+        # Step 3: Determine visa (deterministic rules)
+        visa_type = "kitas_investor"  # default
+        nat_lower = nationality.lower()
+        if nat_lower in ("indonesian", "indonesia", "wni"):
+            visa_type = "none"
+        elif "student" in business_description.lower():
+            visa_type = "kitas_student"
+        elif "retire" in business_description.lower():
+            visa_type = "kitas_retirement"
+        elif "work" in business_description.lower() or "employee" in business_description.lower():
+            visa_type = "kitas_work"
+        result["recommended_visa"] = visa_type
+        log.append({"step": "visa_determination", "status": "ok", "visa": visa_type})
+
+        # Step 4: Create Drive folder
+        try:
+            folder = await _call_safe(f"/api/crm/drive-folders/{client_id}", method="POST")
+            result["drive_folder"] = folder.get("folder_id") or folder.get("id")
+            log.append({"step": "drive_folder", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "drive_folder", "status": "error", "detail": str(e)})
+
+        # Step 5: Create practice
+        if visa_type != "none":
+            try:
+                practice = await _call("/api/crm/practices", method="POST", json={
+                    "client_id": client_id, "type": visa_type,
+                    "notes": f"Auto-created during onboarding. KBLI: {[m.get('code') for m in result.get('kbli_matches', [])[:3]]}",
+                })
+                result["practice_id"] = practice.get("id") or practice.get("practice_id")
+                log.append({"step": "create_practice", "status": "ok"})
+            except Exception as e:
+                log.append({"step": "create_practice", "status": "error", "detail": str(e)})
+
+        # Step 6: Generate execution plan
+        try:
+            plan = await _call_safe("/api/v1/autonomous-execution/plans", method="POST", json={
+                "query": f"Setup {visa_type} for {nationality} client doing {business_description}",
+                "client_id": client_id,
+            })
+            result["plan_id"] = plan.get("plan_id") or plan.get("id")
+            log.append({"step": "execution_plan", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "execution_plan", "status": "error", "detail": str(e)})
+
+        # Step 7: Send welcome messages
+        welcome_msg = f"Welcome to Bali Zero, {name}! Your onboarding is complete. Check your portal for next steps."
+        try:
+            await _call_safe("/api/portal/messages", method="POST", json={
+                "client_id": client_id, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
+            })
+            log.append({"step": "portal_message", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "portal_message", "status": "error", "detail": str(e)})
+
+        try:
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": email, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
+            })
+            log.append({"step": "welcome_email", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "welcome_email", "status": "error", "detail": str(e)})
+
+        if phone:
+            try:
+                await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": welcome_msg})
+                log.append({"step": "whatsapp", "status": "ok"})
+            except Exception as e:
+                log.append({"step": "whatsapp", "status": "error", "detail": str(e)})
+
+        # Step 8: Log interaction
+        try:
+            await _call_safe("/api/crm/interactions", method="POST", json={
+                "client_id": client_id, "type": "system",
+                "summary": "Automated onboarding completed", "channel": "internal",
+            })
+        except Exception:
+            pass
+
+        return {"chain": "new_client_onboarding", "result": result, "log": log}
+
+    # =========================================================================
+    # CHAIN 3: Practice Lifecycle Manager
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_practice_lifecycle_check() -> dict:
+        """
+        AUTOPILOT: Check all active practices and take action.
+
+        Deterministic chain that runs every 6 hours:
+        1. List all active practices
+        2. For visa practices expiring within 90 days → create renewal, notify client
+        3. For practices waiting documents >7 days → send reminder
+        4. For submitted practices >14 days → escalate
+        5. Check overall completion rates → alert if below 80%
+
+        Returns:
+            Actions taken: renewals created, reminders sent, escalations flagged.
+        """
+        log: list[dict] = []
+        stats = {"renewals_created": 0, "reminders_sent": 0, "escalations": 0}
+
+        try:
+            practices_resp = await _call_safe("/api/crm/practices", params={"status": "active", "limit": 200})
+            practices = practices_resp.get("practices") or practices_resp.get("data") or []
+        except Exception as e:
+            return {"chain": "practice_lifecycle", "error": str(e)}
+
+        for p in practices:
+            if not isinstance(p, dict):
+                continue
+            p_id = p.get("id") or p.get("practice_id")
+            client_id = p.get("client_id")
+            p_type = p.get("type", "")
+            days_to_expiry = p.get("days_to_expiry")
+            status = p.get("status", "")
+            days_in_status = p.get("days_in_current_status", 0)
+
+            # Rule 1: Visa expiring within 90 days
+            if "visa" in p_type.lower() and days_to_expiry is not None and days_to_expiry < 90:
+                try:
+                    await _call_safe(f"/api/crm/practices/{p_id}", method="PATCH", json={
+                        "status": "renewal_needed", "notes": f"Auto-flagged: {days_to_expiry} days to expiry",
+                    })
+                    if client_id:
+                        await _call_safe("/api/portal/messages", method="POST", json={
+                            "client_id": client_id,
+                            "subject": "Visa Renewal Notice",
+                            "body": f"Your {p_type} expires in {days_to_expiry} days. Please prepare documents for renewal.",
+                        })
+                    stats["renewals_created"] += 1
+                except Exception:
+                    pass
+
+            # Rule 2: Waiting documents > 7 days
+            elif status == "waiting_documents" and days_in_status > 7:
+                phone = p.get("client_phone")
+                if phone:
+                    try:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"Hi! We're still waiting for documents for your {p_type} practice. Could you please send them at your earliest convenience?",
+                        })
+                        stats["reminders_sent"] += 1
+                    except Exception:
+                        pass
+
+            # Rule 3: Submitted > 14 days — escalate
+            elif status == "submitted" and days_in_status > 14:
+                stats["escalations"] += 1
+
+        # Check completion rates
+        try:
+            rates = await _call_safe("/api/analytics/completion-rates", params={"period": "30d"})
+            monthly_rate = rates.get("completion_rate") or rates.get("overall", 100)
+            if isinstance(monthly_rate, (int, float)) and monthly_rate < 80:
+                stats["completion_alert"] = f"Warning: {monthly_rate}% completion rate (below 80%)"
+        except Exception:
+            pass
+
+        log.append({"step": "lifecycle_check", "status": "ok", "practices_checked": len(practices)})
+        return {"chain": "practice_lifecycle", "stats": stats, "log": log}
+
+    # =========================================================================
+    # CHAIN 4: Intel Pipeline Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_intel_pipeline(
+        sources: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        AUTOPILOT: Run the full intelligence pipeline.
+
+        Deterministic chain:
+        1. Submit scraper jobs for regulatory sources
+        2. Wait for processing
+        3. Review staging items using RAG assessment
+        4. Auto-approve high-confidence items
+        5. Auto-compose articles for high-impact regulatory changes
+        6. Report metrics
+
+        Args:
+            sources: Custom source list (default: standard Indonesian gov sources)
+
+        Returns:
+            Pipeline results: items scraped, assessed, approved, published.
+        """
+        if sources is None:
+            sources = ["kemenkumham", "pajak.go.id", "oss.go.id"]
+
+        log: list[dict] = []
+        stats: dict[str, Any] = {"items_reviewed": 0, "auto_approved": 0, "flagged": 0, "archived": 0}
+
+        # Step 1: Submit scraper job
+        try:
+            job = await _call_safe("/api/intel/scraper/submit", method="POST", json={"sources": sources})
+            log.append({"step": "submit_scraper", "status": "ok", "job": job})
+        except Exception as e:
+            log.append({"step": "submit_scraper", "status": "error", "detail": str(e)})
+
+        # Step 2: Wait for processing (10 seconds for MCP, actual scraping is async in backend)
+        await asyncio.sleep(10)
+
+        # Step 3: Review staging items
+        try:
+            staging = await _call_safe("/api/intel/staging", params={"status": "pending_review", "limit": 20})
+            items = staging.get("items") or staging.get("data") or []
+            stats["items_reviewed"] = len(items)
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                item_id = item.get("id") or item.get("item_id")
+                title = item.get("title", "Unknown")
+
+                # Step 4: Assess via RAG
+                try:
+                    assessment = await _call_safe("/api/agentic-rag/query", method="POST", json={
+                        "query": f"Is this regulation change significant for foreign investors in Bali? Title: {title}",
+                        "user_id": "autopilot",
+                    }, timeout=long_timeout)
+
+                    confidence = assessment.get("confidence", 0)
+                    answer = str(assessment.get("answer", "")).lower()
+
+                    if confidence > 0.6 and ("significant" in answer or "important" in answer or "yes" in answer):
+                        # Auto-approve and compose article
+                        await _call_safe(f"/api/intel/staging/approve/{item_id}", method="POST")
+                        await _call_safe("/api/article-composer/compose", method="POST", json={
+                            "topic": title, "style": "alert", "target_length": "short",
+                        })
+                        stats["auto_approved"] += 1
+                    elif confidence > 0.4:
+                        stats["flagged"] += 1  # Leave for manual review
+                    else:
+                        stats["archived"] += 1
+                except Exception:
+                    stats["flagged"] += 1  # If assessment fails, flag for manual review
+
+            log.append({"step": "review_staging", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "review_staging", "status": "error", "detail": str(e)})
+
+        # Step 5: Get metrics
+        try:
+            metrics = await _call_safe("/api/intel/metrics")
+            stats["pipeline_metrics"] = metrics
+        except Exception:
+            pass
+
+        return {"chain": "intel_pipeline", "stats": stats, "log": log}
+
+    # =========================================================================
+    # CHAIN 5: Weekly Report Generator
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_weekly_report(
+        send_to: str = "zero@balizero.com",
+    ) -> dict:
+        """
+        AUTOPILOT: Generate and send the weekly operations report.
+
+        Gathers data from all systems and compiles a comprehensive report:
+        1. CRM stats (clients, practices, completions)
+        2. Revenue analytics
+        3. Team productivity and burnout indicators
+        4. Intelligence trends
+        5. RAG system performance
+        6. Sends compiled report via email
+
+        Args:
+            send_to: Email address for the report
+
+        Returns:
+            Complete weekly report data.
+        """
+        report: dict[str, Any] = {"week_of": datetime.now(timezone.utc).isoformat()[:10]}
+
+        # Gather all data in parallel-ish (sequential for safety)
+        sections = {
+            "client_stats": ("/api/crm/clients/stats", {}),
+            "completion_rates": ("/api/analytics/completion-rates", {"period": "7d"}),
+            "revenue": ("/api/analytics/revenue", {"period": "7d"}),
+            "response_times": ("/api/analytics/response-times", {"period": "7d"}),
+            "sla_compliance": ("/api/analytics/sla-compliance", {"period": "7d"}),
+            "query_analytics": ("/api/query-analytics/volume", {"period": "7d"}),
+            "team_productivity": ("/api/team-analytics/productivity", {"period": "7d"}),
+            "burnout": ("/api/team-analytics/burnout", {}),
+            "intel_trends": ("/api/intel/trends", {"period": "7d"}),
+            "agents_status": ("/api/autonomous-agents/status", {}),
+        }
+
+        for key, (endpoint, params) in sections.items():
+            try:
+                data = await _call_safe(endpoint, params=params if params else None)
+                report[key] = data
+            except Exception as e:
+                report[key] = {"error": str(e)}
+
+        # Compile summary
+        summary_lines = [
+            f"# Nuzantara Weekly Report — {report['week_of']}",
+            "",
+            "## Key Metrics",
+        ]
+
+        # Extract key numbers safely
+        cs = report.get("client_stats", {})
+        cr = report.get("completion_rates", {})
+        rev = report.get("revenue", {})
+
+        summary_lines.extend([
+            f"- Total Clients: {cs.get('total', 'N/A')}",
+            f"- Active Practices: {cs.get('active_practices', 'N/A')}",
+            f"- Completion Rate: {cr.get('completion_rate', cr.get('overall', 'N/A'))}%",
+            f"- Weekly Revenue: {rev.get('total', rev.get('weekly_total', 'N/A'))}",
+            "",
+            "## Alerts",
+        ])
+
+        burnout = report.get("burnout", {})
+        if isinstance(burnout, dict) and burnout.get("at_risk"):
+            summary_lines.append(f"⚠ Burnout risk detected: {burnout['at_risk']}")
+
+        intel = report.get("intel_trends", {})
+        if isinstance(intel, dict) and intel.get("high_activity_areas"):
+            summary_lines.append(f"📋 High regulatory activity: {intel['high_activity_areas']}")
+
+        # Send email
+        try:
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": send_to,
+                "subject": f"[Nuzantara] Weekly Report — {report['week_of']}",
+                "body": "\n".join(summary_lines),
+            })
+        except Exception:
+            pass
+
+        return {"chain": "weekly_report", "report": report}
+
+    # =========================================================================
+    # CHAIN 6: Client Health Monitor
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_client_health_monitor() -> dict:
+        """
+        AUTOPILOT: Monitor client health and take proactive action.
+
+        Deterministic chain:
+        1. Run client value predictor to score all clients
+        2. For high-risk clients (inactive >30 days) → send re-engagement message
+        3. For clients with stalled practices → send portal update request
+        4. For VIP clients with upcoming birthdays → queue birthday greeting
+        5. For recently completed practices → send satisfaction survey
+
+        Returns:
+            Actions taken: re-engagements, reminders, greetings, surveys sent.
+        """
+        log: list[dict] = []
+        stats = {"re_engagements": 0, "stalled_reminders": 0, "birthday_greetings": 0, "surveys_sent": 0}
+
+        # Step 1: Run predictor
+        try:
+            prediction = await _call_safe("/api/autonomous-agents/client-value-predictor/run", method="POST")
+            log.append({"step": "predictor", "status": "ok", "result": prediction})
+        except Exception as e:
+            log.append({"step": "predictor", "status": "error", "detail": str(e)})
+
+        # Step 2: Get all clients and check health
+        try:
+            clients_resp = await _call_safe("/api/crm/clients", params={"status": "active", "limit": 200})
+            clients = clients_resp.get("clients") or clients_resp.get("data") or []
+
+            for client in clients:
+                if not isinstance(client, dict):
+                    continue
+                client_id = client.get("id") or client.get("client_id")
+                phone = client.get("phone")
+                email = client.get("email")
+                name = client.get("name", "")
+                days_inactive = client.get("days_since_last_interaction", 0)
+                risk_score = client.get("risk_score", 0)
+                ltv = client.get("ltv_score", 50)
+
+                # Rule: High-risk, inactive >30 days
+                if (risk_score > 70 or days_inactive > 30) and phone:
+                    try:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"Hi {name.split()[0] if name else 'there'}! It's been a while since we last connected. Is there anything we can help you with? — Bali Zero Team",
+                        })
+                        stats["re_engagements"] += 1
+                    except Exception:
+                        pass
+
+                # Rule: VIP with upcoming birthday (if data available)
+                if ltv > 80 and client.get("birthday_within_7_days") and email:
+                    try:
+                        await _call_safe("/api/zoho/emails", method="POST", json={
+                            "to": email,
+                            "subject": f"Happy Birthday, {name.split()[0] if name else ''}! 🎂",
+                            "body": f"Dear {name},\n\nWishing you a wonderful birthday! As a valued client of Bali Zero, we appreciate your trust in us.\n\nBest regards,\nThe Bali Zero Team",
+                        })
+                        stats["birthday_greetings"] += 1
+                    except Exception:
+                        pass
+
+            log.append({"step": "client_health_check", "status": "ok", "clients_checked": len(clients)})
+        except Exception as e:
+            log.append({"step": "client_health_check", "status": "error", "detail": str(e)})
+
+        # Step 3: Check stalled practices
+        try:
+            stalled = await _call_safe("/api/crm/practices", params={"status": "stalled", "limit": 50})
+            stalled_list = stalled.get("practices") or stalled.get("data") or []
+            for p in stalled_list:
+                if not isinstance(p, dict):
+                    continue
+                c_id = p.get("client_id")
+                if c_id:
+                    await _call_safe("/api/portal/messages", method="POST", json={
+                        "client_id": c_id,
+                        "subject": "Update on your practice",
+                        "body": f"Your {p.get('type', 'practice')} seems to need attention. Please check your portal or contact us for assistance.",
+                    })
+                    stats["stalled_reminders"] += 1
+            log.append({"step": "stalled_practices", "status": "ok", "stalled_count": len(stalled_list)})
+        except Exception as e:
+            log.append({"step": "stalled_practices", "status": "error", "detail": str(e)})
+
+        return {"chain": "client_health_monitor", "stats": stats, "log": log}

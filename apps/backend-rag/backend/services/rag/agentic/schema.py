@@ -31,6 +31,10 @@ class CoreResult(BaseModel):
     verification_score: float = 0.0
     evidence_score: float = 0.0
 
+    # Abstain handling
+    abstain: bool = False  # True when system refused to answer due to low confidence
+    abstain_reason: str | None = None  # Reason for abstaining (if abstain=True)
+
     # Ambiguity handling
     is_ambiguous: bool = False
     clarification_question: str | None = None
@@ -50,3 +54,7 @@ class CoreResult(BaseModel):
     entities: dict[str, Any] = Field(default_factory=dict)
     timings: dict[str, float] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+    # KG LangGraph outputs (Phase 3)
+    workflow: dict[str, Any] | None = None  # Synthesized workflow from KG LangGraph
+    reasoning: str | None = None  # Reasoning chain from KG exploration

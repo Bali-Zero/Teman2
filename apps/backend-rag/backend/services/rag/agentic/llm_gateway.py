@@ -115,12 +115,12 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 2.5 Flash (latest stable)
-        # UPDATED 2026-02-09: Using gemini-2.5-flash (stable, June 2025)
-        # Latest stable model with excellent performance
-        self.model_name_pro = "gemini-2.5-flash"  # Primary tier
-        self.model_name_flash = "gemini-2.5-flash"  # Primary: latest stable
-        self.model_name_fallback = "gemini-2.0-flash-001"  # Fallback: stable
+        # Model name constants - Gemini 2.0 Flash (latest stable)
+        # UPDATED 2026-02-16: Using gemini-2.0-flash-001 (stable, widely available)
+        # Note: gemini-2.5-flash may not be available in all regions/API versions
+        self.model_name_pro = "gemini-2.0-flash-001"  # Primary tier
+        self.model_name_flash = "gemini-2.0-flash-001"  # Primary: latest stable
+        self.model_name_fallback = "gemini-1.5-flash-001"  # Fallback: stable
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
@@ -737,10 +737,27 @@ class LLMGateway:
             )
 
             # 4. Update chat history manually
-            # Extract response text
-            text_content = response.text if hasattr(response, "text") else ""
-            if text_content is None:
-                text_content = ""
+            # Extract response text with safety checks
+            text_content = ""
+            if hasattr(response, "text") and response.text:
+                text_content = response.text
+            elif hasattr(response, "candidates") and response.candidates:
+                # Try to extract from candidates if text property is empty
+                for candidate in response.candidates:
+                    if hasattr(candidate, "content") and candidate.content:
+                        for part in candidate.content.parts:
+                            if hasattr(part, "text") and part.text:
+                                text_content += part.text
+            
+            # Log warning if response is empty (could be safety block)
+            if not text_content:
+                finish_reason = None
+                if hasattr(response, "candidates") and response.candidates:
+                    finish_reason = getattr(response.candidates[0], "finish_reason", None)
+                logger.warning(
+                    f"⚠️ LLMGateway: Empty response from {model_name}. "
+                    f"Finish reason: {finish_reason}. Possible safety block or content filter."
+                )
 
             # Add user message to history
             chat.history.append({"role": "user", "parts": current_content_parts})
@@ -827,16 +844,46 @@ class LLMGateway:
 
             # Extract text, handling function call responses
             try:
-                text_content = response.text if hasattr(response, "text") else ""
-                # text_content can be None if Gemini returns a function call
-                if text_content is None:
-                    text_content = ""
-                    set_span_attribute("has_function_call", "true")
+                text_content = ""
+                if hasattr(response, "text") and response.text:
+                    text_content = response.text
+                elif hasattr(response, "candidates") and response.candidates:
+                    # Try to extract from candidates if text property is empty
+                    for candidate in response.candidates:
+                        if hasattr(candidate, "content") and candidate.content:
+                            for part in candidate.content.parts:
+                                if hasattr(part, "text") and part.text:
+                                    text_content += part.text
+                
+                # text_content can be None/empty if Gemini returns a function call
+                if not text_content:
+                    # Check if this is a function call
+                    has_function_call = (
+                        hasattr(response, "function_calls") and response.function_calls
+                    ) or (
+                        hasattr(response, "candidates") and response.candidates and
+                        hasattr(response.candidates[0], "content") and 
+                        response.candidates[0].content and
+                        any(hasattr(p, "function_call") and p.function_call 
+                            for p in response.candidates[0].content.parts)
+                    )
+                    if has_function_call:
+                        set_span_attribute("has_function_call", "true")
+                    else:
+                        set_span_attribute("has_function_call", "false")
+                        # Log warning for truly empty responses
+                        finish_reason = getattr(response.candidates[0], "finish_reason", None) if hasattr(response, "candidates") and response.candidates else None
+                        logger.warning(
+                            f"⚠️ LLMGateway: Empty text response from {model_name}. "
+                            f"Finish reason: {finish_reason}. Possible safety block."
+                        )
                 else:
                     set_span_attribute("has_function_call", "false")
+                
                 set_span_attribute("response_length", len(text_content))
-            except ValueError:
-                # Function call detected - reasoning.py will extract it from response_obj
+            except ValueError as e:
+                # Function call detected or other error - reasoning.py will extract it from response_obj
+                logger.warning(f"⚠️ LLMGateway: ValueError extracting text: {e}")
                 text_content = ""
                 set_span_attribute("has_function_call", "true")
                 set_span_attribute("response_length", 0)

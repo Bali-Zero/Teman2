@@ -293,9 +293,9 @@ class OrchestratorCore:
         async def _fetch_langgraph_workflow_task():
             """KGLangGraphOrchestrator task (Phase 3)"""
             if not self.kg_langgraph_orchestrator:
-                logger.debug("🔀 [KG LangGraph] Orchestrator not initialized (feature flag off or db_pool missing)")
+                logger.warning("🔀 [KG LangGraph] DISABLED: Orchestrator not initialized (ENABLE_KG_LANGGRAPH=false or db_pool missing)")
                 return None
-            logger.info("🔀 [KG LangGraph] Starting workflow synthesis...")
+            logger.info("🔀 [KG LangGraph] ENABLED: Starting workflow synthesis...")
 
             try:
                 with trace_span("kg.langgraph", {"query_length": len(query)}):
@@ -765,7 +765,13 @@ class OrchestratorCore:
             timings=timings,
         )
 
-        # 11. Build and return response
+        # 11. Build and return response (with KG LangGraph workflow if available)
+        # Extract reasoning from langgraph_result if available
+        langgraph_reasoning = None
+        if langgraph_workflow and isinstance(langgraph_workflow, dict):
+            # Try to get reasoning from the workflow or the original langgraph result
+            langgraph_reasoning = langgraph_workflow.get("reasoning")
+
         result = self.response_builder.build_core_result(
             state=state,
             sources=sources,
@@ -774,13 +780,15 @@ class OrchestratorCore:
             token_usage=token_usage,
             timings=timings,
             start_time=start_time,
+            workflow=langgraph_workflow,
+            reasoning=langgraph_reasoning,
         )
 
-        # 12. Append KG LangGraph workflow to answer if available
+        # 12. Also append KG LangGraph workflow text to answer for visibility
         if langgraph_workflow:
             workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
             result.answer = result.answer.rstrip() + "\n\n" + workflow_text
-            logger.info(f"\U0001f500 [KG LangGraph] Workflow appended to answer: {langgraph_workflow.get('type')}")
+            logger.info(f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}")
 
         return result
 

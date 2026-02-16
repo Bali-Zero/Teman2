@@ -284,6 +284,43 @@ async def detailed_health(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.warning(f"Failed to get service registry status: {e}")
 
+    # Check KG LangGraph Orchestrator (Phase 3)
+    try:
+        import os
+        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes")
+        
+        # Get orchestrator from global instance if available
+        from backend.app.dependencies import _agentic_rag_orchestrator
+        
+        if _agentic_rag_orchestrator and hasattr(_agentic_rag_orchestrator, 'kg_langgraph_orchestrator'):
+            kg_orchestrator = _agentic_rag_orchestrator.kg_langgraph_orchestrator
+            if kg_orchestrator:
+                services["kg_langgraph"] = {
+                    "status": "healthy",
+                    "critical": False,
+                    "details": {
+                        "enabled": True,
+                        "initialized": kg_orchestrator.app is not None,
+                    },
+                }
+            else:
+                services["kg_langgraph"] = {
+                    "status": "disabled",
+                    "critical": False,
+                    "details": {"enabled": False, "reason": "ENABLE_KG_LANGGRAPH=false or db_pool missing"},
+                }
+        else:
+            services["kg_langgraph"] = {
+                "status": "initializing" if kg_langgraph_enabled else "disabled",
+                "critical": False,
+                "details": {
+                    "enabled": kg_langgraph_enabled,
+                    "reason": "Orchestrator not yet initialized" if kg_langgraph_enabled else "ENABLE_KG_LANGGRAPH=false",
+                },
+            }
+    except Exception as e:
+        services["kg_langgraph"] = {"status": "error", "critical": False, "error": str(e)}
+
     # Calculate overall status
     critical_services = ["search", "ai"]
     critical_healthy = all(

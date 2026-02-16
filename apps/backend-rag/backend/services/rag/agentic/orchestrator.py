@@ -194,16 +194,23 @@ class AgenticRAGOrchestrator:
         # Initialize KG LangGraph Orchestrator (Phase 3)
         # Feature flag: Set to None to disable LangGraph workflow synthesis
         self.kg_langgraph_orchestrator = None
-        if db_pool and os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes"):
+        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes")
+        
+        if db_pool and kg_langgraph_enabled:
             try:
                 from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
 
                 self.kg_langgraph_orchestrator = KGLangGraphOrchestrator(db_pool)
-                logger.info("✅ KG LangGraph Orchestrator initialized (Phase 3 - feature flag enabled)")
+                logger.info("✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)")
             except ImportError as e:
                 logger.warning(f"⚠️ KG LangGraph Orchestrator not available: {e}")
             except Exception as e:
                 logger.error(f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True)
+        else:
+            if not db_pool:
+                logger.warning("⚠️ KG LangGraph Orchestrator DISABLED: db_pool not available")
+            elif not kg_langgraph_enabled:
+                logger.warning("⚠️ KG LangGraph Orchestrator DISABLED: ENABLE_KG_LANGGRAPH not set to 'true'")
 
         # Initialize Follow-up & Golden Answer services
         self.followup_service = FollowupService()

@@ -3043,7 +3043,7 @@ function CompanyTab({
                   className={`px-2 py-1 rounded text-xs font-medium ${
                     company.status === 'active'
                       ? 'bg-green-500/20 text-green-400'
-                      : company.status === 'in_setup'
+                      : company.status === 'pending'
                         ? 'bg-yellow-500/20 text-yellow-400'
                         : 'bg-gray-500/20 text-gray-400'
                   }`}
@@ -3075,7 +3075,7 @@ function CompanyTab({
                     <span className="text-xs">{company.kbli_code}</span>
                   </div>
                 )}
-                {company.setup_progress > 0 && company.setup_progress < 100 && (
+                {company.setup_progress && company.setup_progress > 0 && company.setup_progress < 100 && (
                   <div className="pt-2">
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-[var(--foreground-muted)]">Setup Progress</span>

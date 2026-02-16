@@ -187,14 +187,15 @@ def calculate_evidence_score(
     """
     Calculate evidence score based on source quality and context relevance.
 
-    This score helps determine confidence in RAG responses and whether to
-    proceed with answering or abstain due to insufficient evidence.
+    FIXED: This score now properly reflects ACTUAL relevance between query and context.
+    - Mismatched results (e.g., KITAS query returning KBLI) will score < 0.15
+    - Nonsense queries ("xyzabc123") will score ~0.0
+    - Relevant results with good sources score 0.6+
 
     Scoring Formula:
         - Base score: 0.0
-        - High-quality source bonus (+0.5): At least 1 source with score > 0.3
-        - Multiple sources bonus (+0.2): More than 3 total sources
-        - Context relevance bonus (+0.3): Context contains query keywords
+        - Source quality component (0.0-0.4): Based on top source score
+        - Context relevance (0.0-0.6): Based on keyword/semantic overlap
         - Maximum score: 1.0
 
     Args:
@@ -206,59 +207,169 @@ def calculate_evidence_score(
         Evidence score between 0.0 and 1.0
 
     Note:
-        A score >= 0.5 is generally considered sufficient for answering.
-        A score < 0.5 may trigger ABSTAIN response for critical domains.
+        - Score < 0.15: ABSTAIN (insufficient evidence)
+        - Score 0.15-0.6: CAUTIOUS (low confidence, use fallback)
+        - Score > 0.6: CONFIDENT (proceed with answer)
     """
-    base_score = 0.0
+    if not sources and not context_gathered:
+        return 0.0
 
+    # Extract meaningful query keywords (remove stop words, short words)
+    query_lower = query.lower()
+    stop_words = {
+        # English stop words
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "can", "shall", "this", "that", "these", "those",
+        "what", "which", "who", "when", "where", "why", "how", "tell", "me",
+        "about", "explain", "information", "with", "for", "from", "into", "during",
+        "including", "until", "against", "among", "through", "during", "before",
+        "after", "above", "below", "between", "under", "again", "further", "then",
+        "once", "here", "there", "when", "where", "why", "how", "all", "any",
+        "both", "each", "few", "more", "most", "other", "some", "such", "only",
+        "own", "same", "so", "than", "too", "very", "just", "and", "but", "or",
+        "yet", "as", "of", "at", "by", "on", "to", "in", "it", "its",
+        # Italian stop words
+        "questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle",
+        "che", "chi", "come", "quando", "dove", "perche", "perché", "dimmi",
+        "spiegami", "informazioni", "sulla", "sullo", "sulle", "sulla", "nel", "nello",
+        "nella", "negli", "nelle", "del", "dello", "della", "dei", "degli", "delle",
+        "al", "allo", "alla", "ai", "agli", "alle", "dal", "dallo", "dalla",
+        "dai", "dagli", "dalle", "sul", "sullo", "sulla", "sui", "sugli", "sulle",
+        "nel", "nello", "nella", "nei", "negli", "nelle", "col", "coi", "con",
+        "per", "tra", "fra", "di", "a", "da", "in", "su", "con", "per",
+        "tra", "fra", "ed", "o", "ma", "se", "non", "anche", "come", "piu",
+        "può", "puo", "deve", "deve", "essere", "avere", "fare", "andare",
+        # Generic words that shouldn't count as matches
+        "query", "question", "ask", "tell", "say", "get", "need", "want",
+    }
+    
+    # Extract meaningful keywords (length > 3, not stop words)
+    # Increased min length to 4 to avoid matching generic short words
+    query_words = [
+        w.strip(".,!?;:()[]{}\"'")
+        for w in query_lower.split()
+        if len(w) > 3 and w.strip(".,!?;:()[]{}\"'") not in stop_words
+    ]
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    query_keywords = []
+    for w in query_words:
+        if w not in seen and len(w) > 2:
+            seen.add(w)
+            query_keywords.append(w)
+
+    # Combine all context for analysis
+    context_text = " ".join(context_gathered).lower() if context_gathered else ""
+    
+    # ========== RELEVANCE SCORING ==========
+    # Calculate keyword match ratio - how many query keywords appear in context
+    keyword_hits = sum(1 for kw in query_keywords if kw in context_text)
+    
+    if query_keywords:
+        keyword_match_ratio = keyword_hits / len(query_keywords)
+    else:
+        keyword_match_ratio = 0.0
+
+    # Check for specific entity type mismatches (e.g., KITAS query returning KBLI)
+    # This catches cases where the topic is completely wrong
+    entity_type_mismatch = False
+    if query_keywords:
+        # Define topic categories
+        visa_keywords = {"kitas", "kitap", "visa", "immigration", "imigrasi", "permit", "stay"}
+        kbli_keywords = {"kbli", "classification", "business", "code", "kode", "klasifikasi"}
+        tax_keywords = {"tax", "tasse", "pajak", "fiscal", "fiscale", "npwp", "pph"}
+        company_keywords = {"pt", "pma", "company", "azienda", "usaha", "perusahaan"}
+        
+        query_has_visa = any(kw in visa_keywords for kw in query_keywords)
+        query_has_kbli = any(kw in kbli_keywords for kw in query_keywords)
+        query_has_tax = any(kw in tax_keywords for kw in query_keywords)
+        query_has_company = any(kw in company_keywords for kw in query_keywords)
+        
+        context_has_visa = any(kw in context_text for kw in visa_keywords)
+        context_has_kbli = any(kw in context_text for kw in kbli_keywords)
+        context_has_tax = any(kw in context_text for kw in tax_keywords)
+        context_has_company = any(kw in context_text for kw in company_keywords)
+        
+        # Detect mismatch: query about X but context about Y (where X != Y)
+        # Only flag if context clearly belongs to a different category
+        if query_has_visa and (context_has_kbli or context_has_tax) and not context_has_visa:
+            entity_type_mismatch = True
+        if query_has_kbli and (context_has_visa or context_has_tax) and not context_has_kbli:
+            entity_type_mismatch = True
+        if query_has_tax and (context_has_visa or context_has_kbli) and not context_has_tax:
+            entity_type_mismatch = True
+        
+        # If mismatch detected, force very low semantic relevance
+        if entity_type_mismatch:
+            keyword_match_ratio = min(keyword_match_ratio, 0.1)
+
+    # Semantic relevance score (0.0 - 0.6)
+    # Relevance is the PRIMARY factor - source quality only helps if relevance is good
+    # - Full match: keyword_match_ratio >= 0.5 → 0.6 points
+    # - Good match: keyword_match_ratio >= 0.3 → 0.4 points  
+    # - Partial match: keyword_match_ratio >= 0.15 → 0.2 points
+    # - Poor match: keyword_match_ratio < 0.15 → 0.0 points (ABSTAIN territory)
+    if keyword_match_ratio >= 0.5:
+        semantic_relevance = 0.6  # Strong relevance
+    elif keyword_match_ratio >= 0.3:
+        semantic_relevance = 0.4  # Moderate relevance
+    elif keyword_match_ratio >= 0.15:
+        semantic_relevance = 0.2  # Weak relevance
+    else:
+        semantic_relevance = 0.0  # No relevant keywords found
+
+    # ========== SOURCE QUALITY SCORING ==========
+    # Source quality is SECONDARY - it can only boost score if relevance exists
+    source_quality_score = 0.0
+    
     if sources:
-        high_quality_sources = [
-            s
-            for s in sources
+        # Get top source score (best evidence)
+        source_scores = [
+            s.get("score", 0.0) 
+            for s in sources 
             if isinstance(s, dict)
-            and s.get("score", 0.0) > EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD
         ]
-        if len(high_quality_sources) >= 1:
-            base_score += EvidenceScoreConstants.HIGH_QUALITY_SOURCE_BONUS
+        
+        if source_scores:
+            top_score = max(source_scores)
+            
+            # Source quality based on top score
+            # - Score 0.7+ : 0.4 points (excellent)
+            # - Score 0.5-0.7: 0.3 points (good)
+            # - Score 0.3-0.5: 0.2 points (acceptable)
+            # - Score < 0.3: 0.0-0.1 points (weak)
+            if top_score >= 0.7:
+                source_quality_score = 0.4
+            elif top_score >= 0.5:
+                source_quality_score = 0.3
+            elif top_score >= 0.3:
+                source_quality_score = 0.2
+            elif top_score >= 0.15:
+                source_quality_score = 0.1
+            else:
+                source_quality_score = 0.0
+    
+    # ========== FINAL SCORE CALCULATION ==========
+    # Semantic relevance is the PRIMARY factor (60-80% weight)
+    # Source quality acts as a bonus/boost (20-40% weight)
+    
+    if semantic_relevance == 0.0:
+        # No semantic relevance - score is based only on weak source quality
+        # This ensures nonsense queries or complete mismatches score < 0.15
+        final_score = min(source_quality_score * 0.2, 0.1)
+    elif semantic_relevance < 0.3:
+        # Weak relevance - cap the score regardless of source quality
+        # Max possible: 0.2 + (0.4 * 0.25) = 0.3
+        final_score = semantic_relevance + source_quality_score * 0.25
+        final_score = min(final_score, 0.35)
+    else:
+        # Good relevance - can add source quality as bonus
+        # But cap at 1.0 and weight source quality lower
+        final_score = semantic_relevance + source_quality_score * 0.5
 
-        if len(sources) > EvidenceScoreConstants.MIN_SOURCES_FOR_BONUS:
-            base_score += EvidenceScoreConstants.MULTIPLE_SOURCES_BONUS
-    elif context_gathered:
-        total_context_length = sum(len(ctx) for ctx in context_gathered)
-        if total_context_length > EvidenceScoreConstants.SUBSTANTIAL_CONTEXT_LENGTH:
-            base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
-
-    # Check if context contains query keywords
-    if context_gathered:
-        query_lower = query.lower()
-        stop_words = {
-            "the",
-            "a",
-            "an",
-            "is",
-            "are",
-            "was",
-            "were",
-            "be",
-            "been",
-            "being",
-            "have",
-            "has",
-            "had",
-            "do",
-            "does",
-            "did",
-            "will",
-            "would",
-            "could",
-        }
-        query_words = [w for w in query_lower.split() if len(w) > 3 and w not in stop_words]
-        context_text = " ".join(context_gathered).lower()
-        matches = sum(1 for word in query_words if word in context_text)
-        if matches >= 2 or (matches >= 1 and len(query_words) <= 3):
-            base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
-
-    return min(base_score, 1.0)
+    return round(min(final_score, 1.0), 2)
 
 
 def detect_team_query(query: str) -> tuple[bool, str, str]:
