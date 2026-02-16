@@ -10,7 +10,7 @@ Reference: memory/langgraph-kg-evolution-plan.md (Phase 3)
 """
 
 import logging
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import asyncpg
 from langgraph.graph import END, StateGraph

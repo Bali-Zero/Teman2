@@ -326,8 +326,8 @@ async def test_synthesize_visa_workflow_with_rptka():
     assert workflow["id"] == "visa_processing:kitas"
     # Should have RPTKA, VITAS, Entry, Conversion, MERP steps
     assert len(workflow["steps"]) == 5
-    # First step should be RPTKA
-    assert workflow["steps"][0]["entity_id"] == "rptka"
+    # First step should be IMTA TKA (work permit, formerly RPTKA)
+    assert workflow["steps"][0]["entity_id"] == "imta_tka"
 
 
 # ============================================================================

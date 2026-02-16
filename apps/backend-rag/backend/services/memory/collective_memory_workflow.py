@@ -6,7 +6,7 @@ Gestisce memoria collettiva intelligente (work + personal) con workflow condizio
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
 
