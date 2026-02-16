@@ -87,12 +87,13 @@ async def test_generate_embeddings_openai(mock_settings, mock_openai_client):
         mock_openai_client.embeddings.create.assert_called_once()
 
 
-def test_generate_embeddings_empty_list(mock_settings):
+@pytest.mark.asyncio
+async def test_generate_embeddings_empty_list(mock_settings):
     """Test generating embeddings with empty list"""
     mock_transformer = MagicMock()
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
-        embeddings = generator.generate_embeddings([])
+        embeddings = await generator.generate_embeddings([])
         assert embeddings == []
 
 
@@ -264,7 +265,8 @@ def test_init_sentence_transformers_both_providers_fail(mock_settings):
                 EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
 
 
-def test_generate_embeddings_sentence_transformers(mock_settings):
+@pytest.mark.asyncio
+async def test_generate_embeddings_sentence_transformers(mock_settings):
     """Test generating embeddings with Sentence Transformers"""
     import numpy as np
 
@@ -276,7 +278,7 @@ def test_generate_embeddings_sentence_transformers(mock_settings):
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
-        embeddings = generator.generate_embeddings(["text1", "text2"])
+        embeddings = await generator.generate_embeddings(["text1", "text2"])
 
         assert len(embeddings) == 2
         assert len(embeddings[0]) == 384
@@ -284,7 +286,8 @@ def test_generate_embeddings_sentence_transformers(mock_settings):
         mock_transformer.encode.assert_called_once()
 
 
-def test_generate_embeddings_sentence_transformers_large_batch(mock_settings):
+@pytest.mark.asyncio
+async def test_generate_embeddings_sentence_transformers_large_batch(mock_settings):
     """Test Sentence Transformers with large batch (shows progress bar)"""
     import numpy as np
 
@@ -297,7 +300,7 @@ def test_generate_embeddings_sentence_transformers_large_batch(mock_settings):
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
-        embeddings = generator.generate_embeddings(texts)
+        embeddings = await generator.generate_embeddings(texts)
 
         assert len(embeddings) == 15
         # Verify show_progress_bar was True
