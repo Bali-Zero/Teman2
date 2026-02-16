@@ -12,9 +12,11 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.services.rag.agentic.reasoning import (  # noqa: E402
-    _is_critical_domain,
     _validate_context_quality,
+)
+from backend.services.rag.agentic.reasoning_utils import (  # noqa: E402
     calculate_evidence_score,
+    is_critical_domain,
     is_valid_tool_call,
 )
 from backend.services.tools.definitions import ToolCall  # noqa: E402
@@ -106,51 +108,51 @@ class TestCriticalDomainDetection:
 
     def test_critical_domain_visa(self):
         """Test visa queries are detected as critical"""
-        assert _is_critical_domain("Quanto costa il KITAS E33G?", "business_simple") is True
+        assert is_critical_domain("Quanto costa il KITAS E33G?", "business_simple") is True
         assert (
-            _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+            is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
         )
-        assert _is_critical_domain("Parlami del KITAS", "business_simple") is True
+        assert is_critical_domain("Parlami del KITAS", "business_simple") is True
 
     def test_critical_domain_legal(self):
         """Test legal queries are detected as critical"""
-        assert _is_critical_domain("Parlami della legge sul PMA", "business_complex") is True
-        assert _is_critical_domain("Quali sono i requisiti legali?", "business_complex") is True
-        assert _is_critical_domain("Contratto di lavoro", "business_simple") is True
+        assert is_critical_domain("Parlami della legge sul PMA", "business_complex") is True
+        assert is_critical_domain("Quali sono i requisiti legali?", "business_complex") is True
+        assert is_critical_domain("Contratto di lavoro", "business_simple") is True
 
     def test_critical_domain_pricing(self):
         """Test pricing queries are detected as critical"""
-        assert _is_critical_domain("Quanto costa il servizio?", "business_simple") is True
-        assert _is_critical_domain("Prezzo KITAS", "business_simple") is True
-        assert _is_critical_domain("Tariffa per visto", "business_simple") is True
+        assert is_critical_domain("Quanto costa il servizio?", "business_simple") is True
+        assert is_critical_domain("Prezzo KITAS", "business_simple") is True
+        assert is_critical_domain("Tariffa per visto", "business_simple") is True
 
     def test_critical_domain_business_complex(self):
         """Test business_complex intent is always critical"""
-        assert _is_critical_domain("Qualsiasi query", "business_complex") is True
-        assert _is_critical_domain("Test", "business_strategic") is True
+        assert is_critical_domain("Qualsiasi query", "business_complex") is True
+        assert is_critical_domain("Test", "business_strategic") is True
 
     def test_non_critical_domain_general(self):
         """Test general knowledge queries are NOT critical"""
-        assert _is_critical_domain("Come funziona il sistema solare?", "casual") is False
-        assert _is_critical_domain("Qual è la capitale dell'Indonesia?", "casual") is False
-        assert _is_critical_domain("Dimmi qualcosa su Bali", "casual") is False
+        assert is_critical_domain("Come funziona il sistema solare?", "casual") is False
+        assert is_critical_domain("Qual è la capitale dell'Indonesia?", "casual") is False
+        assert is_critical_domain("Dimmi qualcosa su Bali", "casual") is False
 
     def test_non_critical_domain_simple(self):
         """Test simple queries without critical keywords are NOT critical"""
-        assert _is_critical_domain("Ciao, come stai?", "casual") is False
-        assert _is_critical_domain("Tell me about Indonesia", "casual") is False
+        assert is_critical_domain("Ciao, come stai?", "casual") is False
+        assert is_critical_domain("Tell me about Indonesia", "casual") is False
 
     def test_critical_domain_procedures(self):
         """Test procedure queries are detected as critical"""
-        assert _is_critical_domain("Quali documenti servono?", "business_simple") is True
-        assert _is_critical_domain("Procedura per PMA", "business_complex") is True
-        assert _is_critical_domain("Requisiti documentali", "business_simple") is True
+        assert is_critical_domain("Quali documenti servono?", "business_simple") is True
+        assert is_critical_domain("Procedura per PMA", "business_complex") is True
+        assert is_critical_domain("Requisiti documentali", "business_simple") is True
 
     def test_edge_cases(self):
         """Test edge cases"""
         # Empty query
-        assert _is_critical_domain("", "business_simple") is False
+        assert is_critical_domain("", "business_simple") is False
         # Business simple without critical keywords
-        assert _is_critical_domain("Hello", "business_simple") is False
+        assert is_critical_domain("Hello", "business_simple") is False
         # Business complex is always critical
-        assert _is_critical_domain("Hello", "business_complex") is True
+        assert is_critical_domain("Hello", "business_complex") is True

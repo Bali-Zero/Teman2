@@ -1,13 +1,13 @@
-import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
-import bundleAnalyzer from '@next/bundle-analyzer';
+import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env.ANALYZE === "true",
 });
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  output: "standalone",
   reactStrictMode: true,
   // Force ignore errors for immediate deployment
   typescript: {
@@ -20,19 +20,26 @@ const nextConfig: NextConfig = {
   // ⚡ Bundle optimization
   compress: true,
   productionBrowserSourceMaps: false,
+  poweredByHeader: false, // Remove X-Powered-By header for security
 
   // 🚀 Experimental optimizations
   experimental: {
     // Optimize package imports for faster dev and smaller bundles
     optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-icons',
-      'date-fns',
-      '@nivo/core',
-      '@nivo/bar',
-      '@nivo/line',
-      '@nivo/pie',
+      "lucide-react",
+      "@radix-ui/react-icons",
+      "date-fns",
+      "@nivo/core",
+      "@nivo/bar",
+      "@nivo/line",
+      "@nivo/pie",
     ],
+    // Server Actions optimization
+    serverMinification: true,
+    // Optimize CSS (removes unused CSS in production)
+    optimizeCss: true,
+    // Partial Prerendering - serves static shell immediately
+    // ppr: true, // Enable when Next.js 15 is stable with PPR
     // Turbopack for faster builds (when stable)
     // turbo: {},
   },
@@ -41,56 +48,56 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         has: [
           {
-            type: 'host',
-            value: 'mo.balizero.com',
+            type: "host",
+            value: "mo.balizero.com",
           },
         ],
-        destination: 'https://balizero.com/:path*',
+        destination: "https://balizero.com/:path*",
         permanent: true, // 301 redirect
       },
     ];
   },
   images: {
     // 🖼️ Image Optimization - Auto AVIF/WebP conversion
-    formats: ['image/avif', 'image/webp'], // Modern formats (70% smaller)
+    formats: ["image/avif", "image/webp"], // Modern formats (70% smaller)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920], // Responsive breakpoints
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // Icon/thumbnail sizes
     minimumCacheTTL: 60 * 60 * 24 * 365, // Cache 1 year
     dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
+    contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
 
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'nuzantara-rag.fly.dev',
+        protocol: "https",
+        hostname: "nuzantara-rag.fly.dev",
       },
       {
-        protocol: 'https',
-        hostname: '*.fly.dev',
+        protocol: "https",
+        hostname: "*.fly.dev",
       },
       {
-        protocol: 'https',
-        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
+        protocol: "https",
+        hostname: "oaidalleapiprodscus.blob.core.windows.net",
       },
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
+        protocol: "https",
+        hostname: "placehold.co",
       },
       {
-        protocol: 'https',
-        hostname: 'image.pollinations.ai',
+        protocol: "https",
+        hostname: "image.pollinations.ai",
       },
       {
-        protocol: 'https',
-        hostname: 'balizero.com',
+        protocol: "https",
+        hostname: "balizero.com",
       },
       {
-        protocol: 'https',
-        hostname: 'www.datocms-assets.com',
+        protocol: "https",
+        hostname: "www.datocms-assets.com",
       },
     ],
   },
@@ -99,45 +106,45 @@ const nextConfig: NextConfig = {
     return [
       {
         // Cache static assets for 1 year (immutable)
-        source: '/_next/static/:path*',
+        source: "/_next/static/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Cache images for 1 year
-        source: '/_next/image/:path*',
+        source: "/_next/image/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Cache public assets (fonts, etc) for 1 year
-        source: '/:path*.woff2',
+        source: "/:path*.woff2",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Add security headers
-        source: '/:path*',
+        source: "/:path*",
         headers: [
           {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
         ],
       },

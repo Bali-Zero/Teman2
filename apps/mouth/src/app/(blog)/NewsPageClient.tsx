@@ -19,7 +19,9 @@ import type { ArticleListItem } from "@/lib/blog/types";
 import { HomepageSEOSchemas } from "@/components/seo/HomepageFAQ";
 
 // Lazy load non-critical sections
-const KBLINavigatorSection = lazy(() => import("./components/KBLINavigatorSection"));
+const KBLINavigatorSection = lazy(
+  () => import("./components/KBLINavigatorSection"),
+);
 
 // Skeleton for lazy-loaded sections
 const SectionSkeleton = () => (
@@ -38,7 +40,9 @@ interface NewsPageClientProps {
  * News Page Client Component - "The Chronicle"
  * McKinsey-inspired asymmetric editorial layout with 5-article collage
  */
-export default function NewsPageClient({ articles: serverArticles }: NewsPageClientProps) {
+export default function NewsPageClient({
+  articles: serverArticles,
+}: NewsPageClientProps) {
   // Fallback a MOCK_ARTICLES se il server non fornisce articoli
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
@@ -114,6 +118,8 @@ export default function NewsPageClient({ articles: serverArticles }: NewsPageCli
                         transformOrigin: "center center",
                       }}
                       priority
+                      fetchPriority="high"
+                      sizes="(max-width: 1024px) 100vw, 40vw"
                     />
                   </div>
                   <div className="relative z-10">

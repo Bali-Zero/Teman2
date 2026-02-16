@@ -51,6 +51,7 @@ class KBLIDetail(BaseModel):
     risk_profile: str
     licenses: list[KBLILicense]
     related_codes: list[str] = []
+    expert_legal: dict | None = None
 
 
 class KBLISearchResult(BaseModel):
@@ -258,6 +259,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                 risk_profile=risk_profile,
                 licenses=licenses,
                 related_codes=related_codes,
+                expert_legal=props.get("expert_legal")
             )
     except HTTPException:
         raise

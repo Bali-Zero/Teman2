@@ -1,0 +1,58 @@
+# Cline Rules — Nuzantara Project
+
+> Cline legge questo file automaticamente nel workspace.
+> Complementa CLAUDE.md (fonte primaria) e AGENTS.md.
+
+## Identità
+
+Nuzantara v5.2.0 — AI platform per Bali Zero (servizi legali/business Indonesia).
+Owner codename: Zero (nome reale PRIVATO). Lingua: Italiano con Zero, English nel codice.
+
+## Stack Critico
+
+- Backend: Python 3.11+ FastAPI — 78 router, 244 service
+- Frontend: Next.js App Router, TypeScript, Tailwind
+- DB: PostgreSQL 17 + Qdrant (58.880 vettori) + Redis
+- Deploy: Fly.io `nuzantara-rag` (1 worker SOLO, OOM su 2+) + Vercel
+- Embedding: `text-embedding-3-small` 1536 dims — **FROZEN, mai cambiare**
+
+## Golden Rules
+
+1. Virtualenv obbligatorio — mai Python di sistema
+2. PYTHONPATH=. python -m backend.module
+3. Import assoluti — from backend.core import config
+4. httpx mai requests — tutto async
+5. Type hints su ogni funzione
+6. Env vars per secrets
+7. logger non print()
+8. Test + error handling
+9. Payload Qdrant FLAT (mai nested)
+10. Verifica fonti — mai presumere
+
+## MCP Disponibili
+
+- nuzantara-rag: search_kbli, inspect_kbli, ask_legal, check_health
+- nuzantara-ops: check_fly_status, get_fly_logs, run_backend_tests, run_linting, check_deployment_readiness
+
+## Pre-Deploy (OBBLIGATORIO)
+
+```bash
+git diff --name-only HEAD -- apps/backend-rag/backend/
+python -c "from backend.app.dependencies import get_current_user; print('OK')"
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py -q
+fly deploy --strategy rolling --app nuzantara-rag
+```
+
+## Rogue AI — BLOCCA
+
+- Rimuovere `Any` da typing → crash runtime
+- --workers 2 Dockerfile → OOM Fly.io
+- Payload nested Qdrant → KBLI rotta
+- Import relativi → crash runtime
+- git push --force su main → proibito
+
+## Riferimenti
+
+- Fonte primaria: CLAUDE.md
+- Onboarding: docs/AI_ONBOARDING.md
+- MCP config: .mcp.json (Claude Code), .cursor/mcp.json (Cursor)
