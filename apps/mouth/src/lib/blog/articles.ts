@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { unstable_cache } from "next/cache";
 import type { Article, ArticleListItem, ArticleCategory } from "./types";
 
 const ARTICLES_PATH = path.join(process.cwd(), "src/content/articles");
@@ -181,71 +182,82 @@ export async function getArticleBySlug(
 
 /**
  * Get all articles with optional filtering
+ * Cached with ISR - cache key includes relevant options
  */
-export async function getAllArticles(options?: {
-  category?: string;
-  featured?: boolean;
-  limit?: number;
-  offset?: number;
-}): Promise<{ articles: ArticleListItem[]; total: number }> {
-  const allSlugs = await getAllArticleSlugs();
+export const getAllArticles = unstable_cache(
+  async (options?: {
+    category?: string;
+    featured?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ articles: ArticleListItem[]; total: number }> => {
+    const allSlugs = await getAllArticleSlugs();
 
-  // Filter by category if specified (uses normalized category)
-  let filteredSlugs = options?.category
-    ? allSlugs.filter((s) => s.category === options.category)
-    : allSlugs;
+    // Filter by category if specified (uses normalized category)
+    let filteredSlugs = options?.category
+      ? allSlugs.filter((s) => s.category === options.category)
+      : allSlugs;
 
-  const total = filteredSlugs.length;
+    const total = filteredSlugs.length;
 
-  // Apply pagination
-  if (options?.offset) {
-    filteredSlugs = filteredSlugs.slice(options.offset);
-  }
-  if (options?.limit) {
-    filteredSlugs = filteredSlugs.slice(0, options.limit);
-  }
-
-  const articles: ArticleListItem[] = [];
-
-  for (const { folderCategory, slug } of filteredSlugs) {
-    // Use folderCategory for file path lookup
-    const article = await getArticleBySlug(folderCategory, slug);
-    if (article) {
-      // Filter by featured if specified
-      if (
-        options?.featured !== undefined &&
-        article.featured !== options.featured
-      ) {
-        continue;
-      }
-
-      articles.push({
-        id: article.id,
-        slug: article.slug,
-        title: article.title,
-        excerpt: article.excerpt,
-        coverImage: article.coverImage,
-        category: article.category, // Already normalized in getArticleBySlug
-        author: article.author,
-        publishedAt: article.publishedAt || article.createdAt,
-        readingTime: article.readingTime,
-        viewCount: article.viewCount,
-        featured: article.featured,
-        trending: article.trending,
-        aiGenerated: article.aiGenerated,
-      });
+    // Apply pagination
+    if (options?.offset) {
+      filteredSlugs = filteredSlugs.slice(options.offset);
     }
-  }
+    if (options?.limit) {
+      filteredSlugs = filteredSlugs.slice(0, options.limit);
+    }
 
-  // Sort by publishedAt descending
-  articles.sort((a, b) => {
-    const dateA = new Date(a.publishedAt).getTime();
-    const dateB = new Date(b.publishedAt).getTime();
-    return dateB - dateA;
-  });
+    const articles: ArticleListItem[] = [];
 
-  return { articles, total };
-}
+    for (const { folderCategory, slug } of filteredSlugs) {
+      // Use folderCategory for file path lookup
+      const article = await getArticleBySlug(folderCategory, slug);
+      if (article) {
+        // Filter by featured if specified
+        if (
+          options?.featured !== undefined &&
+          article.featured !== options.featured
+        ) {
+          continue;
+        }
+
+        articles.push({
+          id: article.id,
+          slug: article.slug,
+          title: article.title,
+          excerpt: article.excerpt,
+          coverImage: article.coverImage,
+          category: article.category, // Already normalized in getArticleBySlug
+          author: article.author,
+          publishedAt: article.publishedAt || article.createdAt,
+          readingTime: article.readingTime,
+          viewCount: article.viewCount,
+          featured: article.featured,
+          trending: article.trending,
+          aiGenerated: article.aiGenerated,
+        });
+      }
+    }
+
+    // Sort by publishedAt descending
+    articles.sort((a, b) => {
+      const dateA = new Date(a.publishedAt).getTime();
+      const dateB = new Date(b.publishedAt).getTime();
+      return dateB - dateA;
+    });
+
+    return { articles, total };
+  },
+  // Cache key parts for invalidation
+  ["articles"],
+  {
+    // Tags for programmatic invalidation
+    tags: ["articles"],
+    // Revalidate every 60 seconds (matches page revalidate)
+    revalidate: 60,
+  },
+);
 
 /**
  * Get featured articles
