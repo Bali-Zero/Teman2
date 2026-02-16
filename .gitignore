@@ -359,3 +359,14 @@ apps/backend-rag/scripts/zantara_expert_test.py
 .launchd-test
 .sync-test
 .syncthing-restart-test
+
+# Test/QA reports (local only)
+PRODUCTION_LIVE_TEST_REPORT_*.md
+WEBAPP_COMMUNICATION_TEST_REPORT_*.md
+ZANTARA_RESPONSE_QUALITY_ISSUES_*.md
+
+# Homunculus AI workspace
+.homunculus/
+
+# One-off verification scripts
+verify_homepage.mjs
