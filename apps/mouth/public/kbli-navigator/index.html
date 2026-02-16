@@ -4122,5 +4122,33 @@ function browseToFinder(sectionLetter){
     </div>
   </nav>
 
+<!-- ============================================
+     PHASE 1: BILINGUAL ENGLISH KEYWORDS
+     Load enhanced KBLI data with English translations
+     This overrides the embedded K array above
+     ============================================ -->
+<script src="kbli_data_with_english.js"></script>
+<script>
+  // Verify Phase 1 bilingual data loaded
+  if (typeof K !== 'undefined' && K.length > 0) {
+    console.log('[KBLI Phase 1] ✅ Loaded ' + K.length + ' codes with bilingual keywords');
+    console.log('[KBLI Phase 1] Sample data check:', K[0]);
+    
+    // Check if English keywords exist
+    const hasEnglish = K.some(function(item) {
+      const keywords = (item[7] || '').toLowerCase();
+      return /\b(restaurant|hotel|software|construction)\b/.test(keywords);
+    });
+    
+    if (hasEnglish) {
+      console.log('[KBLI Phase 1] ✅ English keywords detected - bilingual search enabled');
+    } else {
+      console.warn('[KBLI Phase 1] ⚠️ No English keywords found - Phase 1 may not be loaded correctly');
+    }
+  } else {
+    console.error('[KBLI Phase 1] ❌ Failed to load KBLI data');
+  }
+</script>
+
 </body>
 </html>
