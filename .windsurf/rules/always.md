@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Nuzantara — Contesto Permanente (Always On)
 
 **Piattaforma:** Nuzantara v5.2.0 — AI platform per Bali Zero (servizi legali/business Indonesia)

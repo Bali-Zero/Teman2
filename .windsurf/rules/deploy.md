@@ -1,3 +1,8 @@
+---
+trigger: glob
+globs: "**/fly.toml,**/Dockerfile,**/fly.*.toml"
+---
+
 # Deploy — Regole Critiche
 
 ## Fly.io Backend
