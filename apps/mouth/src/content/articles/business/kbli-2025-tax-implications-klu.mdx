@@ -11,6 +11,8 @@ tags:
   - CoreTax
   - PPh Badan
   - tax benchmarks
+  - KLU tax code Indonesia
+  - CoreTax KBLI
 publishedAt: "2026-02-17"
 updatedAt: "2026-02-17"
 author:
@@ -67,13 +69,13 @@ The KLU system has historically mirrored the KBLI structure. Both use the same f
 
 Here is how the mapping works in practice:
 
-| Layer | KBLI Function | KLU Function |
-|-------|--------------|--------------|
-| **Section** (letter) | Broad economic sector (e.g., G = Wholesale/Retail) | Sector-level tax benchmarking pool |
-| **Division** (2-digit) | Industry group (e.g., 47 = Retail Trade) | DJP audit cluster assignment |
-| **Group** (3-digit) | Sub-industry (e.g., 471 = Retail in Stores) | Gross profit margin benchmark range |
-| **Class** (4-digit) | Specific activity (e.g., 4711 = Supermarket) | Operating expense ratio benchmark |
-| **Sub-class** (5-digit) | Granular activity (e.g., 47111 = Mini-market) | Net profit margin target for audit scoring |
+| Layer                   | KBLI Function                                      | KLU Function                               |
+| ----------------------- | -------------------------------------------------- | ------------------------------------------ |
+| **Section** (letter)    | Broad economic sector (e.g., G = Wholesale/Retail) | Sector-level tax benchmarking pool         |
+| **Division** (2-digit)  | Industry group (e.g., 47 = Retail Trade)           | DJP audit cluster assignment               |
+| **Group** (3-digit)     | Sub-industry (e.g., 471 = Retail in Stores)        | Gross profit margin benchmark range        |
+| **Class** (4-digit)     | Specific activity (e.g., 4711 = Supermarket)       | Operating expense ratio benchmark          |
+| **Sub-class** (5-digit) | Granular activity (e.g., 47111 = Mini-market)      | Net profit margin target for audit scoring |
 
 The deeper the code, the more specific the benchmark. A company classified under KLU 47111 (mini-market retail) is measured against different profit expectations than one under 47191 (general retail trade). The five-digit precision matters because DJP's benchmarking engine operates at the sub-class level.
 
@@ -160,12 +162,12 @@ Each of these scenarios has different KLU implications.
 
 For each candidate KBLI 2025 code, research the corresponding KLU benchmark. Compare:
 
-| Metric | Current KLU Benchmark | New KLU Benchmark | Your Actual Ratio |
-|--------|----------------------|-------------------|-------------------|
-| GPM | e.g., 50% | e.g., 65% | e.g., 52% |
-| OPM | e.g., 20% | e.g., 30% | e.g., 22% |
-| NPM | e.g., 10% | e.g., 15% | e.g., 11% |
-| Input/Output VAT | e.g., 0.80 | e.g., 0.70 | e.g., 0.78 |
+| Metric           | Current KLU Benchmark | New KLU Benchmark | Your Actual Ratio |
+| ---------------- | --------------------- | ----------------- | ----------------- |
+| GPM              | e.g., 50%             | e.g., 65%         | e.g., 52%         |
+| OPM              | e.g., 20%             | e.g., 30%         | e.g., 22%         |
+| NPM              | e.g., 10%             | e.g., 15%         | e.g., 11%         |
+| Input/Output VAT | e.g., 0.80            | e.g., 0.70        | e.g., 0.78        |
 
 If the gap between your actuals and the new benchmark is significant, prepare documentation explaining why. Legitimate reasons include: startup-phase investment, market conditions, contractual pricing structures, or geographic cost differences.
 
@@ -198,13 +200,13 @@ If your KBLI 2025 migration results in multiple registered activity codes, ensur
 
 To illustrate the practical impact, here are representative benchmark shifts that KBLI 2025 migration can produce:
 
-| Business Type | Old Code (2020) | New Code (2025) | GPM Shift | Audit Risk |
-|---------------|----------------|-----------------|-----------|------------|
-| Villa Management | 68110 (Real Estate) | 55xxx (Accommodation) | 40% to 60% | **High** — margin expectations jump significantly |
-| Digital Marketing Agency | 73100 (Advertising) | 63xxx (Digital Services) | 35% to 50% | **Medium** — new sector, new benchmarks |
-| Coworking Space | 68201 (Property Rental) | 82xxx (Business Support) | 50% to 45% | **Low** — benchmark drops, favorable shift |
-| Restaurant + Catering | 56101 (Restaurant) | 56101 + 56210 (split) | Single to dual benchmark | **Medium** — revenue allocation scrutiny |
-| IT Consulting | 62010 (Programming) | 62010 + 63xxx (split) | 55% to 60%/50% | **Medium** — depends on allocation |
+| Business Type            | Old Code (2020)         | New Code (2025)          | GPM Shift                | Audit Risk                                        |
+| ------------------------ | ----------------------- | ------------------------ | ------------------------ | ------------------------------------------------- |
+| Villa Management         | 68110 (Real Estate)     | 55xxx (Accommodation)    | 40% to 60%               | **High** — margin expectations jump significantly |
+| Digital Marketing Agency | 73100 (Advertising)     | 63xxx (Digital Services) | 35% to 50%               | **Medium** — new sector, new benchmarks           |
+| Coworking Space          | 68201 (Property Rental) | 82xxx (Business Support) | 50% to 45%               | **Low** — benchmark drops, favorable shift        |
+| Restaurant + Catering    | 56101 (Restaurant)      | 56101 + 56210 (split)    | Single to dual benchmark | **Medium** — revenue allocation scrutiny          |
+| IT Consulting            | 62010 (Programming)     | 62010 + 63xxx (split)    | 55% to 60%/50%           | **Medium** — depends on allocation                |
 
 The villa management example is particularly significant for Bali. Many villa operators were historically classified under real estate (Section L), which carries moderate profit expectations. Under KBLI 2025, short-term accommodation management is more accurately classified under accommodation services (Section I), which carries hospitality-level margin expectations — typically 15-20 percentage points higher. This single reclassification can transform a compliant taxpayer into an outlier overnight.
 
