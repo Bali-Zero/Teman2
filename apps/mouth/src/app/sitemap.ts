@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { getAllArticles } from '@/lib/blog/articles';
 import { logger } from '@/lib/logger';
 
 /**
@@ -109,6 +110,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     'legal',
     'property',
     'lifestyle',
+    'tech',
+    'digital-nomad',
   ];
 
   const newsCategoryPages = newsCategories.map((category) => ({
@@ -120,31 +123,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   routes.push(...newsCategoryPages);
 
-  // 4. Blog articles (fetch from API or static content)
+  // 4. Blog articles (from local MDX content)
   try {
-    // Try to fetch articles from backend API
-    const articlesResponse = await fetch(
-      `https://nuzantara-rag.fly.dev/api/blog/articles?published=true&limit=200`,
-      { next: { revalidate: 3600 } } // Cache for 1 hour
-    );
+    const { articles } = await getAllArticles({ limit: 500 });
 
-    if (articlesResponse.ok) {
-      const articlesData = await articlesResponse.json();
-      const articles = articlesData.articles || [];
+    const articlePages = articles.map((article) => ({
+      url: `${baseUrl}/${article.category}/${article.slug}`,
+      lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    }));
 
-      const articlePages = articles.map((article: any) => ({
-        url: `${baseUrl}/news/${article.slug}`,
-        lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
-        changeFrequency: 'monthly' as const,
-        priority: 0.8,
-      }));
-
-      routes.push(...articlePages);
-    }
+    routes.push(...articlePages);
   } catch (error) {
-    logger.error('[SITEMAP] Failed to fetch articles', { error });
-    // Fallback: add mock articles for now
-    // In production, this should pull from your content directory
+    logger.error('[SITEMAP] Failed to load articles', { error });
   }
 
   // 5. Top KBLI codes (35 most searched)

@@ -29,7 +29,7 @@ function stripMdxComponents(content: string): string {
 }
 
 export async function GET() {
-  const { articles } = await getAllArticles({ limit: 200 });
+  const { articles } = await getAllArticles({ limit: 500 });
 
   const sections: string[] = [];
 
